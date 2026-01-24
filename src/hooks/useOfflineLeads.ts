@@ -33,7 +33,7 @@ export function useOfflineLeads(
       const { data, error } = await supabase
         .from('leads')
         .select('*')
-        .or(`and(status.in.(open,pending,released),assigned_agent_id.is.null),assigned_agent_id.eq.${userId}`)
+        .or(`and(status.in.(pending),assigned_agent_id.is.null),assigned_agent_id.eq.${userId}`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -134,7 +134,7 @@ export function useOfflineLeads(
 
     const updates = {
       assigned_agent_id: userId,
-      status: 'claimed',
+      status: 'accepted',
       accepted_at: new Date().toISOString(),
     };
 
@@ -167,7 +167,7 @@ export function useOfflineLeads(
   // Release a lead
   const releaseLead = useCallback(async (leadId: string) => {
     const updates = {
-      status: 'open',
+      status: 'pending',
       assigned_agent_id: null,
       accepted_at: null,
     };
