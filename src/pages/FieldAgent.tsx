@@ -26,6 +26,7 @@ import { notifyJobAssigned, notifyTechEnRoute } from "@/lib/notificationService"
 import PullToRefresh from "@/components/PullToRefresh";
 import Layout from "@/components/Layout";
 import { createTeardropMarkerElement } from "@/utils/MarkerUtils";
+import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilterButtons";
 
 interface Lead {
   id: string;
@@ -112,6 +113,9 @@ const FieldAgent = () => {
   const [homeBaseLat, setHomeBaseLat] = useState<number | null>(null);
   const [homeBaseLng, setHomeBaseLng] = useState<number | null>(null);
   const [, setTimerTick] = useState(0); // Force re-renders for timer updates
+  const [statusFilters, setStatusFilters] = useState<Set<LeadStatusFilter>>(
+    new Set(["pending", "accepted", "in_progress"])
+  );
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
@@ -186,7 +190,7 @@ const FieldAgent = () => {
     if (mapLoaded && currentLocation) {
       updateMapView();
     }
-  }, [leads, currentLocation, mapLoaded]);
+  }, [leads, currentLocation, mapLoaded, statusFilters]);
 
   const checkAuth = async () => {
     try {
@@ -673,7 +677,25 @@ const FieldAgent = () => {
       }
     };
 
-    leads.forEach((lead) => {
+    // Filter leads based on active status filters
+    const filteredLeads = leads.filter((lead) => {
+      // Map various statuses to filter categories
+      if (["pending", "open", "released"].includes(lead.status)) {
+        return statusFilters.has("pending");
+      }
+      if (["claimed", "accepted"].includes(lead.status)) {
+        return statusFilters.has("accepted");
+      }
+      if (lead.status === "in_progress") {
+        return statusFilters.has("in_progress");
+      }
+      if (lead.status === "completed") {
+        return statusFilters.has("completed");
+      }
+      return false;
+    });
+
+    filteredLeads.forEach((lead) => {
       const statusColor = getLeadColor(lead.status);
       const content = lead.status === "completed" ? "$" : undefined;
 
@@ -1469,26 +1491,23 @@ const FieldAgent = () => {
             </div>
           )}
 
-          {/* Legend - Desktop Only */}
-          <div className="hidden md:block absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
-            <div className="bg-card/95 backdrop-blur border rounded-full px-4 py-2 shadow-lg flex items-center gap-4 text-xs">
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full border-2 border-white shadow" style={{ backgroundColor: '#00CCCD' }} />
-                <span>You</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow" />
-                <span>Available</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-yellow-500 border-2 border-white shadow" />
-                <span>Claimed</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-green-500 border-2 border-white shadow" />
-                <span>In Progress</span>
-              </div>
-            </div>
+          {/* Status Filter Buttons - All Devices */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+            <StatusFilterButtons
+              activeFilters={statusFilters}
+              onToggle={(status) => {
+                setStatusFilters((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(status)) {
+                    next.delete(status);
+                  } else {
+                    next.add(status);
+                  }
+                  return next;
+                });
+              }}
+              compact={isMobile}
+            />
           </div>
         </div>
 
