@@ -615,18 +615,14 @@ const FieldAgent = () => {
       mapInstanceRef.current.on("load", () => {
         setMapLoaded(true);
         
-        // Offset the navigation control and logo above the footer
-        const navControl = mapRef.current?.querySelector('.mapboxgl-ctrl-bottom-left');
-        if (navControl) {
-          (navControl as HTMLElement).style.bottom = '48px';
+        // Offset all bottom controls above the footer
+        const bottomLeft = mapRef.current?.querySelector('.mapboxgl-ctrl-bottom-left');
+        if (bottomLeft) {
+          (bottomLeft as HTMLElement).style.bottom = '48px';
         }
-        const logo = mapRef.current?.querySelector('.mapboxgl-ctrl-logo');
-        if (logo) {
-          (logo as HTMLElement).style.marginBottom = '48px';
-        }
-        const attrib = mapRef.current?.querySelector('.mapboxgl-ctrl-attrib');
-        if (attrib) {
-          (attrib as HTMLElement).style.marginBottom = '48px';
+        const bottomRight = mapRef.current?.querySelector('.mapboxgl-ctrl-bottom-right');
+        if (bottomRight) {
+          (bottomRight as HTMLElement).style.bottom = '48px';
         }
       });
 
