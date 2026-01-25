@@ -618,11 +618,11 @@ const FieldAgent = () => {
         // Offset all bottom controls above the footer
         const bottomLeft = mapRef.current?.querySelector('.mapboxgl-ctrl-bottom-left');
         if (bottomLeft) {
-          (bottomLeft as HTMLElement).style.bottom = '48px';
+          (bottomLeft as HTMLElement).style.bottom = '64px';
         }
         const bottomRight = mapRef.current?.querySelector('.mapboxgl-ctrl-bottom-right');
         if (bottomRight) {
-          (bottomRight as HTMLElement).style.bottom = '48px';
+          (bottomRight as HTMLElement).style.bottom = '64px';
         }
       });
 
@@ -1502,7 +1502,7 @@ const FieldAgent = () => {
           )}
 
           {/* Status Filter Buttons - All Devices */}
-          <div className="absolute bottom-14 left-1/2 -translate-x-1/2 z-10">
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10">
             <StatusFilterButtons
               activeFilters={statusFilters}
               onToggle={(status) => {
