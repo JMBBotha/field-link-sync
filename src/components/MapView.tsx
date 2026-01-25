@@ -52,7 +52,7 @@ const formatTimeAgo = (createdAt: string): string => {
 };
 
 const MapView = forwardRef<MapViewHandle>((_, ref) => {
-  const MAP_CHROME_BOTTOM_OFFSET_PX = 48;
+  const MAP_CHROME_BOTTOM_OFFSET_PX = 64;
   const [agents, setAgents] = useState<AgentLocation[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [center, setCenter] = useState({ lat: -34.0522, lng: 22.2922 });
@@ -731,7 +731,7 @@ const MapView = forwardRef<MapViewHandle>((_, ref) => {
           
           {/* Status Filter Buttons */}
           {mapLoaded && (
-            <div className="absolute bottom-14 left-1/2 -translate-x-1/2 z-10">
+            <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10">
               <StatusFilterButtons
                 activeFilters={statusFilters}
                 onToggle={(status) => {
