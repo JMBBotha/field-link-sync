@@ -618,7 +618,7 @@ const FieldAgent = () => {
         // Offset the navigation control above the footer
         const navControl = mapRef.current?.querySelector('.mapboxgl-ctrl-bottom-left');
         if (navControl) {
-          (navControl as HTMLElement).style.bottom = '80px';
+          (navControl as HTMLElement).style.bottom = '64px';
         }
       });
 
