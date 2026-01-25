@@ -110,11 +110,32 @@ export function useSyncQueue(isOnline: boolean) {
     }
   };
 
+  // Map legacy status values to valid database values
+  const normalizeLeadStatus = (status: string): string => {
+    const statusMap: Record<string, string> = {
+      'open': 'pending',
+      'released': 'pending',
+      'claimed': 'accepted',
+      'available': 'pending',
+    };
+    return statusMap[status] || status;
+  };
+
+  // Normalize lead data before syncing to ensure valid status values
+  const normalizeLeadData = (data: any): any => {
+    if (!data) return data;
+    const normalized = { ...data };
+    if (normalized.status) {
+      normalized.status = normalizeLeadStatus(normalized.status);
+    }
+    return normalized;
+  };
+
   // Process a single operation
   const processOperation = async (operation: PendingOperation): Promise<boolean> => {
     try {
       // Check for conflicts on updates
-      if (operation.operationType === 'update_lead') {
+      if (operation.operationType === 'update_lead' || operation.operationType === 'update_job_status') {
         const { hasConflict } = await checkForConflict(
           operation.tableName, 
           operation.recordId, 
@@ -131,10 +152,14 @@ export function useSyncQueue(isOnline: boolean) {
       }
 
       switch (operation.operationType) {
-        case 'update_lead': {
+        case 'update_lead':
+        case 'update_job_status': {
+          // Normalize status values before syncing
+          const normalizedData = normalizeLeadData(operation.data);
+          
           const { error } = await supabase
             .from('leads')
-            .update(operation.data)
+            .update(normalizedData)
             .eq('id', operation.recordId);
           
           if (error) throw error;
@@ -295,20 +320,32 @@ export function useSyncQueue(isOnline: boolean) {
       
       return true;
     } catch (error: any) {
-      console.error('[SyncQueue] Operation failed:', error);
+      console.error('[SyncQueue] Operation failed:', {
+        type: operation.operationType,
+        table: operation.tableName,
+        recordId: operation.recordId,
+        error: error.message,
+        data: operation.data,
+      });
       throw error;
     }
   };
 
   // Sync all pending operations
   const syncPendingOperations = useCallback(async () => {
-    if (syncingRef.current || !isOnline) return;
+    if (syncingRef.current || !isOnline) {
+      console.log('[SyncQueue] Sync skipped - syncing:', syncingRef.current, 'online:', isOnline);
+      return;
+    }
     
     syncingRef.current = true;
     setSyncStatus(prev => ({ ...prev, isSyncing: true, lastError: null }));
     
+    console.log('[SyncQueue] Starting sync...');
+    
     try {
       const pendingOps = await offlineDb.getPendingOperations();
+      console.log('[SyncQueue] Pending operations:', pendingOps.length);
       
       if (pendingOps.length === 0) {
         setSyncStatus(prev => ({ 
