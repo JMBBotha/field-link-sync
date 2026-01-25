@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,8 @@ import PullToRefresh from "@/components/PullToRefresh";
 import Layout from "@/components/Layout";
 import { createTeardropMarkerElement } from "@/utils/MarkerUtils";
 import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilterButtons";
+import LeadListFilterPills, { LeadListStatus } from "@/components/LeadListFilterPills";
+import FieldAgentLeadCard from "@/components/FieldAgentLeadCard";
 
 interface Lead {
   id: string;
@@ -117,6 +119,12 @@ const FieldAgent = () => {
   const [statusFilters, setStatusFilters] = useState<Set<LeadStatusFilter>>(
     new Set(["pending", "accepted", "in_progress"])
   );
+  // Map-list sync state
+  const [highlightedLeadId, setHighlightedLeadId] = useState<string | null>(null);
+  const [visibleLeadIds, setVisibleLeadIds] = useState<Set<string>>(new Set());
+  const [availableListFilter, setAvailableListFilter] = useState<LeadListStatus>("all");
+  const [activeListFilter, setActiveListFilter] = useState<LeadListStatus>("all");
+  const highlightTimeoutRef = useRef<number | null>(null);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
@@ -763,10 +771,12 @@ const FieldAgent = () => {
         anchor: "bottom"
       }).setHTML(popupHTML);
 
-      // Click on marker opens detail sheet
+      // Click on marker opens detail sheet AND highlights card in list
       leadEl.addEventListener('click', () => {
         setSelectedLead(lead);
         setDetailSheetOpen(true);
+        // Highlight the corresponding card in the list
+        highlightLeadCard(lead.id);
       });
 
       const leadMarker = new mapboxgl.Marker({ element: leadEl, anchor: 'bottom' })
@@ -791,10 +801,68 @@ const FieldAgent = () => {
     }
   };
 
+  // Highlight a lead card in the list (with auto-scroll)
+  const highlightLeadCard = useCallback((leadId: string) => {
+    // Clear any existing timeout
+    if (highlightTimeoutRef.current) {
+      clearTimeout(highlightTimeoutRef.current);
+    }
+    
+    setHighlightedLeadId(leadId);
+    
+    // Auto-clear highlight after 3 seconds
+    highlightTimeoutRef.current = window.setTimeout(() => {
+      setHighlightedLeadId(null);
+    }, 3000);
+  }, []);
+
+  // Update visible leads based on map bounds
+  const updateVisibleLeads = useCallback(() => {
+    if (!mapInstanceRef.current || !mapLoaded) return;
+    
+    const bounds = mapInstanceRef.current.getBounds();
+    const visible = new Set<string>();
+    
+    leads.forEach((lead) => {
+      if (bounds.contains([lead.longitude, lead.latitude])) {
+        visible.add(lead.id);
+      }
+    });
+    
+    setVisibleLeadIds(visible);
+  }, [leads, mapLoaded]);
+
+  // Listen to map move events to update visible leads
+  useEffect(() => {
+    if (!mapInstanceRef.current || !mapLoaded) return;
+    
+    const handleMoveEnd = () => updateVisibleLeads();
+    mapInstanceRef.current.on('moveend', handleMoveEnd);
+    
+    // Initial calculation
+    updateVisibleLeads();
+    
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.off('moveend', handleMoveEnd);
+      }
+    };
+  }, [mapLoaded, updateVisibleLeads]);
+
+  // Cleanup highlight timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const openLeadDetail = (lead: Lead) => {
     setSelectedLead(lead);
     setDetailSheetOpen(true);
     panToLocation(lead.latitude, lead.longitude);
+    highlightLeadCard(lead.id);
     if (isMobile) {
       setMobileSheetOpen(false);
       setShowMapOnMobile(true);
@@ -877,8 +945,55 @@ const FieldAgent = () => {
     ["claimed", "accepted", "in_progress"].includes(l.status) && l.assigned_agent_id === currentUserId
   );
 
+  // Calculate filter counts for available leads
+  const availableFilterCounts = useMemo(() => ({
+    all: availableLeads.length,
+    pending: availableLeads.filter(l => ["pending", "open", "released"].includes(l.status)).length,
+    accepted: 0, // Not applicable for available
+    in_progress: 0, // Not applicable for available
+    completed: 0, // Not applicable for available
+  }), [availableLeads]);
+
+  // Calculate filter counts for active leads
+  const activeFilterCounts = useMemo(() => ({
+    all: activeLeads.length,
+    pending: 0, // Not applicable for active
+    accepted: activeLeads.filter(l => ["claimed", "accepted"].includes(l.status)).length,
+    in_progress: activeLeads.filter(l => l.status === "in_progress").length,
+    completed: 0, // Completed not shown in active
+  }), [activeLeads]);
+
+  // Apply list filters to available leads
+  const filteredAvailableLeads = useMemo(() => {
+    if (availableListFilter === "all") return availableLeads;
+    // For available list, only "pending" filter makes sense
+    if (availableListFilter === "pending") {
+      return availableLeads.filter(l => ["pending", "open", "released"].includes(l.status));
+    }
+    return availableLeads;
+  }, [availableLeads, availableListFilter]);
+
+  // Apply list filters to active leads
+  const filteredActiveLeads = useMemo(() => {
+    if (activeListFilter === "all") return activeLeads;
+    if (activeListFilter === "accepted") {
+      return activeLeads.filter(l => ["claimed", "accepted"].includes(l.status));
+    }
+    if (activeListFilter === "in_progress") {
+      return activeLeads.filter(l => l.status === "in_progress");
+    }
+    return activeLeads;
+  }, [activeLeads, activeListFilter]);
+
   // Filtered available leads based on availability toggle
-  const displayedAvailableLeads = isAvailableForLeads ? availableLeads : [];
+  const displayedAvailableLeads = isAvailableForLeads ? filteredAvailableLeads : [];
+
+  // Check if a lead is visible on the map (for dimming non-visible cards)
+  const isLeadVisible = useCallback((leadId: string) => {
+    // If no bounds tracking yet, consider all visible
+    if (visibleLeadIds.size === 0) return true;
+    return visibleLeadIds.has(leadId);
+  }, [visibleLeadIds]);
 
   const footerLeftContent = isMobile ? (
     <Button
@@ -1057,12 +1172,22 @@ const FieldAgent = () => {
               className="backdrop-blur-md border border-white/20 rounded-lg shadow-[0_0_30px_rgba(34,197,94,0.15)] overflow-hidden flex flex-col max-h-full pointer-events-auto"
               style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(34, 197, 94, 0.08) 100%)' }}
             >
-              <div className="p-3 border-b border-white/10 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-red-500" />
-                  <h3 className="font-semibold text-sm text-foreground">Available Leads</h3>
+              <div className="p-3 border-b border-white/10 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-red-500" />
+                    <h3 className="font-semibold text-sm text-foreground">Available Leads</h3>
+                  </div>
+                  <Badge variant="secondary" className="text-xs">{displayedAvailableLeads.length}</Badge>
                 </div>
-                <Badge variant="secondary" className="text-xs">{displayedAvailableLeads.length}</Badge>
+                {/* Filter Pills */}
+                <LeadListFilterPills
+                  activeFilter={availableListFilter}
+                  onFilterChange={setAvailableListFilter}
+                  availableStatuses={["all", "pending"]}
+                  counts={availableFilterCounts}
+                  compact
+                />
               </div>
               <div className="flex-1 overflow-y-auto p-2 space-y-2">
                 {!isAvailableForLeads ? (
@@ -1079,62 +1204,19 @@ const FieldAgent = () => {
                     const distance = currentLocation
                       ? calculateDistance(currentLocation.lat, currentLocation.lng, lead.latitude, lead.longitude).toFixed(1)
                       : null;
-                    const priorityColor = getPriorityColor(lead.priority);
                     return (
-                      <Card
+                      <FieldAgentLeadCard
                         key={lead.id}
-                        className="bg-gradient-to-r from-blue-100 to-slate-50 cursor-pointer hover:from-blue-50 hover:to-white transition-all relative shadow-md border-border/50"
-                        onClick={() => openLeadDetail(lead)}
-                      >
-                        {/* Priority indicator dot */}
-                        {priorityColor && (
-                          <div
-                            className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-card"
-                            style={{ backgroundColor: priorityColor }}
-                          />
-                        )}
-                        <CardContent className="p-3 space-y-2">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <p className="font-medium text-sm">{lead.customer_name}</p>
-                                {lead.priority === "urgent" && (
-                                  <AlertCircle className="h-3.5 w-3.5 text-red-500" />
-                                )}
-                              </div>
-                              <p className="text-xs text-muted-foreground">{lead.service_type}</p>
-                            </div>
-                            <div className="flex flex-col items-end gap-1">
-                              {getStatusBadge(lead.status)}
-                              {distance && (
-                                <span className="text-xs text-muted-foreground">{distance}km</span>
-                              )}
-                            </div>
-                          </div>
-                          {lead.created_at && (
-                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {formatTimeAgo(lead.created_at)}
-                            </p>
-                          )}
-                          <Button
-                            size="sm"
-                            className="w-full h-9 rounded-full font-semibold"
-                            style={{ backgroundColor: '#0077B6', color: '#FFFFFF' }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleAcceptLead(lead.id);
-                            }}
-                            disabled={!!loadingAction}
-                          >
-                            {loadingAction === 'accept' ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              "Accept Lead"
-                            )}
-                          </Button>
-                        </CardContent>
-                      </Card>
+                        lead={lead}
+                        distance={distance}
+                        variant="available"
+                        isHighlighted={highlightedLeadId === lead.id}
+                        isDimmed={visibleLeadIds.size > 0 && !isLeadVisible(lead.id)}
+                        onCardClick={openLeadDetail}
+                        onAccept={handleAcceptLead}
+                        loadingAction={loadingAction}
+                        scrollIntoView={highlightedLeadId === lead.id}
+                      />
                     );
                   })
                 )}
@@ -1148,116 +1230,48 @@ const FieldAgent = () => {
               className="backdrop-blur-md border border-white/20 rounded-lg shadow-[0_0_30px_rgba(34,197,94,0.15)] overflow-hidden flex flex-col max-h-full pointer-events-auto"
               style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(34, 197, 94, 0.08) 100%)' }}
             >
-              <div className="p-3 border-b border-white/10 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                  <h3 className="font-semibold text-sm text-foreground">My Active Leads</h3>
+              <div className="p-3 border-b border-white/10 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                    <h3 className="font-semibold text-sm text-foreground">My Active Leads</h3>
+                  </div>
+                  <Badge variant="secondary" className="text-xs">{filteredActiveLeads.length}</Badge>
                 </div>
-                <Badge variant="secondary" className="text-xs">{activeLeads.length}</Badge>
+                {/* Filter Pills */}
+                <LeadListFilterPills
+                  activeFilter={activeListFilter}
+                  onFilterChange={setActiveListFilter}
+                  availableStatuses={["all", "accepted", "in_progress"]}
+                  counts={activeFilterCounts}
+                  compact
+                />
               </div>
               <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                {activeLeads.length === 0 ? (
+                {filteredActiveLeads.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground text-sm">
                     No active leads
                   </div>
                 ) : (
-                  activeLeads.map((lead) => {
+                  filteredActiveLeads.map((lead) => {
                     const distance = currentLocation
                       ? calculateDistance(currentLocation.lat, currentLocation.lng, lead.latitude, lead.longitude).toFixed(1)
                       : null;
                     return (
-                      <Card
+                      <FieldAgentLeadCard
                         key={lead.id}
-                        className="bg-gradient-to-r from-blue-100 to-slate-50 cursor-pointer hover:from-blue-50 hover:to-white transition-all shadow-md border-border/50"
-                        onClick={() => openLeadDetail(lead)}
-                      >
-                        <CardContent className="p-3 space-y-2">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <p className="font-medium text-sm">{lead.customer_name}</p>
-                              <p className="text-xs text-muted-foreground">{lead.service_type}</p>
-                            </div>
-                            {getStatusBadge(lead.status)}
-                          </div>
-                          {distance && (
-                            <p className="text-xs text-muted-foreground">{distance}km away</p>
-                          )}
-                          {lead.created_at && (
-                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {formatTimeAgo(lead.created_at)}
-                            </p>
-                          )}
-                          <div className="flex gap-1.5">
-                            {["claimed", "accepted"].includes(lead.status) && (
-                              <Button
-                                size="sm"
-                                className="flex-1 h-8 text-xs rounded-full font-semibold"
-                                style={{ backgroundColor: '#0077B6', color: '#FFFFFF' }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openLeadDetail(lead);
-                                }}
-                              >
-                                Start Job
-                              </Button>
-                            )}
-                            {lead.status === "in_progress" && (
-                              <Button
-                                size="sm"
-                                className="flex-1 h-8 text-xs rounded-full font-semibold bg-green-600 hover:bg-green-700"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCompleteJob(lead.id);
-                                }}
-                                disabled={!!loadingAction}
-                              >
-                                {loadingAction === 'complete' ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  "Complete"
-                                )}
-                              </Button>
-                            )}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 px-2 rounded-full"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleReleaseLead(lead.id);
-                              }}
-                              disabled={!!loadingAction}
-                            >
-                              Release
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 px-2"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(
-                                  `https://www.google.com/maps/dir/?api=1&destination=${lead.latitude},${lead.longitude}`,
-                                  '_blank',
-                                  'noopener,noreferrer'
-                                );
-                              }}
-                            >
-                              <Navigation className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                          {/* Job Progress Bar for in_progress leads */}
-                          {lead.status === "in_progress" && lead.started_at && (
-                            <LeadCardProgress
-                              startedAt={lead.started_at}
-                              estimatedDurationMinutes={lead.estimated_duration_minutes}
-                              estimatedEndTime={lead.estimated_end_time}
-                              compact
-                            />
-                          )}
-                        </CardContent>
-                      </Card>
+                        lead={lead}
+                        distance={distance}
+                        variant="active"
+                        isHighlighted={highlightedLeadId === lead.id}
+                        isDimmed={visibleLeadIds.size > 0 && !isLeadVisible(lead.id)}
+                        onCardClick={openLeadDetail}
+                        onStart={openLeadDetail}
+                        onComplete={handleCompleteJob}
+                        onRelease={handleReleaseLead}
+                        loadingAction={loadingAction}
+                        scrollIntoView={highlightedLeadId === lead.id}
+                      />
                     );
                   })
                 )}
