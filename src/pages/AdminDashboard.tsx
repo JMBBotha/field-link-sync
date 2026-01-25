@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Plus, Users, PanelRightClose, PanelRightOpen, Menu, Settings, FileText, MessageSquare } from "lucide-react";
+import { LogOut, Plus, Users, PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Menu, Settings, FileText, MessageSquare } from "lucide-react";
 import MapView, { MapViewHandle } from "@/components/MapView";
 import LeadsList from "@/components/LeadsList";
+import CompletedLeadsPanel from "@/components/CompletedLeadsPanel";
 import CreateLeadDialog from "@/components/CreateLeadDialog";
 import AdminSettings from "@/components/AdminSettings";
 import ServiceAgreements from "@/components/ServiceAgreements";
@@ -13,6 +14,7 @@ import AdminNotificationSettings from "@/components/AdminNotificationSettings";
 import Layout from "@/components/Layout";
 import { List, Map } from "lucide-react";
 import logo from "@/assets/logo.png";
+import { LeadStatusFilter } from "@/components/StatusFilterButtons";
 import {
   Sheet,
   SheetContent,
@@ -27,6 +29,8 @@ const AdminDashboard = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showCreateLead, setShowCreateLead] = useState(false);
   const [leadsCollapsed, setLeadsCollapsed] = useState(false);
+  const [completedPanelCollapsed, setCompletedPanelCollapsed] = useState(true);
+  const [showCompletedFilter, setShowCompletedFilter] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"map" | "agreements" | "settings" | "notifications">("map");
   const mapRef = useRef<MapViewHandle>(null);
@@ -255,10 +259,52 @@ const AdminDashboard = () => {
         <div className="flex-1 flex overflow-hidden relative">
           {/* Full-width map */}
           <div className="absolute inset-0">
-            <MapView ref={mapRef} />
+            <MapView 
+              ref={mapRef} 
+              onStatusFiltersChange={(filters) => {
+                const hasCompleted = filters.has("completed");
+                setShowCompletedFilter(hasCompleted);
+                if (hasCompleted) {
+                  setCompletedPanelCollapsed(false);
+                } else {
+                  setCompletedPanelCollapsed(true);
+                }
+              }}
+            />
           </div>
           
-          {/* Desktop collapse toggle button */}
+          {/* Left side - Completed leads panel toggle button */}
+          {showCompletedFilter && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCompletedPanelCollapsed(!completedPanelCollapsed)}
+              className="hidden md:flex absolute top-4 z-20 bg-white/80 backdrop-blur-md shadow-md hover:bg-white/90 rounded-md border transition-all duration-300"
+              style={{ left: completedPanelCollapsed ? '1rem' : 'calc(24rem + 1rem)' }}
+            >
+              {completedPanelCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            </Button>
+          )}
+
+          {/* Floating completed leads panel overlay (left side) */}
+          <div 
+            className={`absolute top-0 left-0 h-full z-10 overflow-y-auto backdrop-blur-md border-r shadow-xl transition-all duration-300 ease-out ${
+              completedPanelCollapsed || !showCompletedFilter 
+                ? 'w-0 opacity-0 pointer-events-none translate-x-[-100%]' 
+                : 'w-full md:w-96 opacity-100 translate-x-0'
+            }`}
+            style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(34, 197, 94, 0.08) 100%)' }}
+          >
+            {!completedPanelCollapsed && showCompletedFilter && (
+              <CompletedLeadsPanel 
+                isVisible={!completedPanelCollapsed && showCompletedFilter}
+                onLeadClick={(lat, lng, leadId) => mapRef.current?.panToLocationAndOpenPopup(lat, lng, leadId)}
+                onPanelClose={() => setCompletedPanelCollapsed(true)}
+              />
+            )}
+          </div>
+
+          {/* Right side - Desktop collapse toggle button */}
           <Button
             variant="ghost"
             size="icon"
@@ -269,9 +315,13 @@ const AdminDashboard = () => {
             {leadsCollapsed ? <PanelRightOpen className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />}
           </Button>
 
-          {/* Floating leads panel overlay */}
+          {/* Floating leads panel overlay (right side) */}
           <div 
-            className={`absolute top-0 right-0 h-full z-10 overflow-y-auto backdrop-blur-md border-l shadow-xl transition-all duration-300 ${leadsCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full md:w-96 opacity-100'}`}
+            className={`absolute top-0 right-0 h-full z-10 overflow-y-auto backdrop-blur-md border-l shadow-xl transition-all duration-300 ease-out ${
+              leadsCollapsed 
+                ? 'w-0 opacity-0 pointer-events-none translate-x-[100%]' 
+                : 'w-full md:w-96 opacity-100 translate-x-0'
+            }`}
             style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(34, 197, 94, 0.08) 100%)' }}
           >
             {!leadsCollapsed && (

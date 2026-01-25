@@ -35,6 +35,10 @@ export interface MapViewHandle {
   panToLocationAndOpenPopup: (lat: number, lng: number, leadId: string) => void;
 }
 
+interface MapViewProps {
+  onStatusFiltersChange?: (filters: Set<LeadStatusFilter>) => void;
+}
+
 const formatTimeAgo = (createdAt: string): string => {
   const now = new Date();
   const created = new Date(createdAt);
@@ -51,7 +55,7 @@ const formatTimeAgo = (createdAt: string): string => {
   return `${diffDays}d ago`;
 };
 
-const MapView = forwardRef<MapViewHandle>((_, ref) => {
+const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange }, ref) => {
   const MAP_CHROME_BOTTOM_OFFSET_PX = 64;
   const [agents, setAgents] = useState<AgentLocation[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -742,6 +746,7 @@ const MapView = forwardRef<MapViewHandle>((_, ref) => {
                     } else {
                       next.add(status);
                     }
+                    onStatusFiltersChange?.(next);
                     return next;
                   });
                 }}
