@@ -320,7 +320,7 @@ const MapView = forwardRef<MapViewHandle>((_, ref) => {
       mapInstanceRef.current.on("load", () => {
         const navControl = mapRef.current?.querySelector('.mapboxgl-ctrl-bottom-left');
         if (navControl) {
-          (navControl as HTMLElement).style.bottom = '80px';
+          (navControl as HTMLElement).style.bottom = '64px';
         }
         if (loadingTimeoutRef.current) {
           clearTimeout(loadingTimeoutRef.current);
