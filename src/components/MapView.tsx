@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useImperativeHandle, forwardRef } from "react";
+import { useEffect, useState, useRef, useImperativeHandle, forwardRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MapPin, Key, Loader2, AlertCircle } from "lucide-react";
 import { createTeardropMarkerElement } from "@/utils/MarkerUtils";
+import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilterButtons";
 
 interface AgentLocation {
   agent_id: string;
@@ -60,6 +61,9 @@ const MapView = forwardRef<MapViewHandle>((_, ref) => {
   const [tokenError, setTokenError] = useState("");
   const [loadingStatus, setLoadingStatus] = useState("Initializing...");
   const [loadingTimeout, setLoadingTimeout] = useState(false);
+  const [statusFilters, setStatusFilters] = useState<Set<LeadStatusFilter>>(
+    new Set(["pending", "accepted", "in_progress"])
+  );
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const agentMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
@@ -348,7 +352,7 @@ const MapView = forwardRef<MapViewHandle>((_, ref) => {
     if (mapLoaded && mapInstanceRef.current && (agents.length > 0 || leads.length > 0)) {
       updateMarkers();
     }
-  }, [agents, leads, mapLoaded]);
+  }, [agents, leads, mapLoaded, statusFilters]);
 
   const updateMarkers = () => {
     const map = mapInstanceRef.current;
@@ -499,6 +503,15 @@ const MapView = forwardRef<MapViewHandle>((_, ref) => {
       }
     });
 
+    // Filter leads based on active status filters
+    const shouldShowLead = (lead: Lead): boolean => {
+      if (lead.status === "pending") return statusFilters.has("pending");
+      if (lead.status === "accepted") return statusFilters.has("accepted");
+      if (lead.status === "in_progress") return statusFilters.has("in_progress");
+      if (lead.status === "completed") return statusFilters.has("completed");
+      return false;
+    };
+
     // Remove stale lead markers (be resilient to transient empty fetches)
     const nextLeadIds = new Set(leads.map((l) => l.id));
 
@@ -523,8 +536,9 @@ const MapView = forwardRef<MapViewHandle>((_, ref) => {
       }
     });
 
-    // Upsert lead markers
+    // Upsert lead markers (show/hide based on filter)
     leads.forEach((lead) => {
+      const isVisible = shouldShowLead(lead);
       const popupHTML = buildLeadPopupHTML(lead);
 
       let marker = leadMarkersRef.current.get(lead.id);
@@ -601,11 +615,15 @@ const MapView = forwardRef<MapViewHandle>((_, ref) => {
         }
       }
 
-      // Update badge
+      // Update badge and visibility
       const el = marker.getElement() as HTMLDivElement;
+      
+      // Set visibility based on filter
+      el.style.display = isVisible ? "block" : "none";
+      
       const timeBadge = el.querySelector('[data-role="time-badge"]') as HTMLDivElement | null;
       if (timeBadge) {
-        if (lead.created_at && lead.status !== "completed") {
+        if (lead.created_at && lead.status !== "completed" && isVisible) {
           timeBadge.style.display = "block";
           timeBadge.textContent = formatTimeAgo(lead.created_at);
         } else {
@@ -683,6 +701,27 @@ const MapView = forwardRef<MapViewHandle>((_, ref) => {
           >
             Reset Token
           </Button>
+          
+          {/* Status Filter Buttons */}
+          {mapLoaded && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+              <StatusFilterButtons
+                activeFilters={statusFilters}
+                onToggle={(status) => {
+                  setStatusFilters((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(status)) {
+                      next.delete(status);
+                    } else {
+                      next.add(status);
+                    }
+                    return next;
+                  });
+                }}
+              />
+            </div>
+          )}
+          
           {!mapLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
               <div className="text-center space-y-3 p-6 bg-card rounded-lg border shadow-lg max-w-xs">
