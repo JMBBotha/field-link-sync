@@ -916,19 +916,8 @@ const FieldAgent = () => {
     });
   }, [currentLocation, toast]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-2">
-          <Loader2 className="h-8 w-8 animate-spin text-[#0077B6]" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Filter and sort leads
-  const availableLeads = leads
+  // Filter and sort leads - MUST be before early returns to follow React hook rules
+  const availableLeads = useMemo(() => leads
     .filter(l =>
       ["pending", "open", "released"].includes(l.status) && !l.assigned_agent_id
     )
@@ -939,11 +928,11 @@ const FieldAgent = () => {
       if (priorityA !== priorityB) return priorityA - priorityB;
       // Then by created_at
       return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
-    });
+    }), [leads]);
 
-  const activeLeads = leads.filter(l =>
+  const activeLeads = useMemo(() => leads.filter(l =>
     ["claimed", "accepted", "in_progress"].includes(l.status) && l.assigned_agent_id === currentUserId
-  );
+  ), [leads, currentUserId]);
 
   // Calculate filter counts for available leads
   const availableFilterCounts = useMemo(() => ({
@@ -986,7 +975,9 @@ const FieldAgent = () => {
   }, [activeLeads, activeListFilter]);
 
   // Filtered available leads based on availability toggle
-  const displayedAvailableLeads = isAvailableForLeads ? filteredAvailableLeads : [];
+  const displayedAvailableLeads = useMemo(() => 
+    isAvailableForLeads ? filteredAvailableLeads : []
+  , [isAvailableForLeads, filteredAvailableLeads]);
 
   // Check if a lead is visible on the map (for dimming non-visible cards)
   const isLeadVisible = useCallback((leadId: string) => {
@@ -994,6 +985,17 @@ const FieldAgent = () => {
     if (visibleLeadIds.size === 0) return true;
     return visibleLeadIds.has(leadId);
   }, [visibleLeadIds]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="h-8 w-8 animate-spin text-[#0077B6]" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   const footerLeftContent = isMobile ? (
     <Button
