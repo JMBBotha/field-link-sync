@@ -315,8 +315,13 @@ const MapView = forwardRef<MapViewHandle>((_, ref) => {
           setLoadingStatus("Map is taking longer than expected...");
         }
       }, 10000);
-
+      
+      // Offset the navigation control above the footer after map loads
       mapInstanceRef.current.on("load", () => {
+        const navControl = mapRef.current?.querySelector('.mapboxgl-ctrl-bottom-left');
+        if (navControl) {
+          (navControl as HTMLElement).style.bottom = '80px';
+        }
         if (loadingTimeoutRef.current) {
           clearTimeout(loadingTimeoutRef.current);
         }
