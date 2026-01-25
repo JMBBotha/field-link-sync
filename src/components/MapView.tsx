@@ -709,7 +709,7 @@ const MapView = forwardRef<MapViewHandle>((_, ref) => {
           
           {/* Status Filter Buttons */}
           {mapLoaded && (
-            <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10">
+            <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10">
               <StatusFilterButtons
                 activeFilters={statusFilters}
                 onToggle={(status) => {
