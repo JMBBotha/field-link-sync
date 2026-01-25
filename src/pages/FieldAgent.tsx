@@ -614,6 +614,12 @@ const FieldAgent = () => {
 
       mapInstanceRef.current.on("load", () => {
         setMapLoaded(true);
+        
+        // Offset the navigation control above the footer
+        const navControl = mapRef.current?.querySelector('.mapboxgl-ctrl-bottom-left');
+        if (navControl) {
+          (navControl as HTMLElement).style.bottom = '80px';
+        }
       });
 
       mapInstanceRef.current.on("error", (e) => {
