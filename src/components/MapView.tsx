@@ -318,9 +318,18 @@ const MapView = forwardRef<MapViewHandle>((_, ref) => {
       
       // Offset the navigation control above the footer after map loads
       mapInstanceRef.current.on("load", () => {
+        // Offset the navigation control and logo above the footer
         const navControl = mapRef.current?.querySelector('.mapboxgl-ctrl-bottom-left');
         if (navControl) {
-          (navControl as HTMLElement).style.bottom = '64px';
+          (navControl as HTMLElement).style.bottom = '48px';
+        }
+        const logo = mapRef.current?.querySelector('.mapboxgl-ctrl-logo');
+        if (logo) {
+          (logo as HTMLElement).style.marginBottom = '48px';
+        }
+        const attrib = mapRef.current?.querySelector('.mapboxgl-ctrl-attrib');
+        if (attrib) {
+          (attrib as HTMLElement).style.marginBottom = '48px';
         }
         if (loadingTimeoutRef.current) {
           clearTimeout(loadingTimeoutRef.current);
@@ -709,7 +718,7 @@ const MapView = forwardRef<MapViewHandle>((_, ref) => {
           
           {/* Status Filter Buttons */}
           {mapLoaded && (
-            <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10">
+            <div className="absolute bottom-14 left-1/2 -translate-x-1/2 z-10">
               <StatusFilterButtons
                 activeFilters={statusFilters}
                 onToggle={(status) => {
