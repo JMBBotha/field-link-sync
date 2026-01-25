@@ -52,6 +52,7 @@ const formatTimeAgo = (createdAt: string): string => {
 };
 
 const MapView = forwardRef<MapViewHandle>((_, ref) => {
+  const MAP_CHROME_BOTTOM_OFFSET_PX = 48;
   const [agents, setAgents] = useState<AgentLocation[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [center, setCenter] = useState({ lat: -34.0522, lng: 22.2922 });
@@ -72,6 +73,26 @@ const MapView = forwardRef<MapViewHandle>((_, ref) => {
   const initialBoundsFitRef = useRef(false);
   const missingAgentCountsRef = useRef<Map<string, number>>(new Map());
   const missingLeadCountsRef = useRef<Map<string, number>>(new Map());
+
+  const applyMapChromeBottomOffset = useCallback(() => {
+    const root = mapRef.current;
+    if (!root) return;
+
+    const bottomLeft = root.querySelector('.mapboxgl-ctrl-bottom-left') as HTMLElement | null;
+    if (bottomLeft) bottomLeft.style.bottom = `${MAP_CHROME_BOTTOM_OFFSET_PX}px`;
+
+    const bottomRight = root.querySelector('.mapboxgl-ctrl-bottom-right') as HTMLElement | null;
+    if (bottomRight) bottomRight.style.bottom = `${MAP_CHROME_BOTTOM_OFFSET_PX}px`;
+  }, []);
+
+  // Apply control offsets reliably (HMR / style reloads can prevent the map "load" handler from re-running)
+  useEffect(() => {
+    if (showTokenInput) return;
+    const timers = [0, 50, 250, 800].map((ms) =>
+      window.setTimeout(() => applyMapChromeBottomOffset(), ms)
+    );
+    return () => timers.forEach((t) => window.clearTimeout(t));
+  }, [mapLoaded, showTokenInput, applyMapChromeBottomOffset]);
 
   // Expose panToLocation and panToLocationAndOpenPopup methods via ref
   useImperativeHandle(ref, () => ({
@@ -308,6 +329,9 @@ const MapView = forwardRef<MapViewHandle>((_, ref) => {
 
       mapInstanceRef.current.addControl(new mapboxgl.NavigationControl(), "bottom-left");
 
+      // Apply offsets immediately (controls are typically mounted right after addControl)
+      applyMapChromeBottomOffset();
+
       // Set a timeout for loading
       loadingTimeoutRef.current = setTimeout(() => {
         if (!mapLoaded) {
@@ -318,15 +342,8 @@ const MapView = forwardRef<MapViewHandle>((_, ref) => {
       
       // Offset the navigation control above the footer after map loads
       mapInstanceRef.current.on("load", () => {
-        // Offset all bottom controls above the footer
-        const bottomLeft = mapRef.current?.querySelector('.mapboxgl-ctrl-bottom-left');
-        if (bottomLeft) {
-          (bottomLeft as HTMLElement).style.bottom = '48px';
-        }
-        const bottomRight = mapRef.current?.querySelector('.mapboxgl-ctrl-bottom-right');
-        if (bottomRight) {
-          (bottomRight as HTMLElement).style.bottom = '48px';
-        }
+        // Re-apply offsets after map style finishes loading
+        applyMapChromeBottomOffset();
         if (loadingTimeoutRef.current) {
           clearTimeout(loadingTimeoutRef.current);
         }
