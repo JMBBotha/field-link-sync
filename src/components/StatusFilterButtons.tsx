@@ -9,30 +9,30 @@ interface StatusFilterButtonsProps {
   compact?: boolean;
 }
 
-const statusConfig: Record<LeadStatusFilter, { label: string; color: string; activeColor: string; textColor: string }> = {
+const statusConfig: Record<LeadStatusFilter, { label: string; bgColor: string; textColor: string; inactiveText: string }> = {
   pending: {
     label: "Available",
-    color: "bg-red-500",
-    activeColor: "bg-red-500",
+    bgColor: "bg-red-500",
     textColor: "text-white",
+    inactiveText: "text-red-600",
   },
   accepted: {
     label: "Claimed",
-    color: "bg-yellow-500",
-    activeColor: "bg-yellow-500",
+    bgColor: "bg-yellow-500",
     textColor: "text-black",
+    inactiveText: "text-yellow-600",
   },
   in_progress: {
     label: "In Progress",
-    color: "bg-green-500",
-    activeColor: "bg-green-500",
+    bgColor: "bg-green-500",
     textColor: "text-white",
+    inactiveText: "text-green-600",
   },
   completed: {
     label: "Completed",
-    color: "bg-black",
-    activeColor: "bg-black",
-    textColor: "text-white",
+    bgColor: "bg-black dark:bg-white",
+    textColor: "text-white dark:text-black",
+    inactiveText: "text-black dark:text-white",
   },
 };
 
@@ -47,7 +47,7 @@ const StatusFilterButtons = ({
   return (
     <div
       className={cn(
-        "bg-card/95 backdrop-blur border rounded-full px-3 py-2 shadow-lg flex items-center gap-2",
+        "bg-card/95 backdrop-blur-md border border-border/50 rounded-full px-1.5 py-1.5 shadow-lg flex items-center gap-1",
         className
       )}
     >
@@ -60,22 +60,43 @@ const StatusFilterButtons = ({
             key={status}
             onClick={() => onToggle(status)}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all",
-              "border-2",
+              "relative flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold",
+              "transition-all duration-300 ease-out transform",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
               isActive
-                ? `${config.activeColor} ${config.textColor} border-transparent shadow-md`
-                : "bg-card border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground/50"
+                ? `${config.bgColor} ${config.textColor} shadow-md scale-100`
+                : `bg-transparent ${config.inactiveText} hover:bg-muted/50 scale-95 opacity-70 hover:opacity-100 hover:scale-100`
             )}
           >
-            <div
+            {/* Indicator dot with pulse animation when active */}
+            <span
               className={cn(
-                "w-2.5 h-2.5 rounded-full border border-white/50",
-                isActive ? "opacity-0" : config.color
+                "w-2 h-2 rounded-full transition-all duration-300",
+                isActive
+                  ? "bg-current opacity-80 scale-100"
+                  : "bg-current opacity-40 scale-75"
               )}
             />
-            {!compact && <span>{config.label}</span>}
-            {compact && (
-              <span className="hidden sm:inline">{config.label}</span>
+            
+            {/* Label with slide effect */}
+            <span
+              className={cn(
+                "transition-all duration-300 ease-out",
+                isActive ? "translate-x-0" : "-translate-x-0.5",
+                compact ? "hidden sm:inline" : ""
+              )}
+            >
+              {config.label}
+            </span>
+
+            {/* Active indicator glow effect */}
+            {isActive && (
+              <span
+                className={cn(
+                  "absolute inset-0 rounded-full opacity-20 blur-sm -z-10",
+                  config.bgColor
+                )}
+              />
             )}
           </button>
         );
