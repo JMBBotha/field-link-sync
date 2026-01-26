@@ -298,7 +298,12 @@ const AdminDashboard = () => {
             {!completedPanelCollapsed && showCompletedFilter && (
               <CompletedLeadsPanel 
                 isVisible={!completedPanelCollapsed && showCompletedFilter}
-                onLeadClick={(lat, lng, leadId) => mapRef.current?.panToLocationAndOpenPopup(lat, lng, leadId)}
+                onLeadClick={(lat, lng, leadId) => {
+                  console.log('[AdminDashboard] CompletedPanel onLeadClick:', { lat, lng, leadId, hasMapRef: !!mapRef.current });
+                  if (mapRef.current) {
+                    mapRef.current.panToLocationAndOpenPopup(lat, lng, leadId);
+                  }
+                }}
                 onPanelClose={() => setCompletedPanelCollapsed(true)}
               />
             )}
@@ -326,7 +331,15 @@ const AdminDashboard = () => {
           >
             {!leadsCollapsed && (
               <LeadsList 
-                onLeadClick={(lat, lng, leadId) => mapRef.current?.panToLocationAndOpenPopup(lat, lng, leadId)}
+                onLeadClick={(lat, lng, leadId) => {
+                  console.log('[AdminDashboard] onLeadClick called:', { lat, lng, leadId, hasMapRef: !!mapRef.current });
+                  if (mapRef.current) {
+                    console.log('[AdminDashboard] Calling panToLocationAndOpenPopup');
+                    mapRef.current.panToLocationAndOpenPopup(lat, lng, leadId);
+                  } else {
+                    console.warn('[AdminDashboard] mapRef.current is null');
+                  }
+                }}
                 onPanelClose={() => setLeadsCollapsed(true)}
               />
             )}
