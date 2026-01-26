@@ -101,25 +101,57 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
   // Expose panToLocation and panToLocationAndOpenPopup methods via ref
   useImperativeHandle(ref, () => ({
     panToLocation: (lat: number, lng: number) => {
-      if (mapInstanceRef.current && mapLoaded) {
+      console.log('[MapView] panToLocation called:', { lat, lng, mapLoaded, hasMap: !!mapInstanceRef.current });
+      
+      if (!mapInstanceRef.current) {
+        console.warn('[MapView] panToLocation: Map instance not available');
+        return;
+      }
+      
+      if (!mapLoaded) {
+        console.warn('[MapView] panToLocation: Map not yet loaded');
+        return;
+      }
+      
+      try {
         mapInstanceRef.current.flyTo({
           center: [lng, lat],
           zoom: 15,
           duration: 1000,
+          essential: true,
         });
+        console.log('[MapView] panToLocation: flyTo initiated successfully');
+      } catch (error) {
+        console.error('[MapView] panToLocation: flyTo failed', error);
       }
     },
     panToLocationAndOpenPopup: (lat: number, lng: number, leadId: string) => {
-      if (mapInstanceRef.current && mapLoaded) {
+      console.log('[MapView] panToLocationAndOpenPopup called:', { lat, lng, leadId, mapLoaded, hasMap: !!mapInstanceRef.current });
+      
+      if (!mapInstanceRef.current) {
+        console.warn('[MapView] panToLocationAndOpenPopup: Map instance not available');
+        return;
+      }
+      
+      if (!mapLoaded) {
+        console.warn('[MapView] panToLocationAndOpenPopup: Map not yet loaded');
+        return;
+      }
+      
+      try {
         mapInstanceRef.current.flyTo({
           center: [lng, lat],
           zoom: 15,
           duration: 1000,
+          essential: true,
         });
+        console.log('[MapView] panToLocationAndOpenPopup: flyTo initiated');
 
         // Open popup after fly animation completes
         setTimeout(() => {
           const marker = leadMarkersRef.current.get(leadId);
+          console.log('[MapView] Looking for marker:', leadId, 'Found:', !!marker);
+          
           if (marker) {
             // Close all other popups first
             leadMarkersRef.current.forEach((m, id) => {
@@ -140,6 +172,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
             }
           }
         }, 1100);
+      } catch (error) {
+        console.error('[MapView] panToLocationAndOpenPopup: flyTo failed', error);
       }
     },
   }), [mapLoaded]);
