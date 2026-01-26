@@ -791,15 +791,31 @@ const FieldAgent = () => {
     mapInstanceRef.current.setCenter([currentLocation.lng, currentLocation.lat]);
   };
 
-  const panToLocation = (lat: number, lng: number) => {
-    if (mapInstanceRef.current && mapLoaded) {
+  const panToLocation = useCallback((lat: number, lng: number) => {
+    console.log('[FieldAgent] panToLocation called:', { lat, lng, mapLoaded, hasMap: !!mapInstanceRef.current });
+    
+    if (!mapInstanceRef.current) {
+      console.warn('[FieldAgent] panToLocation: Map instance not available');
+      return;
+    }
+    
+    if (!mapLoaded) {
+      console.warn('[FieldAgent] panToLocation: Map not yet loaded');
+      return;
+    }
+    
+    try {
       mapInstanceRef.current.flyTo({
         center: [lng, lat],
         zoom: 15,
         duration: 1000,
+        essential: true, // This animation is considered essential for accessibility
       });
+      console.log('[FieldAgent] panToLocation: flyTo initiated successfully');
+    } catch (error) {
+      console.error('[FieldAgent] panToLocation: flyTo failed', error);
     }
-  };
+  }, [mapLoaded]);
 
   // Highlight a lead card in the list (with auto-scroll)
   const highlightLeadCard = useCallback((leadId: string) => {
@@ -858,16 +874,24 @@ const FieldAgent = () => {
     };
   }, []);
 
-  const openLeadDetail = (lead: Lead) => {
+  const openLeadDetail = useCallback((lead: Lead) => {
+    console.log('[FieldAgent] openLeadDetail called:', { leadId: lead.id, lat: lead.latitude, lng: lead.longitude });
+    
     setSelectedLead(lead);
     setDetailSheetOpen(true);
+    
+    // Pan map to lead location
     panToLocation(lead.latitude, lead.longitude);
+    
+    // Highlight the card in the list
     highlightLeadCard(lead.id);
+    
+    // On mobile, close bottom sheet and show map
     if (isMobile) {
       setMobileSheetOpen(false);
       setShowMapOnMobile(true);
     }
-  };
+  }, [panToLocation, highlightLeadCard, isMobile]);
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
