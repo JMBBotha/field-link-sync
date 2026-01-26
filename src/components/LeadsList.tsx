@@ -267,6 +267,12 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
 
   const handleLocateOnMap = (lead: Lead, e: React.MouseEvent) => {
     e.stopPropagation();
+    console.log('[LeadsList] handleLocateOnMap called:', { 
+      leadId: lead.id, 
+      lat: lead.latitude, 
+      lng: lead.longitude,
+      hasOnLeadClick: !!onLeadClick 
+    });
     onLeadClick?.(lead.latitude, lead.longitude, lead.id);
     onPanelClose?.();
   };
