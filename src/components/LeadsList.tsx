@@ -376,7 +376,7 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
   const renderDesktopCard = (lead: Lead) => (
     <Card 
       key={lead.id} 
-      className={`bg-gradient-to-r from-blue-100 to-slate-50 backdrop-blur-sm border-border/50 hover:from-blue-50 hover:to-white transition-all shadow-md cursor-pointer ${
+      className={`bg-gradient-to-r from-blue-100 to-slate-50 backdrop-blur-sm border-border/50 hover:from-blue-50 hover:to-white transition-all duration-200 shadow-md cursor-pointer hover:scale-[1.02] hover:shadow-lg ${
         clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2 animate-pulse' : ''
       }`}
       onClick={() => {
@@ -440,7 +440,7 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
       onOpenChange={() => toggleCardExpansion(lead.id)}
     >
       <Card 
-        className={`bg-gradient-to-r from-blue-100 to-slate-50 backdrop-blur-sm border-border/50 hover:from-blue-50 hover:to-white transition-all shadow-md overflow-hidden w-full max-w-full cursor-pointer ${
+        className={`bg-gradient-to-r from-blue-100 to-slate-50 backdrop-blur-sm border-border/50 hover:from-blue-50 hover:to-white transition-all duration-200 shadow-md overflow-hidden w-full max-w-full cursor-pointer hover:scale-[1.01] hover:shadow-lg ${
           clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2 animate-pulse' : ''
         }`}
         onClick={() => {
