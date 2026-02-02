@@ -61,6 +61,7 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
   const [pullDistance, setPullDistance] = useState(0);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [clickedCardId, setClickedCardId] = useState<string | null>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
   
@@ -273,8 +274,15 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
       lng: lead.longitude,
       hasOnLeadClick: !!onLeadClick 
     });
-    onLeadClick?.(lead.latitude, lead.longitude, lead.id);
+    triggerCardClick(lead);
     onPanelClose?.();
+  };
+
+  const triggerCardClick = (lead: Lead) => {
+    setClickedCardId(lead.id);
+    onLeadClick?.(lead.latitude, lead.longitude, lead.id);
+    // Remove highlight after animation completes
+    setTimeout(() => setClickedCardId(null), 600);
   };
 
   const toggleCardExpansion = (leadId: string) => {
@@ -368,10 +376,12 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
   const renderDesktopCard = (lead: Lead) => (
     <Card 
       key={lead.id} 
-      className="bg-gradient-to-r from-blue-100 to-slate-50 backdrop-blur-sm border-border/50 hover:from-blue-50 hover:to-white transition-all shadow-md cursor-pointer"
+      className={`bg-gradient-to-r from-blue-100 to-slate-50 backdrop-blur-sm border-border/50 hover:from-blue-50 hover:to-white transition-all shadow-md cursor-pointer ${
+        clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2 animate-pulse' : ''
+      }`}
       onClick={() => {
         console.log('[LeadsList] Desktop card clicked:', { leadId: lead.id, lat: lead.latitude, lng: lead.longitude });
-        onLeadClick?.(lead.latitude, lead.longitude, lead.id);
+        triggerCardClick(lead);
       }}
     >
       <CardHeader className="pb-3">
@@ -430,10 +440,12 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
       onOpenChange={() => toggleCardExpansion(lead.id)}
     >
       <Card 
-        className="bg-gradient-to-r from-blue-100 to-slate-50 backdrop-blur-sm border-border/50 hover:from-blue-50 hover:to-white transition-all shadow-md overflow-hidden w-full max-w-full cursor-pointer"
+        className={`bg-gradient-to-r from-blue-100 to-slate-50 backdrop-blur-sm border-border/50 hover:from-blue-50 hover:to-white transition-all shadow-md overflow-hidden w-full max-w-full cursor-pointer ${
+          clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2 animate-pulse' : ''
+        }`}
         onClick={() => {
           console.log('[LeadsList] Mobile card clicked:', { leadId: lead.id, lat: lead.latitude, lng: lead.longitude });
-          onLeadClick?.(lead.latitude, lead.longitude, lead.id);
+          triggerCardClick(lead);
         }}
       >
         <CollapsibleTrigger asChild>
