@@ -274,6 +274,7 @@ const LeadDetailSheet = ({
         <SheetContent 
           side="bottom" 
           className="h-[85vh] max-h-[85vh] rounded-t-2xl border-t bg-card/55 backdrop-blur-md flex flex-col p-0"
+          hideCloseButton
         >
           {/* Swipe Handle */}
           <div className="flex justify-center pt-2 pb-3 shrink-0 px-6">
