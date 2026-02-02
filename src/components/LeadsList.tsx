@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Phone, MapPin, Clock, Trash2, MoreHorizontal, Navigation, Crosshair, ChevronDown, ChevronUp, RefreshCw, ArrowUp, Pencil } from "lucide-react";
+import { Phone, MapPin, Clock, Trash2, MoreHorizontal, Navigation, ChevronDown, ChevronUp, RefreshCw, ArrowUp, Pencil } from "lucide-react";
 import LeadCardProgress from "./LeadCardProgress";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -346,20 +346,11 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
           </Badge>
         </div>
       )}
-      <div className="flex items-center justify-between pt-1 gap-2 min-w-0">
+      <div className="flex items-center pt-1 gap-2 min-w-0">
         <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0 flex-1">
           <Clock className="h-3 w-3 flex-shrink-0" />
           <span className="truncate">{formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}</span>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="h-7 px-2 gap-1 text-xs flex-shrink-0"
-          onClick={(e) => handleLocateOnMap(lead, e)}
-        >
-          <Crosshair className="h-3 w-3" />
-          Locate
-        </Button>
       </div>
       {/* Job Progress Bar for in_progress leads */}
       {lead.status === "in_progress" && lead.started_at && (
