@@ -141,8 +141,9 @@ const LeadDetailSheet = ({
   const [showChangeRequestDialog, setShowChangeRequestDialog] = useState(false);
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null);
   const [showPhotoTypePicker, setShowPhotoTypePicker] = useState(false);
-  const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
+  const [pendingPhotoFiles, setPendingPhotoFiles] = useState<File[]>([]);
   const [galleryRefreshKey, setGalleryRefreshKey] = useState(0);
+  const [uploadingMultiple, setUploadingMultiple] = useState(false);
   const [showExpandedGallery, setShowExpandedGallery] = useState(false);
   const { toast } = useToast();
   const { isOnline, queueOperation: contextQueueOp } = useOffline();
@@ -419,12 +420,12 @@ const LeadDetailSheet = ({
                 ref={photoInputRef}
                 type="file"
                 accept="image/*"
-                capture="environment"
+                multiple
                 className="hidden"
                 onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    setPendingPhotoFile(file);
+                  const files = e.target.files;
+                  if (files && files.length > 0) {
+                    setPendingPhotoFiles(Array.from(files));
                     setShowPhotoTypePicker(true);
                     e.target.value = '';
                   }
@@ -631,46 +632,76 @@ const LeadDetailSheet = ({
         />
       )}
 
-      {/* Photo Type Picker */}
-      <Dialog open={showPhotoTypePicker} onOpenChange={setShowPhotoTypePicker}>
+      {/* Photo Type Picker - supports multiple photos */}
+      <Dialog open={showPhotoTypePicker} onOpenChange={(open) => {
+        if (!open && !uploadingMultiple) {
+          setPendingPhotoFiles([]);
+        }
+        setShowPhotoTypePicker(open);
+      }}>
         <DialogContent className="max-w-xs">
           <DialogHeader>
-            <DialogTitle className="text-center">Photo Type</DialogTitle>
+            <DialogTitle className="text-center">
+              {pendingPhotoFiles.length > 1 
+                ? `Add ${pendingPhotoFiles.length} Photos As` 
+                : "Photo Type"}
+            </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-3 pt-2">
             <Button
               variant="outline"
               className="h-14 text-base font-medium border-2 hover:border-blue-500 hover:bg-blue-50"
               onClick={async () => {
-                if (pendingPhotoFile) {
+                if (pendingPhotoFiles.length > 0) {
+                  setUploadingMultiple(true);
                   setShowPhotoTypePicker(false);
-                  await uploadPhoto(pendingPhotoFile, 'before');
-                  setPendingPhotoFile(null);
+                  for (const file of pendingPhotoFiles) {
+                    await uploadPhoto(file, 'before');
+                  }
+                  setPendingPhotoFiles([]);
+                  setUploadingMultiple(false);
                   setGalleryRefreshKey(k => k + 1);
                 }
               }}
-              disabled={photoUploading}
+              disabled={photoUploading || uploadingMultiple}
             >
-              <span className="text-blue-600 mr-2">📷</span>
+              {uploadingMultiple ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <span className="text-blue-600 mr-2">📷</span>
+              )}
               Before
             </Button>
             <Button
               variant="outline"
               className="h-14 text-base font-medium border-2 hover:border-green-500 hover:bg-green-50"
               onClick={async () => {
-                if (pendingPhotoFile) {
+                if (pendingPhotoFiles.length > 0) {
+                  setUploadingMultiple(true);
                   setShowPhotoTypePicker(false);
-                  await uploadPhoto(pendingPhotoFile, 'after');
-                  setPendingPhotoFile(null);
+                  for (const file of pendingPhotoFiles) {
+                    await uploadPhoto(file, 'after');
+                  }
+                  setPendingPhotoFiles([]);
+                  setUploadingMultiple(false);
                   setGalleryRefreshKey(k => k + 1);
                 }
               }}
-              disabled={photoUploading}
+              disabled={photoUploading || uploadingMultiple}
             >
-              <span className="text-green-600 mr-2">✅</span>
+              {uploadingMultiple ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <span className="text-green-600 mr-2">✅</span>
+              )}
               After
             </Button>
           </div>
+          {pendingPhotoFiles.length > 0 && (
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              {pendingPhotoFiles.length} photo{pendingPhotoFiles.length > 1 ? 's' : ''} selected
+            </p>
+          )}
         </DialogContent>
       </Dialog>
 
