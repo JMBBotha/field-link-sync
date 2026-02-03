@@ -46,6 +46,9 @@ const AgentChangeRequestDialog = ({
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
 
+  // Helper to format time consistently
+  const formatDateTime = (dateStr: string) => format(new Date(dateStr), "MMM d, h:mm a");
+
   // Job date
   const [jobDate, setJobDate] = useState<Date | undefined>(() => {
     if (lead.completed_at) return new Date(lead.completed_at);
@@ -130,11 +133,21 @@ const AgentChangeRequestDialog = ({
       // Calculate duration in minutes
       const durationMinutes = Math.round((endDateTime.getTime() - startDateTime.getTime()) / 60000);
 
-      const requestedValue = JSON.stringify({
-        date: format(jobDate, "yyyy-MM-dd"),
+      // Format duration for display
+      const hours = Math.floor(durationMinutes / 60);
+      const mins = durationMinutes % 60;
+      let durationStr = "";
+      if (hours > 0 && mins > 0) durationStr = `${hours}h ${mins}m`;
+      else if (hours > 0) durationStr = `${hours}h`;
+      else durationStr = `${mins}m`;
+
+      // Format requested value in same style as current value display
+      const requestedValue = `${format(jobDate, "MMM d")}: ${format(startDateTime, "h:mm a")} → ${format(endDateTime, "h:mm a")} (${durationStr})`;
+
+      // Store ISO values in reason field as JSON for approval processing
+      const requestData = JSON.stringify({
         startTime: startDateTime.toISOString(),
         endTime: endDateTime.toISOString(),
-        durationMinutes,
       });
 
       const { error } = await supabase.from("lead_change_requests").insert({
@@ -143,7 +156,7 @@ const AgentChangeRequestDialog = ({
         request_type: "adjust_job_times",
         current_value: getCurrentValues(),
         requested_value: requestedValue,
-        reason: reason || null,
+        reason: reason ? `${reason}\n---\n${requestData}` : requestData,
         status: "pending",
       });
 
