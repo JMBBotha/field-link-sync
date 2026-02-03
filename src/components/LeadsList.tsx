@@ -44,6 +44,7 @@ interface Lead {
   notes?: string | null;
   priority?: string;
   scheduled_date?: string | null;
+  scheduled_time?: string | null;
   profiles?: { full_name: string };
   started_at?: string | null;
   estimated_duration_minutes?: number | null;
@@ -331,7 +332,7 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
           {lead.scheduled_date ? (
             <span className="text-xs text-primary whitespace-nowrap flex-shrink-0 flex items-center gap-1 font-medium">
               <CalendarDays className="h-3 w-3 flex-shrink-0" />
-              <span>{format(new Date(lead.scheduled_date), "d MMM")}</span>
+              <span>{format(new Date(lead.scheduled_date), "d MMM")}{lead.scheduled_time ? ` ${lead.scheduled_time.slice(0, 5)}` : ''}</span>
             </span>
           ) : (
             <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0 flex items-center gap-1">
@@ -375,7 +376,7 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
         {lead.scheduled_date && (
           <div className="flex items-center gap-1 text-xs text-primary font-medium flex-shrink-0">
             <CalendarDays className="h-3 w-3" />
-            <span>{format(new Date(lead.scheduled_date), "d MMM yyyy")}</span>
+            <span>{format(new Date(lead.scheduled_date), "d MMM yyyy")}{lead.scheduled_time ? ` @ ${lead.scheduled_time.slice(0, 5)}` : ''}</span>
           </div>
         )}
       </div>
@@ -411,7 +412,7 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
               {lead.scheduled_date && (
                 <span className="flex items-center gap-1 text-primary font-medium">
                   <CalendarDays className="h-3 w-3" />
-                  {format(new Date(lead.scheduled_date), "d MMM")}
+                  {format(new Date(lead.scheduled_date), "d MMM")}{lead.scheduled_time ? ` ${lead.scheduled_time.slice(0, 5)}` : ''}
                 </span>
               )}
             </CardDescription>
