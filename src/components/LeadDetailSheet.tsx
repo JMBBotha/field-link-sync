@@ -16,6 +16,8 @@ import JobProgressSection from "./JobProgressSection";
 import { PhotoGallery } from "./PhotoGallery";
 import { ExpandedPhotoGallery } from "./ExpandedPhotoGallery";
 import AgentChangeRequestDialog from "./AgentChangeRequestDialog";
+import LeadTimeEditDialog from "./LeadTimeEditDialog";
+import { JobScheduleDisplay } from "./JobScheduleDisplay";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSingleLeadPhotoCount } from "@/hooks/useLeadPhotoCount";
@@ -36,10 +38,13 @@ interface Lead {
   priority?: string;
   customer_id?: string | null;
   equipment_id?: string | null;
-  // New duration tracking fields
+  // Duration tracking fields
   estimated_duration_minutes?: number | null;
   estimated_end_time?: string | null;
   actual_start_time?: string | null;
+  // Schedule fields
+  scheduled_date?: string | null;
+  completed_at?: string | null;
 }
 
 interface LeadDetailSheetProps {
@@ -139,6 +144,7 @@ const LeadDetailSheet = ({
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [showChangeRequestDialog, setShowChangeRequestDialog] = useState(false);
+  const [showTimeEditDialog, setShowTimeEditDialog] = useState(false);
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null);
   const [showPhotoTypePicker, setShowPhotoTypePicker] = useState(false);
   const [pendingPhotoFiles, setPendingPhotoFiles] = useState<File[]>([]);
@@ -379,6 +385,19 @@ const LeadDetailSheet = ({
                 <p className="text-xs">{lead.notes}</p>
               </div>
             )}
+
+            {/* Job Schedule Display - shows dates and times */}
+            <JobScheduleDisplay
+              scheduledDate={lead.scheduled_date}
+              startedAt={lead.started_at}
+              actualStartTime={lead.actual_start_time}
+              completedAt={lead.completed_at}
+              estimatedEndTime={lead.estimated_end_time}
+              estimatedDurationMinutes={lead.estimated_duration_minutes}
+              status={lead.status}
+              onEditClick={() => setShowTimeEditDialog(true)}
+              canEdit={canEdit || isCompleted}
+            />
 
             {/* Photo Gallery - show for all leads with View All button */}
             <div className="p-2.5 rounded-xl bg-background/50 space-y-2">
@@ -712,6 +731,14 @@ const LeadDetailSheet = ({
         isOnline={isOnline}
         open={showExpandedGallery}
         onOpenChange={setShowExpandedGallery}
+      />
+
+      {/* Lead Time Edit Dialog */}
+      <LeadTimeEditDialog
+        open={showTimeEditDialog}
+        onOpenChange={setShowTimeEditDialog}
+        lead={lead}
+        onSaved={() => onLeadUpdated?.()}
       />
     </>
   );
