@@ -195,7 +195,7 @@ export function PhotoGallery({
               {onAddPhotos && (
                 <button
                   onClick={onAddPhotos}
-                  className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
+                  className="text-[10px] text-white hover:text-white/80 hover:underline flex items-center gap-0.5"
                 >
                   <Plus className="h-2.5 w-2.5" />
                   Add
