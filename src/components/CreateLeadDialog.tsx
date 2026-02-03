@@ -20,8 +20,16 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Users, MapPin, Radio } from "lucide-react";
+import { Loader2, Users, MapPin, Radio, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import LocationPicker from "./LocationPicker";
 import { useNearbyAgents } from "@/hooks/useNearbyAgents";
 import { useBroadcastSettings } from "@/hooks/useBroadcastSettings";
@@ -49,6 +57,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
     notes: "",
     priority: "medium",
   });
+  const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
   const [showManualCoords, setShowManualCoords] = useState(false);
 
   // Format phone for WhatsApp (SA format)
@@ -123,6 +132,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
         latitude,
         longitude,
         broadcast_radius_km: customRadius,
+        scheduled_date: scheduledDate ? format(scheduledDate, "yyyy-MM-dd") : null,
         status: "pending",
       });
 
@@ -146,6 +156,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
       setLatitude(null);
       setLongitude(null);
       setCustomRadius(null);
+      setScheduledDate(undefined);
       setNearbyAgents([]);
 
       onOpenChange(false);
@@ -285,6 +296,34 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* Scheduled Date */}
+          <div className="space-y-2">
+            <Label>Scheduled Date (Optional)</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !scheduledDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {scheduledDate ? format(scheduledDate, "PPP") : "Select a date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={scheduledDate}
+                  onSelect={setScheduledDate}
+                  initialFocus
+                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="space-y-2">
