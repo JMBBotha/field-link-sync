@@ -427,13 +427,6 @@ const LeadDetailSheet = ({
               />
             </div>
 
-            {/* Time */}
-            {lead.created_at && (
-              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                <Clock className="h-3 w-3" />
-                <span>Created {formatTimeAgo(lead.created_at)}</span>
-              </div>
-            )}
 
             {/* Action Buttons */}
             <div className="space-y-2 pt-1">
@@ -584,6 +577,14 @@ const LeadDetailSheet = ({
                       "Release"
                     )}
                   </Button>
+                </div>
+              )}
+
+              {/* Created timestamp at bottom */}
+              {lead.created_at && (
+                <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground pt-2">
+                  <Clock className="h-3 w-3" />
+                  <span>Created {formatTimeAgo(lead.created_at)}</span>
                 </div>
               )}
             </div>
