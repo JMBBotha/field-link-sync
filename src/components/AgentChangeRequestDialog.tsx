@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { Clock, Calendar, Timer, CheckCircle2, Loader2 } from "lucide-react";
+import { Clock, Calendar, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -28,42 +28,6 @@ interface Lead {
   estimated_duration_minutes?: number | null;
 }
 
-type RequestType = "adjust_start_time" | "adjust_scheduled_date" | "adjust_completed_time" | "adjust_duration";
-
-interface PresetOption {
-  type: RequestType;
-  label: string;
-  icon: React.ReactNode;
-  description: string;
-}
-
-const PRESET_OPTIONS: PresetOption[] = [
-  {
-    type: "adjust_start_time",
-    label: "Adjust Start Time",
-    icon: <Clock className="h-5 w-5" />,
-    description: "Change when the job actually started",
-  },
-  {
-    type: "adjust_scheduled_date",
-    label: "Adjust Scheduled Date",
-    icon: <Calendar className="h-5 w-5" />,
-    description: "Change the scheduled date for the job",
-  },
-  {
-    type: "adjust_completed_time",
-    label: "Adjust Completion Time",
-    icon: <CheckCircle2 className="h-5 w-5" />,
-    description: "Change when the job was completed",
-  },
-  {
-    type: "adjust_duration",
-    label: "Adjust Duration",
-    icon: <Timer className="h-5 w-5" />,
-    description: "Change the estimated job duration",
-  },
-];
-
 interface AgentChangeRequestDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -80,106 +44,40 @@ const AgentChangeRequestDialog = ({
   onRequestSent,
 }: AgentChangeRequestDialogProps) => {
   const { toast } = useToast();
-  const [step, setStep] = useState<"select" | "details">("select");
-  const [selectedType, setSelectedType] = useState<RequestType | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Form values for each type
-  const [newDate, setNewDate] = useState<Date | undefined>();
-  const [newTime, setNewTime] = useState<string>("");
-  const [newDuration, setNewDuration] = useState<string>("");
+  // Simple date & time state
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => {
+    if (lead.scheduled_date) return new Date(lead.scheduled_date);
+    if (lead.actual_start_time) return new Date(lead.actual_start_time);
+    return new Date();
+  });
+  const [selectedTime, setSelectedTime] = useState<string>(() => {
+    if (lead.actual_start_time) return format(new Date(lead.actual_start_time), "HH:mm");
+    return format(new Date(), "HH:mm");
+  });
   const [reason, setReason] = useState<string>("");
 
-  const resetForm = () => {
-    setStep("select");
-    setSelectedType(null);
-    setNewDate(undefined);
-    setNewTime("");
-    setNewDuration("");
-    setReason("");
-  };
-
   const handleClose = () => {
-    resetForm();
+    setReason("");
     onOpenChange(false);
   };
 
-  const handleSelectType = (type: RequestType) => {
-    setSelectedType(type);
-    
-    // Pre-fill with current values
-    if (type === "adjust_start_time" && lead.actual_start_time) {
-      const d = new Date(lead.actual_start_time);
-      setNewDate(d);
-      setNewTime(format(d, "HH:mm"));
-    } else if (type === "adjust_scheduled_date" && lead.scheduled_date) {
-      setNewDate(new Date(lead.scheduled_date));
-    } else if (type === "adjust_completed_time" && lead.completed_at) {
-      const d = new Date(lead.completed_at);
-      setNewDate(d);
-      setNewTime(format(d, "HH:mm"));
-    } else if (type === "adjust_duration" && lead.estimated_duration_minutes) {
-      setNewDuration(lead.estimated_duration_minutes.toString());
-    }
-    
-    setStep("details");
-  };
-
   const getCurrentValue = (): string => {
-    if (!selectedType) return "";
-    
-    switch (selectedType) {
-      case "adjust_start_time":
-        return lead.actual_start_time 
-          ? format(new Date(lead.actual_start_time), "PPp")
-          : "Not set";
-      case "adjust_scheduled_date":
-        return lead.scheduled_date 
-          ? format(new Date(lead.scheduled_date), "PP")
-          : "Not set";
-      case "adjust_completed_time":
-        return lead.completed_at 
-          ? format(new Date(lead.completed_at), "PPp")
-          : "Not set";
-      case "adjust_duration":
-        return lead.estimated_duration_minutes 
-          ? `${lead.estimated_duration_minutes} minutes`
-          : "Not set";
-      default:
-        return "";
+    if (lead.scheduled_date && lead.actual_start_time) {
+      return format(new Date(lead.actual_start_time), "PPp");
     }
-  };
-
-  const getRequestedValue = (): string => {
-    if (!selectedType) return "";
-    
-    switch (selectedType) {
-      case "adjust_start_time":
-      case "adjust_completed_time":
-        if (newDate && newTime) {
-          const [hours, minutes] = newTime.split(":").map(Number);
-          const combined = new Date(newDate);
-          combined.setHours(hours, minutes, 0, 0);
-          return combined.toISOString();
-        }
-        return "";
-      case "adjust_scheduled_date":
-        return newDate ? format(newDate, "yyyy-MM-dd") : "";
-      case "adjust_duration":
-        return newDuration ? `${newDuration} minutes` : "";
-      default:
-        return "";
+    if (lead.scheduled_date) {
+      return format(new Date(lead.scheduled_date), "PP");
     }
+    return "Not set";
   };
 
   const handleSubmit = async () => {
-    if (!selectedType) return;
-    
-    const requestedValue = getRequestedValue();
-    if (!requestedValue) {
+    if (!selectedDate) {
       toast({
-        title: "Missing value",
-        description: "Please enter the new value",
+        title: "Missing date",
+        description: "Please select a date",
         variant: "destructive",
       });
       return;
@@ -187,10 +85,17 @@ const AgentChangeRequestDialog = ({
 
     setSubmitting(true);
     try {
+      // Combine date and time
+      const [hours, minutes] = selectedTime.split(":").map(Number);
+      const combined = new Date(selectedDate);
+      combined.setHours(hours, minutes, 0, 0);
+      
+      const requestedValue = combined.toISOString();
+
       const { error } = await supabase.from("lead_change_requests").insert({
         lead_id: lead.id,
         requested_by: agentId,
-        request_type: selectedType,
+        request_type: "adjust_scheduled_date",
         current_value: getCurrentValue(),
         requested_value: requestedValue,
         reason: reason || null,
@@ -201,7 +106,7 @@ const AgentChangeRequestDialog = ({
 
       toast({
         title: "Request Sent ✓",
-        description: "Your change request has been submitted for admin approval",
+        description: "Your time change request has been submitted",
       });
 
       onRequestSent();
@@ -220,158 +125,90 @@ const AgentChangeRequestDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-primary" />
             Request Time Change
           </DialogTitle>
           <DialogDescription>
-            {step === "select" 
-              ? "Select what you'd like to change"
-              : "Enter the new value and reason for the change"
-            }
+            Select a new date and time for this job
           </DialogDescription>
         </DialogHeader>
 
-        {step === "select" ? (
-          <div className="grid gap-2 py-4">
-            {PRESET_OPTIONS.map((option) => (
-              <button
-                key={option.type}
-                onClick={() => handleSelectType(option.type)}
-                className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors text-left"
-              >
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  {option.icon}
-                </div>
-                <div>
-                  <p className="font-medium">{option.label}</p>
-                  <p className="text-xs text-muted-foreground">{option.description}</p>
-                </div>
-              </button>
-            ))}
+        <div className="space-y-4 py-2">
+          {/* Current Value */}
+          <div className="p-2.5 rounded-lg bg-muted/50 text-sm">
+            <span className="text-muted-foreground">Current: </span>
+            <span className="font-medium">{getCurrentValue()}</span>
           </div>
-        ) : (
-          <div className="space-y-4 py-4">
-            {/* Current Value */}
-            <div className="p-3 rounded-lg bg-muted/50">
-              <p className="text-xs text-muted-foreground">Current Value</p>
-              <p className="font-medium">{getCurrentValue()}</p>
-            </div>
 
-            {/* New Value Input */}
-            {(selectedType === "adjust_start_time" || selectedType === "adjust_completed_time") && (
-              <div className="space-y-2">
-                <Label>New Date & Time</Label>
-                <div className="flex gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "flex-1 justify-start text-left font-normal",
-                          !newDate && "text-muted-foreground"
-                        )}
-                      >
-                        <Calendar className="mr-2 h-4 w-4" />
-                        {newDate ? format(newDate, "MMM d") : "Date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={newDate}
-                        onSelect={setNewDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <Input
-                    type="time"
-                    value={newTime}
-                    onChange={(e) => setNewTime(e.target.value)}
-                    className="w-28"
-                  />
-                </div>
-              </div>
-            )}
-
-            {selectedType === "adjust_scheduled_date" && (
-              <div className="space-y-2">
-                <Label>New Scheduled Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !newDate && "text-muted-foreground"
-                      )}
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {newDate ? format(newDate, "PPP") : "Pick a date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={newDate}
-                      onSelect={setNewDate}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            )}
-
-            {selectedType === "adjust_duration" && (
-              <div className="space-y-2">
-                <Label>New Duration (minutes)</Label>
-                <Input
-                  type="number"
-                  placeholder="60"
-                  value={newDuration}
-                  onChange={(e) => setNewDuration(e.target.value)}
-                  min="1"
+          {/* Date Picker */}
+          <div className="space-y-1.5">
+            <Label className="text-sm">New Date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !selectedDate && "text-muted-foreground"
+                  )}
+                >
+                  <Calendar className="mr-2 h-4 w-4" />
+                  {selectedDate ? format(selectedDate, "EEE, MMM d, yyyy") : "Pick a date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  initialFocus
+                  className="p-3 pointer-events-auto"
                 />
-              </div>
-            )}
-
-            {/* Reason */}
-            <div className="space-y-2">
-              <Label>Reason (optional)</Label>
-              <Textarea
-                placeholder="Why do you need this change?"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                rows={2}
-              />
-            </div>
+              </PopoverContent>
+            </Popover>
           </div>
-        )}
 
-        <DialogFooter>
-          {step === "details" && (
-            <Button variant="outline" onClick={() => setStep("select")}>
-              Back
-            </Button>
-          )}
-          <Button variant="outline" onClick={handleClose}>
+          {/* Time Picker */}
+          <div className="space-y-1.5">
+            <Label className="text-sm">New Time</Label>
+            <Input
+              type="time"
+              value={selectedTime}
+              onChange={(e) => setSelectedTime(e.target.value)}
+              className="w-full"
+            />
+          </div>
+
+          {/* Reason */}
+          <div className="space-y-1.5">
+            <Label className="text-sm">Reason (optional)</Label>
+            <Textarea
+              placeholder="Brief reason for the change..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={2}
+              className="resize-none"
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={handleClose} size="sm">
             Cancel
           </Button>
-          {step === "details" && (
-            <Button onClick={handleSubmit} disabled={submitting}>
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                "Submit Request"
-              )}
-            </Button>
-          )}
+          <Button onClick={handleSubmit} disabled={submitting} size="sm">
+            {submitting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              "Submit Request"
+            )}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
