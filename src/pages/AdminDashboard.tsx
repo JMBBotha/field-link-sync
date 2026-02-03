@@ -12,6 +12,7 @@ import CreateLeadDialog from "@/components/CreateLeadDialog";
 import AdminSettings from "@/components/AdminSettings";
 import ServiceAgreements from "@/components/ServiceAgreements";
 import AdminNotificationSettings from "@/components/AdminNotificationSettings";
+import LeadDetailSheet from "@/components/LeadDetailSheet";
 import Layout from "@/components/Layout";
 import { List, Map } from "lucide-react";
 import logo from "@/assets/logo.png";
@@ -26,6 +27,27 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 
+interface Lead {
+  id: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_address: string;
+  service_type: string;
+  status: string;
+  latitude: number;
+  longitude: number;
+  notes?: string | null;
+  created_at?: string | null;
+  assigned_agent_id?: string | null;
+  started_at?: string | null;
+  priority?: string;
+  customer_id?: string | null;
+  equipment_id?: string | null;
+  estimated_duration_minutes?: number | null;
+  estimated_end_time?: string | null;
+  actual_start_time?: string | null;
+}
+
 const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -35,6 +57,9 @@ const AdminDashboard = () => {
   const [showCompletedFilter, setShowCompletedFilter] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"map" | "agreements" | "settings" | "notifications">("map");
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const mapRef = useRef<MapViewHandle>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -85,12 +110,32 @@ const AdminDashboard = () => {
       }
 
       setIsAdmin(true);
+      setCurrentUserId(session.user.id);
     } catch (error: any) {
       console.error("Auth check error:", error);
       navigate("/auth");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLeadClick = (lead: Lead) => {
+    setSelectedLead(lead);
+    setDetailSheetOpen(true);
+  };
+
+  // Stub handlers for LeadDetailSheet - admin can view but not perform field agent actions
+  const handleAccept = async () => {
+    toast({ title: "Info", description: "Use field agent view to accept leads" });
+  };
+  const handleStart = async () => {
+    toast({ title: "Info", description: "Use field agent view to start jobs" });
+  };
+  const handleComplete = async () => {
+    toast({ title: "Info", description: "Use field agent view to complete jobs" });
+  };
+  const handleRelease = async () => {
+    toast({ title: "Info", description: "Use field agent view to release leads" });
   };
 
   const handleSignOut = async () => {
@@ -295,6 +340,7 @@ const AdminDashboard = () => {
                   setCompletedPanelCollapsed(true);
                 }
               }}
+              onLeadClick={handleLeadClick}
             />
           </div>
           
@@ -375,6 +421,22 @@ const AdminDashboard = () => {
       <CreateLeadDialog
         open={showCreateLead}
         onOpenChange={setShowCreateLead}
+      />
+
+      {/* Lead Detail Sheet for viewing lead details and managing photos */}
+      <LeadDetailSheet
+        lead={selectedLead}
+        open={detailSheetOpen}
+        onClose={() => setDetailSheetOpen(false)}
+        onAccept={handleAccept}
+        onStart={handleStart}
+        onComplete={handleComplete}
+        onRelease={handleRelease}
+        currentUserId={currentUserId}
+        loadingAction={null}
+        onLeadUpdated={() => {
+          // Optionally refresh data
+        }}
       />
 
       </div>
