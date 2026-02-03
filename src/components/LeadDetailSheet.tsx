@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ImageIcon, ClockIcon } from "lucide-react";
+import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ImageIcon, ClockIcon, Images } from "lucide-react";
 import { useJobPhotos, PhotoType } from "@/hooks/useJobPhotos";
 import { useOffline } from "@/contexts/OfflineContext";
 import { Button } from "@/components/ui/button";
@@ -14,9 +14,11 @@ import EditLeadDialog from "./EditLeadDialog";
 import JobDurationPicker from "./JobDurationPicker";
 import JobProgressSection from "./JobProgressSection";
 import { PhotoGallery } from "./PhotoGallery";
+import { ExpandedPhotoGallery } from "./ExpandedPhotoGallery";
 import AgentChangeRequestDialog from "./AgentChangeRequestDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useSingleLeadPhotoCount } from "@/hooks/useLeadPhotoCount";
 
 interface Lead {
   id: string;
@@ -141,6 +143,7 @@ const LeadDetailSheet = ({
   const [showPhotoTypePicker, setShowPhotoTypePicker] = useState(false);
   const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
   const [galleryRefreshKey, setGalleryRefreshKey] = useState(0);
+  const [showExpandedGallery, setShowExpandedGallery] = useState(false);
   const { toast } = useToast();
   const { isOnline, queueOperation: contextQueueOp } = useOffline();
   
@@ -376,8 +379,22 @@ const LeadDetailSheet = ({
               </div>
             )}
 
-            {/* Photo Gallery - show for all leads */}
-            <div className="p-2.5 rounded-xl bg-background/50">
+            {/* Photo Gallery - show for all leads with View All button */}
+            <div className="p-2.5 rounded-xl bg-background/50 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Images className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">Photos</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs px-2 text-primary"
+                  onClick={() => setShowExpandedGallery(true)}
+                >
+                  View All
+                </Button>
+              </div>
               <PhotoGallery 
                 leadId={lead.id} 
                 isOnline={isOnline} 
@@ -656,6 +673,14 @@ const LeadDetailSheet = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Expanded Photo Gallery */}
+      <ExpandedPhotoGallery
+        leadId={lead.id}
+        isOnline={isOnline}
+        open={showExpandedGallery}
+        onOpenChange={setShowExpandedGallery}
+      />
     </>
   );
 };
