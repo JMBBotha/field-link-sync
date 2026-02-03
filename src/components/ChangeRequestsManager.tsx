@@ -45,6 +45,7 @@ const REQUEST_TYPE_CONFIG: Record<string, { icon: React.ReactNode; label: string
   adjust_scheduled_date: { icon: <Calendar className="h-4 w-4" />, label: "Scheduled Date" },
   adjust_completed_time: { icon: <CheckCircle2 className="h-4 w-4" />, label: "Completion Time" },
   adjust_duration: { icon: <Timer className="h-4 w-4" />, label: "Duration" },
+  adjust_job_times: { icon: <Clock className="h-4 w-4" />, label: "Job Times" },
 };
 
 interface ChangeRequestsManagerProps {
@@ -211,9 +212,43 @@ const ChangeRequestsManager = ({ leadId, showAll = false }: ChangeRequestsManage
           updates.estimated_duration_minutes = mins;
         }
         break;
+      case "adjust_job_times":
+        // Parse ISO times from the reason field (after ---)
+        try {
+          const reasonParts = request.reason?.split("\n---\n");
+          if (reasonParts && reasonParts.length > 1) {
+            const timeData = JSON.parse(reasonParts[reasonParts.length - 1]);
+            if (timeData.startTime) {
+              updates.actual_start_time = timeData.startTime;
+              updates.started_at = timeData.startTime;
+            }
+            if (timeData.endTime) {
+              updates.completed_at = timeData.endTime;
+            }
+            // Calculate duration
+            if (timeData.startTime && timeData.endTime) {
+              const start = new Date(timeData.startTime);
+              const end = new Date(timeData.endTime);
+              updates.estimated_duration_minutes = Math.round((end.getTime() - start.getTime()) / 60000);
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing job times:", e);
+        }
+        break;
     }
 
     return updates;
+  };
+
+  // Helper to get display reason (without the JSON data)
+  const getDisplayReason = (request: ChangeRequest): string | null => {
+    if (!request.reason) return null;
+    if (request.request_type === "adjust_job_times") {
+      const parts = request.reason.split("\n---\n");
+      return parts[0] || null;
+    }
+    return request.reason;
   };
 
   const getStatusBadge = (status: string) => {
@@ -313,10 +348,10 @@ const ChangeRequestsManager = ({ leadId, showAll = false }: ChangeRequestsManage
                 </div>
 
                 {/* Reason */}
-                {request.reason && (
+                {getDisplayReason(request) && (
                   <div className="text-sm">
                     <p className="text-xs text-muted-foreground">Reason</p>
-                    <p>{request.reason}</p>
+                    <p>{getDisplayReason(request)}</p>
                   </div>
                 )}
 
