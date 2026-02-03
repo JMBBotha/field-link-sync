@@ -37,6 +37,7 @@ export interface MapViewHandle {
 
 interface MapViewProps {
   onStatusFiltersChange?: (filters: Set<LeadStatusFilter>) => void;
+  onLeadClick?: (lead: Lead) => void;
 }
 
 const formatTimeAgo = (createdAt: string): string => {
@@ -55,7 +56,7 @@ const formatTimeAgo = (createdAt: string): string => {
   return `${diffDays}d ago`;
 };
 
-const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange }, ref) => {
+const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange, onLeadClick }, ref) => {
   const MAP_CHROME_BOTTOM_OFFSET_PX = 64;
   const [agents, setAgents] = useState<AgentLocation[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -417,7 +418,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     if (mapLoaded && mapInstanceRef.current && (agents.length > 0 || leads.length > 0)) {
       updateMarkers();
     }
-  }, [agents, leads, mapLoaded, statusFilters]);
+  }, [agents, leads, mapLoaded, statusFilters, onLeadClick]);
 
   const updateMarkers = () => {
     const map = mapInstanceRef.current;
@@ -632,6 +633,15 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         timeBadge.style.transform = "translateX(-50%)";
         timeBadge.style.zIndex = "2";
         el.appendChild(timeBadge);
+
+        // Add click handler for onLeadClick callback
+        if (onLeadClick) {
+          el.style.cursor = "pointer";
+          el.addEventListener("click", (e) => {
+            e.stopPropagation();
+            onLeadClick(lead);
+          });
+        }
 
         marker = new mapboxgl.Marker({ element: el, anchor: "bottom" })
           .setLngLat([lead.longitude, lead.latitude])
