@@ -518,7 +518,9 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       }
     });
 
-    // Upsert agent markers
+    // Upsert agent markers - use brand blue for field agents
+    const AGENT_MARKER_COLOR = "#0369a1"; // Brand blue matching header
+    
     agents.forEach((agent) => {
       const statusColor = agent.is_available ? "#10b981" : "#6b7280";
       const statusLabel = agent.is_available ? "Available" : "Busy";
@@ -545,7 +547,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
 
       let marker = agentMarkersRef.current.get(agent.agent_id);
       if (!marker) {
-        const el = createTeardropMarkerElement(agent.is_available ? "#10b981" : "#6b7280");
+        // Create agent marker with brand blue and wrench icon
+        const el = createTeardropMarkerElement(AGENT_MARKER_COLOR, undefined, 40, 50, 'wrench');
 
         marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
           .setLngLat([agent.longitude, agent.latitude])
@@ -560,10 +563,10 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         agentMarkersRef.current.set(agent.agent_id, marker);
       } else {
         marker.setLngLat([agent.longitude, agent.latitude]);
-        // We need to recreate the element to change color effectively with SVG string replacement
+        // Update element with brand blue and wrench icon
         const el = marker.getElement();
-        const newEl = createTeardropMarkerElement(agent.is_available ? "#10b981" : "#6b7280");
-        el.innerHTML = newEl.innerHTML; // Update inner HTML to change color
+        const newEl = createTeardropMarkerElement(AGENT_MARKER_COLOR, undefined, 40, 50, 'wrench');
+        el.innerHTML = newEl.innerHTML;
         marker.getPopup()?.setHTML(popupHTML);
       }
     });
