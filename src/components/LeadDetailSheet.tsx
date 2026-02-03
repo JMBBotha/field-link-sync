@@ -400,7 +400,7 @@ const LeadDetailSheet = ({
             />
 
             {/* Photo Gallery - Prominent inline section */}
-            <div className="p-2.5 rounded-xl bg-background/50 space-y-2">
+            <div className="p-2.5 rounded-xl bg-gradient-to-r from-gray-600 to-gray-400 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <Images className="h-3.5 w-3.5 text-primary" />
