@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ImageIcon, ClockIcon, Images } from "lucide-react";
+import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ImageIcon, ClockIcon, Images, Plus } from "lucide-react";
 import { useJobPhotos, PhotoType } from "@/hooks/useJobPhotos";
 import { useOffline } from "@/contexts/OfflineContext";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import InvoiceForm from "./InvoiceForm";
 import JobCompletionFlow from "./JobCompletionFlow";
 import CustomerProfile from "./CustomerProfile";
@@ -399,31 +400,58 @@ const LeadDetailSheet = ({
               canEdit={canEdit || isCompleted}
             />
 
-            {/* Photo Gallery - show for all leads with View All button */}
-            <div className="p-2.5 rounded-xl bg-background/50 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Images className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-xs font-medium text-muted-foreground">Photos</span>
+            {/* Photo Gallery - Popover trigger */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="w-full flex items-center gap-2 p-2.5 rounded-xl bg-background/50 hover:bg-background/80 transition-colors text-left">
+                  <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                    <Images className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium">Photos</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          photoInputRef.current?.click();
+                        }}
+                        className="text-primary hover:underline inline-flex items-center gap-0.5"
+                      >
+                        <Plus className="h-2.5 w-2.5" />
+                        Add Photos
+                      </button>
+                    </p>
+                  </div>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent 
+                className="w-80 p-3" 
+                align="start"
+                side="top"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Photo Gallery</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-xs px-2 text-primary"
+                      onClick={() => setShowExpandedGallery(true)}
+                    >
+                      View All
+                    </Button>
+                  </div>
+                  <PhotoGallery 
+                    leadId={lead.id} 
+                    isOnline={isOnline} 
+                    onDeletePhoto={deletePhoto}
+                    onAddPhotos={() => photoInputRef.current?.click()}
+                    deleting={photoDeleting}
+                    refreshKey={galleryRefreshKey}
+                  />
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 text-xs px-2 text-primary"
-                  onClick={() => setShowExpandedGallery(true)}
-                >
-                  View All
-                </Button>
-              </div>
-              <PhotoGallery 
-                leadId={lead.id} 
-                isOnline={isOnline} 
-                onDeletePhoto={deletePhoto}
-                onAddPhotos={() => photoInputRef.current?.click()}
-                deleting={photoDeleting}
-                refreshKey={galleryRefreshKey}
-              />
-            </div>
+              </PopoverContent>
+            </Popover>
 
             {/* Time */}
             {lead.created_at && (
