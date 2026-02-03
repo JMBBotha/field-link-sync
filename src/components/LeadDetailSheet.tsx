@@ -429,7 +429,7 @@ const LeadDetailSheet = ({
 
 
             {/* Action Buttons */}
-            <div className="space-y-2 pt-1">
+            <div className="space-y-2 pt-1 pb-4">
               {/* Photo upload - available for all lead stages */}
               <input
                 ref={photoInputRef}
