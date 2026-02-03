@@ -42,6 +42,7 @@ interface Lead {
   notes?: string | null;
   priority?: string;
   scheduled_date?: string | null;
+  scheduled_time?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -67,6 +68,7 @@ const EditLeadDialog = ({ lead, open, onOpenChange, onSuccess }: EditLeadDialogP
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
+  const [scheduledTime, setScheduledTime] = useState<string>("");
   const { toast } = useToast();
 
   // Format phone for WhatsApp (SA format)
@@ -101,6 +103,7 @@ const EditLeadDialog = ({ lead, open, onOpenChange, onSuccess }: EditLeadDialogP
       setLatitude(lead.latitude);
       setLongitude(lead.longitude);
       setScheduledDate(lead.scheduled_date ? parseISO(lead.scheduled_date) : undefined);
+      setScheduledTime(lead.scheduled_time || "");
     }
   }, [lead, open]);
 
@@ -139,6 +142,7 @@ const EditLeadDialog = ({ lead, open, onOpenChange, onSuccess }: EditLeadDialogP
           notes: formData.notes,
           priority: formData.priority,
           scheduled_date: scheduledDate ? format(scheduledDate, "yyyy-MM-dd") : null,
+          scheduled_time: scheduledTime || null,
           latitude,
           longitude,
         })
@@ -302,31 +306,40 @@ const EditLeadDialog = ({ lead, open, onOpenChange, onSuccess }: EditLeadDialogP
             </div>
           </div>
 
-          {/* Scheduled Date */}
+          {/* Scheduled Date & Time */}
           <div className="space-y-2">
-            <Label>Scheduled Date (Optional)</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !scheduledDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {scheduledDate ? format(scheduledDate, "PPP") : "Select a date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={scheduledDate}
-                  onSelect={setScheduledDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            <Label>Scheduled Date & Time (Optional)</Label>
+            <div className="flex gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "flex-1 justify-start text-left font-normal",
+                      !scheduledDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {scheduledDate ? format(scheduledDate, "d MMM yyyy") : "Date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={scheduledDate}
+                    onSelect={setScheduledDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              <Input
+                type="time"
+                value={scheduledTime}
+                onChange={(e) => setScheduledTime(e.target.value)}
+                className="w-28"
+                placeholder="Time"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
