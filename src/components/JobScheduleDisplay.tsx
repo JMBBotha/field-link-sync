@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { Calendar, Clock, ArrowRight, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +20,14 @@ const formatDuration = (minutes: number): string => {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+};
+
+const formatCompactTime = (dateStr: string): string => {
+  return format(new Date(dateStr), "h:mm a");
+};
+
+const formatCompactDate = (dateStr: string): string => {
+  return format(new Date(dateStr), "MMM d");
 };
 
 export function JobScheduleDisplay({
@@ -46,126 +54,90 @@ export function JobScheduleDisplay({
     return null;
   }
 
-  return (
-    <div className="p-3 rounded-xl bg-background/50 space-y-3">
-      {/* Header with edit button */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-xs font-medium text-muted-foreground">Schedule</span>
+  // Build compact single-line display
+  const renderCompactTimeline = () => {
+    // For pending/claimed jobs with scheduled date
+    if (isPending && scheduledDate) {
+      return (
+        <span className="text-xs">
+          <span className="text-muted-foreground">Scheduled: </span>
+          <span className="font-medium">{format(new Date(scheduledDate), "EEE, MMM d")}</span>
+        </span>
+      );
+    }
+
+    // For in-progress or completed jobs
+    if ((isInProgress || isCompleted) && effectiveStartTime) {
+      const startTime = formatCompactTime(effectiveStartTime);
+      const endTime = effectiveEndTime ? formatCompactTime(effectiveEndTime) : "--:--";
+      const dateStr = effectiveEndTime 
+        ? formatCompactDate(effectiveEndTime) 
+        : formatCompactDate(effectiveStartTime);
+      
+      return (
+        <div className="flex items-center gap-1.5 text-xs flex-wrap">
+          {/* Status dot */}
+          <div className={cn(
+            "h-1.5 w-1.5 rounded-full shrink-0",
+            isCompleted ? "bg-green-500" : "bg-primary"
+          )} />
+          
+          {/* Time range */}
+          <span>
+            <span className="text-muted-foreground">{isCompleted ? "Completed: " : "Started: "}</span>
+            <span className="font-medium">{startTime}</span>
+            <span className="text-muted-foreground mx-1">→</span>
+            <span className="font-medium">{endTime}</span>
+            <span className="text-muted-foreground ml-1">({dateStr})</span>
+          </span>
+          
+          {/* Duration */}
+          {estimatedDurationMinutes && (
+            <>
+              <span className="text-muted-foreground">|</span>
+              <span className="font-medium">{formatDuration(estimatedDurationMinutes)}</span>
+            </>
+          )}
         </div>
-        {canEdit && onEditClick && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 text-xs px-2 text-primary"
-            onClick={onEditClick}
-          >
-            <Pencil className="h-3 w-3 mr-1" />
-            Edit
-          </Button>
-        )}
+      );
+    }
+
+    // For completed jobs without start time, show just completion
+    if (isCompleted && !effectiveStartTime && completedAt) {
+      return (
+        <span className="text-xs">
+          <span className="text-muted-foreground">Completed: </span>
+          <span className="font-medium">{format(new Date(completedAt), "MMM d 'at' h:mm a")}</span>
+        </span>
+      );
+    }
+
+    return null;
+  };
+
+  return (
+    <div className="flex items-center gap-2 p-2 rounded-lg bg-background/50">
+      {/* Green dot for completed status */}
+      {isCompleted && (
+        <div className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
+      )}
+      
+      {/* Timeline content */}
+      <div className="flex-1 min-w-0">
+        {renderCompactTimeline()}
       </div>
-
-      {/* Timeline visualization */}
-      <div className="space-y-2">
-        {/* Scheduled date (for pending/claimed jobs) */}
-        {scheduledDate && isPending && (
-          <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
-            <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-              <Calendar className="h-4 w-4 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] text-muted-foreground">Scheduled</p>
-              <p className="text-sm font-medium">
-                {format(new Date(scheduledDate), "EEE, MMM d, yyyy")}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Time range display (for in-progress and completed jobs) */}
-        {(isInProgress || isCompleted) && effectiveStartTime && (
-          <div className="flex items-stretch gap-2">
-            {/* Start time */}
-            <div className="flex-1 p-2 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-1.5 mb-1">
-                <div className={cn(
-                  "h-2 w-2 rounded-full",
-                  isCompleted ? "bg-green-500" : "bg-primary"
-                )} />
-                <p className="text-[10px] text-muted-foreground">Started</p>
-              </div>
-              <p className="text-sm font-medium">
-                {format(new Date(effectiveStartTime), "h:mm a")}
-              </p>
-              <p className="text-[10px] text-muted-foreground">
-                {format(new Date(effectiveStartTime), "MMM d")}
-              </p>
-            </div>
-
-            {/* Arrow */}
-            <div className="flex items-center justify-center px-1">
-              <ArrowRight className="h-4 w-4 text-muted-foreground" />
-            </div>
-
-            {/* End time */}
-            <div className="flex-1 p-2 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-1.5 mb-1">
-                <div className={cn(
-                  "h-2 w-2 rounded-full",
-                  isCompleted ? "bg-green-500" : "bg-orange-400"
-                )} />
-                <p className="text-[10px] text-muted-foreground">
-                  {isCompleted ? "Completed" : "Est. End"}
-                </p>
-              </div>
-              {effectiveEndTime ? (
-                <>
-                  <p className="text-sm font-medium">
-                    {format(new Date(effectiveEndTime), "h:mm a")}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {format(new Date(effectiveEndTime), "MMM d")}
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">--:--</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Duration badge */}
-        {estimatedDurationMinutes && (
-          <div className="flex items-center gap-2">
-            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">
-              Duration: <span className="font-medium text-foreground">{formatDuration(estimatedDurationMinutes)}</span>
-            </span>
-            {isCompleted && effectiveStartTime && completedAt && (
-              <span className="text-[10px] text-green-600 font-medium ml-auto">
-                ✓ Completed
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* For completed jobs without start time, show just completion */}
-        {isCompleted && !effectiveStartTime && completedAt && (
-          <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10">
-            <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
-              <Clock className="h-4 w-4 text-green-600" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] text-muted-foreground">Completed</p>
-              <p className="text-sm font-medium">
-                {format(new Date(completedAt), "EEE, MMM d 'at' h:mm a")}
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
+      
+      {/* Edit button */}
+      {canEdit && onEditClick && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 shrink-0"
+          onClick={onEditClick}
+        >
+          <Pencil className="h-3 w-3" />
+        </Button>
+      )}
     </div>
   );
 }
