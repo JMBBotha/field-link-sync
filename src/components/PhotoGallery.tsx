@@ -202,7 +202,7 @@ export function PhotoGallery({
             </Badge>
           )}
         </div>
-        <ScrollArea className="max-h-48">
+        <ScrollArea className="h-48">
           <div className="grid grid-cols-2 gap-2 pr-2">
             {photoList.map((photo) => (
               <div key={photo.id} className="relative group">
