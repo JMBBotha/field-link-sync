@@ -400,6 +400,7 @@ const LeadDetailSheet = ({
                 leadId={lead.id} 
                 isOnline={isOnline} 
                 onDeletePhoto={deletePhoto}
+                onAddPhotos={() => photoInputRef.current?.click()}
                 deleting={photoDeleting}
                 refreshKey={galleryRefreshKey}
               />
