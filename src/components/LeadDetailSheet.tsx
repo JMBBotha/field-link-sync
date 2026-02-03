@@ -403,13 +403,13 @@ const LeadDetailSheet = ({
             <div className="p-2.5 rounded-xl bg-gradient-to-r from-gray-600 to-gray-400 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <Images className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-xs font-medium">Photos</span>
+                  <Images className="h-3.5 w-3.5 text-white" />
+                  <span className="text-xs font-medium text-white">Photos</span>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-5 text-[10px] px-1.5 text-primary"
+                  className="h-5 text-[10px] px-1.5 text-white hover:text-white/80 hover:bg-white/10"
                   onClick={() => setShowExpandedGallery(true)}
                 >
                   View All
