@@ -2,8 +2,9 @@ import { forwardRef, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Navigation, AlertCircle, Loader2 } from "lucide-react";
+import { Clock, Navigation, AlertCircle, Loader2, ImageIcon } from "lucide-react";
 import LeadCardProgress from "@/components/LeadCardProgress";
+import { useSingleLeadPhotoCount } from "@/hooks/useLeadPhotoCount";
 import { cn } from "@/lib/utils";
 
 interface Lead {
@@ -104,6 +105,7 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
   ) => {
     const cardRef = useRef<HTMLDivElement>(null);
     const priorityColor = getPriorityColor(lead.priority);
+    const { count: photoCount } = useSingleLeadPhotoCount(lead.id);
 
     // Auto-scroll into view when highlighted
     useEffect(() => {
@@ -180,9 +182,17 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
             </div>
             <div className="flex flex-col items-end gap-1 flex-shrink-0 ml-2">
               {getStatusBadge(lead.status)}
-              {distance && (
-                <span className="text-xs text-muted-foreground">{distance}km</span>
-              )}
+              <div className="flex items-center gap-1.5">
+                {photoCount > 0 && (
+                  <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                    <ImageIcon className="h-3 w-3" />
+                    {photoCount}
+                  </span>
+                )}
+                {distance && (
+                  <span className="text-xs text-muted-foreground">{distance}km</span>
+                )}
+              </div>
             </div>
           </div>
 
