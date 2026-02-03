@@ -230,7 +230,7 @@ export function PhotoGallery({
                       handleDeleteRequest(photo);
                     }}
                     disabled={deleting}
-                    className="absolute top-1 right-1 p-1.5 rounded-full bg-red-500/90 hover:bg-red-600 text-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity md:opacity-100"
+                    className="absolute top-1 right-1 p-1.5 rounded-full bg-gray-700/90 hover:bg-gray-800 text-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity md:opacity-100"
                     aria-label="Delete photo"
                   >
                     <X className="h-3.5 w-3.5" />
