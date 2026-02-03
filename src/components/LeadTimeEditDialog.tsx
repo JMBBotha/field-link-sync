@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 interface Lead {
@@ -147,8 +148,8 @@ const LeadTimeEditDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-primary" />
             Edit Lead Times
@@ -158,118 +159,120 @@ const LeadTimeEditDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          {/* Scheduled Date */}
-          <div className="space-y-2">
-            <Label>Scheduled Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !scheduledDate && "text-muted-foreground"
-                  )}
-                >
-                  <Calendar className="mr-2 h-4 w-4" />
-                  {scheduledDate ? format(scheduledDate, "PPP") : "Pick a date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <CalendarComponent
-                  mode="single"
-                  selected={scheduledDate}
-                  onSelect={setScheduledDate}
-                  initialFocus
+        <ScrollArea className="flex-1 -mx-6 px-6">
+          <div className="space-y-4 py-4">
+            {/* Scheduled Date */}
+            <div className="space-y-2">
+              <Label>Scheduled Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !scheduledDate && "text-muted-foreground"
+                    )}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {scheduledDate ? format(scheduledDate, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={scheduledDate}
+                    onSelect={setScheduledDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Start Date & Time */}
+            <div className="space-y-2">
+              <Label>Start Date & Time</Label>
+              <div className="flex gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "flex-1 justify-start text-left font-normal",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "MMM d") : "Date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-28"
                 />
-              </PopoverContent>
-            </Popover>
-          </div>
+              </div>
+            </div>
 
-          {/* Start Date & Time */}
-          <div className="space-y-2">
-            <Label>Start Date & Time</Label>
-            <div className="flex gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "flex-1 justify-start text-left font-normal",
-                      !startDate && "text-muted-foreground"
-                    )}
-                  >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {startDate ? format(startDate, "MMM d") : "Date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={startDate}
-                    onSelect={setStartDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+            {/* Completed Date & Time */}
+            <div className="space-y-2">
+              <Label>Completed Date & Time</Label>
+              <div className="flex gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "flex-1 justify-start text-left font-normal",
+                        !completedDate && "text-muted-foreground"
+                      )}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {completedDate ? format(completedDate, "MMM d") : "Date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={completedDate}
+                      onSelect={setCompletedDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Input
+                  type="time"
+                  value={completedTime}
+                  onChange={(e) => setCompletedTime(e.target.value)}
+                  className="w-28"
+                />
+              </div>
+            </div>
+
+            {/* Duration */}
+            <div className="space-y-2">
+              <Label>Estimated Duration (minutes)</Label>
               <Input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="w-28"
+                type="number"
+                placeholder="60"
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+                min="1"
               />
             </div>
           </div>
+        </ScrollArea>
 
-          {/* Completed Date & Time */}
-          <div className="space-y-2">
-            <Label>Completed Date & Time</Label>
-            <div className="flex gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "flex-1 justify-start text-left font-normal",
-                      !completedDate && "text-muted-foreground"
-                    )}
-                  >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {completedDate ? format(completedDate, "MMM d") : "Date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={completedDate}
-                    onSelect={setCompletedDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <Input
-                type="time"
-                value={completedTime}
-                onChange={(e) => setCompletedTime(e.target.value)}
-                className="w-28"
-              />
-            </div>
-          </div>
-
-          {/* Duration */}
-          <div className="space-y-2">
-            <Label>Estimated Duration (minutes)</Label>
-            <Input
-              type="number"
-              placeholder="60"
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              min="1"
-            />
-          </div>
-        </div>
-
-        <DialogFooter>
+        <DialogFooter className="shrink-0 pt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
