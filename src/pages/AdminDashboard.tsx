@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { LogOut, Plus, Users, PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Menu, Settings, FileText, MessageSquare } from "lucide-react";
 import MapView, { MapViewHandle } from "@/components/MapView";
@@ -23,6 +24,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useQuery } from "@tanstack/react-query";
 
 const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -36,6 +38,21 @@ const AdminDashboard = () => {
   const mapRef = useRef<MapViewHandle>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Query for pending change requests count
+  const { data: pendingRequestsCount = 0 } = useQuery({
+    queryKey: ["pending-change-requests-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("lead_change_requests")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pending");
+      
+      if (error) throw error;
+      return count || 0;
+    },
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
 
   useEffect(() => {
     checkAuth();
@@ -131,10 +148,18 @@ const AdminDashboard = () => {
           <Button 
             variant={activeTab === "notifications" ? "secondary" : "ghost"} 
             onClick={() => setActiveTab(activeTab === "notifications" ? "map" : "notifications")} 
-            className={activeTab === "notifications" ? "bg-white text-blue-600" : "text-white hover:bg-blue-500"}
+            className={`relative ${activeTab === "notifications" ? "bg-white text-blue-600" : "text-white hover:bg-blue-500"}`}
           >
             <MessageSquare className="mr-2 h-4 w-4" />
             Notifications
+            {pendingRequestsCount > 0 && (
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center p-0 text-xs"
+              >
+                {pendingRequestsCount > 99 ? "99+" : pendingRequestsCount}
+              </Badge>
+            )}
           </Button>
           <Button 
             variant={activeTab === "agreements" ? "secondary" : "ghost"} 
