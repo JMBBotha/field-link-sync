@@ -275,39 +275,39 @@ const LeadDetailSheet = ({
       <Sheet open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
         <SheetContent 
           side="bottom" 
-          className="h-[85vh] max-h-[85vh] rounded-t-2xl border-t bg-card/55 backdrop-blur-md flex flex-col p-0"
+          className="max-h-[85vh] bg-card/80 backdrop-blur-lg flex flex-col p-0 border-border/50 shadow-2xl"
           hideCloseButton
         >
           {/* Swipe Handle */}
-          <div className="flex justify-center pt-2 pb-3 shrink-0 px-6">
-            <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full" />
+          <div className="flex justify-center pt-3 pb-2 shrink-0">
+            <div className="w-10 h-1 bg-muted-foreground/40 rounded-full" />
           </div>
 
-          <SheetHeader className="px-6 pb-4 shrink-0">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <SheetTitle className="text-xl font-bold text-left">
+          <SheetHeader className="px-4 pb-3 shrink-0">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <SheetTitle className="text-lg font-bold text-left truncate">
                   {lead.customer_name}
                 </SheetTitle>
-                <p className="text-sm text-muted-foreground mt-0.5">{lead.service_type}</p>
+                <p className="text-sm text-muted-foreground truncate">{lead.service_type}</p>
                 {getPriorityIndicator(lead.priority)}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 shrink-0">
                 {getStatusBadge(lead.status)}
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0"
+                  className="h-7 w-7"
                   onClick={onClose}
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4" />
                 </Button>
               </div>
             </div>
           </SheetHeader>
 
           <ScrollArea className="flex-1 min-h-0">
-            <div className="space-y-4 px-6 pb-6">
+            <div className="space-y-3 px-4 pb-4">
             {/* Job Progress Section for in-progress jobs */}
             {isInProgress && lead.actual_start_time && (
               <JobProgressSection
@@ -319,46 +319,65 @@ const LeadDetailSheet = ({
               />
             )}
 
-            {/* Phone */}
-            <a
-              href={`tel:${lead.customer_phone}`}
-              className="flex items-center gap-3 p-3 rounded-xl bg-background/50 hover:bg-background/80 transition-colors"
-            >
-              <div className="h-10 w-10 rounded-full bg-[#0077B6]/20 flex items-center justify-center">
-                <Phone className="h-5 w-5 text-[#0077B6]" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">{lead.customer_phone}</p>
-                <p className="text-xs text-muted-foreground">Tap to call</p>
-              </div>
-            </a>
+            {/* Phone & Address Row - Compact on same row when possible */}
+            <div className="grid grid-cols-2 gap-2">
+              {/* Phone */}
+              <a
+                href={`tel:${lead.customer_phone}`}
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-background/50 hover:bg-background/80 transition-colors"
+              >
+                <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                  <Phone className="h-4 w-4 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium truncate">{lead.customer_phone}</p>
+                  <p className="text-[10px] text-muted-foreground">Call</p>
+                </div>
+              </a>
 
-            {/* Address */}
+              {/* Navigate */}
+              <a
+                href={navigationUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-background/50 hover:bg-background/80 transition-colors"
+              >
+                <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                  <Navigation className="h-4 w-4 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium truncate">Navigate</p>
+                  <p className="text-[10px] text-muted-foreground">Directions</p>
+                </div>
+              </a>
+            </div>
+
+            {/* Address - Full width */}
             <a
               href={addressSearchUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 p-3 rounded-xl bg-background/50 hover:bg-background/80 transition-colors"
+              className="flex items-center gap-2.5 p-2.5 rounded-xl bg-background/50 hover:bg-background/80 transition-colors"
             >
-              <div className="h-10 w-10 rounded-full bg-[#0077B6]/20 flex items-center justify-center">
-                <MapPin className="h-5 w-5 text-[#0077B6]" />
+              <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                <MapPin className="h-4 w-4 text-primary" />
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium line-clamp-2">{lead.customer_address}</p>
-                <p className="text-xs text-muted-foreground">Tap to view on map</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium line-clamp-2">{lead.customer_address}</p>
+                <p className="text-[10px] text-muted-foreground">View on map</p>
               </div>
             </a>
 
             {/* Notes */}
             {lead.notes && (
-              <div className="p-3 rounded-xl bg-background/50">
-                <p className="text-xs text-muted-foreground mb-1">Notes</p>
-                <p className="text-sm">{lead.notes}</p>
+              <div className="p-2.5 rounded-xl bg-background/50">
+                <p className="text-[10px] text-muted-foreground mb-0.5">Notes</p>
+                <p className="text-xs">{lead.notes}</p>
               </div>
             )}
 
             {/* Photo Gallery - show for all leads */}
-            <div className="p-3 rounded-xl bg-background/50">
+            <div className="p-2.5 rounded-xl bg-background/50">
               <PhotoGallery 
                 leadId={lead.id} 
                 isOnline={isOnline} 
@@ -370,14 +389,14 @@ const LeadDetailSheet = ({
 
             {/* Time */}
             {lead.created_at && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Clock className="h-3.5 w-3.5" />
+              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <Clock className="h-3 w-3" />
                 <span>Created {formatTimeAgo(lead.created_at)}</span>
               </div>
             )}
 
             {/* Action Buttons */}
-            <div className="space-y-2 pt-2">
+            <div className="space-y-2 pt-1">
               {/* Photo upload - available for all lead stages */}
               <input
                 ref={photoInputRef}
@@ -394,65 +413,67 @@ const LeadDetailSheet = ({
                   }
                 }}
               />
-              <Button
-                variant="outline"
-                className="w-full h-10 rounded-full"
-                onClick={() => photoInputRef.current?.click()}
-                disabled={photoUploading}
-              >
-                {photoUploading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Compressing...
-                  </>
-                ) : (
-                  <>
-                    <Camera className="h-4 w-4 mr-2" />
-                    Add Photo
-                    {photoPendingCount > 0 && (
-                      <span className="ml-2 text-xs bg-yellow-500/20 text-yellow-600 px-2 py-0.5 rounded-full">
-                        {photoPendingCount} queued
-                      </span>
-                    )}
-                  </>
+              
+              {/* Secondary actions row - Photo, Edit, Time Change */}
+              <div className="grid grid-cols-3 gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 rounded-lg text-xs px-2"
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={photoUploading}
+                >
+                  {photoUploading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      <Camera className="h-3.5 w-3.5 mr-1" />
+                      Photo
+                      {photoPendingCount > 0 && (
+                        <span className="ml-1 text-[10px] bg-yellow-500/20 text-yellow-600 px-1 rounded">
+                          {photoPendingCount}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </Button>
+
+                {canEdit && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 rounded-lg text-xs px-2"
+                    onClick={() => setShowEditDialog(true)}
+                  >
+                    <Pencil className="h-3.5 w-3.5 mr-1" />
+                    Edit
+                  </Button>
                 )}
-              </Button>
 
-              {/* Edit button for assigned leads */}
-              {canEdit && (
-                <Button
-                  variant="outline"
-                  className="w-full h-10 rounded-full"
-                  onClick={() => setShowEditDialog(true)}
-                >
-                  <Pencil className="h-4 w-4 mr-2" />
-                  Edit Details
-                </Button>
-              )}
-
-              {/* Request Time Change button for field agents on accepted/in_progress/completed leads */}
-              {isOwner && (isClaimed || isInProgress || isCompleted) && (
-                <Button
-                  variant="outline"
-                  className="w-full h-10 rounded-full"
-                  onClick={() => setShowChangeRequestDialog(true)}
-                >
-                  <ClockIcon className="h-4 w-4 mr-2" />
-                  Request Time Change
-                </Button>
-              )}
+                {isOwner && (isClaimed || isInProgress || isCompleted) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 rounded-lg text-xs px-2"
+                    onClick={() => setShowChangeRequestDialog(true)}
+                  >
+                    <ClockIcon className="h-3.5 w-3.5 mr-1" />
+                    Time
+                  </Button>
+                )}
+              </div>
 
               {/* Available leads - show Accept button */}
               {isAvailable && (
                 <Button
-                  className="w-full h-12 rounded-full text-base font-semibold"
+                  className="w-full h-11 rounded-lg text-sm font-semibold"
                   style={{ backgroundColor: '#0077B6', color: '#FFFFFF' }}
                   onClick={() => onAccept(lead.id)}
                   disabled={!!loadingAction}
                 >
                   {loadingAction === 'accept' ? (
                     <>
-                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Accepting...
                     </>
                   ) : (
@@ -463,105 +484,67 @@ const LeadDetailSheet = ({
 
               {/* Claimed leads - show Start Job + Release buttons */}
               {isClaimed && (
-                <>
+                <div className="flex gap-2">
                   <Button
-                    className="w-full h-12 rounded-full text-base font-semibold"
+                    className="flex-1 h-11 rounded-lg text-sm font-semibold"
                     style={{ backgroundColor: '#0077B6', color: '#FFFFFF' }}
                     onClick={handleStartJobClick}
                     disabled={!!loadingAction}
                   >
                     {loadingAction === 'start' ? (
                       <>
-                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         Starting...
                       </>
                     ) : (
                       "Start Job"
                     )}
                   </Button>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      className="flex-1 h-10 rounded-full"
-                      onClick={() => onRelease(lead.id)}
-                      disabled={!!loadingAction}
-                    >
-                      {loadingAction === 'release' ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Releasing...
-                        </>
-                      ) : (
-                        "Release Lead"
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-10 px-4 rounded-full"
-                      onClick={() => window.open(navigationUrl, '_blank', 'noopener,noreferrer')}
-                    >
-                      <Navigation className="h-4 w-4 mr-2" />
-                      Navigate
-                    </Button>
-                  </div>
-                </>
+                  <Button
+                    variant="outline"
+                    className="h-11 px-4 rounded-lg"
+                    onClick={() => onRelease(lead.id)}
+                    disabled={!!loadingAction}
+                  >
+                    {loadingAction === 'release' ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Release"
+                    )}
+                  </Button>
+                </div>
               )}
 
               {/* In Progress leads - show Complete + Release buttons */}
               {isInProgress && (
-                <>
+                <div className="flex gap-2">
                   <Button
-                    className="w-full h-12 rounded-full text-base font-semibold bg-green-600 hover:bg-green-700"
+                    className="flex-1 h-11 rounded-lg text-sm font-semibold bg-green-600 hover:bg-green-700"
                     onClick={handleCompleteClick}
                     disabled={!!loadingAction}
                   >
                     {loadingAction === 'complete' ? (
                       <>
-                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         Completing...
                       </>
                     ) : (
                       "Complete Job"
                     )}
                   </Button>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      className="flex-1 h-10 rounded-full"
-                      onClick={() => onRelease(lead.id)}
-                      disabled={!!loadingAction}
-                    >
-                      {loadingAction === 'release' ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Releasing...
-                        </>
-                      ) : (
-                        "Release Lead"
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-10 px-4 rounded-full"
-                      onClick={() => window.open(navigationUrl, '_blank', 'noopener,noreferrer')}
-                    >
-                      <Navigation className="h-4 w-4 mr-2" />
-                      Navigate
-                    </Button>
-                  </div>
-                </>
-              )}
-
-              {/* Completed leads - just show navigation */}
-              {isCompleted && (
-                <Button
-                  variant="outline"
-                  className="w-full h-10 rounded-full"
-                  onClick={() => window.open(navigationUrl, '_blank', 'noopener,noreferrer')}
-                >
-                  <Navigation className="h-4 w-4 mr-2" />
-                  Navigate to Location
-                </Button>
+                  <Button
+                    variant="outline"
+                    className="h-11 px-4 rounded-lg"
+                    onClick={() => onRelease(lead.id)}
+                    disabled={!!loadingAction}
+                  >
+                    {loadingAction === 'release' ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Release"
+                    )}
+                  </Button>
+                </div>
               )}
             </div>
             </div>
