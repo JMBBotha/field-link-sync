@@ -157,13 +157,13 @@ export function PhotoGallery({
             )
           ) : (
             <>
-              {/* Horizontal scroll row of thumbnails */}
-              <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
-                {allPhotos.slice(0, 6).map((photo, index) => (
+              {/* Grid of thumbnails filling 90% of container */}
+              <div className="grid grid-cols-4 gap-1.5 w-full">
+                {allPhotos.slice(0, 8).map((photo, index) => (
                   <button
                     key={photo.id}
                     onClick={() => onPhotoClick?.(photo, index, allPhotos)}
-                    className="relative shrink-0 w-16 h-16 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary bg-muted"
+                    className="relative aspect-square rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary bg-muted/50"
                   >
                     <img
                       src={photo.url}
@@ -184,9 +184,9 @@ export function PhotoGallery({
                     )}
                   </button>
                 ))}
-                {allPhotos.length > 6 && (
-                  <div className="shrink-0 w-16 h-16 rounded-lg bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                    +{allPhotos.length - 6}
+                {allPhotos.length > 8 && (
+                  <div className="aspect-square rounded-lg bg-black/30 flex items-center justify-center text-xs text-white font-medium">
+                    +{allPhotos.length - 8}
                   </div>
                 )}
               </div>
