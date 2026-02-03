@@ -253,8 +253,8 @@ const AdminNotificationSettings = () => {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 h-full flex flex-col overflow-hidden">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-xl font-semibold flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-green-500" />
@@ -269,8 +269,8 @@ const AdminNotificationSettings = () => {
         </Badge>
       </div>
 
-      <Tabs defaultValue="requests">
-        <TabsList className="grid grid-cols-4 w-full max-w-lg">
+      <Tabs defaultValue="requests" className="flex-1 flex flex-col overflow-hidden">
+        <TabsList className="grid grid-cols-4 w-full max-w-lg shrink-0">
           <TabsTrigger value="requests">Requests</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -278,191 +278,201 @@ const AdminNotificationSettings = () => {
         </TabsList>
 
         {/* Change Requests Tab */}
-        <TabsContent value="requests" className="space-y-4">
-          <ChangeRequestsManager showAll />
+        <TabsContent value="requests" className="flex-1 overflow-hidden mt-4">
+          <ScrollArea className="h-full">
+            <ChangeRequestsManager showAll />
+          </ScrollArea>
         </TabsContent>
 
         {/* Templates Tab */}
-        <TabsContent value="templates" className="space-y-4">
-          {/* Test Phone Input */}
-          <Card>
-            <CardContent className="py-4">
-              <div className="flex items-center gap-3">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <div className="flex-1">
-                  <Label className="text-xs text-muted-foreground">Test Phone Number</Label>
-                  <Input
-                    placeholder="0821234567"
-                    value={testPhone}
-                    onChange={(e) => setTestPhone(e.target.value)}
-                    className="h-8"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {templates.map((template) => {
-            const meta = NOTIFICATION_LABELS[template.setting_key] || {
-              label: template.setting_key,
-              description: "",
-            };
-
-            return (
-              <Card key={template.id}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-base">{meta.label}</CardTitle>
-                      <CardDescription>{meta.description}</CardDescription>
+        <TabsContent value="templates" className="flex-1 overflow-hidden mt-4">
+          <ScrollArea className="h-full">
+            <div className="space-y-4 pr-4">
+              {/* Test Phone Input */}
+              <Card>
+                <CardContent className="py-4">
+                  <div className="flex items-center gap-3">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex-1">
+                      <Label className="text-xs text-muted-foreground">Test Phone Number</Label>
+                      <Input
+                        placeholder="0821234567"
+                        value={testPhone}
+                        onChange={(e) => setTestPhone(e.target.value)}
+                        className="h-8"
+                      />
                     </div>
-                    <Switch
-                      checked={template.enabled}
-                      onCheckedChange={(checked) => {
-                        updateTemplate(template.id, { enabled: checked });
-                        handleTemplateUpdate({ ...template, enabled: checked });
-                      }}
-                    />
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label className="text-xs text-muted-foreground mb-1 block">
-                      Message Template
-                    </Label>
-                    <Textarea
-                      value={template.template_body}
-                      onChange={(e) =>
-                        updateTemplate(template.id, { template_body: e.target.value })
-                      }
-                      rows={4}
-                      className="font-mono text-sm"
-                    />
-                  </div>
-
-                  {template.variables.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      <span className="text-xs text-muted-foreground">Variables:</span>
-                      {template.variables.map((v) => (
-                        <Badge key={v} variant="outline" className="text-xs">
-                          {`{${v}}`}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleTemplateUpdate(template)}
-                      disabled={saving}
-                    >
-                      {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save Changes"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => handleTestSend(template.setting_key)}
-                      disabled={!testPhone || !!testSending}
-                    >
-                      {testSending === template.setting_key ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <>
-                          <Send className="h-3 w-3 mr-1" />
-                          Test
-                        </>
-                      )}
-                    </Button>
                   </div>
                 </CardContent>
               </Card>
-            );
-          })}
+
+              {templates.map((template) => {
+                const meta = NOTIFICATION_LABELS[template.setting_key] || {
+                  label: template.setting_key,
+                  description: "",
+                };
+
+                return (
+                  <Card key={template.id}>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-base">{meta.label}</CardTitle>
+                          <CardDescription>{meta.description}</CardDescription>
+                        </div>
+                        <Switch
+                          checked={template.enabled}
+                          onCheckedChange={(checked) => {
+                            updateTemplate(template.id, { enabled: checked });
+                            handleTemplateUpdate({ ...template, enabled: checked });
+                          }}
+                        />
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <Label className="text-xs text-muted-foreground mb-1 block">
+                          Message Template
+                        </Label>
+                        <Textarea
+                          value={template.template_body}
+                          onChange={(e) =>
+                            updateTemplate(template.id, { template_body: e.target.value })
+                          }
+                          rows={4}
+                          className="font-mono text-sm"
+                        />
+                      </div>
+
+                      {template.variables.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          <span className="text-xs text-muted-foreground">Variables:</span>
+                          {template.variables.map((v) => (
+                            <Badge key={v} variant="outline" className="text-xs">
+                              {`{${v}}`}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleTemplateUpdate(template)}
+                          disabled={saving}
+                        >
+                          {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save Changes"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => handleTestSend(template.setting_key)}
+                          disabled={!testPhone || !!testSending}
+                        >
+                          {testSending === template.setting_key ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <>
+                              <Send className="h-3 w-3 mr-1" />
+                              Test
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </ScrollArea>
         </TabsContent>
 
         {/* Settings Tab */}
-        <TabsContent value="settings">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                Twilio WhatsApp Configuration
-              </CardTitle>
-              <CardDescription>
-                Connect your Twilio account to send WhatsApp messages
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!twilioConfig.configured && (
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-orange-50 border border-orange-200">
-                  <AlertTriangle className="h-5 w-5 text-orange-500 mt-0.5" />
-                  <div className="text-sm">
-                    <p className="font-medium text-orange-800">Not Configured</p>
-                    <p className="text-orange-600">
-                      WhatsApp notifications are disabled until Twilio is configured.
-                    </p>
+        <TabsContent value="settings" className="flex-1 overflow-hidden mt-4">
+          <ScrollArea className="h-full">
+            <div className="pr-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    Twilio WhatsApp Configuration
+                  </CardTitle>
+                  <CardDescription>
+                    Connect your Twilio account to send WhatsApp messages
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {!twilioConfig.configured && (
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-orange-50 border border-orange-200">
+                      <AlertTriangle className="h-5 w-5 text-orange-500 mt-0.5" />
+                      <div className="text-sm">
+                        <p className="font-medium text-orange-800">Not Configured</p>
+                        <p className="text-orange-600">
+                          WhatsApp notifications are disabled until Twilio is configured.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    <div>
+                      <Label>Account SID</Label>
+                      <Input
+                        type="password"
+                        placeholder="AC..."
+                        value={twilioConfig.account_sid}
+                        onChange={(e) =>
+                          setTwilioConfig((prev) => ({ ...prev, account_sid: e.target.value }))
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Auth Token</Label>
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        value={twilioConfig.auth_token}
+                        onChange={(e) =>
+                          setTwilioConfig((prev) => ({ ...prev, auth_token: e.target.value }))
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <Label>WhatsApp Number</Label>
+                      <Input
+                        placeholder="+14155238886"
+                        value={twilioConfig.whatsapp_number}
+                        onChange={(e) =>
+                          setTwilioConfig((prev) => ({ ...prev, whatsapp_number: e.target.value }))
+                        }
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Twilio sandbox: +14155238886
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
 
-              <div className="space-y-3">
-                <div>
-                  <Label>Account SID</Label>
-                  <Input
-                    type="password"
-                    placeholder="AC..."
-                    value={twilioConfig.account_sid}
-                    onChange={(e) =>
-                      setTwilioConfig((prev) => ({ ...prev, account_sid: e.target.value }))
-                    }
-                  />
-                </div>
-
-                <div>
-                  <Label>Auth Token</Label>
-                  <Input
-                    type="password"
-                    placeholder="••••••••"
-                    value={twilioConfig.auth_token}
-                    onChange={(e) =>
-                      setTwilioConfig((prev) => ({ ...prev, auth_token: e.target.value }))
-                    }
-                  />
-                </div>
-
-                <div>
-                  <Label>WhatsApp Number</Label>
-                  <Input
-                    placeholder="+14155238886"
-                    value={twilioConfig.whatsapp_number}
-                    onChange={(e) =>
-                      setTwilioConfig((prev) => ({ ...prev, whatsapp_number: e.target.value }))
-                    }
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Twilio sandbox: +14155238886
-                  </p>
-                </div>
-              </div>
-
-              <Button onClick={handleTwilioConfigSave} disabled={saving} className="w-full">
-                {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                )}
-                Save Configuration
-              </Button>
-            </CardContent>
-          </Card>
+                  <Button onClick={handleTwilioConfigSave} disabled={saving} className="w-full">
+                    {saving ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                    )}
+                    Save Configuration
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </ScrollArea>
         </TabsContent>
 
         {/* Logs Tab */}
-        <TabsContent value="logs">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+        <TabsContent value="logs" className="flex-1 overflow-hidden mt-4">
+          <Card className="h-full flex flex-col">
+            <CardHeader className="flex flex-row items-center justify-between shrink-0">
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <History className="h-4 w-4" />
@@ -475,14 +485,14 @@ const AdminNotificationSettings = () => {
                 Refresh
               </Button>
             </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-96">
+            <CardContent className="flex-1 overflow-hidden">
+              <ScrollArea className="h-full">
                 {logs.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">
                     No notifications sent yet
                   </p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-2 pr-4">
                     {logs.map((log) => (
                       <div
                         key={log.id}

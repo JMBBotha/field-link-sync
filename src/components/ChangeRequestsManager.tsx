@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Clock,
   Calendar,
@@ -263,123 +262,121 @@ const ChangeRequestsManager = ({ leadId, showAll = false }: ChangeRequestsManage
         </Button>
       </div>
 
-      <ScrollArea className="max-h-[500px]">
-        <div className="space-y-3">
-          {requests.map((request) => {
-            const typeConfig = REQUEST_TYPE_CONFIG[request.request_type] || {
-              icon: <Clock className="h-4 w-4" />,
-              label: request.request_type,
-            };
+      <div className="space-y-3">
+        {requests.map((request) => {
+          const typeConfig = REQUEST_TYPE_CONFIG[request.request_type] || {
+            icon: <Clock className="h-4 w-4" />,
+            label: request.request_type,
+          };
 
-            return (
-              <Card key={request.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                        {typeConfig.icon}
-                      </div>
-                      <div>
-                        <CardTitle className="text-sm">{typeConfig.label}</CardTitle>
-                        {request.lead && (
-                          <CardDescription className="text-xs">
-                            {request.lead.customer_name} • {request.lead.service_type}
-                          </CardDescription>
+          return (
+            <Card key={request.id}>
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                      {typeConfig.icon}
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm">{typeConfig.label}</CardTitle>
+                      {request.lead && (
+                        <CardDescription className="text-xs">
+                          {request.lead.customer_name} • {request.lead.service_type}
+                        </CardDescription>
+                      )}
+                    </div>
+                  </div>
+                  {getStatusBadge(request.status)}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* Requester info */}
+                {request.requester && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <User className="h-3 w-3" />
+                    <span>{request.requester.full_name}</span>
+                    <span>•</span>
+                    <span>{format(new Date(request.created_at), "MMM d, h:mm a")}</span>
+                  </div>
+                )}
+
+                {/* Current vs Requested */}
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="p-2 rounded bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Current</p>
+                    <p className="font-medium">{request.current_value || "Not set"}</p>
+                  </div>
+                  <div className="p-2 rounded bg-primary/10">
+                    <p className="text-xs text-muted-foreground">Requested</p>
+                    <p className="font-medium text-primary">{request.requested_value}</p>
+                  </div>
+                </div>
+
+                {/* Reason */}
+                {request.reason && (
+                  <div className="text-sm">
+                    <p className="text-xs text-muted-foreground">Reason</p>
+                    <p>{request.reason}</p>
+                  </div>
+                )}
+
+                {/* Action buttons for pending requests */}
+                {request.status === "pending" && (
+                  <div className="space-y-2 pt-2 border-t">
+                    <Textarea
+                      placeholder="Add review notes (optional)"
+                      value={reviewNotes[request.id] || ""}
+                      onChange={(e) =>
+                        setReviewNotes((prev) => ({
+                          ...prev,
+                          [request.id]: e.target.value,
+                        }))
+                      }
+                      rows={2}
+                      className="text-sm"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handleApprove(request)}
+                        disabled={processing === request.id}
+                      >
+                        {processing === request.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <>
+                            <Check className="h-3 w-3 mr-1" />
+                            Approve
+                          </>
                         )}
-                      </div>
-                    </div>
-                    {getStatusBadge(request.status)}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {/* Requester info */}
-                  {request.requester && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <User className="h-3 w-3" />
-                      <span>{request.requester.full_name}</span>
-                      <span>•</span>
-                      <span>{format(new Date(request.created_at), "MMM d, h:mm a")}</span>
-                    </div>
-                  )}
-
-                  {/* Current vs Requested */}
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="p-2 rounded bg-muted/50">
-                      <p className="text-xs text-muted-foreground">Current</p>
-                      <p className="font-medium">{request.current_value || "Not set"}</p>
-                    </div>
-                    <div className="p-2 rounded bg-primary/10">
-                      <p className="text-xs text-muted-foreground">Requested</p>
-                      <p className="font-medium text-primary">{request.requested_value}</p>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => handleReject(request)}
+                        disabled={processing === request.id}
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Reject
+                      </Button>
                     </div>
                   </div>
+                )}
 
-                  {/* Reason */}
-                  {request.reason && (
-                    <div className="text-sm">
-                      <p className="text-xs text-muted-foreground">Reason</p>
-                      <p>{request.reason}</p>
-                    </div>
-                  )}
-
-                  {/* Action buttons for pending requests */}
-                  {request.status === "pending" && (
-                    <div className="space-y-2 pt-2 border-t">
-                      <Textarea
-                        placeholder="Add review notes (optional)"
-                        value={reviewNotes[request.id] || ""}
-                        onChange={(e) =>
-                          setReviewNotes((prev) => ({
-                            ...prev,
-                            [request.id]: e.target.value,
-                          }))
-                        }
-                        rows={2}
-                        className="text-sm"
-                      />
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => handleApprove(request)}
-                          disabled={processing === request.id}
-                        >
-                          {processing === request.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <>
-                              <Check className="h-3 w-3 mr-1" />
-                              Approve
-                            </>
-                          )}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => handleReject(request)}
-                          disabled={processing === request.id}
-                        >
-                          <X className="h-3 w-3 mr-1" />
-                          Reject
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Review notes for processed requests */}
-                  {request.status !== "pending" && request.review_notes && (
-                    <div className="text-sm pt-2 border-t">
-                      <p className="text-xs text-muted-foreground">Review Notes</p>
-                      <p>{request.review_notes}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </ScrollArea>
+                {/* Review notes for processed requests */}
+                {request.status !== "pending" && request.review_notes && (
+                  <div className="text-sm pt-2 border-t">
+                    <p className="text-xs text-muted-foreground">Review Notes</p>
+                    <p>{request.review_notes}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 };
