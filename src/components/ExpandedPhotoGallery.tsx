@@ -160,7 +160,7 @@ export function ExpandedPhotoGallery({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg max-h-[80vh] p-0 gap-0 overflow-hidden">
+        <DialogContent className="max-w-lg max-h-[80vh] p-0 gap-0 overflow-hidden [&>button]:hidden">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b shrink-0">
             <div className="flex items-center gap-2">
