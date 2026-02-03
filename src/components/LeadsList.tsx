@@ -3,9 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Phone, MapPin, Clock, Trash2, MoreHorizontal, Navigation, ChevronDown, ChevronUp, RefreshCw, ArrowUp, Pencil, Timer, ImageIcon } from "lucide-react";
+import { Phone, MapPin, Clock, Trash2, MoreHorizontal, Navigation, ChevronDown, ChevronUp, RefreshCw, ArrowUp, Pencil, Timer, ImageIcon, CalendarDays } from "lucide-react";
 import LeadCardProgress from "./LeadCardProgress";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -43,6 +43,7 @@ interface Lead {
   longitude: number;
   notes?: string | null;
   priority?: string;
+  scheduled_date?: string | null;
   profiles?: { full_name: string };
   started_at?: string | null;
   estimated_duration_minutes?: number | null;
@@ -324,13 +325,20 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
           )}
           <div className="flex-shrink-0">{getStatusBadge(lead.status)}</div>
         </div>
-        {/* Line 2: Service type (truncated) + Time */}
+        {/* Line 2: Service type (truncated) + Scheduled date or Time */}
         <div className="flex items-center gap-2 mt-1 min-w-0">
           <span className="text-xs text-muted-foreground truncate min-w-0 flex-1">{lead.service_type}</span>
-          <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0 flex items-center gap-1">
-            <Clock className="h-3 w-3 flex-shrink-0" />
-            <span className="truncate max-w-[80px]">{formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}</span>
-          </span>
+          {lead.scheduled_date ? (
+            <span className="text-xs text-primary whitespace-nowrap flex-shrink-0 flex items-center gap-1 font-medium">
+              <CalendarDays className="h-3 w-3 flex-shrink-0" />
+              <span>{format(new Date(lead.scheduled_date), "d MMM")}</span>
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0 flex items-center gap-1">
+              <Clock className="h-3 w-3 flex-shrink-0" />
+              <span className="truncate max-w-[80px]">{formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}</span>
+            </span>
+          )}
         </div>
       </div>
       <ChevronDown className={`h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform ${expandedCards.has(lead.id) ? 'rotate-180' : ''}`} />
@@ -364,6 +372,12 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
           <Clock className="h-3 w-3 flex-shrink-0" />
           <span className="truncate">{formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}</span>
         </div>
+        {lead.scheduled_date && (
+          <div className="flex items-center gap-1 text-xs text-primary font-medium flex-shrink-0">
+            <CalendarDays className="h-3 w-3" />
+            <span>{format(new Date(lead.scheduled_date), "d MMM yyyy")}</span>
+          </div>
+        )}
       </div>
       {/* Job Progress Bar for in_progress leads */}
       {lead.status === "in_progress" && lead.started_at && (
@@ -392,8 +406,14 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <CardTitle className="text-base">{lead.customer_name}</CardTitle>
-            <CardDescription className="text-xs">
-              {lead.service_type}
+            <CardDescription className="text-xs flex items-center gap-2">
+              <span>{lead.service_type}</span>
+              {lead.scheduled_date && (
+                <span className="flex items-center gap-1 text-primary font-medium">
+                  <CalendarDays className="h-3 w-3" />
+                  {format(new Date(lead.scheduled_date), "d MMM")}
+                </span>
+              )}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
