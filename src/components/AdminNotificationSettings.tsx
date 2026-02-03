@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import ChangeRequestsManager from "./ChangeRequestsManager";
 import {
   MessageSquare,
   Settings,
@@ -22,6 +23,7 @@ import {
   RefreshCw,
   AlertTriangle,
   Phone,
+  ClipboardList,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -267,12 +269,18 @@ const AdminNotificationSettings = () => {
         </Badge>
       </div>
 
-      <Tabs defaultValue="templates">
-        <TabsList className="grid grid-cols-3 w-full max-w-md">
+      <Tabs defaultValue="requests">
+        <TabsList className="grid grid-cols-4 w-full max-w-lg">
+          <TabsTrigger value="requests">Requests</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="logs">Delivery Log</TabsTrigger>
         </TabsList>
+
+        {/* Change Requests Tab */}
+        <TabsContent value="requests" className="space-y-4">
+          <ChangeRequestsManager showAll />
+        </TabsContent>
 
         {/* Templates Tab */}
         <TabsContent value="templates" className="space-y-4">

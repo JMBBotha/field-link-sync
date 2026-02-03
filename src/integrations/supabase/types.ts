@@ -366,6 +366,62 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_change_requests: {
+        Row: {
+          created_at: string
+          current_value: string | null
+          id: string
+          lead_id: string
+          reason: string | null
+          request_type: string
+          requested_by: string
+          requested_value: string
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_value?: string | null
+          id?: string
+          lead_id: string
+          reason?: string | null
+          request_type: string
+          requested_by: string
+          requested_value: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_value?: string | null
+          id?: string
+          lead_id?: string
+          reason?: string | null
+          request_type?: string
+          requested_by?: string
+          requested_value?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_change_requests_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           accepted_at: string | null

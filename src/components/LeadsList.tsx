@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Phone, MapPin, Clock, Trash2, MoreHorizontal, Navigation, ChevronDown, ChevronUp, RefreshCw, ArrowUp, Pencil } from "lucide-react";
+import { Phone, MapPin, Clock, Trash2, MoreHorizontal, Navigation, ChevronDown, ChevronUp, RefreshCw, ArrowUp, Pencil, Timer } from "lucide-react";
 import LeadCardProgress from "./LeadCardProgress";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import EditLeadDialog from "./EditLeadDialog";
+import LeadTimeEditDialog from "./LeadTimeEditDialog";
 
 interface Lead {
   id: string;
@@ -61,6 +62,7 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
   const [pullDistance, setPullDistance] = useState(0);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [editingTimesLead, setEditingTimesLead] = useState<Lead | null>(null);
   const [clickedCardId, setClickedCardId] = useState<string | null>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -396,6 +398,10 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
                   <Pencil className="h-4 w-4 mr-2" />
                   Edit Lead
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setEditingTimesLead(lead)}>
+                  <Timer className="h-4 w-4 mr-2" />
+                  Edit Times
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {statusOptions.map((status) => (
                   <DropdownMenuItem
@@ -458,6 +464,10 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
                   <DropdownMenuItem onClick={() => setEditingLead(lead)}>
                     <Pencil className="h-4 w-4 mr-2" />
                     Edit Lead
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setEditingTimesLead(lead)}>
+                    <Timer className="h-4 w-4 mr-2" />
+                    Edit Times
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   {statusOptions.map((status) => (
@@ -603,6 +613,16 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
         onOpenChange={(open) => !open && setEditingLead(null)}
         onSuccess={() => fetchLeads()}
       />
+
+      {/* Edit Times Dialog (Admin) */}
+      {editingTimesLead && (
+        <LeadTimeEditDialog
+          lead={editingTimesLead}
+          open={!!editingTimesLead}
+          onOpenChange={(open) => !open && setEditingTimesLead(null)}
+          onSaved={() => fetchLeads()}
+        />
+      )}
     </div>
   );
 };

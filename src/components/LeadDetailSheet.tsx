@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ImageIcon } from "lucide-react";
+import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ImageIcon, ClockIcon } from "lucide-react";
 import { useJobPhotos, PhotoType } from "@/hooks/useJobPhotos";
 import { useOffline } from "@/contexts/OfflineContext";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import EditLeadDialog from "./EditLeadDialog";
 import JobDurationPicker from "./JobDurationPicker";
 import JobProgressSection from "./JobProgressSection";
 import { PhotoGallery } from "./PhotoGallery";
+import AgentChangeRequestDialog from "./AgentChangeRequestDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -135,6 +136,7 @@ const LeadDetailSheet = ({
   const [showCustomerProfile, setShowCustomerProfile] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
+  const [showChangeRequestDialog, setShowChangeRequestDialog] = useState(false);
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null);
   const [showPhotoTypePicker, setShowPhotoTypePicker] = useState(false);
   const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
@@ -434,6 +436,18 @@ const LeadDetailSheet = ({
                 </Button>
               )}
 
+              {/* Request Time Change button for field agents on accepted/in_progress/completed leads */}
+              {isOwner && (isClaimed || isInProgress || isCompleted) && (
+                <Button
+                  variant="outline"
+                  className="w-full h-10 rounded-full"
+                  onClick={() => setShowChangeRequestDialog(true)}
+                >
+                  <ClockIcon className="h-4 w-4 mr-2" />
+                  Request Time Change
+                </Button>
+              )}
+
               {/* Available leads - show Accept button */}
               {isAvailable && (
                 <Button
@@ -606,6 +620,22 @@ const LeadDetailSheet = ({
         isLoading={loadingAction === 'start'}
         mode="start"
       />
+
+      {/* Agent Change Request Dialog */}
+      {currentUserId && (
+        <AgentChangeRequestDialog
+          open={showChangeRequestDialog}
+          onOpenChange={setShowChangeRequestDialog}
+          lead={lead}
+          agentId={currentUserId}
+          onRequestSent={() => {
+            toast({
+              title: "Request submitted",
+              description: "Admin will review your change request",
+            });
+          }}
+        />
+      )}
 
       {/* Photo Type Picker */}
       <Dialog open={showPhotoTypePicker} onOpenChange={setShowPhotoTypePicker}>
