@@ -357,18 +357,16 @@ const LeadDetailSheet = ({
               </div>
             )}
 
-            {/* Photo Gallery - show for in-progress and completed jobs */}
-            {(isInProgress || isCompleted) && (
-              <div className="p-3 rounded-xl bg-background/50">
-                <PhotoGallery 
-                  leadId={lead.id} 
-                  isOnline={isOnline} 
-                  onDeletePhoto={deletePhoto}
-                  deleting={photoDeleting}
-                  refreshKey={galleryRefreshKey}
-                />
-              </div>
-            )}
+            {/* Photo Gallery - show for all leads */}
+            <div className="p-3 rounded-xl bg-background/50">
+              <PhotoGallery 
+                leadId={lead.id} 
+                isOnline={isOnline} 
+                onDeletePhoto={deletePhoto}
+                deleting={photoDeleting}
+                refreshKey={galleryRefreshKey}
+              />
+            </div>
 
             {/* Time */}
             {lead.created_at && (
@@ -380,49 +378,45 @@ const LeadDetailSheet = ({
 
             {/* Action Buttons */}
             <div className="space-y-2 pt-2">
-              {/* Photo upload for in-progress jobs */}
-              {isInProgress && (
-                <>
-                  <input
-                    ref={photoInputRef}
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setPendingPhotoFile(file);
-                        setShowPhotoTypePicker(true);
-                        e.target.value = '';
-                      }
-                    }}
-                  />
-                  <Button
-                    variant="outline"
-                    className="w-full h-10 rounded-full"
-                    onClick={() => photoInputRef.current?.click()}
-                    disabled={photoUploading}
-                  >
-                    {photoUploading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Compressing...
-                      </>
-                    ) : (
-                      <>
-                        <Camera className="h-4 w-4 mr-2" />
-                        Add Photo
-                        {photoPendingCount > 0 && (
-                          <span className="ml-2 text-xs bg-yellow-500/20 text-yellow-600 px-2 py-0.5 rounded-full">
-                            {photoPendingCount} queued
-                          </span>
-                        )}
-                      </>
+              {/* Photo upload - available for all lead stages */}
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setPendingPhotoFile(file);
+                    setShowPhotoTypePicker(true);
+                    e.target.value = '';
+                  }
+                }}
+              />
+              <Button
+                variant="outline"
+                className="w-full h-10 rounded-full"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={photoUploading}
+              >
+                {photoUploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Compressing...
+                  </>
+                ) : (
+                  <>
+                    <Camera className="h-4 w-4 mr-2" />
+                    Add Photo
+                    {photoPendingCount > 0 && (
+                      <span className="ml-2 text-xs bg-yellow-500/20 text-yellow-600 px-2 py-0.5 rounded-full">
+                        {photoPendingCount} queued
+                      </span>
                     )}
-                  </Button>
-                </>
-              )}
+                  </>
+                )}
+              </Button>
 
               {/* Edit button for assigned leads */}
               {canEdit && (

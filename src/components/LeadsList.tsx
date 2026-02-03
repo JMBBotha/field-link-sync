@@ -3,13 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Phone, MapPin, Clock, Trash2, MoreHorizontal, Navigation, ChevronDown, ChevronUp, RefreshCw, ArrowUp, Pencil, Timer } from "lucide-react";
+import { Phone, MapPin, Clock, Trash2, MoreHorizontal, Navigation, ChevronDown, ChevronUp, RefreshCw, ArrowUp, Pencil, Timer, ImageIcon } from "lucide-react";
 import LeadCardProgress from "./LeadCardProgress";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useLeadPhotoCount } from "@/hooks/useLeadPhotoCount";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,6 +67,10 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
   const [clickedCardId, setClickedCardId] = useState<string | null>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  
+  // Get photo counts for all leads
+  const leadIds = leads.map(l => l.id);
+  const { photoCounts } = useLeadPhotoCount(leadIds);
   
   // Pull-to-refresh refs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -311,6 +316,12 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
         {/* Line 1: Customer name + Status badge */}
         <div className="flex items-center gap-2 min-w-0">
           <span className="font-medium text-sm truncate min-w-0 flex-1">{lead.customer_name}</span>
+          {photoCounts[lead.id] > 0 && (
+            <span className="flex items-center gap-0.5 text-xs text-muted-foreground flex-shrink-0">
+              <ImageIcon className="h-3 w-3" />
+              {photoCounts[lead.id]}
+            </span>
+          )}
           <div className="flex-shrink-0">{getStatusBadge(lead.status)}</div>
         </div>
         {/* Line 2: Service type (truncated) + Time */}
@@ -386,6 +397,12 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            {photoCounts[lead.id] > 0 && (
+              <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                <ImageIcon className="h-3 w-3" />
+                {photoCounts[lead.id]}
+              </span>
+            )}
             {getStatusBadge(lead.status)}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
