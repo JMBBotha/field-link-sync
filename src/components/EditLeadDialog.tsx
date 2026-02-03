@@ -18,10 +18,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Clock } from "lucide-react";
+import { Loader2, Clock, CalendarIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 import LocationPicker from "./LocationPicker";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, parseISO } from "date-fns";
 
 interface Lead {
   id: string;
@@ -34,6 +41,7 @@ interface Lead {
   longitude: number;
   notes?: string | null;
   priority?: string;
+  scheduled_date?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -58,6 +66,7 @@ const EditLeadDialog = ({ lead, open, onOpenChange, onSuccess }: EditLeadDialogP
   const [showManualCoords, setShowManualCoords] = useState(false);
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
+  const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
   const { toast } = useToast();
 
   // Format phone for WhatsApp (SA format)
@@ -91,6 +100,7 @@ const EditLeadDialog = ({ lead, open, onOpenChange, onSuccess }: EditLeadDialogP
       });
       setLatitude(lead.latitude);
       setLongitude(lead.longitude);
+      setScheduledDate(lead.scheduled_date ? parseISO(lead.scheduled_date) : undefined);
     }
   }, [lead, open]);
 
@@ -128,6 +138,7 @@ const EditLeadDialog = ({ lead, open, onOpenChange, onSuccess }: EditLeadDialogP
           service_type: formData.service_type,
           notes: formData.notes,
           priority: formData.priority,
+          scheduled_date: scheduledDate ? format(scheduledDate, "yyyy-MM-dd") : null,
           latitude,
           longitude,
         })
@@ -289,6 +300,33 @@ const EditLeadDialog = ({ lead, open, onOpenChange, onSuccess }: EditLeadDialogP
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* Scheduled Date */}
+          <div className="space-y-2">
+            <Label>Scheduled Date (Optional)</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !scheduledDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {scheduledDate ? format(scheduledDate, "PPP") : "Select a date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={scheduledDate}
+                  onSelect={setScheduledDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="space-y-2">
