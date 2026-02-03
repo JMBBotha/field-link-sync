@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -201,52 +202,54 @@ export function PhotoGallery({
             </Badge>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          {photoList.map((photo) => (
-            <div key={photo.id} className="relative group">
-              <button
-                onClick={() => setSelectedPhoto(photo)}
-                disabled={deleting}
-                className={`w-full aspect-square rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary bg-muted ${
-                  photo.isQueued ? 'opacity-80' : ''
-                }`}
-              >
-                <img
-                  src={photo.url}
-                  alt={photo.caption || `${photo.photoType} photo`}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                  draggable={false}
-                />
-              </button>
-
-              {/* Delete button */}
-              {onDeletePhoto && (
+        <ScrollArea className="max-h-48">
+          <div className="grid grid-cols-2 gap-2 pr-2">
+            {photoList.map((photo) => (
+              <div key={photo.id} className="relative group">
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteRequest(photo);
-                  }}
+                  onClick={() => setSelectedPhoto(photo)}
                   disabled={deleting}
-                  className="absolute top-1 right-1 p-1.5 rounded-full bg-red-500/90 hover:bg-red-600 text-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity md:opacity-100"
-                  aria-label="Delete photo"
+                  className={`w-full aspect-square rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary bg-muted ${
+                    photo.isQueued ? 'opacity-80' : ''
+                  }`}
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <img
+                    src={photo.url}
+                    alt={photo.caption || `${photo.photoType} photo`}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    draggable={false}
+                  />
                 </button>
-              )}
 
-              {/* Status badge */}
-              {photo.isQueued && (
-                <div className="absolute top-1 left-1 pointer-events-none">
-                  <Badge className="bg-yellow-500/90 text-[10px] px-1.5 py-0 h-4">
-                    <Clock className="h-2.5 w-2.5 mr-0.5" />
-                    Queued
-                  </Badge>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+                {/* Delete button */}
+                {onDeletePhoto && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteRequest(photo);
+                    }}
+                    disabled={deleting}
+                    className="absolute top-1 right-1 p-1.5 rounded-full bg-red-500/90 hover:bg-red-600 text-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity md:opacity-100"
+                    aria-label="Delete photo"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+
+                {/* Status badge */}
+                {photo.isQueued && (
+                  <div className="absolute top-1 left-1 pointer-events-none">
+                    <Badge className="bg-yellow-500/90 text-[10px] px-1.5 py-0 h-4">
+                      <Clock className="h-2.5 w-2.5 mr-0.5" />
+                      Queued
+                    </Badge>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
       </div>
     );
   };
