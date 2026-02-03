@@ -257,22 +257,18 @@ export function PhotoGallery({
   return (
     <>
       <div className="space-y-4">
-        {/* Add Photos Button */}
-        {onAddPhotos && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full h-9 gap-2 border-dashed"
-            onClick={onAddPhotos}
-          >
-            <Plus className="h-4 w-4" />
-            <Camera className="h-4 w-4" />
-            Add Photos
-          </Button>
-        )}
-
-        {beforePhotos.length === 0 && afterPhotos.length === 0 && !onAddPhotos && (
-          <p className="text-xs text-muted-foreground text-center py-2">No photos yet</p>
+        {beforePhotos.length === 0 && afterPhotos.length === 0 && (
+          onAddPhotos ? (
+            <button
+              onClick={onAddPhotos}
+              className="text-xs text-primary hover:text-primary/80 hover:underline text-center py-2 w-full flex items-center justify-center gap-1 transition-colors"
+            >
+              <Plus className="h-3 w-3" />
+              Add Photos
+            </button>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-2">No photos yet</p>
+          )
         )}
 
         {renderPhotoGrid(beforePhotos, "Before")}
