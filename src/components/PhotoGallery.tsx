@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
-import { X, Cloud, Clock } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { X, Cloud, Clock, Plus, Camera, Trash2 } from 'lucide-react';
 import { offlineDb } from '@/lib/offlineDb';
 import { supabase } from '@/integrations/supabase/client';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { SwipeablePhoto } from './SwipeablePhoto';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +31,7 @@ interface PhotoGalleryProps {
   leadId: string;
   isOnline: boolean;
   onDeletePhoto?: (photoId: string, storagePath?: string) => Promise<void>;
+  onAddPhotos?: () => void;
   deleting?: boolean;
   refreshKey?: number;
 }
@@ -39,6 +40,7 @@ export function PhotoGallery({
   leadId, 
   isOnline, 
   onDeletePhoto,
+  onAddPhotos,
   deleting,
   refreshKey = 0,
 }: PhotoGalleryProps) {
@@ -46,6 +48,8 @@ export function PhotoGallery({
   const [loading, setLoading] = useState(true);
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoItem | null>(null);
   const [photoToDelete, setPhotoToDelete] = useState<PhotoItem | null>(null);
+  const [deleteAllMode, setDeleteAllMode] = useState(false);
+  const [pendingDeletes, setPendingDeletes] = useState<PhotoItem[]>([]);
 
   const loadPhotos = useCallback(async () => {
     setLoading(true);
@@ -111,29 +115,64 @@ export function PhotoGallery({
     }
   }, [isOnline, loadPhotos]);
 
+  const handleDeleteRequest = (photo: PhotoItem) => {
+    // Add to pending deletes queue
+    setPendingDeletes(prev => [...prev, photo]);
+    setPhotoToDelete(photo);
+  };
+
   const handleDeleteConfirm = async () => {
     if (!photoToDelete || !onDeletePhoto) return;
     
     await onDeletePhoto(photoToDelete.id, photoToDelete.storagePath);
+    
+    // Remove from pending deletes
+    setPendingDeletes(prev => prev.filter(p => p.id !== photoToDelete.id));
     setPhotoToDelete(null);
+    
     // Refresh after delete
     await loadPhotos();
+  };
+
+  const handleDeleteAllConfirm = async () => {
+    if (!onDeletePhoto || pendingDeletes.length === 0) return;
+    
+    // Delete all pending photos
+    for (const photo of pendingDeletes) {
+      await onDeletePhoto(photo.id, photo.storagePath);
+    }
+    
+    setPendingDeletes([]);
+    setDeleteAllMode(false);
+    setPhotoToDelete(null);
+    
+    // Refresh after delete
+    await loadPhotos();
+  };
+
+  const handleIgnoreDelete = () => {
+    // Remove current photo from pending
+    if (photoToDelete) {
+      setPendingDeletes(prev => prev.filter(p => p.id !== photoToDelete.id));
+    }
+    setPhotoToDelete(null);
+  };
+
+  const handleIgnoreAll = () => {
+    setPendingDeletes([]);
+    setPhotoToDelete(null);
+    setDeleteAllMode(false);
   };
 
   if (loading) {
     return (
       <div className="space-y-2">
-        <p className="text-xs text-muted-foreground font-medium">Photos</p>
         <div className="grid grid-cols-2 gap-2">
           <Skeleton className="aspect-square rounded-lg" />
           <Skeleton className="aspect-square rounded-lg" />
         </div>
       </div>
     );
-  }
-
-  if (photos.length === 0) {
-    return null;
   }
 
   const beforePhotos = photos.filter(p => p.photoType === 'before');
@@ -164,17 +203,48 @@ export function PhotoGallery({
         </div>
         <div className="grid grid-cols-2 gap-2">
           {photoList.map((photo) => (
-            <SwipeablePhoto
-              key={photo.id}
-              id={photo.id}
-              url={photo.url}
-              caption={photo.caption}
-              photoType={photo.photoType}
-              isQueued={photo.isQueued}
-              onClick={() => setSelectedPhoto(photo)}
-              onDelete={() => setPhotoToDelete(photo)}
-              deleting={deleting}
-            />
+            <div key={photo.id} className="relative group">
+              <button
+                onClick={() => setSelectedPhoto(photo)}
+                disabled={deleting}
+                className={`w-full aspect-square rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary bg-muted ${
+                  photo.isQueued ? 'opacity-80' : ''
+                }`}
+              >
+                <img
+                  src={photo.url}
+                  alt={photo.caption || `${photo.photoType} photo`}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                  draggable={false}
+                />
+              </button>
+
+              {/* Delete button */}
+              {onDeletePhoto && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteRequest(photo);
+                  }}
+                  disabled={deleting}
+                  className="absolute top-1 right-1 p-1.5 rounded-full bg-red-500/90 hover:bg-red-600 text-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity md:opacity-100"
+                  aria-label="Delete photo"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+
+              {/* Status badge */}
+              {photo.isQueued && (
+                <div className="absolute top-1 left-1 pointer-events-none">
+                  <Badge className="bg-yellow-500/90 text-[10px] px-1.5 py-0 h-4">
+                    <Clock className="h-2.5 w-2.5 mr-0.5" />
+                    Queued
+                  </Badge>
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </div>
@@ -184,6 +254,24 @@ export function PhotoGallery({
   return (
     <>
       <div className="space-y-4">
+        {/* Add Photos Button */}
+        {onAddPhotos && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full h-9 gap-2 border-dashed"
+            onClick={onAddPhotos}
+          >
+            <Plus className="h-4 w-4" />
+            <Camera className="h-4 w-4" />
+            Add Photos
+          </Button>
+        )}
+
+        {beforePhotos.length === 0 && afterPhotos.length === 0 && !onAddPhotos && (
+          <p className="text-xs text-muted-foreground text-center py-2">No photos yet</p>
+        )}
+
         {renderPhotoGrid(beforePhotos, "Before")}
         {renderPhotoGrid(afterPhotos, "After")}
       </div>
@@ -220,7 +308,7 @@ export function PhotoGallery({
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirmation dialog */}
+      {/* Delete confirmation dialog with Delete All option */}
       <AlertDialog open={!!photoToDelete} onOpenChange={() => setPhotoToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -234,14 +322,40 @@ export function PhotoGallery({
               }
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteConfirm}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Delete
-            </AlertDialogAction>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <div className="flex gap-2 w-full sm:w-auto">
+              <AlertDialogCancel onClick={handleIgnoreDelete} className="flex-1 sm:flex-none">
+                Ignore
+              </AlertDialogCancel>
+              {pendingDeletes.length > 1 && (
+                <Button
+                  variant="outline"
+                  onClick={handleIgnoreAll}
+                  className="flex-1 sm:flex-none"
+                >
+                  Ignore All ({pendingDeletes.length})
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <AlertDialogAction 
+                onClick={handleDeleteConfirm}
+                className="bg-red-600 hover:bg-red-700 flex-1 sm:flex-none"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Delete
+              </AlertDialogAction>
+              {pendingDeletes.length > 1 && (
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteAllConfirm}
+                  className="flex-1 sm:flex-none"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete All ({pendingDeletes.length})
+                </Button>
+              )}
+            </div>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
