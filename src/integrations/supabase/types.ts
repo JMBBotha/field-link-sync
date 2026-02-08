@@ -529,6 +529,56 @@ export type Database = {
         }
         Relationships: []
       }
+      job_time_entries: {
+        Row: {
+          agent_id: string
+          created_at: string
+          end_time: string
+          hours_onsite: number | null
+          id: string
+          is_billable: boolean
+          lead_id: string
+          notes: string | null
+          start_time: string
+          travel_hours: number
+          work_date: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          end_time: string
+          hours_onsite?: number | null
+          id?: string
+          is_billable?: boolean
+          lead_id: string
+          notes?: string | null
+          start_time: string
+          travel_hours?: number
+          work_date?: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          end_time?: string
+          hours_onsite?: number | null
+          id?: string
+          is_billable?: boolean
+          lead_id?: string
+          notes?: string | null
+          start_time?: string
+          travel_hours?: number
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_time_entries_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_change_requests: {
         Row: {
           created_at: string
@@ -1397,6 +1447,14 @@ export type Database = {
         Args: { lat1: number; lat2: number; lng1: number; lng2: number }
         Returns: number
       }
+      convert_time_to_invoice_items: {
+        Args: {
+          p_hourly_rate?: number
+          p_invoice_id: string
+          p_lead_id: string
+        }
+        Returns: number
+      }
       generate_invoice_number: { Args: never; Returns: string }
       generate_quote_number: { Args: never; Returns: string }
       get_agents_within_radius: {
@@ -1476,6 +1534,7 @@ export type Database = {
           total_outstanding: number
         }[]
       }
+      get_job_billable_hours: { Args: { p_lead_id: string }; Returns: number }
       get_or_create_customer_token: {
         Args: { p_customer_id: string }
         Returns: string
