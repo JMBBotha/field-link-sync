@@ -28,6 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 import InvoiceDashboardWidget from "@/components/invoicing/InvoiceDashboardWidget";
 import InvoiceListPage from "@/components/invoicing/InvoiceListPage";
+import QuotesList from "@/components/quoting/QuotesList";
 
 interface Lead {
   id: string;
@@ -58,7 +59,7 @@ const AdminDashboard = () => {
   const [completedPanelCollapsed, setCompletedPanelCollapsed] = useState(true);
   const [showCompletedFilter, setShowCompletedFilter] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"map" | "agreements" | "settings" | "notifications" | "invoices">("map");
+  const [activeTab, setActiveTab] = useState<"map" | "agreements" | "settings" | "notifications" | "invoices" | "quotes">("map");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
@@ -206,7 +207,15 @@ const AdminDashboard = () => {
               >
                 {pendingRequestsCount > 99 ? "99+" : pendingRequestsCount}
               </Badge>
-            )}
+             )}
+          </Button>
+          <Button 
+            variant={activeTab === "quotes" ? "secondary" : "ghost"} 
+            onClick={() => setActiveTab(activeTab === "quotes" ? "map" : "quotes")} 
+            className={activeTab === "quotes" ? "bg-white text-blue-600" : "text-white hover:bg-blue-500"}
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            Quotes
           </Button>
           <Button 
             variant={activeTab === "invoices" ? "secondary" : "ghost"} 
@@ -258,6 +267,20 @@ const AdminDashboard = () => {
               <SheetTitle className="text-white text-left">Menu</SheetTitle>
             </SheetHeader>
             <div className="flex flex-col gap-3 mt-6">
+              <Button 
+                onClick={() => {
+                  setActiveTab(activeTab === "quotes" ? "map" : "quotes");
+                  setMobileMenuOpen(false);
+                }} 
+                variant={activeTab === "quotes" ? "secondary" : "ghost"}
+                className={activeTab === "quotes" 
+                  ? "bg-white text-blue-600 justify-start" 
+                  : "text-white hover:bg-blue-500 justify-start"
+                }
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Quotes
+              </Button>
               <Button 
                 onClick={() => {
                   setActiveTab(activeTab === "invoices" ? "map" : "invoices");
@@ -340,6 +363,13 @@ const AdminDashboard = () => {
       {activeTab === "notifications" ? (
         <div className="flex-1 overflow-auto bg-background">
           <AdminNotificationSettings />
+        </div>
+      ) : activeTab === "quotes" ? (
+        <div className="flex-1 overflow-auto bg-background">
+          <QuotesList
+            onCreateNew={() => navigate("/quotes")}
+            onEditQuote={(id) => navigate("/quotes")}
+          />
         </div>
       ) : activeTab === "invoices" ? (
         <div className="flex-1 overflow-auto bg-background">

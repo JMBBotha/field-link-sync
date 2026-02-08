@@ -13,6 +13,7 @@ import CustomerFeedbackForm from "./components/CustomerFeedbackForm";
 import CustomerInvoiceView from "./components/CustomerInvoiceView";
 import NotFound from "./pages/NotFound";
 import Invoices from "./pages/Invoices";
+import Quotes from "./pages/Quotes";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/field" element={<FieldAgent />} />
             <Route path="/invoices" element={<Invoices />} />
+            <Route path="/quotes" element={<Quotes />} />
             {/* Customer Portal Routes */}
             <Route path="/customer/:token" element={<CustomerPortal />} />
             <Route path="/customer/:token/feedback" element={<CustomerFeedbackForm />} />
