@@ -15,6 +15,7 @@ interface LineItem {
   quantity: number;
   rate: number;
   amount: number;
+  service_id?: string | null;
 }
 
 interface ServiceTemplate {
@@ -137,6 +138,7 @@ const CreateInvoicePage = ({ agentId, onBack, onSuccess, prefillLead }: CreateIn
       quantity: 1,
       rate: template.default_rate,
       amount: template.default_rate,
+      service_id: template.id,
     };
     setLineItems([...lineItems.filter(i => i.description || i.amount > 0), newItem]);
   };
@@ -238,6 +240,23 @@ const CreateInvoicePage = ({ agentId, onBack, onSuccess, prefillLead }: CreateIn
         .single();
 
       if (error) throw error;
+
+      // Insert normalized invoice_items
+      const validItems = lineItems.filter(item => item.description && item.amount > 0);
+      if (insertedInvoice && validItems.length > 0) {
+        const itemsToInsert = validItems.map(item => ({
+          invoice_id: insertedInvoice.id,
+          service_id: item.service_id || null,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.rate,
+          amount: item.amount,
+        }));
+        const { error: itemsError } = await supabase
+          .from("invoice_items")
+          .insert(itemsToInsert as any);
+        if (itemsError) console.error("Error inserting invoice items:", itemsError);
+      }
 
       // Send notification if not draft
       if (selectedCustomerId && status !== "draft" && insertedInvoice) {

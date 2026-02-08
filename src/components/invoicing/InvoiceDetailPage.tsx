@@ -1,16 +1,27 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Loader2, Send, CheckCircle, Printer, Download, Share2, Phone, Mail, MapPin } from "lucide-react";
+import { ArrowLeft, Loader2, Send, CheckCircle, Printer, Download, Share2, Phone, Mail, MapPin, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { generateAndUploadPDF, downloadInvoicePDF, shareInvoice, sendViaWhatsApp } from "@/lib/invoicePDF";
 
 interface LineItem {
   description: string;
   quantity: number;
-  rate: number;
+  unit_price: number;
+  rate?: number;
   amount: number;
+}
+
+interface InvoiceItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  amount: number;
+  service_id: string | null;
 }
 
 interface InvoiceDetailPageProps {
@@ -40,7 +51,9 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [generatingPDF, setGeneratingPDF] = useState(false);
   const [invoice, setInvoice] = useState<any>(null);
+  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
 
   useEffect(() => {
     fetchInvoice();
@@ -48,20 +61,30 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
 
   const fetchInvoice = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("invoices")
-      .select("*")
-      .eq("id", invoiceId)
-      .single();
+    const [invoiceResult, itemsResult] = await Promise.all([
+      supabase.from("invoices").select("*").eq("id", invoiceId).single(),
+      supabase.from("invoice_items").select("*").eq("invoice_id", invoiceId).order("created_at", { ascending: true }),
+    ]);
 
-    if (error) {
-      console.error("Error fetching invoice:", error);
+    if (invoiceResult.error) {
+      console.error("Error fetching invoice:", invoiceResult.error);
       toast({ title: "Error", description: "Failed to load invoice", variant: "destructive" });
     } else {
-      setInvoice(data);
+      setInvoice(invoiceResult.data);
     }
+    setInvoiceItems((itemsResult.data as unknown as InvoiceItem[]) || []);
     setLoading(false);
   };
+
+  // Use invoice_items if available, otherwise fall back to JSONB line_items
+  const displayItems: LineItem[] = invoiceItems.length > 0
+    ? invoiceItems.map(i => ({ description: i.description, quantity: i.quantity, unit_price: i.unit_price, amount: i.amount }))
+    : (invoice?.line_items as any[] || []).map((i: any) => ({
+        description: i.description,
+        quantity: i.quantity,
+        unit_price: i.rate || i.unit_price || 0,
+        amount: i.amount,
+      }));
 
   const updateStatus = async (newStatus: string) => {
     setUpdating(true);
@@ -88,25 +111,60 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
     setUpdating(false);
   };
 
-  const handleShare = async () => {
-    const text = `Invoice ${invoice.invoice_number}\nAmount: ${formatCurrency(invoice.grand_total)}\nStatus: ${invoice.status}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: `Invoice ${invoice.invoice_number}`, text });
-      } catch (e) { /* user cancelled */ }
-    } else {
-      await navigator.clipboard.writeText(text);
-      toast({ title: "Copied!", description: "Invoice details copied to clipboard" });
-    }
+  const getInvoiceDataForPDF = () => ({
+    id: invoice.id,
+    invoice_number: invoice.invoice_number,
+    customer_name: invoice.customer_name,
+    customer_phone: invoice.customer_phone,
+    customer_email: invoice.customer_email,
+    customer_address: invoice.customer_address,
+    issue_date: invoice.issue_date || invoice.created_at,
+    due_date: invoice.due_date,
+    status: invoice.status,
+    line_items: displayItems,
+    subtotal: invoice.subtotal,
+    tax_rate: invoice.tax_rate,
+    tax_amount: invoice.tax_amount,
+    grand_total: invoice.grand_total,
+    payment_method: invoice.payment_method,
+    notes: invoice.notes,
+  });
+
+  const handleDownloadPDF = () => {
+    downloadInvoicePDF(getInvoiceDataForPDF());
+    toast({ title: "PDF Downloaded 📄" });
   };
 
-  const handleWhatsApp = () => {
-    if (!invoice.customer_phone) return;
-    const phone = invoice.customer_phone.replace(/\D/g, "");
-    const text = encodeURIComponent(
-      `Hi ${invoice.customer_name},\n\nPlease find your invoice details:\n\nInvoice: ${invoice.invoice_number}\nAmount: ${formatCurrency(invoice.grand_total)}\nDue: ${invoice.due_date ? formatDate(invoice.due_date) : 'On receipt'}\n\nThank you for your business!`
-    );
-    window.open(`https://wa.me/${phone}?text=${text}`, "_blank");
+  const handleGenerateAndShare = async () => {
+    setGeneratingPDF(true);
+    try {
+      const pdfUrl = await generateAndUploadPDF(getInvoiceDataForPDF());
+      if (pdfUrl) {
+        setInvoice({ ...invoice, pdf_url: pdfUrl });
+      }
+      const shared = await shareInvoice(getInvoiceDataForPDF(), pdfUrl);
+      if (!shared) {
+        toast({ title: "Copied! 📋", description: "Invoice details copied to clipboard" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to generate PDF", variant: "destructive" });
+    }
+    setGeneratingPDF(false);
+  };
+
+  const handleWhatsApp = async () => {
+    setGeneratingPDF(true);
+    try {
+      let pdfUrl = invoice.pdf_url;
+      if (!pdfUrl) {
+        pdfUrl = await generateAndUploadPDF(getInvoiceDataForPDF());
+        if (pdfUrl) setInvoice({ ...invoice, pdf_url: pdfUrl });
+      }
+      sendViaWhatsApp(getInvoiceDataForPDF(), pdfUrl);
+    } catch {
+      sendViaWhatsApp(getInvoiceDataForPDF());
+    }
+    setGeneratingPDF(false);
   };
 
   if (loading) {
@@ -127,18 +185,16 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
   }
 
   return (
-    <div className="max-w-lg mx-auto p-4 space-y-4 pb-32">
+    <div className="max-w-lg mx-auto p-4 space-y-4 pb-44">
       {/* Header */}
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onBack}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-lg font-bold">Invoice</h1>
-        <div className="flex gap-1">
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleShare}>
-            <Share2 className="h-4 w-4" />
-          </Button>
-        </div>
+        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleGenerateAndShare} disabled={generatingPDF}>
+          {generatingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+        </Button>
       </div>
 
       {/* Invoice Header Card */}
@@ -147,7 +203,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
           <div className="flex items-start justify-between">
             <div>
               <p className="text-2xl font-bold">{invoice.invoice_number}</p>
-              <p className="text-sm opacity-80">{formatDate(invoice.created_at)}</p>
+              <p className="text-sm opacity-80">{formatDate(invoice.issue_date || invoice.created_at)}</p>
             </div>
             {getStatusBadge(invoice.status)}
           </div>
@@ -202,12 +258,12 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
       <Card className="border-0 shadow-sm">
         <CardContent className="p-4 space-y-2">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Services</p>
-          {(invoice.line_items as LineItem[])?.map((item, idx) => (
+          {displayItems.map((item, idx) => (
             <div key={idx} className="flex justify-between items-start py-2.5 border-b last:border-0">
               <div className="flex-1">
                 <p className="text-sm font-medium">{item.description}</p>
                 <p className="text-xs text-muted-foreground">
-                  {item.quantity} × {formatCurrency(item.rate)}
+                  {item.quantity} × {formatCurrency(item.unit_price)}
                 </p>
               </div>
               <span className="font-semibold text-sm">{formatCurrency(item.amount)}</span>
@@ -257,6 +313,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
 
       {/* Fixed Action Buttons */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-md border-t z-50 max-w-lg mx-auto space-y-2">
+        {/* Primary action based on status */}
         {invoice.status === "draft" && (
           <Button
             className="w-full h-12 rounded-xl font-semibold"
@@ -278,14 +335,19 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
             Mark as Paid
           </Button>
         )}
-        <div className="grid grid-cols-2 gap-2">
+
+        {/* Share/Download actions */}
+        <div className="grid grid-cols-3 gap-2">
+          <Button variant="outline" className="h-10 rounded-xl text-xs" onClick={handleDownloadPDF}>
+            <Download className="h-3.5 w-3.5 mr-1" /> PDF
+          </Button>
           {invoice.customer_phone && (
-            <Button variant="outline" className="h-10 rounded-xl" onClick={handleWhatsApp}>
-              <Phone className="h-4 w-4 mr-1.5" /> WhatsApp
+            <Button variant="outline" className="h-10 rounded-xl text-xs" onClick={handleWhatsApp} disabled={generatingPDF}>
+              <MessageCircle className="h-3.5 w-3.5 mr-1" /> WhatsApp
             </Button>
           )}
-          <Button variant="outline" className="h-10 rounded-xl" onClick={() => window.print()}>
-            <Printer className="h-4 w-4 mr-1.5" /> Print
+          <Button variant="outline" className="h-10 rounded-xl text-xs" onClick={() => window.print()}>
+            <Printer className="h-3.5 w-3.5 mr-1" /> Print
           </Button>
         </div>
       </div>
