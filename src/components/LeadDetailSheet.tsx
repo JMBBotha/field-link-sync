@@ -382,6 +382,20 @@ const LeadDetailSheet = ({
               </div>
             </a>
 
+            {/* Create Invoice - Completed leads only */}
+            {isCompleted && (
+              <Button
+                variant="default"
+                size="lg"
+                className="w-full"
+                style={{ backgroundColor: '#0077B6', color: '#FFFFFF' }}
+                onClick={() => setShowInlineInvoice(true)}
+              >
+                <FileText className="mr-2 h-5 w-5" />
+                Create Invoice
+              </Button>
+            )}
+
             {/* Notes */}
             {lead.notes && (
               <div className="p-2.5 rounded-xl bg-background/50">
