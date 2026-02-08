@@ -113,6 +113,57 @@ export type Database = {
           },
         ]
       }
+      company_settings: {
+        Row: {
+          banking_details: Json | null
+          company_name: string
+          created_at: string
+          default_deposit_percentage: number | null
+          default_hourly_rate: number | null
+          default_payment_terms_days: number | null
+          id: string
+          logo_storage_path: string | null
+          payfast_merchant_id: string | null
+          payfast_merchant_key: string | null
+          physical_address: string | null
+          postal_address: string | null
+          updated_at: string
+          vat_number: string | null
+        }
+        Insert: {
+          banking_details?: Json | null
+          company_name?: string
+          created_at?: string
+          default_deposit_percentage?: number | null
+          default_hourly_rate?: number | null
+          default_payment_terms_days?: number | null
+          id?: string
+          logo_storage_path?: string | null
+          payfast_merchant_id?: string | null
+          payfast_merchant_key?: string | null
+          physical_address?: string | null
+          postal_address?: string | null
+          updated_at?: string
+          vat_number?: string | null
+        }
+        Update: {
+          banking_details?: Json | null
+          company_name?: string
+          created_at?: string
+          default_deposit_percentage?: number | null
+          default_hourly_rate?: number | null
+          default_payment_terms_days?: number | null
+          id?: string
+          logo_storage_path?: string | null
+          payfast_merchant_id?: string | null
+          payfast_merchant_key?: string | null
+          physical_address?: string | null
+          postal_address?: string | null
+          updated_at?: string
+          vat_number?: string | null
+        }
+        Relationships: []
+      }
       customer_feedback: {
         Row: {
           agent_id: string
