@@ -27,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSingleLeadPhotoCount } from "@/hooks/useLeadPhotoCount";
+import CommunicationTimeline from "./communication/CommunicationTimeline";
 
 interface Lead {
   id: string;
@@ -327,10 +328,11 @@ const LeadDetailSheet = ({
 
           <ScrollArea className="flex-1 min-h-0">
             <Tabs defaultValue="details" className="w-full">
-              <TabsList className="w-full grid grid-cols-3 mx-4 mb-2" style={{ width: 'calc(100% - 2rem)' }}>
+              <TabsList className="w-full grid grid-cols-4 mx-4 mb-2" style={{ width: 'calc(100% - 2rem)' }}>
                 <TabsTrigger value="details" className="text-xs">Details</TabsTrigger>
                 <TabsTrigger value="time" className="text-xs">Time</TabsTrigger>
                 <TabsTrigger value="timeline" className="text-xs">Timeline</TabsTrigger>
+                <TabsTrigger value="comms" className="text-xs">Comms</TabsTrigger>
               </TabsList>
 
               <TabsContent value="details" className="mt-0">
@@ -648,6 +650,10 @@ const LeadDetailSheet = ({
 
               <TabsContent value="timeline" className="mt-0 px-4 pb-4">
                 <JobTimeline leadId={lead.id} lead={lead} />
+              </TabsContent>
+
+              <TabsContent value="comms" className="mt-0 px-4 pb-4">
+                <CommunicationTimeline leadId={lead.id} customerId={lead.customer_id || undefined} />
               </TabsContent>
             </Tabs>
           </ScrollArea>

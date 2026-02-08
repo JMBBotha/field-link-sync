@@ -65,6 +65,54 @@ export type Database = {
         }
         Relationships: []
       }
+      communication_log: {
+        Row: {
+          agent_id: string
+          body: string | null
+          created_at: string
+          customer_id: string | null
+          id: string
+          lead_id: string | null
+          subject: string | null
+          type: string
+        }
+        Insert: {
+          agent_id: string
+          body?: string | null
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          lead_id?: string | null
+          subject?: string | null
+          type: string
+        }
+        Update: {
+          agent_id?: string
+          body?: string | null
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          lead_id?: string | null
+          subject?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_log_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_feedback: {
         Row: {
           agent_id: string
@@ -290,6 +338,45 @@ export type Database = {
           is_active?: boolean
           name?: string
           unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      inventory_items: {
+        Row: {
+          category: string | null
+          created_at: string
+          id: string
+          min_stock_level: number
+          name: string
+          quantity_in_stock: number
+          sku: string | null
+          supplier: string | null
+          unit_cost: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          min_stock_level?: number
+          name: string
+          quantity_in_stock?: number
+          sku?: string | null
+          supplier?: string | null
+          unit_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          min_stock_level?: number
+          name?: string
+          quantity_in_stock?: number
+          sku?: string | null
+          supplier?: string | null
+          unit_cost?: number
           updated_at?: string
         }
         Relationships: []
@@ -916,6 +1003,39 @@ export type Database = {
           template_subject?: string | null
           updated_at?: string
           variables?: string[]
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          read: boolean
+          related_id: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          read?: boolean
+          related_id?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          read?: boolean
+          related_id?: string | null
+          title?: string
+          type?: string
+          user_id?: string
         }
         Relationships: []
       }

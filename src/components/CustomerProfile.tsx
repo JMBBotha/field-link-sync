@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import CommunicationTimeline from "./communication/CommunicationTimeline";
 import { X, Loader2, User, Phone, Mail, MapPin, Calendar, FileText, Wrench, Star, Edit, ChevronRight, RefreshCw, DollarSign, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -239,12 +240,13 @@ const CustomerProfile = ({ customerId, open, onClose }: CustomerProfileProps) =>
 
               {/* Tabs */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 px-1">
-                <TabsList className="grid w-full grid-cols-6 flex-shrink-0">
+                <TabsList className="grid w-full grid-cols-7 flex-shrink-0">
                   <TabsTrigger value="info" className="text-xs px-1">Info</TabsTrigger>
                   <TabsTrigger value="equipment" className="text-xs px-1">Equip</TabsTrigger>
                   <TabsTrigger value="agreements" className="text-xs px-1">Contracts</TabsTrigger>
                   <TabsTrigger value="jobs" className="text-xs px-1">Jobs</TabsTrigger>
                   <TabsTrigger value="invoices" className="text-xs px-1">Invoices</TabsTrigger>
+                  <TabsTrigger value="comms" className="text-xs px-1">Comms</TabsTrigger>
                   <TabsTrigger value="feedback" className="text-xs px-1">Rating</TabsTrigger>
                 </TabsList>
 
@@ -406,6 +408,13 @@ const CustomerProfile = ({ customerId, open, onClose }: CustomerProfileProps) =>
                   <InvoiceList
                     onSelectInvoice={(inv) => setSelectedInvoiceId(inv.id)}
                   />
+                </TabsContent>
+
+                {/* Communications Tab */}
+                <TabsContent value="comms" className="flex-1 overflow-y-auto mt-3">
+                  {customer && (
+                    <CommunicationTimeline customerId={customer.id} />
+                  )}
                 </TabsContent>
 
                 {/* Feedback Tab */}

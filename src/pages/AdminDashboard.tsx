@@ -4,7 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Plus, Users, PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Menu, Settings, FileText, MessageSquare, BarChart3 } from "lucide-react";
+import { LogOut, Plus, Users, PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Menu, Settings, FileText, MessageSquare, BarChart3, Package } from "lucide-react";
+import NotificationBell from "@/components/notifications/NotificationBell";
+import InventoryList from "@/components/inventory/InventoryList";
+import LowStockAlerts from "@/components/inventory/LowStockAlerts";
 import MapView, { MapViewHandle } from "@/components/MapView";
 import LeadsList from "@/components/LeadsList";
 import CompletedLeadsPanel from "@/components/CompletedLeadsPanel";
@@ -60,7 +63,7 @@ const AdminDashboard = () => {
   const [completedPanelCollapsed, setCompletedPanelCollapsed] = useState(true);
   const [showCompletedFilter, setShowCompletedFilter] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"map" | "agreements" | "settings" | "notifications" | "invoices" | "quotes" | "proposals" | "analytics">("map");
+  const [activeTab, setActiveTab] = useState<"map" | "agreements" | "settings" | "notifications" | "invoices" | "quotes" | "proposals" | "analytics" | "inventory">("map");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
@@ -251,6 +254,15 @@ const AdminDashboard = () => {
             Agreements
           </Button>
           <Button 
+            variant={activeTab === "inventory" ? "secondary" : "ghost"} 
+            onClick={() => setActiveTab(activeTab === "inventory" ? "map" : "inventory")} 
+            className={activeTab === "inventory" ? "bg-white text-blue-600" : "text-white hover:bg-blue-500"}
+          >
+            <Package className="mr-2 h-4 w-4" />
+            Inventory
+          </Button>
+          <NotificationBell />
+          <Button 
             variant={activeTab === "settings" ? "secondary" : "ghost"} 
             onClick={() => setActiveTab(activeTab === "settings" ? "map" : "settings")} 
             className={activeTab === "settings" ? "bg-white text-blue-600" : "text-white hover:bg-blue-500"}
@@ -356,6 +368,20 @@ const AdminDashboard = () => {
               </Button>
               <Button 
                 onClick={() => {
+                  setActiveTab(activeTab === "inventory" ? "map" : "inventory");
+                  setMobileMenuOpen(false);
+                }} 
+                variant={activeTab === "inventory" ? "secondary" : "ghost"}
+                className={activeTab === "inventory" 
+                  ? "bg-white text-blue-600 justify-start" 
+                  : "text-white hover:bg-blue-500 justify-start"
+                }
+              >
+                <Package className="mr-2 h-4 w-4" />
+                Inventory
+              </Button>
+              <Button 
+                onClick={() => {
                   setActiveTab(activeTab === "settings" ? "map" : "settings");
                   setMobileMenuOpen(false);
                 }} 
@@ -438,6 +464,10 @@ const AdminDashboard = () => {
       ) : activeTab === "analytics" ? (
         <div className="flex-1 overflow-auto bg-background">
           <AnalyticsDashboard />
+        </div>
+      ) : activeTab === "inventory" ? (
+        <div className="flex-1 overflow-auto bg-background">
+          <InventoryList />
         </div>
       ) : activeTab === "agreements" ? (
         <div className="flex-1 overflow-auto bg-background">
