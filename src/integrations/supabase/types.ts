@@ -1232,12 +1232,14 @@ export type Database = {
         Row: {
           accepted_at: string | null
           accepted_by: string | null
+          accepted_signature: Json | null
           created_at: string
           customer_id: string | null
           declined_at: string | null
           id: string
           lead_id: string | null
           notes: string | null
+          public_token: string | null
           quote_number: string
           sales_engineer_id: string
           sent_at: string | null
@@ -1253,12 +1255,14 @@ export type Database = {
         Insert: {
           accepted_at?: string | null
           accepted_by?: string | null
+          accepted_signature?: Json | null
           created_at?: string
           customer_id?: string | null
           declined_at?: string | null
           id?: string
           lead_id?: string | null
           notes?: string | null
+          public_token?: string | null
           quote_number?: string
           sales_engineer_id: string
           sent_at?: string | null
@@ -1274,12 +1278,14 @@ export type Database = {
         Update: {
           accepted_at?: string | null
           accepted_by?: string | null
+          accepted_signature?: Json | null
           created_at?: string
           customer_id?: string | null
           declined_at?: string | null
           id?: string
           lead_id?: string | null
           notes?: string | null
+          public_token?: string | null
           quote_number?: string
           sales_engineer_id?: string
           sent_at?: string | null
@@ -1443,6 +1449,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_quote_by_token: {
+        Args: { p_accepted_by: string; p_signature?: Json; p_token: string }
+        Returns: boolean
+      }
       agent_performance_scores: {
         Args: never
         Returns: {
@@ -1465,6 +1475,7 @@ export type Database = {
         }
         Returns: number
       }
+      decline_quote_by_token: { Args: { p_token: string }; Returns: boolean }
       generate_invoice_number: { Args: never; Returns: string }
       generate_quote_number: { Args: never; Returns: string }
       get_agents_within_radius: {
@@ -1549,6 +1560,7 @@ export type Database = {
         Args: { p_customer_id: string }
         Returns: string
       }
+      get_quote_by_public_token: { Args: { p_token: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

@@ -12,6 +12,7 @@ import CustomerPortal from "./pages/CustomerPortal";
 import CustomerFeedbackForm from "./components/CustomerFeedbackForm";
 import CustomerInvoiceView from "./components/CustomerInvoiceView";
 import NotFound from "./pages/NotFound";
+import ClientProposalView from "./components/client/ClientProposalView";
 import Invoices from "./pages/Invoices";
 import Quotes from "./pages/Quotes";
 import Proposals from "./pages/Proposals";
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/customer/:token/feedback/:leadId" element={<CustomerFeedbackForm />} />
             <Route path="/customer/:token/invoices" element={<CustomerInvoiceView />} />
             <Route path="/customer/:token/invoice/:invoiceId" element={<CustomerInvoiceView />} />
+            <Route path="/quote/:token" element={<ClientProposalView />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
