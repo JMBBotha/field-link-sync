@@ -29,6 +29,9 @@ import { createTeardropMarkerElement } from "@/utils/MarkerUtils";
 import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilterButtons";
 import LeadListFilterPills, { LeadListStatus } from "@/components/LeadListFilterPills";
 import FieldAgentLeadCard from "@/components/FieldAgentLeadCard";
+import CompletedJobsFilterDrawer from "@/components/CompletedJobsFilterDrawer";
+import { useCompletedJobsFilter } from "@/hooks/useCompletedJobsFilter";
+import { Filter } from "lucide-react";
 
 interface Lead {
   id: string;
@@ -50,6 +53,7 @@ interface Lead {
   estimated_duration_minutes?: number | null;
   estimated_end_time?: string | null;
   actual_start_time?: string | null;
+  completed_at?: string | null;
 }
 
 // Priority order for sorting
@@ -140,6 +144,10 @@ const FieldAgent = () => {
 
   // Availability tracking
   const availability = useAvailability(currentUserId);
+
+  // Completed jobs filter
+  const completedJobsFilter = useCompletedJobsFilter();
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
 
   // Use offline leads data
   const leads = offlineLeads.leads as Lead[];
@@ -958,10 +966,15 @@ const FieldAgent = () => {
     ["claimed", "accepted", "in_progress"].includes(l.status) && l.assigned_agent_id === currentUserId
   ), [leads, currentUserId]);
 
-  const completedLeads = useMemo(() => leads
-    .filter(l => l.status === "completed" && l.assigned_agent_id === currentUserId)
-    .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
-  , [leads, currentUserId]);
+  const completedLeads = useMemo(() => {
+    // If filtered results are active, use those
+    if (completedJobsFilter.isFiltered) {
+      return completedJobsFilter.jobs;
+    }
+    return leads
+      .filter(l => l.status === "completed" && l.assigned_agent_id === currentUserId)
+      .sort((a, b) => new Date(b.completed_at || b.created_at || 0).getTime() - new Date(a.completed_at || a.created_at || 0).getTime());
+  }, [leads, currentUserId, completedJobsFilter.isFiltered, completedJobsFilter.jobs]);
 
   const inProgressLeads = useMemo(() => leads
     .filter(l => l.status === "in_progress" && l.assigned_agent_id === currentUserId)
@@ -1372,14 +1385,22 @@ const FieldAgent = () => {
                 )}
 
                 {/* Completed Leads Section */}
-                {completedLeads.length > 0 && (
-                  <>
-                    <div className="flex items-center gap-2 pt-3 pb-1 border-t border-white/10">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-foreground" />
-                      <span className="font-semibold text-xs text-foreground">Completed</span>
-                      <Badge variant="secondary" className="text-xs ml-auto">{completedLeads.length}</Badge>
-                    </div>
-                    {completedLeads.map((lead) => (
+                <>
+                  <div className="flex items-center gap-2 pt-3 pb-1 border-t border-white/10">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-foreground" />
+                    <span className="font-semibold text-xs text-foreground">Completed</span>
+                    <Badge variant="secondary" className="text-xs ml-auto">{completedLeads.length}</Badge>
+                    <Button
+                      variant={completedJobsFilter.isFiltered ? "default" : "ghost"}
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => setFilterDrawerOpen(true)}
+                    >
+                      <Filter className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  {completedLeads.length > 0 ? (
+                    completedLeads.map((lead) => (
                       <Card
                         key={lead.id}
                         className="bg-gradient-to-r from-blue-100 to-slate-50 cursor-pointer hover:from-blue-50 hover:to-white transition-all shadow-md border-border/50"
@@ -1408,9 +1429,13 @@ const FieldAgent = () => {
                           </Button>
                         </CardContent>
                       </Card>
-                    ))}
-                  </>
-                )}
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-muted-foreground text-xs">
+                      {completedJobsFilter.isFiltered ? "No jobs match filters" : "No completed jobs"}
+                    </div>
+                  )}
+                </>
               </div>
             </div>
           </div>
@@ -1747,14 +1772,22 @@ const FieldAgent = () => {
                         )}
 
                         {/* Completed Section */}
-                        {completedLeads.length > 0 && (
-                          <>
-                            <div className="flex items-center gap-2 pt-2 pb-1 border-t border-border/30">
-                              <CheckCircle2 className="h-3.5 w-3.5 text-foreground" />
-                              <span className="font-semibold text-xs text-foreground">Completed</span>
-                              <Badge variant="secondary" className="text-xs ml-auto">{completedLeads.length}</Badge>
-                            </div>
-                            {completedLeads.map((lead) => (
+                        <>
+                          <div className="flex items-center gap-2 pt-2 pb-1 border-t border-border/30">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-foreground" />
+                            <span className="font-semibold text-xs text-foreground">Completed</span>
+                            <Badge variant="secondary" className="text-xs ml-auto">{completedLeads.length}</Badge>
+                            <Button
+                              variant={completedJobsFilter.isFiltered ? "default" : "ghost"}
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => setFilterDrawerOpen(true)}
+                            >
+                              <Filter className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          {completedLeads.length > 0 ? (
+                            completedLeads.map((lead) => (
                               <Card
                                 key={lead.id}
                                 className="bg-gradient-to-r from-blue-100 to-slate-50 cursor-pointer active:from-blue-50 active:to-white transition-all shadow-md border-border/50"
@@ -1789,9 +1822,13 @@ const FieldAgent = () => {
                                   </Button>
                                 </CardContent>
                               </Card>
-                            ))}
-                          </>
-                        )}
+                            ))
+                          ) : (
+                            <div className="text-center py-4 text-muted-foreground text-xs">
+                              {completedJobsFilter.isFiltered ? "No jobs match filters" : "No completed jobs"}
+                            </div>
+                          )}
+                        </>
 
                         {inProgressLeads.length === 0 && completedLeads.length === 0 && (
                           <div className="text-center py-8 text-muted-foreground text-sm">
@@ -1838,6 +1875,17 @@ const FieldAgent = () => {
           currentUserId={currentUserId}
           loadingAction={loadingAction}
           onLeadUpdated={() => offlineLeads.refetch()}
+        />
+
+        {/* Completed Jobs Filter Drawer */}
+        <CompletedJobsFilterDrawer
+          open={filterDrawerOpen}
+          onOpenChange={setFilterDrawerOpen}
+          filters={completedJobsFilter.filters}
+          onApply={completedJobsFilter.applyFilters}
+          onClear={completedJobsFilter.clearFilters}
+          currentLocation={currentLocation}
+          loading={completedJobsFilter.loading}
         />
       </div>
     </Layout>
