@@ -59,7 +59,7 @@ const AdminDashboard = () => {
   const [completedPanelCollapsed, setCompletedPanelCollapsed] = useState(true);
   const [showCompletedFilter, setShowCompletedFilter] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"map" | "agreements" | "settings" | "notifications" | "invoices" | "quotes">("map");
+  const [activeTab, setActiveTab] = useState<"map" | "agreements" | "settings" | "notifications" | "invoices" | "quotes" | "proposals">("map");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
@@ -226,6 +226,14 @@ const AdminDashboard = () => {
             Invoices
           </Button>
           <Button 
+            variant={activeTab === "proposals" ? "secondary" : "ghost"} 
+            onClick={() => setActiveTab(activeTab === "proposals" ? "map" : "proposals")} 
+            className={activeTab === "proposals" ? "bg-white text-blue-600" : "text-white hover:bg-blue-500"}
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            Proposals
+          </Button>
+          <Button 
             variant={activeTab === "agreements" ? "secondary" : "ghost"} 
             onClick={() => setActiveTab(activeTab === "agreements" ? "map" : "agreements")} 
             className={activeTab === "agreements" ? "bg-white text-blue-600" : "text-white hover:bg-blue-500"}
@@ -294,6 +302,20 @@ const AdminDashboard = () => {
               >
                 <FileText className="mr-2 h-4 w-4" />
                 Invoices
+              </Button>
+              <Button 
+                onClick={() => {
+                  setActiveTab(activeTab === "proposals" ? "map" : "proposals");
+                  setMobileMenuOpen(false);
+                }} 
+                variant={activeTab === "proposals" ? "secondary" : "ghost"}
+                className={activeTab === "proposals" 
+                  ? "bg-white text-blue-600 justify-start" 
+                  : "text-white hover:bg-blue-500 justify-start"
+                }
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Proposals
               </Button>
               <Button 
                 onClick={() => {
@@ -370,6 +392,12 @@ const AdminDashboard = () => {
             onCreateNew={() => navigate("/quotes")}
             onEditQuote={(id) => navigate("/quotes")}
           />
+        </div>
+      ) : activeTab === "proposals" ? (
+        <div className="flex-1 overflow-auto bg-background">
+          <div className="max-w-4xl mx-auto p-4 text-center py-8">
+            <Button onClick={() => navigate("/proposals")}>Open Proposal Builder</Button>
+          </div>
         </div>
       ) : activeTab === "invoices" ? (
         <div className="flex-1 overflow-auto bg-background">

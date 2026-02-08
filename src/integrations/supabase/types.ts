@@ -357,12 +357,13 @@ export type Database = {
           id: string
           invoice_number: string
           issue_date: string
-          lead_id: string
+          lead_id: string | null
           line_items: Json
           notes: string | null
           paid_date: string | null
           payment_method: string | null
           pdf_url: string | null
+          quote_id: string | null
           status: string
           subtotal: number
           tax_amount: number
@@ -383,12 +384,13 @@ export type Database = {
           id?: string
           invoice_number: string
           issue_date?: string
-          lead_id: string
+          lead_id?: string | null
           line_items?: Json
           notes?: string | null
           paid_date?: string | null
           payment_method?: string | null
           pdf_url?: string | null
+          quote_id?: string | null
           status?: string
           subtotal?: number
           tax_amount?: number
@@ -409,12 +411,13 @@ export type Database = {
           id?: string
           invoice_number?: string
           issue_date?: string
-          lead_id?: string
+          lead_id?: string | null
           line_items?: Json
           notes?: string | null
           paid_date?: string | null
           payment_method?: string | null
           pdf_url?: string | null
+          quote_id?: string | null
           status?: string
           subtotal?: number
           tax_amount?: number
@@ -438,6 +441,54 @@ export type Database = {
           },
           {
             foreignKeyName: "invoices_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_expenses: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string
+          description: string
+          expense_date: string
+          id: string
+          lead_id: string
+          receipt_path: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by: string
+          description: string
+          expense_date?: string
+          id?: string
+          lead_id: string
+          receipt_path?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string
+          description?: string
+          expense_date?: string
+          id?: string
+          lead_id?: string
+          receipt_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_expenses_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
@@ -812,6 +863,47 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_id: string
+          method: string
+          payment_date: string
+          reference: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id: string
+          method: string
+          payment_date?: string
+          reference?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id?: string
+          method?: string
+          payment_date?: string
+          reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           availability_status: string | null
@@ -851,6 +943,77 @@ export type Database = {
           location_tracking_enabled?: boolean | null
           phone?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      proposal_sections: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          photos: Json | null
+          quote_id: string
+          section_type: string
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          photos?: Json | null
+          quote_id: string
+          section_type: string
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          photos?: Json | null
+          quote_id?: string
+          section_type?: string
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_sections_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_templates: {
+        Row: {
+          created_at: string
+          default_content: string
+          default_title: string
+          id: string
+          name: string
+          section_type: string
+        }
+        Insert: {
+          created_at?: string
+          default_content: string
+          default_title: string
+          id?: string
+          name: string
+          section_type: string
+        }
+        Update: {
+          created_at?: string
+          default_content?: string
+          default_title?: string
+          id?: string
+          name?: string
+          section_type?: string
         }
         Relationships: []
       }
@@ -1305,6 +1468,14 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_invoice_aging_report: {
+        Args: never
+        Returns: {
+          bracket: string
+          invoice_count: number
+          total_outstanding: number
+        }[]
+      }
       get_or_create_customer_token: {
         Args: { p_customer_id: string }
         Returns: string
@@ -1315,6 +1486,14 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      job_profit_loss: {
+        Args: { p_lead_id: string }
+        Returns: {
+          expenses: number
+          profit: number
+          revenue: number
+        }[]
       }
       validate_customer_token: { Args: { p_token: string }; Returns: string }
     }

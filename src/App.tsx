@@ -14,6 +14,7 @@ import CustomerInvoiceView from "./components/CustomerInvoiceView";
 import NotFound from "./pages/NotFound";
 import Invoices from "./pages/Invoices";
 import Quotes from "./pages/Quotes";
+import Proposals from "./pages/Proposals";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/field" element={<FieldAgent />} />
             <Route path="/invoices" element={<Invoices />} />
             <Route path="/quotes" element={<Quotes />} />
+            <Route path="/proposals" element={<Proposals />} />
             {/* Customer Portal Routes */}
             <Route path="/customer/:token" element={<CustomerPortal />} />
             <Route path="/customer/:token/feedback" element={<CustomerFeedbackForm />} />
