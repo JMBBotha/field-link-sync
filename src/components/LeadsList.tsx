@@ -396,7 +396,7 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
     <Card 
       key={lead.id} 
       className={`bg-gradient-to-r from-blue-100 to-slate-50 backdrop-blur-sm border-border/50 hover:from-blue-50 hover:to-white transition-all duration-200 shadow-md cursor-pointer hover:scale-[1.02] hover:shadow-lg ${
-        clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2 animate-pulse' : ''
+clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
       }`}
       onClick={() => {
         console.log('[LeadsList] Desktop card clicked:', { leadId: lead.id, lat: lead.latitude, lng: lead.longitude });
@@ -476,7 +476,7 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
     >
       <Card 
         className={`bg-gradient-to-r from-blue-100 to-slate-50 backdrop-blur-sm border-border/50 hover:from-blue-50 hover:to-white transition-all duration-200 shadow-md overflow-hidden w-full max-w-full cursor-pointer hover:scale-[1.01] hover:shadow-lg ${
-          clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2 animate-pulse' : ''
+          clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
         }`}
         onClick={() => {
           console.log('[LeadsList] Mobile card clicked:', { leadId: lead.id, lat: lead.latitude, lng: lead.longitude });
