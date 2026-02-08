@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { OfflineProvider } from "@/contexts/OfflineContext";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -23,28 +24,30 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <OfflineProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/field" element={<FieldAgent />} />
-            <Route path="/invoices" element={<Invoices />} />
-            <Route path="/quotes" element={<Quotes />} />
-            <Route path="/proposals" element={<Proposals />} />
-            {/* Customer Portal Routes */}
-            <Route path="/customer/:token" element={<CustomerPortal />} />
-            <Route path="/customer/:token/feedback" element={<CustomerFeedbackForm />} />
-            <Route path="/customer/:token/feedback/:leadId" element={<CustomerFeedbackForm />} />
-            <Route path="/customer/:token/invoices" element={<CustomerInvoiceView />} />
-            <Route path="/customer/:token/invoice/:invoiceId" element={<CustomerInvoiceView />} />
-            <Route path="/quote/:token" element={<ClientProposalView />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+        <ErrorBoundary>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/field" element={<FieldAgent />} />
+              <Route path="/invoices" element={<Invoices />} />
+              <Route path="/quotes" element={<Quotes />} />
+              <Route path="/proposals" element={<Proposals />} />
+              {/* Customer Portal Routes */}
+              <Route path="/customer/:token" element={<CustomerPortal />} />
+              <Route path="/customer/:token/feedback" element={<CustomerFeedbackForm />} />
+              <Route path="/customer/:token/feedback/:leadId" element={<CustomerFeedbackForm />} />
+              <Route path="/customer/:token/invoices" element={<CustomerInvoiceView />} />
+              <Route path="/customer/:token/invoice/:invoiceId" element={<CustomerInvoiceView />} />
+              <Route path="/quote/:token" element={<ClientProposalView />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </ErrorBoundary>
       </OfflineProvider>
     </TooltipProvider>
   </QueryClientProvider>

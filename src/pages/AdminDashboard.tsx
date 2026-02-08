@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Plus, Users, PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Menu, Settings, FileText, MessageSquare, BarChart3, Package, ClipboardList } from "lucide-react";
+import { LogOut, Plus, Users, PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Menu, Settings, FileText, MessageSquare, BarChart3, Package, ClipboardList, Home } from "lucide-react";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import InventoryList from "@/components/inventory/InventoryList";
 import LowStockAlerts from "@/components/inventory/LowStockAlerts";
@@ -12,8 +12,12 @@ import MapView, { MapViewHandle } from "@/components/MapView";
 import LeadsList from "@/components/LeadsList";
 import CompletedLeadsPanel from "@/components/CompletedLeadsPanel";
 import CreateLeadDialog from "@/components/CreateLeadDialog";
-import AdminSettings from "@/components/AdminSettings";
+import AdminSettingsPage from "@/components/AdminSettingsPage";
 import ServiceAgreements from "@/components/ServiceAgreements";
+import AdminHome from "@/components/AdminHome";
+import SetupWizard from "@/components/SetupWizard";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import AdminNotificationSettings from "@/components/AdminNotificationSettings";
 import LeadDetailSheet from "@/components/LeadDetailSheet";
 import Layout from "@/components/Layout";
@@ -63,7 +67,8 @@ const AdminDashboard = () => {
   const [completedPanelCollapsed, setCompletedPanelCollapsed] = useState(true);
   const [showCompletedFilter, setShowCompletedFilter] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"map" | "agreements" | "settings" | "notifications" | "invoices" | "quotes" | "proposals" | "analytics" | "inventory" | "reports">("map");
+  const [activeTab, setActiveTab] = useState<"home" | "map" | "agreements" | "settings" | "notifications" | "invoices" | "quotes" | "proposals" | "analytics" | "inventory" | "reports">("home");
+  const { needsSetup } = useCompanySettings();
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
@@ -162,6 +167,10 @@ const AdminDashboard = () => {
     return null;
   }
 
+  if (needsSetup) {
+    return <SetupWizard onComplete={() => window.location.reload()} />;
+  }
+
   const footerLeftContent = (
     <Button
       variant={!leadsCollapsed ? "secondary" : "ghost"}
@@ -198,6 +207,22 @@ const AdminDashboard = () => {
         {/* Desktop navigation */}
         <div className="hidden md:flex gap-2">
           <Button 
+            variant={activeTab === "home" ? "secondary" : "ghost"} 
+            onClick={() => setActiveTab("home")} 
+            className={activeTab === "home" ? "bg-white text-blue-600" : "text-white hover:bg-blue-500"}
+          >
+            <Home className="mr-2 h-4 w-4" />
+            Home
+          </Button>
+          <Button 
+            variant={activeTab === "map" ? "secondary" : "ghost"} 
+            onClick={() => setActiveTab("map")} 
+            className={activeTab === "map" ? "bg-white text-blue-600" : "text-white hover:bg-blue-500"}
+          >
+            <span className="mr-2">🗺️</span>
+            Map
+          </Button>
+          <Button
             variant={activeTab === "notifications" ? "secondary" : "ghost"} 
             onClick={() => setActiveTab(activeTab === "notifications" ? "map" : "notifications")} 
             className={`relative ${activeTab === "notifications" ? "bg-white text-blue-600" : "text-white hover:bg-blue-500"}`}
@@ -453,7 +478,13 @@ const AdminDashboard = () => {
         </Sheet>
       </header>
 
-      {activeTab === "notifications" ? (
+      {activeTab === "home" ? (
+        <div className="flex-1 overflow-auto bg-background">
+          <ErrorBoundary>
+            <AdminHome onNavigate={(tab) => setActiveTab(tab as any)} onCreateLead={() => setShowCreateLead(true)} />
+          </ErrorBoundary>
+        </div>
+      ) : activeTab === "notifications" ? (
         <div className="flex-1 overflow-auto bg-background">
           <AdminNotificationSettings />
         </div>
@@ -501,7 +532,7 @@ const AdminDashboard = () => {
         </div>
       ) : activeTab === "settings" ? (
         <div className="flex-1 overflow-auto bg-background">
-          <AdminSettings />
+          <AdminSettingsPage />
         </div>
       ) : (
         <div className="flex-1 flex overflow-hidden relative">
