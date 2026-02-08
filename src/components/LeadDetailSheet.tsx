@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ClockIcon, Images, Plus, FileText } from "lucide-react";
+import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ClockIcon, Images, Plus, FileText, Timer, GitBranch } from "lucide-react";
 import CreateInvoiceDialog from "@/components/invoicing/CreateInvoiceDialog";
 import { useJobPhotos, PhotoType } from "@/hooks/useJobPhotos";
 import { useOffline } from "@/contexts/OfflineContext";
@@ -20,6 +20,10 @@ import { ExpandedPhotoGallery } from "./ExpandedPhotoGallery";
 import AgentChangeRequestDialog from "./AgentChangeRequestDialog";
 import LeadTimeEditDialog from "./LeadTimeEditDialog";
 import { JobScheduleDisplay } from "./JobScheduleDisplay";
+import TimeTracker from "./TimeTracker";
+import TimeEntryList from "./TimeEntryList";
+import JobTimeline from "./JobTimeline";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSingleLeadPhotoCount } from "@/hooks/useLeadPhotoCount";
@@ -157,6 +161,7 @@ const LeadDetailSheet = ({
   const { toast } = useToast();
   const navigate = useNavigate();
   const { isOnline, queueOperation: contextQueueOp } = useOffline();
+  const [timeRefreshKey, setTimeRefreshKey] = useState(0);
   
   // Use provided queueOperation or fall back to context
   const queueOp = queueOperation || contextQueueOp;
@@ -321,8 +326,15 @@ const LeadDetailSheet = ({
           </SheetHeader>
 
           <ScrollArea className="flex-1 min-h-0">
+            <Tabs defaultValue="details" className="w-full">
+              <TabsList className="w-full grid grid-cols-3 mx-4 mb-2" style={{ width: 'calc(100% - 2rem)' }}>
+                <TabsTrigger value="details" className="text-xs">Details</TabsTrigger>
+                <TabsTrigger value="time" className="text-xs">Time</TabsTrigger>
+                <TabsTrigger value="timeline" className="text-xs">Timeline</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="details" className="mt-0">
             <div className="space-y-3 px-4 pb-4">
-            {/* Job Progress Section for in-progress jobs */}
             {isInProgress && lead.actual_start_time && (
               <JobProgressSection
                 startedAt={lead.actual_start_time}
@@ -621,6 +633,23 @@ const LeadDetailSheet = ({
               )}
             </div>
             </div>
+              </TabsContent>
+
+              <TabsContent value="time" className="mt-0 px-4 pb-4 space-y-4">
+                {currentUserId && (
+                  <TimeTracker
+                    leadId={lead.id}
+                    agentId={currentUserId}
+                    onSaved={() => setTimeRefreshKey((k) => k + 1)}
+                  />
+                )}
+                <TimeEntryList leadId={lead.id} refreshKey={timeRefreshKey} />
+              </TabsContent>
+
+              <TabsContent value="timeline" className="mt-0 px-4 pb-4">
+                <JobTimeline leadId={lead.id} lead={lead} />
+              </TabsContent>
+            </Tabs>
           </ScrollArea>
         </SheetContent>
       </Sheet>
