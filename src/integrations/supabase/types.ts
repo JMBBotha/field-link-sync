@@ -199,6 +199,8 @@ export type Database = {
           area: string | null
           created_at: string
           created_by: string | null
+          data_consent: boolean | null
+          data_consent_date: string | null
           email: string | null
           email_verified: boolean | null
           id: string
@@ -218,6 +220,8 @@ export type Database = {
           area?: string | null
           created_at?: string
           created_by?: string | null
+          data_consent?: boolean | null
+          data_consent_date?: string | null
           email?: string | null
           email_verified?: boolean | null
           id?: string
@@ -237,6 +241,8 @@ export type Database = {
           area?: string | null
           created_at?: string
           created_by?: string | null
+          data_consent?: boolean | null
+          data_consent_date?: string | null
           email?: string | null
           email_verified?: boolean | null
           id?: string
@@ -1700,6 +1706,15 @@ export type Database = {
           expenses: number
           profit: number
           revenue: number
+        }[]
+      }
+      past_quote_analytics: {
+        Args: { p_job_type?: string }
+        Returns: {
+          avg_quantity: number
+          avg_unit_price: number
+          description: string
+          usage_count: number
         }[]
       }
       quote_conversion_funnel: {

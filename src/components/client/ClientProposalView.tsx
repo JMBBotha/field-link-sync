@@ -370,6 +370,15 @@ const ClientProposalView = () => {
               </a>
             </Button>
           </div>
+          <div className="border-t pt-4 mt-4 space-y-2">
+            <p className="text-xs text-muted-foreground">
+              By accepting this quote, you consent to AC Super Service processing your personal information
+              in accordance with the Protection of Personal Information Act (POPIA).
+            </p>
+            <p className="text-xs text-muted-foreground">
+              <a href="#" className="underline hover:text-foreground">Privacy Policy</a> | <a href="#" className="underline hover:text-foreground">Terms & Conditions</a>
+            </p>
+          </div>
           <p className="text-xs text-muted-foreground mt-4">AC Super Service © {new Date().getFullYear()}</p>
         </div>
       </main>
