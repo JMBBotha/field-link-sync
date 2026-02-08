@@ -383,7 +383,7 @@ const LeadDetailSheet = ({
             </a>
 
             {/* Create Invoice - Completed leads only */}
-            {isCompleted && (
+            {lead?.status === 'completed' && (
               <Button
                 variant="default"
                 size="lg"
