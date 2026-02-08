@@ -21,6 +21,7 @@ import TemplateSelector from "./TemplateSelector";
 import PhotoUploader from "./PhotoUploader";
 import QuotePreviewModal from "./QuotePreviewModal";
 import QuoteAIAssistant from "./QuoteAIAssistant";
+import FlatRatePickerDrawer from "@/components/flatrate/FlatRatePickerDrawer";
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -59,6 +60,7 @@ const QuoteBuilder = ({ quoteId, onBack }: QuoteBuilderProps) => {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [flatRateOpen, setFlatRateOpen] = useState(false);
 
   const defaultValid = new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0];
 
@@ -355,6 +357,14 @@ const QuoteBuilder = ({ quoteId, onBack }: QuoteBuilderProps) => {
                   >
                     <Plus className="h-3.5 w-3.5 mr-1" /> Add Line
                   </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setFlatRateOpen(true)}
+                  >
+                    📖 Flat Rate Book
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -432,6 +442,11 @@ const QuoteBuilder = ({ quoteId, onBack }: QuoteBuilderProps) => {
       </form>
 
       <QuotePreviewModal open={previewOpen} onOpenChange={setPreviewOpen} quote={previewData} />
+      <FlatRatePickerDrawer
+        open={flatRateOpen}
+        onOpenChange={setFlatRateOpen}
+        onAddToQuote={(item) => append({ ...item, service_id: undefined })}
+      />
     </div>
   );
 };

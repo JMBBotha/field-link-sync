@@ -366,6 +366,45 @@ export type Database = {
           },
         ]
       }
+      flat_rate_items: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          estimated_hours: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+          parts: Json | null
+          standard_price: number
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          estimated_hours?: number | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          parts?: Json | null
+          standard_price: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          estimated_hours?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          parts?: Json | null
+          standard_price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       hvac_services: {
         Row: {
           category: string
@@ -678,6 +717,50 @@ export type Database = {
           uploaded_by?: string | null
         }
         Relationships: []
+      }
+      job_schedules: {
+        Row: {
+          agent_id: string
+          created_at: string
+          end_time: string
+          id: string
+          lead_id: string
+          notes: string | null
+          scheduled_date: string
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          end_time: string
+          id?: string
+          lead_id: string
+          notes?: string | null
+          scheduled_date: string
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          end_time?: string
+          id?: string
+          lead_id?: string
+          notes?: string | null
+          scheduled_date?: string
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_schedules_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       job_time_entries: {
         Row: {
