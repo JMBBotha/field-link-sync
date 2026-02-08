@@ -986,6 +986,49 @@ export type Database = {
           next_service_due: string
         }[]
       }
+      get_completed_jobs: {
+        Args: {
+          p_agent_ids?: string[]
+          p_center_lat?: number
+          p_center_lng?: number
+          p_end_date?: string
+          p_radius_km?: number
+          p_search?: string
+          p_start_date?: string
+        }
+        Returns: {
+          accepted_at: string | null
+          actual_start_time: string | null
+          agreement_id: string | null
+          assigned_agent_id: string | null
+          broadcast_radius_km: number | null
+          completed_at: string | null
+          created_at: string | null
+          customer_address: string
+          customer_id: string | null
+          customer_name: string
+          customer_phone: string
+          equipment_id: string | null
+          estimated_duration_minutes: number | null
+          estimated_end_time: string | null
+          id: string
+          latitude: number
+          longitude: number
+          notes: string | null
+          priority: string
+          scheduled_date: string | null
+          scheduled_time: string | null
+          service_type: string
+          started_at: string | null
+          status: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "leads"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_or_create_customer_token: {
         Args: { p_customer_id: string }
         Returns: string
