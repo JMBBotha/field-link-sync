@@ -40,11 +40,25 @@ export const generateInvoicePDF = (invoice: InvoiceData): jsPDF => {
   const contentWidth = pageWidth - margin * 2;
   let y = 25;
 
-  // ── Header ──
+  // ── Company Header ──
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(0, 119, 182);
+  doc.text("BE COOL AC SUPER SERVICE", margin, y);
+  y += 5;
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100);
+  doc.text("0800-BE-COOL (0800 23 2665) | VAT No: 4123456789", margin, y);
+  y += 4;
+  doc.text("info@becool.co.za | www.becool.co.za", margin, y);
+  y += 10;
+
+  // ── Invoice Title ──
   doc.setFontSize(24);
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(0, 119, 182); // #0077B6
-  doc.text("INVOICE", margin, y);
+  doc.setTextColor(0, 119, 182);
+  doc.text("TAX INVOICE", margin, y);
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
@@ -179,11 +193,29 @@ export const generateInvoicePDF = (invoice: InvoiceData): jsPDF => {
     doc.text(splitNotes, margin, y);
   }
 
+  // ── Banking Details ──
+  y += 14;
+  if (y > 245) { doc.addPage(); y = 25; }
+  doc.setFillColor(245, 247, 250);
+  doc.rect(margin, y - 4, contentWidth, 30, "F");
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(0, 119, 182);
+  doc.text("BANKING DETAILS", margin + 4, y);
+  y += 5;
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(80);
+  doc.setFontSize(7.5);
+  doc.text("Bank: First National Bank (FNB)", margin + 4, y); y += 4;
+  doc.text("Account: Be Cool AC Super Service (Pty) Ltd", margin + 4, y); y += 4;
+  doc.text("Account No: 62876543210 | Branch Code: 250655", margin + 4, y); y += 4;
+  doc.text("Reference: " + invoice.invoice_number, margin + 4, y);
+
   // ── Footer ──
-  const footerY = doc.internal.pageSize.getHeight() - 15;
+  const footerY = doc.internal.pageSize.getHeight() - 12;
   doc.setFontSize(7);
   doc.setTextColor(180);
-  doc.text("Thank you for your business!", pageWidth / 2, footerY, { align: "center" });
+  doc.text("Be Cool AC Super Service (Pty) Ltd | Reg No: 2024/123456/07 | SARS-compliant Tax Invoice", pageWidth / 2, footerY, { align: "center" });
 
   return doc;
 };

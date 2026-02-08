@@ -361,6 +361,8 @@ export type Database = {
           line_items: Json
           notes: string | null
           paid_date: string | null
+          payfast_payment_id: string | null
+          payfast_url: string | null
           payment_method: string | null
           pdf_url: string | null
           quote_id: string | null
@@ -388,6 +390,8 @@ export type Database = {
           line_items?: Json
           notes?: string | null
           paid_date?: string | null
+          payfast_payment_id?: string | null
+          payfast_url?: string | null
           payment_method?: string | null
           pdf_url?: string | null
           quote_id?: string | null
@@ -415,6 +419,8 @@ export type Database = {
           line_items?: Json
           notes?: string | null
           paid_date?: string | null
+          payfast_payment_id?: string | null
+          payfast_url?: string | null
           payment_method?: string | null
           pdf_url?: string | null
           quote_id?: string | null

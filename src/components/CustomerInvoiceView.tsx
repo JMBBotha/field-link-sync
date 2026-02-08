@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, FileText, Download, Clock, CheckCircle } from "lucide-react";
+import PayfastPayButton from "@/components/payments/PayfastPayButton";
 import { format } from "date-fns";
 import logo from "@/assets/logo.png";
 
@@ -243,15 +244,19 @@ const CustomerInvoiceView = () => {
               )}
 
               {/* Actions */}
-              <div className="flex gap-3 print:hidden">
+              <div className="flex flex-col gap-3 print:hidden">
                 <Button onClick={handlePrint} variant="outline" className="flex-1">
                   <Download className="h-4 w-4 mr-2" />
                   Download / Print
                 </Button>
                 {selectedInvoice.status !== "paid" && (
-                  <Button className="flex-1 bg-green-600 hover:bg-green-700">
-                    Pay Now
-                  </Button>
+                  <PayfastPayButton
+                    invoiceId={selectedInvoice.id}
+                    invoiceNumber={selectedInvoice.invoice_number}
+                    amount={Number(selectedInvoice.grand_total)}
+                    customerEmail={null}
+                    customerName={selectedInvoice.customer_name}
+                  />
                 )}
               </div>
             </CardContent>
