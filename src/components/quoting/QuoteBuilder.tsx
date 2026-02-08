@@ -20,6 +20,7 @@ import { Plus, Trash2, Save, Send, Eye, ArrowLeft, Loader2 } from "lucide-react"
 import TemplateSelector from "./TemplateSelector";
 import PhotoUploader from "./PhotoUploader";
 import QuotePreviewModal from "./QuotePreviewModal";
+import QuoteAIAssistant from "./QuoteAIAssistant";
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -345,18 +346,24 @@ const QuoteBuilder = ({ quoteId, onBack }: QuoteBuilderProps) => {
                   );
                 })}
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => append({ description: "", quantity: 1, unit_price: 0 })}
-                  className="mt-2"
-                >
-                  <Plus className="h-3.5 w-3.5 mr-1" /> Add Line
-                </Button>
+                <div className="flex items-center gap-2 mt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => append({ description: "", quantity: 1, unit_price: 0 })}
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Add Line
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* AI Assistant */}
+          <QuoteAIAssistant
+            onAddItem={(item) => append({ ...item, service_id: undefined })}
+          />
 
           {/* Notes */}
           <Card>
