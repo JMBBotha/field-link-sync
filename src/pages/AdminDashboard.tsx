@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Plus, Users, PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Menu, Settings, FileText, MessageSquare, BarChart3, Package, ClipboardList, Home, CalendarDays, BookOpen } from "lucide-react";
+import { LogOut, Plus, Users, PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Menu, Settings, FileText, MessageSquare, BarChart3, Package, ClipboardList, Home, CalendarDays, BookOpen, History, Upload } from "lucide-react";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import InventoryList from "@/components/inventory/InventoryList";
 import LowStockAlerts from "@/components/inventory/LowStockAlerts";
@@ -40,6 +40,8 @@ import AnalyticsDashboard from "@/components/analytics/AnalyticsDashboard";
 import ReportBuilder from "@/components/reports/ReportBuilder";
 import ScheduleCalendar from "@/components/scheduling/ScheduleCalendar";
 import FlatRateBook from "@/components/flatrate/FlatRateBook";
+import AuditLogViewer from "@/components/audit/AuditLogViewer";
+import CSVImporter from "@/components/bulk/CSVImporter";
 interface Lead {
   id: string;
   customer_name: string;
@@ -69,7 +71,8 @@ const AdminDashboard = () => {
   const [completedPanelCollapsed, setCompletedPanelCollapsed] = useState(true);
   const [showCompletedFilter, setShowCompletedFilter] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"home" | "map" | "agreements" | "settings" | "notifications" | "invoices" | "quotes" | "proposals" | "analytics" | "inventory" | "reports" | "schedule" | "flatrate">("home");
+  const [activeTab, setActiveTab] = useState<"home" | "map" | "agreements" | "settings" | "notifications" | "invoices" | "quotes" | "proposals" | "analytics" | "inventory" | "reports" | "schedule" | "flatrate" | "audit" | "import">("home");
+  const [importTarget, setImportTarget] = useState<"customers" | "inventory_items" | "flat_rate_items">("customers");
   const { needsSetup } = useCompanySettings();
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
@@ -312,6 +315,22 @@ const AdminDashboard = () => {
             <BookOpen className="mr-2 h-4 w-4" />
             Flat Rate
           </Button>
+          <Button 
+            variant={activeTab === "audit" ? "secondary" : "ghost"} 
+            onClick={() => setActiveTab(activeTab === "audit" ? "map" : "audit")} 
+            className={activeTab === "audit" ? "bg-white text-blue-600" : "text-white hover:bg-blue-500"}
+          >
+            <History className="mr-2 h-4 w-4" />
+            Audit
+          </Button>
+          <Button 
+            variant={activeTab === "import" ? "secondary" : "ghost"} 
+            onClick={() => setActiveTab(activeTab === "import" ? "map" : "import")} 
+            className={activeTab === "import" ? "bg-white text-blue-600" : "text-white hover:bg-blue-500"}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            Import
+          </Button>
           <NotificationBell />
           <Button 
             variant={activeTab === "settings" ? "secondary" : "ghost"} 
@@ -475,6 +494,34 @@ const AdminDashboard = () => {
               </Button>
               <Button 
                 onClick={() => {
+                  setActiveTab(activeTab === "audit" ? "map" : "audit");
+                  setMobileMenuOpen(false);
+                }} 
+                variant={activeTab === "audit" ? "secondary" : "ghost"}
+                className={activeTab === "audit" 
+                  ? "bg-white text-blue-600 justify-start" 
+                  : "text-white hover:bg-blue-500 justify-start"
+                }
+              >
+                <History className="mr-2 h-4 w-4" />
+                Audit Log
+              </Button>
+              <Button 
+                onClick={() => {
+                  setActiveTab(activeTab === "import" ? "map" : "import");
+                  setMobileMenuOpen(false);
+                }} 
+                variant={activeTab === "import" ? "secondary" : "ghost"}
+                className={activeTab === "import" 
+                  ? "bg-white text-blue-600 justify-start" 
+                  : "text-white hover:bg-blue-500 justify-start"
+                }
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                CSV Import
+              </Button>
+              <Button
+                onClick={() => {
                   setActiveTab(activeTab === "settings" ? "map" : "settings");
                   setMobileMenuOpen(false);
                 }} 
@@ -587,6 +634,37 @@ const AdminDashboard = () => {
       ) : activeTab === "settings" ? (
         <div className="flex-1 overflow-auto bg-background">
           <AdminSettingsPage />
+        </div>
+      ) : activeTab === "audit" ? (
+        <div className="flex-1 overflow-auto bg-background">
+          <AuditLogViewer />
+        </div>
+      ) : activeTab === "import" ? (
+        <div className="flex-1 overflow-auto bg-background p-4">
+          <div className="max-w-3xl mx-auto space-y-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Upload className="h-5 w-5 text-primary" />
+              <h2 className="text-xl font-bold">CSV Import</h2>
+            </div>
+            <div className="flex gap-2 mb-4">
+              {(["customers", "inventory_items", "flat_rate_items"] as const).map((t) => (
+                <Button
+                  key={t}
+                  variant={importTarget === t ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setImportTarget(t)}
+                  className="capitalize text-xs"
+                >
+                  {t.replace(/_/g, " ")}
+                </Button>
+              ))}
+            </div>
+            <CSVImporter
+              target={importTarget}
+              onComplete={() => setActiveTab("home")}
+              onClose={() => setActiveTab("home")}
+            />
+          </div>
         </div>
       ) : (
         <div className="flex-1 flex overflow-hidden relative">
