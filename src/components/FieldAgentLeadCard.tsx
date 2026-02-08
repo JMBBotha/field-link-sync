@@ -166,7 +166,7 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
 
         {/* Highlight pulse animation */}
         {isHighlighted && (
-          <div className="absolute inset-0 rounded-lg bg-primary/10 animate-pulse pointer-events-none" />
+          <div className="absolute inset-0 rounded-lg bg-primary/5 pointer-events-none" />
         )}
 
         <CardContent className="p-3 space-y-2">
