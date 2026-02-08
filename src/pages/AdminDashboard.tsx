@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Plus, Users, PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Menu, Settings, FileText, MessageSquare, BarChart3, Package, ClipboardList, Home } from "lucide-react";
+import { LogOut, Plus, Users, PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Menu, Settings, FileText, MessageSquare, BarChart3, Package, ClipboardList, Home, CalendarDays, BookOpen } from "lucide-react";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import InventoryList from "@/components/inventory/InventoryList";
 import LowStockAlerts from "@/components/inventory/LowStockAlerts";
@@ -38,6 +38,8 @@ import InvoiceListPage from "@/components/invoicing/InvoiceListPage";
 import QuotesList from "@/components/quoting/QuotesList";
 import AnalyticsDashboard from "@/components/analytics/AnalyticsDashboard";
 import ReportBuilder from "@/components/reports/ReportBuilder";
+import ScheduleCalendar from "@/components/scheduling/ScheduleCalendar";
+import FlatRateBook from "@/components/flatrate/FlatRateBook";
 interface Lead {
   id: string;
   customer_name: string;
@@ -67,7 +69,7 @@ const AdminDashboard = () => {
   const [completedPanelCollapsed, setCompletedPanelCollapsed] = useState(true);
   const [showCompletedFilter, setShowCompletedFilter] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"home" | "map" | "agreements" | "settings" | "notifications" | "invoices" | "quotes" | "proposals" | "analytics" | "inventory" | "reports">("home");
+  const [activeTab, setActiveTab] = useState<"home" | "map" | "agreements" | "settings" | "notifications" | "invoices" | "quotes" | "proposals" | "analytics" | "inventory" | "reports" | "schedule" | "flatrate">("home");
   const { needsSetup } = useCompanySettings();
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
@@ -294,6 +296,22 @@ const AdminDashboard = () => {
             <ClipboardList className="mr-2 h-4 w-4" />
             Reports
           </Button>
+          <Button 
+            variant={activeTab === "schedule" ? "secondary" : "ghost"} 
+            onClick={() => setActiveTab(activeTab === "schedule" ? "map" : "schedule")} 
+            className={activeTab === "schedule" ? "bg-white text-blue-600" : "text-white hover:bg-blue-500"}
+          >
+            <CalendarDays className="mr-2 h-4 w-4" />
+            Schedule
+          </Button>
+          <Button 
+            variant={activeTab === "flatrate" ? "secondary" : "ghost"} 
+            onClick={() => setActiveTab(activeTab === "flatrate" ? "map" : "flatrate")} 
+            className={activeTab === "flatrate" ? "bg-white text-blue-600" : "text-white hover:bg-blue-500"}
+          >
+            <BookOpen className="mr-2 h-4 w-4" />
+            Flat Rate
+          </Button>
           <NotificationBell />
           <Button 
             variant={activeTab === "settings" ? "secondary" : "ghost"} 
@@ -429,6 +447,34 @@ const AdminDashboard = () => {
               </Button>
               <Button 
                 onClick={() => {
+                  setActiveTab(activeTab === "schedule" ? "map" : "schedule");
+                  setMobileMenuOpen(false);
+                }} 
+                variant={activeTab === "schedule" ? "secondary" : "ghost"}
+                className={activeTab === "schedule" 
+                  ? "bg-white text-blue-600 justify-start" 
+                  : "text-white hover:bg-blue-500 justify-start"
+                }
+              >
+                <CalendarDays className="mr-2 h-4 w-4" />
+                Schedule
+              </Button>
+              <Button 
+                onClick={() => {
+                  setActiveTab(activeTab === "flatrate" ? "map" : "flatrate");
+                  setMobileMenuOpen(false);
+                }} 
+                variant={activeTab === "flatrate" ? "secondary" : "ghost"}
+                className={activeTab === "flatrate" 
+                  ? "bg-white text-blue-600 justify-start" 
+                  : "text-white hover:bg-blue-500 justify-start"
+                }
+              >
+                <BookOpen className="mr-2 h-4 w-4" />
+                Flat Rate
+              </Button>
+              <Button 
+                onClick={() => {
                   setActiveTab(activeTab === "settings" ? "map" : "settings");
                   setMobileMenuOpen(false);
                 }} 
@@ -525,6 +571,14 @@ const AdminDashboard = () => {
       ) : activeTab === "inventory" ? (
         <div className="flex-1 overflow-auto bg-background">
           <InventoryList />
+        </div>
+      ) : activeTab === "schedule" ? (
+        <div className="flex-1 overflow-auto bg-background">
+          <ScheduleCalendar />
+        </div>
+      ) : activeTab === "flatrate" ? (
+        <div className="flex-1 overflow-auto bg-background">
+          <FlatRateBook />
         </div>
       ) : activeTab === "agreements" ? (
         <div className="flex-1 overflow-auto bg-background">
