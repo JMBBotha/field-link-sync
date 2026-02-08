@@ -590,7 +590,6 @@ const LeadDetailSheet = ({
                   className="w-full h-11 rounded-lg text-sm font-semibold"
                   style={{ backgroundColor: '#0077B6', color: '#FFFFFF' }}
                   onClick={() => {
-                    onClose();
                     setShowInlineInvoice(true);
                   }}
                 >
