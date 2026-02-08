@@ -1443,6 +1443,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      agent_performance_scores: {
+        Args: never
+        Returns: {
+          agent_name: string
+          avg_completion_days: number
+          jobs_completed: number
+          performance_score: number
+          total_revenue: number
+        }[]
+      }
       calculate_distance_km: {
         Args: { lat1: number; lat2: number; lng1: number; lng2: number }
         Returns: number
@@ -1551,6 +1561,34 @@ export type Database = {
         Returns: {
           expenses: number
           profit: number
+          revenue: number
+        }[]
+      }
+      quote_conversion_funnel: {
+        Args: never
+        Returns: {
+          count: number
+          status: string
+        }[]
+      }
+      revenue_by_agent: {
+        Args: never
+        Returns: {
+          agent_name: string
+          total_revenue: number
+        }[]
+      }
+      revenue_by_service_type: {
+        Args: never
+        Returns: {
+          service_category: string
+          total: number
+        }[]
+      }
+      revenue_trend_monthly: {
+        Args: never
+        Returns: {
+          month: string
           revenue: number
         }[]
       }
