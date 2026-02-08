@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Plus, Users, PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Menu, Settings, FileText, MessageSquare, BarChart3, Package, ClipboardList, Home, CalendarDays, BookOpen, History, Upload } from "lucide-react";
+import { LogOut, Plus, Users, PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Menu, Settings, FileText, MessageSquare, BarChart3, Package, ClipboardList, Home, CalendarDays, BookOpen, History, Upload, Sun, Moon } from "lucide-react";
+import { useTheme } from "@/hooks/useTheme";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import InventoryList from "@/components/inventory/InventoryList";
 import LowStockAlerts from "@/components/inventory/LowStockAlerts";
@@ -80,6 +81,7 @@ const AdminDashboard = () => {
   const mapRef = useRef<MapViewHandle>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { theme, toggleTheme } = useTheme();
 
   // Query for pending change requests count
   const { data: pendingRequestsCount = 0 } = useQuery({
@@ -332,8 +334,17 @@ const AdminDashboard = () => {
             Import
           </Button>
           <NotificationBell />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            className="text-white hover:bg-blue-500"
+            title={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+          >
+            {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+          </Button>
           <Button 
-            variant={activeTab === "settings" ? "secondary" : "ghost"} 
+            variant={activeTab === "settings" ? "secondary" : "ghost"}
             onClick={() => setActiveTab(activeTab === "settings" ? "map" : "settings")} 
             className={activeTab === "settings" ? "bg-white text-blue-600" : "text-white hover:bg-blue-500"}
           >

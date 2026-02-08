@@ -16,7 +16,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Save, Send, Eye, ArrowLeft, Loader2 } from "lucide-react";
+import { Plus, Trash2, Save, Send, Eye, ArrowLeft, Loader2, Printer } from "lucide-react";
+import WhatsAppShareButton from "@/components/WhatsAppShareButton";
 import TemplateSelector from "./TemplateSelector";
 import PhotoUploader from "./PhotoUploader";
 import QuotePreviewModal from "./QuotePreviewModal";
@@ -425,6 +426,18 @@ const QuoteBuilder = ({ quoteId, onBack }: QuoteBuilderProps) => {
             <Button type="button" variant="outline" onClick={() => setPreviewOpen(true)}>
               <Eye className="h-4 w-4 mr-2" /> Preview
             </Button>
+            <Button type="button" variant="outline" onClick={() => window.print()}>
+              <Printer className="h-4 w-4 mr-2" /> Print
+            </Button>
+            {savedQuoteId && selectedCustomer && (
+              <WhatsAppShareButton
+                phone={selectedCustomer.phone}
+                message={`Hi ${selectedCustomer.name}, your quote for ${formatZAR(total)} is ready.`}
+                variant="outline"
+              >
+                Send via WhatsApp
+              </WhatsAppShareButton>
+            )}
             <Button type="submit" disabled={saving}>
               {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
               Save Draft
