@@ -260,15 +260,20 @@ export type Database = {
           agent_id: string
           created_at: string
           customer_address: string | null
+          customer_email: string | null
+          customer_id: string | null
           customer_name: string
           customer_phone: string | null
+          due_date: string | null
           equipment_id: string | null
           grand_total: number
           id: string
           invoice_number: string
+          issue_date: string
           lead_id: string
           line_items: Json
           notes: string | null
+          paid_date: string | null
           payment_method: string | null
           status: string
           subtotal: number
@@ -280,15 +285,20 @@ export type Database = {
           agent_id: string
           created_at?: string
           customer_address?: string | null
+          customer_email?: string | null
+          customer_id?: string | null
           customer_name: string
           customer_phone?: string | null
+          due_date?: string | null
           equipment_id?: string | null
           grand_total?: number
           id?: string
           invoice_number: string
+          issue_date?: string
           lead_id: string
           line_items?: Json
           notes?: string | null
+          paid_date?: string | null
           payment_method?: string | null
           status?: string
           subtotal?: number
@@ -300,15 +310,20 @@ export type Database = {
           agent_id?: string
           created_at?: string
           customer_address?: string | null
+          customer_email?: string | null
+          customer_id?: string | null
           customer_name?: string
           customer_phone?: string | null
+          due_date?: string | null
           equipment_id?: string | null
           grand_total?: number
           id?: string
           invoice_number?: string
+          issue_date?: string
           lead_id?: string
           line_items?: Json
           notes?: string | null
+          paid_date?: string | null
           payment_method?: string | null
           status?: string
           subtotal?: number
@@ -317,6 +332,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoices_equipment_id_fkey"
             columns: ["equipment_id"]
@@ -816,6 +838,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      service_templates: {
+        Row: {
+          category: string
+          created_at: string
+          default_rate: number
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          default_rate?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          default_rate?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
