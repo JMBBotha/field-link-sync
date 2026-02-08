@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
-import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ClockIcon, Images, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ClockIcon, Images, Plus, FileText } from "lucide-react";
 import { useJobPhotos, PhotoType } from "@/hooks/useJobPhotos";
 import { useOffline } from "@/contexts/OfflineContext";
 import { Button } from "@/components/ui/button";
@@ -152,6 +153,7 @@ const LeadDetailSheet = ({
   const [uploadingMultiple, setUploadingMultiple] = useState(false);
   const [showExpandedGallery, setShowExpandedGallery] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { isOnline, queueOperation: contextQueueOp } = useOffline();
   
   // Use provided queueOperation or fall back to context
@@ -578,6 +580,22 @@ const LeadDetailSheet = ({
                     )}
                   </Button>
                 </div>
+              )}
+
+              {/* Completed leads - Create Invoice button */}
+              {isCompleted && isOwner && (
+                <Button
+                  className="w-full h-11 rounded-lg text-sm font-semibold"
+                  style={{ backgroundColor: '#0077B6', color: '#FFFFFF' }}
+                  onClick={() => {
+                    onClose();
+                    // Navigate to invoices with lead prefill data via state
+                    navigate("/invoices", { state: { prefillLead: lead } });
+                  }}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Create Invoice
+                </Button>
               )}
 
               {/* Created timestamp at bottom */}

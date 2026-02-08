@@ -148,6 +148,7 @@ export type Database = {
       customers: {
         Row: {
           address: string | null
+          area: string | null
           created_at: string
           created_by: string | null
           email: string | null
@@ -162,9 +163,11 @@ export type Database = {
           phone_verified: boolean | null
           preferred_contact_method: string | null
           updated_at: string
+          vat_number: string | null
         }
         Insert: {
           address?: string | null
+          area?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
@@ -179,9 +182,11 @@ export type Database = {
           phone_verified?: boolean | null
           preferred_contact_method?: string | null
           updated_at?: string
+          vat_number?: string | null
         }
         Update: {
           address?: string | null
+          area?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
@@ -196,6 +201,7 @@ export type Database = {
           phone_verified?: boolean | null
           preferred_contact_method?: string | null
           updated_at?: string
+          vat_number?: string | null
         }
         Relationships: []
       }
@@ -255,6 +261,54 @@ export type Database = {
           },
         ]
       }
+      invoice_items: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          id: string
+          invoice_id: string
+          quantity: number
+          service_id: string | null
+          unit_price: number
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          description: string
+          id?: string
+          invoice_id: string
+          quantity?: number
+          service_id?: string | null
+          unit_price?: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          id?: string
+          invoice_id?: string
+          quantity?: number
+          service_id?: string | null
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           agent_id: string
@@ -275,6 +329,7 @@ export type Database = {
           notes: string | null
           paid_date: string | null
           payment_method: string | null
+          pdf_url: string | null
           status: string
           subtotal: number
           tax_amount: number
@@ -300,6 +355,7 @@ export type Database = {
           notes?: string | null
           paid_date?: string | null
           payment_method?: string | null
+          pdf_url?: string | null
           status?: string
           subtotal?: number
           tax_amount?: number
@@ -325,6 +381,7 @@ export type Database = {
           notes?: string | null
           paid_date?: string | null
           payment_method?: string | null
+          pdf_url?: string | null
           status?: string
           subtotal?: number
           tax_amount?: number

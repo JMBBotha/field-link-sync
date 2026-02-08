@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,10 +18,21 @@ const Invoices = () => {
   const [view, setView] = useState<InvoiceView>("list");
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Check for prefill lead from navigation state
+  const prefillLead = (location.state as any)?.prefillLead || null;
 
   useEffect(() => {
     checkAuth();
   }, []);
+
+  // If navigated with prefill data, go straight to create view
+  useEffect(() => {
+    if (prefillLead && !loading) {
+      setView("create");
+    }
+  }, [prefillLead, loading]);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -77,8 +88,16 @@ const Invoices = () => {
           {view === "create" && (
             <CreateInvoicePage
               agentId={currentUserId}
-              onBack={() => setView("list")}
-              onSuccess={() => setView("list")}
+              onBack={() => {
+                setView("list");
+                // Clear navigation state so prefill doesn't persist
+                window.history.replaceState({}, "");
+              }}
+              onSuccess={() => {
+                setView("list");
+                window.history.replaceState({}, "");
+              }}
+              prefillLead={prefillLead}
             />
           )}
           {view === "detail" && selectedInvoiceId && (
