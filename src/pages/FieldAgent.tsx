@@ -963,6 +963,11 @@ const FieldAgent = () => {
     .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
   , [leads, currentUserId]);
 
+  const inProgressLeads = useMemo(() => leads
+    .filter(l => l.status === "in_progress" && l.assigned_agent_id === currentUserId)
+    .sort((a, b) => new Date(b.started_at || b.created_at || 0).getTime() - new Date(a.started_at || a.created_at || 0).getTime())
+  , [leads, currentUserId]);
+
   // Calculate filter counts for available leads
   const availableFilterCounts = useMemo(() => ({
     all: availableLeads.length,
@@ -1307,6 +1312,65 @@ const FieldAgent = () => {
                   })
                 )}
 
+                {/* In Progress Leads Section */}
+                {inProgressLeads.length > 0 && (
+                  <>
+                    <div className="flex items-center gap-2 pt-3 pb-1 border-t border-white/10">
+                      <Timer className="h-3.5 w-3.5 text-green-600" />
+                      <span className="font-semibold text-xs text-foreground">In Progress</span>
+                      <Badge variant="secondary" className="text-xs ml-auto">{inProgressLeads.length}</Badge>
+                    </div>
+                    {inProgressLeads.map((lead) => (
+                      <Card
+                        key={lead.id}
+                        className="bg-gradient-to-r from-green-50 to-slate-50 cursor-pointer hover:from-green-100 hover:to-white transition-all shadow-md border-border/50"
+                        onClick={() => openLeadDetail(lead)}
+                      >
+                        <CardContent className="p-2.5 space-y-1.5">
+                          <div className="flex items-start justify-between">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-sm truncate">{lead.customer_name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{lead.service_type}</p>
+                            </div>
+                            {getStatusBadge(lead.status)}
+                          </div>
+                          {lead.started_at && (
+                            <LeadCardProgress
+                              startedAt={lead.started_at}
+                              estimatedDurationMinutes={lead.estimated_duration_minutes}
+                              estimatedEndTime={lead.estimated_end_time}
+                              compact
+                            />
+                          )}
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              className="flex-1 bg-green-600 hover:bg-green-700"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCompleteJob(lead.id);
+                              }}
+                              disabled={!!loadingAction}
+                            >
+                              {loadingAction === 'complete' ? <Loader2 className="h-4 w-4 animate-spin" /> : "Complete"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(`https://www.google.com/maps/dir/?api=1&destination=${lead.latitude},${lead.longitude}`, "_blank");
+                              }}
+                            >
+                              <Navigation className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </>
+                )}
+
                 {/* Completed Leads Section */}
                 {completedLeads.length > 0 && (
                   <>
@@ -1408,7 +1472,7 @@ const FieldAgent = () => {
                       </TabsTrigger>
                       <TabsTrigger value="completed" className="gap-1 text-xs">
                         <CheckCircle2 className="h-3.5 w-3.5" />
-                        Done ({completedLeads.length})
+                        Jobs ({inProgressLeads.length + completedLeads.length})
                       </TabsTrigger>
                     </TabsList>
 
@@ -1622,47 +1686,117 @@ const FieldAgent = () => {
                         }}
                         className="h-full p-3 space-y-2"
                       >
-                        {completedLeads.length === 0 ? (
-                          <div className="text-center py-8 text-muted-foreground text-sm">
-                            No completed jobs yet
-                          </div>
-                        ) : (
-                          completedLeads.map((lead) => (
-                            <Card
-                              key={lead.id}
-                              className="bg-gradient-to-r from-blue-100 to-slate-50 cursor-pointer active:from-blue-50 active:to-white transition-all shadow-md border-border/50"
-                              onClick={() => openLeadDetail(lead)}
-                            >
-                              <CardContent className="p-3 space-y-2">
-                                <div className="flex items-start justify-between">
-                                  <div>
-                                    <p className="font-medium text-sm">{lead.customer_name}</p>
-                                    <p className="text-xs text-muted-foreground">{lead.service_type}</p>
+                        {/* In Progress Section */}
+                        {inProgressLeads.length > 0 && (
+                          <>
+                            <div className="flex items-center gap-2 pb-1">
+                              <Timer className="h-3.5 w-3.5 text-green-600" />
+                              <span className="font-semibold text-xs text-foreground">In Progress</span>
+                              <Badge variant="secondary" className="text-xs ml-auto">{inProgressLeads.length}</Badge>
+                            </div>
+                            {inProgressLeads.map((lead) => (
+                              <Card
+                                key={lead.id}
+                                className="bg-gradient-to-r from-green-50 to-slate-50 cursor-pointer active:from-green-100 active:to-white transition-all shadow-md border-border/50"
+                                onClick={() => openLeadDetail(lead)}
+                              >
+                                <CardContent className="p-3 space-y-2">
+                                  <div className="flex items-start justify-between">
+                                    <div>
+                                      <p className="font-medium text-sm">{lead.customer_name}</p>
+                                      <p className="text-xs text-muted-foreground">{lead.service_type}</p>
+                                    </div>
+                                    {getStatusBadge(lead.status)}
                                   </div>
-                                  {getStatusBadge(lead.status)}
-                                </div>
-                                {lead.created_at && (
-                                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <Clock className="h-3 w-3" />
-                                    {formatTimeAgo(lead.created_at)}
-                                  </p>
-                                )}
-                                <Button
-                                  variant="default"
-                                  size="lg"
-                                  className="w-full"
-                                  style={{ backgroundColor: '#0077B6', color: '#FFFFFF' }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openLeadDetail(lead);
-                                  }}
-                                >
-                                  <FileText className="mr-2 h-5 w-5" />
-                                  Create Invoice
-                                </Button>
-                              </CardContent>
-                            </Card>
-                          ))
+                                  {lead.started_at && (
+                                    <LeadCardProgress
+                                      startedAt={lead.started_at}
+                                      estimatedDurationMinutes={lead.estimated_duration_minutes}
+                                      estimatedEndTime={lead.estimated_end_time}
+                                      compact
+                                    />
+                                  )}
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      className="flex-1 h-10 rounded-full font-semibold bg-green-600 hover:bg-green-700"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleCompleteJob(lead.id);
+                                      }}
+                                      disabled={!!loadingAction}
+                                    >
+                                      {loadingAction === 'complete' ? <Loader2 className="h-4 w-4 animate-spin" /> : "Complete"}
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-10 px-3"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        window.open(`https://www.google.com/maps/dir/?api=1&destination=${lead.latitude},${lead.longitude}`, "_blank");
+                                      }}
+                                    >
+                                      <Navigation className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </>
+                        )}
+
+                        {/* Completed Section */}
+                        {completedLeads.length > 0 && (
+                          <>
+                            <div className="flex items-center gap-2 pt-2 pb-1 border-t border-border/30">
+                              <CheckCircle2 className="h-3.5 w-3.5 text-foreground" />
+                              <span className="font-semibold text-xs text-foreground">Completed</span>
+                              <Badge variant="secondary" className="text-xs ml-auto">{completedLeads.length}</Badge>
+                            </div>
+                            {completedLeads.map((lead) => (
+                              <Card
+                                key={lead.id}
+                                className="bg-gradient-to-r from-blue-100 to-slate-50 cursor-pointer active:from-blue-50 active:to-white transition-all shadow-md border-border/50"
+                                onClick={() => openLeadDetail(lead)}
+                              >
+                                <CardContent className="p-3 space-y-2">
+                                  <div className="flex items-start justify-between">
+                                    <div>
+                                      <p className="font-medium text-sm">{lead.customer_name}</p>
+                                      <p className="text-xs text-muted-foreground">{lead.service_type}</p>
+                                    </div>
+                                    {getStatusBadge(lead.status)}
+                                  </div>
+                                  {lead.created_at && (
+                                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                      <Clock className="h-3 w-3" />
+                                      {formatTimeAgo(lead.created_at)}
+                                    </p>
+                                  )}
+                                  <Button
+                                    variant="default"
+                                    size="lg"
+                                    className="w-full"
+                                    style={{ backgroundColor: '#0077B6', color: '#FFFFFF' }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openLeadDetail(lead);
+                                    }}
+                                  >
+                                    <FileText className="mr-2 h-5 w-5" />
+                                    Create Invoice
+                                  </Button>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </>
+                        )}
+
+                        {inProgressLeads.length === 0 && completedLeads.length === 0 && (
+                          <div className="text-center py-8 text-muted-foreground text-sm">
+                            No jobs yet
+                          </div>
                         )}
                       </PullToRefresh>
                     </TabsContent>
