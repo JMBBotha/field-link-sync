@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ClockIcon, Images, Plus, FileText } from "lucide-react";
+import CreateInvoiceDialog from "@/components/invoicing/CreateInvoiceDialog";
 import { useJobPhotos, PhotoType } from "@/hooks/useJobPhotos";
 import { useOffline } from "@/contexts/OfflineContext";
 import { Button } from "@/components/ui/button";
@@ -152,6 +153,7 @@ const LeadDetailSheet = ({
   const [galleryRefreshKey, setGalleryRefreshKey] = useState(0);
   const [uploadingMultiple, setUploadingMultiple] = useState(false);
   const [showExpandedGallery, setShowExpandedGallery] = useState(false);
+  const [showInlineInvoice, setShowInlineInvoice] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { isOnline, queueOperation: contextQueueOp } = useOffline();
@@ -582,15 +584,14 @@ const LeadDetailSheet = ({
                 </div>
               )}
 
-              {/* Completed leads - Create Invoice button */}
+              {/* Completed leads - Create Invoice button (inline) */}
               {isCompleted && isOwner && (
                 <Button
                   className="w-full h-11 rounded-lg text-sm font-semibold"
                   style={{ backgroundColor: '#0077B6', color: '#FFFFFF' }}
                   onClick={() => {
                     onClose();
-                    // Navigate to invoices with lead prefill data via state
-                    navigate("/invoices", { state: { prefillLead: lead } });
+                    setShowInlineInvoice(true);
                   }}
                 >
                   <FileText className="h-4 w-4 mr-2" />
@@ -763,6 +764,23 @@ const LeadDetailSheet = ({
         lead={lead}
         onSaved={() => onLeadUpdated?.()}
       />
+
+      {/* Inline Invoice Creation Dialog */}
+      {currentUserId && (
+        <CreateInvoiceDialog
+          open={showInlineInvoice}
+          onClose={() => setShowInlineInvoice(false)}
+          agentId={currentUserId}
+          prefillLead={{
+            id: lead.id,
+            customer_name: lead.customer_name,
+            customer_phone: lead.customer_phone,
+            customer_address: lead.customer_address,
+            customer_id: lead.customer_id,
+            service_type: lead.service_type,
+          }}
+        />
+      )}
     </>
   );
 };
