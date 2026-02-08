@@ -26,6 +26,8 @@ import {
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
+import InvoiceDashboardWidget from "@/components/invoicing/InvoiceDashboardWidget";
+import InvoiceListPage from "@/components/invoicing/InvoiceListPage";
 
 interface Lead {
   id: string;
@@ -56,7 +58,7 @@ const AdminDashboard = () => {
   const [completedPanelCollapsed, setCompletedPanelCollapsed] = useState(true);
   const [showCompletedFilter, setShowCompletedFilter] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"map" | "agreements" | "settings" | "notifications">("map");
+  const [activeTab, setActiveTab] = useState<"map" | "agreements" | "settings" | "notifications" | "invoices">("map");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
@@ -207,6 +209,14 @@ const AdminDashboard = () => {
             )}
           </Button>
           <Button 
+            variant={activeTab === "invoices" ? "secondary" : "ghost"} 
+            onClick={() => setActiveTab(activeTab === "invoices" ? "map" : "invoices")} 
+            className={activeTab === "invoices" ? "bg-white text-blue-600" : "text-white hover:bg-blue-500"}
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            Invoices
+          </Button>
+          <Button 
             variant={activeTab === "agreements" ? "secondary" : "ghost"} 
             onClick={() => setActiveTab(activeTab === "agreements" ? "map" : "agreements")} 
             className={activeTab === "agreements" ? "bg-white text-blue-600" : "text-white hover:bg-blue-500"}
@@ -248,6 +258,20 @@ const AdminDashboard = () => {
               <SheetTitle className="text-white text-left">Menu</SheetTitle>
             </SheetHeader>
             <div className="flex flex-col gap-3 mt-6">
+              <Button 
+                onClick={() => {
+                  setActiveTab(activeTab === "invoices" ? "map" : "invoices");
+                  setMobileMenuOpen(false);
+                }} 
+                variant={activeTab === "invoices" ? "secondary" : "ghost"}
+                className={activeTab === "invoices" 
+                  ? "bg-white text-blue-600 justify-start" 
+                  : "text-white hover:bg-blue-500 justify-start"
+                }
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Invoices
+              </Button>
               <Button 
                 onClick={() => {
                   setActiveTab(activeTab === "agreements" ? "map" : "agreements");
@@ -316,6 +340,19 @@ const AdminDashboard = () => {
       {activeTab === "notifications" ? (
         <div className="flex-1 overflow-auto bg-background">
           <AdminNotificationSettings />
+        </div>
+      ) : activeTab === "invoices" ? (
+        <div className="flex-1 overflow-auto bg-background">
+          <div className="max-w-4xl mx-auto">
+            <InvoiceListPage
+              onSelectInvoice={(inv) => {
+                navigate("/invoices");
+              }}
+              onCreateInvoice={() => {
+                navigate("/invoices");
+              }}
+            />
+          </div>
         </div>
       ) : activeTab === "agreements" ? (
         <div className="flex-1 overflow-auto bg-background">
