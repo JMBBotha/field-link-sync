@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, LogOut, MapPin, Navigation, ChevronUp, ChevronDown, List, Clock, Loader2, Map, Timer, AlertCircle, RefreshCw, Home } from "lucide-react";
+import { ArrowLeft, LogOut, MapPin, Navigation, ChevronUp, ChevronDown, List, Clock, Loader2, Map, Timer, AlertCircle, RefreshCw, Home, CheckCircle2, FileText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -104,7 +104,7 @@ const FieldAgent = () => {
   const [, setMapboxToken] = useState<string>("");
   const [showTokenInput, setShowTokenInput] = useState(true);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
-  const [mobileTab, setMobileTab] = useState<"available" | "active">("available");
+  const [mobileTab, setMobileTab] = useState<"available" | "active" | "completed">("available");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
@@ -958,6 +958,11 @@ const FieldAgent = () => {
     ["claimed", "accepted", "in_progress"].includes(l.status) && l.assigned_agent_id === currentUserId
   ), [leads, currentUserId]);
 
+  const completedLeads = useMemo(() => leads
+    .filter(l => l.status === "completed" && l.assigned_agent_id === currentUserId)
+    .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+  , [leads, currentUserId]);
+
   // Calculate filter counts for available leads
   const availableFilterCounts = useMemo(() => ({
     all: availableLeads.length,
@@ -1301,6 +1306,47 @@ const FieldAgent = () => {
                     );
                   })
                 )}
+
+                {/* Completed Leads Section */}
+                {completedLeads.length > 0 && (
+                  <>
+                    <div className="flex items-center gap-2 pt-3 pb-1 border-t border-white/10">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-foreground" />
+                      <span className="font-semibold text-xs text-foreground">Completed</span>
+                      <Badge variant="secondary" className="text-xs ml-auto">{completedLeads.length}</Badge>
+                    </div>
+                    {completedLeads.map((lead) => (
+                      <Card
+                        key={lead.id}
+                        className="bg-gradient-to-r from-blue-100 to-slate-50 cursor-pointer hover:from-blue-50 hover:to-white transition-all shadow-md border-border/50"
+                        onClick={() => openLeadDetail(lead)}
+                      >
+                        <CardContent className="p-2.5 space-y-1.5">
+                          <div className="flex items-start justify-between">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-sm truncate">{lead.customer_name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{lead.service_type}</p>
+                            </div>
+                            {getStatusBadge(lead.status)}
+                          </div>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="w-full"
+                            style={{ backgroundColor: '#0077B6', color: '#FFFFFF' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openLeadDetail(lead);
+                            }}
+                          >
+                            <FileText className="mr-1.5 h-4 w-4" />
+                            Create Invoice
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -1331,6 +1377,10 @@ const FieldAgent = () => {
                       <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
                       <span className="text-xs font-medium">{activeLeads.length}</span>
                     </div>
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-2.5 h-2.5 text-foreground" />
+                      <span className="text-xs font-medium">{completedLeads.length}</span>
+                    </div>
                   </div>
                   {mobileSheetOpen ? (
                     <ChevronDown className="h-5 w-5 text-muted-foreground" />
@@ -1346,15 +1396,19 @@ const FieldAgent = () => {
                   className="backdrop-blur-md h-full overflow-hidden flex flex-col"
                   style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(34, 197, 94, 0.08) 100%)' }}
                 >
-                  <Tabs value={mobileTab} onValueChange={(v) => setMobileTab(v as "available" | "active")} className="flex-1 flex flex-col min-h-0">
-                    <TabsList className="grid w-full grid-cols-2 mx-4 mt-2 mb-1 flex-shrink-0" style={{ width: "calc(100% - 32px)" }}>
-                      <TabsTrigger value="available" className="gap-2">
-                        <List className="h-4 w-4" />
-                        Available ({availableLeads.length})
+                  <Tabs value={mobileTab} onValueChange={(v) => setMobileTab(v as "available" | "active" | "completed")} className="flex-1 flex flex-col min-h-0">
+                    <TabsList className="grid w-full grid-cols-3 mx-4 mt-2 mb-1 flex-shrink-0" style={{ width: "calc(100% - 32px)" }}>
+                      <TabsTrigger value="available" className="gap-1 text-xs">
+                        <List className="h-3.5 w-3.5" />
+                        Open ({availableLeads.length})
                       </TabsTrigger>
-                      <TabsTrigger value="active" className="gap-2">
-                        <Clock className="h-4 w-4" />
+                      <TabsTrigger value="active" className="gap-1 text-xs">
+                        <Clock className="h-3.5 w-3.5" />
                         Active ({activeLeads.length})
+                      </TabsTrigger>
+                      <TabsTrigger value="completed" className="gap-1 text-xs">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Done ({completedLeads.length})
                       </TabsTrigger>
                     </TabsList>
 
@@ -1549,6 +1603,66 @@ const FieldAgent = () => {
                               </Card>
                             );
                           })
+                        )}
+                      </PullToRefresh>
+                    </TabsContent>
+
+                    <TabsContent
+                      value="completed"
+                      className="flex-1 mt-0"
+                      style={{ maxHeight: 'calc(60vh - 100px)' }}
+                    >
+                      <PullToRefresh
+                        onRefresh={async () => {
+                          await offlineLeads.refetch();
+                          toast({
+                            title: "Refreshed",
+                            description: "Completed leads updated",
+                          });
+                        }}
+                        className="h-full p-3 space-y-2"
+                      >
+                        {completedLeads.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground text-sm">
+                            No completed jobs yet
+                          </div>
+                        ) : (
+                          completedLeads.map((lead) => (
+                            <Card
+                              key={lead.id}
+                              className="bg-gradient-to-r from-blue-100 to-slate-50 cursor-pointer active:from-blue-50 active:to-white transition-all shadow-md border-border/50"
+                              onClick={() => openLeadDetail(lead)}
+                            >
+                              <CardContent className="p-3 space-y-2">
+                                <div className="flex items-start justify-between">
+                                  <div>
+                                    <p className="font-medium text-sm">{lead.customer_name}</p>
+                                    <p className="text-xs text-muted-foreground">{lead.service_type}</p>
+                                  </div>
+                                  {getStatusBadge(lead.status)}
+                                </div>
+                                {lead.created_at && (
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {formatTimeAgo(lead.created_at)}
+                                  </p>
+                                )}
+                                <Button
+                                  variant="default"
+                                  size="lg"
+                                  className="w-full"
+                                  style={{ backgroundColor: '#0077B6', color: '#FFFFFF' }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openLeadDetail(lead);
+                                  }}
+                                >
+                                  <FileText className="mr-2 h-5 w-5" />
+                                  Create Invoice
+                                </Button>
+                              </CardContent>
+                            </Card>
+                          ))
                         )}
                       </PullToRefresh>
                     </TabsContent>
