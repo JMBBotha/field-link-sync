@@ -28,6 +28,7 @@ import {
   FileText,
 } from "lucide-react";
 import ProposalPreview from "./ProposalPreview";
+import WhatsAppShareButton from "@/components/WhatsAppShareButton";
 
 const SECTION_TYPES = [
   { value: "cover", label: "Cover Page", color: "bg-blue-100 text-blue-800" },
@@ -217,6 +218,15 @@ const ProposalBuilder = ({ quoteId, onBack }: ProposalBuilderProps) => {
           <Button variant="outline" onClick={() => setPreviewOpen(true)}>
             <Eye className="h-4 w-4 mr-2" /> Preview
           </Button>
+          {quote?.public_token && (
+            <WhatsAppShareButton
+              phone={(quote as any)?.customers?.phone}
+              message={`Hi ${(quote as any)?.customers?.name || "there"}, your proposal is ready for review: ${window.location.origin}/quote/${quote.public_token}`}
+              variant="outline"
+            >
+              Share via WhatsApp
+            </WhatsAppShareButton>
+          )}
           <Button onClick={saveProposal} disabled={saving}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
             Save

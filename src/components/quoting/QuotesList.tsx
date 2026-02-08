@@ -8,6 +8,7 @@ import { Plus, Search, FileText, Download, Link2 } from "lucide-react";
 import QuoteStatusBadge from "./QuoteStatusBadge";
 import { downloadQuotePDF } from "@/lib/quotePDF";
 import { useToast } from "@/hooks/use-toast";
+import WhatsAppShareButton from "@/components/WhatsAppShareButton";
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -141,19 +142,28 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                         <Download className="h-3.5 w-3.5" />
                       </Button>
                       {quote.public_token && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigator.clipboard.writeText(`${window.location.origin}/quote/${quote.public_token}`);
-                            toast({ title: "Link copied! 🔗" });
-                          }}
-                          title="Copy client link"
-                        >
-                          <Link2 className="h-3.5 w-3.5" />
-                        </Button>
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigator.clipboard.writeText(`${window.location.origin}/quote/${quote.public_token}`);
+                              toast({ title: "Link copied! 🔗" });
+                            }}
+                            title="Copy client link"
+                          >
+                            <Link2 className="h-3.5 w-3.5" />
+                          </Button>
+                          <WhatsAppShareButton
+                            phone={quote.customers?.phone}
+                            message={`Hi ${quote.customers?.name || "there"}, your quote ${quote.quote_number} for ${formatZAR(Number(quote.total))} is ready. View it here: ${window.location.origin}/quote/${quote.public_token}`}
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                          />
+                        </>
                       )}
                     </div>
                   </div>
