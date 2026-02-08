@@ -4,8 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, FileText } from "lucide-react";
+import { Plus, Search, FileText, Download, Link2 } from "lucide-react";
 import QuoteStatusBadge from "./QuoteStatusBadge";
+import { downloadQuotePDF } from "@/lib/quotePDF";
+import { useToast } from "@/hooks/use-toast";
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -18,6 +20,7 @@ interface QuotesListProps {
 const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const { toast } = useToast();
 
   const { data: quotes = [], isLoading } = useQuery({
     queryKey: ["quotes", search, statusFilter],
@@ -105,11 +108,54 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                       {quote.customers?.name || "No customer"} • {quote.customers?.phone || ""}
                     </p>
                   </div>
-                  <div className="text-right ml-4">
+                  <div className="text-right ml-4 flex flex-col items-end gap-1">
                     <p className="font-bold">{formatZAR(Number(quote.total))}</p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(quote.created_at).toLocaleDateString("en-ZA")}
                     </p>
+                    <div className="flex gap-1 mt-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          downloadQuotePDF({
+                            quote_number: quote.quote_number,
+                            customer_name: quote.customers?.name || "Customer",
+                            customer_phone: quote.customers?.phone,
+                            line_items: [],
+                            subtotal: Number(quote.subtotal),
+                            vat_rate: Number(quote.vat_rate),
+                            vat_amount: Number(quote.vat_amount),
+                            total: Number(quote.total),
+                            status: quote.status,
+                            created_at: quote.created_at,
+                            notes: quote.notes,
+                            valid_until: quote.valid_until,
+                          });
+                          toast({ title: "PDF Downloaded 📄" });
+                        }}
+                        title="Download PDF"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                      </Button>
+                      {quote.public_token && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(`${window.location.origin}/quote/${quote.public_token}`);
+                            toast({ title: "Link copied! 🔗" });
+                          }}
+                          title="Copy client link"
+                        >
+                          <Link2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>
