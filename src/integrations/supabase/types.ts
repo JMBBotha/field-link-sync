@@ -261,6 +261,39 @@ export type Database = {
           },
         ]
       }
+      hvac_services: {
+        Row: {
+          category: string
+          created_at: string
+          default_price: number
+          id: string
+          is_active: boolean
+          name: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          default_price: number
+          id?: string
+          is_active?: boolean
+          name: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          default_price?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       invoice_items: {
         Row: {
           amount: number
@@ -821,6 +854,248 @@ export type Database = {
         }
         Relationships: []
       }
+      quote_attachments: {
+        Row: {
+          annotation: Json | null
+          caption: string | null
+          created_at: string
+          filename: string | null
+          id: string
+          quote_id: string
+          storage_path: string
+          taken_at: string | null
+        }
+        Insert: {
+          annotation?: Json | null
+          caption?: string | null
+          created_at?: string
+          filename?: string | null
+          id?: string
+          quote_id: string
+          storage_path: string
+          taken_at?: string | null
+        }
+        Update: {
+          annotation?: Json | null
+          caption?: string | null
+          created_at?: string
+          filename?: string | null
+          id?: string
+          quote_id?: string
+          storage_path?: string
+          taken_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_attachments_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_line_items: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          quantity: number
+          quote_id: string
+          service_id: string | null
+          total: number | null
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          quantity: number
+          quote_id: string
+          service_id?: string | null
+          total?: number | null
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          quantity?: number
+          quote_id?: string
+          service_id?: string | null
+          total?: number | null
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_line_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_line_items_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "hvac_services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_template_items: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          quantity: number
+          service_id: string | null
+          template_id: string
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          quantity?: number
+          service_id?: string | null
+          template_id: string
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          quantity?: number
+          service_id?: string | null
+          template_id?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_template_items_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "hvac_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_template_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "quote_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_templates: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      quotes: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          customer_id: string | null
+          declined_at: string | null
+          id: string
+          lead_id: string | null
+          notes: string | null
+          quote_number: string
+          sales_engineer_id: string
+          sent_at: string | null
+          status: string
+          subtotal: number
+          total: number
+          updated_at: string
+          valid_until: string | null
+          vat_amount: number
+          vat_rate: number
+          viewed_at: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          customer_id?: string | null
+          declined_at?: string | null
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          quote_number?: string
+          sales_engineer_id: string
+          sent_at?: string | null
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+          valid_until?: string | null
+          vat_amount?: number
+          vat_rate?: number
+          viewed_at?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          customer_id?: string | null
+          declined_at?: string | null
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          quote_number?: string
+          sales_engineer_id?: string
+          sent_at?: string | null
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+          valid_until?: string | null
+          vat_amount?: number
+          vat_rate?: number
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_agreements: {
         Row: {
           auto_generate_jobs: boolean
@@ -960,6 +1235,7 @@ export type Database = {
         Returns: number
       }
       generate_invoice_number: { Args: never; Returns: string }
+      generate_quote_number: { Args: never; Returns: string }
       get_agents_within_radius: {
         Args: { lead_lat: number; lead_lng: number; radius_km: number }
         Returns: {
