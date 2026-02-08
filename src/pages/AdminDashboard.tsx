@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Plus, Users, PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Menu, Settings, FileText, MessageSquare } from "lucide-react";
+import { LogOut, Plus, Users, PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Menu, Settings, FileText, MessageSquare, BarChart3 } from "lucide-react";
 import MapView, { MapViewHandle } from "@/components/MapView";
 import LeadsList from "@/components/LeadsList";
 import CompletedLeadsPanel from "@/components/CompletedLeadsPanel";
@@ -29,6 +29,7 @@ import { useQuery } from "@tanstack/react-query";
 import InvoiceDashboardWidget from "@/components/invoicing/InvoiceDashboardWidget";
 import InvoiceListPage from "@/components/invoicing/InvoiceListPage";
 import QuotesList from "@/components/quoting/QuotesList";
+import AnalyticsDashboard from "@/components/analytics/AnalyticsDashboard";
 
 interface Lead {
   id: string;
@@ -59,7 +60,7 @@ const AdminDashboard = () => {
   const [completedPanelCollapsed, setCompletedPanelCollapsed] = useState(true);
   const [showCompletedFilter, setShowCompletedFilter] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"map" | "agreements" | "settings" | "notifications" | "invoices" | "quotes" | "proposals">("map");
+  const [activeTab, setActiveTab] = useState<"map" | "agreements" | "settings" | "notifications" | "invoices" | "quotes" | "proposals" | "analytics">("map");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
@@ -234,6 +235,14 @@ const AdminDashboard = () => {
             Proposals
           </Button>
           <Button 
+            variant={activeTab === "analytics" ? "secondary" : "ghost"} 
+            onClick={() => setActiveTab(activeTab === "analytics" ? "map" : "analytics")} 
+            className={activeTab === "analytics" ? "bg-white text-blue-600" : "text-white hover:bg-blue-500"}
+          >
+            <BarChart3 className="mr-2 h-4 w-4" />
+            Analytics
+          </Button>
+          <Button 
             variant={activeTab === "agreements" ? "secondary" : "ghost"} 
             onClick={() => setActiveTab(activeTab === "agreements" ? "map" : "agreements")} 
             className={activeTab === "agreements" ? "bg-white text-blue-600" : "text-white hover:bg-blue-500"}
@@ -333,6 +342,20 @@ const AdminDashboard = () => {
               </Button>
               <Button 
                 onClick={() => {
+                  setActiveTab(activeTab === "analytics" ? "map" : "analytics");
+                  setMobileMenuOpen(false);
+                }} 
+                variant={activeTab === "analytics" ? "secondary" : "ghost"}
+                className={activeTab === "analytics" 
+                  ? "bg-white text-blue-600 justify-start" 
+                  : "text-white hover:bg-blue-500 justify-start"
+                }
+              >
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Analytics
+              </Button>
+              <Button 
+                onClick={() => {
                   setActiveTab(activeTab === "settings" ? "map" : "settings");
                   setMobileMenuOpen(false);
                 }} 
@@ -411,6 +434,10 @@ const AdminDashboard = () => {
               }}
             />
           </div>
+        </div>
+      ) : activeTab === "analytics" ? (
+        <div className="flex-1 overflow-auto bg-background">
+          <AnalyticsDashboard />
         </div>
       ) : activeTab === "agreements" ? (
         <div className="flex-1 overflow-auto bg-background">
