@@ -65,6 +65,7 @@ export function useSyncQueue(isOnline: boolean) {
     data: any
   ) => {
     try {
+      console.log('[Offline][Queue] Adding operation:', { operationType, tableName, recordId, online: isOnline });
       await offlineDb.queueOperation({
         operationType,
         tableName,
@@ -74,17 +75,19 @@ export function useSyncQueue(isOnline: boolean) {
       });
       
       await loadPendingCount();
+      console.log('[Offline][Queue] Operation queued successfully');
       
       // If online, try to sync immediately
       if (isOnline && !syncingRef.current) {
+        console.log('[Offline][Queue] Online - triggering immediate sync');
         syncPendingOperations();
       }
     } catch (error) {
-      console.error('[SyncQueue] Error queuing operation:', error);
+      console.error('[Offline][Queue] Error queuing operation:', error);
     }
   }, [isOnline, loadPendingCount]);
 
-  // Check for conflicts before updating
+  // Check for conflicts using last-write-wins strategy
   const checkForConflict = async (
     tableName: string, 
     recordId: string, 
@@ -94,14 +97,26 @@ export function useSyncQueue(isOnline: boolean) {
       if (tableName === 'leads') {
         const { data, error } = await supabase
           .from('leads')
-          .select('created_at')
+          .select('created_at, status')
           .eq('id', recordId)
-          .single();
+          .maybeSingle();
         
-        if (error || !data) return { hasConflict: false };
+        if (error || !data) {
+          console.log('[Offline][Conflict] Record not found or error, proceeding with last-write-wins:', recordId);
+          return { hasConflict: false };
+        }
         
-        // For leads, we use created_at as a proxy since we don't have updated_at
-        // In a real scenario, you'd add an updated_at column
+        // Last-write-wins: the offline change always takes precedence
+        // Log for debugging but don't block
+        const serverTime = new Date(data.created_at).getTime();
+        if (serverTime > operationTimestamp) {
+          console.warn('[Offline][Conflict] Server record newer than queued op (last-write-wins):', {
+            recordId: recordId.slice(0, 8),
+            serverStatus: data.status,
+            opTimestamp: new Date(operationTimestamp).toISOString(),
+          });
+          return { hasConflict: true, serverUpdatedAt: data.created_at };
+        }
         return { hasConflict: false };
       }
       return { hasConflict: false };
@@ -134,6 +149,7 @@ export function useSyncQueue(isOnline: boolean) {
   // Process a single operation
   const processOperation = async (operation: PendingOperation): Promise<boolean> => {
     try {
+      console.log('[Offline][Sync] Processing operation:', { id: operation.id, type: operation.operationType, recordId: operation.recordId, retryCount: operation.retryCount });
       // Check for conflicts on updates
       if (operation.operationType === 'update_lead' || operation.operationType === 'update_job_status') {
         const { hasConflict } = await checkForConflict(
@@ -320,12 +336,12 @@ export function useSyncQueue(isOnline: boolean) {
       
       return true;
     } catch (error: any) {
-      console.error('[SyncQueue] Operation failed:', {
+      console.error('[Offline][Sync] Operation FAILED:', {
         type: operation.operationType,
         table: operation.tableName,
         recordId: operation.recordId,
         error: error.message,
-        data: operation.data,
+        retryCount: operation.retryCount,
       });
       throw error;
     }
@@ -334,18 +350,18 @@ export function useSyncQueue(isOnline: boolean) {
   // Sync all pending operations
   const syncPendingOperations = useCallback(async () => {
     if (syncingRef.current || !isOnline) {
-      console.log('[SyncQueue] Sync skipped - syncing:', syncingRef.current, 'online:', isOnline);
+      console.log('[Offline][Sync] Skipped - syncing:', syncingRef.current, 'online:', isOnline);
       return;
     }
     
     syncingRef.current = true;
     setSyncStatus(prev => ({ ...prev, isSyncing: true, lastError: null }));
     
-    console.log('[SyncQueue] Starting sync...');
+    console.log('[Offline][Sync] Starting sync...');
     
     try {
       const pendingOps = await offlineDb.getPendingOperations();
-      console.log('[SyncQueue] Pending operations:', pendingOps.length);
+      console.log('[Offline][Sync] Pending operations:', pendingOps.length, pendingOps.map(o => `${o.operationType}:${o.recordId?.slice(0,8)}`));
       
       if (pendingOps.length === 0) {
         setSyncStatus(prev => ({ 
@@ -380,7 +396,7 @@ export function useSyncQueue(isOnline: boolean) {
           
           // If too many retries, skip but don't delete
           if (op.retryCount >= 5) {
-            console.error('[SyncQueue] Max retries reached for operation:', op);
+            console.error('[Offline][Sync] Max retries (5) reached, giving up on:', op.operationType, op.recordId);
           }
         }
       }
@@ -398,6 +414,8 @@ export function useSyncQueue(isOnline: boolean) {
         failedOperations: failedCount,
       }));
       
+      console.log('[Offline][Sync] Complete:', { successCount, failedCount });
+      
       if (successCount > 0) {
         toast({
           title: "Changes Synced ✓",
@@ -413,7 +431,7 @@ export function useSyncQueue(isOnline: boolean) {
         });
       }
     } catch (error: any) {
-      console.error('[SyncQueue] Sync error:', error);
+      console.error('[Offline][Sync] Fatal sync error:', error);
       setSyncStatus(prev => ({
         ...prev,
         isSyncing: false,

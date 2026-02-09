@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { offlineDb } from "@/lib/offlineDb";
 
 interface UseJobTimerResult {
   elapsedTime: string;
@@ -25,11 +26,12 @@ export const formatElapsedTime = (startedAt: string | null | undefined): string 
   return `${diffMins}m`;
 };
 
-// Hook for live updating job timer
-export const useJobTimer = (startedAt: string | null | undefined): UseJobTimerResult => {
+// Hook for live updating job timer with offline persistence
+export const useJobTimer = (startedAt: string | null | undefined, leadId?: string): UseJobTimerResult => {
   const [elapsedTime, setElapsedTime] = useState<string>("");
   const [elapsedMs, setElapsedMs] = useState<number>(0);
   const intervalRef = useRef<number | null>(null);
+  const persistIntervalRef = useRef<number | null>(null);
 
   const updateTimer = useCallback(() => {
     if (!startedAt) {
@@ -60,6 +62,66 @@ export const useJobTimer = (startedAt: string | null | undefined): UseJobTimerRe
       setElapsedTime(`${diffMins}m`);
     }
   }, [startedAt]);
+
+  // Persist timer state to IndexedDB every 30 seconds
+  useEffect(() => {
+    if (!startedAt || !leadId) return;
+
+    const persistTimer = async () => {
+      try {
+        const now = Date.now();
+        const startTime = new Date(startedAt).getTime();
+        await offlineDb.saveTimerLog({
+          id: `timer-${leadId}`,
+          leadId,
+          startedAt: startTime,
+          pausedAt: null,
+          totalElapsedMs: now - startTime,
+          lastUpdatedAt: now,
+          synced: false,
+        });
+        console.log('[Offline][Timer] Persisted timer for lead:', leadId);
+      } catch (error) {
+        console.error('[Offline][Timer] Failed to persist timer:', error);
+      }
+    };
+
+    // Persist immediately and then every 30 seconds
+    persistTimer();
+    persistIntervalRef.current = window.setInterval(persistTimer, 30000);
+
+    return () => {
+      if (persistIntervalRef.current) {
+        clearInterval(persistIntervalRef.current);
+      }
+    };
+  }, [startedAt, leadId]);
+
+  // Restore timer from IndexedDB on mount
+  useEffect(() => {
+    if (startedAt || !leadId) return;
+
+    const restoreTimer = async () => {
+      try {
+        const saved = await offlineDb.getTimerLogForLead(leadId);
+        if (saved && !saved.synced) {
+          const diffMs = saved.totalElapsedMs;
+          if (diffMs > 0) {
+            setElapsedMs(diffMs);
+            const diffMins = Math.floor(diffMs / 60000);
+            const hours = Math.floor(diffMins / 60);
+            const mins = diffMins % 60;
+            setElapsedTime(hours > 0 ? `${hours}h ${mins}m` : `${diffMins}m`);
+            console.log('[Offline][Timer] Restored timer for lead:', leadId, 'elapsed:', diffMs);
+          }
+        }
+      } catch (error) {
+        console.error('[Offline][Timer] Failed to restore timer:', error);
+      }
+    };
+
+    restoreTimer();
+  }, [leadId, startedAt]);
 
   useEffect(() => {
     updateTimer();

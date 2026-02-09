@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, LogOut, MapPin, Navigation, ChevronUp, ChevronDown, List, Clock, Loader2, Map, Timer, AlertCircle, RefreshCw, Home, CheckCircle2, FileText } from "lucide-react";
+import { ArrowLeft, LogOut, MapPin, Navigation, ChevronUp, ChevronDown, List, Clock, Loader2, Map, Timer, AlertCircle, RefreshCw, Home, CheckCircle2, FileText, CloudOff } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1137,6 +1137,28 @@ const FieldAgent = () => {
             </Button>
           </div>
         </header>
+
+        {/* Offline Banner */}
+        {!isOnline && (
+          <div className="flex items-center justify-between px-4 py-2 bg-orange-500 text-white text-sm font-medium z-50">
+            <div className="flex items-center gap-2">
+              <CloudOff className="h-4 w-4" />
+              <span>Offline{syncStatus.pendingCount > 0 ? ` — ${syncStatus.pendingCount} change${syncStatus.pendingCount > 1 ? 's' : ''} pending` : ''}</span>
+            </div>
+            {syncStatus.pendingCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs text-white hover:bg-white/20 px-2"
+                onClick={retrySyncFailedOperations}
+                disabled={syncStatus.isSyncing}
+              >
+                <RefreshCw className={`h-3 w-3 mr-1 ${syncStatus.isSyncing ? 'animate-spin' : ''}`} />
+                Retry
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Main Content - Full Page Map with Overlays */}
         <div className="flex-1 relative">
