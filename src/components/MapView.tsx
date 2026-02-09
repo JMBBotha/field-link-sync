@@ -489,6 +489,10 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
               <svg style="width: 12px; height: 12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               ${lead.created_at ? formatTimeAgo(lead.created_at) : ""}
             </div>
+
+            <div style="display: flex; align-items: center; justify-content: center; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
+              <span style="font-size: 11px; color: #2563eb; font-weight: 500;">Click pin for more info</span>
+            </div>
           </div>
         </div>
       `;
