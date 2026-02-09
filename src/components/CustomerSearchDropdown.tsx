@@ -92,7 +92,7 @@ const CustomerSearchDropdown = ({
 
       {open && (
         <div className="absolute top-full mt-1 w-full bg-popover border rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
-          {isLoading ? (
+          {isLoading && filtered.length === 0 ? (
             <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
           ) : filtered.length === 0 ? (
             <div className="p-4 text-center text-sm text-muted-foreground">No clients found</div>
@@ -102,8 +102,8 @@ const CustomerSearchDropdown = ({
                 key={client.id}
                 type="button"
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 hover:bg-accent/50 transition-colors text-left",
-                  (client.customer_id === value || client.id === value) && "bg-accent"
+                  "w-full flex items-center gap-3 px-3 py-2.5 hover:bg-primary hover:text-primary-foreground transition-colors text-left group",
+                  (client.customer_id === value || client.id === value) && "bg-primary/10"
                 )}
                 onClick={() => {
                   onSelect(client);
@@ -115,8 +115,8 @@ const CustomerSearchDropdown = ({
                   <User className="h-3.5 w-3.5 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{client.name}</p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <p className="text-sm font-medium truncate group-hover:text-primary-foreground">{client.name}</p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground group-hover:text-primary-foreground/80">
                     <span className="flex items-center gap-0.5 truncate">
                       <Phone className="h-3 w-3 shrink-0" />
                       {client.phone}
@@ -130,13 +130,13 @@ const CustomerSearchDropdown = ({
                   </div>
                 </div>
                 <div className="shrink-0">
-                  {client.source === "lead" ? (
-                    <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">
+                {client.source === "lead" ? (
+                    <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200 group-hover:bg-primary-foreground/20 group-hover:text-primary-foreground group-hover:border-primary-foreground/30">
                       <Briefcase className="h-2.5 w-2.5 mr-0.5" />
                       Lead
                     </Badge>
                   ) : client.lead_status ? (
-                    <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">
+                    <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200 group-hover:bg-primary-foreground/20 group-hover:text-primary-foreground group-hover:border-primary-foreground/30">
                       {client.lead_status.replace("_", " ")}
                     </Badge>
                   ) : null}
