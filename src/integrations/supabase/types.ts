@@ -1366,10 +1366,15 @@ export type Database = {
           home_base_lat: number | null
           home_base_lng: number | null
           id: string
+          jobs_limit: number
           last_availability_update: string | null
           location_tracking_enabled: boolean | null
           onboarding_completed: boolean
           phone: string | null
+          stripe_customer_id: string | null
+          subscription_plan: string
+          subscription_status: string
+          trial_ends_at: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1380,10 +1385,15 @@ export type Database = {
           home_base_lat?: number | null
           home_base_lng?: number | null
           id: string
+          jobs_limit?: number
           last_availability_update?: string | null
           location_tracking_enabled?: boolean | null
           onboarding_completed?: boolean
           phone?: string | null
+          stripe_customer_id?: string | null
+          subscription_plan?: string
+          subscription_status?: string
+          trial_ends_at?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1394,10 +1404,15 @@ export type Database = {
           home_base_lat?: number | null
           home_base_lng?: number | null
           id?: string
+          jobs_limit?: number
           last_availability_update?: string | null
           location_tracking_enabled?: boolean | null
           onboarding_completed?: boolean
           phone?: string | null
+          stripe_customer_id?: string | null
+          subscription_plan?: string
+          subscription_status?: string
+          trial_ends_at?: string | null
           updated_at?: string | null
         }
         Relationships: []

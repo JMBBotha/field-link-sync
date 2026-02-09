@@ -27,8 +27,11 @@ import PullToRefresh from "@/components/PullToRefresh";
 import Layout from "@/components/Layout";
 import SyncConflictDialog from "@/components/SyncConflictDialog";
 import OnboardingFlow from "@/components/OnboardingFlow";
+import UpgradeModal from "@/components/subscription/UpgradeModal";
 import { createTeardropMarkerElement } from "@/utils/MarkerUtils";
 import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilterButtons";
+import SubscriptionBadge from "@/components/subscription/SubscriptionBadge";
+import { useSubscription } from "@/hooks/useSubscription";
 import LeadListFilterPills, { LeadListStatus } from "@/components/LeadListFilterPills";
 import FieldAgentLeadCard from "@/components/FieldAgentLeadCard";
 import CompletedJobsFilterDrawer from "@/components/CompletedJobsFilterDrawer";
@@ -151,6 +154,8 @@ const FieldAgent = () => {
   const completedJobsFilter = useCompletedJobsFilter();
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const subscription = useSubscription();
 
   // Use offline leads data
   const leads = offlineLeads.leads as Lead[];
@@ -369,6 +374,11 @@ const FieldAgent = () => {
 
   // Accept/Claim a lead - Now uses offline-first approach
   const handleAcceptLead = async (leadId: string) => {
+    // Check subscription before allowing claim
+    if (!subscription.canCreateJobs) {
+      setShowUpgradeModal(true);
+      return;
+    }
     setLoadingAction('accept');
 
     try {
@@ -1121,6 +1131,7 @@ const FieldAgent = () => {
             )}
           </div>
           <div className="flex items-center gap-2 md:gap-3">
+            <SubscriptionBadge />
             {/* Offline/Online Status Indicator */}
             <OfflineIndicator
               isOnline={isOnline}
@@ -1937,6 +1948,11 @@ const FieldAgent = () => {
             onComplete={() => setShowOnboarding(false)}
           />
         )}
+        <UpgradeModal
+          open={showUpgradeModal}
+          onOpenChange={setShowUpgradeModal}
+          reason={subscription.isExpired ? "trial_expired" : "limit_reached"}
+        />
       </div>
     </Layout>
   );

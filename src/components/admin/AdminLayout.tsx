@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Menu, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import SubscriptionBadge from "@/components/subscription/SubscriptionBadge";
 import CreateLeadDialog from "@/components/CreateLeadDialog";
 import SetupWizard from "@/components/SetupWizard";
 import Footer from "@/components/Footer";
@@ -143,7 +144,8 @@ const AdminLayout = () => {
             <h1 className="text-base font-semibold text-white">{pageTitle}</h1>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            <SubscriptionBadge />
             <NotificationBell />
             <Button
               variant="ghost"
