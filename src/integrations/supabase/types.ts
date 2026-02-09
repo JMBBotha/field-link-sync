@@ -1368,6 +1368,7 @@ export type Database = {
           id: string
           last_availability_update: string | null
           location_tracking_enabled: boolean | null
+          onboarding_completed: boolean
           phone: string | null
           updated_at: string | null
         }
@@ -1381,6 +1382,7 @@ export type Database = {
           id: string
           last_availability_update?: string | null
           location_tracking_enabled?: boolean | null
+          onboarding_completed?: boolean
           phone?: string | null
           updated_at?: string | null
         }
@@ -1394,6 +1396,7 @@ export type Database = {
           id?: string
           last_availability_update?: string | null
           location_tracking_enabled?: boolean | null
+          onboarding_completed?: boolean
           phone?: string | null
           updated_at?: string | null
         }
