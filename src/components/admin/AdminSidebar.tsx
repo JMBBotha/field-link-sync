@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   MapPin,
@@ -29,14 +29,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import logo from "@/assets/logo.png";
 
-type AdminTab =
-  | "home" | "map" | "schedule"
-  | "quotes" | "proposals" | "invoices" | "agreements"
-  | "inventory" | "flatrate" | "reports" | "analytics"
-  | "notifications" | "audit" | "import" | "settings";
-
 interface NavItem {
-  id: AdminTab;
+  path: string;
   label: string;
   icon: React.ElementType;
   badge?: number;
@@ -48,19 +42,14 @@ interface NavGroup {
 }
 
 interface AdminSidebarProps {
-  activeTab: AdminTab;
-  onTabChange: (tab: AdminTab) => void;
   onCreateLead: () => void;
   onSignOut: () => void;
   pendingRequestsCount?: number;
-  /** Mobile drawer mode */
   mobileOpen?: boolean;
   onMobileClose?: () => void;
 }
 
 const AdminSidebar = ({
-  activeTab,
-  onTabChange,
   onCreateLead,
   onSignOut,
   pendingRequestsCount = 0,
@@ -69,47 +58,53 @@ const AdminSidebar = ({
 }: AdminSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const navGroups: NavGroup[] = [
     {
       title: "Main",
       items: [
-        { id: "home", label: "Home", icon: LayoutDashboard },
-        { id: "map", label: "Map", icon: MapPin },
-        { id: "schedule", label: "Schedule", icon: CalendarDays },
+        { path: "/admin", label: "Home", icon: LayoutDashboard },
+        { path: "/admin/map", label: "Map", icon: MapPin },
+        { path: "/admin/schedule", label: "Schedule", icon: CalendarDays },
       ],
     },
     {
       title: "Sales",
       items: [
-        { id: "quotes", label: "Quotes", icon: FileText },
-        { id: "proposals", label: "Proposals", icon: FileSignature },
-        { id: "invoices", label: "Invoices", icon: Receipt },
-        { id: "agreements", label: "Agreements", icon: FileCheck },
+        { path: "/admin/quotes", label: "Quotes", icon: FileText },
+        { path: "/admin/proposals", label: "Proposals", icon: FileSignature },
+        { path: "/admin/invoices", label: "Invoices", icon: Receipt },
+        { path: "/admin/agreements", label: "Agreements", icon: FileCheck },
       ],
     },
     {
       title: "Operations",
       items: [
-        { id: "inventory", label: "Inventory", icon: Package },
-        { id: "flatrate", label: "Flat Rate", icon: DollarSign },
-        { id: "reports", label: "Reports", icon: BarChart3 },
-        { id: "analytics", label: "Analytics", icon: LineChart },
+        { path: "/admin/inventory", label: "Inventory", icon: Package },
+        { path: "/admin/flat-rate", label: "Flat Rate", icon: DollarSign },
+        { path: "/admin/reports", label: "Reports", icon: BarChart3 },
+        { path: "/admin/analytics", label: "Analytics", icon: LineChart },
       ],
     },
     {
       title: "System",
       items: [
-        { id: "notifications", label: "Notifications", icon: Bell, badge: pendingRequestsCount },
-        { id: "audit", label: "Audit", icon: History },
-        { id: "import", label: "Import", icon: Upload },
-        { id: "settings", label: "Settings", icon: Settings },
+        { path: "/admin/notifications", label: "Notifications", icon: Bell, badge: pendingRequestsCount },
+        { path: "/admin/audit", label: "Audit", icon: History },
+        { path: "/admin/import", label: "Import", icon: Upload },
+        { path: "/admin/settings", label: "Settings", icon: Settings },
       ],
     },
   ];
 
-  const handleNav = (tab: AdminTab) => {
-    onTabChange(tab);
+  const isActive = (path: string) => {
+    if (path === "/admin") return location.pathname === "/admin";
+    return location.pathname.startsWith(path);
+  };
+
+  const handleNav = (path: string) => {
+    navigate(path);
     onMobileClose?.();
   };
 
@@ -124,7 +119,6 @@ const AdminSidebar = ({
         {!collapsed && (
           <span className="text-white font-bold text-sm leading-tight">Admin<br />Dashboard</span>
         )}
-        {/* Mobile close */}
         {mobileOpen && (
           <Button
             variant="ghost"
@@ -163,14 +157,14 @@ const AdminSidebar = ({
             )}
             <div className="space-y-0.5">
               {group.items.map((item) => {
-                const isActive = activeTab === item.id;
+                const active = isActive(item.path);
                 const btn = (
                   <button
-                    key={item.id}
-                    onClick={() => handleNav(item.id)}
+                    key={item.path}
+                    onClick={() => handleNav(item.path)}
                     className={cn(
                       "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors relative",
-                      isActive
+                      active
                         ? "bg-primary/20 text-white border-l-[3px] border-primary pl-[calc(0.75rem-3px)]"
                         : "text-white/70 hover:text-white hover:bg-white/10",
                       collapsed && "justify-center px-0 py-2.5"
@@ -193,7 +187,7 @@ const AdminSidebar = ({
 
                 if (collapsed) {
                   return (
-                    <Tooltip key={item.id} delayDuration={0}>
+                    <Tooltip key={item.path} delayDuration={0}>
                       <TooltipTrigger asChild>{btn}</TooltipTrigger>
                       <TooltipContent side="right" className="font-medium">
                         {item.label}
@@ -201,7 +195,7 @@ const AdminSidebar = ({
                     </Tooltip>
                   );
                 }
-                return btn;
+                return <div key={item.path}>{btn}</div>;
               })}
             </div>
           </div>
@@ -246,7 +240,6 @@ const AdminSidebar = ({
 
   return (
     <>
-      {/* Mobile overlay backdrop */}
       {mobileOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
@@ -254,11 +247,9 @@ const AdminSidebar = ({
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={cn(
           "bg-zinc-900 flex flex-col shrink-0 transition-all duration-300 z-50",
-          // Desktop
           "hidden lg:flex h-full",
           collapsed ? "w-[60px]" : "w-[220px]",
         )}
@@ -266,7 +257,6 @@ const AdminSidebar = ({
         {sidebarContent}
       </aside>
 
-      {/* Mobile drawer */}
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 bg-zinc-900 w-[260px] transform transition-transform duration-300 lg:hidden",
