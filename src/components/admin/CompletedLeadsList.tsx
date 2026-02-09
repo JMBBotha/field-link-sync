@@ -1,15 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
+import { CheckCircle2, AlertCircle, RefreshCw, FilePlus } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import LeadDetailSheet from "@/components/LeadDetailSheet";
 import LeadActionButtons from "./LeadActionButtons";
+import CreateInvoiceDialog from "@/components/invoicing/CreateInvoiceDialog";
 
 type FilterTab = "all" | "invoiced" | "not_invoiced" | "paid" | "unpaid";
 
@@ -53,6 +54,14 @@ const CompletedLeadsList = () => {
   const [activeFilter, setActiveFilter] = useState<FilterTab>("all");
   const [selectedLead, setSelectedLead] = useState<CompletedLeadWithInvoice | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [invoiceDialogLead, setInvoiceDialogLead] = useState<CompletedLeadWithInvoice | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setCurrentUserId(session.user.id);
+    });
+  }, []);
 
   const { data: leads, isLoading, isError, refetch } = useQuery({
     queryKey: ["completed-leads-with-invoices"],
@@ -240,13 +249,7 @@ const CompletedLeadsList = () => {
                         invoiceStatus={lead.invoice_status}
                       />
                       <div className="flex flex-col items-end gap-1">
-                        <Badge
-                          variant={lead.invoice_id ? "default" : "destructive"}
-                          className="text-[10px] px-1.5 py-0"
-                        >
-                          {lead.invoice_id ? "Invoiced" : "Not Invoiced"}
-                        </Badge>
-                        {lead.invoice_id && (
+                        {lead.invoice_id ? (
                           <>
                             <Badge
                               className={cn(
@@ -256,12 +259,25 @@ const CompletedLeadsList = () => {
                                   : "bg-orange-500/15 text-orange-600"
                               )}
                             >
-                              {lead.invoice_status === "paid" ? "Paid" : "Unpaid"}
+                              {lead.invoice_status === "paid" ? "Paid" : "Invoiced"} – {lead.invoice_number}
                             </Badge>
                             <span className="text-xs font-medium">
                               R {(lead.invoice_total ?? 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
                             </span>
                           </>
+                        ) : (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="h-6 px-2 text-[10px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setInvoiceDialogLead(lead);
+                            }}
+                          >
+                            <FilePlus className="h-3 w-3" />
+                            Create Invoice
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -288,6 +304,26 @@ const CompletedLeadsList = () => {
         loadingAction={null}
         onLeadUpdated={() => refetch()}
       />
+
+      {/* Invoice creation dialog */}
+      {invoiceDialogLead && currentUserId && (
+        <CreateInvoiceDialog
+          open={!!invoiceDialogLead}
+          onClose={() => {
+            setInvoiceDialogLead(null);
+            refetch();
+          }}
+          agentId={currentUserId}
+          prefillLead={{
+            id: invoiceDialogLead.id,
+            customer_name: invoiceDialogLead.customer_name,
+            customer_phone: invoiceDialogLead.customer_phone,
+            customer_address: invoiceDialogLead.customer_address,
+            customer_id: invoiceDialogLead.customer_id,
+            service_type: invoiceDialogLead.service_type,
+          }}
+        />
+      )}
     </>
   );
 };
