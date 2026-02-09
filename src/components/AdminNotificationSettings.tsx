@@ -46,6 +46,19 @@ interface NotificationLog {
   error_message: string | null;
 }
 
+interface QueueItem {
+  id: string;
+  notification_type: string;
+  channel: string;
+  recipient_phone: string | null;
+  status: string;
+  body: string;
+  attempts: number;
+  error_message: string | null;
+  created_at: string;
+  scheduled_at: string;
+}
+
 interface TwilioConfig {
   account_sid: string;
   auth_token: string;
@@ -87,8 +100,10 @@ const NOTIFICATION_LABELS: Record<string, { label: string; description: string }
 const AdminNotificationSettings = () => {
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
   const [logs, setLogs] = useState<NotificationLog[]>([]);
+  const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [processingQueue, setProcessingQueue] = useState(false);
   const [testSending, setTestSending] = useState<string | null>(null);
   const [testPhone, setTestPhone] = useState("");
   const [twilioConfig, setTwilioConfig] = useState<TwilioConfig>({
@@ -128,6 +143,38 @@ const AdminNotificationSettings = () => {
     }
   }, []);
 
+  const fetchQueue = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("notification_queue")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setQueueItems((data as QueueItem[]) || []);
+    } catch (err: any) {
+      console.error("Error fetching queue:", err);
+    }
+  }, []);
+
+  const handleProcessQueue = async () => {
+    setProcessingQueue(true);
+    try {
+      const { processNotificationQueue } = await import("@/lib/notificationService");
+      const result = await processNotificationQueue();
+      toast({
+        title: "Queue Processed",
+        description: `Processed: ${result.processed}, Sent: ${result.sent}, Failed: ${result.failed}`,
+      });
+      await Promise.all([fetchQueue(), fetchLogs()]);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setProcessingQueue(false);
+    }
+  };
+
   const fetchTwilioConfig = useCallback(async () => {
     try {
       const { data } = await supabase
@@ -151,10 +198,10 @@ const AdminNotificationSettings = () => {
   }, []);
 
   useEffect(() => {
-    Promise.all([fetchTemplates(), fetchLogs(), fetchTwilioConfig()]).finally(() =>
+    Promise.all([fetchTemplates(), fetchLogs(), fetchTwilioConfig(), fetchQueue()]).finally(() =>
       setLoading(false)
     );
-  }, [fetchTemplates, fetchLogs, fetchTwilioConfig]);
+  }, [fetchTemplates, fetchLogs, fetchTwilioConfig, fetchQueue]);
 
   const handleTemplateUpdate = async (template: NotificationTemplate) => {
     setSaving(true);
@@ -270,11 +317,18 @@ const AdminNotificationSettings = () => {
       </div>
 
       <Tabs defaultValue="requests" className="flex-1 flex flex-col overflow-hidden">
-        <TabsList className="grid grid-cols-4 w-full max-w-lg shrink-0">
+        <TabsList className="grid grid-cols-5 w-full max-w-2xl shrink-0">
           <TabsTrigger value="requests">Requests</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
+          <TabsTrigger value="queue">
+            Queue {queueItems.filter(q => q.status === 'pending').length > 0 && (
+              <Badge variant="destructive" className="ml-1 h-4 min-w-4 text-[10px] p-0 flex items-center justify-center">
+                {queueItems.filter(q => q.status === 'pending').length}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
-          <TabsTrigger value="logs">Delivery Log</TabsTrigger>
+          <TabsTrigger value="logs">Logs</TabsTrigger>
         </TabsList>
 
         {/* Change Requests Tab */}
@@ -282,6 +336,82 @@ const AdminNotificationSettings = () => {
           <ScrollArea className="h-full">
             <ChangeRequestsManager showAll />
           </ScrollArea>
+        </TabsContent>
+
+        {/* Queue Tab */}
+        <TabsContent value="queue" className="flex-1 overflow-hidden mt-4">
+          <Card className="h-full flex flex-col">
+            <CardHeader className="flex flex-row items-center justify-between shrink-0">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4" />
+                  Notification Queue
+                </CardTitle>
+                <CardDescription>Pending, sent, and failed notifications</CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={fetchQueue}>
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Refresh
+                </Button>
+                <Button size="sm" onClick={handleProcessQueue} disabled={processingQueue}>
+                  {processingQueue ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Send className="h-3 w-3 mr-1" />}
+                  Process Queue
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-hidden">
+              <ScrollArea className="h-full">
+                {queueItems.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Queue is empty</p>
+                ) : (
+                  <div className="space-y-2 pr-4">
+                    {queueItems.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                        <div className="flex items-center gap-3">
+                          {item.status === "sent" ? (
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                          ) : item.status === "failed" ? (
+                            <XCircle className="h-4 w-4 text-red-500" />
+                          ) : (
+                            <Clock className="h-4 w-4 text-yellow-500" />
+                          )}
+                          <div>
+                            <p className="text-sm font-medium">
+                              {NOTIFICATION_LABELS[item.notification_type]?.label || item.notification_type}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {item.recipient_phone || "No phone"} · Attempts: {item.attempts}
+                            </p>
+                            {item.error_message && (
+                              <p className="text-xs text-red-500 mt-0.5">{item.error_message}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Badge
+                            variant="outline"
+                            className={
+                              item.status === "sent"
+                                ? "border-green-500 text-green-500"
+                                : item.status === "failed"
+                                ? "border-red-500 text-red-500"
+                                : "border-yellow-500 text-yellow-500"
+                            }
+                          >
+                            {item.status}
+                          </Badge>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {format(new Date(item.created_at), "dd MMM HH:mm")}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Templates Tab */}

@@ -22,7 +22,7 @@ import { calculateDistanceKm, formatDistance } from "@/lib/geolocation";
 import { useOffline } from "@/contexts/OfflineContext";
 import { useOfflineLeads } from "@/hooks/useOfflineLeads";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
-import { notifyJobAssigned, notifyTechEnRoute } from "@/lib/notificationService";
+import { notifyJobAssigned, notifyTechEnRoute, notifyTechArrived, notifyJobCompleted, sendNotificationOfflineAware } from "@/lib/notificationService";
 import PullToRefresh from "@/components/PullToRefresh";
 import Layout from "@/components/Layout";
 import { createTeardropMarkerElement } from "@/utils/MarkerUtils";
@@ -484,10 +484,24 @@ const FieldAgent = () => {
     setLoadingAction('complete');
 
     try {
+      const lead = leads.find(l => l.id === leadId);
       await offlineLeads.completeJob(leadId);
 
       // Update availability to available
       await availability.completeJob();
+
+      // Send job_completed notification (offline-aware)
+      if (lead?.customer_id) {
+        console.log('[Notification] Triggering job_completed for lead:', leadId);
+        sendNotificationOfflineAware(
+          isOnline,
+          queueOperation,
+          "job_completed",
+          lead.customer_id,
+          {},
+          { leadId }
+        );
+      }
 
       setDetailSheetOpen(false);
 
