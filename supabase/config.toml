@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.send-reminder-email]
 verify_jwt = false
+
+[functions.parse-price-list]
+verify_jwt = false

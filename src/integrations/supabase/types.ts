@@ -1253,6 +1253,56 @@ export type Database = {
           },
         ]
       }
+      price_list_uploads: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          file_name: string
+          file_type: string
+          id: string
+          products_imported: number
+          products_skipped: number
+          products_updated: number
+          status: string
+          supplier_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          file_name: string
+          file_type?: string
+          id?: string
+          products_imported?: number
+          products_skipped?: number
+          products_updated?: number
+          status?: string
+          supplier_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          file_name?: string
+          file_type?: string
+          id?: string
+          products_imported?: number
+          products_skipped?: number
+          products_updated?: number
+          status?: string
+          supplier_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_list_uploads_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           availability_status: string | null
@@ -1752,6 +1802,122 @@ export type Database = {
         }
         Relationships: []
       }
+      supplier_products: {
+        Row: {
+          btu_rating: number | null
+          category: string
+          cost_price: number
+          created_at: string
+          default_markup_percent: number
+          description: string
+          id: string
+          image_url: string | null
+          is_active: boolean
+          is_price_on_request: boolean
+          last_quoted_at: string | null
+          pipe_size: string | null
+          product_code: string
+          quote_usage_count: number
+          refrigerant_type: string | null
+          selling_price: number | null
+          subcategory: string | null
+          supplier_id: string
+          unit_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          btu_rating?: number | null
+          category?: string
+          cost_price?: number
+          created_at?: string
+          default_markup_percent?: number
+          description: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          is_price_on_request?: boolean
+          last_quoted_at?: string | null
+          pipe_size?: string | null
+          product_code: string
+          quote_usage_count?: number
+          refrigerant_type?: string | null
+          selling_price?: number | null
+          subcategory?: string | null
+          supplier_id: string
+          unit_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          btu_rating?: number | null
+          category?: string
+          cost_price?: number
+          created_at?: string
+          default_markup_percent?: number
+          description?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          is_price_on_request?: boolean
+          last_quoted_at?: string | null
+          pipe_size?: string | null
+          product_code?: string
+          quote_usage_count?: number
+          refrigerant_type?: string | null
+          selling_price?: number | null
+          subcategory?: string | null
+          supplier_id?: string
+          unit_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_products_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppliers: {
+        Row: {
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -1897,6 +2063,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_product_usage: {
+        Args: { p_product_id: string }
+        Returns: undefined
+      }
       job_profit_loss: {
         Args: { p_lead_id: string }
         Returns: {
@@ -1940,6 +2110,34 @@ export type Database = {
         Returns: {
           month: string
           revenue: number
+        }[]
+      }
+      search_supplier_products: {
+        Args: {
+          p_category?: string
+          p_limit?: number
+          p_query: string
+          p_supplier_id?: string
+        }
+        Returns: {
+          btu_rating: number
+          category: string
+          cost_price: number
+          default_markup_percent: number
+          description: string
+          id: string
+          image_url: string
+          is_price_on_request: boolean
+          last_quoted_at: string
+          pipe_size: string
+          product_code: string
+          quote_usage_count: number
+          refrigerant_type: string
+          search_rank: number
+          selling_price: number
+          subcategory: string
+          supplier_id: string
+          supplier_name: string
         }[]
       }
       validate_customer_token: { Args: { p_token: string }; Returns: string }

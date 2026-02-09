@@ -11,6 +11,7 @@ import {
   Package,
   DollarSign,
   BarChart3,
+  ShoppingBag,
   LineChart,
   Bell,
   History,
@@ -81,6 +82,7 @@ const AdminSidebar = ({
     {
       title: "Operations",
       items: [
+        { path: "/admin/catalog", label: "Catalog", icon: ShoppingBag },
         { path: "/admin/inventory", label: "Inventory", icon: Package },
         { path: "/admin/flat-rate", label: "Flat Rate", icon: DollarSign },
         { path: "/admin/reports", label: "Reports", icon: BarChart3 },

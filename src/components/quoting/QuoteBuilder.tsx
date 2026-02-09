@@ -37,6 +37,7 @@ import PhotoUploader from "./PhotoUploader";
 import BrandedQuotePreview from "./BrandedQuotePreview";
 import QuoteAIAssistant from "./QuoteAIAssistant";
 import FlatRatePickerDrawer from "@/components/flatrate/FlatRatePickerDrawer";
+import CatalogPickerDrawer from "@/components/catalog/CatalogPickerDrawer";
 import VisualSectionEditor, { type VisualSection } from "./VisualSectionEditor";
 import TemplateSaveDialog from "./TemplateSaveDialog";
 
@@ -91,6 +92,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [flatRateOpen, setFlatRateOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const [visualSections, setVisualSections] = useState<VisualSection[]>([]);
   const [templateSaveOpen, setTemplateSaveOpen] = useState(false);
 
@@ -436,6 +438,9 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
                   <Button type="button" variant="outline" size="sm" onClick={() => setFlatRateOpen(true)}>
                     📖 Flat Rate Book
                   </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setCatalogOpen(true)}>
+                    📦 Product Catalog
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -586,6 +591,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
       <BrandedQuotePreview open={previewOpen} onOpenChange={setPreviewOpen} quote={previewData} />
       <FlatRatePickerDrawer open={flatRateOpen} onOpenChange={setFlatRateOpen} onAddToQuote={(item) => append({ ...item, service_id: undefined })} />
+      <CatalogPickerDrawer open={catalogOpen} onOpenChange={setCatalogOpen} onAddToQuote={(item) => append({ ...item, service_id: undefined })} />
       <TemplateSaveDialog
         open={templateSaveOpen}
         onOpenChange={setTemplateSaveOpen}
