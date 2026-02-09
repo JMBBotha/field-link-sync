@@ -88,6 +88,9 @@ const CreateInvoicePage = ({ agentId, onBack, onSuccess, prefillLead }: CreateIn
   useEffect(() => {
     fetchTemplates();
     fetchCustomers();
+    if (prefillLead?.id) {
+      fetchUsedParts(prefillLead.id);
+    }
   }, []);
 
   useEffect(() => {
@@ -120,6 +123,37 @@ const CreateInvoicePage = ({ agentId, onBack, onSuccess, prefillLead }: CreateIn
       .eq("id", customerId)
       .single();
     if (data?.email) setCustomerEmail(data.email);
+  };
+
+  const fetchUsedParts = async (leadId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("job_used_parts" as any)
+        .select("product_name, product_code, unit_cost, quantity")
+        .eq("lead_id", leadId);
+      if (error) {
+        console.warn("[Invoice] Failed to fetch used parts:", error.message);
+        return;
+      }
+      if (data && data.length > 0) {
+        const partsItems: LineItem[] = (data as any[]).map(p => ({
+          description: `${p.product_name} (${p.product_code})`,
+          quantity: p.quantity,
+          rate: p.unit_cost,
+          amount: p.quantity * p.unit_cost,
+        }));
+        // Prepend used parts to existing line items, removing empty default
+        setLineItems(prev => {
+          const existing = prev.filter(i => i.description && i.amount > 0);
+          return [...partsItems, ...existing].length > 0
+            ? [...partsItems, ...existing]
+            : [{ description: "", quantity: 1, rate: 0, amount: 0 }];
+        });
+        console.log("[Invoice] Auto-added", data.length, "used parts as line items");
+      }
+    } catch (err) {
+      console.error("[Invoice] Error loading used parts:", err);
+    }
   };
 
   const selectCustomer = (customer: Customer) => {
