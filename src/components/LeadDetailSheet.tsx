@@ -28,6 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSingleLeadPhotoCount } from "@/hooks/useLeadPhotoCount";
 import CommunicationTimeline from "./communication/CommunicationTimeline";
+import UsedPartsSection from "./UsedPartsSection";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, DollarSign } from "lucide-react";
 
@@ -484,6 +485,16 @@ const LeadDetailSheet = ({
               onEditClick={() => setShowTimeEditDialog(true)}
               canEdit={canEdit || isCompleted}
             />
+
+            {/* Used Parts / Materials */}
+            {(isInProgress || isCompleted) && currentUserId && (
+              <UsedPartsSection
+                leadId={lead.id}
+                agentId={currentUserId}
+                isOnline={isOnline}
+                queueOperation={queueOp}
+              />
+            )}
 
             {/* Photo Gallery - Prominent inline section */}
             <div className="p-2.5 rounded-xl bg-gradient-to-r from-gray-600 to-gray-400 space-y-2">

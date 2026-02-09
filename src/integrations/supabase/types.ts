@@ -845,6 +845,60 @@ export type Database = {
           },
         ]
       }
+      job_used_parts: {
+        Row: {
+          added_by: string
+          created_at: string
+          id: string
+          lead_id: string
+          line_total: number | null
+          product_code: string
+          product_id: string
+          product_name: string
+          quantity: number
+          unit_cost: number
+        }
+        Insert: {
+          added_by: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          line_total?: number | null
+          product_code: string
+          product_id: string
+          product_name: string
+          quantity?: number
+          unit_cost?: number
+        }
+        Update: {
+          added_by?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          line_total?: number | null
+          product_code?: string
+          product_id?: string
+          product_name?: string
+          quantity?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_used_parts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_used_parts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_change_requests: {
         Row: {
           created_at: string
