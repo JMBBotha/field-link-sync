@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { offlineDb, PendingOperation, OperationType } from '@/lib/offlineDb';
 import { useToast } from '@/hooks/use-toast';
+import { ConflictInfo } from '@/components/SyncConflictDialog';
 
 export interface SyncStatus {
   isSyncing: boolean;
@@ -35,6 +36,8 @@ export function useSyncQueue(isOnline: boolean) {
   
   const syncingRef = useRef(false);
   const retryTimeoutRef = useRef<number | null>(null);
+  const [activeConflict, setActiveConflict] = useState<ConflictInfo | null>(null);
+  const conflictResolveRef = useRef<((choice: "keep_local" | "use_server") => void) | null>(null);
 
   // Load pending count on mount
   useEffect(() => {
@@ -87,43 +90,122 @@ export function useSyncQueue(isOnline: boolean) {
     }
   }, [isOnline, loadPendingCount]);
 
-  // Check for conflicts using last-write-wins strategy
+  // Check for conflicts using updated_at version comparison
   const checkForConflict = async (
-    tableName: string, 
-    recordId: string, 
-    operationTimestamp: number
-  ): Promise<{ hasConflict: boolean; serverUpdatedAt?: string }> => {
+    operation: PendingOperation
+  ): Promise<{ hasConflict: boolean; serverData?: any; serverUpdatedAt?: string }> => {
     try {
-      if (tableName === 'leads') {
-        const { data, error } = await supabase
-          .from('leads')
-          .select('created_at, status')
-          .eq('id', recordId)
-          .maybeSingle();
-        
-        if (error || !data) {
-          console.log('[Offline][Conflict] Record not found or error, proceeding with last-write-wins:', recordId);
-          return { hasConflict: false };
-        }
-        
-        // Last-write-wins: the offline change always takes precedence
-        // Log for debugging but don't block
-        const serverTime = new Date(data.created_at).getTime();
-        if (serverTime > operationTimestamp) {
-          console.warn('[Offline][Conflict] Server record newer than queued op (last-write-wins):', {
-            recordId: recordId.slice(0, 8),
-            serverStatus: data.status,
-            opTimestamp: new Date(operationTimestamp).toISOString(),
-          });
-          return { hasConflict: true, serverUpdatedAt: data.created_at };
-        }
+      if (operation.tableName !== 'leads') {
         return { hasConflict: false };
       }
+
+      // Fetch current server state including created_at as version proxy
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('id', operation.recordId)
+        .maybeSingle();
+      
+      if (error || !data) {
+        console.log('[Conflict][Check] Record not found or error, skipping conflict check:', operation.recordId?.slice(0, 8));
+        return { hasConflict: false };
+      }
+
+      // Compare: if the server record was modified after the operation was queued, there's a conflict
+      // We use created_at as a baseline; for true versioning we check if key fields differ
+      const localData = operation.data || {};
+      const conflictingFields: string[] = [];
+
+      // Check if server fields differ from what the agent expected
+      for (const key of Object.keys(localData)) {
+        if (['cachedAt', '_isNotification'].includes(key)) continue;
+        if (data[key as keyof typeof data] !== undefined) {
+          const serverVal = JSON.stringify(data[key as keyof typeof data]);
+          const localVal = JSON.stringify(localData[key]);
+          if (serverVal !== localVal && serverVal !== undefined) {
+            conflictingFields.push(key);
+          }
+        }
+      }
+
+      if (conflictingFields.length === 0) {
+        console.log('[Conflict][Check] No field conflicts for:', operation.recordId?.slice(0, 8));
+        return { hasConflict: false };
+      }
+
+      // Check if server was updated after our operation was queued
+      // Use created_at + status changes as a proxy for updated_at
+      const serverCreatedAt = new Date(data.created_at || 0).getTime();
+      const serverStartedAt = data.started_at ? new Date(data.started_at).getTime() : 0;
+      const serverCompletedAt = data.completed_at ? new Date(data.completed_at).getTime() : 0;
+      const serverLatestAction = Math.max(serverCreatedAt, serverStartedAt, serverCompletedAt);
+
+      if (serverLatestAction > operation.timestamp) {
+        console.warn('[Conflict][Check] VERSION CONFLICT detected:', {
+          recordId: operation.recordId?.slice(0, 8),
+          conflictingFields,
+          opTime: new Date(operation.timestamp).toISOString(),
+          serverLatest: new Date(serverLatestAction).toISOString(),
+          serverStatus: data.status,
+          localStatus: localData.status,
+        });
+        return { 
+          hasConflict: true, 
+          serverData: data,
+          serverUpdatedAt: new Date(serverLatestAction).toISOString(),
+        };
+      }
+
+      console.log('[Conflict][Check] Fields differ but local is newer, proceeding:', operation.recordId?.slice(0, 8));
       return { hasConflict: false };
-    } catch {
+    } catch (err) {
+      console.error('[Conflict][Check] Error during check:', err);
       return { hasConflict: false };
     }
   };
+
+  // Wait for agent to resolve a conflict, or auto-resolve after timeout
+  const waitForConflictResolution = (
+    operation: PendingOperation,
+    serverData: any,
+    serverUpdatedAt: string
+  ): Promise<"keep_local" | "use_server"> => {
+    return new Promise((resolve) => {
+      console.log('[Conflict][UI] Showing conflict dialog for:', operation.recordId?.slice(0, 8));
+
+      setActiveConflict({
+        operationId: operation.id!,
+        recordId: operation.recordId,
+        tableName: operation.tableName,
+        localData: operation.data,
+        serverData,
+        serverUpdatedAt,
+        localTimestamp: operation.timestamp,
+      });
+
+      conflictResolveRef.current = resolve;
+
+      // Auto-resolve timeout (30s) as fallback
+      setTimeout(() => {
+        if (conflictResolveRef.current === resolve) {
+          console.log('[Conflict][UI] Auto-resolving via timeout (last-write-wins)');
+          conflictResolveRef.current = null;
+          setActiveConflict(null);
+          resolve("keep_local");
+        }
+      }, 30_000);
+    });
+  };
+
+  // Called by the SyncConflictDialog
+  const resolveConflict = useCallback((operationId: number, choice: "keep_local" | "use_server") => {
+    console.log('[Conflict][Resolve] Agent chose:', choice, 'for op:', operationId);
+    setActiveConflict(null);
+    if (conflictResolveRef.current) {
+      conflictResolveRef.current(choice);
+      conflictResolveRef.current = null;
+    }
+  }, []);
 
   // Map legacy status values to valid database values
   const normalizeLeadStatus = (status: string): string => {
@@ -150,20 +232,48 @@ export function useSyncQueue(isOnline: boolean) {
   const processOperation = async (operation: PendingOperation): Promise<boolean> => {
     try {
       console.log('[Offline][Sync] Processing operation:', { id: operation.id, type: operation.operationType, recordId: operation.recordId, retryCount: operation.retryCount });
-      // Check for conflicts on updates
+      // Check for conflicts on lead updates
       if (operation.operationType === 'update_lead' || operation.operationType === 'update_job_status') {
-        const { hasConflict } = await checkForConflict(
-          operation.tableName, 
-          operation.recordId, 
-          operation.timestamp
-        );
+        const { hasConflict, serverData, serverUpdatedAt } = await checkForConflict(operation);
         
-        if (hasConflict) {
-          toast({
-            title: "Job Updated by Admin",
-            description: "This job was modified while you were offline. Your changes were merged.",
-            variant: "default",
-          });
+        if (hasConflict && serverData && serverUpdatedAt) {
+          console.log('[Conflict][Sync] Conflict detected, awaiting resolution...');
+          
+          // Log conflict to Supabase
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase.from('sync_conflicts').insert({
+              lead_id: operation.recordId,
+              agent_id: user.id,
+              conflict_type: 'version_mismatch',
+              local_data: operation.data,
+              server_data: serverData,
+              resolution: 'pending',
+            }).then(({ error }) => {
+              if (error) console.error('[Conflict] Failed to log conflict:', error);
+            });
+          }
+
+          const choice = await waitForConflictResolution(operation, serverData, serverUpdatedAt);
+          console.log('[Conflict][Sync] Resolution:', choice, 'for record:', operation.recordId?.slice(0, 8));
+
+          // Update conflict log with resolution
+          if (user) {
+            await supabase.from('sync_conflicts')
+              .update({ resolution: choice === 'keep_local' ? 'keep_local' : 'use_server', resolved_at: new Date().toISOString() })
+              .eq('lead_id', operation.recordId)
+              .eq('agent_id', user.id)
+              .eq('resolution', 'pending');
+          }
+
+          if (choice === 'use_server') {
+            // Discard local changes - update local cache with server data
+            console.log('[Conflict][Sync] Discarding local, using server version');
+            await offlineDb.updateLeadLocally(operation.recordId, { ...serverData, cachedAt: Date.now() });
+            return true; // Mark as synced without pushing to server
+          }
+          // choice === 'keep_local' — fall through to normal processing (override server)
+          console.log('[Conflict][Sync] Keeping local changes, overriding server');
         }
       }
 
@@ -510,5 +620,7 @@ export function useSyncQueue(isOnline: boolean) {
     deleteOperation,
     getPendingOperationsList,
     loadPendingCount,
+    activeConflict,
+    resolveConflict,
   };
 }

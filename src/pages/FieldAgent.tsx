@@ -25,6 +25,7 @@ import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { notifyJobAssigned, notifyTechEnRoute, notifyTechArrived, notifyJobCompleted, sendNotificationOfflineAware } from "@/lib/notificationService";
 import PullToRefresh from "@/components/PullToRefresh";
 import Layout from "@/components/Layout";
+import SyncConflictDialog from "@/components/SyncConflictDialog";
 import { createTeardropMarkerElement } from "@/utils/MarkerUtils";
 import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilterButtons";
 import LeadListFilterPills, { LeadListStatus } from "@/components/LeadListFilterPills";
@@ -139,7 +140,7 @@ const FieldAgent = () => {
   const isMobile = useIsMobile();
 
   // Offline support
-  const { isOnline, syncStatus, queueOperation, retrySyncFailedOperations, clearFailedOperations, deleteOperation, getPendingOperationsList } = useOffline();
+  const { isOnline, syncStatus, queueOperation, retrySyncFailedOperations, clearFailedOperations, deleteOperation, getPendingOperationsList, activeConflict, resolveConflict } = useOffline();
   const offlineLeads = useOfflineLeads(currentUserId, isOnline, queueOperation);
 
   // Availability tracking
@@ -1923,6 +1924,7 @@ const FieldAgent = () => {
           currentLocation={currentLocation}
           loading={completedJobsFilter.loading}
         />
+        <SyncConflictDialog conflict={activeConflict} onResolve={resolveConflict} />
       </div>
     </Layout>
   );
