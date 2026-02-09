@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   MapPin,
   CalendarDays,
+  LayoutGrid,
   FileText,
   FileSignature,
   Receipt,
@@ -67,6 +68,7 @@ const AdminSidebar = ({
       items: [
         { path: "/admin", label: "Home", icon: LayoutDashboard },
         { path: "/admin/map", label: "Map", icon: MapPin },
+        { path: "/admin/dispatch", label: "Dispatch", icon: LayoutGrid },
         { path: "/admin/schedule", label: "Schedule", icon: CalendarDays },
       ],
     },
