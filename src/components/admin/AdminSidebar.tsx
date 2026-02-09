@@ -112,19 +112,16 @@ const AdminSidebar = ({
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className={cn(
-        "flex items-center gap-3 px-4 py-5 border-b border-white/10",
-        collapsed && "justify-center px-2"
+        "flex items-center px-4 py-5 border-b border-white/10",
+        collapsed ? "justify-center px-2" : "justify-between"
       )}>
-        <img src={logo} alt="Logo" className={cn("shrink-0", collapsed ? "h-8" : "h-10")} />
-        {!collapsed && (
-          <span className="text-white font-bold text-sm leading-tight">Admin<br />Dashboard</span>
-        )}
+        <img src={logo} alt="Logo" className={cn("shrink-0", collapsed ? "h-8" : "h-14")} />
         {mobileOpen && (
           <Button
             variant="ghost"
             size="icon"
             onClick={onMobileClose}
-            className="ml-auto text-white/70 hover:text-white hover:bg-white/10 lg:hidden"
+            className="text-white/70 hover:text-white hover:bg-white/10 lg:hidden"
           >
             <X className="h-5 w-5" />
           </Button>
