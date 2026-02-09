@@ -1,18 +1,19 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, CreditCard, Wrench, Users, MapPin } from "lucide-react";
+import { Building2, CreditCard, Wrench, Users, MapPin, Database } from "lucide-react";
 import CompanyProfileTab from "@/components/settings/CompanyProfileTab";
 import BillingTab from "@/components/settings/BillingTab";
 import ServicesTab from "@/components/settings/ServicesTab";
 import AgentManagementTab from "@/components/settings/AgentManagementTab";
 import { useBroadcastSettings } from "@/hooks/useBroadcastSettings";
 import GeofenceSettings from "@/components/GeofenceSettings";
+import SampleDataLoader from "@/components/settings/SampleDataLoader";
 
 const AdminSettingsPage = () => {
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
       <h2 className="text-xl font-semibold mb-4">Settings</h2>
       <Tabs defaultValue="company">
-        <TabsList className="grid grid-cols-5 w-full max-w-xl">
+        <TabsList className="grid grid-cols-6 w-full max-w-2xl">
           <TabsTrigger value="company" className="gap-1 text-xs md:text-sm">
             <Building2 className="h-4 w-4 hidden sm:block" />Company
           </TabsTrigger>
@@ -28,12 +29,16 @@ const AdminSettingsPage = () => {
           <TabsTrigger value="geofence" className="gap-1 text-xs md:text-sm">
             <MapPin className="h-4 w-4 hidden sm:block" />Geofence
           </TabsTrigger>
+          <TabsTrigger value="data" className="gap-1 text-xs md:text-sm">
+            <Database className="h-4 w-4 hidden sm:block" />Data
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="company"><CompanyProfileTab /></TabsContent>
         <TabsContent value="billing"><BillingTab /></TabsContent>
         <TabsContent value="services"><ServicesTab /></TabsContent>
         <TabsContent value="agents"><AgentManagementTab /></TabsContent>
         <TabsContent value="geofence"><GeofenceSettings /></TabsContent>
+        <TabsContent value="data"><SampleDataLoader /></TabsContent>
       </Tabs>
     </div>
   );
