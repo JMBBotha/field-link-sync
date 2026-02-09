@@ -170,6 +170,18 @@ export function useSyncQueue(isOnline: boolean) {
       switch (operation.operationType) {
         case 'update_lead':
         case 'update_job_status': {
+          // Check if this is a queued notification (offline notification)
+          if (operation.data?._isNotification && operation.tableName === 'notification_queue') {
+            console.log('[Offline][Sync] Processing queued notification:', operation.data.notification_type);
+            const { _isNotification, ...notifPayload } = operation.data;
+            const { data, error } = await supabase.functions.invoke("send-whatsapp-notification", {
+              body: notifPayload,
+            });
+            if (error) throw error;
+            console.log('[Offline][Sync] Queued notification sent:', data);
+            break;
+          }
+
           // Normalize status values before syncing
           const normalizedData = normalizeLeadData(operation.data);
           

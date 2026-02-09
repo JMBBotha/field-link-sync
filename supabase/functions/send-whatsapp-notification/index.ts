@@ -51,6 +51,8 @@ serve(async (req) => {
     const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
     const twilioWhatsAppNumber = Deno.env.get("TWILIO_WHATSAPP_NUMBER");
 
+    console.log("[WhatsApp] Request received. Twilio configured:", !!(twilioAccountSid && twilioAuthToken && twilioWhatsAppNumber));
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Check if we're processing the queue or sending a single notification
@@ -175,6 +177,8 @@ serve(async (req) => {
       throw new Error("Missing required fields: notification_type and customer_id");
     }
 
+    console.log("[WhatsApp] Single notification:", { notification_type, customer_id, lead_id, invoice_id });
+
     // Get customer details
     const { data: customer, error: customerError } = await supabase
       .from("customers")
@@ -240,6 +244,7 @@ serve(async (req) => {
 
     // Process the template
     const messageBody = processTemplate(settings.template_body, fullVariables);
+    console.log("[WhatsApp] Template processed, body length:", messageBody.length);
 
     // Queue the notification
     const { data: queueEntry, error: queueError } = await supabase
@@ -285,6 +290,7 @@ serve(async (req) => {
         const twilioResponse = await response.json();
 
         if (response.ok) {
+          console.log("[WhatsApp] Twilio send SUCCESS for", notification_type);
           // Update as sent
           await supabase
             .from("notification_queue")
@@ -313,12 +319,25 @@ serve(async (req) => {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         } else {
-          console.error("Twilio error:", twilioResponse);
-          // Keep in queue for retry
+          console.error("[WhatsApp] Twilio API error:", twilioResponse.code, twilioResponse.message);
+          // Update queue with error details
+          await supabase
+            .from("notification_queue")
+            .update({
+              error_message: twilioResponse.message || "Twilio API error",
+              attempts: 1,
+            })
+            .eq("id", queueEntry.id);
         }
-      } catch (err) {
-        console.error("Error sending WhatsApp:", err);
-        // Keep in queue for retry
+      } catch (err: any) {
+        console.error("[WhatsApp] Send error:", err.message);
+        await supabase
+          .from("notification_queue")
+          .update({
+            error_message: err.message || "Network error",
+            attempts: 1,
+          })
+          .eq("id", queueEntry.id);
       }
     }
 
