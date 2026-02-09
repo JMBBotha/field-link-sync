@@ -26,6 +26,7 @@ import { notifyJobAssigned, notifyTechEnRoute, notifyTechArrived, notifyJobCompl
 import PullToRefresh from "@/components/PullToRefresh";
 import Layout from "@/components/Layout";
 import SyncConflictDialog from "@/components/SyncConflictDialog";
+import OnboardingFlow from "@/components/OnboardingFlow";
 import { createTeardropMarkerElement } from "@/utils/MarkerUtils";
 import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilterButtons";
 import LeadListFilterPills, { LeadListStatus } from "@/components/LeadListFilterPills";
@@ -149,6 +150,7 @@ const FieldAgent = () => {
   // Completed jobs filter
   const completedJobsFilter = useCompletedJobsFilter();
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Use offline leads data
   const leads = offlineLeads.leads as Lead[];
@@ -260,7 +262,7 @@ const FieldAgent = () => {
       // Fetch user profile for name and home base
       const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name, home_base_lat, home_base_lng")
+        .select("full_name, home_base_lat, home_base_lng, onboarding_completed")
         .eq("id", session.user.id)
         .maybeSingle();
 
@@ -270,6 +272,9 @@ const FieldAgent = () => {
       if (profile?.home_base_lat && profile?.home_base_lng) {
         setHomeBaseLat(profile.home_base_lat);
         setHomeBaseLng(profile.home_base_lng);
+      }
+      if (!profile?.onboarding_completed) {
+        setShowOnboarding(true);
       }
 
       fetchLeads();
@@ -1925,6 +1930,13 @@ const FieldAgent = () => {
           loading={completedJobsFilter.loading}
         />
         <SyncConflictDialog conflict={activeConflict} onResolve={resolveConflict} />
+        {showOnboarding && currentUserId && (
+          <OnboardingFlow
+            userId={currentUserId}
+            userRole="field_agent"
+            onComplete={() => setShowOnboarding(false)}
+          />
+        )}
       </div>
     </Layout>
   );

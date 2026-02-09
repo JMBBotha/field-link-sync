@@ -12,6 +12,7 @@ import Footer from "@/components/Footer";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useQuery } from "@tanstack/react-query";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import OnboardingFlow from "@/components/OnboardingFlow";
 import logo from "@/assets/logo.png";
 
 const AdminLayout = () => {
@@ -19,6 +20,8 @@ const AdminLayout = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showCreateLead, setShowCreateLead] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   const { needsSetup } = useCompanySettings();
   const navigate = useNavigate();
   const location = useLocation();
@@ -77,6 +80,17 @@ const AdminLayout = () => {
         return;
       }
       setIsAdmin(true);
+      setCurrentUserId(session.user.id);
+
+      // Check onboarding status
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("id", session.user.id)
+        .maybeSingle();
+      if (!profile?.onboarding_completed) {
+        setShowOnboarding(true);
+      }
     } catch (error: any) {
       console.error("Auth check error:", error);
       navigate("/auth");
@@ -151,6 +165,14 @@ const AdminLayout = () => {
       </div>
 
       <CreateLeadDialog open={showCreateLead} onOpenChange={setShowCreateLead} />
+
+      {showOnboarding && currentUserId && (
+        <OnboardingFlow
+          userId={currentUserId}
+          userRole="admin"
+          onComplete={() => setShowOnboarding(false)}
+        />
+      )}
     </div>
   );
 };
