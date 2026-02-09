@@ -160,8 +160,8 @@ const ClientProposalView = () => {
       } else {
         toast({ title: "Unable to accept quote", variant: "destructive" });
       }
-    } catch {
-      toast({ title: "Error accepting quote", variant: "destructive" });
+    } catch (err: any) {
+      toast({ title: "Failed to accept quote", description: err?.message || "Please try again or contact us.", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -175,8 +175,8 @@ const ClientProposalView = () => {
         setActionDone("declined");
         toast({ title: "Quote declined" });
       }
-    } catch {
-      toast({ title: "Error", variant: "destructive" });
+    } catch (err: any) {
+      toast({ title: "Failed to decline quote", description: err?.message || "Please try again.", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }

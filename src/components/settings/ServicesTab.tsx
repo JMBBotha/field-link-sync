@@ -48,7 +48,10 @@ const ServicesTab = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["hvac-services"] });
-      toast({ title: "Service removed" });
+      toast({ title: "Service removed ✅" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to remove service", description: err.message, variant: "destructive" });
     },
   });
 
@@ -57,7 +60,13 @@ const ServicesTab = () => {
       const { error } = await supabase.from("hvac_services").update({ is_active }).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hvac-services"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["hvac-services"] });
+      toast({ title: "Service status updated ✅" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to update service", description: err.message, variant: "destructive" });
+    },
   });
 
   if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;

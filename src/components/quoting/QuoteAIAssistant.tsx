@@ -59,7 +59,7 @@ const QuoteAIAssistant = ({ onAddItem }: QuoteAIAssistantProps) => {
       setSuggestions(data?.suggestions || []);
       setSimilarCount(data?.similar_quotes_count || 0);
     } catch (err: any) {
-      toast({ title: "AI Error", description: err.message, variant: "destructive" });
+      toast({ title: "AI suggestions unavailable", description: err.message || "Try again later.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
