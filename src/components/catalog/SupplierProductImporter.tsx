@@ -244,7 +244,6 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
           description: productName,
           category: currentCategory || "Uncategorized",
           cost_price: isNaN(unitCost) ? 0 : unitCost,
-          selling_price: (!isNaN(unitCost) && unitCost > 0) ? Math.round(unitCost * (1 + markupPercent / 100) * 100) / 100 : 0,
           default_markup_percent: markupPercent,
           btu_rating: specs.btu,
           refrigerant_type: specs.refrigerant,
