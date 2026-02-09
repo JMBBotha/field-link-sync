@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Calendar, FileText, Star, Phone, Mail, Clock, CheckCircle } from "lucide-react";
+import { Loader2, Calendar, FileText, Star, Phone, Mail, Clock, CheckCircle, Wrench } from "lucide-react";
 import { format } from "date-fns";
 import CustomerFeedbackForm from "@/components/CustomerFeedbackForm";
 import CustomerInvoiceView from "@/components/CustomerInvoiceView";
@@ -27,12 +27,22 @@ interface Job {
   customer_address: string;
 }
 
+interface MaintenanceDue {
+  id: string;
+  due_date: string;
+  status: string;
+  contract_type: string;
+  equipment_brand: string | null;
+  equipment_model: string | null;
+}
+
 const CustomerPortal = () => {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [upcomingMaintenance, setUpcomingMaintenance] = useState<MaintenanceDue[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -79,6 +89,31 @@ const CustomerPortal = () => {
         .limit(20);
 
       setJobs(jobsData || []);
+
+      // Fetch upcoming maintenance
+      const { data: maintenanceData } = await supabase
+        .from("maintenance_schedules")
+        .select(`
+          id, due_date, status,
+          service_agreements:agreement_id (contract_type),
+          equipment:equipment_id (brand, model)
+        `)
+        .eq("customer_id", customerId)
+        .in("status", ["upcoming", "scheduled"])
+        .gte("due_date", new Date().toISOString().split("T")[0])
+        .order("due_date", { ascending: true })
+        .limit(5);
+
+      setUpcomingMaintenance(
+        (maintenanceData || []).map((m: any) => ({
+          id: m.id,
+          due_date: m.due_date,
+          status: m.status,
+          contract_type: m.service_agreements?.contract_type || "Maintenance",
+          equipment_brand: m.equipment?.brand || null,
+          equipment_model: m.equipment?.model || null,
+        }))
+      );
 
     } catch (err) {
       console.error("Portal error:", err);
@@ -223,6 +258,39 @@ const CustomerPortal = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Upcoming Maintenance */}
+        {upcomingMaintenance.length > 0 && (
+          <Card className="border-primary/20">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Wrench className="h-4 w-4 text-primary" />
+                Upcoming Maintenance
+              </CardTitle>
+              <CardDescription>Your scheduled preventive maintenance</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {upcomingMaintenance.map((m) => (
+                  <div key={m.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <div>
+                      <p className="font-medium text-sm">
+                        {m.contract_type.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}
+                      </p>
+                      {(m.equipment_brand || m.equipment_model) && (
+                        <p className="text-xs text-muted-foreground">{m.equipment_brand} {m.equipment_model}</p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{format(new Date(m.due_date), "dd MMM yyyy")}</p>
+                      <Badge variant="outline" className="text-xs mt-1">{m.status}</Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Contact Footer */}
         <Card className="bg-[#0077B6]/5 border-[#0077B6]/20">

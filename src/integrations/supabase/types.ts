@@ -1082,6 +1082,80 @@ export type Database = {
           },
         ]
       }
+      maintenance_schedules: {
+        Row: {
+          agreement_id: string
+          created_at: string
+          customer_id: string
+          due_date: string
+          equipment_id: string | null
+          id: string
+          lead_id: string | null
+          notes: string | null
+          reminder_2d_sent: boolean
+          reminder_7d_sent: boolean
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agreement_id: string
+          created_at?: string
+          customer_id: string
+          due_date: string
+          equipment_id?: string | null
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          reminder_2d_sent?: boolean
+          reminder_7d_sent?: boolean
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agreement_id?: string
+          created_at?: string
+          customer_id?: string
+          due_date?: string
+          equipment_id?: string | null
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          reminder_2d_sent?: boolean
+          reminder_7d_sent?: boolean
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_schedules_agreement_id_fkey"
+            columns: ["agreement_id"]
+            isOneToOne: false
+            referencedRelation: "service_agreements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_schedules_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_schedules_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_schedules_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_logs: {
         Row: {
           channel: string
@@ -2104,6 +2178,10 @@ export type Database = {
       }
       decline_quote_by_token: { Args: { p_token: string }; Returns: boolean }
       generate_invoice_number: { Args: never; Returns: string }
+      generate_maintenance_schedules: {
+        Args: { months_ahead?: number }
+        Returns: number
+      }
       generate_quote_number: { Args: never; Returns: string }
       get_agents_within_radius: {
         Args: { lead_lat: number; lead_lng: number; radius_km: number }
@@ -2187,6 +2265,7 @@ export type Database = {
         Args: { p_customer_id: string }
         Returns: string
       }
+      get_overdue_maintenance_count: { Args: never; Returns: number }
       get_quote_by_public_token: { Args: { p_token: string }; Returns: string }
       has_role: {
         Args: {
@@ -2207,6 +2286,7 @@ export type Database = {
           revenue: number
         }[]
       }
+      mark_overdue_maintenance: { Args: never; Returns: number }
       past_quote_analytics: {
         Args: { p_job_type?: string }
         Returns: {
