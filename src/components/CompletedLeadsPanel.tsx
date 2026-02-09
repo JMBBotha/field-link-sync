@@ -3,13 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Phone, MapPin, Clock, Navigation, Crosshair, ChevronDown, RefreshCw, ArrowUp, CheckCircle2, Calendar, X } from "lucide-react";
+import { Phone, MapPin, Clock, Navigation, Crosshair, ChevronDown, RefreshCw, ArrowUp, CheckCircle2, Calendar, X, FilePlus } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import CreateInvoiceDialog from "@/components/invoicing/CreateInvoiceDialog";
 
 interface Lead {
   id: string;
@@ -33,14 +34,30 @@ interface CompletedLeadsPanelProps {
   isVisible: boolean;
 }
 
+interface InvoiceInfo {
+  id: string;
+  invoice_number: string;
+  status: string;
+  grand_total: number;
+}
+
 const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: CompletedLeadsPanelProps) => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [invoiceMap, setInvoiceMap] = useState<Map<string, InvoiceInfo>>(new Map());
+  const [invoiceDialogLead, setInvoiceDialogLead] = useState<Lead | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setCurrentUserId(session.user.id);
+    });
+  }, []);
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
@@ -77,6 +94,30 @@ const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: Completed
         })
       );
       setLeads(leadsWithProfiles as Lead[]);
+
+      // Fetch invoices for all completed leads
+      const leadIds = data.map((l) => l.id);
+      if (leadIds.length > 0) {
+        const { data: invoices } = await supabase
+          .from("invoices")
+          .select("id, lead_id, invoice_number, status, grand_total")
+          .in("lead_id", leadIds);
+        if (invoices) {
+          const map = new Map<string, InvoiceInfo>();
+          invoices.forEach((inv) => {
+            if (inv.lead_id) {
+              map.set(inv.lead_id, {
+                id: inv.id,
+                invoice_number: inv.invoice_number,
+                status: inv.status,
+                grand_total: Number(inv.grand_total),
+              });
+            }
+          });
+          setInvoiceMap(map);
+        }
+      }
+
       if (showToast) {
         toast({
           title: "Refreshed",
@@ -180,6 +221,41 @@ const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: Completed
     });
   };
 
+  const handleCreateInvoice = (lead: Lead, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setInvoiceDialogLead(lead);
+  };
+
+  const renderInvoiceBadge = (lead: Lead) => {
+    const inv = invoiceMap.get(lead.id);
+    if (!inv) {
+      return (
+        <Button
+          variant="default"
+          size="sm"
+          className="h-6 px-2 text-[10px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+          onClick={(e) => handleCreateInvoice(lead, e)}
+        >
+          <FilePlus className="h-3 w-3" />
+          Create Invoice
+        </Button>
+      );
+    }
+    if (inv.status === "paid") {
+      return (
+        <Badge className="text-[10px] px-1.5 py-0 border-0 bg-emerald-500/15 text-emerald-600">
+          <CheckCircle2 className="h-3 w-3 mr-1" />
+          Paid – R {inv.grand_total.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+        </Badge>
+      );
+    }
+    return (
+      <Badge className="text-[10px] px-1.5 py-0 border-0 bg-orange-500/15 text-orange-600">
+        Invoiced – {inv.invoice_number} R {inv.grand_total.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+      </Badge>
+    );
+  };
+
   const renderCompactHeader = (lead: Lead) => (
     <div className="flex items-center w-full py-2.5 px-3 gap-2 min-w-0">
       <div className="flex-1 min-w-0 overflow-hidden">
@@ -190,8 +266,9 @@ const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: Completed
             Completed
           </Badge>
         </div>
-        <div className="flex items-center gap-2 mt-1 min-w-0">
+        <div className="flex items-center gap-1.5 mt-1 min-w-0 flex-wrap">
           <span className="text-xs text-muted-foreground truncate min-w-0 flex-1">{lead.service_type}</span>
+          {renderInvoiceBadge(lead)}
           {lead.completed_at && (
             <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0 flex items-center gap-1">
               <Calendar className="h-3 w-3 flex-shrink-0" />
@@ -265,10 +342,13 @@ const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: Completed
               {lead.service_type}
             </CardDescription>
           </div>
-          <Badge className="bg-black dark:bg-white text-white dark:text-black">
-            <CheckCircle2 className="h-3 w-3 mr-1" />
-            Completed
-          </Badge>
+          <div className="flex flex-col items-end gap-1">
+            <Badge className="bg-black dark:bg-white text-white dark:text-black">
+              <CheckCircle2 className="h-3 w-3 mr-1" />
+              Completed
+            </Badge>
+            {renderInvoiceBadge(lead)}
+          </div>
         </div>
       </CardHeader>
       {renderFullContent(lead)}
@@ -297,6 +377,7 @@ const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: Completed
   );
 
   return (
+    <>
     <div className={cn(
       "h-full flex flex-col overflow-hidden transition-all duration-300 ease-out",
       "max-h-[calc(100vh-120px)] md:max-h-[calc(100vh-80px)] lg:max-h-none"
@@ -405,6 +486,25 @@ const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: Completed
         )}
       </div>
     </div>
+
+    {/* Invoice creation dialog */}
+    {invoiceDialogLead && currentUserId && (
+      <CreateInvoiceDialog
+        open={!!invoiceDialogLead}
+        onClose={() => {
+          setInvoiceDialogLead(null);
+          fetchCompletedLeads();
+        }}
+        agentId={currentUserId}
+        prefillLead={{
+          id: invoiceDialogLead.id,
+          customer_name: invoiceDialogLead.customer_name,
+          customer_phone: invoiceDialogLead.customer_phone,
+          customer_address: invoiceDialogLead.customer_address,
+        }}
+      />
+    )}
+    </>
   );
 };
 
