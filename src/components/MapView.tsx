@@ -643,15 +643,34 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
           });
         }
 
+        const popup = new mapboxgl.Popup({
+          offset: [0, -25],
+          closeOnClick: false,
+          maxWidth: "min(90vw, 340px)",
+          anchor: "bottom"
+        }).setHTML(popupHTML);
+
         marker = new mapboxgl.Marker({ element: el, anchor: "bottom" })
           .setLngLat([lead.longitude, lead.latitude])
-          .setPopup(new mapboxgl.Popup({
-            offset: [0, -25],
-            closeOnClick: false,
-            maxWidth: "min(90vw, 340px)",
-            anchor: "bottom"
-          }).setHTML(popupHTML))
+          .setPopup(popup)
           .addTo(map);
+
+        // Show popup on hover, hide on mouse leave (unless pinned by click)
+        el.addEventListener("mouseenter", () => {
+          if (!popup.isOpen()) {
+            marker!.togglePopup();
+          }
+        });
+        el.addEventListener("mouseleave", () => {
+          // Small delay to allow moving mouse to the popup itself
+          setTimeout(() => {
+            const popupEl = popup.getElement();
+            if (popupEl && popupEl.matches(":hover")) return;
+            if (popup.isOpen()) {
+              marker!.togglePopup();
+            }
+          }, 200);
+        });
 
         leadMarkersRef.current.set(lead.id, marker);
       } else {
