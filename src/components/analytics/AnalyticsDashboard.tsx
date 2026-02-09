@@ -10,7 +10,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format, subDays, startOfWeek, startOfMonth, endOfDay, differenceInMinutes } from "date-fns";
 import {
-  DollarSign, Briefcase, Clock, Users, FileCheck, CalendarDays, Download, TrendingUp, Award, Filter,
+  DollarSign, Briefcase, Clock, Users, FileCheck, CalendarDays, Download, TrendingUp, Award, Filter, Wrench, AlertTriangle, Percent,
 } from "lucide-react";
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend,
@@ -121,6 +121,24 @@ const AnalyticsDashboard = () => {
       const { count: upcoming } = await supabase.from("service_agreements").select("*", { count: "exact", head: true })
         .eq("status", "active").lte("next_service_due", nextWeek.toISOString().split("T")[0]).gte("next_service_due", new Date().toISOString().split("T")[0]);
       return { active: active || 0, upcoming: upcoming || 0 };
+    },
+  });
+
+  // Maintenance metrics
+  const { data: maintenanceMetrics } = useQuery({
+    queryKey: ["analytics-maintenance"],
+    queryFn: async () => {
+      const [totalRes, completedRes, overdueCount, revenueRes] = await Promise.all([
+        supabase.from("maintenance_schedules").select("id", { count: "exact", head: true }),
+        supabase.from("maintenance_schedules").select("id", { count: "exact", head: true }).eq("status", "completed"),
+        supabase.rpc("get_overdue_maintenance_count"),
+        supabase.from("service_agreements").select("price").eq("status", "active"),
+      ]);
+      const total = totalRes.count || 0;
+      const completed = completedRes.count || 0;
+      const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+      const recurringRevenue = revenueRes.data?.reduce((s, a) => s + Number(a.price), 0) || 0;
+      return { completionRate, overdue: (overdueCount.data as number) || 0, recurringRevenue };
     },
   });
 
@@ -296,7 +314,7 @@ const AnalyticsDashboard = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-9 gap-3">
         <KPICard label="Invoiced" value={revenueMetrics?.totalInvoiced || 0} prefix="R" icon={DollarSign}
           gradient="linear-gradient(135deg, hsl(204, 100%, 30%) 0%, hsl(204, 100%, 42%) 100%)" />
         <KPICard label="Paid" value={revenueMetrics?.totalPaid || 0} prefix="R" icon={DollarSign}
@@ -310,6 +328,12 @@ const AnalyticsDashboard = () => {
           gradient="linear-gradient(135deg, hsl(180, 70%, 30%) 0%, hsl(180, 70%, 44%) 100%)" />
         <KPICard label="Open Leads" value={leadFunnel.find(l => l.status === "pending")?.count || 0} icon={Users}
           gradient="linear-gradient(135deg, hsl(0, 84%, 50%) 0%, hsl(0, 84%, 64%) 100%)" />
+        <KPICard label="Maint. Rate" value={maintenanceMetrics?.completionRate || 0} suffix="%" icon={Percent}
+          gradient="linear-gradient(135deg, hsl(160, 70%, 30%) 0%, hsl(160, 70%, 44%) 100%)" />
+        <KPICard label="Recurring Rev." value={maintenanceMetrics?.recurringRevenue || 0} prefix="R" icon={Wrench}
+          gradient="linear-gradient(135deg, hsl(280, 60%, 35%) 0%, hsl(280, 60%, 50%) 100%)" />
+        <KPICard label="Overdue Maint." value={maintenanceMetrics?.overdue || 0} icon={AlertTriangle}
+          gradient="linear-gradient(135deg, hsl(0, 70%, 40%) 0%, hsl(0, 70%, 55%) 100%)" />
       </div>
 
       {/* Charts Row 1 */}
