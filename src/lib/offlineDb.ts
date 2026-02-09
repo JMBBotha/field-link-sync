@@ -103,6 +103,24 @@ export interface OfflineAvailability {
   synced: boolean;
 }
 
+export interface OfflineCatalogProduct {
+  id: string;
+  supplier_id: string;
+  supplier_name: string;
+  product_code: string;
+  description: string;
+  category: string;
+  pipe_size: string | null;
+  cost_price: number;
+  selling_price: number;
+  is_price_on_request: boolean;
+  btu_rating: number | null;
+  refrigerant_type: string | null;
+  quote_usage_count: number;
+  default_markup_percent: number;
+  cachedAt: number;
+}
+
 export type OperationType = 
   | 'update_lead' 
   | 'update_job_status'
@@ -140,12 +158,27 @@ class OfflineDatabase extends Dexie {
   photos!: Table<OfflinePhoto, string>;
   timerLogs!: Table<OfflineTimerLog, string>;
   availability!: Table<OfflineAvailability, string>;
+  catalogProducts!: Table<OfflineCatalogProduct, string>;
   pendingOperations!: Table<PendingOperation, number>;
   syncMeta!: Table<SyncMeta, string>;
 
   constructor() {
     super('FieldAgentOfflineDB');
     
+    // Version 3: Add catalogProducts table
+    this.version(3).stores({
+      leads: 'id, status, assigned_agent_id, customer_id, cachedAt',
+      customers: 'id, name, cachedAt',
+      equipment: 'id, customer_id, cachedAt',
+      invoices: 'id, lead_id, agent_id, status, cachedAt',
+      photos: 'id, leadId, uploaded, capturedAt',
+      timerLogs: 'id, leadId, synced',
+      availability: 'id, agentId, synced',
+      catalogProducts: 'id, supplier_id, category, product_code, cachedAt',
+      pendingOperations: '++id, operationType, tableName, recordId, timestamp, synced',
+      syncMeta: 'key'
+    });
+
     // Version 2: Add photos, timerLogs, availability tables
     this.version(2).stores({
       leads: 'id, status, assigned_agent_id, customer_id, cachedAt',
@@ -394,6 +427,30 @@ class OfflineDatabase extends Dexie {
     return meta?.value || null;
   }
 
+  // === Catalog Product Operations ===
+  async cacheCatalogProducts(products: Omit<OfflineCatalogProduct, 'cachedAt'>[]) {
+    const now = Date.now();
+    const items: OfflineCatalogProduct[] = products.map(p => ({ ...p, cachedAt: now }));
+    await this.catalogProducts.bulkPut(items);
+    await this.syncMeta.put({ key: 'lastCatalogSync', value: now });
+  }
+
+  async getCachedCatalogProducts(query?: string, category?: string): Promise<OfflineCatalogProduct[]> {
+    let results = await this.catalogProducts.toArray();
+    if (category && category !== '__all__') {
+      results = results.filter(p => p.category === category);
+    }
+    if (query) {
+      const q = query.toLowerCase();
+      results = results.filter(p =>
+        p.product_code.toLowerCase().includes(q) ||
+        p.description.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q)
+      );
+    }
+    return results.sort((a, b) => b.quote_usage_count - a.quote_usage_count);
+  }
+
   // Clear all cached data
   async clearAllCache() {
     await Promise.all([
@@ -404,6 +461,7 @@ class OfflineDatabase extends Dexie {
       this.photos.clear(),
       this.timerLogs.clear(),
       this.availability.clear(),
+      this.catalogProducts.clear(),
     ]);
   }
 
