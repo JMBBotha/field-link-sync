@@ -50,7 +50,10 @@ const InventoryList = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
-      toast({ title: "Item deleted" });
+      toast({ title: "Item deleted ✅" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to delete item", description: err.message, variant: "destructive" });
     },
   });
 

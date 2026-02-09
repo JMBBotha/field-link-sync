@@ -62,7 +62,10 @@ const FlatRateBook = ({ mode = "page", onAddToQuote }: FlatRateBookProps) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["flat-rate-items"] });
       setEditingId(null);
-      toast({ title: "Price updated" });
+      toast({ title: "Price updated ✅" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to update price", description: err.message, variant: "destructive" });
     },
   });
 
@@ -81,7 +84,10 @@ const FlatRateBook = ({ mode = "page", onAddToQuote }: FlatRateBookProps) => {
       queryClient.invalidateQueries({ queryKey: ["flat-rate-items"] });
       setShowAddForm(false);
       setNewItem({ category: "", name: "", description: "", standard_price: "", estimated_hours: "" });
-      toast({ title: "Item added" });
+      toast({ title: "Item added ✅" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to add item", description: err.message, variant: "destructive" });
     },
   });
 
