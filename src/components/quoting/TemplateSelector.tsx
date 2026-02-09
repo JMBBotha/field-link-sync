@@ -8,9 +8,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FileText } from "lucide-react";
+import type { VisualSection } from "./VisualSectionEditor";
 
 interface TemplateSelectorProps {
-  onSelect: (items: { service_id: string | null; description: string; quantity: number; unit_price: number }[]) => void;
+  onSelect: (
+    items: { service_id: string | null; description: string; quantity: number; unit_price: number }[],
+    sections?: VisualSection[],
+    termsText?: string
+  ) => void;
 }
 
 const TemplateSelector = ({ onSelect }: TemplateSelectorProps) => {
@@ -27,19 +32,39 @@ const TemplateSelector = ({ onSelect }: TemplateSelectorProps) => {
   });
 
   const handleSelect = async (templateId: string) => {
-    const { data: items, error } = await supabase
-      .from("quote_template_items")
-      .select("*")
-      .eq("template_id", templateId);
-    if (error || !items) return;
-    onSelect(
-      items.map((item: any) => ({
-        service_id: item.service_id,
+    const template = templates.find((t: any) => t.id === templateId);
+
+    // Try loading line items from the new jsonb column first
+    let items: any[] = [];
+    const templateLineItems = template?.line_items;
+    if (Array.isArray(templateLineItems) && templateLineItems.length > 0) {
+      items = templateLineItems.map((item: any) => ({
+        service_id: item.service_id || null,
         description: item.description,
-        quantity: item.quantity,
-        unit_price: Number(item.unit_price),
-      }))
-    );
+        quantity: item.quantity || 1,
+        unit_price: Number(item.unit_price) || 0,
+      }));
+    } else {
+      // Fall back to quote_template_items table
+      const { data: legacyItems, error } = await supabase
+        .from("quote_template_items")
+        .select("*")
+        .eq("template_id", templateId);
+      if (!error && legacyItems) {
+        items = legacyItems.map((item: any) => ({
+          service_id: item.service_id,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: Number(item.unit_price),
+        }));
+      }
+    }
+
+    // Load visual sections from template
+    const sections = Array.isArray(template?.sections) ? (template.sections as unknown as VisualSection[]) : undefined;
+    const termsText = template?.terms_text || undefined;
+
+    onSelect(items, sections, termsText);
   };
 
   return (
@@ -55,8 +80,8 @@ const TemplateSelector = ({ onSelect }: TemplateSelectorProps) => {
           <SelectItem key={t.id} value={t.id}>
             <div>
               <span className="font-medium">{t.name}</span>
-              {t.description && (
-                <span className="ml-2 text-xs text-muted-foreground">{t.description}</span>
+              {t.category && (
+                <span className="ml-2 text-xs text-muted-foreground">{t.category}</span>
               )}
             </div>
           </SelectItem>
