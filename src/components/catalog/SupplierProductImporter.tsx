@@ -85,6 +85,8 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
 
     try {
       const lines = pasteText.split("\n").map(l => l.trim()).filter(Boolean);
+      console.log("[CSV Import] Total non-empty lines:", lines.length);
+
       if (lines.length < 2) {
         setError("Need at least a header row and one data row");
         setImporting(false);
@@ -94,15 +96,18 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
       // Parse header - support tab or comma
       const delimiter = lines[0].includes("\t") ? "\t" : ",";
       const headers = lines[0].split(delimiter).map(h => h.trim().replace(/^"|"$/g, ""));
+      console.log("[CSV Import] Headers:", headers, "Delimiter:", JSON.stringify(delimiter));
 
       // Find column indices (flexible matching)
       const findCol = (keywords: string[]) =>
         headers.findIndex(h => keywords.some(k => h.toLowerCase().replace(/[^a-z]/g, "").includes(k)));
 
       const skuIdx = findCol(["sku", "productcode", "code", "itemcode"]);
-      const nameIdx = findCol(["name", "description", "desc", "product"]);
+      const nameIdx = findCol(["name", "product"]);
       const descIdx = findCol(["description", "desc"]);
       const costIdx = findCol(["unitcost", "cost", "nett", "price", "nettprice"]);
+
+      console.log("[CSV Import] Column indices - SKU:", skuIdx, "Name:", nameIdx, "Desc:", descIdx, "Cost:", costIdx);
 
       // Use name col, fallback to first col
       const primaryNameIdx = nameIdx >= 0 ? nameIdx : (skuIdx >= 0 ? (skuIdx === 0 ? 1 : 0) : 0);
@@ -113,56 +118,96 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
       const seenSkus = new Set<string>();
       let skippedCount = 0;
       let errorCount = 0;
+      let categoryCount = 0;
 
       for (let i = 1; i < lines.length; i++) {
-        const cells = lines[i].split(delimiter).map(c => c.trim().replace(/^"|"$/g, ""));
-        const sku = skuIdx >= 0 ? cells[skuIdx]?.trim() : "";
-        const name = cells[primaryNameIdx]?.trim() || "";
+        // Smart CSV split: respect quoted fields
+        const cells: string[] = [];
+        let current = "";
+        let inQuotes = false;
+        for (const ch of lines[i]) {
+          if (ch === '"') { inQuotes = !inQuotes; continue; }
+          if (ch === delimiter && !inQuotes) { cells.push(current.trim()); current = ""; continue; }
+          current += ch;
+        }
+        cells.push(current.trim());
 
-        // Blank SKU = category header
-        if (!sku && name) {
-          currentCategory = name;
+        const sku = skuIdx >= 0 ? (cells[skuIdx] || "").trim() : "";
+        const name = (cells[primaryNameIdx] || "").trim();
+        const descField = descriptionIdx >= 0 ? (cells[descriptionIdx] || "").trim() : "";
+
+        console.log(`[CSV Import] Row ${i}: SKU="${sku}" Name="${name}" Desc="${descField}"`);
+
+        // Blank SKU = category header — check name OR description for category text
+        if (!sku) {
+          const categoryText = name || descField;
+          if (categoryText) {
+            currentCategory = categoryText;
+            categoryCount++;
+            console.log(`[CSV Import] → Category header set: "${currentCategory}"`);
+          } else {
+            console.log(`[CSV Import] → Skipping blank row`);
+            skippedCount++;
+          }
           continue;
         }
-        if (!sku || !name) {
+
+        if (!name && !descField) {
+          console.log(`[CSV Import] → Skipping: no name or description`);
           skippedCount++;
           continue;
         }
 
         // Duplicate SKU check
         if (seenSkus.has(sku.toUpperCase())) {
+          console.log(`[CSV Import] → Skipping duplicate SKU: ${sku}`);
           skippedCount++;
           continue;
         }
         seenSkus.add(sku.toUpperCase());
 
-        // Parse cost
-        let costRaw = costIdx >= 0 ? cells[costIdx] || "" : "";
-        costRaw = costRaw.replace(/[Rr\s]/g, "").replace(/,(\d{2})$/, ".$1").replace(/,/g, "");
-        const unitCost = parseFloat(costRaw) || 0;
+        // Parse cost — strip currency prefix (R, R , r), spaces, then parse
+        let costRaw = costIdx >= 0 ? (cells[costIdx] || "") : "";
+        costRaw = costRaw.replace(/^[Rr]\s*/g, "").trim(); // strip leading R/r + spaces
+        costRaw = costRaw.replace(/\s/g, ""); // strip any remaining spaces
+        costRaw = costRaw.replace(/,(\d{2})$/, ".$1"); // convert trailing ,XX to .XX
+        costRaw = costRaw.replace(/,/g, ""); // strip thousand separators
+        const unitCost = parseFloat(costRaw);
 
-        const description = descriptionIdx >= 0 ? cells[descriptionIdx]?.trim() || "" : "";
-        const fullText = `${name} ${description}`;
+        console.log(`[CSV Import] → Cost raw="${cells[costIdx]}" cleaned="${costRaw}" parsed=${unitCost}`);
+
+        if (isNaN(unitCost) || unitCost <= 0) {
+          console.warn(`[CSV Import] → Zero/invalid cost for SKU ${sku}, marking as price-on-request`);
+        }
+
+        const productName = name || descField;
+        const fullText = `${productName} ${descField}`;
         const specs = parseSpecs(fullText);
+        console.log(`[CSV Import] → Specs:`, specs);
 
-        rows.push({
+        const product = {
           supplier_id: supplierId,
           product_code: sku,
-          description: name,
+          description: productName,
           category: currentCategory || "Uncategorized",
-          cost_price: unitCost,
-          selling_price: unitCost > 0 ? Math.round(unitCost * (1 + markupPercent / 100) * 100) / 100 : 0,
+          cost_price: isNaN(unitCost) ? 0 : unitCost,
+          selling_price: (!isNaN(unitCost) && unitCost > 0) ? Math.round(unitCost * (1 + markupPercent / 100) * 100) / 100 : 0,
           default_markup_percent: markupPercent,
           btu_rating: specs.btu,
           refrigerant_type: specs.refrigerant,
           pipe_size: specs.pipeLiquid && specs.pipeGas ? `${specs.pipeLiquid} ${specs.pipeGas}` : specs.pipeLiquid || null,
           is_active: true,
-          is_price_on_request: unitCost === 0,
-        });
+          is_price_on_request: isNaN(unitCost) || unitCost <= 0,
+        };
+
+        console.log(`[CSV Import] → Valid product:`, product);
+        rows.push(product);
       }
 
+      console.log(`[CSV Import] Parse complete: ${rows.length} products, ${categoryCount} categories, ${skippedCount} skipped`);
+
       if (rows.length === 0) {
-        setError("No valid product rows found. Ensure SKU column is present and rows have data.");
+        setError("No valid product rows found. Check that SKU column has data and costs are numeric.");
         setImporting(false);
         return;
       }
@@ -172,17 +217,22 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
       let imported = 0;
       for (let i = 0; i < rows.length; i += batchSize) {
         const batch = rows.slice(i, i + batchSize);
+        console.log(`[CSV Import] Upserting batch ${i / batchSize + 1}, size=${batch.length}`);
         const { error: insertError } = await supabase
           .from("supplier_products" as any)
           .upsert(batch as any, { onConflict: "supplier_id,product_code" });
         if (insertError) {
-          // Try individual inserts for better error handling
+          console.error("[CSV Import] Batch upsert failed:", insertError);
           for (const row of batch) {
             const { error: singleErr } = await supabase
               .from("supplier_products" as any)
               .upsert(row as any, { onConflict: "supplier_id,product_code" });
-            if (singleErr) errorCount++;
-            else imported++;
+            if (singleErr) {
+              console.error(`[CSV Import] Single upsert failed for ${row.product_code}:`, singleErr);
+              errorCount++;
+            } else {
+              imported++;
+            }
           }
         } else {
           imported += batch.length;
@@ -190,11 +240,13 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
         setProgress(Math.round(((i + batch.length) / rows.length) * 100));
       }
 
+      console.log(`[CSV Import] Done: ${imported} imported, ${skippedCount} skipped, ${errorCount} errors`);
       setResult({ imported, skipped: skippedCount, errors: errorCount });
       toast({ title: `${imported} products imported successfully` });
       invalidateAll();
       onComplete();
     } catch (err: any) {
+      console.error("[CSV Import] Fatal error:", err);
       setError(err.message || "Import failed");
       toast({ title: "Import Failed", description: err.message, variant: "destructive" });
     } finally {
