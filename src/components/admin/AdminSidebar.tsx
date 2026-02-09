@@ -109,7 +109,7 @@ const AdminSidebar = ({
   };
 
   const sidebarContent = (
-    <div className="flex flex-col h-full !bg-[#0077B6]">
+    <div className="flex flex-col h-full" style={{ backgroundColor: '#0077B6' }}>
       {/* Logo */}
       <div className={cn(
         "flex items-center px-4 py-5 border-b border-white/15",
@@ -246,19 +246,21 @@ const AdminSidebar = ({
 
       <aside
         className={cn(
-          "flex flex-col shrink-0 transition-all duration-300 z-50 border-r border-white/10 shadow-xl !bg-[#0077B6]",
+          "flex flex-col shrink-0 transition-all duration-300 z-50 border-r border-white/10 shadow-xl",
           "hidden lg:flex h-full rounded-r-2xl",
           collapsed ? "w-[60px]" : "w-[220px]",
         )}
+        style={{ backgroundColor: '#0077B6' }}
       >
         {sidebarContent}
       </aside>
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-[260px] transform transition-transform duration-300 lg:hidden rounded-r-2xl shadow-2xl border-r border-white/10 !bg-[#0077B6]",
+          "fixed inset-y-0 left-0 z-50 w-[260px] transform transition-transform duration-300 lg:hidden rounded-r-2xl shadow-2xl border-r border-white/10",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
+        style={{ backgroundColor: '#0077B6' }}
       >
         {sidebarContent}
       </aside>
