@@ -2,21 +2,32 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import AdminDashboard from "./pages/AdminDashboard";
 import FieldAgent from "./pages/FieldAgent";
 import CustomerPortal from "./pages/CustomerPortal";
 import CustomerFeedbackForm from "./components/CustomerFeedbackForm";
 import CustomerInvoiceView from "./components/CustomerInvoiceView";
 import NotFound from "./pages/NotFound";
 import ClientProposalView from "./components/client/ClientProposalView";
-import Invoices from "./pages/Invoices";
-import Quotes from "./pages/Quotes";
-import Proposals from "./pages/Proposals";
+
+// Admin layout + pages
+import AdminLayout from "./components/admin/AdminLayout";
+import { AdminHomePage, AdminMapPage, AdminQuotesPage, AdminProposalsPage, AdminInvoicesPage, AdminImportPage } from "./pages/admin";
+
+// Lazy-loaded admin pages (simple wrappers)
+import ScheduleCalendar from "./components/scheduling/ScheduleCalendar";
+import InventoryList from "./components/inventory/InventoryList";
+import FlatRateBook from "./components/flatrate/FlatRateBook";
+import ReportBuilder from "./components/reports/ReportBuilder";
+import AnalyticsDashboard from "./components/analytics/AnalyticsDashboard";
+import AdminNotificationSettings from "./components/AdminNotificationSettings";
+import AuditLogViewer from "./components/audit/AuditLogViewer";
+import AdminSettingsPage from "./components/AdminSettingsPage";
+import ServiceAgreements from "./components/ServiceAgreements";
 
 const queryClient = new QueryClient();
 
@@ -31,11 +42,43 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/admin" element={<AdminDashboard />} />
+
+              {/* Admin layout with nested routes */}
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminHomePage />} />
+                <Route path="map" element={<AdminMapPage />} />
+                <Route path="schedule" element={<ScheduleCalendar />} />
+                <Route path="quotes" element={<AdminQuotesPage />} />
+                <Route path="proposals" element={<AdminProposalsPage />} />
+                <Route path="invoices" element={<AdminInvoicesPage />} />
+                <Route path="agreements" element={<ServiceAgreements />} />
+                <Route path="inventory" element={<InventoryList />} />
+                <Route path="flat-rate" element={<FlatRateBook />} />
+                <Route path="reports" element={<ReportBuilder />} />
+                <Route path="analytics" element={<AnalyticsDashboard />} />
+                <Route path="notifications" element={<AdminNotificationSettings />} />
+                <Route path="audit" element={<AuditLogViewer />} />
+                <Route path="import" element={<AdminImportPage />} />
+                <Route path="settings" element={<AdminSettingsPage />} />
+              </Route>
+
+              {/* Redirects from old standalone routes */}
+              <Route path="/invoices" element={<Navigate to="/admin/invoices" replace />} />
+              <Route path="/invoices/:id" element={<Navigate to="/admin/invoices" replace />} />
+              <Route path="/quotes" element={<Navigate to="/admin/quotes" replace />} />
+              <Route path="/quotes/:id" element={<Navigate to="/admin/quotes" replace />} />
+              <Route path="/proposals" element={<Navigate to="/admin/proposals" replace />} />
+              <Route path="/proposals/:id" element={<Navigate to="/admin/proposals" replace />} />
+              <Route path="/map" element={<Navigate to="/admin/map" replace />} />
+              <Route path="/schedule" element={<Navigate to="/admin/schedule" replace />} />
+              <Route path="/inventory" element={<Navigate to="/admin/inventory" replace />} />
+              <Route path="/agreements" element={<Navigate to="/admin/agreements" replace />} />
+              <Route path="/reports" element={<Navigate to="/admin/reports" replace />} />
+              <Route path="/flat-rate" element={<Navigate to="/admin/flat-rate" replace />} />
+
+              {/* Field Agent */}
               <Route path="/field" element={<FieldAgent />} />
-              <Route path="/invoices" element={<Invoices />} />
-              <Route path="/quotes" element={<Quotes />} />
-              <Route path="/proposals" element={<Proposals />} />
+
               {/* Customer Portal Routes */}
               <Route path="/customer/:token" element={<CustomerPortal />} />
               <Route path="/customer/:token/feedback" element={<CustomerFeedbackForm />} />
@@ -43,7 +86,8 @@ const App = () => (
               <Route path="/customer/:token/invoices" element={<CustomerInvoiceView />} />
               <Route path="/customer/:token/invoice/:invoiceId" element={<CustomerInvoiceView />} />
               <Route path="/quote/:token" element={<ClientProposalView />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+
+              {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
