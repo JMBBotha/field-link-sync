@@ -1504,25 +1504,40 @@ export type Database = {
         Row: {
           category: string | null
           created_at: string
+          created_by: string | null
           description: string | null
           id: string
+          is_active: boolean
+          line_items: Json
           name: string
+          sections: Json | null
+          terms_text: string | null
           updated_at: string
         }
         Insert: {
           category?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
+          is_active?: boolean
+          line_items?: Json
           name: string
+          sections?: Json | null
+          terms_text?: string | null
           updated_at?: string
         }
         Update: {
           category?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
+          is_active?: boolean
+          line_items?: Json
           name?: string
+          sections?: Json | null
+          terms_text?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1535,21 +1550,26 @@ export type Database = {
           created_at: string
           customer_id: string | null
           declined_at: string | null
+          discount_type: string | null
+          discount_value: number | null
           id: string
           lead_id: string | null
           notes: string | null
           public_token: string | null
           quote_number: string
+          reference_text: string | null
           sales_engineer_id: string
           sent_at: string | null
           status: string
           subtotal: number
+          terms_text: string | null
           total: number
           updated_at: string
           valid_until: string | null
           vat_amount: number
           vat_rate: number
           viewed_at: string | null
+          visual_sections: Json | null
         }
         Insert: {
           accepted_at?: string | null
@@ -1558,21 +1578,26 @@ export type Database = {
           created_at?: string
           customer_id?: string | null
           declined_at?: string | null
+          discount_type?: string | null
+          discount_value?: number | null
           id?: string
           lead_id?: string | null
           notes?: string | null
           public_token?: string | null
           quote_number?: string
+          reference_text?: string | null
           sales_engineer_id: string
           sent_at?: string | null
           status?: string
           subtotal?: number
+          terms_text?: string | null
           total?: number
           updated_at?: string
           valid_until?: string | null
           vat_amount?: number
           vat_rate?: number
           viewed_at?: string | null
+          visual_sections?: Json | null
         }
         Update: {
           accepted_at?: string | null
@@ -1581,21 +1606,26 @@ export type Database = {
           created_at?: string
           customer_id?: string | null
           declined_at?: string | null
+          discount_type?: string | null
+          discount_value?: number | null
           id?: string
           lead_id?: string | null
           notes?: string | null
           public_token?: string | null
           quote_number?: string
+          reference_text?: string | null
           sales_engineer_id?: string
           sent_at?: string | null
           status?: string
           subtotal?: number
+          terms_text?: string | null
           total?: number
           updated_at?: string
           valid_until?: string | null
           vat_amount?: number
           vat_rate?: number
           viewed_at?: string | null
+          visual_sections?: Json | null
         }
         Relationships: [
           {
