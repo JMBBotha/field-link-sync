@@ -28,6 +28,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSingleLeadPhotoCount } from "@/hooks/useLeadPhotoCount";
 import CommunicationTimeline from "./communication/CommunicationTimeline";
+import { useQuery } from "@tanstack/react-query";
+import { CheckCircle2, DollarSign } from "lucide-react";
 
 interface Lead {
   id: string;
@@ -179,6 +181,23 @@ const LeadDetailSheet = ({
     agentId: currentUserId || '',
     isOnline,
     queueOperation: queueOp,
+  });
+
+  // Fetch invoice status for this lead
+  const { data: leadInvoice } = useQuery({
+    queryKey: ['lead-invoice', lead?.id],
+    queryFn: async () => {
+      if (!lead?.id) return null;
+      const { data } = await supabase
+        .from('invoices')
+        .select('id, invoice_number, status, grand_total')
+        .eq('lead_id', lead.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!lead?.id && lead?.status === 'completed',
   });
 
   if (!lead) return null;
@@ -398,16 +417,43 @@ const LeadDetailSheet = ({
 
             {/* Create Invoice - Completed leads only */}
             {lead?.status === 'completed' && (
-              <Button
-                variant="default"
-                size="lg"
-                className="w-full"
-                style={{ backgroundColor: '#0077B6', color: '#FFFFFF' }}
-                onClick={() => setShowInlineInvoice(true)}
-              >
-                <FileText className="mr-2 h-5 w-5" />
-                Create Invoice
-              </Button>
+              leadInvoice ? (
+                <div className={`w-full flex items-center justify-between p-3 rounded-lg border ${
+                  leadInvoice.status === 'paid' 
+                    ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800' 
+                    : 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    {leadInvoice.status === 'paid' ? (
+                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <FileText className="h-5 w-5 text-amber-600" />
+                    )}
+                    <div>
+                      <p className="text-sm font-medium">
+                        {leadInvoice.status === 'paid' ? 'Paid' : 'Invoiced'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        #{leadInvoice.invoice_number} · R {Number(leadInvoice.grand_total).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge className={leadInvoice.status === 'paid' ? 'bg-green-600 text-white' : 'bg-amber-500 text-white'}>
+                    {leadInvoice.status === 'paid' ? 'Paid' : leadInvoice.status === 'sent' ? 'Sent' : 'Draft'}
+                  </Badge>
+                </div>
+              ) : (
+                <Button
+                  variant="default"
+                  size="lg"
+                  className="w-full"
+                  style={{ backgroundColor: '#0077B6', color: '#FFFFFF' }}
+                  onClick={() => setShowInlineInvoice(true)}
+                >
+                  <FileText className="mr-2 h-5 w-5" />
+                  Create Invoice
+                </Button>
+              )
             )}
 
             {/* Notes */}
@@ -612,18 +658,42 @@ const LeadDetailSheet = ({
                 </div>
               )}
 
-              {/* Completed leads - Create Invoice button (inline) */}
-              {isCompleted && isOwner && (
-                <Button
-                  className="w-full h-11 rounded-lg text-sm font-semibold"
-                  style={{ backgroundColor: '#0077B6', color: '#FFFFFF' }}
-                  onClick={() => {
-                    setShowInlineInvoice(true);
-                  }}
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Create Invoice
-                </Button>
+              {isCompleted && (
+                leadInvoice ? (
+                  <div className={`w-full flex items-center justify-between p-3 rounded-lg border ${
+                    leadInvoice.status === 'paid' 
+                      ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800' 
+                      : 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      {leadInvoice.status === 'paid' ? (
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <FileText className="h-5 w-5 text-amber-600" />
+                      )}
+                      <div>
+                        <p className="text-sm font-medium">
+                          {leadInvoice.status === 'paid' ? 'Paid' : 'Invoiced'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          #{leadInvoice.invoice_number} · R {Number(leadInvoice.grand_total).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge className={leadInvoice.status === 'paid' ? 'bg-green-600 text-white' : 'bg-amber-500 text-white'}>
+                      {leadInvoice.status === 'paid' ? 'Paid' : leadInvoice.status === 'sent' ? 'Sent' : 'Draft'}
+                    </Badge>
+                  </div>
+                ) : (
+                  <Button
+                    className="w-full h-11 rounded-lg text-sm font-semibold"
+                    style={{ backgroundColor: '#0077B6', color: '#FFFFFF' }}
+                    onClick={() => setShowInlineInvoice(true)}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Create Invoice
+                  </Button>
+                )
               )}
 
               {/* Created timestamp at bottom */}
