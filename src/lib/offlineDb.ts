@@ -322,6 +322,7 @@ class OfflineDatabase extends Dexie {
 
   // Queue a pending operation
   async queueOperation(operation: Omit<PendingOperation, 'id' | 'retryCount' | 'synced'>) {
+    console.log('[Offline][DB] Queueing operation:', operation.operationType, operation.tableName, operation.recordId?.slice(0, 8));
     await this.pendingOperations.add({
       ...operation,
       retryCount: 0,
@@ -369,6 +370,7 @@ class OfflineDatabase extends Dexie {
 
   // Mark operation as synced
   async markOperationSynced(id: number) {
+    console.log('[Offline][DB] Marking operation synced:', id);
     await this.pendingOperations.update(id, { synced: true });
   }
 
@@ -376,6 +378,7 @@ class OfflineDatabase extends Dexie {
   async updateOperationError(id: number, error: string) {
     const op = await this.pendingOperations.get(id);
     if (op) {
+      console.warn('[Offline][DB] Recording error for op:', id, 'retry:', op.retryCount + 1, 'error:', error.slice(0, 80));
       await this.pendingOperations.update(id, {
         retryCount: op.retryCount + 1,
         lastError: error

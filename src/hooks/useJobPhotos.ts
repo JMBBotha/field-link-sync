@@ -89,7 +89,9 @@ export function useJobPhotos({
 
     try {
       // Compress the image
+      console.log('[Offline][Photo] Compressing image:', file.name, 'size:', (file.size / 1024).toFixed(0), 'KB');
       const { base64, compressed } = await compressImage(file);
+      console.log('[Offline][Photo] Compressed to:', (compressed.size / 1024).toFixed(0), 'KB');
 
       if (isOnline) {
         // Upload directly
@@ -111,6 +113,7 @@ export function useJobPhotos({
         });
       } else {
         // Queue for offline sync
+        console.log('[Offline][Photo] Offline - queueing photo for sync:', photoId);
         await offlineDb.savePhoto({
           id: photoId,
           leadId,
@@ -143,7 +146,7 @@ export function useJobPhotos({
         });
       }
     } catch (error: any) {
-      console.error('Photo upload error:', error);
+      console.error('[Offline][Photo] Upload error:', error);
       toast({
         title: "Upload failed",
         description: error.message || "Failed to process photo",

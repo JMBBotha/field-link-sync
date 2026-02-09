@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ClockIcon, Images, Plus, FileText, Timer, GitBranch } from "lucide-react";
+import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ClockIcon, Images, Plus, FileText, Timer, GitBranch, CloudOff } from "lucide-react";
 import CreateInvoiceDialog from "@/components/invoicing/CreateInvoiceDialog";
 import { useJobPhotos, PhotoType } from "@/hooks/useJobPhotos";
 import { useOffline } from "@/contexts/OfflineContext";
@@ -344,6 +344,14 @@ const LeadDetailSheet = ({
               </div>
             </div>
           </SheetHeader>
+
+          {/* Offline mini-banner inside detail sheet */}
+          {!isOnline && (
+            <div className="flex items-center gap-2 mx-4 mb-2 px-3 py-1.5 rounded-lg bg-orange-500/15 border border-orange-400/30 text-orange-500 text-xs font-medium">
+              <CloudOff className="h-3.5 w-3.5 shrink-0" />
+              <span>Offline — changes will sync when reconnected</span>
+            </div>
+          )}
 
           <ScrollArea className="flex-1 min-h-0 overflow-y-auto">
             <Tabs defaultValue="details" className="w-full">
