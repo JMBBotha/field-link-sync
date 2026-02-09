@@ -89,26 +89,54 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
     setImporting(true);
     setProgress(0);
     let imported = 0;
+    let skipped = 0;
 
     try {
-      const rows = csvData.map((row) => {
+      // Category-aware parsing: blank SKU rows become category headers
+      let currentCategory = "";
+      const rows: Record<string, any>[] = [];
+
+      csvData.forEach((row) => {
         const obj: Record<string, any> = { supplier_id: supplierId };
-        PRODUCT_FIELDS.forEach((f) => {
-          const csvCol = mapping[f.field];
-          if (csvCol) {
-            const idx = headers.indexOf(csvCol);
-            if (idx >= 0) {
-              let val: any = row[idx]?.trim() || null;
-              if (f.field === "cost_price") {
-                const price = parsePrice(val || "");
-                obj.cost_price = price;
-                obj.is_price_on_request = val?.toUpperCase().includes("POR") || false;
-              } else {
-                obj[f.field] = val;
-              }
-            }
+
+        // Get the mapped values
+        const codeIdx = mapping.product_code ? headers.indexOf(mapping.product_code) : -1;
+        const descIdx = mapping.description ? headers.indexOf(mapping.description) : -1;
+        const catIdx = mapping.category ? headers.indexOf(mapping.category) : -1;
+        const pipIdx = mapping.pipe_size ? headers.indexOf(mapping.pipe_size) : -1;
+        const priceIdx = mapping.cost_price ? headers.indexOf(mapping.cost_price) : -1;
+
+        const code = codeIdx >= 0 ? row[codeIdx]?.trim() : "";
+        const desc = descIdx >= 0 ? row[descIdx]?.trim() : "";
+
+        // If product_code is blank, treat this row as a category header
+        if (!code) {
+          if (desc) {
+            currentCategory = desc;
           }
-        });
+          return; // skip this row
+        }
+
+        obj.product_code = code;
+        obj.description = desc || code;
+        
+        // Use explicit category column if mapped, otherwise use derived category
+        if (catIdx >= 0 && row[catIdx]?.trim()) {
+          obj.category = row[catIdx].trim();
+        } else {
+          obj.category = currentCategory || "Uncategorized";
+        }
+
+        if (pipIdx >= 0) obj.pipe_size = row[pipIdx]?.trim() || null;
+
+        if (priceIdx >= 0) {
+          const priceVal = row[priceIdx]?.trim() || "";
+          const price = parsePrice(priceVal);
+          obj.cost_price = price;
+          obj.is_price_on_request = priceVal.toUpperCase().includes("POR") || false;
+        } else {
+          obj.cost_price = 0;
+        }
 
         // Extract BTU and refrigerant from description
         if (obj.description) {
@@ -122,8 +150,14 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
         }
 
         obj.default_markup_percent = 30;
-        return obj;
-      }).filter((obj) => obj.product_code && obj.description);
+        rows.push(obj);
+      });
+
+      if (rows.length === 0) {
+        setError("No valid product rows found. Check that the Product Code column is mapped correctly.");
+        setImporting(false);
+        return;
+      }
 
       const batchSize = 50;
       for (let i = 0; i < rows.length; i += batchSize) {
@@ -136,7 +170,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
         setProgress(Math.round((imported / rows.length) * 100));
       }
 
-      toast({ title: "Import Complete", description: `${imported} products imported` });
+      toast({ title: "Import Complete", description: `${imported} products imported, ${skipped} rows skipped as categories` });
       onComplete();
     } catch (err: any) {
       setError(err.message || "Import failed");
