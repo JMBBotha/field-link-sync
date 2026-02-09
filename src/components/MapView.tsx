@@ -56,6 +56,13 @@ const formatTimeAgo = (createdAt: string): string => {
   return `${diffDays}d ago`;
 };
 
+const escapeHtml = (text: string | null | undefined): string => {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+};
+
 const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange, onLeadClick }, ref) => {
   const MAP_CHROME_BOTTOM_OFFSET_PX = 64;
   const [agents, setAgents] = useState<AgentLocation[]>([]);
@@ -453,6 +460,11 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     const buildLeadPopupHTML = (lead: Lead) => {
       const statusColor = statusColors[lead.status] || "#6b7280";
       const statusLabel = (lead.status || "").replace("_", " ");
+      const safeName = escapeHtml(lead.customer_name);
+      const safeService = escapeHtml(lead.service_type);
+      const safeAddress = escapeHtml(lead.customer_address);
+      const safePhone = escapeHtml(lead.customer_phone);
+      const safeNotes = escapeHtml(lead.notes);
       const encodedAddress = encodeURIComponent(lead.customer_address);
       const navigationUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
 
@@ -460,8 +472,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         <div style="min-width: 240px; font-family: system-ui, -apple-system, sans-serif;">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
             <div>
-              <div style="font-weight: 600; font-size: 14px; color: #1f2937;">${lead.customer_name}</div>
-              <div style="font-size: 11px; color: #6b7280;">${lead.service_type}</div>
+              <div style="font-weight: 600; font-size: 14px; color: #1f2937;">${safeName}</div>
+              <div style="font-size: 11px; color: #6b7280;">${safeService}</div>
             </div>
             <span style="background: ${statusColor}; color: white; font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 9999px; text-transform: capitalize;">${statusLabel}</span>
           </div>
@@ -469,19 +481,19 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
           <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #374151;">
             <a href="${navigationUrl}" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: flex-start; gap: 6px; text-decoration: none; color: inherit; padding: 4px; margin: -4px; border-radius: 4px; transition: background 0.15s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">
               <svg style="width: 14px; height: 14px; color: #2563eb; flex-shrink: 0; margin-top: 1px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-              <span style="font-size: 11px; color: #2563eb; text-decoration: underline;">${lead.customer_address}</span>
+              <span style="font-size: 11px; color: #2563eb; text-decoration: underline;">${safeAddress}</span>
               <svg style="width: 12px; height: 12px; color: #2563eb; flex-shrink: 0; margin-left: auto;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
             </a>
 
             <div style="display: flex; align-items: center; gap: 6px;">
               <svg style="width: 14px; height: 14px; color: #9ca3af; flex-shrink: 0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
-              <a href="tel:${lead.customer_phone}" style="color: #2563eb; text-decoration: none; font-size: 11px;">${lead.customer_phone}</a>
+              <a href="tel:${safePhone}" style="color: #2563eb; text-decoration: none; font-size: 11px;">${safePhone}</a>
             </div>
 
             ${lead.notes ? `
             <div style="display: flex; align-items: flex-start; gap: 6px; margin-top: 4px; padding-top: 6px; border-top: 1px solid #e5e7eb;">
               <svg style="width: 14px; height: 14px; color: #9ca3af; flex-shrink: 0; margin-top: 1px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-              <span style="font-size: 11px; color: #6b7280;">${lead.notes}</span>
+              <span style="font-size: 11px; color: #6b7280;">${safeNotes}</span>
             </div>
             ` : ""}
 
@@ -534,7 +546,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       const popupHTML = `
         <div style="min-width: 200px; font-family: system-ui, -apple-system, sans-serif;">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-            <div style="font-weight: 600; font-size: 14px; color: #1f2937;">${agent.profiles?.full_name || "Agent"}</div>
+            <div style="font-weight: 600; font-size: 14px; color: #1f2937;">${escapeHtml(agent.profiles?.full_name) || "Agent"}</div>
             <span style="background: ${statusColor}; color: white; font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 9999px;">${statusLabel}</span>
           </div>
           <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #374151;">
