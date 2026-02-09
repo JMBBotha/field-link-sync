@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, FileText, BarChart3, ClipboardList, AlertTriangle, CheckCircle2, Clock, DollarSign, Users } from "lucide-react";
 import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
+import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
 import { format } from "date-fns";
 
 interface AdminHomeProps {
@@ -87,6 +88,8 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
       <CompletedLeadsList />
 
       <div className="grid md:grid-cols-2 gap-6">
+        {/* Sync Conflicts */}
+        <SyncConflictsSection />
         {/* Recent Activity */}
         <Card>
           <CardHeader><CardTitle className="text-base">Recent Activity</CardTitle></CardHeader>

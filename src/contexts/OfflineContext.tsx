@@ -3,6 +3,7 @@ import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useSyncQueue, SyncStatus } from '@/hooks/useSyncQueue';
 import { useToast } from '@/hooks/use-toast';
 import { PendingOperation } from '@/lib/offlineDb';
+import { ConflictInfo } from '@/components/SyncConflictDialog';
 
 interface OfflineContextValue {
   isOnline: boolean;
@@ -15,6 +16,8 @@ interface OfflineContextValue {
   deleteOperation: (id: number) => Promise<void>;
   getPendingOperationsList: () => Promise<PendingOperation[]>;
   acknowledgeReconnection: () => void;
+  activeConflict: ConflictInfo | null;
+  resolveConflict: (operationId: number, choice: "keep_local" | "use_server") => void;
 }
 
 const OfflineContext = createContext<OfflineContextValue | null>(null);
@@ -59,6 +62,8 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     deleteOperation: syncQueue.deleteOperation,
     getPendingOperationsList: syncQueue.getPendingOperationsList,
     acknowledgeReconnection: onlineStatus.acknowledgeReconnection,
+    activeConflict: syncQueue.activeConflict,
+    resolveConflict: syncQueue.resolveConflict,
   };
 
   return (

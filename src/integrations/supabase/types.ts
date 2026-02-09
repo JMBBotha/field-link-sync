@@ -1972,6 +1972,42 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_conflicts: {
+        Row: {
+          agent_id: string
+          conflict_type: string
+          created_at: string
+          id: string
+          lead_id: string
+          local_data: Json | null
+          resolution: string
+          resolved_at: string | null
+          server_data: Json | null
+        }
+        Insert: {
+          agent_id: string
+          conflict_type?: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          local_data?: Json | null
+          resolution?: string
+          resolved_at?: string | null
+          server_data?: Json | null
+        }
+        Update: {
+          agent_id?: string
+          conflict_type?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          local_data?: Json | null
+          resolution?: string
+          resolved_at?: string | null
+          server_data?: Json | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
