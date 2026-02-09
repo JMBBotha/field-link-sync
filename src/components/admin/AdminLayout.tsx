@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -21,8 +21,28 @@ const AdminLayout = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { needsSetup } = useCompanySettings();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { theme, toggleTheme } = useTheme();
+
+  const pageTitles: Record<string, string> = {
+    "/admin": "Home",
+    "/admin/map": "Map",
+    "/admin/schedule": "Schedule",
+    "/admin/quotes": "Quotes",
+    "/admin/proposals": "Proposals",
+    "/admin/invoices": "Invoices",
+    "/admin/agreements": "Agreements",
+    "/admin/inventory": "Inventory",
+    "/admin/flat-rate": "Flat Rate Book",
+    "/admin/reports": "Reports",
+    "/admin/analytics": "Analytics",
+    "/admin/notifications": "Notifications",
+    "/admin/audit": "Audit Log",
+    "/admin/import": "CSV Import",
+    "/admin/settings": "Settings",
+  };
+  const pageTitle = pageTitles[location.pathname] || "Admin Dashboard";
 
   const { data: pendingRequestsCount = 0 } = useQuery({
     queryKey: ["pending-change-requests-count"],
@@ -105,7 +125,7 @@ const AdminLayout = () => {
               <Menu className="h-5 w-5" />
             </Button>
             <img src={logo} alt="Logo" className="h-8 lg:hidden" />
-            <h1 className="text-base font-semibold text-white">Admin Dashboard</h1>
+            <h1 className="text-base font-semibold text-white">{pageTitle}</h1>
           </div>
 
           <div className="flex items-center gap-1">
