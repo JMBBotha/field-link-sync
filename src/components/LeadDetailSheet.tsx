@@ -345,7 +345,7 @@ const LeadDetailSheet = ({
             </div>
           </SheetHeader>
 
-          <ScrollArea className="flex-1 min-h-0">
+          <ScrollArea className="flex-1 min-h-0 overflow-y-auto">
             <Tabs defaultValue="details" className="w-full">
               <TabsList className="w-full grid grid-cols-4 mx-4 mb-2" style={{ width: 'calc(100% - 2rem)' }}>
                 <TabsTrigger value="details" className="text-xs">Details</TabsTrigger>
