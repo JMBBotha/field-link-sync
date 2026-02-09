@@ -11,6 +11,7 @@ const AdminHomePage = () => {
   const tabToRoute: Record<string, string> = {
     home: "/admin",
     map: "/admin/map",
+    dispatch: "/admin/dispatch",
     schedule: "/admin/schedule",
     quotes: "/admin/quotes",
     proposals: "/admin/proposals",
