@@ -1,17 +1,15 @@
-import { useState, useCallback } from "react";
-import Papa from "papaparse";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Upload, FileSpreadsheet, Loader2, AlertCircle, Check, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface SupplierProductImporterProps {
   supplierId: string;
@@ -19,158 +17,182 @@ interface SupplierProductImporterProps {
   onComplete: () => void;
 }
 
-const PRODUCT_FIELDS = [
-  { field: "product_code", required: true, label: "Product Code" },
-  { field: "description", required: true, label: "Description" },
-  { field: "category", required: true, label: "Category" },
-  { field: "pipe_size", required: false, label: "Pipe Size" },
-  { field: "cost_price", required: true, label: "Nett Price" },
-];
+/** Parse specs from description text */
+function parseSpecs(text: string) {
+  const refrigerantMatch = text.match(/R(32|410A|22|290)/i);
+  const refrigerant = refrigerantMatch ? `R${refrigerantMatch[1].toUpperCase()}` : null;
+
+  // BTU: look for 4-5 digit number near "BTU" or standalone patterns like 9000, 12000, 18000
+  let btu: number | null = null;
+  const btuExplicit = text.match(/(\d{4,6})\s*BTU/i);
+  if (btuExplicit) {
+    btu = parseInt(btuExplicit[1]);
+  } else {
+    const btuImplied = text.match(/\b(9|12|18|24|36|48|60)\s*(?:000|k)\b/i);
+    if (btuImplied) {
+      const n = parseInt(btuImplied[1]);
+      btu = n < 100 ? n * 1000 : n;
+    }
+  }
+
+  // Mounting type
+  let mounting: string | null = null;
+  const mountMatch = text.match(/\b(midwall|wall|cassette|floor|ceiling|duct|ducted|portable|concealed)\b/i);
+  if (mountMatch) mounting = mountMatch[1].charAt(0).toUpperCase() + mountMatch[1].slice(1).toLowerCase();
+  if (mounting === "Midwall") mounting = "Wall";
+  if (mounting === "Ducted") mounting = "Duct";
+
+  // Pipe sizes - look for fraction patterns like 1/4 3/8 or 3/8 5/8
+  let pipeLiquid: string | null = null;
+  let pipeGas: string | null = null;
+  const pipeMatch = text.match(/(\d+\/\d+)\s*[\s&,-]+\s*(\d+\/\d+)/);
+  if (pipeMatch) {
+    pipeLiquid = pipeMatch[1];
+    pipeGas = pipeMatch[2];
+  }
+
+  return { refrigerant, btu, mounting, pipeLiquid, pipeGas };
+}
 
 const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: SupplierProductImporterProps) => {
-  const [tab, setTab] = useState<"csv" | "ai">("csv");
-  const [csvData, setCsvData] = useState<string[][]>([]);
-  const [headers, setHeaders] = useState<string[]>([]);
-  const [mapping, setMapping] = useState<Record<string, string>>({});
+  const [tab, setTab] = useState<"paste" | "csv" | "ai">("paste");
+  const [pasteText, setPasteText] = useState("");
+  const [markupPercent, setMarkupPercent] = useState(30);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ imported: number; skipped: number; errors: number } | null>(null);
   const [aiText, setAiText] = useState("");
   const [aiParsing, setAiParsing] = useState(false);
   const [aiResult, setAiResult] = useState<{ imported: number; updated: number; skipped: number } | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setError(null);
-
-    Papa.parse(file, {
-      complete: (results) => {
-        const data = results.data as string[][];
-        if (data.length < 2) {
-          setError("CSV must have at least a header row and one data row");
-          return;
-        }
-        const hdrs = data[0].map((h) => h.trim());
-        setHeaders(hdrs);
-        setCsvData(data.slice(1).filter((row) => row.some((cell) => cell.trim())));
-
-        // Auto-map
-        const autoMap: Record<string, string> = {};
-        PRODUCT_FIELDS.forEach((f) => {
-          const match = hdrs.findIndex(
-            (h) => h.toLowerCase().replace(/[^a-z]/g, "") === f.field.replace(/_/g, "")
-          );
-          if (match >= 0) autoMap[f.field] = hdrs[match];
-        });
-        setMapping(autoMap);
-      },
-      error: () => setError("Failed to parse CSV"),
-    });
-  }, []);
-
-  const parsePrice = (val: string): number => {
-    if (!val) return 0;
-    // Handle "R 7 700,00" format
-    const cleaned = val.replace(/[Rr\s]/g, "").replace(/,(\d{2})$/, ".$1").replace(/\s/g, "");
-    return parseFloat(cleaned) || 0;
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
+    queryClient.invalidateQueries({ queryKey: ["product-categories"] });
+    queryClient.invalidateQueries({ queryKey: ["comparison-products"] });
+    queryClient.invalidateQueries({ queryKey: ["inventory-from-catalog"] });
   };
 
-  const handleCSVImport = async () => {
-    const missingRequired = PRODUCT_FIELDS
-      .filter((f) => f.required && !mapping[f.field])
-      .map((f) => f.label);
-    if (missingRequired.length > 0) {
-      setError(`Required fields not mapped: ${missingRequired.join(", ")}`);
-      return;
-    }
-
+  /** Parse pasted CSV text with category-header detection */
+  const handlePasteImport = async () => {
+    if (!pasteText.trim()) return;
     setImporting(true);
     setProgress(0);
-    let imported = 0;
-    let skipped = 0;
+    setError(null);
+    setResult(null);
 
     try {
-      // Category-aware parsing: blank SKU rows become category headers
-      let currentCategory = "";
-      const rows: Record<string, any>[] = [];
-
-      csvData.forEach((row) => {
-        const obj: Record<string, any> = { supplier_id: supplierId };
-
-        // Get the mapped values
-        const codeIdx = mapping.product_code ? headers.indexOf(mapping.product_code) : -1;
-        const descIdx = mapping.description ? headers.indexOf(mapping.description) : -1;
-        const catIdx = mapping.category ? headers.indexOf(mapping.category) : -1;
-        const pipIdx = mapping.pipe_size ? headers.indexOf(mapping.pipe_size) : -1;
-        const priceIdx = mapping.cost_price ? headers.indexOf(mapping.cost_price) : -1;
-
-        const code = codeIdx >= 0 ? row[codeIdx]?.trim() : "";
-        const desc = descIdx >= 0 ? row[descIdx]?.trim() : "";
-
-        // If product_code is blank, treat this row as a category header
-        if (!code) {
-          if (desc) {
-            currentCategory = desc;
-          }
-          return; // skip this row
-        }
-
-        obj.product_code = code;
-        obj.description = desc || code;
-        
-        // Use explicit category column if mapped, otherwise use derived category
-        if (catIdx >= 0 && row[catIdx]?.trim()) {
-          obj.category = row[catIdx].trim();
-        } else {
-          obj.category = currentCategory || "Uncategorized";
-        }
-
-        if (pipIdx >= 0) obj.pipe_size = row[pipIdx]?.trim() || null;
-
-        if (priceIdx >= 0) {
-          const priceVal = row[priceIdx]?.trim() || "";
-          const price = parsePrice(priceVal);
-          obj.cost_price = price;
-          obj.is_price_on_request = priceVal.toUpperCase().includes("POR") || false;
-        } else {
-          obj.cost_price = 0;
-        }
-
-        // Extract BTU and refrigerant from description
-        if (obj.description) {
-          const btuMatch = obj.description.match(/(\d+)\s*(?:000)?\s*BTU/i);
-          if (btuMatch) {
-            const btu = parseInt(btuMatch[1]);
-            obj.btu_rating = btu < 1000 ? btu * 1000 : btu;
-          }
-          const refMatch = obj.description.match(/R32|R410A|R22/i);
-          if (refMatch) obj.refrigerant_type = refMatch[0].toUpperCase();
-        }
-
-        obj.default_markup_percent = 30;
-        rows.push(obj);
-      });
-
-      if (rows.length === 0) {
-        setError("No valid product rows found. Check that the Product Code column is mapped correctly.");
+      const lines = pasteText.split("\n").map(l => l.trim()).filter(Boolean);
+      if (lines.length < 2) {
+        setError("Need at least a header row and one data row");
         setImporting(false);
         return;
       }
 
+      // Parse header - support tab or comma
+      const delimiter = lines[0].includes("\t") ? "\t" : ",";
+      const headers = lines[0].split(delimiter).map(h => h.trim().replace(/^"|"$/g, ""));
+
+      // Find column indices (flexible matching)
+      const findCol = (keywords: string[]) =>
+        headers.findIndex(h => keywords.some(k => h.toLowerCase().replace(/[^a-z]/g, "").includes(k)));
+
+      const skuIdx = findCol(["sku", "productcode", "code", "itemcode"]);
+      const nameIdx = findCol(["name", "description", "desc", "product"]);
+      const descIdx = findCol(["description", "desc"]);
+      const costIdx = findCol(["unitcost", "cost", "nett", "price", "nettprice"]);
+
+      // Use name col, fallback to first col
+      const primaryNameIdx = nameIdx >= 0 ? nameIdx : (skuIdx >= 0 ? (skuIdx === 0 ? 1 : 0) : 0);
+      const descriptionIdx = descIdx >= 0 && descIdx !== primaryNameIdx ? descIdx : -1;
+
+      let currentCategory = "";
+      const rows: any[] = [];
+      const seenSkus = new Set<string>();
+      let skippedCount = 0;
+      let errorCount = 0;
+
+      for (let i = 1; i < lines.length; i++) {
+        const cells = lines[i].split(delimiter).map(c => c.trim().replace(/^"|"$/g, ""));
+        const sku = skuIdx >= 0 ? cells[skuIdx]?.trim() : "";
+        const name = cells[primaryNameIdx]?.trim() || "";
+
+        // Blank SKU = category header
+        if (!sku && name) {
+          currentCategory = name;
+          continue;
+        }
+        if (!sku || !name) {
+          skippedCount++;
+          continue;
+        }
+
+        // Duplicate SKU check
+        if (seenSkus.has(sku.toUpperCase())) {
+          skippedCount++;
+          continue;
+        }
+        seenSkus.add(sku.toUpperCase());
+
+        // Parse cost
+        let costRaw = costIdx >= 0 ? cells[costIdx] || "" : "";
+        costRaw = costRaw.replace(/[Rr\s]/g, "").replace(/,(\d{2})$/, ".$1").replace(/,/g, "");
+        const unitCost = parseFloat(costRaw) || 0;
+
+        const description = descriptionIdx >= 0 ? cells[descriptionIdx]?.trim() || "" : "";
+        const fullText = `${name} ${description}`;
+        const specs = parseSpecs(fullText);
+
+        rows.push({
+          supplier_id: supplierId,
+          product_code: sku,
+          description: name,
+          category: currentCategory || "Uncategorized",
+          cost_price: unitCost,
+          selling_price: unitCost > 0 ? Math.round(unitCost * (1 + markupPercent / 100) * 100) / 100 : 0,
+          default_markup_percent: markupPercent,
+          btu_rating: specs.btu,
+          refrigerant_type: specs.refrigerant,
+          pipe_size: specs.pipeLiquid && specs.pipeGas ? `${specs.pipeLiquid} ${specs.pipeGas}` : specs.pipeLiquid || null,
+          is_active: true,
+          is_price_on_request: unitCost === 0,
+        });
+      }
+
+      if (rows.length === 0) {
+        setError("No valid product rows found. Ensure SKU column is present and rows have data.");
+        setImporting(false);
+        return;
+      }
+
+      // Batch upsert
       const batchSize = 50;
+      let imported = 0;
       for (let i = 0; i < rows.length; i += batchSize) {
         const batch = rows.slice(i, i + batchSize);
         const { error: insertError } = await supabase
           .from("supplier_products" as any)
-          .insert(batch as any);
-        if (insertError) throw insertError;
-        imported += batch.length;
-        setProgress(Math.round((imported / rows.length) * 100));
+          .upsert(batch as any, { onConflict: "supplier_id,product_code" });
+        if (insertError) {
+          // Try individual inserts for better error handling
+          for (const row of batch) {
+            const { error: singleErr } = await supabase
+              .from("supplier_products" as any)
+              .upsert(row as any, { onConflict: "supplier_id,product_code" });
+            if (singleErr) errorCount++;
+            else imported++;
+          }
+        } else {
+          imported += batch.length;
+        }
+        setProgress(Math.round(((i + batch.length) / rows.length) * 100));
       }
 
-      toast({ title: "Import Complete", description: `${imported} products imported, ${skipped} rows skipped as categories` });
+      setResult({ imported, skipped: skippedCount, errors: errorCount });
+      toast({ title: `${imported} products imported successfully` });
+      invalidateAll();
       onComplete();
     } catch (err: any) {
       setError(err.message || "Import failed");
@@ -181,25 +203,19 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
   };
 
   const handleAIParse = async () => {
-    if (!aiText.trim()) {
-      setError("Paste the price list text first");
-      return;
-    }
+    if (!aiText.trim()) return;
     setAiParsing(true);
     setError(null);
     setAiResult(null);
-
     try {
       const { data, error: fnError } = await supabase.functions.invoke("parse-price-list", {
         body: { csv_text: aiText, supplier_id: supplierId, supplier_name: supplierName },
       });
-
       if (fnError) throw fnError;
       if (data?.error && !data?.success) throw new Error(data.error);
-
       setAiResult({ imported: data.imported, updated: data.updated, skipped: data.skipped });
-      toast({ title: "AI Parse Complete", description: `${data.imported} new, ${data.updated} updated, ${data.skipped} skipped` });
-      if (data.imported > 0 || data.updated > 0) onComplete();
+      toast({ title: "AI Parse Complete", description: `${data.imported} new, ${data.updated} updated` });
+      if (data.imported > 0 || data.updated > 0) { invalidateAll(); onComplete(); }
     } catch (err: any) {
       setError(err.message || "AI parsing failed");
       toast({ title: "AI Parse Failed", description: err.message, variant: "destructive" });
@@ -208,7 +224,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
     }
   };
 
-  const previewRows = csvData.slice(0, 5);
+  const lineCount = pasteText.split("\n").filter(l => l.trim()).length;
 
   return (
     <Card>
@@ -221,82 +237,57 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
       <CardContent className="px-4 pb-4 space-y-4">
         <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="csv" className="text-xs">
-              <Upload className="h-3 w-3 mr-1" /> CSV Upload
+            <TabsTrigger value="paste" className="text-xs">
+              <Upload className="h-3 w-3 mr-1" /> Paste CSV
             </TabsTrigger>
             <TabsTrigger value="ai" className="text-xs">
               <Sparkles className="h-3 w-3 mr-1" /> AI PDF Parse
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="csv" className="space-y-3 mt-3">
-            {headers.length === 0 && !importing && (
-              <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground mb-2">Upload a CSV with product data</p>
-                <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" id="product-csv" />
-                <Button variant="outline" size="sm" onClick={() => document.getElementById("product-csv")?.click()}>
-                  Select CSV File
-                </Button>
+          <TabsContent value="paste" className="space-y-3 mt-3">
+            <div>
+              <Label className="text-xs font-medium">Paste CSV here</Label>
+              <p className="text-[10px] text-muted-foreground mb-1">
+                Columns: SKU, Name, Description, Unit Cost — blank SKU rows become category headers
+              </p>
+              <Textarea
+                value={pasteText}
+                onChange={(e) => { setPasteText(e.target.value); setResult(null); setError(null); }}
+                placeholder={`SKU,Name,Description,Unit Cost\n,,BREEZELESS E R32 INVERTER,\nBZE-INV-09,INVERTER 9000 BTU HEATPUMP MIDWALL - R32,,R 7700.00\nBZE-INV-12,INVERTER 12000 BTU HEATPUMP MIDWALL - R32,,R 9100.00`}
+                rows={10}
+                className="text-xs font-mono"
+              />
+              {lineCount > 1 && (
+                <p className="text-[10px] text-muted-foreground mt-1">{lineCount} lines detected</p>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Label className="text-xs whitespace-nowrap">Markup %</Label>
+                <Input
+                  type="number"
+                  value={markupPercent}
+                  onChange={(e) => setMarkupPercent(Number(e.target.value) || 0)}
+                  className="w-20 h-8 text-sm"
+                  min={0}
+                  max={200}
+                />
               </div>
-            )}
-
-            {headers.length > 0 && !importing && (
-              <>
-                <div>
-                  <h4 className="text-xs font-semibold mb-2">Map Columns</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {PRODUCT_FIELDS.map((f) => (
-                      <div key={f.field} className="flex items-center gap-2">
-                        <span className="text-xs min-w-[90px]">
-                          {f.label}{f.required && <span className="text-destructive">*</span>}
-                        </span>
-                        <Select value={mapping[f.field] || ""} onValueChange={(v) => setMapping((m) => ({ ...m, [f.field]: v }))}>
-                          <SelectTrigger className="h-7 text-xs">
-                            <SelectValue placeholder="Select column" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {headers.map((h) => (
-                              <SelectItem key={h} value={h}>{h}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="border rounded-lg overflow-auto max-h-36">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        {headers.map((h) => (
-                          <TableHead key={h} className="text-xs whitespace-nowrap">{h}</TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {previewRows.map((row, i) => (
-                        <TableRow key={i}>
-                          {row.map((cell, j) => (
-                            <TableCell key={j} className="text-xs py-1">{cell}</TableCell>
-                          ))}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-
-                <div className="flex gap-2 justify-end">
-                  <Button variant="outline" size="sm" onClick={() => { setHeaders([]); setCsvData([]); setMapping({}); }}>
-                    Different File
-                  </Button>
-                  <Button size="sm" onClick={handleCSVImport}>
-                    <Check className="h-3 w-3 mr-1" /> Import {csvData.length} Products
-                  </Button>
-                </div>
-              </>
-            )}
+              <Button
+                size="sm"
+                onClick={handlePasteImport}
+                disabled={importing || lineCount < 2}
+                className="ml-auto"
+              >
+                {importing ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Check className="h-3 w-3 mr-1" />
+                )}
+                Import Products
+              </Button>
+            </div>
           </TabsContent>
 
           <TabsContent value="ai" className="space-y-3 mt-3">
@@ -305,7 +296,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
               <Textarea
                 value={aiText}
                 onChange={(e) => setAiText(e.target.value)}
-                placeholder="Paste the raw text from your supplier PDF here...&#10;&#10;The AI will extract product codes, descriptions, categories, pipe sizes, and prices automatically."
+                placeholder="Paste the raw text from your supplier PDF here..."
                 rows={8}
                 className="text-xs font-mono"
               />
@@ -317,7 +308,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
               </Button>
             </div>
             {aiResult && (
-              <div className="bg-success/10 text-success p-3 rounded-lg text-sm">
+              <div className="bg-primary/10 text-primary p-3 rounded-lg text-sm">
                 ✅ {aiResult.imported} imported, {aiResult.updated} updated, {aiResult.skipped} skipped
               </div>
             )}
@@ -331,6 +322,12 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
               <span className="text-sm">Importing...</span>
             </div>
             <Progress value={progress} className="h-2" />
+          </div>
+        )}
+
+        {result && (
+          <div className="bg-primary/10 text-primary p-3 rounded-lg text-sm">
+            ✅ {result.imported} imported, {result.skipped} skipped{result.errors > 0 ? `, ${result.errors} errors` : ""}
           </div>
         )}
 

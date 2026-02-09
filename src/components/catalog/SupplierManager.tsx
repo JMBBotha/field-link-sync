@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,26 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
     },
   });
 
+  // Auto-create default supplier if none exist
+  useEffect(() => {
+    if (!isLoading && suppliers.length === 0) {
+      const createDefault = async () => {
+        const { data, error } = await supabase
+          .from("suppliers")
+          .insert({ name: "Midea - Livance" })
+          .select("id")
+          .single();
+        if (!error && data) {
+          queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+          onSelectSupplier(data.id);
+        }
+      };
+      createDefault();
+    } else if (!isLoading && suppliers.length > 0 && !selectedSupplierId) {
+      onSelectSupplier(suppliers[0].id);
+    }
+  }, [isLoading, suppliers.length]);
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       const payload = {
@@ -61,7 +81,6 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
         website: website || null,
         updated_at: new Date().toISOString(),
       };
-
       if (editingSupplier) {
         const { error } = await supabase.from("suppliers").update(payload).eq("id", editingSupplier.id);
         if (error) throw error;
@@ -76,9 +95,7 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
       toast({ title: editingSupplier ? "Supplier updated" : "Supplier added" });
       closeForm();
     },
-    onError: (err: Error) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
@@ -111,10 +128,7 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
     setFormOpen(true);
   };
 
-  const closeForm = () => {
-    setFormOpen(false);
-    setEditingSupplier(null);
-  };
+  const closeForm = () => { setFormOpen(false); setEditingSupplier(null); };
 
   return (
     <>
@@ -134,7 +148,7 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Loading...</p>
           ) : suppliers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No suppliers yet. Add one to get started.</p>
+            <p className="text-sm text-muted-foreground">Creating default supplier...</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {suppliers.map((s) => (
@@ -146,12 +160,7 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
                   >
                     {s.name}
                   </Badge>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5"
-                    onClick={() => openForm(s)}
-                  >
+                  <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => openForm(s)}>
                     <Pencil className="h-3 w-3" />
                   </Button>
                 </div>
@@ -198,12 +207,7 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
               </Button>
             </div>
             {editingSupplier && (
-              <Button
-                variant="destructive"
-                size="sm"
-                className="w-full"
-                onClick={() => { deleteMutation.mutate(editingSupplier.id); closeForm(); }}
-              >
+              <Button variant="destructive" size="sm" className="w-full" onClick={() => { deleteMutation.mutate(editingSupplier.id); closeForm(); }}>
                 <Trash2 className="h-3 w-3 mr-1" /> Remove Supplier
               </Button>
             )}

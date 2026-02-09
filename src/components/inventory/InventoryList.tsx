@@ -4,91 +4,117 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Package, AlertTriangle, Pencil, Trash2 } from "lucide-react";
+import { Search, Package, AlertTriangle, Download, RefreshCw, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import InventoryAdjustment from "./InventoryAdjustment";
-import InventoryItemForm from "./InventoryItemForm";
+import { exportToCSV } from "@/lib/csvExport";
 
-interface InventoryItem {
+interface CatalogProduct {
+  id: string;
+  product_code: string;
+  description: string;
+  category: string | null;
+  cost_price: number;
+  selling_price: number;
+  supplier_id: string;
+  default_markup_percent: number;
+  btu_rating: number | null;
+  refrigerant_type: string | null;
+  pipe_size: string | null;
+  is_price_on_request: boolean;
+  quote_usage_count: number;
+}
+
+interface SupplierInfo {
   id: string;
   name: string;
-  sku: string | null;
-  category: string | null;
-  quantity_in_stock: number;
-  min_stock_level: number;
-  unit_cost: number;
-  supplier: string | null;
 }
+
+const formatZAR = (n: number) =>
+  new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 
 const InventoryList = () => {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
-  const [adjustingItem, setAdjustingItem] = useState<InventoryItem | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: items = [], isLoading } = useQuery({
-    queryKey: ["inventory-items"],
+  const { data: suppliers = [] } = useQuery({
+    queryKey: ["suppliers"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("inventory_items")
-        .select("*")
+        .from("suppliers")
+        .select("id, name")
+        .eq("is_active", true)
         .order("name");
       if (error) throw error;
-      return data as InventoryItem[];
+      return data as SupplierInfo[];
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("inventory_items").delete().eq("id", id);
+  const { data: items = [], isLoading, refetch } = useQuery({
+    queryKey: ["inventory-from-catalog"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("supplier_products" as any)
+        .select("id, product_code, description, category, cost_price, selling_price, supplier_id, default_markup_percent, btu_rating, refrigerant_type, pipe_size, is_price_on_request, quote_usage_count")
+        .eq("is_active", true)
+        .order("description");
       if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
-      toast({ title: "Item deleted ✅" });
-    },
-    onError: (err: Error) => {
-      toast({ title: "Failed to delete item", description: err.message, variant: "destructive" });
+      return (data || []) as unknown as CatalogProduct[];
     },
   });
 
-  const categories = [...new Set(items.map((i) => i.category).filter(Boolean))] as string[];
+  const supplierName = (id: string) => suppliers.find(s => s.id === id)?.name || "—";
+
+  const categories = [...new Set(items.map(i => i.category).filter(Boolean))] as string[];
 
   const filtered = items.filter((item) => {
     const matchesSearch =
       !search ||
-      item.name.toLowerCase().includes(search.toLowerCase()) ||
-      item.sku?.toLowerCase().includes(search.toLowerCase());
+      item.description.toLowerCase().includes(search.toLowerCase()) ||
+      item.product_code?.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = !categoryFilter || item.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
 
-  const lowStockCount = items.filter((i) => i.quantity_in_stock < i.min_stock_level).length;
+  const handleExportCSV = () => {
+    const rows = filtered.map(i => ({
+      SKU: i.product_code,
+      Name: i.description,
+      Category: i.category || "",
+      "Cost Price": i.cost_price,
+      "Sell Price": i.selling_price,
+      Supplier: supplierName(i.supplier_id),
+      BTU: i.btu_rating || "",
+      Refrigerant: i.refrigerant_type || "",
+      "Times Quoted": i.quote_usage_count,
+    }));
+    exportToCSV(rows, `inventory-export-${new Date().toISOString().split("T")[0]}`);
+    toast({ title: `${rows.length} items exported` });
+  };
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Package className="h-5 w-5" />
             Inventory
           </h2>
-          {lowStockCount > 0 && (
-            <p className="text-sm text-red-500 flex items-center gap-1 mt-1">
-              <AlertTriangle className="h-3.5 w-3.5" />
-              {lowStockCount} item{lowStockCount > 1 ? "s" : ""} below minimum stock
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {items.length} products from catalog
+          </p>
         </div>
-        <Button onClick={() => setShowAddForm(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Item
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-3.5 w-3.5 mr-1" /> Sync
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={filtered.length === 0}>
+            <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Search and filter */}
@@ -96,7 +122,7 @@ const InventoryList = () => {
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search items..."
+            placeholder="Search products..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -116,6 +142,7 @@ const InventoryList = () => {
               variant={categoryFilter === cat ? "secondary" : "ghost"}
               size="sm"
               onClick={() => setCategoryFilter(cat)}
+              className="text-xs"
             >
               {cat}
             </Button>
@@ -132,120 +159,64 @@ const InventoryList = () => {
                 <TableHead>Name</TableHead>
                 <TableHead>SKU</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead className="text-center">Stock</TableHead>
-                <TableHead className="text-right">Unit Cost</TableHead>
+                <TableHead className="text-right">Cost</TableHead>
+                <TableHead className="text-right">Sell</TableHead>
                 <TableHead>Supplier</TableHead>
-                <TableHead className="w-24"></TableHead>
+                <TableHead className="text-center">Quoted</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    Loading...
+                  <TableCell colSpan={7} className="text-center py-8">
+                    <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    No items found
+                    {items.length === 0
+                      ? "No products yet. Import from the Catalog page."
+                      : "No matching products"}
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((item) => {
-                  const isLow = item.quantity_in_stock < item.min_stock_level;
-                  return (
-                    <TableRow
-                      key={item.id}
-                      className={isLow ? "bg-red-50 dark:bg-red-950/20" : ""}
-                    >
-                      <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">
-                        {item.sku || "—"}
-                      </TableCell>
-                      <TableCell>
-                        {item.category && (
-                          <Badge variant="outline" className="text-xs">
-                            {item.category}
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span
-                          className={`font-bold ${
-                            isLow ? "text-red-600" : "text-green-600"
-                          }`}
-                        >
-                          {item.quantity_in_stock}
-                        </span>
-                        <span className="text-xs text-muted-foreground ml-1">
-                          / {item.min_stock_level} min
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        R {Number(item.unit_cost).toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {item.supplier || "—"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => setAdjustingItem(item)}
-                            title="Adjust stock"
-                          >
-                            <Package className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => setEditingItem(item)}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-red-500"
-                            onClick={() => deleteMutation.mutate(item.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
+                filtered.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium text-sm max-w-[200px] truncate">
+                      {item.description}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs font-mono">
+                      {item.product_code || "—"}
+                    </TableCell>
+                    <TableCell>
+                      {item.category && (
+                        <Badge variant="outline" className="text-xs">
+                          {item.category}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right text-xs text-muted-foreground">
+                      {item.is_price_on_request ? "POR" : formatZAR(item.cost_price)}
+                    </TableCell>
+                    <TableCell className="text-right text-sm font-semibold text-primary">
+                      {item.is_price_on_request ? "POR" : formatZAR(item.selling_price)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-[10px]">
+                        {supplierName(item.supplier_id)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center text-xs text-muted-foreground">
+                      {item.quote_usage_count || "—"}
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
-
-      {/* Add/Edit Dialog */}
-      {(showAddForm || editingItem) && (
-        <InventoryItemForm
-          item={editingItem}
-          open={showAddForm || !!editingItem}
-          onClose={() => {
-            setShowAddForm(false);
-            setEditingItem(null);
-          }}
-        />
-      )}
-
-      {/* Adjustment Dialog */}
-      {adjustingItem && (
-        <InventoryAdjustment
-          item={adjustingItem}
-          open={!!adjustingItem}
-          onClose={() => setAdjustingItem(null)}
-        />
-      )}
     </div>
   );
 };
