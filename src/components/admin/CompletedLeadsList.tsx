@@ -9,6 +9,7 @@ import { CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import LeadDetailSheet from "@/components/LeadDetailSheet";
+import LeadActionButtons from "./LeadActionButtons";
 
 type FilterTab = "all" | "invoiced" | "not_invoiced" | "paid" | "unpaid";
 
@@ -36,6 +37,8 @@ interface CompletedLeadWithInvoice {
   invoice_id: string | null;
   invoice_status: string | null;
   invoice_total: number | null;
+  invoice_number: string | null;
+  customer_email: string | null;
 }
 
 const filterTabs: { value: FilterTab; label: string }[] = [
@@ -65,17 +68,27 @@ const CompletedLeadsList = () => {
       if (leadsError) throw leadsError;
       if (!completedLeads?.length) return [];
 
-      // Fetch all invoices linked to leads
+      // Fetch invoices and customer emails in parallel
       const leadIds = completedLeads.map((l) => l.id);
-      const { data: invoices, error: invError } = await supabase
-        .from("invoices")
-        .select("id, lead_id, status, grand_total")
-        .in("lead_id", leadIds);
+      const customerIds = completedLeads.map((l) => l.customer_id).filter(Boolean) as string[];
 
-      if (invError) throw invError;
+      const [invoiceRes, customerRes] = await Promise.all([
+        supabase
+          .from("invoices")
+          .select("id, lead_id, status, grand_total, invoice_number")
+          .in("lead_id", leadIds),
+        customerIds.length > 0
+          ? supabase.from("customers").select("id, email").in("id", customerIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+      if (invoiceRes.error) throw invoiceRes.error;
 
       const invoiceMap = new Map(
-        (invoices || []).map((inv) => [inv.lead_id, inv])
+        (invoiceRes.data || []).map((inv) => [inv.lead_id, inv])
+      );
+      const customerEmailMap = new Map(
+        (customerRes.data || []).map((c) => [c.id, c.email])
       );
 
       return completedLeads.map((lead) => {
@@ -85,6 +98,8 @@ const CompletedLeadsList = () => {
           invoice_id: inv?.id ?? null,
           invoice_status: inv?.status ?? null,
           invoice_total: inv ? Number(inv.grand_total) : null,
+          invoice_number: inv?.invoice_number ?? null,
+          customer_email: lead.customer_id ? customerEmailMap.get(lead.customer_id) ?? null : null,
         } as CompletedLeadWithInvoice;
       });
     },
@@ -214,30 +229,41 @@ const CompletedLeadsList = () => {
                         </p>
                       )}
                     </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <Badge
-                        variant={lead.invoice_id ? "default" : "destructive"}
-                        className="text-[10px] px-1.5 py-0"
-                      >
-                        {lead.invoice_id ? "Invoiced" : "Not Invoiced"}
-                      </Badge>
-                      {lead.invoice_id && (
-                        <>
-                          <Badge
-                            className={cn(
-                              "text-[10px] px-1.5 py-0 border-0",
-                              lead.invoice_status === "paid"
-                                ? "bg-emerald-500/15 text-emerald-600"
-                                : "bg-orange-500/15 text-orange-600"
-                            )}
-                          >
-                            {lead.invoice_status === "paid" ? "Paid" : "Unpaid"}
-                          </Badge>
-                          <span className="text-xs font-medium">
-                            R {(lead.invoice_total ?? 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
-                          </span>
-                        </>
-                      )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <LeadActionButtons
+                        leadId={lead.id}
+                        customerName={lead.customer_name}
+                        customerPhone={lead.customer_phone}
+                        customerEmail={lead.customer_email}
+                        invoiceNumber={lead.invoice_number}
+                        invoiceAmount={lead.invoice_total}
+                        invoiceStatus={lead.invoice_status}
+                      />
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge
+                          variant={lead.invoice_id ? "default" : "destructive"}
+                          className="text-[10px] px-1.5 py-0"
+                        >
+                          {lead.invoice_id ? "Invoiced" : "Not Invoiced"}
+                        </Badge>
+                        {lead.invoice_id && (
+                          <>
+                            <Badge
+                              className={cn(
+                                "text-[10px] px-1.5 py-0 border-0",
+                                lead.invoice_status === "paid"
+                                  ? "bg-emerald-500/15 text-emerald-600"
+                                  : "bg-orange-500/15 text-orange-600"
+                              )}
+                            >
+                              {lead.invoice_status === "paid" ? "Paid" : "Unpaid"}
+                            </Badge>
+                            <span className="text-xs font-medium">
+                              R {(lead.invoice_total ?? 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </button>

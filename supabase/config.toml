@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.ai-suggest-quote]
 verify_jwt = false
+
+[functions.create-reminder-call]
+verify_jwt = false
+
+[functions.send-reminder-email]
+verify_jwt = false
