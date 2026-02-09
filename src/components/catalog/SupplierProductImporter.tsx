@@ -19,28 +19,54 @@ interface SupplierProductImporterProps {
 
 /** Auto-repair CSV that was pasted as a single line (no newlines) */
 function autoRepairCsv(text: string): string {
-  // If it already has real newlines, leave it alone
-  if (text.includes("\n") && text.split("\n").filter(l => l.trim()).length > 1) {
-    console.log("[Importer][Grok] CSV already has newlines, skipping repair");
+  // If it already has real newlines with multiple rows, leave it alone
+  const existingLines = text.split("\n").filter(l => l.trim());
+  if (existingLines.length > 1) {
+    console.log("[Importer][Grok] CSV already has", existingLines.length, "lines, skipping repair");
     return text;
   }
 
   console.log("[Importer][Grok] Single-line CSV detected, auto-repairing...");
-  let t = text;
 
-  // 1. Insert newline after "Unit Cost" header
-  t = t.replace(/(Unit\s*Cost)/i, "$1\n");
+  // Step 0: Insert missing commas where a cost value is glued to the next SKU
+  // e.g. "R 7700.00BZE-INV-12" → "R 7700.00,BZE-INV-12"
+  let t = text.replace(/(\d{2,}\.\d{2})([A-Z])/g, "$1,$2");
+  console.log("[Importer][Grok] After comma insertion:", t);
 
-  // 2. Insert newline before ",," patterns (category rows with blank SKU)
-  // But not at the very start
-  t = t.replace(/(?!^)(,,)/g, "\n$1");
+  // Split all values respecting quoted fields
+  const allValues: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (const ch of t) {
+    if (ch === '"') { inQuotes = !inQuotes; continue; }
+    if (ch === ',' && !inQuotes) { allValues.push(current); current = ""; continue; }
+    current += ch;
+  }
+  allValues.push(current);
 
-  // 3. Insert newline before product codes like BZE-INV-09, MPPX-12HRN7, etc.
-  // These follow a price value (digits/dot) directly without separator
-  t = t.replace(/(\d{2,}\.?\d*)([A-Z]{2,6}-)/g, "$1\n$2");
+  console.log("[Importer][Grok] Total comma-separated values:", allValues.length);
 
-  console.log("[Importer][Grok] Repaired CSV:\n" + t);
-  return t;
+  // Detect column count from header
+  let numCols = 4;
+  const headerEndIdx = allValues.findIndex((v, i) => 
+    i > 0 && /unit\s*cost|nett.*price|cost.*price/i.test(v.trim())
+  );
+  if (headerEndIdx > 0) {
+    numCols = headerEndIdx + 1;
+  }
+  console.log("[Importer][Grok] Detected", numCols, "columns");
+
+  // Rebuild rows by grouping values into chunks of numCols
+  const rows: string[] = [];
+  for (let i = 0; i < allValues.length; i += numCols) {
+    const chunk = allValues.slice(i, i + numCols);
+    while (chunk.length < numCols) chunk.push("");
+    rows.push(chunk.join(","));
+  }
+
+  const repaired = rows.join("\n");
+  console.log("[Importer][Grok] Repaired CSV (" + rows.length + " rows):\n" + repaired);
+  return repaired;
 }
 
 /** Parse specs from description text */
