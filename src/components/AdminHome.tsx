@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, FileText, BarChart3, ClipboardList, AlertTriangle, CheckCircle2, Clock, DollarSign, Users } from "lucide-react";
+import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
 import { format } from "date-fns";
 
 interface AdminHomeProps {
@@ -81,6 +82,9 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         <Button variant="outline" onClick={() => onNavigate("analytics")}><BarChart3 className="mr-2 h-4 w-4" />Analytics</Button>
         <Button variant="outline" onClick={() => onNavigate("reports")}><ClipboardList className="mr-2 h-4 w-4" />Reports</Button>
       </div>
+
+      {/* Completed Leads */}
+      <CompletedLeadsList />
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Recent Activity */}
