@@ -1,9 +1,11 @@
 import { useEffect, useState, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Phone, MapPin, Clock, Trash2, MoreHorizontal, Navigation, ChevronDown, ChevronUp, RefreshCw, ArrowUp, Pencil, Timer, ImageIcon, CalendarDays } from "lucide-react";
+import { Phone, MapPin, Clock, Trash2, MoreHorizontal, Navigation, ChevronDown, ChevronUp, RefreshCw, ArrowUp, Pencil, Timer, ImageIcon, CalendarDays, FileText } from "lucide-react";
+import ClientInfoPopover from "./ClientInfoPopover";
 import LeadCardProgress from "./LeadCardProgress";
 import { format, formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -34,6 +36,7 @@ import LeadTimeEditDialog from "./LeadTimeEditDialog";
 interface Lead {
   id: string;
   customer_name: string;
+  customer_id?: string | null;
   customer_phone: string;
   customer_address: string;
   service_type: string;
@@ -57,6 +60,7 @@ interface LeadsListProps {
 }
 
 const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
+  const navigate = useNavigate();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [leadToDelete, setLeadToDelete] = useState<string | null>(null);
@@ -406,7 +410,11 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <CardTitle className="text-base">{lead.customer_name}</CardTitle>
+             <CardTitle className="text-base">
+               <ClientInfoPopover customerId={lead.customer_id || null}>
+                 <span className="cursor-pointer hover:underline">{lead.customer_name}</span>
+               </ClientInfoPopover>
+             </CardTitle>
             <CardDescription className="text-xs flex items-center gap-2">
               <span>{lead.service_type}</span>
               {lead.scheduled_date && (
@@ -436,10 +444,14 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
                   <Pencil className="h-4 w-4 mr-2" />
                   Edit Lead
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setEditingTimesLead(lead)}>
-                  <Timer className="h-4 w-4 mr-2" />
-                  Edit Times
-                </DropdownMenuItem>
+                 <DropdownMenuItem onClick={() => setEditingTimesLead(lead)}>
+                   <Timer className="h-4 w-4 mr-2" />
+                   Edit Times
+                 </DropdownMenuItem>
+                 <DropdownMenuItem onClick={() => navigate(`/admin/quotes?leadId=${lead.id}`)}>
+                   <FileText className="h-4 w-4 mr-2" />
+                   Create Quote
+                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {statusOptions.map((status) => (
                   <DropdownMenuItem
@@ -506,6 +518,10 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
                   <DropdownMenuItem onClick={() => setEditingTimesLead(lead)}>
                     <Timer className="h-4 w-4 mr-2" />
                     Edit Times
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate(`/admin/quotes?leadId=${lead.id}`)}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Create Quote
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   {statusOptions.map((status) => (
