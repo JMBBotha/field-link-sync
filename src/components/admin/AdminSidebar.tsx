@@ -109,7 +109,7 @@ const AdminSidebar = ({
   };
 
   const sidebarContent = (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" style={{ backgroundColor: '#0077B6' }}>
       {/* Logo */}
       <div className={cn(
         "flex items-center px-4 py-5 border-b border-white/15",
@@ -260,7 +260,7 @@ const AdminSidebar = ({
           "fixed inset-y-0 left-0 z-50 w-[260px] transform transition-transform duration-300 lg:hidden rounded-r-2xl shadow-2xl border-r border-white/10",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
-        style={{ backgroundColor: '#0077B6' }}
+        style={{ backgroundColor: '#0077B6', background: '#0077B6' }}
       >
         {sidebarContent}
       </aside>
