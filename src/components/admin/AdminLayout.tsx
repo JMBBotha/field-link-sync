@@ -33,6 +33,7 @@ const AdminLayout = () => {
     "/admin/proposals": "Proposals",
     "/admin/invoices": "Invoices",
     "/admin/agreements": "Agreements",
+    "/admin/catalog": "Product Catalog",
     "/admin/inventory": "Inventory",
     "/admin/flat-rate": "Flat Rate Book",
     "/admin/reports": "Reports",
