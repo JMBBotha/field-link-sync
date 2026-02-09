@@ -1,5 +1,4 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import CreateInvoicePage from "./CreateInvoicePage";
 
 interface CreateInvoiceDialogProps {
@@ -23,14 +22,14 @@ const CreateInvoiceDialog = ({ open, onClose, agentId, prefillLead }: CreateInvo
         <div className="flex justify-center pt-3 pb-1 shrink-0">
           <div className="w-10 h-1 bg-muted-foreground/40 rounded-full" />
         </div>
-        <ScrollArea className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
           <CreateInvoicePage
             agentId={agentId}
             onBack={onClose}
             onSuccess={onClose}
             prefillLead={prefillLead}
           />
-        </ScrollArea>
+        </div>
       </SheetContent>
     </Sheet>
   );
