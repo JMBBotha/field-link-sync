@@ -112,17 +112,17 @@ const AdminSidebar = ({
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className={cn(
-        "flex items-center px-4 py-5 border-b border-white/10",
+        "flex items-center px-4 py-5 border-b border-white/15",
         collapsed ? "justify-center px-2" : "justify-between"
       )}>
-        <img src={logo} alt="Logo" className={cn("shrink-0", collapsed ? "h-8" : "h-14")} />
+        <img src={logo} alt="Logo" className={cn("shrink-0 brightness-0 invert", collapsed ? "h-8" : "h-14")} />
         {mobileOpen && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onMobileClose}
-            className="text-white/70 hover:text-white hover:bg-white/10 lg:hidden"
-          >
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onMobileClose}
+              className="text-white/70 hover:text-white hover:bg-white/15 lg:hidden"
+            >
             <X className="h-5 w-5" />
           </Button>
         )}
@@ -133,7 +133,7 @@ const AdminSidebar = ({
         <Button
           onClick={() => { onCreateLead(); onMobileClose?.(); }}
           className={cn(
-            "w-full bg-primary hover:bg-primary/90 text-primary-foreground",
+            "w-full bg-white text-[#0077B6] font-semibold hover:bg-white/90 shadow-md",
             collapsed && "px-0"
           )}
           size={collapsed ? "icon" : "default"}
@@ -148,7 +148,7 @@ const AdminSidebar = ({
         {navGroups.map((group) => (
           <div key={group.title}>
             {!collapsed && (
-              <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-white/40">
+              <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-white/60">
                 {group.title}
               </p>
             )}
@@ -162,8 +162,8 @@ const AdminSidebar = ({
                     className={cn(
                       "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors relative",
                       active
-                        ? "bg-primary/20 text-white border-l-[3px] border-primary pl-[calc(0.75rem-3px)]"
-                        : "text-white/70 hover:text-white hover:bg-white/10",
+                        ? "bg-white/20 text-white border-l-[3px] border-white pl-[calc(0.75rem-3px)]"
+                        : "text-white/80 hover:text-white hover:bg-white/10",
                       collapsed && "justify-center px-0 py-2.5"
                     )}
                   >
@@ -200,11 +200,11 @@ const AdminSidebar = ({
       </nav>
 
       {/* Bottom actions */}
-      <div className={cn("border-t border-white/10 p-3 space-y-1", collapsed && "p-2")}>
+      <div className={cn("border-t border-white/15 p-3 space-y-1", collapsed && "p-2")}>
         <button
           onClick={() => { navigate("/field"); onMobileClose?.(); }}
           className={cn(
-            "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/10 transition-colors",
+            "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors",
             collapsed && "justify-center px-0"
           )}
         >
@@ -214,7 +214,7 @@ const AdminSidebar = ({
         <button
           onClick={() => { onSignOut(); onMobileClose?.(); }}
           className={cn(
-            "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/10 transition-colors",
+            "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors",
             collapsed && "justify-center px-0"
           )}
         >
@@ -224,10 +224,10 @@ const AdminSidebar = ({
       </div>
 
       {/* Collapse toggle - desktop only */}
-      <div className="hidden lg:block border-t border-white/10 p-2">
+      <div className="hidden lg:block border-t border-white/15 p-2">
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="w-full flex items-center justify-center py-2 text-white/50 hover:text-white transition-colors"
+          className="w-full flex items-center justify-center py-2 text-white/60 hover:text-white transition-colors"
         >
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </button>
@@ -246,19 +246,21 @@ const AdminSidebar = ({
 
       <aside
         className={cn(
-          "bg-zinc-900 flex flex-col shrink-0 transition-all duration-300 z-50",
-          "hidden lg:flex h-full",
+          "flex flex-col shrink-0 transition-all duration-300 z-50 border-r border-white/10 shadow-xl",
+          "hidden lg:flex h-full rounded-r-2xl",
           collapsed ? "w-[60px]" : "w-[220px]",
         )}
+        style={{ backgroundColor: '#0077B6' }}
       >
         {sidebarContent}
       </aside>
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 bg-zinc-900 w-[260px] transform transition-transform duration-300 lg:hidden",
+          "fixed inset-y-0 left-0 z-50 w-[260px] transform transition-transform duration-300 lg:hidden rounded-r-2xl shadow-2xl border-r border-white/10",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
+        style={{ backgroundColor: '#0077B6' }}
       >
         {sidebarContent}
       </aside>
