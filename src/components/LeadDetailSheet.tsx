@@ -314,7 +314,7 @@ const LeadDetailSheet = ({
       <Sheet open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
         <SheetContent 
           side="bottom" 
-          className="max-h-[85vh] bg-card/80 backdrop-blur-lg flex flex-col p-0 border-border/50 shadow-2xl"
+          className="max-h-[80vh] bg-card/80 backdrop-blur-lg flex flex-col p-0 border-border/50 shadow-2xl"
           hideCloseButton
         >
           {/* Swipe Handle */}
