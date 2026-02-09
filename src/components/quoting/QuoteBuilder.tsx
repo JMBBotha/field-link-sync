@@ -2,6 +2,9 @@ import { useState, useEffect, useMemo } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import CustomerSearchDropdown from "@/components/CustomerSearchDropdown";
+import ClientInfoPopover from "@/components/ClientInfoPopover";
+import type { UnifiedClient } from "@/hooks/useUnifiedClients";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -68,6 +71,7 @@ interface Attachment {
 
 interface QuoteBuilderProps {
   quoteId?: string | null;
+  leadId?: string | null;
   onBack: () => void;
 }
 
@@ -78,7 +82,7 @@ const DEFAULT_TERMS = `1. This quotation is valid for 30 days from the date of i
 5. Warranty: 12 months on parts, 90 days on labour.
 6. Payment terms: EFT, cash, or card on site.`;
 
-const QuoteBuilder = ({ quoteId, onBack }: QuoteBuilderProps) => {
+const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { settings } = useCompanySettings();
@@ -111,7 +115,7 @@ const QuoteBuilder = ({ quoteId, onBack }: QuoteBuilderProps) => {
   const watchedDiscountType = watch("discount_type");
   const watchedDiscountValue = watch("discount_value");
 
-  // Fetch customers
+  // Fetch customers (still needed for selectedCustomer reference)
   const { data: customers = [] } = useQuery({
     queryKey: ["customers-list"],
     queryFn: async () => {
@@ -120,6 +124,20 @@ const QuoteBuilder = ({ quoteId, onBack }: QuoteBuilderProps) => {
       return data;
     },
   });
+
+  // Pre-populate from lead
+  useEffect(() => {
+    if (!leadId || quoteId) return;
+    const loadLead = async () => {
+      const { data: lead } = await supabase.from("leads").select("*").eq("id", leadId).single();
+      if (!lead) return;
+      // If lead has a customer_id, set it
+      if (lead.customer_id) {
+        setValue("customer_id", lead.customer_id);
+      }
+    };
+    loadLead();
+  }, [leadId, quoteId]);
 
   // Fetch HVAC services
   const { data: services = [] } = useQuery({
@@ -328,14 +346,15 @@ const QuoteBuilder = ({ quoteId, onBack }: QuoteBuilderProps) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label>Customer</Label>
-                  <Select value={watchedCustomerId} onValueChange={(v) => setValue("customer_id", v)}>
-                    <SelectTrigger><SelectValue placeholder="Select customer..." /></SelectTrigger>
-                    <SelectContent>
-                      {customers.map((c: any) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <ClientInfoPopover customerId={watchedCustomerId || null}>
+                    <div>
+                      <CustomerSearchDropdown
+                        value={watchedCustomerId}
+                        onSelect={(client: UnifiedClient) => setValue("customer_id", client.customer_id || client.id)}
+                        placeholder="Search customers..."
+                      />
+                    </div>
+                  </ClientInfoPopover>
                 </div>
                 <div>
                   <Label>Template</Label>
