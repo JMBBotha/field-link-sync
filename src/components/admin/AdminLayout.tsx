@@ -131,7 +131,7 @@ const AdminLayout = () => {
       />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="shrink-0 h-14 border-b flex items-center justify-between px-4" style={{ backgroundColor: '#0077B6', borderColor: '#006699' }}>
+        <header className="shrink-0 h-14 border-b flex items-center justify-between px-4 bg-[#0077B6] dark:bg-slate-900 border-[#006699] dark:border-slate-700">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
