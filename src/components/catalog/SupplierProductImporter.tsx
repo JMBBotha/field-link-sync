@@ -10,8 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Upload, FileSpreadsheet, Loader2, AlertCircle, Check, Sparkles, FileUp, FileText, X, Trash2, ArrowUp, ArrowDown, Minus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import PriceConfigPanel, { calculatePrices, type PriceConfig } from "./PriceConfigPanel";
 
 interface SupplierProductImporterProps {
   supplierId: string;
@@ -139,6 +140,25 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
   const [importingDiff, setImportingDiff] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Price config state
+  const [showPriceConfig, setShowPriceConfig] = useState(false);
+  const [detectedPriceColumns, setDetectedPriceColumns] = useState<string[]>([]);
+  const [rawParsedProducts, setRawParsedProducts] = useState<any[]>([]);
+  const [priceConfig, setPriceConfig] = useState<PriceConfig | null>(null);
+
+  // Load saved supplier config
+  const { data: supplierConfig } = useQuery({
+    queryKey: ["supplier-config", supplierId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("suppliers" as any)
+        .select("default_price_column, price_includes_vat, price_includes_markup, supplier_markup_percent, supplier_discount_percent, default_vat_rate")
+        .eq("id", supplierId)
+        .single();
+      return data as any;
+    },
+  });
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -253,7 +273,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
   const handleAIParse = async () => {
     if (!extractedText.trim()) return;
     setAiParsing(true); setError(null); setAiResult(null); setParsedRows([]);
-    setDiffRows([]); setShowDiff(false);
+    setDiffRows([]); setShowDiff(false); setShowPriceConfig(false);
     try {
       const { data, error: fnError } = await supabase.functions.invoke("parse-pdf-with-grok", {
         body: { extracted_text: extractedText, supplier_id: supplierId, supplier_name: supplierName, markup_percent: aiMarkup },
@@ -261,29 +281,96 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
       if (fnError) throw fnError;
       if (data?.error && !data?.products?.length) throw new Error(data.error);
 
-      const products: ParsedRow[] = (data.products || []).map((p: any) => ({
-        product_code: p.product_code || "",
-        description: p.description || "",
-        category: p.category || "Uncategorized",
-        cost_price: p.cost_price || 0,
-        pipe_size: p.pipe_size || null,
-        btu_rating: p.btu_rating || null,
-        refrigerant_type: p.refrigerant_type || null,
-        is_price_on_request: p.is_price_on_request || false,
-        short_name: p.short_name || null,
-      }));
+      const columns: string[] = data.detected_price_columns || [];
+      const products = data.products || [];
 
-      setParsedRows(products);
-
-      // Build diff
-      const diff = await buildDiff(products);
-      setDiffRows(diff);
-      setShowDiff(true);
-      toast({ title: `AI parsed ${products.length} products`, description: "Review the diff below before importing" });
+      if (columns.length > 0) {
+        // Store raw products and show price config step
+        setDetectedPriceColumns(columns);
+        setRawParsedProducts(products);
+        setShowPriceConfig(true);
+        toast({ title: `AI parsed ${products.length} products`, description: `Found ${columns.length} price column(s). Configure pricing next.` });
+      } else {
+        // Fallback: no multi-price, go straight to diff
+        const rows: ParsedRow[] = products.map((p: any) => ({
+          product_code: p.product_code || "",
+          description: p.description || "",
+          category: p.category || "Uncategorized",
+          cost_price: p.cost_price || 0,
+          pipe_size: p.pipe_size || null,
+          btu_rating: p.btu_rating || null,
+          refrigerant_type: p.refrigerant_type || null,
+          is_price_on_request: p.is_price_on_request || false,
+          short_name: p.short_name || null,
+        }));
+        setParsedRows(rows);
+        const diff = await buildDiff(rows);
+        setDiffRows(diff);
+        setShowDiff(true);
+        toast({ title: `AI parsed ${rows.length} products`, description: "Review the diff below before importing" });
+      }
     } catch (err: any) {
       setError(err.message || "AI parsing failed");
       toast({ title: "AI Parse Failed", description: err.message, variant: "destructive" });
     } finally { setAiParsing(false); }
+  };
+
+  // ─── Price Config confirmed → build diff ───
+  const handlePriceConfigConfirm = async (config: PriceConfig) => {
+    setPriceConfig(config);
+    setAiMarkup(config.yourMarkupPercent);
+
+    // Save config to supplier for next time
+    await supabase.from("suppliers" as any).update({
+      default_price_column: config.selectedPriceColumn,
+      price_includes_vat: config.priceIncludesVat,
+      price_includes_markup: config.priceIncludesMarkup,
+      supplier_markup_percent: config.supplierMarkupPercent,
+      supplier_discount_percent: config.supplierDiscountPercent,
+      default_vat_rate: config.vatRate,
+    } as any).eq("id", supplierId);
+
+    // Calculate true cost for each product using selected price column
+    const rows: ParsedRow[] = rawParsedProducts.map((p: any) => {
+      const prices = p.prices || {};
+      const rawPrice = prices[config.selectedPriceColumn] || p.cost_price || 0;
+      const calculated = calculatePrices(rawPrice, config);
+
+      // Find RRP if available (use a different column than selected)
+      let rrp: number | null = null;
+      for (const col of Object.keys(prices)) {
+        if (col.toLowerCase().includes("rrp") || col.toLowerCase().includes("retail") || col.toLowerCase().includes("list")) {
+          if (col !== config.selectedPriceColumn) {
+            rrp = prices[col];
+            break;
+          }
+        }
+      }
+
+      return {
+        product_code: p.product_code || "",
+        description: p.description || "",
+        category: p.category || "Uncategorized",
+        cost_price: calculated.trueCost,
+        pipe_size: p.pipe_size || null,
+        btu_rating: p.btu_rating || null,
+        refrigerant_type: p.refrigerant_type || null,
+        is_price_on_request: rawPrice <= 0,
+        short_name: p.short_name || null,
+        // Extra price data stored for import
+        _cost_excl_vat: calculated.costExclVat,
+        _cost_incl_vat: calculated.costInclVat,
+        _rrp: rrp,
+        _supplier_discount_percent: config.supplierDiscountPercent,
+        _vat_rate: config.vatRate,
+      } as any;
+    });
+
+    setParsedRows(rows);
+    const diff = await buildDiff(rows);
+    setDiffRows(diff);
+    setShowPriceConfig(false);
+    setShowDiff(true);
   };
 
   // ─── Apply diff import ───
@@ -295,23 +382,32 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
 
     try {
       for (let i = 0; i < activeRows.length; i++) {
-        const row = activeRows[i];
-        if (row.action === "new") {
-          const { error: err } = await supabase.from("supplier_products" as any).insert({
-            supplier_id: supplierId,
-            product_code: row.product_code,
-            description: row.description,
-            category: row.category,
-            cost_price: row.cost_price,
-            pipe_size: row.pipe_size,
-            btu_rating: row.btu_rating,
-            refrigerant_type: row.refrigerant_type,
-            is_price_on_request: row.is_price_on_request,
-            default_markup_percent: aiMarkup,
-            is_active: true,
-            archived: false,
-            short_name: row.short_name,
-          } as any);
+          const row = activeRows[i];
+          if (row.action === "new") {
+            const insertData: any = {
+              supplier_id: supplierId,
+              product_code: row.product_code,
+              description: row.description,
+              category: row.category,
+              cost_price: row.cost_price,
+              pipe_size: row.pipe_size,
+              btu_rating: row.btu_rating,
+              refrigerant_type: row.refrigerant_type,
+              is_price_on_request: row.is_price_on_request,
+              default_markup_percent: aiMarkup,
+              is_active: true,
+              archived: false,
+              short_name: row.short_name,
+            };
+            // Add multi-price data if available
+            if ((row as any)._cost_excl_vat !== undefined) {
+              insertData.cost_excl_vat = (row as any)._cost_excl_vat;
+              insertData.cost_incl_vat = (row as any)._cost_incl_vat;
+              insertData.rrp = (row as any)._rrp;
+              insertData.supplier_discount_percent = (row as any)._supplier_discount_percent || 0;
+              insertData.vat_rate = (row as any)._vat_rate || 15;
+            }
+            const { error: err } = await supabase.from("supplier_products" as any).insert(insertData as any);
           if (err) errors++; else imported++;
         } else if (row.action === "update" && row.existing_id) {
           const { error: err } = await supabase.from("supplier_products" as any)
@@ -532,7 +628,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
               </div>
             )}
 
-            {pdfFile && !extracting && !showDiff && (
+            {pdfFile && !extracting && !showDiff && !showPriceConfig && (
               <>
                 <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-3">
                   <FileText className="h-5 w-5 text-primary shrink-0" />
@@ -576,6 +672,25 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
                   </Button>
                 </div>
               </>
+            )}
+
+            {/* ─── Price Configuration Step ─── */}
+            {showPriceConfig && detectedPriceColumns.length > 0 && (
+              <PriceConfigPanel
+                detectedPriceColumns={detectedPriceColumns}
+                samplePrices={rawParsedProducts[0]?.prices || {}}
+                savedConfig={supplierConfig ? {
+                  selectedPriceColumn: supplierConfig.default_price_column || detectedPriceColumns[0],
+                  priceIncludesVat: supplierConfig.price_includes_vat || false,
+                  priceIncludesMarkup: supplierConfig.price_includes_markup || false,
+                  supplierMarkupPercent: supplierConfig.supplier_markup_percent || 0,
+                  supplierDiscountPercent: supplierConfig.supplier_discount_percent || 0,
+                  vatRate: supplierConfig.default_vat_rate || 15,
+                  yourMarkupPercent: aiMarkup,
+                } : undefined}
+                onConfirm={handlePriceConfigConfirm}
+                onBack={() => { setShowPriceConfig(false); setRawParsedProducts([]); }}
+              />
             )}
 
             {/* ─── Diff Preview ─── */}
