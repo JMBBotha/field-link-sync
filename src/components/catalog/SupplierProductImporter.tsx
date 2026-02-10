@@ -101,6 +101,7 @@ interface ParsedRow {
   btu_rating: number | null;
   refrigerant_type: string | null;
   is_price_on_request: boolean;
+  short_name: string | null;
 }
 
 type DiffAction = "new" | "update" | "archive" | "unchanged";
@@ -237,6 +238,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
           btu_rating: null,
           refrigerant_type: null,
           is_price_on_request: false,
+          short_name: null,
           action: "archive",
           existing_id: data.id,
           old_cost_price: data.cost_price,
@@ -268,6 +270,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
         btu_rating: p.btu_rating || null,
         refrigerant_type: p.refrigerant_type || null,
         is_price_on_request: p.is_price_on_request || false,
+        short_name: p.short_name || null,
       }));
 
       setParsedRows(products);
@@ -307,6 +310,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
             default_markup_percent: aiMarkup,
             is_active: true,
             archived: false,
+            short_name: row.short_name,
           } as any);
           if (err) errors++; else imported++;
         } else if (row.action === "update" && row.existing_id) {

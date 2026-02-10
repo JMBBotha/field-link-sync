@@ -2121,14 +2121,17 @@ export type Database = {
           image_url: string | null
           inverter: boolean | null
           is_active: boolean
+          is_pinned: boolean
           is_price_on_request: boolean
           last_quoted_at: string | null
           model_range: string | null
+          pin_order: number
           pipe_size: string | null
           product_code: string
           quote_usage_count: number
           refrigerant_type: string | null
           selling_price: number | null
+          short_name: string | null
           subcategory: string | null
           supplier_id: string
           unit_type: string | null
@@ -2148,14 +2151,17 @@ export type Database = {
           image_url?: string | null
           inverter?: boolean | null
           is_active?: boolean
+          is_pinned?: boolean
           is_price_on_request?: boolean
           last_quoted_at?: string | null
           model_range?: string | null
+          pin_order?: number
           pipe_size?: string | null
           product_code: string
           quote_usage_count?: number
           refrigerant_type?: string | null
           selling_price?: number | null
+          short_name?: string | null
           subcategory?: string | null
           supplier_id: string
           unit_type?: string | null
@@ -2175,14 +2181,17 @@ export type Database = {
           image_url?: string | null
           inverter?: boolean | null
           is_active?: boolean
+          is_pinned?: boolean
           is_price_on_request?: boolean
           last_quoted_at?: string | null
           model_range?: string | null
+          pin_order?: number
           pipe_size?: string | null
           product_code?: string
           quote_usage_count?: number
           refrigerant_type?: string | null
           selling_price?: number | null
+          short_name?: string | null
           subcategory?: string | null
           supplier_id?: string
           unit_type?: string | null

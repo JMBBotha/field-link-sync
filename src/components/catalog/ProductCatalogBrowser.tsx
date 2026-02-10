@@ -22,10 +22,26 @@ import {
   Filter,
   Loader2,
   WifiOff,
+  Star,
+  Pin,
 } from "lucide-react";
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
+
+const HVAC_CATEGORIES = [
+  "Midwall Inverter",
+  "Midwall Fixed Speed",
+  "Ducted Inverter",
+  "Ducted Fixed Speed",
+  "Cassette",
+  "Under Ceiling",
+  "Window Wall",
+  "Portable",
+  "Floor Standing",
+  "Multi Split",
+  "VRF",
+];
 
 interface SupplierProduct {
   id: string;
@@ -46,6 +62,9 @@ interface SupplierProduct {
   quote_usage_count: number;
   last_quoted_at: string | null;
   search_rank: number;
+  short_name?: string | null;
+  is_pinned?: boolean;
+  pin_order?: number;
 }
 
 interface ProductCatalogBrowserProps {
@@ -56,7 +75,7 @@ interface ProductCatalogBrowserProps {
 const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrowserProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("__all__");
-  const [sortBy, setSortBy] = useState<"usage" | "price_asc" | "price_desc" | "name">("usage");
+  const [sortBy, setSortBy] = useState<"pinned" | "usage" | "price_asc" | "price_desc" | "name">("pinned");
   const [showArchived, setShowArchived] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<SupplierProduct | null>(null);
@@ -123,19 +142,35 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
       }
       const { data, error } = await query;
       if (error) throw error;
-      return [...new Set((data || []).map((d: any) => d.category))].filter(Boolean) as string[];
+      const dbCategories = [...new Set((data || []).map((d: any) => d.category))].filter(Boolean) as string[];
+      // Merge with HVAC standard categories
+      const allCategories = [...new Set([...HVAC_CATEGORIES, ...dbCategories])];
+      return allCategories.sort();
     },
   });
 
   const sorted = useMemo(() => {
     const arr = [...products];
+    // Always sort pinned to top first
+    const pinnedSort = (a: SupplierProduct, b: SupplierProduct) => {
+      const aPinned = (a as any).is_pinned ? 1 : 0;
+      const bPinned = (b as any).is_pinned ? 1 : 0;
+      if (bPinned !== aPinned) return bPinned - aPinned;
+      if (aPinned && bPinned) return ((a as any).pin_order || 0) - ((b as any).pin_order || 0);
+      return 0;
+    };
+
     switch (sortBy) {
-      case "price_asc": return arr.sort((a, b) => a.cost_price - b.cost_price);
-      case "price_desc": return arr.sort((a, b) => b.cost_price - a.cost_price);
-      case "name": return arr.sort((a, b) => a.description.localeCompare(b.description));
-      default: return arr;
+      case "price_asc": return arr.sort((a, b) => pinnedSort(a, b) || a.cost_price - b.cost_price);
+      case "price_desc": return arr.sort((a, b) => pinnedSort(a, b) || b.cost_price - a.cost_price);
+      case "name": return arr.sort((a, b) => pinnedSort(a, b) || a.description.localeCompare(b.description));
+      case "usage": return arr.sort((a, b) => pinnedSort(a, b) || 0);
+      case "pinned":
+      default: return arr.sort(pinnedSort);
     }
   }, [products, sortBy]);
+
+  const pinnedCount = useMemo(() => products.filter(p => (p as any).is_pinned).length, [products]);
 
   const unarchiveMutation = useMutation({
     mutationFn: async (productId: string) => {
@@ -146,6 +181,18 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
       toast({ title: "Product unarchived" });
+    },
+  });
+
+  const togglePinMutation = useMutation({
+    mutationFn: async ({ productId, isPinned }: { productId: string; isPinned: boolean }) => {
+      const { error } = await supabase.from("supplier_products" as any)
+        .update({ is_pinned: !isPinned, pin_order: isPinned ? 0 : Date.now() } as any)
+        .eq("id", productId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
     },
   });
 
@@ -206,6 +253,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="pinned">Pinned First</SelectItem>
               <SelectItem value="usage">Most Quoted</SelectItem>
               <SelectItem value="price_asc">Price: Low→High</SelectItem>
               <SelectItem value="price_desc">Price: High→Low</SelectItem>
@@ -216,8 +264,13 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
       </div>
 
       <div className="flex items-center justify-between">
-        <div className="text-xs text-muted-foreground">
+        <div className="text-xs text-muted-foreground flex items-center gap-2">
           {isLoading ? "Searching..." : `${sorted.length} products found`}
+          {pinnedCount > 0 && (
+            <Badge variant="secondary" className="text-[10px] gap-0.5">
+              <Star className="h-2.5 w-2.5 fill-current" /> {pinnedCount} pinned
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Label className="text-xs text-muted-foreground">Show Archived</Label>
@@ -236,76 +289,102 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-          {sorted.map((product) => (
-            <Card
-              key={product.id}
-              className={`hover:shadow-md transition-shadow active:scale-[0.99] cursor-pointer ${(product as any).archived ? "opacity-50" : ""}`}
-              onClick={() => setSelectedProduct(product)}
-            >
-              <CardContent className={isMobile ? "p-3" : "p-4"}>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-xs font-mono text-primary font-semibold ${(product as any).archived ? "line-through" : ""}`}>{product.product_code}</p>
-                    <p className={`font-medium mt-0.5 line-clamp-2 ${isMobile ? "text-xs" : "text-sm"} ${(product as any).archived ? "line-through" : ""}`}>{product.description}</p>
+          {sorted.map((product) => {
+            const isPinned = !!(product as any).is_pinned;
+            return (
+              <Card
+                key={product.id}
+                className={`hover:shadow-md transition-shadow active:scale-[0.99] cursor-pointer ${(product as any).archived ? "opacity-50" : ""} ${isPinned ? "ring-1 ring-primary/30" : ""}`}
+                onClick={() => setSelectedProduct(product)}
+              >
+                <CardContent className={isMobile ? "p-3" : "p-4"}>
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <div className="flex-1 min-w-0">
+                      {/* Short name displayed prominently */}
+                      {(product as any).short_name && (
+                        <p className={`font-bold text-primary ${isMobile ? "text-sm" : "text-base"} ${(product as any).archived ? "line-through" : ""}`}>
+                          {(product as any).short_name}
+                        </p>
+                      )}
+                      <p className={`text-xs font-mono text-muted-foreground ${(product as any).archived ? "line-through" : ""}`}>{product.product_code}</p>
+                      <p className={`mt-0.5 line-clamp-2 text-muted-foreground ${isMobile ? "text-[11px]" : "text-xs"} ${(product as any).archived ? "line-through" : ""}`}>{product.description}</p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {isPinned && (
+                        <Badge variant="secondary" className="text-[10px] px-1">
+                          <Star className="h-2.5 w-2.5 fill-current text-amber-500" />
+                        </Badge>
+                      )}
+                      {product.quote_usage_count > 0 && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          <TrendingUp className="h-3 w-3 mr-0.5" />
+                          {product.quote_usage_count}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                  {product.quote_usage_count > 0 && (
-                    <Badge variant="secondary" className="shrink-0 text-[10px]">
-                      <TrendingUp className="h-3 w-3 mr-0.5" />
-                      {product.quote_usage_count}
-                    </Badge>
-                  )}
-                </div>
 
-                <div className="flex flex-wrap gap-1 mb-2">
-                  {(product as any).archived && (
-                    <Badge variant="destructive" className="text-[10px]">Archived</Badge>
-                  )}
-                  <Badge variant="outline" className="text-[10px]">{product.category}</Badge>
-                  {product.btu_rating && (
-                    <Badge variant="outline" className="text-[10px]">{(product.btu_rating / 1000).toFixed(0)}K BTU</Badge>
-                  )}
-                  {product.refrigerant_type && (
-                    <Badge variant="outline" className="text-[10px]">{product.refrigerant_type}</Badge>
-                  )}
-                  {product.pipe_size && (
-                    <Badge variant="outline" className="text-[10px]">⌀ {product.pipe_size}</Badge>
-                  )}
-                </div>
-
-                <Separator className="mb-2" />
-
-                <div className="flex items-end justify-between">
-                  <div>
-                    {product.is_price_on_request ? (
-                      <p className="text-sm font-semibold text-muted-foreground">POR</p>
-                    ) : (
-                      <>
-                        <p className="text-[10px] text-muted-foreground">Cost: {formatZAR(product.cost_price)}</p>
-                        <p className="text-sm font-bold text-primary">{formatZAR(product.selling_price)}</p>
-                      </>
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {(product as any).archived && (
+                      <Badge variant="destructive" className="text-[10px]">Archived</Badge>
+                    )}
+                    <Badge variant="outline" className="text-[10px]">{product.category}</Badge>
+                    {product.btu_rating && (
+                      <Badge variant="outline" className="text-[10px]">{(product.btu_rating / 1000).toFixed(0)}K BTU</Badge>
+                    )}
+                    {product.refrigerant_type && (
+                      <Badge variant="outline" className="text-[10px]">{product.refrigerant_type}</Badge>
+                    )}
+                    {product.pipe_size && (
+                      <Badge variant="outline" className="text-[10px]">⌀ {product.pipe_size}</Badge>
                     )}
                   </div>
-                  {(product as any).archived ? (
-                    <Button
-                      size="sm" variant="outline"
-                      onClick={(e) => { e.stopPropagation(); unarchiveMutation.mutate(product.id); }}
-                      className={`text-xs ${isMobile ? "h-8 px-3" : "h-7"}`}
-                    >
-                      Unarchive
-                    </Button>
-                  ) : onAddToQuote && !product.is_price_on_request ? (
-                    <Button
-                      size="sm"
-                      onClick={(e) => { e.stopPropagation(); handleAddToQuote(product); }}
-                      className={`text-xs ${isMobile ? "h-8 px-3" : "h-7"}`}
-                    >
-                      <Plus className="h-3 w-3 mr-1" /> Add
-                    </Button>
-                  ) : null}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+
+                  <Separator className="mb-2" />
+
+                  <div className="flex items-end justify-between">
+                    <div>
+                      {product.is_price_on_request ? (
+                        <p className="text-sm font-semibold text-muted-foreground">POR</p>
+                      ) : (
+                        <>
+                          <p className="text-[10px] text-muted-foreground">Cost: {formatZAR(product.cost_price)}</p>
+                          <p className="text-sm font-bold text-primary">{formatZAR(product.selling_price)}</p>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className={`h-7 w-7 ${isPinned ? "text-amber-500" : "text-muted-foreground"}`}
+                        onClick={(e) => { e.stopPropagation(); togglePinMutation.mutate({ productId: product.id, isPinned }); }}
+                      >
+                        <Star className={`h-3.5 w-3.5 ${isPinned ? "fill-current" : ""}`} />
+                      </Button>
+                      {(product as any).archived ? (
+                        <Button
+                          size="sm" variant="outline"
+                          onClick={(e) => { e.stopPropagation(); unarchiveMutation.mutate(product.id); }}
+                          className={`text-xs ${isMobile ? "h-8 px-3" : "h-7"}`}
+                        >
+                          Unarchive
+                        </Button>
+                      ) : onAddToQuote && !product.is_price_on_request ? (
+                        <Button
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); handleAddToQuote(product); }}
+                          className={`text-xs ${isMobile ? "h-8 px-3" : "h-7"}`}
+                        >
+                          <Plus className="h-3 w-3 mr-1" /> Add
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 

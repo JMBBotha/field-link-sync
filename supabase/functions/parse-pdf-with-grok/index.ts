@@ -14,6 +14,7 @@ interface ParsedProduct {
   pipeSize?: string | null;
   btuRating?: number | null;
   refrigerantType?: string | null;
+  shortName?: string | null;
 }
 
 Deno.serve(async (req) => {
@@ -78,6 +79,21 @@ Return ONLY a JSON object with a "products" array. Each product object must have
 - pipeSize: string or null (pipe sizes like "1/4 x 3/8")
 - btuRating: number or null (BTU rating, e.g. 9000, 12000, 18000, 24000)
 - refrigerantType: string or null (e.g. "R32", "R410A")
+- shortName: string (concise display name using this format: BRAND + BTU/kW + TYPE_ABBREV + SUBTYPE)
+  Abbreviation rules:
+  - Midwall Split Inverter → "INV MW" (e.g. "MIDEA 9K INV MW")
+  - Midwall Split Fixed Speed → "FS MW" (e.g. "MIDEA 24K FS MW")
+  - Ducted Inverter → "INV DUCT"
+  - Ducted Fixed Speed → "FS DUCT"
+  - Cassette → "CASS" (e.g. "MIDEA 36K INV CASS")
+  - Under Ceiling → "UC"
+  - Window Wall → "WW"
+  - Portable → "PORT"
+  - Floor Standing → "FS FLOOR"
+  - Multi Split → "MULTI"
+  - VRF → "VRF"
+  For model variants add suffix: Breezeless → "BRZ", Xtreme → "XTR", Aurora → "AUR", Ultimate → "ULT"
+  Example: "MIDEA 12K INV MW BRZ" for a 12000 BTU Inverter Midwall Breezeless
 
 Rules:
 - Parse South African Rand prices: "R 7 700,00" = 7700.00, "R 12,500.00" = 12500.00
@@ -174,6 +190,7 @@ Return: {"products": [...]}`;
           btu_rating: p.btuRating || null,
           refrigerant_type: p.refrigerantType || null,
           is_price_on_request: !p.unitCost || p.unitCost <= 0,
+          short_name: p.shortName || null,
         })),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
