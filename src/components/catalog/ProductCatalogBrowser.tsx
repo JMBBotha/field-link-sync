@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -55,6 +57,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("__all__");
   const [sortBy, setSortBy] = useState<"usage" | "price_asc" | "price_desc" | "name">("usage");
+  const [showArchived, setShowArchived] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<SupplierProduct | null>(null);
   const { toast } = useToast();
@@ -73,7 +76,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
   }, []);
 
   const { data: products = [], isLoading } = useQuery({
-    queryKey: ["supplier-products", searchQuery, selectedCategory, supplierId],
+    queryKey: ["supplier-products", searchQuery, selectedCategory, supplierId, showArchived],
     queryFn: async () => {
       try {
         const { data, error } = await supabase.rpc("search_supplier_products", {
@@ -81,6 +84,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
           p_category: selectedCategory === "__all__" ? null : selectedCategory || null,
           p_supplier_id: supplierId || null,
           p_limit: 100,
+          p_include_archived: showArchived,
         });
         if (error) throw error;
         const results = (data || []) as SupplierProduct[];
@@ -107,13 +111,17 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
   });
 
   const { data: categories = [] } = useQuery({
-    queryKey: ["product-categories"],
+    queryKey: ["product-categories", showArchived],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("supplier_products" as any)
         .select("category")
         .eq("is_active", true)
         .order("category");
+      if (!showArchived) {
+        query = query.eq("archived", false);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return [...new Set((data || []).map((d: any) => d.category))].filter(Boolean) as string[];
     },
@@ -128,6 +136,18 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
       default: return arr;
     }
   }, [products, sortBy]);
+
+  const unarchiveMutation = useMutation({
+    mutationFn: async (productId: string) => {
+      const { error } = await supabase.from("supplier_products" as any)
+        .update({ archived: false, archived_at: null } as any).eq("id", productId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
+      toast({ title: "Product unarchived" });
+    },
+  });
 
   const incrementUsageMutation = useMutation({
     mutationFn: async (productId: string) => {
@@ -195,8 +215,14 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
         </div>
       </div>
 
-      <div className="text-xs text-muted-foreground">
-        {isLoading ? "Searching..." : `${sorted.length} products found`}
+      <div className="flex items-center justify-between">
+        <div className="text-xs text-muted-foreground">
+          {isLoading ? "Searching..." : `${sorted.length} products found`}
+        </div>
+        <div className="flex items-center gap-2">
+          <Label className="text-xs text-muted-foreground">Show Archived</Label>
+          <Switch checked={showArchived} onCheckedChange={setShowArchived} />
+        </div>
       </div>
 
       {isLoading ? (
@@ -213,14 +239,14 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
           {sorted.map((product) => (
             <Card
               key={product.id}
-              className="hover:shadow-md transition-shadow active:scale-[0.99] cursor-pointer"
+              className={`hover:shadow-md transition-shadow active:scale-[0.99] cursor-pointer ${(product as any).archived ? "opacity-50" : ""}`}
               onClick={() => setSelectedProduct(product)}
             >
               <CardContent className={isMobile ? "p-3" : "p-4"}>
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-mono text-primary font-semibold">{product.product_code}</p>
-                    <p className={`font-medium mt-0.5 line-clamp-2 ${isMobile ? "text-xs" : "text-sm"}`}>{product.description}</p>
+                    <p className={`text-xs font-mono text-primary font-semibold ${(product as any).archived ? "line-through" : ""}`}>{product.product_code}</p>
+                    <p className={`font-medium mt-0.5 line-clamp-2 ${isMobile ? "text-xs" : "text-sm"} ${(product as any).archived ? "line-through" : ""}`}>{product.description}</p>
                   </div>
                   {product.quote_usage_count > 0 && (
                     <Badge variant="secondary" className="shrink-0 text-[10px]">
@@ -231,6 +257,9 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
                 </div>
 
                 <div className="flex flex-wrap gap-1 mb-2">
+                  {(product as any).archived && (
+                    <Badge variant="destructive" className="text-[10px]">Archived</Badge>
+                  )}
                   <Badge variant="outline" className="text-[10px]">{product.category}</Badge>
                   {product.btu_rating && (
                     <Badge variant="outline" className="text-[10px]">{(product.btu_rating / 1000).toFixed(0)}K BTU</Badge>
@@ -256,7 +285,15 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
                       </>
                     )}
                   </div>
-                  {onAddToQuote && !product.is_price_on_request && (
+                  {(product as any).archived ? (
+                    <Button
+                      size="sm" variant="outline"
+                      onClick={(e) => { e.stopPropagation(); unarchiveMutation.mutate(product.id); }}
+                      className={`text-xs ${isMobile ? "h-8 px-3" : "h-7"}`}
+                    >
+                      Unarchive
+                    </Button>
+                  ) : onAddToQuote && !product.is_price_on_request ? (
                     <Button
                       size="sm"
                       onClick={(e) => { e.stopPropagation(); handleAddToQuote(product); }}
@@ -264,7 +301,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
                     >
                       <Plus className="h-3 w-3 mr-1" /> Add
                     </Button>
-                  )}
+                  ) : null}
                 </div>
               </CardContent>
             </Card>

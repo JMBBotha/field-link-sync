@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, FileSpreadsheet, Loader2, AlertCircle, Check, Sparkles, FileUp, FileText, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Upload, FileSpreadsheet, Loader2, AlertCircle, Check, Sparkles, FileUp, FileText, X, Trash2, ArrowUp, ArrowDown, Minus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -20,21 +21,10 @@ interface SupplierProductImporterProps {
 
 /** Auto-repair CSV that was pasted as a single line (no newlines) */
 function autoRepairCsv(text: string): string {
-  // If it already has real newlines with multiple rows, leave it alone
   const existingLines = text.split("\n").filter(l => l.trim());
-  if (existingLines.length > 1) {
-    console.log("[Importer][Grok] CSV already has", existingLines.length, "lines, skipping repair");
-    return text;
-  }
+  if (existingLines.length > 1) return text;
 
-  console.log("[Importer][Grok] Single-line CSV detected, auto-repairing...");
-
-  // Step 0: Insert missing commas where a cost value is glued to the next SKU
-  // e.g. "R 7700.00BZE-INV-12" → "R 7700.00,BZE-INV-12"
   let t = text.replace(/(\d{2,}\.\d{2})([A-Z])/g, "$1,$2");
-  console.log("[Importer][Grok] After comma insertion:", t);
-
-  // Split all values respecting quoted fields
   const allValues: string[] = [];
   let current = "";
   let inQuotes = false;
@@ -45,65 +35,41 @@ function autoRepairCsv(text: string): string {
   }
   allValues.push(current);
 
-  console.log("[Importer][Grok] Total comma-separated values:", allValues.length);
-
-  // Detect column count from header
   let numCols = 4;
-  const headerEndIdx = allValues.findIndex((v, i) => 
+  const headerEndIdx = allValues.findIndex((v, i) =>
     i > 0 && /unit\s*cost|nett.*price|cost.*price/i.test(v.trim())
   );
-  if (headerEndIdx > 0) {
-    numCols = headerEndIdx + 1;
-  }
-  console.log("[Importer][Grok] Detected", numCols, "columns");
+  if (headerEndIdx > 0) numCols = headerEndIdx + 1;
 
-  // Rebuild rows by grouping values into chunks of numCols
   const rows: string[] = [];
   for (let i = 0; i < allValues.length; i += numCols) {
     const chunk = allValues.slice(i, i + numCols);
     while (chunk.length < numCols) chunk.push("");
     rows.push(chunk.join(","));
   }
-
-  const repaired = rows.join("\n");
-  console.log("[Importer][Grok] Repaired CSV (" + rows.length + " rows):\n" + repaired);
-  return repaired;
+  return rows.join("\n");
 }
 
 /** Parse specs from description text */
 function parseSpecs(text: string) {
   const refrigerantMatch = text.match(/R(32|410A|22|290)/i);
   const refrigerant = refrigerantMatch ? `R${refrigerantMatch[1].toUpperCase()}` : null;
-
-  // BTU: look for 4-5 digit number near "BTU" or standalone patterns like 9000, 12000, 18000
   let btu: number | null = null;
   const btuExplicit = text.match(/(\d{4,6})\s*BTU/i);
-  if (btuExplicit) {
-    btu = parseInt(btuExplicit[1]);
-  } else {
+  if (btuExplicit) { btu = parseInt(btuExplicit[1]); }
+  else {
     const btuImplied = text.match(/\b(9|12|18|24|36|48|60)\s*(?:000|k)\b/i);
-    if (btuImplied) {
-      const n = parseInt(btuImplied[1]);
-      btu = n < 100 ? n * 1000 : n;
-    }
+    if (btuImplied) { const n = parseInt(btuImplied[1]); btu = n < 100 ? n * 1000 : n; }
   }
-
-  // Mounting type
   let mounting: string | null = null;
   const mountMatch = text.match(/\b(midwall|wall|cassette|floor|ceiling|duct|ducted|portable|concealed)\b/i);
   if (mountMatch) mounting = mountMatch[1].charAt(0).toUpperCase() + mountMatch[1].slice(1).toLowerCase();
   if (mounting === "Midwall") mounting = "Wall";
   if (mounting === "Ducted") mounting = "Duct";
-
-  // Pipe sizes - look for fraction patterns like 1/4 3/8 or 3/8 5/8
   let pipeLiquid: string | null = null;
   let pipeGas: string | null = null;
   const pipeMatch = text.match(/(\d+\/\d+)\s*[\s&,-]+\s*(\d+\/\d+)/);
-  if (pipeMatch) {
-    pipeLiquid = pipeMatch[1];
-    pipeGas = pipeMatch[2];
-  }
-
+  if (pipeMatch) { pipeLiquid = pipeMatch[1]; pipeGas = pipeMatch[2]; }
   return { refrigerant, btu, mounting, pipeLiquid, pipeGas };
 }
 
@@ -132,8 +98,21 @@ interface ParsedRow {
   category: string;
   cost_price: number;
   pipe_size: string | null;
+  btu_rating: number | null;
+  refrigerant_type: string | null;
   is_price_on_request: boolean;
 }
+
+type DiffAction = "new" | "update" | "archive" | "unchanged";
+
+interface DiffRow extends ParsedRow {
+  action: DiffAction;
+  old_cost_price?: number;
+  existing_id?: string;
+}
+
+const formatZAR = (n: number) =>
+  new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 
 const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: SupplierProductImporterProps) => {
   const [tab, setTab] = useState<"paste" | "ai">("paste");
@@ -142,7 +121,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ imported: number; skipped: number; errors: number } | null>(null);
+  const [result, setResult] = useState<{ imported: number; skipped: number; errors: number; updated?: number; archived?: number } | null>(null);
 
   // AI / PDF state
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -151,9 +130,12 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
   const [extracting, setExtracting] = useState(false);
   const [aiParsing, setAiParsing] = useState(false);
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
+  const [diffRows, setDiffRows] = useState<DiffRow[]>([]);
+  const [showDiff, setShowDiff] = useState(false);
   const [aiMarkup, setAiMarkup] = useState(30);
-  const [aiResult, setAiResult] = useState<{ imported: number; updated: number; skipped: number } | null>(null);
+  const [aiResult, setAiResult] = useState<{ imported: number; updated: number; skipped: number; archived: number } | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [importingDiff, setImportingDiff] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { toast } = useToast();
@@ -164,31 +146,20 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
     queryClient.invalidateQueries({ queryKey: ["product-categories"] });
     queryClient.invalidateQueries({ queryKey: ["comparison-products"] });
     queryClient.invalidateQueries({ queryKey: ["inventory-from-catalog"] });
+    queryClient.invalidateQueries({ queryKey: ["import-history"] });
   };
 
   // ─── PDF handling ───
   const handlePdfFile = useCallback(async (file: File) => {
-    if (file.size > 10 * 1024 * 1024) {
-      setError("PDF file must be under 10 MB");
-      return;
-    }
-    if (file.type !== "application/pdf") {
-      setError("Only PDF files are accepted");
-      return;
-    }
-    setError(null);
-    setPdfFile(file);
-    setParsedRows([]);
-    setAiResult(null);
-    setExtractedText("");
-    setExtracting(true);
-
+    if (file.size > 10 * 1024 * 1024) { setError("PDF file must be under 10 MB"); return; }
+    if (file.type !== "application/pdf") { setError("Only PDF files are accepted"); return; }
+    setError(null); setPdfFile(file); setParsedRows([]); setDiffRows([]); setShowDiff(false);
+    setAiResult(null); setExtractedText(""); setExtracting(true);
     try {
       const pdfjsLib = await loadPdfJs();
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       setPdfPageCount(pdf.numPages);
-
       let fullText = "";
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
@@ -199,17 +170,13 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
       setExtractedText(fullText.trim());
       toast({ title: `PDF loaded: ${pdf.numPages} pages extracted` });
     } catch (err: any) {
-      console.error("PDF extraction error:", err);
       setError("Failed to read PDF. Ensure it's a valid, non-password-protected PDF.");
       setPdfFile(null);
-    } finally {
-      setExtracting(false);
-    }
+    } finally { setExtracting(false); }
   }, [toast]);
 
   const onDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
+    e.preventDefault(); setDragOver(false);
     const file = e.dataTransfer.files?.[0];
     if (file) handlePdfFile(file);
   }, [handlePdfFile]);
@@ -221,54 +188,183 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
   }, [handlePdfFile]);
 
   const clearPdf = () => {
-    setPdfFile(null);
-    setPdfPageCount(0);
-    setExtractedText("");
-    setParsedRows([]);
-    setAiResult(null);
-    setError(null);
+    setPdfFile(null); setPdfPageCount(0); setExtractedText(""); setParsedRows([]);
+    setDiffRows([]); setShowDiff(false); setAiResult(null); setError(null);
+  };
+
+  // ─── Build diff against existing catalog ───
+  const buildDiff = async (incoming: ParsedRow[]): Promise<DiffRow[]> => {
+    const { data: existing } = await supabase
+      .from("supplier_products" as any)
+      .select("id, product_code, cost_price, archived")
+      .eq("supplier_id", supplierId)
+      .eq("archived", false);
+
+    const existingMap = new Map<string, { id: string; cost_price: number }>();
+    (existing || []).forEach((e: any) => {
+      existingMap.set(e.product_code.toUpperCase(), { id: e.id, cost_price: e.cost_price });
+    });
+
+    const incomingCodes = new Set(incoming.map(r => r.product_code.toUpperCase()));
+    const diff: DiffRow[] = [];
+
+    // Process incoming products
+    for (const row of incoming) {
+      const key = row.product_code.toUpperCase();
+      const match = existingMap.get(key);
+      if (match) {
+        const priceChanged = Math.abs(match.cost_price - row.cost_price) > 0.01;
+        diff.push({
+          ...row,
+          action: priceChanged ? "update" : "unchanged",
+          old_cost_price: match.cost_price,
+          existing_id: match.id,
+        });
+      } else {
+        diff.push({ ...row, action: "new" });
+      }
+    }
+
+    // Products to archive (in existing but not in incoming)
+    for (const [code, data] of existingMap) {
+      if (!incomingCodes.has(code)) {
+        diff.push({
+          product_code: code,
+          description: "(existing product not in new list)",
+          category: "",
+          cost_price: data.cost_price,
+          pipe_size: null,
+          btu_rating: null,
+          refrigerant_type: null,
+          is_price_on_request: false,
+          action: "archive",
+          existing_id: data.id,
+          old_cost_price: data.cost_price,
+        });
+      }
+    }
+
+    return diff;
   };
 
   // ─── AI Parse extracted text ───
   const handleAIParse = async () => {
     if (!extractedText.trim()) return;
-    setAiParsing(true);
-    setError(null);
-    setAiResult(null);
-    setParsedRows([]);
+    setAiParsing(true); setError(null); setAiResult(null); setParsedRows([]);
+    setDiffRows([]); setShowDiff(false);
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("parse-price-list", {
-        body: { csv_text: extractedText, supplier_id: supplierId, supplier_name: supplierName },
+      const { data, error: fnError } = await supabase.functions.invoke("parse-pdf-with-grok", {
+        body: { extracted_text: extractedText, supplier_id: supplierId, supplier_name: supplierName, markup_percent: aiMarkup },
       });
       if (fnError) throw fnError;
-      if (data?.error && !data?.success) throw new Error(data.error);
-      setAiResult({ imported: data.imported, updated: data.updated, skipped: data.skipped });
-      toast({ title: "AI Parse Complete", description: `${data.imported} new, ${data.updated} updated` });
-      if (data.imported > 0 || data.updated > 0) { invalidateAll(); onComplete(); }
+      if (data?.error && !data?.products?.length) throw new Error(data.error);
+
+      const products: ParsedRow[] = (data.products || []).map((p: any) => ({
+        product_code: p.product_code || "",
+        description: p.description || "",
+        category: p.category || "Uncategorized",
+        cost_price: p.cost_price || 0,
+        pipe_size: p.pipe_size || null,
+        btu_rating: p.btu_rating || null,
+        refrigerant_type: p.refrigerant_type || null,
+        is_price_on_request: p.is_price_on_request || false,
+      }));
+
+      setParsedRows(products);
+
+      // Build diff
+      const diff = await buildDiff(products);
+      setDiffRows(diff);
+      setShowDiff(true);
+      toast({ title: `AI parsed ${products.length} products`, description: "Review the diff below before importing" });
     } catch (err: any) {
       setError(err.message || "AI parsing failed");
       toast({ title: "AI Parse Failed", description: err.message, variant: "destructive" });
-    } finally {
-      setAiParsing(false);
-    }
+    } finally { setAiParsing(false); }
+  };
+
+  // ─── Apply diff import ───
+  const handleApplyDiff = async () => {
+    setImportingDiff(true); setError(null); setProgress(0);
+    const activeRows = diffRows.filter(r => r.action !== "unchanged");
+    const total = activeRows.length;
+    let imported = 0, updated = 0, archived = 0, errors = 0;
+
+    try {
+      for (let i = 0; i < activeRows.length; i++) {
+        const row = activeRows[i];
+        if (row.action === "new") {
+          const { error: err } = await supabase.from("supplier_products" as any).insert({
+            supplier_id: supplierId,
+            product_code: row.product_code,
+            description: row.description,
+            category: row.category,
+            cost_price: row.cost_price,
+            pipe_size: row.pipe_size,
+            btu_rating: row.btu_rating,
+            refrigerant_type: row.refrigerant_type,
+            is_price_on_request: row.is_price_on_request,
+            default_markup_percent: aiMarkup,
+            is_active: true,
+            archived: false,
+          } as any);
+          if (err) errors++; else imported++;
+        } else if (row.action === "update" && row.existing_id) {
+          const { error: err } = await supabase.from("supplier_products" as any)
+            .update({ cost_price: row.cost_price, updated_at: new Date().toISOString(), archived: false, archived_at: null } as any)
+            .eq("id", row.existing_id);
+          if (err) errors++; else updated++;
+        } else if (row.action === "archive" && row.existing_id) {
+          const { error: err } = await supabase.from("supplier_products" as any)
+            .update({ archived: true, archived_at: new Date().toISOString() } as any)
+            .eq("id", row.existing_id);
+          if (err) errors++; else archived++;
+        }
+        setProgress(Math.round(((i + 1) / total) * 100));
+      }
+
+      // Record import history
+      const { data: userData } = await supabase.auth.getUser();
+      await supabase.from("price_list_uploads" as any).insert({
+        supplier_id: supplierId,
+        file_name: pdfFile?.name || "AI Import",
+        file_type: "pdf",
+        status: "completed",
+        products_imported: imported,
+        products_updated: updated,
+        products_skipped: errors,
+        products_archived: archived,
+        uploaded_by: userData?.user?.id || null,
+      } as any);
+
+      setAiResult({ imported, updated, skipped: errors, archived });
+      setShowDiff(false);
+      toast({ title: "Import Complete", description: `${imported} new, ${updated} updated, ${archived} archived` });
+      invalidateAll();
+      onComplete();
+    } catch (err: any) {
+      setError(err.message || "Import failed");
+    } finally { setImportingDiff(false); }
+  };
+
+  // ─── Remove row from diff ───
+  const removeDiffRow = (idx: number) => {
+    setDiffRows(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  // ─── Edit diff row ───
+  const updateDiffRow = (idx: number, field: keyof ParsedRow, value: any) => {
+    setDiffRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
   };
 
   /** Parse pasted CSV text with category-header detection */
   const handlePasteImport = async () => {
     if (!pasteText.trim()) return;
-    setImporting(true);
-    setProgress(0);
-    setError(null);
-    setResult(null);
-
+    setImporting(true); setProgress(0); setError(null); setResult(null);
     try {
       const repaired = autoRepairCsv(pasteText);
       const lines = repaired.split("\n").map(l => l.trim()).filter(Boolean);
-      if (lines.length < 2) {
-        setError("Need at least a header row and one data row");
-        setImporting(false);
-        return;
-      }
+      if (lines.length < 2) { setError("Need at least a header row and one data row"); setImporting(false); return; }
       const delimiter = lines[0].includes("\t") ? "\t" : ",";
       const headers = lines[0].split(delimiter).map(h => h.trim().replace(/^"|"$/g, ""));
       const findCol = (keywords: string[]) =>
@@ -287,14 +383,13 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
 
       for (let i = 1; i < lines.length; i++) {
         const cells: string[] = [];
-        let current = "";
-        let inQuotes = false;
+        let curr = ""; let inQ = false;
         for (const ch of lines[i]) {
-          if (ch === '"') { inQuotes = !inQuotes; continue; }
-          if (ch === delimiter && !inQuotes) { cells.push(current.trim()); current = ""; continue; }
-          current += ch;
+          if (ch === '"') { inQ = !inQ; continue; }
+          if (ch === delimiter && !inQ) { cells.push(curr.trim()); curr = ""; continue; }
+          curr += ch;
         }
-        cells.push(current.trim());
+        cells.push(curr.trim());
         const sku = skuIdx >= 0 ? (cells[skuIdx] || "").trim() : "";
         const name = (cells[primaryNameIdx] || "").trim();
         const descField = descriptionIdx >= 0 ? (cells[descriptionIdx] || "").trim() : "";
@@ -319,26 +414,21 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
           refrigerant_type: specs.refrigerant,
           pipe_size: specs.pipeLiquid && specs.pipeGas ? `${specs.pipeLiquid} ${specs.pipeGas}` : specs.pipeLiquid || null,
           is_active: true, is_price_on_request: isNaN(unitCost) || unitCost <= 0,
+          archived: false,
         });
       }
 
-      if (rows.length === 0) {
-        setError("No valid product rows found.");
-        setImporting(false);
-        return;
-      }
+      if (rows.length === 0) { setError("No valid product rows found."); setImporting(false); return; }
 
       const batchSize = 50;
       let imported = 0;
       for (let i = 0; i < rows.length; i += batchSize) {
         const batch = rows.slice(i, i + batchSize);
-        const { error: insertError } = await supabase
-          .from("supplier_products" as any)
+        const { error: insertError } = await supabase.from("supplier_products" as any)
           .upsert(batch as any, { onConflict: "supplier_id,product_code" });
         if (insertError) {
           for (const row of batch) {
-            const { error: singleErr } = await supabase
-              .from("supplier_products" as any)
+            const { error: singleErr } = await supabase.from("supplier_products" as any)
               .upsert(row as any, { onConflict: "supplier_id,product_code" });
             if (singleErr) errorCount++; else imported++;
           }
@@ -348,17 +438,22 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
 
       setResult({ imported, skipped: skippedCount, errors: errorCount });
       toast({ title: `${imported} products imported successfully` });
-      invalidateAll();
-      onComplete();
+      invalidateAll(); onComplete();
     } catch (err: any) {
       setError(err.message || "Import failed");
       toast({ title: "Import Failed", description: err.message, variant: "destructive" });
-    } finally {
-      setImporting(false);
-    }
+    } finally { setImporting(false); }
   };
 
   const lineCount = pasteText.split("\n").filter(l => l.trim()).length;
+
+  // Diff summary counts
+  const diffSummary = {
+    new: diffRows.filter(r => r.action === "new").length,
+    update: diffRows.filter(r => r.action === "update").length,
+    archive: diffRows.filter(r => r.action === "archive").length,
+    unchanged: diffRows.filter(r => r.action === "unchanged").length,
+  };
 
   return (
     <Card>
@@ -390,21 +485,15 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
                 value={pasteText}
                 onChange={(e) => { setPasteText(e.target.value); setResult(null); setError(null); }}
                 placeholder={`SKU,Name,Description,Unit Cost\n,,BREEZELESS E R32 INVERTER,\nBZE-INV-09,INVERTER 9000 BTU HEATPUMP MIDWALL - R32,,R 7700.00`}
-                rows={10}
-                className="text-xs font-mono"
+                rows={10} className="text-xs font-mono"
               />
-              {lineCount > 1 && (
-                <p className="text-[10px] text-muted-foreground mt-1">{lineCount} lines detected</p>
-              )}
+              {lineCount > 1 && <p className="text-[10px] text-muted-foreground mt-1">{lineCount} lines detected</p>}
             </div>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <Label className="text-xs whitespace-nowrap">Markup %</Label>
-                <Input
-                  type="number" value={markupPercent}
-                  onChange={(e) => setMarkupPercent(Number(e.target.value) || 0)}
-                  className="w-20 h-8 text-sm" min={0} max={200}
-                />
+                <Input type="number" value={markupPercent} onChange={(e) => setMarkupPercent(Number(e.target.value) || 0)}
+                  className="w-20 h-8 text-sm" min={0} max={200} />
               </div>
               <Button size="sm" onClick={handlePasteImport} disabled={importing || !pasteText.trim()} className="ml-auto">
                 {importing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
@@ -415,8 +504,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
 
           {/* ─── AI PDF Parse Tab ─── */}
           <TabsContent value="ai" className="space-y-3 mt-3">
-            {/* Upload zone */}
-            {!pdfFile && !extracting && (
+            {!pdfFile && !extracting && !showDiff && (
               <div
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
@@ -429,17 +517,10 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
                 <FileUp className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
                 <p className="text-sm font-medium">Drag & drop a PDF price list here</p>
                 <p className="text-xs text-muted-foreground mt-1">or click to browse • Max 10 MB</p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  onChange={onFileSelect}
-                  className="hidden"
-                />
+                <input ref={fileInputRef} type="file" accept=".pdf,application/pdf" onChange={onFileSelect} className="hidden" />
               </div>
             )}
 
-            {/* Extracting spinner */}
             {extracting && (
               <div className="flex flex-col items-center gap-3 py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -447,8 +528,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
               </div>
             )}
 
-            {/* File info + extracted text preview */}
-            {pdfFile && !extracting && (
+            {pdfFile && !extracting && !showDiff && (
               <>
                 <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-3">
                   <FileText className="h-5 w-5 text-primary shrink-0" />
@@ -473,12 +553,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
                 {extractedText && (
                   <div>
                     <Label className="text-xs">Extracted Text Preview</Label>
-                    <Textarea
-                      value={extractedText}
-                      readOnly
-                      rows={8}
-                      className="text-xs font-mono mt-1 bg-muted/30"
-                    />
+                    <Textarea value={extractedText} readOnly rows={6} className="text-xs font-mono mt-1 bg-muted/30" />
                     <p className="text-[10px] text-muted-foreground mt-1">
                       {extractedText.length.toLocaleString()} characters extracted
                     </p>
@@ -488,35 +563,145 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
                     <Label className="text-xs whitespace-nowrap">Markup %</Label>
-                    <Input
-                      type="number" value={aiMarkup}
-                      onChange={(e) => setAiMarkup(Number(e.target.value) || 0)}
-                      className="w-20 h-8 text-sm" min={0} max={200}
-                    />
+                    <Input type="number" value={aiMarkup} onChange={(e) => setAiMarkup(Number(e.target.value) || 0)}
+                      className="w-20 h-8 text-sm" min={0} max={200} />
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={handleAIParse}
-                    disabled={aiParsing || !extractedText.trim()}
-                    className="ml-auto"
-                  >
+                  <Button size="sm" onClick={handleAIParse} disabled={aiParsing || !extractedText.trim()} className="ml-auto">
                     {aiParsing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />}
-                    {aiParsing ? "Parsing..." : "Parse with AI & Import"}
+                    {aiParsing ? "Parsing..." : "Parse with AI"}
                   </Button>
                 </div>
               </>
             )}
 
+            {/* ─── Diff Preview ─── */}
+            {showDiff && diffRows.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold">Import Preview</h3>
+                  <Button variant="ghost" size="sm" onClick={() => { setShowDiff(false); setDiffRows([]); }}>
+                    <X className="h-3 w-3 mr-1" /> Cancel
+                  </Button>
+                </div>
+
+                {/* Summary badges */}
+                <div className="flex flex-wrap gap-2">
+                  {diffSummary.new > 0 && (
+                    <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs">
+                      <ArrowUp className="h-3 w-3 mr-1" /> {diffSummary.new} New
+                    </Badge>
+                  )}
+                  {diffSummary.update > 0 && (
+                    <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">
+                      <ArrowDown className="h-3 w-3 mr-1" /> {diffSummary.update} Price Updates
+                    </Badge>
+                  )}
+                  {diffSummary.archive > 0 && (
+                    <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-xs">
+                      <Minus className="h-3 w-3 mr-1" /> {diffSummary.archive} To Archive
+                    </Badge>
+                  )}
+                  {diffSummary.unchanged > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      {diffSummary.unchanged} Unchanged
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Diff table */}
+                <div className="max-h-80 overflow-auto rounded-lg border border-border">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/50 sticky top-0">
+                      <tr>
+                        <th className="text-left p-2 font-medium">Status</th>
+                        <th className="text-left p-2 font-medium">SKU</th>
+                        <th className="text-left p-2 font-medium">Description</th>
+                        <th className="text-left p-2 font-medium">Category</th>
+                        <th className="text-right p-2 font-medium">Cost</th>
+                        <th className="p-2 w-8"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {diffRows.filter(r => r.action !== "unchanged").map((row, idx) => (
+                        <tr key={idx} className={`border-t border-border ${
+                          row.action === "new" ? "bg-emerald-500/5" :
+                          row.action === "update" ? "bg-amber-500/5" :
+                          row.action === "archive" ? "bg-red-500/5" : ""
+                        }`}>
+                          <td className="p-2">
+                            <Badge variant="outline" className={`text-[10px] ${
+                              row.action === "new" ? "border-emerald-500/50 text-emerald-400" :
+                              row.action === "update" ? "border-amber-500/50 text-amber-400" :
+                              "border-red-500/50 text-red-400"
+                            }`}>
+                              {row.action === "new" ? "NEW" : row.action === "update" ? "UPDATE" : "ARCHIVE"}
+                            </Badge>
+                          </td>
+                          <td className="p-2 font-mono">{row.product_code}</td>
+                          <td className="p-2 max-w-[200px] truncate">
+                            {row.action !== "archive" ? (
+                              <Input value={row.description} onChange={(e) => updateDiffRow(
+                                diffRows.indexOf(row), "description", e.target.value
+                              )} className="h-6 text-xs p-1 bg-transparent border-none" />
+                            ) : (
+                              <span className="line-through text-muted-foreground">{row.description}</span>
+                            )}
+                          </td>
+                          <td className="p-2">
+                            {row.action !== "archive" ? (
+                              <Input value={row.category} onChange={(e) => updateDiffRow(
+                                diffRows.indexOf(row), "category", e.target.value
+                              )} className="h-6 text-xs p-1 bg-transparent border-none w-28" />
+                            ) : row.category}
+                          </td>
+                          <td className="p-2 text-right whitespace-nowrap">
+                            {row.action === "update" && row.old_cost_price !== undefined ? (
+                              <div>
+                                <span className="line-through text-muted-foreground mr-1">{formatZAR(row.old_cost_price)}</span>
+                                <span className="text-amber-400 font-semibold">{formatZAR(row.cost_price)}</span>
+                              </div>
+                            ) : row.action === "archive" ? (
+                              <span className="text-muted-foreground">{formatZAR(row.cost_price)}</span>
+                            ) : (
+                              <span className="text-emerald-400 font-semibold">{formatZAR(row.cost_price)}</span>
+                            )}
+                          </td>
+                          <td className="p-2">
+                            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => removeDiffRow(diffRows.indexOf(row))}>
+                              <Trash2 className="h-3 w-3 text-muted-foreground" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Apply button */}
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs whitespace-nowrap">Markup %</Label>
+                    <Input type="number" value={aiMarkup} onChange={(e) => setAiMarkup(Number(e.target.value) || 0)}
+                      className="w-20 h-8 text-sm" min={0} max={200} />
+                  </div>
+                  <Button size="sm" onClick={handleApplyDiff} disabled={importingDiff} className="ml-auto">
+                    {importingDiff ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
+                    Apply {diffSummary.new + diffSummary.update + diffSummary.archive} Changes
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {aiResult && (
               <div className="bg-primary/10 text-primary p-3 rounded-lg text-sm">
-                ✅ {aiResult.imported} imported, {aiResult.updated} updated, {aiResult.skipped} skipped
+                ✅ {aiResult.imported} imported, {aiResult.updated} updated, {aiResult.archived} archived, {aiResult.skipped} errors
               </div>
             )}
           </TabsContent>
         </Tabs>
 
         {/* Shared status indicators */}
-        {importing && (
+        {(importing || importingDiff) && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -529,13 +714,14 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
         {result && (
           <div className="bg-primary/10 text-primary p-3 rounded-lg text-sm">
             ✅ {result.imported} imported, {result.skipped} skipped{result.errors > 0 ? `, ${result.errors} errors` : ""}
+            {result.updated ? `, ${result.updated} updated` : ""}
+            {result.archived ? `, ${result.archived} archived` : ""}
           </div>
         )}
 
         {error && (
           <div className="bg-destructive/10 text-destructive p-3 rounded-lg text-sm flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            {error}
+            <AlertCircle className="h-4 w-4 shrink-0" /> {error}
           </div>
         )}
       </CardContent>
