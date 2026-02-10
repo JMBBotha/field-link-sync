@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     let products: ParsedProduct[] = [];
 
     if (lovableApiKey) {
-      const aiResponse = await fetch("https://api.lovable.dev/v1/chat/completions", {
+      const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${lovableApiKey}`,

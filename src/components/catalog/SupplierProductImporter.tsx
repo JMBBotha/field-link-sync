@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,10 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, FileSpreadsheet, Loader2, AlertCircle, Check, Sparkles } from "lucide-react";
+import { Upload, FileSpreadsheet, Loader2, AlertCircle, Check, Sparkles, FileUp, FileText, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 interface SupplierProductImporterProps {
   supplierId: string;
@@ -106,17 +107,55 @@ function parseSpecs(text: string) {
   return { refrigerant, btu, mounting, pipeLiquid, pipeGas };
 }
 
+/** Load pdf.js from CDN lazily */
+let pdfJsLoadPromise: Promise<any> | null = null;
+function loadPdfJs(): Promise<any> {
+  if (pdfJsLoadPromise) return pdfJsLoadPromise;
+  pdfJsLoadPromise = new Promise((resolve, reject) => {
+    if ((window as any).pdfjsLib) { resolve((window as any).pdfjsLib); return; }
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    script.onload = () => {
+      const lib = (window as any).pdfjsLib;
+      lib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      resolve(lib);
+    };
+    script.onerror = () => reject(new Error("Failed to load PDF.js"));
+    document.head.appendChild(script);
+  });
+  return pdfJsLoadPromise;
+}
+
+interface ParsedRow {
+  product_code: string;
+  description: string;
+  category: string;
+  cost_price: number;
+  pipe_size: string | null;
+  is_price_on_request: boolean;
+}
+
 const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: SupplierProductImporterProps) => {
-  const [tab, setTab] = useState<"paste" | "csv" | "ai">("paste");
+  const [tab, setTab] = useState<"paste" | "ai">("paste");
   const [pasteText, setPasteText] = useState("");
   const [markupPercent, setMarkupPercent] = useState(30);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ imported: number; skipped: number; errors: number } | null>(null);
-  const [aiText, setAiText] = useState("");
+
+  // AI / PDF state
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfPageCount, setPdfPageCount] = useState(0);
+  const [extractedText, setExtractedText] = useState("");
+  const [extracting, setExtracting] = useState(false);
   const [aiParsing, setAiParsing] = useState(false);
+  const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
+  const [aiMarkup, setAiMarkup] = useState(30);
   const [aiResult, setAiResult] = useState<{ imported: number; updated: number; skipped: number } | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -125,6 +164,93 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
     queryClient.invalidateQueries({ queryKey: ["product-categories"] });
     queryClient.invalidateQueries({ queryKey: ["comparison-products"] });
     queryClient.invalidateQueries({ queryKey: ["inventory-from-catalog"] });
+  };
+
+  // ─── PDF handling ───
+  const handlePdfFile = useCallback(async (file: File) => {
+    if (file.size > 10 * 1024 * 1024) {
+      setError("PDF file must be under 10 MB");
+      return;
+    }
+    if (file.type !== "application/pdf") {
+      setError("Only PDF files are accepted");
+      return;
+    }
+    setError(null);
+    setPdfFile(file);
+    setParsedRows([]);
+    setAiResult(null);
+    setExtractedText("");
+    setExtracting(true);
+
+    try {
+      const pdfjsLib = await loadPdfJs();
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      setPdfPageCount(pdf.numPages);
+
+      let fullText = "";
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const pageText = content.items.map((item: any) => item.str).join(" ");
+        fullText += `\n--- Page ${i} ---\n${pageText}`;
+      }
+      setExtractedText(fullText.trim());
+      toast({ title: `PDF loaded: ${pdf.numPages} pages extracted` });
+    } catch (err: any) {
+      console.error("PDF extraction error:", err);
+      setError("Failed to read PDF. Ensure it's a valid, non-password-protected PDF.");
+      setPdfFile(null);
+    } finally {
+      setExtracting(false);
+    }
+  }, [toast]);
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handlePdfFile(file);
+  }, [handlePdfFile]);
+
+  const onFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handlePdfFile(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, [handlePdfFile]);
+
+  const clearPdf = () => {
+    setPdfFile(null);
+    setPdfPageCount(0);
+    setExtractedText("");
+    setParsedRows([]);
+    setAiResult(null);
+    setError(null);
+  };
+
+  // ─── AI Parse extracted text ───
+  const handleAIParse = async () => {
+    if (!extractedText.trim()) return;
+    setAiParsing(true);
+    setError(null);
+    setAiResult(null);
+    setParsedRows([]);
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("parse-price-list", {
+        body: { csv_text: extractedText, supplier_id: supplierId, supplier_name: supplierName },
+      });
+      if (fnError) throw fnError;
+      if (data?.error && !data?.success) throw new Error(data.error);
+      setAiResult({ imported: data.imported, updated: data.updated, skipped: data.skipped });
+      toast({ title: "AI Parse Complete", description: `${data.imported} new, ${data.updated} updated` });
+      if (data.imported > 0 || data.updated > 0) { invalidateAll(); onComplete(); }
+    } catch (err: any) {
+      setError(err.message || "AI parsing failed");
+      toast({ title: "AI Parse Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setAiParsing(false);
+    }
   };
 
   /** Parse pasted CSV text with category-header detection */
@@ -138,43 +264,28 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
     try {
       const repaired = autoRepairCsv(pasteText);
       const lines = repaired.split("\n").map(l => l.trim()).filter(Boolean);
-      console.log("[Importer][Grok] Total non-empty lines:", lines.length);
-
       if (lines.length < 2) {
         setError("Need at least a header row and one data row");
         setImporting(false);
         return;
       }
-
-      // Parse header - support tab or comma
       const delimiter = lines[0].includes("\t") ? "\t" : ",";
       const headers = lines[0].split(delimiter).map(h => h.trim().replace(/^"|"$/g, ""));
-      console.log("[Importer][Grok] Headers:", headers, "Delimiter:", JSON.stringify(delimiter));
-
-      // Find column indices (flexible matching)
       const findCol = (keywords: string[]) =>
         headers.findIndex(h => keywords.some(k => h.toLowerCase().replace(/[^a-z]/g, "").includes(k)));
-
       const skuIdx = findCol(["sku", "productcode", "code", "itemcode"]);
       const nameIdx = findCol(["name", "product"]);
       const descIdx = findCol(["description", "desc"]);
       const costIdx = findCol(["unitcost", "cost", "nett", "price", "nettprice"]);
-
-      console.log("[Importer][Grok] Column indices - SKU:", skuIdx, "Name:", nameIdx, "Desc:", descIdx, "Cost:", costIdx);
-
-      // Use name col, fallback to first col
       const primaryNameIdx = nameIdx >= 0 ? nameIdx : (skuIdx >= 0 ? (skuIdx === 0 ? 1 : 0) : 0);
       const descriptionIdx = descIdx >= 0 && descIdx !== primaryNameIdx ? descIdx : -1;
-
       let currentCategory = "";
       const rows: any[] = [];
       const seenSkus = new Set<string>();
       let skippedCount = 0;
       let errorCount = 0;
-      let categoryCount = 0;
 
       for (let i = 1; i < lines.length; i++) {
-        // Smart CSV split: respect quoted fields
         const cells: string[] = [];
         let current = "";
         let inQuotes = false;
@@ -184,147 +295,66 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
           current += ch;
         }
         cells.push(current.trim());
-
         const sku = skuIdx >= 0 ? (cells[skuIdx] || "").trim() : "";
         const name = (cells[primaryNameIdx] || "").trim();
         const descField = descriptionIdx >= 0 ? (cells[descriptionIdx] || "").trim() : "";
-
-        console.log(`[Importer][Grok] Row ${i}: SKU="${sku}" Name="${name}" Desc="${descField}"`);
-
-        // Blank SKU = category header — check name OR description for category text
         if (!sku) {
           const categoryText = name || descField;
-          if (categoryText) {
-            currentCategory = categoryText;
-            categoryCount++;
-            console.log(`[Importer][Grok] → Category header set: "${currentCategory}"`);
-          } else {
-            console.log(`[Importer][Grok] → Skipping blank row`);
-            skippedCount++;
-          }
+          if (categoryText) { currentCategory = categoryText; } else { skippedCount++; }
           continue;
         }
-
-        if (!name && !descField) {
-          console.log(`[Importer][Grok] → Skipping: no name or description`);
-          skippedCount++;
-          continue;
-        }
-
-        // Duplicate SKU check
-        if (seenSkus.has(sku.toUpperCase())) {
-          console.log(`[Importer][Grok] → Skipping duplicate SKU: ${sku}`);
-          skippedCount++;
-          continue;
-        }
+        if (!name && !descField) { skippedCount++; continue; }
+        if (seenSkus.has(sku.toUpperCase())) { skippedCount++; continue; }
         seenSkus.add(sku.toUpperCase());
-
-        // Parse cost — strip currency prefix (R, R , r), spaces, then parse
         let costRaw = costIdx >= 0 ? (cells[costIdx] || "") : "";
-        costRaw = costRaw.replace(/^[Rr]\s*/g, "").trim(); // strip leading R/r + spaces
-        costRaw = costRaw.replace(/\s/g, ""); // strip any remaining spaces
-        costRaw = costRaw.replace(/,(\d{2})$/, ".$1"); // convert trailing ,XX to .XX
-        costRaw = costRaw.replace(/,/g, ""); // strip thousand separators
+        costRaw = costRaw.replace(/^[Rr]\s*/g, "").trim().replace(/\s/g, "").replace(/,(\d{2})$/, ".$1").replace(/,/g, "");
         const unitCost = parseFloat(costRaw);
-
-        console.log(`[Importer][Grok] → Cost raw="${cells[costIdx]}" cleaned="${costRaw}" parsed=${unitCost}`);
-
-        if (isNaN(unitCost) || unitCost <= 0) {
-          console.warn(`[Importer][Grok] → Zero/invalid cost for SKU ${sku}, marking as price-on-request`);
-        }
-
         const productName = name || descField;
         const fullText = `${productName} ${descField}`;
         const specs = parseSpecs(fullText);
-        console.log(`[Importer][Grok] → Specs:`, specs);
-
-        const product = {
-          supplier_id: supplierId,
-          product_code: sku,
-          description: productName,
-          category: currentCategory || "Uncategorized",
-          cost_price: isNaN(unitCost) ? 0 : unitCost,
-          default_markup_percent: markupPercent,
-          btu_rating: specs.btu,
+        rows.push({
+          supplier_id: supplierId, product_code: sku, description: productName,
+          category: currentCategory || "Uncategorized", cost_price: isNaN(unitCost) ? 0 : unitCost,
+          default_markup_percent: markupPercent, btu_rating: specs.btu,
           refrigerant_type: specs.refrigerant,
           pipe_size: specs.pipeLiquid && specs.pipeGas ? `${specs.pipeLiquid} ${specs.pipeGas}` : specs.pipeLiquid || null,
-          is_active: true,
-          is_price_on_request: isNaN(unitCost) || unitCost <= 0,
-        };
-
-        console.log(`[Importer][Grok] → Valid product:`, product);
-        rows.push(product);
+          is_active: true, is_price_on_request: isNaN(unitCost) || unitCost <= 0,
+        });
       }
 
-      console.log(`[Importer][Grok] Parse complete: ${rows.length} products, ${categoryCount} categories, ${skippedCount} skipped`);
-
       if (rows.length === 0) {
-        setError("No valid product rows found. Check that SKU column has data and costs are numeric.");
+        setError("No valid product rows found.");
         setImporting(false);
         return;
       }
 
-      // Batch upsert
       const batchSize = 50;
       let imported = 0;
       for (let i = 0; i < rows.length; i += batchSize) {
         const batch = rows.slice(i, i + batchSize);
-        console.log(`[Importer][Grok] Upserting batch ${i / batchSize + 1}, size=${batch.length}`);
         const { error: insertError } = await supabase
           .from("supplier_products" as any)
           .upsert(batch as any, { onConflict: "supplier_id,product_code" });
         if (insertError) {
-          console.error("[Importer][Grok] Batch upsert failed:", insertError);
           for (const row of batch) {
             const { error: singleErr } = await supabase
               .from("supplier_products" as any)
               .upsert(row as any, { onConflict: "supplier_id,product_code" });
-            if (singleErr) {
-              console.error(`[Importer][Grok] Single upsert failed for ${row.product_code}:`, singleErr);
-              errorCount++;
-            } else {
-              imported++;
-            }
+            if (singleErr) errorCount++; else imported++;
           }
-        } else {
-          imported += batch.length;
-        }
+        } else { imported += batch.length; }
         setProgress(Math.round(((i + batch.length) / rows.length) * 100));
       }
 
-      console.log(`[Importer][Grok] Done: ${imported} imported, ${skippedCount} skipped, ${errorCount} errors`);
       setResult({ imported, skipped: skippedCount, errors: errorCount });
       toast({ title: `${imported} products imported successfully` });
       invalidateAll();
       onComplete();
     } catch (err: any) {
-      console.error("[Importer][Grok] Fatal error:", err);
       setError(err.message || "Import failed");
       toast({ title: "Import Failed", description: err.message, variant: "destructive" });
     } finally {
       setImporting(false);
-    }
-  };
-
-  const handleAIParse = async () => {
-    if (!aiText.trim()) return;
-    setAiParsing(true);
-    setError(null);
-    setAiResult(null);
-    try {
-      const { data, error: fnError } = await supabase.functions.invoke("parse-price-list", {
-        body: { csv_text: aiText, supplier_id: supplierId, supplier_name: supplierName },
-      });
-      if (fnError) throw fnError;
-      if (data?.error && !data?.success) throw new Error(data.error);
-      setAiResult({ imported: data.imported, updated: data.updated, skipped: data.skipped });
-      toast({ title: "AI Parse Complete", description: `${data.imported} new, ${data.updated} updated` });
-      if (data.imported > 0 || data.updated > 0) { invalidateAll(); onComplete(); }
-    } catch (err: any) {
-      setError(err.message || "AI parsing failed");
-      toast({ title: "AI Parse Failed", description: err.message, variant: "destructive" });
-    } finally {
-      setAiParsing(false);
     }
   };
 
@@ -349,6 +379,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
             </TabsTrigger>
           </TabsList>
 
+          {/* ─── Paste CSV Tab ─── */}
           <TabsContent value="paste" className="space-y-3 mt-3">
             <div>
               <Label className="text-xs font-medium">Paste CSV here</Label>
@@ -358,7 +389,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
               <Textarea
                 value={pasteText}
                 onChange={(e) => { setPasteText(e.target.value); setResult(null); setError(null); }}
-                placeholder={`SKU,Name,Description,Unit Cost\n,,BREEZELESS E R32 INVERTER,\nBZE-INV-09,INVERTER 9000 BTU HEATPUMP MIDWALL - R32,,R 7700.00\nBZE-INV-12,INVERTER 12000 BTU HEATPUMP MIDWALL - R32,,R 9100.00`}
+                placeholder={`SKU,Name,Description,Unit Cost\n,,BREEZELESS E R32 INVERTER,\nBZE-INV-09,INVERTER 9000 BTU HEATPUMP MIDWALL - R32,,R 7700.00`}
                 rows={10}
                 className="text-xs font-mono"
               />
@@ -370,47 +401,112 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
               <div className="flex items-center gap-2">
                 <Label className="text-xs whitespace-nowrap">Markup %</Label>
                 <Input
-                  type="number"
-                  value={markupPercent}
+                  type="number" value={markupPercent}
                   onChange={(e) => setMarkupPercent(Number(e.target.value) || 0)}
-                  className="w-20 h-8 text-sm"
-                  min={0}
-                  max={200}
+                  className="w-20 h-8 text-sm" min={0} max={200}
                 />
               </div>
-              <Button
-                size="sm"
-                onClick={handlePasteImport}
-                disabled={importing || !pasteText.trim()}
-                className="ml-auto"
-              >
-                {importing ? (
-                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                ) : (
-                  <Check className="h-3 w-3 mr-1" />
-                )}
+              <Button size="sm" onClick={handlePasteImport} disabled={importing || !pasteText.trim()} className="ml-auto">
+                {importing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
                 Import Products
               </Button>
             </div>
           </TabsContent>
 
+          {/* ─── AI PDF Parse Tab ─── */}
           <TabsContent value="ai" className="space-y-3 mt-3">
-            <div>
-              <Label className="text-xs">Paste price list text (from PDF copy-paste)</Label>
-              <Textarea
-                value={aiText}
-                onChange={(e) => setAiText(e.target.value)}
-                placeholder="Paste the raw text from your supplier PDF here..."
-                rows={8}
-                className="text-xs font-mono"
-              />
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button size="sm" onClick={handleAIParse} disabled={aiParsing || !aiText.trim()}>
-                {aiParsing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />}
-                {aiParsing ? "Parsing..." : "Parse with AI"}
-              </Button>
-            </div>
+            {/* Upload zone */}
+            {!pdfFile && !extracting && (
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={onDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                  dragOver ? "border-primary bg-primary/10" : "border-muted-foreground/30 hover:border-primary/50"
+                }`}
+              >
+                <FileUp className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-sm font-medium">Drag & drop a PDF price list here</p>
+                <p className="text-xs text-muted-foreground mt-1">or click to browse • Max 10 MB</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  onChange={onFileSelect}
+                  className="hidden"
+                />
+              </div>
+            )}
+
+            {/* Extracting spinner */}
+            {extracting && (
+              <div className="flex flex-col items-center gap-3 py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Extracting text from PDF...</p>
+              </div>
+            )}
+
+            {/* File info + extracted text preview */}
+            {pdfFile && !extracting && (
+              <>
+                <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-3">
+                  <FileText className="h-5 w-5 text-primary shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{pdfFile.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {pdfPageCount} page{pdfPageCount !== 1 ? "s" : ""} • {(pdfFile.size / 1024).toFixed(0)} KB
+                    </p>
+                  </div>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={clearPdf}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Remove file</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+
+                {extractedText && (
+                  <div>
+                    <Label className="text-xs">Extracted Text Preview</Label>
+                    <Textarea
+                      value={extractedText}
+                      readOnly
+                      rows={8}
+                      className="text-xs font-mono mt-1 bg-muted/30"
+                    />
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {extractedText.length.toLocaleString()} characters extracted
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs whitespace-nowrap">Markup %</Label>
+                    <Input
+                      type="number" value={aiMarkup}
+                      onChange={(e) => setAiMarkup(Number(e.target.value) || 0)}
+                      className="w-20 h-8 text-sm" min={0} max={200}
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={handleAIParse}
+                    disabled={aiParsing || !extractedText.trim()}
+                    className="ml-auto"
+                  >
+                    {aiParsing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />}
+                    {aiParsing ? "Parsing..." : "Parse with AI & Import"}
+                  </Button>
+                </div>
+              </>
+            )}
+
             {aiResult && (
               <div className="bg-primary/10 text-primary p-3 rounded-lg text-sm">
                 ✅ {aiResult.imported} imported, {aiResult.updated} updated, {aiResult.skipped} skipped
@@ -419,6 +515,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
           </TabsContent>
         </Tabs>
 
+        {/* Shared status indicators */}
         {importing && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
