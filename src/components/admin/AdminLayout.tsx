@@ -160,7 +160,7 @@ const AdminLayout = () => {
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto bg-background">
+        <main className="flex-1 overflow-auto bg-background dark:bg-gradient-to-br dark:from-[#070e1a] dark:via-[#132f52]/40 dark:to-[#0b1a2e]">
           <Outlet />
         </main>
 
