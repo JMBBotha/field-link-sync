@@ -227,11 +227,18 @@ function preprocessQuery(query: string, currentFilters: CatalogFilters): Preproc
   const autoFilters: Partial<CatalogFilters> = {};
   let autoSort: SortOption | undefined;
 
-  // Price keywords
-  const underMatch = q.match(/\bunder\s*r?\s*(\d[\d\s]*)/i);
-  if (underMatch) {
-    autoFilters.priceMax = underMatch[1].replace(/\s/g, "");
-    q = q.replace(underMatch[0], "");
+  // Price keywords: "under R15000", "between R10000 and R20000", "cheapest"
+  const betweenMatch = q.match(/\bbetween\s*(?:R\s*)?(\d{4,7})\s*(?:and|to)\s*(?:R\s*)?(\d{4,7})/i);
+  if (betweenMatch) {
+    autoFilters.priceMin = betweenMatch[1];
+    autoFilters.priceMax = betweenMatch[2];
+    q = q.replace(betweenMatch[0], "");
+  } else {
+    const underMatch = q.match(/\bunder\s*(?:R\s*)?(\d{4,7})/i);
+    if (underMatch) {
+      autoFilters.priceMax = underMatch[1];
+      q = q.replace(underMatch[0], "");
+    }
   }
   if (/\bcheapest\b/i.test(q)) {
     autoSort = "price_asc";
@@ -246,14 +253,16 @@ function preprocessQuery(query: string, currentFilters: CatalogFilters): Preproc
     }
   }
 
-  // Fuzzy brand matching via Levenshtein (only if no exact match found)
+  // Fuzzy brand matching via Levenshtein (stricter: length diff <= 1 AND dist <= 2, OR dist <= 1)
   if (!autoFilters.brand && currentFilters.brand === "__all__") {
     const words = q.split(/\s+/);
     for (let wi = 0; wi < words.length; wi++) {
       const w = words[wi].toLowerCase();
       if (w.length < 2) continue;
       for (const kb of KNOWN_BRANDS) {
-        if (levenshteinDistance(w, kb.name) <= 2 && levenshteinDistance(w, kb.name) > 0) {
+        const dist = levenshteinDistance(w, kb.name);
+        const lenDiff = Math.abs(w.length - kb.name.length);
+        if (dist > 0 && ((dist <= 2 && lenDiff <= 1) || dist <= 1)) {
           autoFilters.brand = kb.value;
           words.splice(wi, 1);
           q = words.join(" ");
@@ -261,6 +270,31 @@ function preprocessQuery(query: string, currentFilters: CatalogFilters): Preproc
         }
       }
       if (autoFilters.brand) break;
+    }
+  }
+
+  // Unit type detection (multi-word first, then single-word)
+  const UNIT_TYPE_PREPROCESS: { pattern: RegExp; value: string }[] = [
+    { pattern: /\bunder\s+ceiling\b/gi, value: "Under Ceiling" },
+    { pattern: /\bfloor\s+standing\b/gi, value: "Floor Standing" },
+    { pattern: /\bwindow\s+wall\b/gi, value: "Window Wall" },
+    { pattern: /\brooftop\s+package\b/gi, value: "Rooftop Package" },
+    { pattern: /\bair\s+cooled\s+chiller\b/gi, value: "Air Cooled Chiller" },
+    { pattern: /\blarge\s+ducted\b/gi, value: "Large Ducted" },
+    { pattern: /\bcass?ett?e\b/gi, value: "Cassette" },
+    { pattern: /\bmidwall\b/gi, value: "Midwall" },
+    { pattern: /\bducted\b/gi, value: "Ducted" },
+    { pattern: /\bportable\b/gi, value: "Portable" },
+    { pattern: /\bchiller\b/gi, value: "Air Cooled Chiller" },
+    { pattern: /\bbreezeless\b/gi, value: "BREEZELESS E R32 INVERTER" },
+  ];
+  if (currentFilters.unitType === "__all__") {
+    for (const ut of UNIT_TYPE_PREPROCESS) {
+      if (ut.pattern.test(q)) {
+        autoFilters.unitType = ut.value;
+        q = q.replace(ut.pattern, "");
+        break;
+      }
     }
   }
 
