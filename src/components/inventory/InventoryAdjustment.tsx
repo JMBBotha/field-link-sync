@@ -30,7 +30,7 @@ const InventoryAdjustment = ({ item, open, onClose }: InventoryAdjustmentProps) 
   const mutation = useMutation({
     mutationFn: async () => {
       const newQty = item.quantity_in_stock + adjustment;
-      if (newQty < 0) throw new Error("Stock cannot go below 0");
+      if (newQty < 0) throw new Error("Stock cannot go below 0. Current: " + item.quantity_in_stock + ", Adjustment: " + adjustment);
 
       const { error } = await supabase
         .from("inventory_items")

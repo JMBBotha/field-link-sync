@@ -64,7 +64,7 @@ const AdminMaintenancePage = () => {
   const [viewMode, setViewMode] = useState<"calendar" | "list">("calendar");
 
   // Fetch all maintenance schedules
-  const { data: schedules = [], isLoading } = useQuery({
+  const { data: schedules = [], isLoading, isError: schedulesError } = useQuery({
     queryKey: ["maintenance-schedules"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -78,6 +78,9 @@ const AdminMaintenancePage = () => {
         .order("due_date", { ascending: true });
       if (error) throw error;
       return (data || []) as MaintenanceSchedule[];
+    },
+    meta: {
+      onError: (err: Error) => toast({ title: "Failed to load schedules", description: err.message, variant: "destructive" }),
     },
   });
 
@@ -298,6 +301,13 @@ const AdminMaintenancePage = () => {
         <div className="grid grid-cols-7 gap-1">
           {Array.from({ length: 35 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
         </div>
+      ) : schedulesError ? (
+        <Card className="p-8 text-center">
+          <AlertTriangle className="h-10 w-10 text-destructive mx-auto mb-3" />
+          <p className="font-medium">Failed to load maintenance schedules</p>
+          <p className="text-sm text-muted-foreground mt-1">Check your connection and try again.</p>
+          <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>Reload</Button>
+        </Card>
       ) : viewMode === "calendar" ? (
         /* Calendar View */
         <Card>
