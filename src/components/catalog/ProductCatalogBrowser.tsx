@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import Fuse from "fuse.js";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
@@ -23,7 +24,6 @@ import {
   Loader2,
   WifiOff,
   Star,
-  Pin,
 } from "lucide-react";
 
 const formatZAR = (n: number) =>
@@ -75,6 +75,44 @@ interface ProductCatalogBrowserProps {
   supplierId?: string | null;
 }
 
+/** Fuse.js multi-token fuzzy search: ALL tokens must match across ANY fields */
+function fuseMultiTokenSearch(items: SupplierProduct[], fuse: Fuse<SupplierProduct>, query: string): SupplierProduct[] {
+  const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return [];
+
+  // For each token, get Fuse results (fuzzy matched items)
+  const tokenResults = tokens.map((token) => {
+    const results = fuse.search(token);
+    return new Map(results.map((r) => [r.item.id, r.score ?? 1]));
+  });
+
+  // Find items that appear in ALL token result sets (AND logic)
+  const firstSet = tokenResults[0];
+  const matchedIds: { id: string; combinedScore: number }[] = [];
+
+  firstSet.forEach((score, id) => {
+    let totalScore = score;
+    let matchAll = true;
+    for (let i = 1; i < tokenResults.length; i++) {
+      const s = tokenResults[i].get(id);
+      if (s === undefined) {
+        matchAll = false;
+        break;
+      }
+      totalScore += s;
+    }
+    if (matchAll) {
+      matchedIds.push({ id, combinedScore: totalScore });
+    }
+  });
+
+  // Sort by combined score (lower = better match)
+  matchedIds.sort((a, b) => a.combinedScore - b.combinedScore);
+
+  const itemMap = new Map(items.map((p) => [p.id, p]));
+  return matchedIds.map((m) => itemMap.get(m.id)!).filter(Boolean);
+}
+
 const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrowserProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("__all__");
@@ -97,15 +135,16 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
     };
   }, []);
 
-  const { data: products = [], isLoading } = useQuery({
-    queryKey: ["supplier-products", searchQuery, selectedCategory, supplierId, showArchived],
+  // Fetch ALL products (no search filter — searching is done client-side with Fuse.js)
+  const { data: allProducts = [], isLoading } = useQuery({
+    queryKey: ["supplier-products-all", supplierId, showArchived],
     queryFn: async () => {
       try {
         const { data, error } = await supabase.rpc("search_supplier_products", {
-          p_query: searchQuery || null,
-          p_category: selectedCategory === "__all__" ? null : selectedCategory || null,
+          p_query: null,
+          p_category: null,
           p_supplier_id: supplierId || null,
-          p_limit: 100,
+          p_limit: 2000,
           p_include_archived: showArchived,
         });
         if (error) throw error;
@@ -122,7 +161,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
         }
         return results;
       } catch {
-        const cached = await offlineDb.getCachedCatalogProducts(searchQuery, selectedCategory);
+        const cached = await offlineDb.getCachedCatalogProducts();
         if (cached.length > 0) {
           setIsOffline(true);
           return cached.map(c => ({ ...c, subcategory: null, image_url: null, last_quoted_at: null, search_rank: 0 })) as SupplierProduct[];
@@ -130,7 +169,47 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
         return [];
       }
     },
+    staleTime: 60000,
   });
+
+  // Build Fuse index over all products
+  const fuse = useMemo(
+    () =>
+      new Fuse(allProducts, {
+        keys: [
+          { name: "product_code", weight: 2 },
+          { name: "short_name", weight: 2 },
+          { name: "description", weight: 1.5 },
+          { name: "category", weight: 1 },
+          { name: "supplier_name", weight: 1 },
+          { name: "subcategory", weight: 0.8 },
+          { name: "pipe_size", weight: 0.5 },
+          { name: "refrigerant_type", weight: 0.5 },
+        ],
+        threshold: 0.4,
+        ignoreLocation: true,
+        includeScore: true,
+      }),
+    [allProducts]
+  );
+
+  // Apply client-side fuzzy search + category filter
+  const filtered = useMemo(() => {
+    let results: SupplierProduct[];
+
+    if (searchQuery.trim().length > 0) {
+      results = fuseMultiTokenSearch(allProducts, fuse, searchQuery);
+    } else {
+      results = allProducts;
+    }
+
+    // Category filter
+    if (selectedCategory !== "__all__") {
+      results = results.filter((p) => p.category === selectedCategory);
+    }
+
+    return results;
+  }, [allProducts, fuse, searchQuery, selectedCategory]);
 
   const { data: categories = [] } = useQuery({
     queryKey: ["product-categories", showArchived],
@@ -146,15 +225,13 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
       const { data, error } = await query;
       if (error) throw error;
       const dbCategories = [...new Set((data || []).map((d: any) => d.category))].filter(Boolean) as string[];
-      // Merge with HVAC standard categories
       const allCategories = [...new Set([...HVAC_CATEGORIES, ...dbCategories])];
       return allCategories.sort();
     },
   });
 
   const sorted = useMemo(() => {
-    const arr = [...products];
-    // Always sort pinned to top first
+    const arr = [...filtered];
     const pinnedSort = (a: SupplierProduct, b: SupplierProduct) => {
       const aPinned = (a as any).is_pinned ? 1 : 0;
       const bPinned = (b as any).is_pinned ? 1 : 0;
@@ -163,17 +240,22 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
       return 0;
     };
 
+    // If there's a search query, preserve fuzzy relevance order (just pin pinned to top)
+    if (searchQuery.trim().length > 0) {
+      return arr.sort(pinnedSort);
+    }
+
     switch (sortBy) {
       case "price_asc": return arr.sort((a, b) => pinnedSort(a, b) || a.cost_price - b.cost_price);
       case "price_desc": return arr.sort((a, b) => pinnedSort(a, b) || b.cost_price - a.cost_price);
       case "name": return arr.sort((a, b) => pinnedSort(a, b) || a.description.localeCompare(b.description));
-      case "usage": return arr.sort((a, b) => pinnedSort(a, b) || 0);
+      case "usage": return arr.sort((a, b) => pinnedSort(a, b) || b.quote_usage_count - a.quote_usage_count);
       case "pinned":
-      default: return arr.sort(pinnedSort);
+      default: return arr.sort((a, b) => pinnedSort(a, b) || b.quote_usage_count - a.quote_usage_count);
     }
-  }, [products, sortBy]);
+  }, [filtered, sortBy, searchQuery]);
 
-  const pinnedCount = useMemo(() => products.filter(p => (p as any).is_pinned).length, [products]);
+  const pinnedCount = useMemo(() => filtered.filter(p => (p as any).is_pinned).length, [filtered]);
 
   const unarchiveMutation = useMutation({
     mutationFn: async (productId: string) => {
@@ -182,7 +264,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] });
       toast({ title: "Product unarchived" });
     },
   });
@@ -195,7 +277,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] });
     },
   });
 
@@ -203,7 +285,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
     mutationFn: async (productId: string) => {
       await supabase.rpc("increment_product_usage", { p_product_id: productId });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["supplier-products"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] }),
   });
 
   const handleAddToQuote = (product: SupplierProduct) => {
@@ -231,7 +313,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search products, codes..."
+            placeholder="Search products, codes, brands... (fuzzy)"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -268,7 +350,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
 
       <div className="flex items-center justify-between">
         <div className="text-xs text-muted-foreground flex items-center gap-2">
-          {isLoading ? "Searching..." : `${sorted.length} products found`}
+          {isLoading ? "Loading products..." : `${sorted.length} products found`}
           {pinnedCount > 0 && (
             <Badge variant="secondary" className="text-[10px] gap-0.5">
               <Star className="h-2.5 w-2.5 fill-current" /> {pinnedCount} pinned
@@ -288,7 +370,9 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
       ) : sorted.length === 0 ? (
         <div className="text-center py-12">
           <Package className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">No products found. Import a price list to get started.</p>
+          <p className="text-sm text-muted-foreground">
+            {searchQuery.trim() ? `No products match "${searchQuery}". Try fewer keywords or check spelling.` : "No products found. Import a price list to get started."}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -303,7 +387,6 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
                 <CardContent className={isMobile ? "p-3" : "p-4"}>
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <div className="flex-1 min-w-0">
-                      {/* Short name displayed prominently */}
                       {(product as any).short_name && (
                         <p className={`font-bold text-primary ${isMobile ? "text-sm" : "text-base"} ${(product as any).archived ? "line-through" : ""}`}>
                           {(product as any).short_name}
