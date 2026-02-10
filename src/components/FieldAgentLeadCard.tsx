@@ -144,9 +144,9 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
         className={cn(
           "cursor-pointer transition-all duration-300 relative shadow-md border-border/50",
           // Default gradient
-          "bg-gradient-to-r from-blue-100 to-slate-50 dark:from-slate-800 dark:to-slate-900",
+          "bg-gradient-to-r from-blue-100 to-slate-50 dark:from-[#0a1628]/90 dark:via-[#0f2240]/85 dark:to-[#0a1628]/90 dark:backdrop-blur-sm",
           // Hover state
-          "hover:from-blue-50 hover:to-white dark:hover:from-slate-700 dark:hover:to-slate-800",
+          "hover:from-blue-50 hover:to-white dark:hover:from-[#0f2240]/95 dark:hover:via-[#153258]/90 dark:hover:to-[#0f2240]/95",
           // Highlighted state - ring animation
           isHighlighted && [
             "ring-2 ring-primary ring-offset-2",
