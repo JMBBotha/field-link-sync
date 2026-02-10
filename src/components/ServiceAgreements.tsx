@@ -51,6 +51,9 @@ import {
 } from "lucide-react";
 import { format, addMonths, addYears } from "date-fns";
 import { cn } from "@/lib/utils";
+import CustomerSearchSelector from "@/components/customers/CustomerSearchSelector";
+import CreateCustomerDialog from "@/components/customers/CreateCustomerDialog";
+import { type CustomerSearchResult } from "@/hooks/useCustomerSearch";
 
 interface Customer {
   id: string;
@@ -123,6 +126,8 @@ const ServiceAgreements = () => {
   const [customerSearch, setCustomerSearch] = useState("");
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
   const customerDropdownRef = useRef<HTMLDivElement>(null);
+  const [showCreateCustomer, setShowCreateCustomer] = useState(false);
+  const [selectedCustomerName, setSelectedCustomerName] = useState("");
   const { toast } = useToast();
 
   // Close dropdown on outside click
@@ -551,52 +556,23 @@ const ServiceAgreements = () => {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Customer *</Label>
-              <div className="relative" ref={customerDropdownRef}>
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Type to search customers..."
-                  value={customerSearch}
-                  onChange={(e) => {
-                    setCustomerSearch(e.target.value);
-                    setCustomerDropdownOpen(true);
-                  }}
-                  onFocus={() => setCustomerDropdownOpen(true)}
-                  className="pl-9"
-                />
-                {formData.customer_id && !customerDropdownOpen && (
-                  <div className="mt-1 text-sm text-muted-foreground flex items-center gap-1">
-                    <Users className="h-3 w-3" />
-                    {customers.find(c => c.id === formData.customer_id)?.name}
-                    <button type="button" onClick={() => { setFormData(prev => ({ ...prev, customer_id: "", equipment_id: "" })); setCustomerSearch(""); }} className="ml-1 text-destructive hover:underline text-xs">clear</button>
-                  </div>
-                )}
-                {customerDropdownOpen && (
-                  <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg max-h-48 overflow-y-auto">
-                    {filteredCustomers.length === 0 ? (
-                      <div className="p-3 text-sm text-muted-foreground text-center">No customers found</div>
-                    ) : (
-                      filteredCustomers.map(c => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          className={cn(
-                            "w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors",
-                            formData.customer_id === c.id && "bg-accent"
-                          )}
-                          onClick={() => {
-                            setFormData(prev => ({ ...prev, customer_id: c.id, equipment_id: "" }));
-                            setCustomerSearch(c.name);
-                            setCustomerDropdownOpen(false);
-                          }}
-                        >
-                          <p className="font-medium">{c.name}</p>
-                          <p className="text-xs text-muted-foreground">{c.phone}{c.address ? ` • ${c.address}` : ""}</p>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
+              <CustomerSearchSelector
+                value={formData.customer_id}
+                selectedName={selectedCustomerName || customers.find(c => c.id === formData.customer_id)?.name}
+                onSelect={(c) => {
+                  if (!c.id) {
+                    setFormData(prev => ({ ...prev, customer_id: "", equipment_id: "" }));
+                    setSelectedCustomerName("");
+                    return;
+                  }
+                  setFormData(prev => ({ ...prev, customer_id: c.id, equipment_id: "" }));
+                  const name = c.is_company && c.company_name
+                    ? c.company_name
+                    : [c.first_name, c.last_name].filter(Boolean).join(" ");
+                  setSelectedCustomerName(name);
+                }}
+                onCreateNew={() => setShowCreateCustomer(true)}
+              />
             </div>
 
             {customerEquipment.length > 0 && (
@@ -774,6 +750,17 @@ const ServiceAgreements = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create Customer Dialog */}
+      <CreateCustomerDialog
+        open={showCreateCustomer}
+        onOpenChange={setShowCreateCustomer}
+        onCreated={(c) => {
+          setFormData(prev => ({ ...prev, customer_id: c.id, equipment_id: "" }));
+          setSelectedCustomerName(`${c.first_name} ${c.last_name}`.trim());
+          fetchCustomers();
+        }}
+      />
     </div>
   );
 };

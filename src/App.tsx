@@ -20,6 +20,8 @@ import { AdminHomePage, AdminMapPage, AdminQuotesPage, AdminProposalsPage, Admin
 import AdminCatalogPage from "./pages/admin/AdminCatalogPage";
 import AdminDispatchPage from "./pages/admin/AdminDispatchPage";
 import AdminMaintenancePage from "./pages/admin/AdminMaintenancePage";
+import AdminCustomersPage from "./pages/admin/AdminCustomersPage";
+import AdminCustomerDetailPage from "./pages/admin/AdminCustomerDetailPage";
 
 // Lazy-loaded admin pages (simple wrappers)
 import ScheduleCalendar from "./components/scheduling/ScheduleCalendar";
@@ -58,6 +60,8 @@ const App = () => (
                 <Route path="agreements" element={<ServiceAgreements />} />
                 <Route path="catalog" element={<AdminCatalogPage />} />
                 <Route path="maintenance" element={<AdminMaintenancePage />} />
+                <Route path="customers" element={<AdminCustomersPage />} />
+                <Route path="customers/:id" element={<AdminCustomerDetailPage />} />
                 <Route path="inventory" element={<InventoryList />} />
                 <Route path="flat-rate" element={<FlatRateBook />} />
                 <Route path="reports" element={<ReportBuilder />} />

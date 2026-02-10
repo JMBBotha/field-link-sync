@@ -67,6 +67,7 @@ const AdminSidebar = ({
       title: "Main",
       items: [
         { path: "/admin", label: "Home", icon: LayoutDashboard },
+        { path: "/admin/customers", label: "Customers", icon: Users },
         { path: "/admin/map", label: "Map", icon: MapPin },
         { path: "/admin/dispatch", label: "Dispatch", icon: LayoutGrid },
         { path: "/admin/schedule", label: "Schedule", icon: CalendarDays },
