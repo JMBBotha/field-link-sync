@@ -34,6 +34,7 @@ import AdminNotificationSettings from "./components/AdminNotificationSettings";
 import AuditLogViewer from "./components/audit/AuditLogViewer";
 import AdminSettingsPage from "./components/AdminSettingsPage";
 import ServiceAgreements from "./components/ServiceAgreements";
+import AdminAdvancedReportsPage from "./pages/admin/AdminAdvancedReportsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -81,6 +82,7 @@ const App = () => (
                 <Route path="inventory" element={<InventoryList />} />
                 <Route path="flat-rate" element={<FlatRateBook />} />
                 <Route path="reports" element={<ReportBuilder />} />
+                <Route path="reports/advanced" element={<AdminAdvancedReportsPage />} />
                 <Route path="analytics" element={<AnalyticsDashboard />} />
                 <Route path="notifications" element={<AdminNotificationSettings />} />
                 <Route path="audit" element={<AuditLogViewer />} />

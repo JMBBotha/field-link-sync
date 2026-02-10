@@ -14,6 +14,7 @@ import {
   BarChart3,
   ShoppingBag,
   LineChart,
+  TrendingUp,
   Bell,
   History,
   Upload,
@@ -90,6 +91,7 @@ const AdminSidebar = ({
         { path: "/admin/inventory", label: "Inventory", icon: Package },
         { path: "/admin/flat-rate", label: "Flat Rate", icon: DollarSign },
         { path: "/admin/reports", label: "Reports", icon: BarChart3 },
+        { path: "/admin/reports/advanced", label: "Advanced Reports", icon: TrendingUp },
         { path: "/admin/analytics", label: "Analytics", icon: LineChart },
       ],
     },
@@ -106,6 +108,8 @@ const AdminSidebar = ({
 
   const isActive = (path: string) => {
     if (path === "/admin") return location.pathname === "/admin";
+    // Exact match for paths that have sub-routes
+    if (path === "/admin/reports") return location.pathname === "/admin/reports";
     return location.pathname.startsWith(path);
   };
 
