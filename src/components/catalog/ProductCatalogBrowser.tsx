@@ -124,8 +124,10 @@ function buildSearchBlob(p: SupplierProduct): string {
   parts.push(brand);
   if (p.btu_rating) {
     const k = Math.round(p.btu_rating / 1000);
-    parts.push(`${k}K`, `${p.btu_rating}`);
+    parts.push(`${k}K`, `${p.btu_rating}`, `${k} 000`);
   }
+  const speed = deriveSpeedType(p);
+  if (speed) parts.push(speed);
   return parts.join(" ");
 }
 
@@ -152,7 +154,101 @@ function matchesFilters(p: SupplierProduct, f: CatalogFilters): boolean {
   return true;
 }
 
-// ── Fuse.js multi-token AND search ──────────────────────
+// ── Smart query preprocessing ───────────────────────────
+interface PreprocessedQuery {
+  cleanedQuery: string;
+  autoFilters: Partial<CatalogFilters>;
+  autoSort?: SortOption;
+}
+
+const BRAND_PATTERNS: { pattern: RegExp; value: string }[] = [
+  { pattern: /\bmidea\b/gi, value: "Midea" },
+  { pattern: /\balliance\b/gi, value: "Alliance" },
+  { pattern: /\bsamsung\b/gi, value: "Samsung" },
+  { pattern: /\bdaikin\b/gi, value: "Daikin" },
+  { pattern: /\blg\b/gi, value: "LG" },
+];
+
+const BTU_PREPROCESS_PATTERNS: { pattern: RegExp; bucket: string }[] = [
+  { pattern: /\b9\s*000\b/gi, bucket: "9K" },
+  { pattern: /\b12\s*000\b/gi, bucket: "12K" },
+  { pattern: /\b18\s*000\b/gi, bucket: "18K" },
+  { pattern: /\b24\s*000\b/gi, bucket: "24K" },
+  { pattern: /\b34\s*000\b/gi, bucket: "34K" },
+  { pattern: /\b36\s*000\b/gi, bucket: "36K" },
+  { pattern: /\b48\s*000\b/gi, bucket: "48K" },
+  { pattern: /\b60\s*000\b/gi, bucket: "60K" },
+];
+
+const REFRIGERANT_PREPROCESS: { pattern: RegExp; value: string }[] = [
+  { pattern: /\br32\b/gi, value: "R32" },
+  { pattern: /\br410a?\b/gi, value: "R410A" },
+];
+
+const SPEED_PREPROCESS: { pattern: RegExp; value: string }[] = [
+  { pattern: /\b(?:inverter|inv)\b/gi, value: "Inverter" },
+  { pattern: /\b(?:fixed\s*speed?|non[- ]?inverter)\b/gi, value: "Fixed Speed" },
+];
+
+const PHASE_PREPROCESS: { pattern: RegExp; value: string }[] = [
+  { pattern: /\b(?:3ph|three\s*phase|3[- ]?phase)\b/gi, value: "3Ph" },
+  { pattern: /\b(?:1ph|single\s*phase|1[- ]?phase)\b/gi, value: "1Ph" },
+];
+
+function preprocessQuery(query: string, currentFilters: CatalogFilters): PreprocessedQuery {
+  let q = query;
+  const autoFilters: Partial<CatalogFilters> = {};
+  let autoSort: SortOption | undefined;
+
+  // Price keywords
+  const underMatch = q.match(/\bunder\s*r?\s*(\d[\d\s]*)/i);
+  if (underMatch) {
+    autoFilters.priceMax = underMatch[1].replace(/\s/g, "");
+    q = q.replace(underMatch[0], "");
+  }
+  if (/\bcheapest\b/i.test(q)) {
+    autoSort = "price_asc";
+    q = q.replace(/\bcheapest\b/gi, "");
+  }
+
+  // Only auto-apply filters that aren't already set
+  for (const bp of BRAND_PATTERNS) {
+    if (bp.pattern.test(q) && currentFilters.brand === "__all__") {
+      autoFilters.brand = bp.value;
+      q = q.replace(bp.pattern, "");
+    }
+  }
+  for (const sp of SPEED_PREPROCESS) {
+    if (sp.pattern.test(q) && currentFilters.speedType === "__all__") {
+      autoFilters.speedType = sp.value;
+      q = q.replace(sp.pattern, "");
+    }
+  }
+  for (const rp of REFRIGERANT_PREPROCESS) {
+    if (rp.pattern.test(q) && currentFilters.refrigerant === "__all__") {
+      autoFilters.refrigerant = rp.value;
+      q = q.replace(rp.pattern, "");
+    }
+  }
+  for (const pp of PHASE_PREPROCESS) {
+    if (pp.pattern.test(q) && currentFilters.phase === "__all__") {
+      autoFilters.phase = pp.value;
+      q = q.replace(pp.pattern, "");
+    }
+  }
+  // BTU from full numbers like 24000
+  for (const bp of BTU_PREPROCESS_PATTERNS) {
+    if (bp.pattern.test(q) && currentFilters.btu === "__all__") {
+      autoFilters.btu = bp.bucket;
+      q = q.replace(bp.pattern, "");
+      break;
+    }
+  }
+
+  return { cleanedQuery: q.replace(/\s+/g, " ").trim(), autoFilters, autoSort };
+}
+
+// ── Fuse.js multi-token search with AND→OR fallback ─────
 function fuseMultiTokenSearch(items: SupplierProduct[], fuse: Fuse<SupplierProduct>, query: string): SupplierProduct[] {
   const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return [];
@@ -162,8 +258,9 @@ function fuseMultiTokenSearch(items: SupplierProduct[], fuse: Fuse<SupplierProdu
     return new Map(results.map((r) => [r.item.id, r.score ?? 1]));
   });
 
+  // Try strict AND first
   const firstSet = tokenResults[0];
-  const matchedIds: { id: string; combinedScore: number }[] = [];
+  const andMatches: { id: string; combinedScore: number }[] = [];
 
   firstSet.forEach((score, id) => {
     let totalScore = score;
@@ -173,12 +270,47 @@ function fuseMultiTokenSearch(items: SupplierProduct[], fuse: Fuse<SupplierProdu
       if (s === undefined) { matchAll = false; break; }
       totalScore += s;
     }
-    if (matchAll) matchedIds.push({ id, combinedScore: totalScore });
+    if (matchAll) andMatches.push({ id, combinedScore: totalScore });
   });
 
-  matchedIds.sort((a, b) => a.combinedScore - b.combinedScore);
+  // If AND has enough results or single token, use AND
+  if (andMatches.length >= 3 || tokens.length <= 1) {
+    andMatches.sort((a, b) => a.combinedScore - b.combinedScore);
+    const itemMap = new Map(items.map((p) => [p.id, p]));
+    return andMatches.map((m) => itemMap.get(m.id)!).filter(Boolean);
+  }
+
+  // If AND still has some results, return them (better than noisy OR)
+  if (andMatches.length > 0) {
+    andMatches.sort((a, b) => a.combinedScore - b.combinedScore);
+    const itemMap = new Map(items.map((p) => [p.id, p]));
+    return andMatches.map((m) => itemMap.get(m.id)!).filter(Boolean);
+  }
+
+  // Fallback to OR with token-count weighting
+  const scoreMap = new Map<string, { totalScore: number; tokenCount: number }>();
+
+  tokenResults.forEach((results) => {
+    results.forEach((score, id) => {
+      const existing = scoreMap.get(id);
+      if (existing) {
+        existing.totalScore += score;
+        existing.tokenCount += 1;
+      } else {
+        scoreMap.set(id, { totalScore: score, tokenCount: 1 });
+      }
+    });
+  });
+
+  const orMatches = Array.from(scoreMap.entries())
+    .map(([id, { totalScore, tokenCount }]) => ({
+      id,
+      rank: -tokenCount * 1000 + totalScore,
+    }))
+    .sort((a, b) => a.rank - b.rank);
+
   const itemMap = new Map(items.map((p) => [p.id, p]));
-  return matchedIds.map((m) => itemMap.get(m.id)!).filter(Boolean);
+  return orMatches.map((m) => itemMap.get(m.id)!).filter(Boolean);
 }
 
 // ── Component ───────────────────────────────────────────
@@ -303,18 +435,49 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
         { name: "pipe_size", weight: 0.5 },
         { name: "refrigerant_type", weight: 0.5 },
       ],
-      threshold: 0.4,
+      threshold: 0.35,
       ignoreLocation: true,
       includeScore: true,
+      minMatchCharLength: 2,
     }),
     [enrichedProducts]
   );
 
-  // Apply search + structured filters with AND logic
+  // Smart preprocessing: extract filter terms from search query
+  const preprocessed = useMemo(() => {
+    if (!searchQuery.trim()) return null;
+    return preprocessQuery(searchQuery, filters);
+  }, [searchQuery, filters]);
+
+  // Auto-apply extracted filters (debounced via effect)
+  useEffect(() => {
+    if (!preprocessed) return;
+    const { autoFilters, autoSort } = preprocessed;
+    if (Object.keys(autoFilters).length === 0 && !autoSort) return;
+    // Only apply once per query change - check if filters differ
+    let shouldUpdate = false;
+    const newFilters = { ...filters };
+    for (const [key, value] of Object.entries(autoFilters)) {
+      if (filters[key as keyof CatalogFilters] !== value) {
+        (newFilters as any)[key] = value;
+        shouldUpdate = true;
+      }
+    }
+    if (shouldUpdate) setFilters(newFilters);
+    if (autoSort && sortBy !== autoSort) setSortBy(autoSort);
+    // Update the search query to the cleaned version
+    if (preprocessed.cleanedQuery !== searchQuery.trim()) {
+      setSearchQuery(preprocessed.cleanedQuery);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preprocessed?.cleanedQuery]);
+
+  // Apply search + structured filters with AND→OR logic
   const filtered = useMemo(() => {
     let results: SupplierProduct[];
-    if (searchQuery.trim().length > 0) {
-      results = fuseMultiTokenSearch(enrichedProducts, fuse, searchQuery);
+    const effectiveQuery = searchQuery.trim();
+    if (effectiveQuery.length > 0) {
+      results = fuseMultiTokenSearch(enrichedProducts, fuse, effectiveQuery);
     } else {
       results = [...allProducts];
     }
@@ -323,19 +486,19 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
     return results;
   }, [allProducts, enrichedProducts, fuse, searchQuery, filters]);
 
-  // Compute dynamic filter counts: for each filter dimension, count products matching ALL OTHER active filters
+  // Compute dynamic filter counts: for each filter dimension, count products matching ALL OTHER active filters + search
   const filterCounts = useMemo<FilterCounts>(() => {
     // Base set: search-filtered products (before structured filters)
     let baseResults: SupplierProduct[];
-    if (searchQuery.trim().length > 0) {
-      baseResults = fuseMultiTokenSearch(enrichedProducts, fuse, searchQuery);
+    const effectiveQuery = searchQuery.trim();
+    if (effectiveQuery.length > 0) {
+      baseResults = fuseMultiTokenSearch(enrichedProducts, fuse, effectiveQuery);
     } else {
       baseResults = allProducts;
     }
 
     const countFor = (dimension: keyof CatalogFilters) => {
       const otherFilters = { ...filters, [dimension]: "__all__" };
-      // Also reset price filters if checking price dimension
       const pool = baseResults.filter(p => matchesFilters(p, otherFilters));
       const counts: Record<string, number> = {};
       for (const p of pool) {
