@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Plus, Trash2, Loader2, Search } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Loader2, Search, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { notifyInvoiceSent } from "@/lib/notificationService";
+import GuidedProductSelector from "@/components/invoicing/GuidedProductSelector";
+import CatalogPickerDrawer from "@/components/catalog/CatalogPickerDrawer";
 
 interface LineItem {
   description: string;
@@ -79,6 +81,8 @@ const CreateInvoicePage = ({ agentId, onBack, onSuccess, prefillLead }: CreateIn
   const [taxRate] = useState(15);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [notes, setNotes] = useState("");
+  const [showGuidedSelector, setShowGuidedSelector] = useState(false);
+  const [showCatalogDrawer, setShowCatalogDrawer] = useState(false);
   const [dueDate, setDueDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 30);
@@ -399,6 +403,52 @@ const CreateInvoicePage = ({ agentId, onBack, onSuccess, prefillLead }: CreateIn
           </CardContent>
         </Card>
       )}
+
+      {/* Smart Product Selector */}
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-4 space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Add Item / Product</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              className="h-11 rounded-xl text-xs gap-2"
+              onClick={() => setShowGuidedSelector(true)}
+            >
+              <Package className="h-4 w-4" />
+              Guided Selector
+            </Button>
+            <Button
+              variant="outline"
+              className="h-11 rounded-xl text-xs gap-2"
+              onClick={() => setShowCatalogDrawer(true)}
+            >
+              <Search className="h-4 w-4" />
+              Browse Catalog
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <GuidedProductSelector
+        open={showGuidedSelector}
+        onOpenChange={setShowGuidedSelector}
+        onAddItem={(item) => {
+          setLineItems(prev => [...prev.filter(i => i.description || i.amount > 0), item]);
+        }}
+      />
+      <CatalogPickerDrawer
+        open={showCatalogDrawer}
+        onOpenChange={setShowCatalogDrawer}
+        onAddToQuote={(item) => {
+          const newItem: LineItem = {
+            description: item.description,
+            quantity: item.quantity,
+            rate: item.unit_price,
+            amount: item.quantity * item.unit_price,
+          };
+          setLineItems(prev => [...prev.filter(i => i.description || i.amount > 0), newItem]);
+        }}
+      />
 
       {/* Line Items */}
       <Card className="border-0 shadow-sm">

@@ -80,6 +80,7 @@ const AdminSidebar = ({
         { path: "/admin/quotes", label: "Quotes", icon: FileText },
         { path: "/admin/proposals", label: "Proposals", icon: FileSignature },
         { path: "/admin/invoices", label: "Invoices", icon: Receipt },
+        { path: "/admin/invoices/templates", label: "Invoice Templates", icon: FileText },
         { path: "/admin/agreements", label: "Agreements", icon: FileCheck },
       ],
     },
@@ -110,8 +111,8 @@ const AdminSidebar = ({
 
   const isActive = (path: string) => {
     if (path === "/admin") return location.pathname === "/admin";
-    // Exact match for paths that have sub-routes
     if (path === "/admin/reports") return location.pathname === "/admin/reports";
+    if (path === "/admin/invoices") return location.pathname === "/admin/invoices";
     return location.pathname.startsWith(path);
   };
 

@@ -653,6 +653,36 @@ export type Database = {
           },
         ]
       }
+      invoice_templates: {
+        Row: {
+          config: Json
+          created_at: string
+          created_by: string | null
+          id: string
+          is_default: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       invoices: {
         Row: {
           agent_id: string
@@ -681,6 +711,7 @@ export type Database = {
           subtotal: number
           tax_amount: number
           tax_rate: number
+          template_id: string | null
           updated_at: string
         }
         Insert: {
@@ -710,6 +741,7 @@ export type Database = {
           subtotal?: number
           tax_amount?: number
           tax_rate?: number
+          template_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -739,6 +771,7 @@ export type Database = {
           subtotal?: number
           tax_amount?: number
           tax_rate?: number
+          template_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -768,6 +801,13 @@ export type Database = {
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -2066,6 +2106,7 @@ export type Database = {
       supplier_products: {
         Row: {
           btu_rating: number | null
+          capacity_btu: number | null
           category: string
           cost_price: number
           created_at: string
@@ -2073,9 +2114,11 @@ export type Database = {
           description: string
           id: string
           image_url: string | null
+          inverter: boolean | null
           is_active: boolean
           is_price_on_request: boolean
           last_quoted_at: string | null
+          model_range: string | null
           pipe_size: string | null
           product_code: string
           quote_usage_count: number
@@ -2088,6 +2131,7 @@ export type Database = {
         }
         Insert: {
           btu_rating?: number | null
+          capacity_btu?: number | null
           category?: string
           cost_price?: number
           created_at?: string
@@ -2095,9 +2139,11 @@ export type Database = {
           description: string
           id?: string
           image_url?: string | null
+          inverter?: boolean | null
           is_active?: boolean
           is_price_on_request?: boolean
           last_quoted_at?: string | null
+          model_range?: string | null
           pipe_size?: string | null
           product_code: string
           quote_usage_count?: number
@@ -2110,6 +2156,7 @@ export type Database = {
         }
         Update: {
           btu_rating?: number | null
+          capacity_btu?: number | null
           category?: string
           cost_price?: number
           created_at?: string
@@ -2117,9 +2164,11 @@ export type Database = {
           description?: string
           id?: string
           image_url?: string | null
+          inverter?: boolean | null
           is_active?: boolean
           is_price_on_request?: boolean
           last_quoted_at?: string | null
+          model_range?: string | null
           pipe_size?: string | null
           product_code?: string
           quote_usage_count?: number

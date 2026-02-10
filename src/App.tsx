@@ -37,6 +37,7 @@ import ServiceAgreements from "./components/ServiceAgreements";
 import AdminAdvancedReportsPage from "./pages/admin/AdminAdvancedReportsPage";
 import AdminTeamPage from "./pages/admin/AdminTeamPage";
 import AdminBillingPage from "./pages/admin/AdminBillingPage";
+import AdminInvoiceTemplatesPage from "./pages/admin/AdminInvoiceTemplatesPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -76,6 +77,7 @@ const App = () => (
                 <Route path="quotes" element={<AdminQuotesPage />} />
                 <Route path="proposals" element={<AdminProposalsPage />} />
                 <Route path="invoices" element={<AdminInvoicesPage />} />
+                <Route path="invoices/templates" element={<AdminInvoiceTemplatesPage />} />
                 <Route path="agreements" element={<ServiceAgreements />} />
                 <Route path="catalog" element={<AdminCatalogPage />} />
                 <Route path="maintenance" element={<AdminMaintenancePage />} />
