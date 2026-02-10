@@ -281,8 +281,9 @@ const AdminDispatchPage = () => {
         .update({ assigned_agent_id: agentId, scheduled_date: date, scheduled_time: startTime })
         .eq("id", leadId);
     },
-    onSuccess: () => {
-      toast({ title: "Job assigned successfully" });
+    onSuccess: (_, variables) => {
+      const agentName = agents.find(a => a.id === variables.agentId)?.full_name || "technician";
+      toast({ title: `✅ Job assigned to ${agentName}` });
       queryClient.invalidateQueries({ queryKey: ["dispatch-leads"] });
       queryClient.invalidateQueries({ queryKey: ["dispatch-schedules"] });
     },
