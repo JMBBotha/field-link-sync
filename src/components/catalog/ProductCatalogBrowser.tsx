@@ -1,27 +1,23 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, ReactNode } from "react";
 import Fuse from "fuse.js";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { offlineDb } from "@/lib/offlineDb";
 import ProductDetailModal from "./ProductDetailModal";
-import CatalogFilterBar, { CatalogFilters, DEFAULT_FILTERS, FilterCounts } from "./CatalogFilterBar";
+import CatalogFilterBar, { CatalogFilters, DEFAULT_FILTERS, FilterCounts, SortOption } from "./CatalogFilterBar";
 import CatalogSearchSuggestions from "./CatalogSearchSuggestions";
 import {
-  Search,
   Package,
   TrendingUp,
   Plus,
-  ArrowUpDown,
   Loader2,
   WifiOff,
   Star,
@@ -29,6 +25,20 @@ import {
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
+
+/** Highlight matching text segments */
+function highlightText(text: string, query: string): ReactNode {
+  if (!query.trim() || !text) return text;
+  const tokens = query.trim().split(/\s+/).filter(Boolean);
+  const pattern = tokens.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+  const regex = new RegExp(`(${pattern})`, "gi");
+  const parts = text.split(regex);
+  return parts.map((part, i) =>
+    regex.test(part)
+      ? <mark key={i} className="bg-accent/40 text-accent-foreground font-medium px-0.5 rounded">{part}</mark>
+      : part
+  );
+}
 
 interface SupplierProduct {
   id: string;
@@ -170,7 +180,7 @@ function fuseMultiTokenSearch(items: SupplierProduct[], fuse: Fuse<SupplierProdu
 // ── Component ───────────────────────────────────────────
 const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrowserProps) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"pinned" | "usage" | "price_asc" | "price_desc" | "name">("pinned");
+  const [sortBy, setSortBy] = useState<SortOption>("pinned");
   const [showArchived, setShowArchived] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<SupplierProduct | null>(null);
@@ -330,16 +340,16 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
       if (aPinned && bPinned) return ((a.pin_order || 0) - (b.pin_order || 0));
       return 0;
     };
-    if (searchQuery.trim().length > 0) return arr.sort(pinnedSort);
     switch (sortBy) {
-      case "price_asc": return arr.sort((a, b) => pinnedSort(a, b) || a.cost_price - b.cost_price);
-      case "price_desc": return arr.sort((a, b) => pinnedSort(a, b) || b.cost_price - a.cost_price);
+      case "price_asc": return arr.sort((a, b) => pinnedSort(a, b) || a.selling_price - b.selling_price);
+      case "price_desc": return arr.sort((a, b) => pinnedSort(a, b) || b.selling_price - a.selling_price);
+      case "btu_asc": return arr.sort((a, b) => pinnedSort(a, b) || (a.btu_rating || 0) - (b.btu_rating || 0));
+      case "btu_desc": return arr.sort((a, b) => pinnedSort(a, b) || (b.btu_rating || 0) - (a.btu_rating || 0));
       case "name": return arr.sort((a, b) => pinnedSort(a, b) || a.description.localeCompare(b.description));
-      case "usage": return arr.sort((a, b) => pinnedSort(a, b) || b.quote_usage_count - a.quote_usage_count);
       case "pinned":
       default: return arr.sort((a, b) => pinnedSort(a, b) || b.quote_usage_count - a.quote_usage_count);
     }
-  }, [filtered, sortBy, searchQuery]);
+  }, [filtered, sortBy]);
 
   const pinnedCount = useMemo(() => filtered.filter(p => p.is_pinned).length, [filtered]);
 
@@ -388,44 +398,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
         </div>
       )}
 
-      {/* Search bar */}
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search products, codes, brands... (fuzzy)"
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setShowSuggestions(true); }}
-            onFocus={() => setShowSuggestions(true)}
-            className="pl-9"
-          />
-          <CatalogSearchSuggestions
-            query={searchQuery}
-            products={sorted}
-            visible={showSuggestions && searchQuery.trim().length > 0}
-            onSelectFilter={handleSuggestionFilter}
-            onSelectProduct={(id) => { const p = allProducts.find(x => x.id === id); if (p) setSelectedProduct(p); setShowSuggestions(false); }}
-            onClose={() => setShowSuggestions(false)}
-          />
-        </div>
-        <div className="flex gap-2">
-          <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
-            <SelectTrigger className={isMobile ? "flex-1" : "w-40"}>
-              <ArrowUpDown className="h-3 w-3 mr-1" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="pinned">Pinned First</SelectItem>
-              <SelectItem value="usage">Most Quoted</SelectItem>
-              <SelectItem value="price_asc">Price: Low→High</SelectItem>
-              <SelectItem value="price_desc">Price: High→Low</SelectItem>
-              <SelectItem value="name">Name A-Z</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Sticky filter bar */}
+      {/* Sticky filter bar with integrated search + sort */}
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pb-2 -mx-1 px-1">
         <CatalogFilterBar
           filters={filters}
@@ -435,6 +408,21 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
           totalCount={allProducts.length}
           filteredCount={sorted.length}
           counts={filterCounts}
+          searchQuery={searchQuery}
+          onSearchChange={(q) => { setSearchQuery(q); setShowSuggestions(true); }}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          onSearchFocus={() => setShowSuggestions(true)}
+          searchSuggestions={
+            <CatalogSearchSuggestions
+              query={searchQuery}
+              products={sorted}
+              visible={showSuggestions && searchQuery.trim().length > 0}
+              onSelectFilter={handleSuggestionFilter}
+              onSelectProduct={(id) => { const p = allProducts.find(x => x.id === id); if (p) setSelectedProduct(p); setShowSuggestions(false); }}
+              onClose={() => setShowSuggestions(false)}
+            />
+          }
         />
       </div>
 
@@ -479,11 +467,11 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
                     <div className="flex-1 min-w-0">
                       {product.short_name && (
                         <p className={`font-bold text-primary ${isMobile ? "text-sm" : "text-base"} ${(product as any).archived ? "line-through" : ""}`}>
-                          {product.short_name}
+                          {highlightText(product.short_name, searchQuery)}
                         </p>
                       )}
-                      <p className={`text-xs font-mono text-muted-foreground ${(product as any).archived ? "line-through" : ""}`}>{product.product_code}</p>
-                      <p className={`mt-0.5 line-clamp-2 text-muted-foreground ${isMobile ? "text-[11px]" : "text-xs"} ${(product as any).archived ? "line-through" : ""}`}>{product.description}</p>
+                      <p className={`text-xs font-mono text-muted-foreground ${(product as any).archived ? "line-through" : ""}`}>{highlightText(product.product_code, searchQuery)}</p>
+                      <p className={`mt-0.5 line-clamp-2 text-muted-foreground ${isMobile ? "text-[11px]" : "text-xs"} ${(product as any).archived ? "line-through" : ""}`}>{highlightText(product.description, searchQuery)}</p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       {isPinned && (

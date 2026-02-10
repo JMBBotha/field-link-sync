@@ -1,5 +1,5 @@
 import { useMemo, useRef, useEffect, useState } from "react";
-import { Search, Filter, Package } from "lucide-react";
+import { Filter, Package, Zap, Wind, Thermometer, Gauge } from "lucide-react";
 
 interface Product {
   id: string;
@@ -17,15 +17,27 @@ interface Suggestion {
   icon: "filter" | "product";
 }
 
-const FILTER_KEYWORDS: { keyword: string; filterLabel: string; action: string }[] = [
-  { keyword: "inverter", filterLabel: "Filter to Inverter only", action: "speedType:Inverter" },
-  { keyword: "fixed", filterLabel: "Filter to Fixed Speed only", action: "speedType:Fixed Speed" },
-  { keyword: "midwall", filterLabel: "Filter to Midwall type", action: "unitType:Midwall" },
-  { keyword: "cassette", filterLabel: "Filter to Cassette type", action: "unitType:Cassette" },
-  { keyword: "ducted", filterLabel: "Filter to Ducted type", action: "unitType:Ducted" },
-  { keyword: "r32", filterLabel: "Filter to R32 refrigerant", action: "refrigerant:R32" },
-  { keyword: "r410", filterLabel: "Filter to R410A refrigerant", action: "refrigerant:R410A" },
-  { keyword: "portable", filterLabel: "Filter to Portable type", action: "unitType:Portable" },
+// Multi-word aware filter detection
+const FILTER_MATCHERS: { pattern: RegExp; label: string; action: string }[] = [
+  { pattern: /\binvert(?:e?r)?\b/i, label: "Filter to Inverter", action: "speedType:Inverter" },
+  { pattern: /\bfixed\b/i, label: "Filter to Fixed Speed", action: "speedType:Fixed Speed" },
+  { pattern: /\bmidwall\b/i, label: "Filter to Midwall type", action: "unitType:Midwall" },
+  { pattern: /\bcass?ett?e\b/i, label: "Filter to Cassette type", action: "unitType:Cassette" },
+  { pattern: /\bducted\b/i, label: "Filter to Ducted type", action: "unitType:Ducted" },
+  { pattern: /\bportable\b/i, label: "Filter to Portable type", action: "unitType:Portable" },
+  { pattern: /\bfloor\b/i, label: "Filter to Floor Standing", action: "unitType:Floor Standing" },
+  { pattern: /\br32\b/i, label: "Filter to R32 refrigerant", action: "refrigerant:R32" },
+  { pattern: /\br410a?\b/i, label: "Filter to R410A refrigerant", action: "refrigerant:R410A" },
+  { pattern: /\b9k\b/i, label: "Show 9K BTU units", action: "btu:9K" },
+  { pattern: /\b12k?\b/i, label: "Show 12K BTU units", action: "btu:12K" },
+  { pattern: /\b18k?\b/i, label: "Show 18K BTU units", action: "btu:18K" },
+  { pattern: /\b24k?\b/i, label: "Show 24K BTU units", action: "btu:24K" },
+  { pattern: /\b34k?\b/i, label: "Show 34K BTU units", action: "btu:34K" },
+  { pattern: /\b36k?\b/i, label: "Show 36K BTU units", action: "btu:36K" },
+  { pattern: /\b48k?\b/i, label: "Show 48K BTU units", action: "btu:48K" },
+  { pattern: /\b60k?\b/i, label: "Show 60K BTU units", action: "btu:60K" },
+  { pattern: /\b3ph\b/i, label: "Filter to Three Phase", action: "phase:3Ph" },
+  { pattern: /\b1ph\b/i, label: "Filter to Single Phase", action: "phase:1Ph" },
 ];
 
 interface Props {
@@ -51,17 +63,18 @@ const CatalogSearchSuggestions = ({ query, products, visible, onSelectFilter, on
 
   const suggestions = useMemo<Suggestion[]>(() => {
     if (!query.trim() || !visible) return [];
-    const q = query.toLowerCase();
     const result: Suggestion[] = [];
 
-    // Filter suggestions
-    for (const fk of FILTER_KEYWORDS) {
-      if (fk.keyword.includes(q) || q.includes(fk.keyword)) {
-        result.push({ type: "filter", label: fk.filterLabel, action: fk.action, icon: "filter" });
+    // Parse each word in the query for filter matches
+    const seenActions = new Set<string>();
+    for (const matcher of FILTER_MATCHERS) {
+      if (matcher.pattern.test(query) && !seenActions.has(matcher.action)) {
+        seenActions.add(matcher.action);
+        result.push({ type: "filter", label: matcher.label, action: matcher.action, icon: "filter" });
       }
     }
 
-    // Top product matches (just first 5 from already-filtered list)
+    // Top product matches (from already-filtered/sorted list)
     const topProducts = products.slice(0, 5);
     for (const p of topProducts) {
       result.push({
@@ -72,38 +85,53 @@ const CatalogSearchSuggestions = ({ query, products, visible, onSelectFilter, on
       });
     }
 
-    return result.slice(0, 8);
+    return result.slice(0, 10);
   }, [query, products, visible]);
 
   if (!visible || suggestions.length === 0) return null;
+
+  const filterSuggestions = suggestions.filter(s => s.type === "filter");
+  const productSuggestions = suggestions.filter(s => s.type === "product");
 
   return (
     <div
       ref={ref}
       className="absolute top-full left-0 right-0 z-50 mt-1 rounded-lg border bg-popover shadow-lg overflow-hidden"
     >
-      {suggestions.map((s, i) => (
-        <button
-          key={`${s.type}-${s.action}`}
-          className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-accent/50 transition-colors ${
-            i === focusIndex ? "bg-accent/50" : ""
-          }`}
-          onClick={() => {
-            if (s.type === "filter") onSelectFilter(s.action);
-            else onSelectProduct(s.action);
-            onClose();
-          }}
-        >
-          {s.type === "filter" ? (
-            <Filter className="h-3 w-3 text-primary shrink-0" />
-          ) : (
-            <Package className="h-3 w-3 text-muted-foreground shrink-0" />
-          )}
-          <span className={s.type === "filter" ? "text-primary font-medium" : "text-foreground"}>
-            {s.label}
-          </span>
-        </button>
-      ))}
+      {filterSuggestions.length > 0 && (
+        <>
+          <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30">
+            Quick Filters
+          </div>
+          {filterSuggestions.map((s, i) => (
+            <button
+              key={`filter-${s.action}`}
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-accent/50 transition-colors"
+              onClick={() => { onSelectFilter(s.action); onClose(); }}
+            >
+              <Filter className="h-3 w-3 text-primary shrink-0" />
+              <span className="text-primary font-medium">{s.label}</span>
+            </button>
+          ))}
+        </>
+      )}
+      {productSuggestions.length > 0 && (
+        <>
+          <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30">
+            Products
+          </div>
+          {productSuggestions.map((s) => (
+            <button
+              key={`product-${s.action}`}
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-accent/50 transition-colors"
+              onClick={() => { onSelectProduct(s.action); onClose(); }}
+            >
+              <Package className="h-3 w-3 text-muted-foreground shrink-0" />
+              <span className="text-foreground">{s.label}</span>
+            </button>
+          ))}
+        </>
+      )}
     </div>
   );
 };
