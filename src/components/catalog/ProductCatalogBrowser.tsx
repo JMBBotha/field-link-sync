@@ -8,10 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { offlineDb } from "@/lib/offlineDb";
 import ProductDetailModal from "./ProductDetailModal";
+import ProductSlideOverPanel from "./ProductSlideOverPanel";
+import ProductCompareTable from "./ProductCompareTable";
 import CatalogFilterBar, { CatalogFilters, DEFAULT_FILTERS, FilterCounts, SortOption } from "./CatalogFilterBar";
 import CatalogSearchSuggestions, { FILTER_MATCHERS } from "./CatalogSearchSuggestions";
 import {
@@ -21,6 +24,7 @@ import {
   Loader2,
   WifiOff,
   Star,
+  GitCompareArrows,
 } from "lucide-react";
 
 const formatZAR = (n: number) =>
@@ -186,6 +190,10 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
   const [isOffline, setIsOffline] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<SupplierProduct | null>(null);
   const [filters, setFilters] = useState<CatalogFilters>({ ...DEFAULT_FILTERS });
+  const [panelProductId, setPanelProductId] = useState<string | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [compareOpen, setCompareOpen] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestionIndex, setSuggestionIndex] = useState(-1);
   const [searchHistory, setSearchHistory] = useState<string[]>(() => {
@@ -410,6 +418,33 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
     }
   };
 
+  // ── Slide-over panel helpers ──
+  const panelProduct = useMemo(() => panelProductId ? sorted.find(p => p.id === panelProductId) || null : null, [panelProductId, sorted]);
+  const panelIndex = useMemo(() => panelProductId ? sorted.findIndex(p => p.id === panelProductId) : -1, [panelProductId, sorted]);
+
+  const openPanel = useCallback((product: SupplierProduct) => {
+    setPanelProductId(product.id);
+    setPanelOpen(true);
+  }, []);
+
+  const navigatePanel = useCallback((dir: 1 | -1) => {
+    const newIdx = panelIndex + dir;
+    if (newIdx >= 0 && newIdx < sorted.length) {
+      setPanelProductId(sorted[newIdx].id);
+    }
+  }, [panelIndex, sorted]);
+
+  // ── Compare helpers ──
+  const toggleCompare = useCallback((productId: string) => {
+    setCompareIds(prev => {
+      if (prev.includes(productId)) return prev.filter(id => id !== productId);
+      if (prev.length >= 4) { toast({ title: "Compare limit", description: "Maximum 4 products" }); return prev; }
+      return [...prev, productId];
+    });
+  }, [toast]);
+
+  const compareProducts = useMemo(() => compareIds.map(id => allProducts.find(p => p.id === id)).filter(Boolean) as SupplierProduct[], [compareIds, allProducts]);
+
   const handleSuggestionFilter = useCallback((action: string, removePattern: RegExp) => {
     const [key, value] = action.split(":");
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -517,6 +552,11 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
               <Star className="h-2.5 w-2.5 fill-current" /> {pinnedCount} pinned
             </Badge>
           )}
+          {compareIds.length > 0 && (
+            <Badge variant="secondary" className="text-[10px] gap-0.5">
+              <GitCompareArrows className="h-2.5 w-2.5" /> {compareIds.length} selected
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Label className="text-xs text-muted-foreground">Show Archived</Label>
@@ -538,17 +578,21 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
       ) : viewMode === "list" ? (
         <div className="space-y-1">
           {/* List header */}
-          <div className="grid grid-cols-[1fr_2fr_80px_60px_80px_100px_40px] gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b">
-            <span>Model</span><span>Description</span><span>BTU</span><span>Refrig.</span><span>Pipe</span><span className="text-right">Price</span><span></span>
+          <div className="grid grid-cols-[24px_1fr_2fr_80px_60px_80px_100px_40px] gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b">
+            <span></span><span>Model</span><span>Description</span><span>BTU</span><span>Refrig.</span><span>Pipe</span><span className="text-right">Price</span><span></span>
           </div>
           {sorted.map((product) => {
             const isPinned = !!product.is_pinned;
+            const isCompared = compareIds.includes(product.id);
             return (
               <div
                 key={product.id}
-                className={`grid grid-cols-[1fr_2fr_80px_60px_80px_100px_40px] gap-2 items-center px-3 py-2 rounded-md border cursor-pointer hover:bg-accent/30 transition-colors ${(product as any).archived ? "opacity-50" : ""} ${isPinned ? "ring-1 ring-primary/30" : ""}`}
-                onClick={() => setSelectedProduct(product)}
+                className={`grid grid-cols-[24px_1fr_2fr_80px_60px_80px_100px_40px] gap-2 items-center px-3 py-2 rounded-md border cursor-pointer hover:bg-accent/30 transition-colors ${(product as any).archived ? "opacity-50" : ""} ${isPinned ? "ring-1 ring-primary/30" : ""} ${isCompared ? "ring-1 ring-accent" : ""}`}
+                onClick={() => openPanel(product)}
               >
+                <div onClick={(e) => e.stopPropagation()}>
+                  <Checkbox checked={isCompared} onCheckedChange={() => toggleCompare(product.id)} className="h-3.5 w-3.5" />
+                </div>
                 <div className="min-w-0">
                   <p className="text-xs font-mono font-medium truncate">{highlightText(product.product_code, searchQuery)}</p>
                   {product.short_name && <p className="text-[10px] text-primary font-semibold truncate">{highlightText(product.short_name, searchQuery)}</p>}
@@ -577,22 +621,28 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {sorted.map((product) => {
             const isPinned = !!product.is_pinned;
+            const isCompared = compareIds.includes(product.id);
             return (
               <Card
                 key={product.id}
-                className={`hover:shadow-md transition-shadow active:scale-[0.99] cursor-pointer ${(product as any).archived ? "opacity-50" : ""} ${isPinned ? "ring-1 ring-primary/30" : ""}`}
-                onClick={() => setSelectedProduct(product)}
+                className={`hover:shadow-md transition-shadow active:scale-[0.99] cursor-pointer ${(product as any).archived ? "opacity-50" : ""} ${isPinned ? "ring-1 ring-primary/30" : ""} ${isCompared ? "ring-1 ring-accent" : ""}`}
+                onClick={() => openPanel(product)}
               >
                 <CardContent className={isMobile ? "p-3" : "p-4"}>
                   <div className="flex items-start justify-between gap-2 mb-1">
-                    <div className="flex-1 min-w-0">
-                      {product.short_name && (
-                        <p className={`font-bold text-primary ${isMobile ? "text-sm" : "text-base"} ${(product as any).archived ? "line-through" : ""}`}>
-                          {highlightText(product.short_name, searchQuery)}
-                        </p>
-                      )}
-                      <p className={`text-xs font-mono text-muted-foreground ${(product as any).archived ? "line-through" : ""}`}>{highlightText(product.product_code, searchQuery)}</p>
-                      <p className={`mt-0.5 line-clamp-2 text-muted-foreground ${isMobile ? "text-[11px]" : "text-xs"} ${(product as any).archived ? "line-through" : ""}`}>{highlightText(product.description, searchQuery)}</p>
+                    <div className="flex items-start gap-2 flex-1 min-w-0">
+                      <div onClick={(e) => e.stopPropagation()} className="pt-0.5">
+                        <Checkbox checked={isCompared} onCheckedChange={() => toggleCompare(product.id)} className="h-3.5 w-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        {product.short_name && (
+                          <p className={`font-bold text-primary ${isMobile ? "text-sm" : "text-base"} ${(product as any).archived ? "line-through" : ""}`}>
+                            {highlightText(product.short_name, searchQuery)}
+                          </p>
+                        )}
+                        <p className={`text-xs font-mono text-muted-foreground ${(product as any).archived ? "line-through" : ""}`}>{highlightText(product.product_code, searchQuery)}</p>
+                        <p className={`mt-0.5 line-clamp-2 text-muted-foreground ${isMobile ? "text-[11px]" : "text-xs"} ${(product as any).archived ? "line-through" : ""}`}>{highlightText(product.description, searchQuery)}</p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       {isPinned && (
@@ -662,6 +712,53 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
         </div>
       )}
 
+      {/* Floating compare button */}
+      {compareIds.length >= 2 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30">
+          <Button
+            className="shadow-lg rounded-full px-6 gap-2"
+            onClick={() => setCompareOpen(true)}
+          >
+            <GitCompareArrows className="h-4 w-4" />
+            Compare {compareIds.length} products
+          </Button>
+        </div>
+      )}
+
+      {/* Slide-over detail panel */}
+      <ProductSlideOverPanel
+        product={panelProduct}
+        open={panelOpen}
+        onClose={() => { setPanelOpen(false); setTimeout(() => setPanelProductId(null), 300); }}
+        onPrev={() => navigatePanel(-1)}
+        onNext={() => navigatePanel(1)}
+        hasPrev={panelIndex > 0}
+        hasNext={panelIndex < sorted.length - 1}
+        currentIndex={panelIndex}
+        totalCount={sorted.length}
+        deriveBrand={deriveBrand}
+        deriveSpeedType={deriveSpeedType}
+        derivePhase={derivePhase}
+        onAddToQuote={onAddToQuote ? (item) => {
+          onAddToQuote(item);
+          if (panelProduct) incrementUsageMutation.mutate(panelProduct.id);
+          toast({ title: "Added to quote" });
+          setPanelOpen(false);
+        } : undefined}
+      />
+
+      {/* Compare table */}
+      <ProductCompareTable
+        products={compareProducts}
+        open={compareOpen}
+        onClose={() => setCompareOpen(false)}
+        onClear={() => setCompareIds([])}
+        deriveBrand={deriveBrand}
+        deriveSpeedType={deriveSpeedType}
+        derivePhase={derivePhase}
+      />
+
+      {/* Legacy modal kept for suggestion clicks */}
       <ProductDetailModal
         product={selectedProduct}
         open={!!selectedProduct}
