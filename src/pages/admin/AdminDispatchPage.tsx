@@ -503,7 +503,7 @@ const AdminDispatchPage = () => {
                       key={lead.id}
                       draggable
                       onDragStart={(e) => handleDragStart(e, lead)}
-                      className="bg-gradient-to-br from-primary/[0.06] to-muted/40 border rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-primary/50 transition-colors group"
+                      className="bg-gradient-to-br from-primary/[0.06] to-muted/40 dark:from-[#0f2240]/70 dark:via-[#1a3a5c]/30 dark:to-[#0d1a30]/50 border rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-primary/50 transition-colors group"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <GripVertical className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
