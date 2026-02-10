@@ -1533,6 +1533,7 @@ export type Database = {
           file_name: string
           file_type: string
           id: string
+          products_archived: number
           products_imported: number
           products_skipped: number
           products_updated: number
@@ -1546,6 +1547,7 @@ export type Database = {
           file_name: string
           file_type?: string
           id?: string
+          products_archived?: number
           products_imported?: number
           products_skipped?: number
           products_updated?: number
@@ -1559,6 +1561,7 @@ export type Database = {
           file_name?: string
           file_type?: string
           id?: string
+          products_archived?: number
           products_imported?: number
           products_skipped?: number
           products_updated?: number
@@ -2105,6 +2108,8 @@ export type Database = {
       }
       supplier_products: {
         Row: {
+          archived: boolean
+          archived_at: string | null
           btu_rating: number | null
           capacity_btu: number | null
           category: string
@@ -2130,6 +2135,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived?: boolean
+          archived_at?: string | null
           btu_rating?: number | null
           capacity_btu?: number | null
           category?: string
@@ -2155,6 +2162,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived?: boolean
+          archived_at?: string | null
           btu_rating?: number | null
           capacity_btu?: number | null
           category?: string
@@ -2502,34 +2511,65 @@ export type Database = {
           status: string
         }[]
       }
-      search_supplier_products: {
-        Args: {
-          p_category?: string
-          p_limit?: number
-          p_query: string
-          p_supplier_id?: string
-        }
-        Returns: {
-          btu_rating: number
-          category: string
-          cost_price: number
-          default_markup_percent: number
-          description: string
-          id: string
-          image_url: string
-          is_price_on_request: boolean
-          last_quoted_at: string
-          pipe_size: string
-          product_code: string
-          quote_usage_count: number
-          refrigerant_type: string
-          search_rank: number
-          selling_price: number
-          subcategory: string
-          supplier_id: string
-          supplier_name: string
-        }[]
-      }
+      search_supplier_products:
+        | {
+            Args: {
+              p_category?: string
+              p_limit?: number
+              p_query: string
+              p_supplier_id?: string
+            }
+            Returns: {
+              btu_rating: number
+              category: string
+              cost_price: number
+              default_markup_percent: number
+              description: string
+              id: string
+              image_url: string
+              is_price_on_request: boolean
+              last_quoted_at: string
+              pipe_size: string
+              product_code: string
+              quote_usage_count: number
+              refrigerant_type: string
+              search_rank: number
+              selling_price: number
+              subcategory: string
+              supplier_id: string
+              supplier_name: string
+            }[]
+          }
+        | {
+            Args: {
+              p_category?: string
+              p_include_archived?: boolean
+              p_limit?: number
+              p_query: string
+              p_supplier_id?: string
+            }
+            Returns: {
+              archived: boolean
+              btu_rating: number
+              category: string
+              cost_price: number
+              default_markup_percent: number
+              description: string
+              id: string
+              image_url: string
+              is_price_on_request: boolean
+              last_quoted_at: string
+              pipe_size: string
+              product_code: string
+              quote_usage_count: number
+              refrigerant_type: string
+              search_rank: number
+              selling_price: number
+              subcategory: string
+              supplier_id: string
+              supplier_name: string
+            }[]
+          }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       validate_customer_token: { Args: { p_token: string }; Returns: string }
