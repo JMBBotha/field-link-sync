@@ -459,7 +459,7 @@ const AdminDispatchPage = () => {
       {/* ─── Main content: sidebar + timeline (+ optional map) ─── */}
       <div className="flex flex-1 overflow-hidden">
         {/* Unassigned Jobs Sidebar */}
-        <div className={`shrink-0 border-r bg-card flex flex-col transition-all duration-200 ${sidebarCollapsed ? "w-10" : "w-72"}`}>
+        <div className={`shrink-0 border-r bg-card flex flex-col transition-all duration-200 ${sidebarCollapsed ? "w-10" : "w-80"}`}>
           {sidebarCollapsed ? (
             <button onClick={() => setSidebarCollapsed(false)} className="h-full flex items-center justify-center hover:bg-muted transition-colors" title="Expand sidebar">
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
