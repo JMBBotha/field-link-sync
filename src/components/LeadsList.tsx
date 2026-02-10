@@ -408,7 +408,7 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
   const renderDesktopCard = (lead: Lead) => (
     <Card 
       key={lead.id} 
-      className={`bg-gradient-to-r from-blue-100 to-slate-50 dark:from-slate-800 dark:to-slate-900 backdrop-blur-sm border-border/50 hover:from-blue-50 hover:to-white dark:hover:from-slate-700 dark:hover:to-slate-800 transition-all duration-200 shadow-md cursor-pointer hover:scale-[1.02] hover:shadow-lg ${
+      className={`bg-gradient-to-r from-blue-100 to-slate-50 dark:from-[#0a1628]/90 dark:via-[#0f2240]/85 dark:to-[#0a1628]/90 dark:backdrop-blur-sm border-border/50 hover:from-blue-50 hover:to-white dark:hover:from-[#0f2240]/95 dark:hover:via-[#153258]/90 dark:hover:to-[#0f2240]/95 transition-all duration-200 shadow-md cursor-pointer hover:scale-[1.02] hover:shadow-lg ${
 clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
       }`}
       onClick={() => {
@@ -496,7 +496,7 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
       onOpenChange={() => toggleCardExpansion(lead.id)}
     >
       <Card 
-        className={`bg-gradient-to-r from-blue-100 to-slate-50 dark:from-slate-800 dark:to-slate-900 backdrop-blur-sm border-border/50 hover:from-blue-50 hover:to-white dark:hover:from-slate-700 dark:hover:to-slate-800 transition-all duration-200 shadow-md overflow-hidden w-full max-w-full cursor-pointer hover:scale-[1.01] hover:shadow-lg ${
+        className={`bg-gradient-to-r from-blue-100 to-slate-50 dark:from-[#0a1628]/90 dark:via-[#0f2240]/85 dark:to-[#0a1628]/90 dark:backdrop-blur-sm border-border/50 hover:from-blue-50 hover:to-white dark:hover:from-[#0f2240]/95 dark:hover:via-[#153258]/90 dark:hover:to-[#0f2240]/95 transition-all duration-200 shadow-md overflow-hidden w-full max-w-full cursor-pointer hover:scale-[1.01] hover:shadow-lg ${
           clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
         }`}
         onClick={() => {
@@ -626,7 +626,7 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
         
         <div className="p-3 space-y-2 w-full max-w-full">
           {leads.length === 0 ? (
-            <Card className="bg-gradient-to-r from-blue-100 to-slate-50 dark:from-slate-800 dark:to-slate-900 border-border/50 shadow-md">
+            <Card className="bg-gradient-to-r from-blue-100 to-slate-50 dark:from-[#0a1628]/90 dark:via-[#0f2240]/85 dark:to-[#0a1628]/90 dark:backdrop-blur-sm border-border/50 shadow-md">
               <CardContent className="py-8 text-center text-muted-foreground">
                 No leads yet
               </CardContent>
