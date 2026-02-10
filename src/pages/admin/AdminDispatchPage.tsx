@@ -17,6 +17,7 @@ import {
   GripVertical, ChevronRight, ChevronLeft, Loader2, Filter, Zap, Phone, User, FileText, Info
 } from "lucide-react";
 import { format, addDays, startOfWeek, endOfWeek, isToday, isSameDay, parseISO } from "date-fns";
+import { motion, AnimatePresence } from "framer-motion";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -118,6 +119,12 @@ const AdminDispatchPage = () => {
   const [quickAssignEnd, setQuickAssignEnd] = useState("10:00");
   const [jobInfoLead, setJobInfoLead] = useState<Lead | null>(null);
   const [jobInfoSchedule, setJobInfoSchedule] = useState<Schedule | null>(null);
+
+  // Multi-select & drag-drop state
+  const [multiSelectedIds, setMultiSelectedIds] = useState<Set<string>>(new Set());
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOverSlot, setDragOverSlot] = useState<string | null>(null);
+  const [shakeSlot, setShakeSlot] = useState<string | null>(null);
 
   const PX_PER_HOUR = 80;
 
@@ -292,17 +299,46 @@ const AdminDispatchPage = () => {
     },
   });
 
+  // ─── Multi-select handler ───
+  const handleCardClick = (e: React.MouseEvent, leadId: string) => {
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      setMultiSelectedIds(prev => {
+        const next = new Set(prev);
+        if (next.has(leadId)) next.delete(leadId);
+        else next.add(leadId);
+        return next;
+      });
+    }
+  };
+
   // ─── Drag & Drop handlers ───
   const handleDragStart = (e: React.DragEvent, lead: Lead) => {
+    // If multi-selected, drag all selected; otherwise drag just this one
+    const dragIds = multiSelectedIds.size > 0 && multiSelectedIds.has(lead.id)
+      ? Array.from(multiSelectedIds)
+      : [lead.id];
     setDraggingLead(lead);
-    e.dataTransfer.setData("text/plain", lead.id);
+    setIsDragging(true);
+    e.dataTransfer.setData("text/plain", dragIds.join(","));
     e.dataTransfer.effectAllowed = "move";
+
+    // Custom ghost image
+    const ghost = document.createElement("div");
+    ghost.className = "fixed pointer-events-none bg-blue-900/70 border-2 border-blue-400 rounded-lg shadow-2xl text-white text-xs px-3 py-2 z-50";
+    ghost.textContent = dragIds.length > 1 ? `${dragIds.length} jobs` : lead.customer_name;
+    ghost.style.cssText = "position:absolute;top:-1000px;left:-1000px;opacity:0.85;";
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, 40, 20);
+    requestAnimationFrame(() => document.body.removeChild(ghost));
   };
 
   const handleScheduleDragStart = (e: React.DragEvent, schedule: Schedule) => {
     const lead = allLeads.find(l => l.id === schedule.lead_id);
     if (lead) {
       setDraggingLead(lead);
+      setIsDragging(true);
       e.dataTransfer.setData("text/plain", schedule.lead_id);
       e.dataTransfer.setData("application/schedule-id", schedule.id);
       e.dataTransfer.effectAllowed = "move";
@@ -311,19 +347,70 @@ const AdminDispatchPage = () => {
 
   const handleDrop = (e: React.DragEvent, agentId: string, dateStr: string, hour: number) => {
     e.preventDefault();
-    const leadId = e.dataTransfer.getData("text/plain");
-    if (!leadId) return;
+    setDragOverSlot(null);
+    setIsDragging(false);
+    const rawIds = e.dataTransfer.getData("text/plain");
+    if (!rawIds) return;
 
+    const leadIds = rawIds.split(",").filter(Boolean);
     const startTime = `${String(hour).padStart(2, "0")}:00`;
     const endTime = `${String(Math.min(hour + 2, 20)).padStart(2, "0")}:00`;
 
-    assignMutation.mutate({ leadId, agentId, date: dateStr, startTime, endTime });
+    // Check for overlapping bookings
+    const slotKey = `${agentId}-${dateStr}-${hour}`;
+    const conflict = hasConflict(agentId, dateStr, hour);
+    if (conflict) {
+      setShakeSlot(slotKey);
+      setTimeout(() => setShakeSlot(null), 600);
+      toast({ title: "⚠️ Time conflict", description: "This slot already has a booking. Choose a different time.", variant: "destructive" });
+      return;
+    }
+
+    // Assign all dragged leads
+    const agentName = agents.find(a => a.id === agentId)?.full_name || "technician";
+    if (leadIds.length > 1) {
+      // Bulk assign - show consolidated toast after all mutations
+      let completed = 0;
+      leadIds.forEach(leadId => {
+        assignMutation.mutate(
+          { leadId, agentId, date: dateStr, startTime, endTime },
+          {
+            onSuccess: () => {
+              completed++;
+              if (completed === leadIds.length) {
+                toast({ title: `✅ ${leadIds.length} jobs assigned to ${agentName} — ${startTime}–${endTime}` });
+              }
+            },
+          }
+        );
+      });
+    } else {
+      leadIds.forEach(leadId => {
+        assignMutation.mutate({ leadId, agentId, date: dateStr, startTime, endTime });
+      });
+    }
+
+    setMultiSelectedIds(new Set());
     setDraggingLead(null);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleSlotDragEnter = (slotKey: string) => {
+    setDragOverSlot(slotKey);
+  };
+
+  const handleSlotDragLeave = () => {
+    setDragOverSlot(null);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    setDragOverSlot(null);
+    setDraggingLead(null);
   };
 
   // ─── Map ───
@@ -500,11 +587,19 @@ const AdminDispatchPage = () => {
                     <p className="text-xs text-muted-foreground text-center py-6">No unassigned jobs</p>
                   )}
                   {unassignedLeads.map(lead => (
-                    <div
+                    <motion.div
                       key={lead.id}
+                      layout
+                      whileDrag={{ scale: 1.05, rotate: 2, zIndex: 50 }}
                       draggable
-                      onDragStart={(e) => handleDragStart(e, lead)}
-                      className="bg-gradient-to-br from-primary/[0.06] to-muted/40 dark:from-[#0f2240]/70 dark:via-[#1a3a5c]/30 dark:to-[#0d1a30]/50 border rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-primary/50 transition-colors group"
+                      onDragStart={(e) => handleDragStart(e as any, lead)}
+                      onDragEnd={handleDragEnd}
+                      onClick={(e) => handleCardClick(e as any, lead.id)}
+                      className={`bg-gradient-to-br from-primary/[0.06] to-muted/40 dark:from-[#0f2240]/70 dark:via-[#1a3a5c]/30 dark:to-[#0d1a30]/50 border rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-primary/50 transition-colors group ${
+                        multiSelectedIds.has(lead.id)
+                          ? "ring-2 ring-primary border-primary/60 bg-primary/10"
+                          : ""
+                      }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <GripVertical className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -545,7 +640,7 @@ const AdminDispatchPage = () => {
                           <User className="h-3 w-3" />
                         </Button>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               </ScrollArea>
@@ -582,6 +677,11 @@ const AdminDispatchPage = () => {
                 pxPerHour={PX_PER_HOUR}
                 allLeads={allLeads}
                 onJobInfoClick={(lead, schedule) => { setJobInfoLead(lead); setJobInfoSchedule(schedule); }}
+                isDragging={isDragging}
+                dragOverSlot={dragOverSlot}
+                onSlotDragEnter={handleSlotDragEnter}
+                onSlotDragLeave={handleSlotDragLeave}
+                shakeSlot={shakeSlot}
               />
             ) : (
               <WeekTimeline
@@ -596,6 +696,10 @@ const AdminDispatchPage = () => {
                 pxPerHour={PX_PER_HOUR}
                 allLeads={allLeads}
                 onJobInfoClick={(lead, schedule) => { setJobInfoLead(lead); setJobInfoSchedule(schedule); }}
+                isDragging={isDragging}
+                dragOverSlot={dragOverSlot}
+                onSlotDragEnter={handleSlotDragEnter}
+                onSlotDragLeave={handleSlotDragLeave}
               />
             )}
           </div>
@@ -788,6 +892,7 @@ const StatBadge = ({ icon, label, value, variant }: { icon: React.ReactNode; lab
 // ─── Day Timeline ───
 const DayTimeline = ({
   date, agents, schedules, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads, onJobInfoClick,
+  isDragging, dragOverSlot, onSlotDragEnter, onSlotDragLeave, shakeSlot,
 }: {
   date: Date;
   agents: Agent[];
@@ -800,6 +905,11 @@ const DayTimeline = ({
   pxPerHour: number;
   allLeads: Lead[];
   onJobInfoClick: (lead: Lead, schedule: Schedule) => void;
+  isDragging: boolean;
+  dragOverSlot: string | null;
+  onSlotDragEnter: (slotKey: string) => void;
+  onSlotDragLeave: () => void;
+  shakeSlot: string | null;
 }) => {
   const dateStr = format(date, "yyyy-MM-dd");
   const now = new Date();
@@ -839,13 +949,28 @@ const DayTimeline = ({
               {/* Time slots */}
               <div className="relative">
                 {HOURS.map(h => {
+                  const slotKey = `${agent.id}-${dateStr}-${h}`;
                   const conflict = hasConflict(agent.id, dateStr, h);
+                  const isDropTarget = dragOverSlot === slotKey;
+                  const isShaking = shakeSlot === slotKey;
                   return (
                     <div
                       key={h}
-                      className={`border-b transition-colors ${conflict ? "bg-destructive/5" : "hover:bg-primary/5"}`}
+                      className={`border-b transition-all duration-150 ${
+                        isShaking
+                          ? "bg-destructive/20 animate-[shake_0.5s_ease-in-out]"
+                          : isDropTarget && isDragging
+                            ? "bg-blue-600/30 border-2 border-dashed border-blue-400"
+                            : conflict
+                              ? "bg-destructive/5"
+                              : isDragging
+                                ? "hover:bg-primary/10"
+                                : "hover:bg-primary/5"
+                      }`}
                       style={{ height: pxPerHour }}
                       onDragOver={onDragOver}
+                      onDragEnter={() => onSlotDragEnter(slotKey)}
+                      onDragLeave={onSlotDragLeave}
                       onDrop={(e) => onDrop(e, agent.id, dateStr, h)}
                     />
                   );
@@ -860,10 +985,14 @@ const DayTimeline = ({
                   const status = schedule.leads?.status || "pending";
 
                   return (
-                    <div
+                    <motion.div
                       key={schedule.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.2 }}
                       draggable
-                      onDragStart={(e) => onScheduleDragStart(e, schedule)}
+                      onDragStart={(e) => onScheduleDragStart(e as any, schedule)}
                       className="absolute left-1 right-1 rounded-md px-1.5 py-1 text-[10px] cursor-pointer overflow-y-auto border shadow-sm"
                       style={{
                         top,
@@ -881,7 +1010,7 @@ const DayTimeline = ({
                       <p className="font-semibold leading-tight break-words">{schedule.leads?.customer_name || "Job"}</p>
                       {height > 30 && <p className="break-words opacity-80">{schedule.leads?.service_type}</p>}
                       {height > 45 && <p className="opacity-60">{schedule.start_time}–{schedule.end_time}</p>}
-                    </div>
+                    </motion.div>
                   );
                 })}
 
@@ -906,6 +1035,7 @@ const DayTimeline = ({
 // ─── Week Timeline (compact) ───
 const WeekTimeline = ({
   dates, agents, schedulesMap, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads, onJobInfoClick,
+  isDragging, dragOverSlot, onSlotDragEnter, onSlotDragLeave,
 }: {
   dates: Date[];
   agents: Agent[];
@@ -918,6 +1048,10 @@ const WeekTimeline = ({
   pxPerHour: number;
   allLeads: Lead[];
   onJobInfoClick: (lead: Lead, schedule: Schedule) => void;
+  isDragging: boolean;
+  dragOverSlot: string | null;
+  onSlotDragEnter: (slotKey: string) => void;
+  onSlotDragLeave: () => void;
 }) => {
   const COMPACT_HEIGHT = 52;
 
@@ -952,9 +1086,15 @@ const WeekTimeline = ({
                 return (
                   <td
                     key={dateStr}
-                    className={`border-b p-1 align-top min-w-[100px] ${isToday(d) ? "bg-primary/5" : ""}`}
+                    className={`border-b p-1 align-top min-w-[100px] transition-all duration-150 ${
+                      dragOverSlot === `${agent.id}-${dateStr}-8` && isDragging
+                        ? "bg-blue-600/30 border-2 border-dashed border-blue-400"
+                        : isToday(d) ? "bg-primary/5" : ""
+                    }`}
                     style={{ minHeight: COMPACT_HEIGHT }}
                     onDragOver={onDragOver}
+                    onDragEnter={() => onSlotDragEnter(`${agent.id}-${dateStr}-8`)}
+                    onDragLeave={onSlotDragLeave}
                     onDrop={(e) => onDrop(e, agent.id, dateStr, 8)}
                   >
                     <div className="space-y-0.5">
