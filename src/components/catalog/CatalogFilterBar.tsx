@@ -1,9 +1,9 @@
-import { useState, useMemo, ReactNode } from "react";
+import { useState, useMemo, ReactNode, KeyboardEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronDown, ChevronUp, X, SlidersHorizontal, Search, ArrowUpDown } from "lucide-react";
+import { ChevronDown, ChevronUp, X, SlidersHorizontal, Search, ArrowUpDown, LayoutGrid, List } from "lucide-react";
 
 export interface CatalogFilters {
   speedType: string;
@@ -72,6 +72,9 @@ interface Props {
   onSortChange: (s: SortOption) => void;
   searchSuggestions?: ReactNode;
   onSearchFocus?: () => void;
+  onSearchKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void;
+  viewMode: "grid" | "list";
+  onViewModeChange: (mode: "grid" | "list") => void;
 }
 
 function ChipGroup({
@@ -122,7 +125,8 @@ const CatalogFilterBar = ({
   filters, onChange, availableBrands, availablePipeSizes,
   totalCount, filteredCount, counts,
   searchQuery, onSearchChange, sortBy, onSortChange,
-  searchSuggestions, onSearchFocus,
+  searchSuggestions, onSearchFocus, onSearchKeyDown,
+  viewMode, onViewModeChange,
 }: Props) => {
   const [showMore, setShowMore] = useState(false);
 
@@ -167,6 +171,7 @@ const CatalogFilterBar = ({
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               onFocus={onSearchFocus}
+              onKeyDown={onSearchKeyDown}
               className="h-8 pl-8 text-xs"
             />
             {searchSuggestions}
@@ -185,6 +190,20 @@ const CatalogFilterBar = ({
               <SelectItem value="name">Model A-Z</SelectItem>
             </SelectContent>
           </Select>
+          <div className="flex border rounded-md overflow-hidden shrink-0">
+            <button
+              onClick={() => onViewModeChange("grid")}
+              className={`p-1.5 transition-colors ${viewMode === "grid" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => onViewModeChange("list")}
+              className={`p-1.5 transition-colors ${viewMode === "list" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}
+            >
+              <List className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* Primary filters inline */}

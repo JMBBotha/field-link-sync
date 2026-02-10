@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, ReactNode } from "react";
+import { useState, useMemo, useEffect, useCallback, ReactNode, KeyboardEvent } from "react";
 import Fuse from "fuse.js";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,7 +13,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { offlineDb } from "@/lib/offlineDb";
 import ProductDetailModal from "./ProductDetailModal";
 import CatalogFilterBar, { CatalogFilters, DEFAULT_FILTERS, FilterCounts, SortOption } from "./CatalogFilterBar";
-import CatalogSearchSuggestions from "./CatalogSearchSuggestions";
+import CatalogSearchSuggestions, { FILTER_MATCHERS } from "./CatalogSearchSuggestions";
 import {
   Package,
   TrendingUp,
@@ -181,14 +181,40 @@ function fuseMultiTokenSearch(items: SupplierProduct[], fuse: Fuse<SupplierProdu
 const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrowserProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("pinned");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showArchived, setShowArchived] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<SupplierProduct | null>(null);
   const [filters, setFilters] = useState<CatalogFilters>({ ...DEFAULT_FILTERS });
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestionIndex, setSuggestionIndex] = useState(-1);
+  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("hvacSearchHistory");
+      return saved ? JSON.parse(saved).slice(0, 10) : [];
+    } catch { return []; }
+  });
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+
+  const addToHistory = useCallback((term: string) => {
+    const t = term.trim();
+    if (!t || t.length < 2) return;
+    setSearchHistory(prev => {
+      const deduped = [t, ...prev.filter(h => h.toLowerCase() !== t.toLowerCase())].slice(0, 10);
+      try { localStorage.setItem("hvacSearchHistory", JSON.stringify(deduped)); } catch {}
+      return deduped;
+    });
+  }, []);
+
+  const removeFromHistory = useCallback((term: string) => {
+    setSearchHistory(prev => {
+      const updated = prev.filter(h => h !== term);
+      try { localStorage.setItem("hvacSearchHistory", JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  }, []);
 
   useEffect(() => {
     const handler = () => setIsOffline(!navigator.onLine);
@@ -384,11 +410,61 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
     }
   };
 
-  const handleSuggestionFilter = useCallback((action: string) => {
+  const handleSuggestionFilter = useCallback((action: string, removePattern: RegExp) => {
     const [key, value] = action.split(":");
     setFilters((prev) => ({ ...prev, [key]: value }));
-    setSearchQuery("");
+    setSearchQuery(prev => prev.replace(removePattern, "").trim());
+    setShowSuggestions(false);
   }, []);
+
+  // Count total suggestions for keyboard nav
+  const suggestionCount = useMemo(() => {
+    if (!searchQuery.trim() && showSuggestions) return Math.min(searchHistory.length, 8);
+    if (!searchQuery.trim() || !showSuggestions) return 0;
+    let count = 0;
+    const seenActions = new Set<string>();
+    for (const m of FILTER_MATCHERS) {
+      if (m.pattern.test(searchQuery) && !seenActions.has(m.action)) { seenActions.add(m.action); count++; }
+    }
+    count += Math.min(sorted.length, 5);
+    return Math.min(count, 10);
+  }, [searchQuery, showSuggestions, searchHistory.length, sorted.length]);
+
+  const handleSearchKeyDown = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape") { setShowSuggestions(false); setSuggestionIndex(-1); return; }
+    if (!showSuggestions || suggestionCount === 0) {
+      if (e.key === "Enter" && searchQuery.trim()) { addToHistory(searchQuery); }
+      return;
+    }
+    if (e.key === "ArrowDown") { e.preventDefault(); setSuggestionIndex(prev => (prev + 1) % suggestionCount); return; }
+    if (e.key === "ArrowUp") { e.preventDefault(); setSuggestionIndex(prev => (prev - 1 + suggestionCount) % suggestionCount); return; }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (suggestionIndex < 0) { addToHistory(searchQuery); setShowSuggestions(false); return; }
+      // Determine what's at this index
+      if (!searchQuery.trim()) {
+        // History mode
+        const h = searchHistory[suggestionIndex];
+        if (h) { setSearchQuery(h); setShowSuggestions(false); setSuggestionIndex(-1); }
+        return;
+      }
+      // Filter + product mode
+      let idx = 0;
+      const seenActions = new Set<string>();
+      for (const m of FILTER_MATCHERS) {
+        if (m.pattern.test(searchQuery) && !seenActions.has(m.action)) {
+          seenActions.add(m.action);
+          if (idx === suggestionIndex) { handleSuggestionFilter(m.action, m.removePattern); setSuggestionIndex(-1); return; }
+          idx++;
+        }
+      }
+      const topProducts = sorted.slice(0, 5);
+      for (const p of topProducts) {
+        if (idx === suggestionIndex) { setSelectedProduct(p); setShowSuggestions(false); setSuggestionIndex(-1); return; }
+        idx++;
+      }
+    }
+  }, [showSuggestions, suggestionCount, suggestionIndex, searchQuery, searchHistory, sorted, handleSuggestionFilter, addToHistory]);
 
   return (
     <div className="space-y-3">
@@ -409,18 +485,25 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
           filteredCount={sorted.length}
           counts={filterCounts}
           searchQuery={searchQuery}
-          onSearchChange={(q) => { setSearchQuery(q); setShowSuggestions(true); }}
+          onSearchChange={(q) => { setSearchQuery(q); setShowSuggestions(true); setSuggestionIndex(-1); }}
           sortBy={sortBy}
           onSortChange={setSortBy}
           onSearchFocus={() => setShowSuggestions(true)}
+          onSearchKeyDown={handleSearchKeyDown}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
           searchSuggestions={
             <CatalogSearchSuggestions
               query={searchQuery}
               products={sorted}
-              visible={showSuggestions && searchQuery.trim().length > 0}
+              visible={showSuggestions && (searchQuery.trim().length > 0 || searchHistory.length > 0)}
               onSelectFilter={handleSuggestionFilter}
               onSelectProduct={(id) => { const p = allProducts.find(x => x.id === id); if (p) setSelectedProduct(p); setShowSuggestions(false); }}
-              onClose={() => setShowSuggestions(false)}
+              onClose={() => { setShowSuggestions(false); setSuggestionIndex(-1); }}
+              focusIndex={suggestionIndex}
+              searchHistory={searchHistory}
+              onSelectHistory={(term) => { setSearchQuery(term); setShowSuggestions(false); setSuggestionIndex(-1); }}
+              onRemoveHistory={removeFromHistory}
             />
           }
         />
@@ -451,6 +534,44 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
           <p className="text-sm text-muted-foreground">
             {searchQuery.trim() ? `No products match "${searchQuery}". Try fewer keywords or check spelling.` : "No products found. Import a price list to get started."}
           </p>
+        </div>
+      ) : viewMode === "list" ? (
+        <div className="space-y-1">
+          {/* List header */}
+          <div className="grid grid-cols-[1fr_2fr_80px_60px_80px_100px_40px] gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b">
+            <span>Model</span><span>Description</span><span>BTU</span><span>Refrig.</span><span>Pipe</span><span className="text-right">Price</span><span></span>
+          </div>
+          {sorted.map((product) => {
+            const isPinned = !!product.is_pinned;
+            return (
+              <div
+                key={product.id}
+                className={`grid grid-cols-[1fr_2fr_80px_60px_80px_100px_40px] gap-2 items-center px-3 py-2 rounded-md border cursor-pointer hover:bg-accent/30 transition-colors ${(product as any).archived ? "opacity-50" : ""} ${isPinned ? "ring-1 ring-primary/30" : ""}`}
+                onClick={() => setSelectedProduct(product)}
+              >
+                <div className="min-w-0">
+                  <p className="text-xs font-mono font-medium truncate">{highlightText(product.product_code, searchQuery)}</p>
+                  {product.short_name && <p className="text-[10px] text-primary font-semibold truncate">{highlightText(product.short_name, searchQuery)}</p>}
+                </div>
+                <p className="text-xs text-muted-foreground truncate">{highlightText(product.description, searchQuery)}</p>
+                <span className="text-xs text-muted-foreground">{product.btu_rating ? `${(product.btu_rating / 1000).toFixed(0)}K` : "—"}</span>
+                <span className="text-xs text-muted-foreground">{product.refrigerant_type || "—"}</span>
+                <span className="text-xs text-muted-foreground">{product.pipe_size || "—"}</span>
+                <span className="text-xs font-bold text-primary text-right">
+                  {product.is_price_on_request ? "POR" : formatZAR(product.selling_price)}
+                </span>
+                <div className="flex items-center justify-end">
+                  <Button
+                    size="icon" variant="ghost"
+                    className={`h-6 w-6 ${isPinned ? "text-amber-500" : "text-muted-foreground"}`}
+                    onClick={(e) => { e.stopPropagation(); togglePinMutation.mutate({ productId: product.id, isPinned }); }}
+                  >
+                    <Star className={`h-3 w-3 ${isPinned ? "fill-current" : ""}`} />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
