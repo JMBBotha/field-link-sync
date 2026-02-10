@@ -186,7 +186,9 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="customer_name">Customer Name</Label>
+            <Label htmlFor="customer_name">
+              Customer Name <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="customer_name"
               value={formData.customer_name}
@@ -194,11 +196,17 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
                 setFormData({ ...formData, customer_name: e.target.value })
               }
               required
+              placeholder="Full name"
             />
+            {formData.customer_name === "" && (
+              <p className="text-[11px] text-muted-foreground">Required – enter the customer's full name</p>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="customer_phone">Phone Number (WhatsApp)</Label>
+            <Label htmlFor="customer_phone">
+              Phone Number (WhatsApp) <span className="text-destructive">*</span>
+            </Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
                 +27
@@ -225,7 +233,9 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
           </div>
 
           <div className="space-y-2">
-            <Label>Location & Address</Label>
+            <Label>
+              Location & Address <span className="text-destructive">*</span>
+            </Label>
             <LocationPicker
               latitude={latitude}
               longitude={longitude}
@@ -234,7 +244,9 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="customer_address">Address</Label>
+            <Label htmlFor="customer_address">
+              Address <span className="text-destructive">*</span>
+            </Label>
             <Textarea
               id="customer_address"
               placeholder="Address will auto-fill when you search, or enter manually"
@@ -248,7 +260,9 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="service_type">Service Type</Label>
+              <Label htmlFor="service_type">
+                Service Type <span className="text-destructive">*</span>
+              </Label>
               <Select
                 value={formData.service_type}
                 onValueChange={(value) =>

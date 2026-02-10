@@ -347,7 +347,9 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
             <CardContent className="pt-4 space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label>Customer</Label>
+                  <Label>
+                    Customer <span className="text-destructive">*</span>
+                  </Label>
                   <ClientInfoPopover customerId={watchedCustomerId || null}>
                     <div>
                       <CustomerSearchDropdown

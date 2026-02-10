@@ -236,13 +236,37 @@ All colors MUST be HSL.
   background-color: hsl(var(--destructive));
 }
 
-/* Print styles */
+/* Print styles - dark mode safe */
 @media print {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 40%;
+    --border: 0 0% 85%;
+    --primary: 204 100% 36%;
+    --primary-foreground: 0 0% 100%;
+  }
+
   body {
     background: white !important;
     color: black !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  .dark {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 40%;
+    --border: 0 0% 85%;
   }
 
   header, footer, nav,

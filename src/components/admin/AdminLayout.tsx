@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Menu, Sun, Moon } from "lucide-react";
+import { Menu, Sun, Moon, Search } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import SubscriptionBadge from "@/components/subscription/SubscriptionBadge";
@@ -15,6 +15,9 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useQuery } from "@tanstack/react-query";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import OnboardingFlow from "@/components/OnboardingFlow";
+import IdleWarningModal from "@/components/IdleWarningModal";
+import GlobalSearchDialog from "@/components/GlobalSearchDialog";
+import { useIdleLogout } from "@/hooks/useIdleLogout";
 import logo from "@/assets/logo.png";
 
 const AdminLayout = () => {
@@ -24,11 +27,25 @@ const AdminLayout = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const { needsSetup } = useCompanySettings();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const { theme, toggleTheme } = useTheme();
+  const { showWarning, secondsLeft, stayActive } = useIdleLogout();
+
+  // Global Cmd+K shortcut
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const pageTitles: Record<string, string> = {
     "/admin": "Home",
@@ -154,6 +171,24 @@ const AdminLayout = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSearchOpen(true)}
+              className="text-white/80 hover:text-white hover:bg-white/20 gap-1.5 hidden sm:flex"
+            >
+              <Search className="h-4 w-4" />
+              <span className="text-xs">Search</span>
+              <kbd className="ml-1 rounded border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px]">⌘K</kbd>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSearchOpen(true)}
+              className="text-white hover:bg-white/20 sm:hidden"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
             <SubscriptionBadge />
             <NotificationBell />
             <Button
@@ -186,6 +221,8 @@ const AdminLayout = () => {
       </div>
 
       <CreateLeadDialog open={showCreateLead} onOpenChange={setShowCreateLead} />
+      <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
+      <IdleWarningModal open={showWarning} secondsLeft={secondsLeft} onStayActive={stayActive} />
 
       {showOnboarding && currentUserId && (
         <OnboardingFlow
