@@ -2255,6 +2255,7 @@ export type Database = {
           total_revenue: number
         }[]
       }
+      backfill_leads_to_customers: { Args: never; Returns: Json }
       calculate_distance_km: {
         Args: { lat1: number; lat2: number; lng1: number; lng2: number }
         Returns: number
