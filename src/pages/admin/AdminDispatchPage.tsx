@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { usePresence } from "@/hooks/usePresence";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -100,6 +101,7 @@ const minutesToPx = (mins: number, pxPerHour: number) => (mins / 60) * pxPerHour
 const AdminDispatchPage = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isOnline: isPresenceOnline } = usePresence("dispatch-presence");
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
@@ -517,6 +519,7 @@ const AdminDispatchPage = () => {
 
   // ─── Agent online status helper ───
   const isAgentOnline = (agentId: string) => {
+    if (isPresenceOnline(agentId)) return true;
     const loc = agentLocations.find(a => a.agent_id === agentId);
     if (!loc?.last_updated) return false;
     return Date.now() - new Date(loc.last_updated).getTime() < 10 * 60 * 1000;
@@ -1002,8 +1005,9 @@ const DayTimeline = ({
             <div key={agent.id} className="flex-1 min-w-[160px] border-r last:border-r-0">
               {/* Agent header */}
               <div className="h-10 border-b px-2 flex items-center gap-1.5 bg-muted/30 sticky top-0 z-10">
-                <div className={`h-2 w-2 rounded-full shrink-0 ${online ? "bg-success" : "bg-muted-foreground/40"}`} />
+                <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${online ? "bg-success animate-pulse" : "bg-muted-foreground/40"}`} />
                 <span className="text-xs font-medium truncate">{agent.full_name}</span>
+                {online && <span className="text-[9px] text-success font-semibold ml-auto shrink-0">Online</span>}
               </div>
 
               {/* Time slots */}
@@ -1135,8 +1139,9 @@ const WeekTimeline = ({
             <tr key={agent.id}>
               <td className="border-b border-r p-2 bg-card sticky left-0 z-10">
                 <div className="flex items-center gap-1.5">
-                  <div className={`h-2 w-2 rounded-full shrink-0 ${isAgentOnline(agent.id) ? "bg-success" : "bg-muted-foreground/40"}`} />
+                  <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${isAgentOnline(agent.id) ? "bg-success animate-pulse" : "bg-muted-foreground/40"}`} />
                   <span className="text-xs font-medium truncate">{agent.full_name}</span>
+                  {isAgentOnline(agent.id) && <span className="text-[9px] text-success font-semibold ml-auto shrink-0">Online</span>}
                 </div>
               </td>
               {dates.map(d => {
