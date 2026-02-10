@@ -591,6 +591,7 @@ const AdminDispatchPage = () => {
                       key={lead.id}
                       layout
                       whileDrag={{ scale: 1.05, rotate: 2, zIndex: 50 }}
+                      whileHover={{ scale: 1.02 }}
                       draggable
                       onDragStart={(e) => handleDragStart(e as any, lead)}
                       onDragEnd={handleDragEnd}
