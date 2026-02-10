@@ -154,6 +154,33 @@ function matchesFilters(p: SupplierProduct, f: CatalogFilters): boolean {
   return true;
 }
 
+// ── Levenshtein distance for fuzzy brand matching ───────
+const levenshteinDistance = (str1: string, str2: string): number => {
+  const m = str1.length;
+  const n = str2.length;
+  const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (str1[i - 1] === str2[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1];
+      } else {
+        dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+      }
+    }
+  }
+  return dp[m][n];
+};
+
+const KNOWN_BRANDS: { name: string; value: string }[] = [
+  { name: "midea", value: "Midea" },
+  { name: "alliance", value: "Alliance" },
+  { name: "samsung", value: "Samsung" },
+  { name: "daikin", value: "Daikin" },
+  { name: "lg", value: "LG" },
+];
+
 // ── Smart query preprocessing ───────────────────────────
 interface PreprocessedQuery {
   cleanedQuery: string;
@@ -211,13 +238,32 @@ function preprocessQuery(query: string, currentFilters: CatalogFilters): Preproc
     q = q.replace(/\bcheapest\b/gi, "");
   }
 
-  // Only auto-apply filters that aren't already set
+  // Exact brand pattern matching
   for (const bp of BRAND_PATTERNS) {
     if (bp.pattern.test(q) && currentFilters.brand === "__all__") {
       autoFilters.brand = bp.value;
       q = q.replace(bp.pattern, "");
     }
   }
+
+  // Fuzzy brand matching via Levenshtein (only if no exact match found)
+  if (!autoFilters.brand && currentFilters.brand === "__all__") {
+    const words = q.split(/\s+/);
+    for (let wi = 0; wi < words.length; wi++) {
+      const w = words[wi].toLowerCase();
+      if (w.length < 2) continue;
+      for (const kb of KNOWN_BRANDS) {
+        if (levenshteinDistance(w, kb.name) <= 2 && levenshteinDistance(w, kb.name) > 0) {
+          autoFilters.brand = kb.value;
+          words.splice(wi, 1);
+          q = words.join(" ");
+          break;
+        }
+      }
+      if (autoFilters.brand) break;
+    }
+  }
+
   for (const sp of SPEED_PREPROCESS) {
     if (sp.pattern.test(q) && currentFilters.speedType === "__all__") {
       autoFilters.speedType = sp.value;
@@ -236,26 +282,44 @@ function preprocessQuery(query: string, currentFilters: CatalogFilters): Preproc
       q = q.replace(pp.pattern, "");
     }
   }
+
+  // BTU shorthand: "24k", "12k", etc.
+  const btuShorthand = q.match(/\b(\d{1,3})\s*k\b/i);
+  if (btuShorthand && currentFilters.btu === "__all__") {
+    const kVal = parseInt(btuShorthand[1], 10);
+    const validBuckets = [9, 12, 18, 24, 34, 36, 48, 60, 76];
+    if (validBuckets.includes(kVal)) {
+      autoFilters.btu = kVal >= 76 ? "76K+" : `${kVal}K`;
+      q = q.replace(btuShorthand[0], "");
+    }
+  }
+
   // BTU from full numbers like 24000
-  for (const bp of BTU_PREPROCESS_PATTERNS) {
-    if (bp.pattern.test(q) && currentFilters.btu === "__all__") {
-      autoFilters.btu = bp.bucket;
-      q = q.replace(bp.pattern, "");
-      break;
+  if (!autoFilters.btu) {
+    for (const bp of BTU_PREPROCESS_PATTERNS) {
+      if (bp.pattern.test(q) && currentFilters.btu === "__all__") {
+        autoFilters.btu = bp.bucket;
+        q = q.replace(bp.pattern, "");
+        break;
+      }
     }
   }
 
   return { cleanedQuery: q.replace(/\s+/g, " ").trim(), autoFilters, autoSort };
 }
 
-// ── Fuse.js multi-token search with AND→OR fallback ─────
+// ── Fuse.js multi-token search with AND→OR fallback + score filtering ─────
+const FUSE_SCORE_THRESHOLD = 0.42;
+
 function fuseMultiTokenSearch(items: SupplierProduct[], fuse: Fuse<SupplierProduct>, query: string): SupplierProduct[] {
   const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return [];
 
   const tokenResults = tokens.map((token) => {
     const results = fuse.search(token);
-    return new Map(results.map((r) => [r.item.id, r.score ?? 1]));
+    // Filter out poor matches per token
+    const good = results.filter(r => (r.score ?? 1) <= FUSE_SCORE_THRESHOLD);
+    return new Map(good.map((r) => [r.item.id, r.score ?? 1]));
   });
 
   // Try strict AND first
@@ -311,6 +375,18 @@ function fuseMultiTokenSearch(items: SupplierProduct[], fuse: Fuse<SupplierProdu
 
   const itemMap = new Map(items.map((p) => [p.id, p]));
   return orMatches.map((m) => itemMap.get(m.id)!).filter(Boolean);
+}
+
+// ── Auto-generate short name from product data ──────────
+function generateShortName(p: SupplierProduct): string {
+  const brand = deriveBrand(p).toUpperCase();
+  const btu = p.btu_rating ? `${Math.round(p.btu_rating / 1000)}K` : "";
+  const speed = deriveSpeedType(p);
+  const speedAbbr = speed === "Inverter" ? "INV" : speed === "Fixed Speed" ? "FS" : "";
+  const unit = deriveUnitType(p);
+  const unitAbbr = unit ? unit.toUpperCase().slice(0, 3) : "";
+  const parts = [brand, btu, speedAbbr, unitAbbr].filter(Boolean);
+  return parts.join(" ") || p.product_code;
 }
 
 // ── Component ───────────────────────────────────────────
@@ -758,14 +834,16 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-mono font-medium truncate">{highlightText(product.product_code, searchQuery)}</p>
-                  {product.short_name && <p className="text-[10px] text-primary font-semibold truncate">{highlightText(product.short_name, searchQuery)}</p>}
+                  <p className="text-[10px] text-primary font-semibold truncate">{highlightText(product.short_name || generateShortName(product), searchQuery)}</p>
                 </div>
                 <p className="text-xs text-muted-foreground truncate">{highlightText(product.description, searchQuery)}</p>
                 <span className="text-xs text-muted-foreground">{product.btu_rating ? `${(product.btu_rating / 1000).toFixed(0)}K` : "—"}</span>
                 <span className="text-xs text-muted-foreground">{product.refrigerant_type || "—"}</span>
                 <span className="text-xs text-muted-foreground">{product.pipe_size || "—"}</span>
-                <span className="text-xs font-bold text-primary text-right">
-                  {product.is_price_on_request ? "POR" : formatZAR(product.selling_price)}
+                <span className="text-xs font-bold text-right">
+                  {product.is_price_on_request || (!product.selling_price && !product.cost_price)
+                    ? <Badge variant="outline" className="text-[9px] border-amber-500/50 text-amber-600 bg-amber-500/10 font-semibold px-1">POR</Badge>
+                    : <span className="text-primary">{formatZAR(product.selling_price)}</span>}
                 </span>
                 <div className="flex items-center justify-end">
                   <Button
@@ -798,11 +876,9 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
                         <Checkbox checked={isCompared} onCheckedChange={() => toggleCompare(product.id)} className="h-3.5 w-3.5" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        {product.short_name && (
-                          <p className={`font-bold text-primary ${isMobile ? "text-sm" : "text-base"} ${(product as any).archived ? "line-through" : ""}`}>
-                            {highlightText(product.short_name, searchQuery)}
-                          </p>
-                        )}
+                        <p className={`font-bold text-primary ${isMobile ? "text-sm" : "text-base"} ${(product as any).archived ? "line-through" : ""}`}>
+                          {highlightText(product.short_name || generateShortName(product), searchQuery)}
+                        </p>
                         <p className={`text-xs font-mono text-muted-foreground ${(product as any).archived ? "line-through" : ""}`}>{highlightText(product.product_code, searchQuery)}</p>
                         <p className={`mt-0.5 line-clamp-2 text-muted-foreground ${isMobile ? "text-[11px]" : "text-xs"} ${(product as any).archived ? "line-through" : ""}`}>{highlightText(product.description, searchQuery)}</p>
                       </div>
@@ -833,8 +909,8 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
 
                   <div className="flex items-end justify-between">
                     <div>
-                      {product.is_price_on_request ? (
-                        <p className="text-sm font-semibold text-muted-foreground">POR</p>
+                      {product.is_price_on_request || (!product.selling_price && !product.cost_price) ? (
+                        <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-600 bg-amber-500/10 font-semibold">POR</Badge>
                       ) : (
                         <>
                           <p className="text-[10px] text-muted-foreground">Cost: {formatZAR(product.cost_price)}</p>
@@ -858,7 +934,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
                           onClick={(e) => { e.stopPropagation(); unarchiveMutation.mutate(product.id); }}
                           className={`text-xs ${isMobile ? "h-8 px-3" : "h-7"}`}
                         >Unarchive</Button>
-                      ) : onAddToQuote && !product.is_price_on_request ? (
+                      ) : onAddToQuote && !product.is_price_on_request && (product.selling_price > 0 || product.cost_price > 0) ? (
                         <Button size="sm"
                           onClick={(e) => { e.stopPropagation(); handleAddToQuote(product); }}
                           className={`text-xs ${isMobile ? "h-8 px-3" : "h-7"}`}
