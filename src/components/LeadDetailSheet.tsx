@@ -1,6 +1,8 @@
 import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ClockIcon, Images, Plus, FileText, Timer, GitBranch, CloudOff } from "lucide-react";
+import BookingBadge from "@/components/BookingBadge";
+import CustomerJobHistory from "@/components/CustomerJobHistory";
 import CreateInvoiceDialog from "@/components/invoicing/CreateInvoiceDialog";
 import { useJobPhotos, PhotoType } from "@/hooks/useJobPhotos";
 import { useOffline } from "@/contexts/OfflineContext";
@@ -330,6 +332,7 @@ const LeadDetailSheet = ({
                   {lead.customer_name}
                 </SheetTitle>
                 <p className="text-sm text-muted-foreground truncate">{lead.service_type}</p>
+                <BookingBadge scheduledDate={lead.scheduled_date} scheduledTime={(lead as any).scheduled_time} status={lead.status} className="mt-1" />
                 {getPriorityIndicator(lead.priority)}
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
@@ -423,6 +426,13 @@ const LeadDetailSheet = ({
                 <p className="text-[10px] text-muted-foreground">View on map</p>
               </div>
             </a>
+
+            {/* Customer Job History */}
+            <CustomerJobHistory
+              customerId={lead.customer_id}
+              customerPhone={lead.customer_phone}
+              currentLeadId={lead.id}
+            />
 
             {/* Create Invoice - Completed leads only */}
             {lead?.status === 'completed' && (

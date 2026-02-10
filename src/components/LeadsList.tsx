@@ -5,8 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Phone, MapPin, Clock, Trash2, MoreHorizontal, Navigation, ChevronDown, ChevronUp, RefreshCw, ArrowUp, Pencil, Timer, ImageIcon, CalendarDays, FileText } from "lucide-react";
+import BookingBadge from "./BookingBadge";
 import ClientInfoPopover from "./ClientInfoPopover";
 import LeadCardProgress from "./LeadCardProgress";
+import CustomerJobHistory from "./CustomerJobHistory";
 import { format, formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -317,11 +319,14 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
 
   // Render compact card header for mobile (2-line layout)
   const renderCompactHeader = (lead: Lead) => (
-    <div className="flex items-center w-full py-2.5 px-3 gap-2 min-w-0">
-      <div className="flex-1 min-w-0 overflow-hidden">
-        {/* Line 1: Customer name + Status badge */}
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="font-medium text-sm truncate min-w-0 flex-1">{lead.customer_name}</span>
+    <div className="flex flex-col w-full py-2.5 px-3 gap-1 min-w-0">
+      {/* Booking banner */}
+      <BookingBadge scheduledDate={lead.scheduled_date} scheduledTime={lead.scheduled_time} status={lead.status} className="self-start" />
+      <div className="flex items-center gap-2 min-w-0">
+        <div className="flex-1 min-w-0 overflow-hidden">
+          {/* Line 1: Customer name + Status badge */}
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-medium text-sm truncate min-w-0 flex-1 text-foreground">{lead.customer_name}</span>
           {photoCounts[lead.id] > 0 && (
             <span className="flex items-center gap-0.5 text-xs text-muted-foreground flex-shrink-0">
               <ImageIcon className="h-3 w-3" />
@@ -330,23 +335,19 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
           )}
           <div className="flex-shrink-0">{getStatusBadge(lead.status)}</div>
         </div>
-        {/* Line 2: Service type (truncated) + Scheduled date or Time */}
-        <div className="flex items-center gap-2 mt-1 min-w-0">
-          <span className="text-xs text-muted-foreground truncate min-w-0 flex-1">{lead.service_type}</span>
-          {lead.scheduled_date ? (
-            <span className="text-xs text-primary whitespace-nowrap flex-shrink-0 flex items-center gap-1 font-medium">
-              <CalendarDays className="h-3 w-3 flex-shrink-0" />
-              <span>{format(new Date(lead.scheduled_date), "d MMM")}{lead.scheduled_time ? ` ${lead.scheduled_time.slice(0, 5)}` : ''}</span>
-            </span>
-          ) : (
-            <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0 flex items-center gap-1">
-              <Clock className="h-3 w-3 flex-shrink-0" />
-              <span className="truncate max-w-[80px]">{formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}</span>
-            </span>
-          )}
+          {/* Line 2: Service type (truncated) + Scheduled date or Time */}
+          <div className="flex items-center gap-2 mt-1 min-w-0">
+            <span className="text-xs text-muted-foreground truncate min-w-0 flex-1">{lead.service_type}</span>
+            {!lead.scheduled_date && (
+              <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0 flex items-center gap-1">
+                <Clock className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate max-w-[80px]">{formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}</span>
+              </span>
+            )}
+          </div>
         </div>
+        <ChevronDown className={`h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform ${expandedCards.has(lead.id) ? 'rotate-180' : ''}`} />
       </div>
-      <ChevronDown className={`h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform ${expandedCards.has(lead.id) ? 'rotate-180' : ''}`} />
     </div>
   );
 
@@ -392,6 +393,14 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
           estimatedEndTime={lead.estimated_end_time}
         />
       )}
+      {/* Expandable Job History */}
+      <div onClick={(e) => e.stopPropagation()}>
+        <CustomerJobHistory
+          customerId={lead.customer_id}
+          customerPhone={lead.customer_phone}
+          currentLeadId={lead.id}
+        />
+      </div>
     </CardContent>
   );
 
@@ -399,7 +408,7 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
   const renderDesktopCard = (lead: Lead) => (
     <Card 
       key={lead.id} 
-      className={`bg-gradient-to-r from-blue-100 to-slate-50 backdrop-blur-sm border-border/50 hover:from-blue-50 hover:to-white transition-all duration-200 shadow-md cursor-pointer hover:scale-[1.02] hover:shadow-lg ${
+      className={`bg-gradient-to-r from-blue-100 to-slate-50 dark:from-slate-800 dark:to-slate-900 backdrop-blur-sm border-border/50 hover:from-blue-50 hover:to-white dark:hover:from-slate-700 dark:hover:to-slate-800 transition-all duration-200 shadow-md cursor-pointer hover:scale-[1.02] hover:shadow-lg ${
 clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
       }`}
       onClick={() => {
@@ -407,22 +416,22 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
         triggerCardClick(lead);
       }}
     >
+      {/* Booking banner */}
+      {lead.scheduled_date && (
+        <div className="px-4 pt-3 pb-0">
+          <BookingBadge scheduledDate={lead.scheduled_date} scheduledTime={lead.scheduled_time} status={lead.status} />
+        </div>
+      )}
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-             <CardTitle className="text-base">
+             <CardTitle className="text-base text-foreground">
                <ClientInfoPopover customerId={lead.customer_id || null}>
                  <span className="cursor-pointer hover:underline">{lead.customer_name}</span>
                </ClientInfoPopover>
              </CardTitle>
             <CardDescription className="text-xs flex items-center gap-2">
               <span>{lead.service_type}</span>
-              {lead.scheduled_date && (
-                <span className="flex items-center gap-1 text-primary font-medium">
-                  <CalendarDays className="h-3 w-3" />
-                  {format(new Date(lead.scheduled_date), "d MMM")}{lead.scheduled_time ? ` ${lead.scheduled_time.slice(0, 5)}` : ''}
-                </span>
-              )}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -487,7 +496,7 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
       onOpenChange={() => toggleCardExpansion(lead.id)}
     >
       <Card 
-        className={`bg-gradient-to-r from-blue-100 to-slate-50 backdrop-blur-sm border-border/50 hover:from-blue-50 hover:to-white transition-all duration-200 shadow-md overflow-hidden w-full max-w-full cursor-pointer hover:scale-[1.01] hover:shadow-lg ${
+        className={`bg-gradient-to-r from-blue-100 to-slate-50 dark:from-slate-800 dark:to-slate-900 backdrop-blur-sm border-border/50 hover:from-blue-50 hover:to-white dark:hover:from-slate-700 dark:hover:to-slate-800 transition-all duration-200 shadow-md overflow-hidden w-full max-w-full cursor-pointer hover:scale-[1.01] hover:shadow-lg ${
           clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
         }`}
         onClick={() => {
@@ -617,7 +626,7 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
         
         <div className="p-3 space-y-2 w-full max-w-full">
           {leads.length === 0 ? (
-            <Card className="bg-gradient-to-r from-blue-100 to-slate-50 border-border/50 shadow-md">
+            <Card className="bg-gradient-to-r from-blue-100 to-slate-50 dark:from-slate-800 dark:to-slate-900 border-border/50 shadow-md">
               <CardContent className="py-8 text-center text-muted-foreground">
                 No leads yet
               </CardContent>
