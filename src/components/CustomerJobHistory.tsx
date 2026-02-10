@@ -79,7 +79,7 @@ const CustomerJobHistory = ({ customerId, customerPhone, currentLeadId }: Custom
             filteredJobs.map((job) => {
               const inv = invoiceMap.get(job.id);
               return (
-                <div key={job.id} className="flex items-center gap-2 text-xs border rounded px-2 py-1.5 bg-muted/30 dark:bg-[#0a1628]/60 dark:border-[#1e3a5f]/40">
+                <div key={job.id} className="flex items-center gap-2 text-xs border rounded px-2 py-1.5 bg-muted/30 dark:bg-[#0a1628]/50 dark:border-blue-400/15">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="font-medium text-foreground truncate">{job.service_type}</span>
