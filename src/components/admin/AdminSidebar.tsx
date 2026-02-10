@@ -114,7 +114,7 @@ const AdminSidebar = ({
   };
 
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-[#0077B6] dark:bg-gradient-to-b dark:from-[#0a1628] dark:via-[#0f2240] dark:to-[#0a1628]">
+    <div className="flex flex-col h-full bg-[#0077B6] dark:bg-gradient-to-b dark:from-[#070e1a] dark:via-[#153258] dark:to-[#070e1a]">
       {/* Logo */}
       <div className={cn(
         "flex items-center px-4 py-5 border-b border-white/15",
@@ -252,7 +252,7 @@ const AdminSidebar = ({
       <aside
         className={cn(
           "flex flex-col shrink-0 transition-all duration-300 z-50 border-r border-white/10 shadow-xl",
-          "hidden lg:flex h-full rounded-r-2xl bg-[#0077B6] dark:bg-gradient-to-b dark:from-[#0a1628] dark:via-[#0f2240] dark:to-[#0a1628]",
+          "hidden lg:flex h-full rounded-r-2xl bg-[#0077B6] dark:bg-gradient-to-b dark:from-[#070e1a] dark:via-[#153258] dark:to-[#070e1a]",
           collapsed ? "w-[60px]" : "w-[220px]",
         )}
       >
@@ -261,7 +261,7 @@ const AdminSidebar = ({
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-[260px] transform transition-transform duration-300 lg:hidden rounded-r-2xl shadow-2xl border-r border-white/10 bg-[#0077B6] dark:bg-gradient-to-b dark:from-[#0a1628] dark:via-[#0f2240] dark:to-[#0a1628]",
+          "fixed inset-y-0 left-0 z-50 w-[260px] transform transition-transform duration-300 lg:hidden rounded-r-2xl shadow-2xl border-r border-white/10 bg-[#0077B6] dark:bg-gradient-to-b dark:from-[#070e1a] dark:via-[#153258] dark:to-[#070e1a]",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
