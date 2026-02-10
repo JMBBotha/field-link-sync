@@ -1,26 +1,38 @@
 
-# Fix Photo Gallery Scrolling
+# Add "Create Service Agreement" Access from Maintenance Scheduler
 
 ## Problem
-The ScrollArea component is applied but scrolling isn't working properly because the height constraint needs to be set correctly for the Radix ScrollArea to enable scrolling.
+The Maintenance Scheduler page (`/admin/maintenance`) has no way to create a new Service Agreement directly. Users must navigate separately to `/admin/agreements` to set one up before maintenance schedules can be generated.
 
 ## Solution
-Change `max-h-48` to a fixed `h-48` with `overflow-hidden` on the ScrollArea, ensuring the container has a definite height that allows the ScrollArea to calculate when scrolling is needed.
+Add a prominent "New Agreement" button to the Maintenance page header that either:
+- Links directly to the Agreements page, OR
+- Opens an inline dialog to create an agreement right from the Maintenance page
 
-## Technical Changes
+I recommend the simpler approach: add a **"New Agreement" button** in the header that navigates to `/admin/agreements`, plus a **quick-action link** in the empty state when no schedules exist. This keeps the existing full-featured agreement form reusable without duplicating it.
 
-### File: `src/components/PhotoGallery.tsx`
+## Changes
 
-**Line 205** - Update the ScrollArea className:
-- Change from: `className="max-h-48"`
-- Change to: `className="h-48"` 
+### 1. `src/pages/admin/AdminMaintenancePage.tsx`
+- Add a **"+ New Agreement"** button next to the existing "Generate Schedules" button in the header area
+- The button will use `react-router-dom`'s `useNavigate` to go to `/admin/agreements`
+- Update the **empty state** card (when no schedules exist) to include a "Create Agreement" link alongside the existing "Generate from Agreements" button
+- Add a small info note below the header: "Maintenance schedules are auto-generated from Service Agreements"
 
-This ensures the ScrollArea has a fixed height constraint that triggers scrolling when content exceeds 192px (12rem).
+### Technical Details
 
-## Why This Works
-- Radix ScrollArea requires a defined height on the container to know when to show scrollbars
-- `max-h-48` only limits maximum height but doesn't define a fixed viewport
-- `h-48` sets a fixed height, allowing the ScrollArea viewport to properly calculate overflow and enable vertical scrolling
+**Header buttons (new button added):**
+```text
+[+ New Agreement]  [Generate Schedules]
+```
 
-## Alternative Consideration
-If you want the gallery to be smaller when there are few photos but scroll when there are many, we can use `max-h-48` combined with making the inner content `min-h-0` - but a fixed height is simpler and works reliably.
+**Empty state update:**
+```text
+No maintenance schedules found.
+Create a Service Agreement first, then generate schedules.
+[Create Agreement]  [Generate from Agreements]
+```
+
+**Imports to add:**
+- `useNavigate` from `react-router-dom`
+- `Plus` icon from `lucide-react`
