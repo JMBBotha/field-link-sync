@@ -49,6 +49,7 @@ const AdminLayout = () => {
     "/admin/audit": "Audit Log",
     "/admin/import": "CSV Import",
     "/admin/settings": "Settings",
+    "/admin/team": "Team Management",
   };
   const pageTitle = pageTitles[location.pathname] || "Admin Dashboard";
 
@@ -77,9 +78,10 @@ const AdminLayout = () => {
         .from("user_roles")
         .select("role")
         .eq("user_id", session.user.id);
-      const hasAdminRole = roles?.some(r => r.role === "admin");
-      if (!hasAdminRole) {
-        toast({ title: "Access Denied", description: "You don't have admin privileges", variant: "destructive" });
+      const userRoles = roles?.map(r => r.role) || [];
+      const hasAdminAccess = userRoles.some(r => ["admin", "dispatcher", "viewer"].includes(r));
+      if (!hasAdminAccess) {
+        toast({ title: "Access Denied", description: "You don't have admin panel access", variant: "destructive" });
         navigate("/field");
         return;
       }

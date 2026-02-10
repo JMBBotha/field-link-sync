@@ -35,6 +35,7 @@ import AuditLogViewer from "./components/audit/AuditLogViewer";
 import AdminSettingsPage from "./components/AdminSettingsPage";
 import ServiceAgreements from "./components/ServiceAgreements";
 import AdminAdvancedReportsPage from "./pages/admin/AdminAdvancedReportsPage";
+import AdminTeamPage from "./pages/admin/AdminTeamPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -88,6 +89,7 @@ const App = () => (
                 <Route path="audit" element={<AuditLogViewer />} />
                 <Route path="import" element={<AdminImportPage />} />
                 <Route path="settings" element={<AdminSettingsPage />} />
+                <Route path="team" element={<AdminTeamPage />} />
               </Route>
 
               {/* Redirects from old standalone routes */}

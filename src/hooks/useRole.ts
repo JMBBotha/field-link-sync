@@ -2,13 +2,17 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
 
-export type AppRole = "admin" | "field_agent";
+export type AppRole = "admin" | "field_agent" | "dispatcher" | "viewer";
 
 interface UseRoleReturn {
   role: AppRole | null;
   roles: AppRole[];
   isAdmin: boolean;
   isFieldAgent: boolean;
+  isDispatcher: boolean;
+  isViewer: boolean;
+  canAccessAdmin: boolean;
+  canWrite: boolean;
   userId: string | null;
   loading: boolean;
 }
@@ -45,12 +49,34 @@ export const useRole = (): UseRoleReturn => {
 
   const isAdmin = roles.includes("admin");
   const isFieldAgent = roles.includes("field_agent");
+  const isDispatcher = roles.includes("dispatcher");
+  const isViewer = roles.includes("viewer");
+
+  // Primary role priority: admin > dispatcher > field_agent > viewer
+  const role: AppRole | null = isAdmin
+    ? "admin"
+    : isDispatcher
+    ? "dispatcher"
+    : isFieldAgent
+    ? "field_agent"
+    : isViewer
+    ? "viewer"
+    : null;
+
+  // Can access admin panel (admin + dispatcher + viewer)
+  const canAccessAdmin = isAdmin || isDispatcher || isViewer;
+  // Can write / modify data
+  const canWrite = isAdmin || isDispatcher || isFieldAgent;
 
   return {
-    role: isAdmin ? "admin" : isFieldAgent ? "field_agent" : null,
+    role,
     roles,
     isAdmin,
     isFieldAgent,
+    isDispatcher,
+    isViewer,
+    canAccessAdmin,
+    canWrite,
     userId,
     loading: isLoading || userId === null,
   };
