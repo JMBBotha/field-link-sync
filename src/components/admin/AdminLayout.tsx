@@ -50,6 +50,7 @@ const AdminLayout = () => {
     "/admin/import": "CSV Import",
     "/admin/settings": "Settings",
     "/admin/team": "Team Management",
+    "/admin/billing": "Billing & Subscription",
   };
   const pageTitle = pageTitles[location.pathname] || "Admin Dashboard";
 

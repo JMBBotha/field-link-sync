@@ -4,9 +4,10 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapPin, Key, Loader2, AlertCircle } from "lucide-react";
+import { MapPin, Key, Loader2, AlertCircle, Layers, Navigation } from "lucide-react";
 import { createTeardropMarkerElement } from "@/utils/MarkerUtils";
 import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilterButtons";
+import { Switch } from "@/components/ui/switch";
 
 interface AgentLocation {
   agent_id: string;
@@ -69,11 +70,15 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
   const [leads, setLeads] = useState<Lead[]>([]);
   const [center, setCenter] = useState({ lat: -34.0522, lng: 22.2922 });
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapFailed, setMapFailed] = useState(false);
   const [showTokenInput, setShowTokenInput] = useState(false);
   const [tokenInput, setTokenInput] = useState("");
   const [tokenError, setTokenError] = useState("");
   const [loadingStatus, setLoadingStatus] = useState("Initializing...");
   const [loadingTimeout, setLoadingTimeout] = useState(false);
+  const [trafficEnabled, setTrafficEnabled] = useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [routeLoading, setRouteLoading] = useState(false);
   const [statusFilters, setStatusFilters] = useState<Set<LeadStatusFilter>>(
     new Set(["pending", "accepted", "in_progress"])
   );
@@ -388,13 +393,75 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       
       // Offset the navigation control above the footer after map loads
       mapInstanceRef.current.on("load", () => {
-        // Re-apply offsets after map style finishes loading
         applyMapChromeBottomOffset();
         if (loadingTimeoutRef.current) {
           clearTimeout(loadingTimeoutRef.current);
         }
+
+        // Add clustering source for leads
+        const map = mapInstanceRef.current!;
+        if (!map.getSource("leads-cluster")) {
+          map.addSource("leads-cluster", {
+            type: "geojson",
+            data: { type: "FeatureCollection", features: [] },
+            cluster: true,
+            clusterMaxZoom: 14,
+            clusterRadius: 50,
+          });
+
+          map.addLayer({
+            id: "clusters",
+            type: "circle",
+            source: "leads-cluster",
+            filter: ["has", "point_count"],
+            paint: {
+              "circle-color": [
+                "step", ["get", "point_count"],
+                "hsl(var(--primary))", 10,
+                "#f59e0b", 30,
+                "#ef4444",
+              ],
+              "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 30, 40],
+              "circle-stroke-width": 2,
+              "circle-stroke-color": "rgba(255,255,255,0.5)",
+            },
+          });
+
+          map.addLayer({
+            id: "cluster-count",
+            type: "symbol",
+            source: "leads-cluster",
+            filter: ["has", "point_count"],
+            layout: {
+              "text-field": "{point_count_abbreviated}",
+              "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+              "text-size": 12,
+            },
+            paint: { "text-color": "#ffffff" },
+          });
+
+          // Zoom into cluster on click
+          map.on("click", "clusters", (e) => {
+            const features = map.queryRenderedFeatures(e.point, { layers: ["clusters"] });
+            if (!features.length) return;
+            const clusterId = features[0].properties?.cluster_id;
+            const source = map.getSource("leads-cluster") as mapboxgl.GeoJSONSource;
+            source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+              if (err) return;
+              map.easeTo({
+                center: (features[0].geometry as any).coordinates,
+                zoom: zoom!,
+              });
+            });
+          });
+
+          map.on("mouseenter", "clusters", () => { map.getCanvas().style.cursor = "pointer"; });
+          map.on("mouseleave", "clusters", () => { map.getCanvas().style.cursor = ""; });
+        }
+
         setLoadingStatus("Map loaded!");
         setLoadingTimeout(false);
+        setMapFailed(false);
         setMapLoaded(true);
       });
 
@@ -408,6 +475,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
           setTokenError("Invalid token. Please check your Mapbox public token.");
           handleResetToken();
         } else {
+          setMapFailed(true);
           setLoadingTimeout(true);
           setLoadingStatus("Failed to load map. Check your connection.");
         }
@@ -420,6 +488,117 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       setShowTokenInput(true);
     }
   };
+
+  // Toggle traffic layer
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !mapLoaded) return;
+
+    if (trafficEnabled) {
+      if (!map.getSource("mapbox-traffic")) {
+        map.addSource("mapbox-traffic", {
+          type: "vector",
+          url: "mapbox://mapbox.mapbox-traffic-v1",
+        });
+        map.addLayer({
+          id: "traffic-layer",
+          type: "line",
+          source: "mapbox-traffic",
+          "source-layer": "traffic",
+          paint: {
+            "line-color": [
+              "match", ["get", "congestion"],
+              "low", "#22c55e",
+              "moderate", "#f59e0b",
+              "heavy", "#ef4444",
+              "severe", "#7f1d1d",
+              "#6b7280",
+            ],
+            "line-width": 2,
+            "line-opacity": 0.7,
+          },
+        }, "clusters"); // Insert below clusters
+      }
+    } else {
+      if (map.getLayer("traffic-layer")) map.removeLayer("traffic-layer");
+      if (map.getSource("mapbox-traffic")) map.removeSource("mapbox-traffic");
+    }
+  }, [trafficEnabled, mapLoaded]);
+
+  // Draw route polyline for selected agent's job sequence
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !mapLoaded) return;
+
+    // Clean up existing route
+    if (map.getLayer("agent-route")) map.removeLayer("agent-route");
+    if (map.getSource("agent-route")) map.removeSource("agent-route");
+
+    if (!selectedAgentId) return;
+
+    const agentLeads = leads
+      .filter((l) => l.status !== "completed" && l.status !== "cancelled")
+      .filter((l) => {
+        // In a full implementation you'd check assigned_agent_id
+        // For now show all active leads as a potential route
+        return true;
+      });
+
+    const agent = agents.find((a) => a.agent_id === selectedAgentId);
+    if (!agent || agentLeads.length === 0) return;
+
+    // Build coordinates: agent location -> each lead location
+    const coords: [number, number][] = [
+      [agent.longitude, agent.latitude],
+      ...agentLeads.map((l) => [l.longitude, l.latitude] as [number, number]),
+    ];
+
+    const lineGeoJSON: GeoJSON.Feature = {
+      type: "Feature",
+      geometry: {
+        type: "LineString",
+        coordinates: coords,
+      },
+      properties: {},
+    };
+
+    map.addSource("agent-route", {
+      type: "geojson",
+      data: lineGeoJSON,
+    });
+
+    map.addLayer({
+      id: "agent-route",
+      type: "line",
+      source: "agent-route",
+      paint: {
+        "line-color": "#0369a1",
+        "line-width": 3,
+        "line-dasharray": [2, 2],
+        "line-opacity": 0.8,
+      },
+    });
+  }, [selectedAgentId, leads, agents, mapLoaded]);
+
+  // Update cluster source data when leads change
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !mapLoaded) return;
+
+    const source = map.getSource("leads-cluster") as mapboxgl.GeoJSONSource | undefined;
+    if (!source) return;
+
+    // Only cluster completed leads (active ones use individual markers)
+    const completedFeatures = leads
+      .filter((l) => l.status === "completed" && statusFilters.has("completed"))
+      .map((l) => ({
+        type: "Feature" as const,
+        geometry: { type: "Point" as const, coordinates: [l.longitude, l.latitude] },
+        properties: { id: l.id, status: l.status },
+      }));
+
+    source.setData({ type: "FeatureCollection", features: completedFeatures });
+  }, [leads, statusFilters, mapLoaded]);
 
   useEffect(() => {
     if (mapLoaded && mapInstanceRef.current && (agents.length > 0 || leads.length > 0)) {
@@ -803,18 +982,54 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
             </form>
           </div>
         </div>
+      ) : mapFailed ? (
+        <div className="absolute inset-0 bg-muted flex flex-col items-center justify-center p-6 text-center">
+          <AlertCircle className="h-12 w-12 text-muted-foreground mb-3" />
+          <h3 className="text-lg font-semibold text-foreground mb-1">Map Unavailable</h3>
+          <p className="text-sm text-muted-foreground mb-4 max-w-xs">
+            Unable to load map tiles. Check your internet connection or Mapbox token.
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleResetToken}>Change Token</Button>
+            <Button size="sm" onClick={() => { setMapFailed(false); const t = localStorage.getItem("mapbox_token"); if (t) initializeMap(t); }}>Retry</Button>
+          </div>
+        </div>
       ) : (
         <>
           <div ref={mapRef} className="w-full h-full" />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleResetToken}
-            className="absolute top-2 left-2 z-10"
-          >
+          <Button variant="outline" size="sm" onClick={handleResetToken} className="absolute top-2 left-2 z-10">
             Reset Token
           </Button>
-          
+
+          {/* Map controls: traffic + route */}
+          {mapLoaded && (
+            <div className="absolute top-2 right-2 z-10 flex flex-col gap-2">
+              <div className="bg-card/90 backdrop-blur-sm border rounded-lg px-3 py-2 flex items-center gap-2 shadow-md">
+                <Layers className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xs font-medium">Traffic</span>
+                <Switch checked={trafficEnabled} onCheckedChange={setTrafficEnabled} className="scale-75" />
+              </div>
+              {agents.length > 0 && (
+                <div className="bg-card/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-md">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Navigation className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xs font-medium">Route</span>
+                  </div>
+                  <select
+                    className="w-full text-xs bg-transparent border rounded px-2 py-1 text-foreground"
+                    value={selectedAgentId || ""}
+                    onChange={(e) => setSelectedAgentId(e.target.value || null)}
+                  >
+                    <option value="">None</option>
+                    {agents.map((a) => (
+                      <option key={a.agent_id} value={a.agent_id}>{a.profiles?.full_name || "Agent"}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Status Filter Buttons */}
           {mapLoaded && (
             <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10">
@@ -823,11 +1038,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
                 onToggle={(status) => {
                   setStatusFilters((prev) => {
                     const next = new Set(prev);
-                    if (next.has(status)) {
-                      next.delete(status);
-                    } else {
-                      next.add(status);
-                    }
+                    if (next.has(status)) next.delete(status);
+                    else next.add(status);
                     onStatusFiltersChange?.(next);
                     return next;
                   });
@@ -835,41 +1047,29 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
               />
             </div>
           )}
-          
+
+          {/* Route loading overlay */}
+          {routeLoading && (
+            <div className="absolute inset-0 bg-background/40 flex items-center justify-center z-20">
+              <div className="bg-card border rounded-lg p-4 shadow-lg flex items-center gap-3">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="text-sm font-medium">Calculating route…</span>
+              </div>
+            </div>
+          )}
+
           {!mapLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
+            <div className="absolute inset-0 flex items-center justify-center bg-background/40">
               <div className="text-center space-y-3 p-6 bg-card rounded-lg border shadow-lg max-w-xs">
-                {loadingTimeout ? (
-                  <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
-                ) : (
-                  <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-                )}
+                {loadingTimeout ? <AlertCircle className="h-8 w-8 text-destructive mx-auto" /> : <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />}
                 <div>
                   <p className="text-sm font-medium">{loadingStatus}</p>
-                  {loadingTimeout && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Check your internet connection or try a different token.
-                    </p>
-                  )}
+                  {loadingTimeout && <p className="text-xs text-muted-foreground mt-1">Check your internet connection or try a different token.</p>}
                 </div>
                 {loadingTimeout && (
                   <div className="flex gap-2 justify-center pt-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleResetToken}
-                    >
-                      Change Token
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        const token = localStorage.getItem("mapbox_token");
-                        if (token) initializeMap(token);
-                      }}
-                    >
-                      Retry
-                    </Button>
+                    <Button size="sm" variant="outline" onClick={handleResetToken}>Change Token</Button>
+                    <Button size="sm" onClick={() => { const t = localStorage.getItem("mapbox_token"); if (t) initializeMap(t); }}>Retry</Button>
                   </div>
                 )}
               </div>

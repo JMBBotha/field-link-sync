@@ -99,6 +99,7 @@ const AdminSidebar = ({
       title: "System",
       items: [
         { path: "/admin/team", label: "Team", icon: Users },
+        { path: "/admin/billing", label: "Billing", icon: DollarSign },
         { path: "/admin/notifications", label: "Notifications", icon: Bell, badge: pendingRequestsCount },
         { path: "/admin/audit", label: "Audit", icon: History },
         { path: "/admin/import", label: "Import", icon: Upload },

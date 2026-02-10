@@ -16,16 +16,12 @@ interface NotificationPayload {
 
 // Format South African phone number for WhatsApp
 function formatPhoneNumber(phone: string): string {
-  // Remove all non-digit characters
   let cleaned = phone.replace(/\D/g, "");
-  
-  // Handle South African numbers
   if (cleaned.startsWith("0")) {
     cleaned = "27" + cleaned.slice(1);
   } else if (!cleaned.startsWith("27")) {
     cleaned = "27" + cleaned;
   }
-  
   return cleaned;
 }
 
@@ -38,8 +34,15 @@ function processTemplate(template: string, variables: Record<string, string>): s
   return processed;
 }
 
+// Calculate exponential backoff delay in seconds
+function getBackoffDelay(attempt: number): number {
+  // Base: 30s, 2min, 8min, 32min, capped at 1hr
+  const baseDelay = 30;
+  const delay = baseDelay * Math.pow(4, attempt);
+  return Math.min(delay, 3600);
+}
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -48,7 +51,6 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Verify authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -65,8 +67,6 @@ serve(async (req) => {
     }
 
     const userId = claimsData.claims.sub;
-
-    // Verify user has admin or field_agent role
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { data: hasAdmin } = await supabase.rpc('has_role', { _user_id: userId, _role: 'admin' });
     const { data: hasAgent } = await supabase.rpc('has_role', { _user_id: userId, _role: 'field_agent' });
@@ -79,40 +79,33 @@ serve(async (req) => {
     const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
     const twilioWhatsAppNumber = Deno.env.get("TWILIO_WHATSAPP_NUMBER");
 
-    // Check if we're processing the queue or sending a single notification
     const body = await req.json().catch(() => ({}));
     const { process_queue, ...notificationPayload } = body as { process_queue?: boolean } & NotificationPayload;
 
     if (process_queue) {
-      // Process pending notifications from the queue
+      // Process pending notifications with exponential backoff
+      const now = new Date().toISOString();
       const { data: pendingNotifications, error: fetchError } = await supabase
         .from("notification_queue")
         .select("*")
-        .eq("status", "pending")
+        .in("status", ["pending", "retrying"])
         .eq("channel", "whatsapp")
-        .lte("scheduled_at", new Date().toISOString())
-        .lt("attempts", 3)
+        .lte("scheduled_at", now)
+        .lt("attempts", 5) // Increased max attempts from 3 to 5
         .order("scheduled_at", { ascending: true })
         .limit(10);
 
-      if (fetchError) {
-        throw fetchError;
-      }
+      if (fetchError) throw fetchError;
 
       console.log(`Processing ${pendingNotifications?.length || 0} pending WhatsApp notifications`);
 
-      const results = {
-        processed: 0,
-        sent: 0,
-        failed: 0,
-        errors: [] as string[],
-      };
+      const results = { processed: 0, sent: 0, failed: 0, retrying: 0, errors: [] as string[] };
 
       for (const notification of pendingNotifications || []) {
         results.processed++;
-        
+        const attemptNumber = notification.attempts;
+
         try {
-          // Check if Twilio is configured
           if (!twilioAccountSid || !twilioAuthToken || !twilioWhatsAppNumber) {
             throw new Error("Twilio credentials not configured");
           }
@@ -136,20 +129,20 @@ serve(async (req) => {
           const twilioResponse = await response.json();
 
           if (!response.ok) {
-            throw new Error(twilioResponse.message || "Failed to send WhatsApp message");
+            throw new Error(twilioResponse.message || `Twilio error ${response.status}`);
           }
 
-          // Update notification as sent
+          // Success
           await supabase
             .from("notification_queue")
             .update({
               status: "sent",
               sent_at: new Date().toISOString(),
-              attempts: notification.attempts + 1,
+              attempts: attemptNumber + 1,
+              error_message: null,
             })
             .eq("id", notification.id);
 
-          // Log successful send
           await supabase.from("notification_logs").insert({
             notification_queue_id: notification.id,
             customer_id: notification.customer_id,
@@ -160,32 +153,44 @@ serve(async (req) => {
           });
 
           results.sent++;
-          console.log(`Sent WhatsApp to +${phoneNumber}: ${notification.notification_type}`);
-
         } catch (err: any) {
-          results.failed++;
-          results.errors.push(`${notification.id}: ${err.message}`);
+          const nextAttempt = attemptNumber + 1;
+          const maxAttempts = notification.max_attempts || 5;
+          const isFinalFailure = nextAttempt >= maxAttempts;
 
-          // Update notification with error
+          // Calculate next retry time with exponential backoff
+          const backoffSeconds = getBackoffDelay(nextAttempt);
+          const nextScheduledAt = new Date(Date.now() + backoffSeconds * 1000).toISOString();
+
           await supabase
             .from("notification_queue")
             .update({
-              status: notification.attempts + 1 >= 3 ? "failed" : "pending",
-              attempts: notification.attempts + 1,
-              error_message: err.message,
+              status: isFinalFailure ? "failed" : "retrying",
+              attempts: nextAttempt,
+              error_message: `[Attempt ${nextAttempt}/${maxAttempts}] ${err.message}`,
+              // Schedule retry with backoff
+              scheduled_at: isFinalFailure ? notification.scheduled_at : nextScheduledAt,
             })
             .eq("id", notification.id);
 
-          // Log failed attempt
           await supabase.from("notification_logs").insert({
             notification_queue_id: notification.id,
             customer_id: notification.customer_id,
             notification_type: notification.notification_type,
             channel: "whatsapp",
             recipient: notification.recipient_phone,
-            status: "failed",
-            error_message: err.message,
+            status: isFinalFailure ? "failed" : "retrying",
+            error_message: `[Attempt ${nextAttempt}] ${err.message}`,
           });
+
+          if (isFinalFailure) {
+            results.failed++;
+            console.error(`[WhatsApp] FINAL FAILURE after ${maxAttempts} attempts for ${notification.id}: ${err.message}`);
+          } else {
+            results.retrying++;
+            console.warn(`[WhatsApp] Retry ${nextAttempt}/${maxAttempts} scheduled in ${backoffSeconds}s for ${notification.id}`);
+          }
+          results.errors.push(`${notification.id}: ${err.message}`);
         }
       }
 
@@ -203,18 +208,14 @@ serve(async (req) => {
 
     console.log("[WhatsApp] Single notification:", { notification_type, customer_id, lead_id, invoice_id });
 
-    // Get customer details
     const { data: customer, error: customerError } = await supabase
       .from("customers")
       .select("*")
       .eq("id", customer_id)
       .single();
 
-    if (customerError || !customer) {
-      throw new Error("Customer not found");
-    }
+    if (customerError || !customer) throw new Error("Customer not found");
 
-    // Check notification opt-in
     if (customer.notification_opt_in === false) {
       return new Response(JSON.stringify({
         success: false,
@@ -224,7 +225,6 @@ serve(async (req) => {
       });
     }
 
-    // Get notification template
     const { data: settings, error: settingsError } = await supabase
       .from("notification_settings")
       .select("*")
@@ -236,7 +236,6 @@ serve(async (req) => {
       throw new Error(`Notification template not found or disabled: ${notification_type}`);
     }
 
-    // Check if WhatsApp is enabled for this notification type
     if (!settings.channels.includes("whatsapp")) {
       return new Response(JSON.stringify({
         success: false,
@@ -246,13 +245,11 @@ serve(async (req) => {
       });
     }
 
-    // Build full variables object
     const fullVariables: Record<string, string> = {
       customer_name: customer.name,
       ...variables,
     };
 
-    // Get customer portal token
     const { data: tokenData } = await supabase.rpc("get_or_create_customer_token", {
       p_customer_id: customer_id,
     });
@@ -266,11 +263,8 @@ serve(async (req) => {
       }
     }
 
-    // Process the template
     const messageBody = processTemplate(settings.template_body, fullVariables);
-    console.log("[WhatsApp] Template processed, body length:", messageBody.length);
 
-    // Queue the notification
     const { data: queueEntry, error: queueError } = await supabase
       .from("notification_queue")
       .insert({
@@ -284,15 +278,14 @@ serve(async (req) => {
         variables: fullVariables,
         status: "pending",
         scheduled_at: new Date().toISOString(),
+        max_attempts: 5,
       })
       .select()
       .single();
 
-    if (queueError) {
-      throw queueError;
-    }
+    if (queueError) throw queueError;
 
-    // If Twilio is configured, try to send immediately
+    // Try immediate send if Twilio configured
     if (twilioAccountSid && twilioAuthToken && twilioWhatsAppNumber) {
       try {
         const phoneNumber = formatPhoneNumber(customer.phone);
@@ -314,18 +307,11 @@ serve(async (req) => {
         const twilioResponse = await response.json();
 
         if (response.ok) {
-          console.log("[WhatsApp] Twilio send SUCCESS for", notification_type);
-          // Update as sent
           await supabase
             .from("notification_queue")
-            .update({
-              status: "sent",
-              sent_at: new Date().toISOString(),
-              attempts: 1,
-            })
+            .update({ status: "sent", sent_at: new Date().toISOString(), attempts: 1 })
             .eq("id", queueEntry.id);
 
-          // Log success
           await supabase.from("notification_logs").insert({
             notification_queue_id: queueEntry.id,
             customer_id,
@@ -343,23 +329,41 @@ serve(async (req) => {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         } else {
-          console.error("[WhatsApp] Twilio API error:", twilioResponse.code, twilioResponse.message);
-          // Update queue with error details
+          // Schedule first retry with backoff
+          const backoffSeconds = getBackoffDelay(1);
+          const nextRetry = new Date(Date.now() + backoffSeconds * 1000).toISOString();
+          
           await supabase
             .from("notification_queue")
             .update({
-              error_message: twilioResponse.message || "Twilio API error",
+              status: "retrying",
+              error_message: `[Attempt 1/5] ${twilioResponse.message || "Twilio API error"}`,
               attempts: 1,
+              scheduled_at: nextRetry,
             })
             .eq("id", queueEntry.id);
+
+          await supabase.from("notification_logs").insert({
+            notification_queue_id: queueEntry.id,
+            customer_id,
+            notification_type,
+            channel: "whatsapp",
+            recipient: `+${phoneNumber}`,
+            status: "retrying",
+            error_message: twilioResponse.message || "Twilio API error",
+          });
         }
       } catch (err: any) {
-        console.error("[WhatsApp] Send error:", err.message);
+        const backoffSeconds = getBackoffDelay(1);
+        const nextRetry = new Date(Date.now() + backoffSeconds * 1000).toISOString();
+
         await supabase
           .from("notification_queue")
           .update({
-            error_message: err.message || "Network error",
+            status: "retrying",
+            error_message: `[Attempt 1/5] ${err.message || "Network error"}`,
             attempts: 1,
+            scheduled_at: nextRetry,
           })
           .eq("id", queueEntry.id);
       }

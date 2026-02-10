@@ -3,11 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { AlertCircle, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const AnalyticsHeatMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const [mapboxToken, setMapboxToken] = useState<string>("");
+  const [mapFailed, setMapFailed] = useState(false);
 
   const { data: locations = [] } = useQuery({
     queryKey: ["heatmap-locations"],
@@ -94,6 +97,10 @@ const AnalyticsHeatMap = () => {
       }
     });
 
+    map.on("error", () => {
+      setMapFailed(true);
+    });
+
     map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
 
     return () => {
@@ -106,6 +113,18 @@ const AnalyticsHeatMap = () => {
     return (
       <div className="h-80 rounded-xl bg-muted flex items-center justify-center text-muted-foreground text-sm">
         Configure Mapbox token in Settings to view heat map
+      </div>
+    );
+  }
+
+  if (mapFailed) {
+    return (
+      <div className="h-80 rounded-xl bg-muted flex flex-col items-center justify-center gap-2">
+        <AlertCircle className="h-8 w-8 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground font-medium">Map unavailable</p>
+        <Button size="sm" variant="outline" onClick={() => { setMapFailed(false); setMapboxToken(""); }}>
+          Retry
+        </Button>
       </div>
     );
   }
