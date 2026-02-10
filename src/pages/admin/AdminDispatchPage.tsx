@@ -503,23 +503,23 @@ const AdminDispatchPage = () => {
                       key={lead.id}
                       draggable
                       onDragStart={(e) => handleDragStart(e, lead)}
-                      className="bg-background border rounded-lg p-2.5 cursor-grab active:cursor-grabbing hover:border-primary/50 transition-colors group"
+                      className="bg-background border rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-primary/50 transition-colors group"
                     >
-                      <div className="flex items-start justify-between gap-1">
+                      <div className="flex items-start justify-between gap-2">
                         <GripVertical className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                         <div
                           className="flex-1 min-w-0 cursor-pointer"
                           onClick={(e) => { e.stopPropagation(); setJobInfoLead(lead); setJobInfoSchedule(null); }}
                         >
-                          <p className="font-medium text-xs truncate">{lead.customer_name}</p>
-                          <p className="text-[11px] text-muted-foreground truncate">{getSuburb(lead.customer_address)}</p>
+                          <p className="font-medium text-xs break-words">{lead.customer_name}</p>
+                          <p className="text-[11px] text-muted-foreground break-words">{getSuburb(lead.customer_address)}</p>
                         </div>
                         <Badge variant={PRIORITY_COLORS[lead.priority] as any || "secondary"} className="text-[10px] h-5 shrink-0">
                           {lead.priority}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-1.5 mt-1.5">
-                        <Badge variant="outline" className="text-[10px] h-4">
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                        <Badge variant="outline" className="text-[10px] h-auto whitespace-normal break-words">
                           {lead.service_type}
                         </Badge>
                         {lead.scheduled_time && (
@@ -863,7 +863,7 @@ const DayTimeline = ({
                       key={schedule.id}
                       draggable
                       onDragStart={(e) => onScheduleDragStart(e, schedule)}
-                      className="absolute left-1 right-1 rounded-md px-1.5 py-0.5 text-[10px] cursor-pointer overflow-hidden border border-white/20 shadow-sm"
+                      className="absolute left-1 right-1 rounded-md px-1.5 py-1 text-[10px] cursor-pointer overflow-y-auto border border-white/20 shadow-sm"
                       style={{
                         top,
                         height,
@@ -876,8 +876,8 @@ const DayTimeline = ({
                         if (lead) { onJobInfoClick(lead, schedule); }
                       }}
                     >
-                      <p className="font-semibold truncate leading-tight">{schedule.leads?.customer_name || "Job"}</p>
-                      {height > 30 && <p className="truncate opacity-80">{schedule.leads?.service_type}</p>}
+                      <p className="font-semibold leading-tight break-words">{schedule.leads?.customer_name || "Job"}</p>
+                      {height > 30 && <p className="break-words opacity-80">{schedule.leads?.service_type}</p>}
                       {height > 45 && <p className="opacity-60">{schedule.start_time}–{schedule.end_time}</p>}
                     </div>
                   );
@@ -963,7 +963,7 @@ const WeekTimeline = ({
                             key={schedule.id}
                             draggable
                             onDragStart={(e) => onScheduleDragStart(e, schedule)}
-                            className="rounded px-1.5 py-0.5 text-[10px] text-white cursor-pointer truncate"
+                            className="rounded px-1.5 py-0.5 text-[10px] text-white cursor-pointer break-words"
                             style={{ backgroundColor: STATUS_COLORS[status] || "#6b7280" }}
                             title={`${schedule.leads?.customer_name} ${schedule.start_time}–${schedule.end_time}`}
                             onClick={() => {
