@@ -24,6 +24,12 @@ Deno.serve(async (req) => {
   try {
     const { extracted_text, supplier_id, supplier_name, markup_percent } = await req.json();
 
+    console.log("[Grok] Request received:", { 
+      textLength: extracted_text?.length, 
+      supplier_id, 
+      supplier_name 
+    });
+
     if (!extracted_text || !supplier_id) {
       return new Response(JSON.stringify({ error: "extracted_text and supplier_id required" }), {
         status: 400,
@@ -32,17 +38,30 @@ Deno.serve(async (req) => {
     }
 
     const xaiApiKey = Deno.env.get("XAI_API_KEY");
+    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
     
-    // Fallback to Lovable AI if no xAI key
-    const apiUrl = xaiApiKey 
-      ? "https://api.x.ai/v1/chat/completions"
-      : "https://ai.gateway.lovable.dev/v1/chat/completions";
-    
-    const apiKey = xaiApiKey || Deno.env.get("LOVABLE_API_KEY");
-    const model = xaiApiKey ? "grok-3-fast" : "google/gemini-2.5-flash";
+    console.log("[Grok] API keys available:", { 
+      hasXaiKey: !!xaiApiKey, 
+      hasLovableKey: !!lovableApiKey 
+    });
 
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: "No API key configured" }), {
+    // Try xAI first, fallback to Lovable AI
+    let apiUrl: string;
+    let apiKey: string | undefined;
+    let model: string;
+    let useXai = false;
+
+    if (xaiApiKey) {
+      apiUrl = "https://api.x.ai/v1/chat/completions";
+      apiKey = xaiApiKey;
+      model = "grok-3-fast";
+      useXai = true;
+    } else if (lovableApiKey) {
+      apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
+      apiKey = lovableApiKey;
+      model = "google/gemini-2.5-flash";
+    } else {
+      return new Response(JSON.stringify({ error: "No API key configured (XAI_API_KEY or LOVABLE_API_KEY)" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -69,34 +88,55 @@ Rules:
 
 Return: {"products": [...]}`;
 
-    // Truncate text to avoid token limits (roughly 60k chars ≈ 15k tokens)
+    // Truncate text to avoid token limits
     const truncatedText = extracted_text.substring(0, 60000);
+    console.log("[Grok] Sending text to AI, truncated length:", truncatedText.length);
 
-    const aiResponse = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: truncatedText },
-        ],
-        temperature: 0.1,
-        ...(xaiApiKey ? { response_format: { type: "json_object" } } : {}),
-      }),
-    });
+    // Helper to call an AI API
+    const callAI = async (url: string, key: string, mdl: string, isXai: boolean) => {
+      console.log(`[Grok] Calling ${isXai ? 'xAI' : 'Lovable AI'} with model: ${mdl}`);
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: mdl,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: truncatedText },
+          ],
+          temperature: 0.1,
+          ...(isXai ? { response_format: { type: "json_object" } } : {}),
+        }),
+      });
+      return resp;
+    };
+
+    let aiResponse = await callAI(apiUrl, apiKey, model, useXai);
+
+    // If xAI fails (403 = no credits, or other errors), fallback to Lovable AI
+    if (!aiResponse.ok && useXai && lovableApiKey) {
+      const errText = await aiResponse.text();
+      console.warn("[Grok] xAI failed, falling back to Lovable AI:", aiResponse.status, errText.substring(0, 500));
+      apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
+      apiKey = lovableApiKey;
+      model = "google/gemini-2.5-flash";
+      useXai = false;
+      aiResponse = await callAI(apiUrl, apiKey, model, false);
+    }
 
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
-      console.error("[Grok] API error:", aiResponse.status, errText);
-      return new Response(JSON.stringify({ error: `AI API error: ${aiResponse.status}` }), {
+      console.error("[Grok] AI API error (final):", aiResponse.status, errText.substring(0, 500));
+      return new Response(JSON.stringify({ error: `AI parsing failed (${aiResponse.status}). Please try again.` }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    console.log("[Grok] AI response received successfully");
 
     const aiData = await aiResponse.json();
     const content = aiData.choices?.[0]?.message?.content || "";
