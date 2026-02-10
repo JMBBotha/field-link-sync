@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Clock, Navigation, AlertCircle, Loader2, ImageIcon } from "lucide-react";
 import LeadCardProgress from "@/components/LeadCardProgress";
+import BookingBadge from "@/components/BookingBadge";
 import { useSingleLeadPhotoCount } from "@/hooks/useLeadPhotoCount";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +27,8 @@ interface Lead {
   estimated_duration_minutes?: number | null;
   estimated_end_time?: string | null;
   actual_start_time?: string | null;
+  scheduled_date?: string | null;
+  scheduled_time?: string | null;
 }
 
 interface FieldAgentLeadCardProps {
@@ -141,9 +144,9 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
         className={cn(
           "cursor-pointer transition-all duration-300 relative shadow-md border-border/50",
           // Default gradient
-          "bg-gradient-to-r from-blue-100 to-slate-50",
+          "bg-gradient-to-r from-blue-100 to-slate-50 dark:from-slate-800 dark:to-slate-900",
           // Hover state
-          "hover:from-blue-50 hover:to-white",
+          "hover:from-blue-50 hover:to-white dark:hover:from-slate-700 dark:hover:to-slate-800",
           // Highlighted state - ring animation
           isHighlighted && [
             "ring-2 ring-primary ring-offset-2",
@@ -170,10 +173,12 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
         )}
 
         <CardContent className="p-3 space-y-2">
+          {/* Booking badge */}
+          <BookingBadge scheduledDate={lead.scheduled_date} scheduledTime={lead.scheduled_time} status={lead.status} />
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <p className="font-medium text-sm truncate">{lead.customer_name}</p>
+                <p className="font-medium text-sm truncate text-foreground">{lead.customer_name}</p>
                 {lead.priority === "urgent" && (
                   <AlertCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
                 )}
