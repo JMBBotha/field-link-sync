@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,9 @@ import CustomerSearchSelector from "@/components/customers/CustomerSearchSelecto
 import CreateCustomerDialog from "@/components/customers/CreateCustomerDialog";
 import { type CustomerSearchResult } from "@/hooks/useCustomerSearch";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 import {
-  Users, Plus, User, Building2, Phone, MapPin, Mail,
+  Users, Plus, User, Building2, Phone, MapPin, Mail, RefreshCw, Loader2,
 } from "lucide-react";
 
 const statusBadge: Record<string, string> = {
@@ -23,6 +24,28 @@ const statusBadge: Record<string, string> = {
 const AdminCustomersPage = () => {
   const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const handleSyncLeads = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.rpc("backfill_leads_to_customers");
+      if (error) throw error;
+      const result = data as any;
+      toast({
+        title: "Sync Complete ✅",
+        description: `${result.created} new customers created, ${result.linked} leads linked to existing customers.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["all-customers"] });
+      queryClient.invalidateQueries({ queryKey: ["unified-clients"] });
+    } catch (err: any) {
+      toast({ title: "Sync Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const { data: customers = [], isLoading } = useQuery({
     queryKey: ["all-customers"],
@@ -48,9 +71,15 @@ const AdminCustomersPage = () => {
           </h1>
           <p className="text-sm text-muted-foreground">{customers.length} customers in database</p>
         </div>
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus className="h-4 w-4 mr-2" /> New Customer
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleSyncLeads} disabled={syncing}>
+            {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            Sync All Leads
+          </Button>
+          <Button onClick={() => setShowCreate(true)}>
+            <Plus className="h-4 w-4 mr-2" /> New Customer
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
