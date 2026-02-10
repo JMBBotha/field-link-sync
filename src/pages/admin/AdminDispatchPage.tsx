@@ -130,7 +130,7 @@ const AdminDispatchPage = () => {
   const PX_PER_HOUR = 80;
 
   // ─── Data queries ───
-  const { data: allLeads = [] } = useQuery({
+  const { data: allLeads = [], isLoading: leadsLoading, isError: leadsError } = useQuery({
     queryKey: ["dispatch-leads"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -140,6 +140,9 @@ const AdminDispatchPage = () => {
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Lead[];
+    },
+    meta: {
+      onError: (err: Error) => toast({ title: "Failed to load jobs", description: err.message, variant: "destructive" }),
     },
   });
 
@@ -169,7 +172,7 @@ const AdminDispatchPage = () => {
     refetchInterval: 30000,
   });
 
-  const { data: schedules = [], refetch: refetchSchedules } = useQuery({
+  const { data: schedules = [], refetch: refetchSchedules, isLoading: schedulesLoading } = useQuery({
     queryKey: ["dispatch-schedules"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -531,6 +534,32 @@ const AdminDispatchPage = () => {
       return slotStart < sEnd && slotEnd > sStart;
     });
   };
+
+  const isInitialLoading = leadsLoading && schedulesLoading;
+
+  if (isInitialLoading) {
+    return (
+      <div className="flex items-center justify-center h-full p-12">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading dispatch board...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (leadsError) {
+    return (
+      <div className="flex items-center justify-center h-full p-12">
+        <div className="text-center space-y-3">
+          <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
+          <p className="font-medium">Failed to load jobs</p>
+          <p className="text-sm text-muted-foreground">Check your connection and try again.</p>
+          <Button variant="outline" onClick={() => window.location.reload()}>Reload</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">

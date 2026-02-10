@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import FieldAgent from "./pages/FieldAgent";
@@ -34,13 +35,28 @@ import AuditLogViewer from "./components/audit/AuditLogViewer";
 import AdminSettingsPage from "./components/AdminSettingsPage";
 import ServiceAgreements from "./components/ServiceAgreements";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error: any) => {
+        // Don't retry on 4xx errors (auth, not found, etc.)
+        if (error?.status >= 400 && error?.status < 500) return false;
+        return failureCount < 2;
+      },
+      staleTime: 30_000,
+    },
+    mutations: {
+      retry: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <OfflineProvider>
         <ErrorBoundary>
+          <OfflineBanner />
           <Toaster />
           <Sonner />
           <BrowserRouter>

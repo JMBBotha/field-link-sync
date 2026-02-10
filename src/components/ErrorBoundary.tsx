@@ -1,6 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 
 interface Props {
   children: ReactNode;
@@ -23,7 +23,14 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("ErrorBoundary caught:", error, errorInfo);
+    // Log with context for debugging
+    console.error("[ErrorBoundary] Unhandled error:", {
+      message: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack,
+      url: window.location.pathname,
+      timestamp: new Date().toISOString(),
+    });
   }
 
   render() {
@@ -31,14 +38,30 @@ class ErrorBoundary extends Component<Props, State> {
       if (this.props.fallback) return this.props.fallback;
 
       return (
-        <div className="flex min-h-[400px] items-center justify-center p-8">
+        <div className="flex min-h-screen items-center justify-center p-8 bg-background">
           <div className="text-center space-y-4 max-w-md">
-            <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
-            <h2 className="text-xl font-semibold">Something went wrong</h2>
-            <p className="text-sm text-muted-foreground">{this.state.error?.message || "An unexpected error occurred"}</p>
-            <Button onClick={() => this.setState({ hasError: false, error: null })} variant="outline">
-              Try Again
-            </Button>
+            <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+              <AlertTriangle className="h-8 w-8 text-destructive" />
+            </div>
+            <h2 className="text-xl font-semibold text-foreground">Something went wrong</h2>
+            <p className="text-sm text-muted-foreground">
+              {this.state.error?.message || "An unexpected error occurred. Please try reloading the app."}
+            </p>
+            <div className="flex gap-3 justify-center pt-2">
+              <Button
+                onClick={() => this.setState({ hasError: false, error: null })}
+                variant="outline"
+              >
+                Try Again
+              </Button>
+              <Button
+                onClick={() => window.location.reload()}
+                className="gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Reload App
+              </Button>
+            </div>
           </div>
         </div>
       );
