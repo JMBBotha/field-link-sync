@@ -65,6 +65,9 @@ interface SupplierProduct {
   short_name?: string | null;
   is_pinned?: boolean;
   pin_order?: number;
+  rrp?: number | null;
+  cost_excl_vat?: number | null;
+  cost_incl_vat?: number | null;
 }
 
 interface ProductCatalogBrowserProps {
@@ -349,6 +352,9 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
                       ) : (
                         <>
                           <p className="text-[10px] text-muted-foreground">Cost: {formatZAR(product.cost_price)}</p>
+                          {(product as any).rrp && (product as any).rrp > product.selling_price && (
+                            <p className="text-[10px] text-muted-foreground line-through">{formatZAR((product as any).rrp)}</p>
+                          )}
                           <p className="text-sm font-bold text-primary">{formatZAR(product.selling_price)}</p>
                         </>
                       )}

@@ -1,5 +1,3 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -10,7 +8,7 @@ interface ParsedProduct {
   name: string;
   description: string;
   category: string;
-  unitCost: number;
+  prices: Record<string, number>;
   pipeSize?: string | null;
   btuRating?: number | null;
   refrigerantType?: string | null;
@@ -46,7 +44,6 @@ Deno.serve(async (req) => {
       hasLovableKey: !!lovableApiKey 
     });
 
-    // Try xAI first, fallback to Lovable AI
     let apiUrl: string;
     let apiKey: string | undefined;
     let model: string;
@@ -70,45 +67,49 @@ Deno.serve(async (req) => {
 
     const systemPrompt = `You are an expert HVAC supplier price list parser. Extract product data from the provided text into structured JSON.
 
-Return ONLY a JSON object with a "products" array. Each product object must have:
-- sku: string (product/model code, e.g. "BZE-INV-09", "MSM-12HRDN1")
+IMPORTANT: Price lists often have MULTIPLE price columns. You MUST extract ALL price columns you find for each product.
+
+Return ONLY a JSON object with:
+- "detected_price_columns": array of strings describing the price columns found (e.g. ["Cost Excl VAT", "RRP Incl VAT", "Nett Price", "List Price"])
+- "products": array of product objects
+
+Each product object must have:
+- sku: string (product/model code)
 - name: string (short product name)
 - description: string (full description including specs)
 - category: string (e.g. "Midwall Inverter", "Cassette Inverter", "Ducted", "Floor Standing", "Portable", "Accessories")
-- unitCost: number (price as a number, parse "R 7 700,00" or "R7700.00" as 7700.00, use 0 if not found)
+- prices: object mapping each detected price column name to its numeric value. Use the EXACT same keys as in detected_price_columns. Example: {"Cost Excl VAT": 7700, "RRP Incl VAT": 12500}
 - pipeSize: string or null (pipe sizes like "1/4 x 3/8")
 - btuRating: number or null (BTU rating, e.g. 9000, 12000, 18000, 24000)
 - refrigerantType: string or null (e.g. "R32", "R410A")
-- shortName: string (concise display name using this format: BRAND + BTU/kW + TYPE_ABBREV + SUBTYPE)
+- shortName: string (concise display name: BRAND + BTU/kW + TYPE_ABBREV + SUBTYPE)
   Abbreviation rules:
   - Midwall Split Inverter → "INV MW" (e.g. "MIDEA 9K INV MW")
-  - Midwall Split Fixed Speed → "FS MW" (e.g. "MIDEA 24K FS MW")
+  - Midwall Split Fixed Speed → "FS MW"
   - Ducted Inverter → "INV DUCT"
   - Ducted Fixed Speed → "FS DUCT"
-  - Cassette → "CASS" (e.g. "MIDEA 36K INV CASS")
+  - Cassette → "CASS"
   - Under Ceiling → "UC"
   - Window Wall → "WW"
   - Portable → "PORT"
   - Floor Standing → "FS FLOOR"
   - Multi Split → "MULTI"
   - VRF → "VRF"
-  For model variants add suffix: Breezeless → "BRZ", Xtreme → "XTR", Aurora → "AUR", Ultimate → "ULT"
-  Example: "MIDEA 12K INV MW BRZ" for a 12000 BTU Inverter Midwall Breezeless
+  Variant suffixes: Breezeless → "BRZ", Xtreme → "XTR", Aurora → "AUR", Ultimate → "ULT"
 
 Rules:
 - Parse South African Rand prices: "R 7 700,00" = 7700.00, "R 12,500.00" = 12500.00
 - Detect BTU/kW from descriptions: "9000 BTU", "2.6kW" → 9000 BTU
-- Identify product categories from context headers and descriptions
+- Look for price column headers like "Cost", "Dealer Price", "Nett", "RRP", "Retail", "List Price", "Incl VAT", "Excl VAT"
+- If only ONE price column exists, name it "Unit Price"
 - Skip header rows, totals, and non-product text
 - Supplier: ${supplier_name || "Unknown HVAC supplier"}
 
-Return: {"products": [...]}`;
+Return: {"detected_price_columns": [...], "products": [...]}`;
 
-    // Truncate text to avoid token limits
     const truncatedText = extracted_text.substring(0, 60000);
     console.log("[Grok] Sending text to AI, truncated length:", truncatedText.length);
 
-    // Helper to call an AI API
     const callAI = async (url: string, key: string, mdl: string, isXai: boolean) => {
       console.log(`[Grok] Calling ${isXai ? 'xAI' : 'Lovable AI'} with model: ${mdl}`);
       const resp = await fetch(url, {
@@ -130,9 +131,8 @@ Return: {"products": [...]}`;
       return resp;
     };
 
-    let aiResponse = await callAI(apiUrl, apiKey, model, useXai);
+    let aiResponse = await callAI(apiUrl, apiKey!, model, useXai);
 
-    // If xAI fails (403 = no credits, or other errors), fallback to Lovable AI
     if (!aiResponse.ok && useXai && lovableApiKey) {
       const errText = await aiResponse.text();
       console.warn("[Grok] xAI failed, falling back to Lovable AI:", aiResponse.status, errText.substring(0, 500));
@@ -157,39 +157,56 @@ Return: {"products": [...]}`;
     const aiData = await aiResponse.json();
     const content = aiData.choices?.[0]?.message?.content || "";
 
-    let products: ParsedProduct[] = [];
+    let parsed: any = {};
     try {
-      // Try parsing as JSON object with "products" key
-      const parsed = JSON.parse(content.replace(/```json\n?|\n?```/g, "").trim());
-      products = parsed.products || parsed;
+      parsed = JSON.parse(content.replace(/```json\n?|\n?```/g, "").trim());
     } catch {
-      // Try extracting JSON array
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        try { products = JSON.parse(jsonMatch[0]); } catch { /* skip */ }
+        try { parsed = JSON.parse(jsonMatch[0]); } catch { /* skip */ }
       }
     }
 
+    const detectedPriceColumns: string[] = parsed.detected_price_columns || [];
+    let products: ParsedProduct[] = parsed.products || [];
+    
+    // Backward compat: if products have unitCost instead of prices object
+    products = products.map(p => {
+      if (!p.prices && (p as any).unitCost !== undefined) {
+        return { ...p, prices: { "Unit Price": (p as any).unitCost } };
+      }
+      return p;
+    });
+
     if (!Array.isArray(products) || products.length === 0) {
       return new Response(
-        JSON.stringify({ error: "Could not parse products from the provided text.", products: [] }),
+        JSON.stringify({ error: "Could not parse products from the provided text.", products: [], detected_price_columns: [] }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Return parsed products for preview (don't import yet)
+    // Ensure detected_price_columns includes all keys found in products
+    const allPriceKeys = new Set(detectedPriceColumns);
+    for (const p of products) {
+      if (p.prices) {
+        for (const k of Object.keys(p.prices)) allPriceKeys.add(k);
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
-        success: true, 
+        success: true,
+        detected_price_columns: [...allPriceKeys],
         products: products.map(p => ({
           product_code: p.sku || "",
           description: p.name ? `${p.name} - ${p.description}` : p.description || "",
           category: p.category || "Uncategorized",
-          cost_price: typeof p.unitCost === "number" ? p.unitCost : 0,
+          prices: p.prices || {},
+          cost_price: Object.values(p.prices || {})[0] || 0,
           pipe_size: p.pipeSize || null,
           btu_rating: p.btuRating || null,
           refrigerant_type: p.refrigerantType || null,
-          is_price_on_request: !p.unitCost || p.unitCost <= 0,
+          is_price_on_request: !Object.values(p.prices || {}).some(v => v > 0),
           short_name: p.shortName || null,
         })),
       }),
@@ -198,7 +215,7 @@ Return: {"products": [...]}`;
   } catch (err) {
     console.error("[Grok] Parse error:", err);
     return new Response(
-      JSON.stringify({ error: err.message }),
+      JSON.stringify({ error: (err as Error).message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

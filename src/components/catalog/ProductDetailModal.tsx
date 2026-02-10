@@ -28,6 +28,7 @@ interface ProductDetailModalProps {
     refrigerant_type: string | null;
     quote_usage_count: number;
     short_name?: string | null;
+    rrp?: number | null;
   } | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -124,6 +125,9 @@ const ProductDetailModal = ({ product, open, onOpenChange, onAddToQuote }: Produ
             </div>
             <div>
               <p className="text-muted-foreground text-xs">Sell Price ({product.default_markup_percent}% markup)</p>
+              {product.rrp && product.rrp > product.selling_price && (
+                <p className="text-xs text-muted-foreground line-through">{formatZAR(product.rrp)}</p>
+              )}
               <p className="font-bold text-primary">
                 {product.is_price_on_request ? "POR" : formatZAR(product.selling_price)}
               </p>

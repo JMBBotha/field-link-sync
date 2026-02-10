@@ -2113,6 +2113,8 @@ export type Database = {
           btu_rating: number | null
           capacity_btu: number | null
           category: string
+          cost_excl_vat: number | null
+          cost_incl_vat: number | null
           cost_price: number
           created_at: string
           default_markup_percent: number
@@ -2130,12 +2132,15 @@ export type Database = {
           product_code: string
           quote_usage_count: number
           refrigerant_type: string | null
+          rrp: number | null
           selling_price: number | null
           short_name: string | null
           subcategory: string | null
+          supplier_discount_percent: number
           supplier_id: string
           unit_type: string | null
           updated_at: string
+          vat_rate: number
         }
         Insert: {
           archived?: boolean
@@ -2143,6 +2148,8 @@ export type Database = {
           btu_rating?: number | null
           capacity_btu?: number | null
           category?: string
+          cost_excl_vat?: number | null
+          cost_incl_vat?: number | null
           cost_price?: number
           created_at?: string
           default_markup_percent?: number
@@ -2160,12 +2167,15 @@ export type Database = {
           product_code: string
           quote_usage_count?: number
           refrigerant_type?: string | null
+          rrp?: number | null
           selling_price?: number | null
           short_name?: string | null
           subcategory?: string | null
+          supplier_discount_percent?: number
           supplier_id: string
           unit_type?: string | null
           updated_at?: string
+          vat_rate?: number
         }
         Update: {
           archived?: boolean
@@ -2173,6 +2183,8 @@ export type Database = {
           btu_rating?: number | null
           capacity_btu?: number | null
           category?: string
+          cost_excl_vat?: number | null
+          cost_incl_vat?: number | null
           cost_price?: number
           created_at?: string
           default_markup_percent?: number
@@ -2190,12 +2202,15 @@ export type Database = {
           product_code?: string
           quote_usage_count?: number
           refrigerant_type?: string | null
+          rrp?: number | null
           selling_price?: number | null
           short_name?: string | null
           subcategory?: string | null
+          supplier_discount_percent?: number
           supplier_id?: string
           unit_type?: string | null
           updated_at?: string
+          vat_rate?: number
         }
         Relationships: [
           {
@@ -2213,10 +2228,16 @@ export type Database = {
           contact_name: string | null
           contact_phone: string | null
           created_at: string
+          default_price_column: string | null
+          default_vat_rate: number
           id: string
           is_active: boolean
           name: string
           notes: string | null
+          price_includes_markup: boolean
+          price_includes_vat: boolean
+          supplier_discount_percent: number
+          supplier_markup_percent: number
           updated_at: string
           website: string | null
         }
@@ -2225,10 +2246,16 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          default_price_column?: string | null
+          default_vat_rate?: number
           id?: string
           is_active?: boolean
           name: string
           notes?: string | null
+          price_includes_markup?: boolean
+          price_includes_vat?: boolean
+          supplier_discount_percent?: number
+          supplier_markup_percent?: number
           updated_at?: string
           website?: string | null
         }
@@ -2237,10 +2264,16 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          default_price_column?: string | null
+          default_vat_rate?: number
           id?: string
           is_active?: boolean
           name?: string
           notes?: string | null
+          price_includes_markup?: boolean
+          price_includes_vat?: boolean
+          supplier_discount_percent?: number
+          supplier_markup_percent?: number
           updated_at?: string
           website?: string | null
         }
