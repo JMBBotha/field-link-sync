@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -18,7 +19,7 @@ import {
 import {
   CalendarDays, AlertTriangle, CheckCircle2, Clock, RefreshCw, Search,
   ChevronLeft, ChevronRight, Loader2, Wrench, ArrowRight, Calendar as CalendarIcon,
-  BarChart3, DollarSign, Percent, List, LayoutGrid,
+  BarChart3, DollarSign, Percent, List, LayoutGrid, Plus,
 } from "lucide-react";
 
 interface MaintenanceSchedule {
@@ -56,6 +57,7 @@ const CONTRACT_LABELS: Record<string, string> = {
 const AdminMaintenancePage = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -204,6 +206,13 @@ const AdminMaintenancePage = () => {
           <p className="text-sm text-muted-foreground">Preventive maintenance scheduling & tracking</p>
         </div>
         <div className="flex gap-2">
+          <Button
+            size="sm"
+            onClick={() => navigate("/admin/agreements")}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            New Agreement
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -359,9 +368,16 @@ const AdminMaintenancePage = () => {
             <Card className="p-8 text-center">
               <Wrench className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground">No maintenance schedules found</p>
-              <Button onClick={() => generateMutation.mutate()} className="mt-4" disabled={generateMutation.isPending}>
-                Generate from Agreements
-              </Button>
+              <p className="text-sm text-muted-foreground mt-1">Create a Service Agreement first, then generate schedules.</p>
+              <div className="flex gap-2 justify-center mt-4">
+                <Button onClick={() => navigate("/admin/agreements")}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Agreement
+                </Button>
+                <Button variant="outline" onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending}>
+                  Generate from Agreements
+                </Button>
+              </div>
             </Card>
           ) : (
             filteredSchedules.map(schedule => {
