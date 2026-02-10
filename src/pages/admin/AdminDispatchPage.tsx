@@ -503,7 +503,7 @@ const AdminDispatchPage = () => {
                       key={lead.id}
                       draggable
                       onDragStart={(e) => handleDragStart(e, lead)}
-                      className="bg-background border rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-primary/50 transition-colors group"
+                      className="bg-gradient-to-br from-primary/[0.06] to-muted/40 border rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-primary/50 transition-colors group"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <GripVertical className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -863,11 +863,12 @@ const DayTimeline = ({
                       key={schedule.id}
                       draggable
                       onDragStart={(e) => onScheduleDragStart(e, schedule)}
-                      className="absolute left-1 right-1 rounded-md px-1.5 py-1 text-[10px] cursor-pointer overflow-y-auto border border-white/20 shadow-sm"
+                      className="absolute left-1 right-1 rounded-md px-1.5 py-1 text-[10px] cursor-pointer overflow-y-auto border shadow-sm"
                       style={{
                         top,
                         height,
-                        backgroundColor: STATUS_COLORS[status] || "#6b7280",
+                        background: `linear-gradient(135deg, ${STATUS_COLORS[status] || "#6b7280"}, ${STATUS_COLORS[status] || "#6b7280"}cc)`,
+                        borderColor: STATUS_COLORS[status] || "#6b7280",
                         color: "white",
                       }}
                       title={`${schedule.leads?.customer_name} • ${schedule.start_time}–${schedule.end_time}`}
