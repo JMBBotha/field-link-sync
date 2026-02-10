@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Fuse from "fuse.js";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,13 +14,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { offlineDb } from "@/lib/offlineDb";
 import ProductDetailModal from "./ProductDetailModal";
+import CatalogFilterBar, { CatalogFilters, DEFAULT_FILTERS } from "./CatalogFilterBar";
+import CatalogSearchSuggestions from "./CatalogSearchSuggestions";
 import {
   Search,
   Package,
   TrendingUp,
   Plus,
   ArrowUpDown,
-  Filter,
   Loader2,
   WifiOff,
   Star,
@@ -28,20 +29,6 @@ import {
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
-
-const HVAC_CATEGORIES = [
-  "Midwall Inverter",
-  "Midwall Fixed Speed",
-  "Ducted Inverter",
-  "Ducted Fixed Speed",
-  "Cassette",
-  "Under Ceiling",
-  "Window Wall",
-  "Portable",
-  "Floor Standing",
-  "Multi Split",
-  "VRF",
-];
 
 interface SupplierProduct {
   id: string;
@@ -75,18 +62,72 @@ interface ProductCatalogBrowserProps {
   supplierId?: string | null;
 }
 
-/** Fuse.js multi-token fuzzy search: ALL tokens must match across ANY fields */
+// ── Derived filter helpers ──────────────────────────────
+function deriveSpeedType(p: SupplierProduct): string {
+  const text = `${p.category} ${p.description} ${p.short_name || ""}`.toLowerCase();
+  if (text.includes("inverter") || text.includes("inv ")) return "Inverter";
+  if (text.includes("fixed speed") || text.includes("fs ")) return "Fixed Speed";
+  return "";
+}
+
+function deriveUnitType(p: SupplierProduct): string {
+  const text = `${p.category} ${p.description} ${p.short_name || ""}`.toLowerCase();
+  const map: [string, string][] = [
+    ["midwall", "Midwall"], ["cassette", "Cassette"], ["ducted", "Ducted"],
+    ["under ceiling", "Under Ceiling"], ["floor standing", "Floor Standing"],
+    ["window wall", "Window Wall"], ["portable", "Portable"],
+    ["rooftop", "Rooftop Package"], ["chiller", "Air Cooled Chiller"],
+    ["accessor", "Accessories"], ["large ducted", "Large Ducted"],
+  ];
+  for (const [kw, label] of map) {
+    if (text.includes(kw)) return label;
+  }
+  return "";
+}
+
+function derivePhase(p: SupplierProduct): string {
+  const text = `${p.product_code} ${p.description}`.toLowerCase();
+  if (text.includes("3ph") || text.includes("three phase") || text.includes("3-phase")) return "3Ph";
+  if (text.includes("1ph") || text.includes("single phase") || text.includes("1-phase")) return "1Ph";
+  return "";
+}
+
+function deriveBrand(p: SupplierProduct): string {
+  return p.supplier_name || "";
+}
+
+function deriveBtuBucket(p: SupplierProduct): string {
+  const btu = p.btu_rating;
+  if (!btu) return "";
+  const k = btu / 1000;
+  if (k >= 76) return "76K+";
+  const buckets = [9, 12, 18, 24, 34, 36, 48, 60];
+  const closest = buckets.reduce((prev, curr) => Math.abs(curr - k) < Math.abs(prev - k) ? curr : prev);
+  return `${closest}K`;
+}
+
+function matchesFilters(p: SupplierProduct, f: CatalogFilters): boolean {
+  if (f.speedType !== "__all__" && deriveSpeedType(p) !== f.speedType) return false;
+  if (f.unitType !== "__all__" && deriveUnitType(p) !== f.unitType) return false;
+  if (f.btu !== "__all__" && deriveBtuBucket(p) !== f.btu) return false;
+  if (f.refrigerant !== "__all__" && (p.refrigerant_type || "").toUpperCase() !== f.refrigerant.toUpperCase()) return false;
+  if (f.phase !== "__all__" && derivePhase(p) !== f.phase) return false;
+  if (f.brand !== "__all__" && deriveBrand(p).toLowerCase() !== f.brand.toLowerCase()) return false;
+  if (f.priceMin && p.selling_price < parseFloat(f.priceMin)) return false;
+  if (f.priceMax && p.selling_price > parseFloat(f.priceMax)) return false;
+  return true;
+}
+
+// ── Fuse.js multi-token AND search ──────────────────────
 function fuseMultiTokenSearch(items: SupplierProduct[], fuse: Fuse<SupplierProduct>, query: string): SupplierProduct[] {
   const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return [];
 
-  // For each token, get Fuse results (fuzzy matched items)
   const tokenResults = tokens.map((token) => {
     const results = fuse.search(token);
     return new Map(results.map((r) => [r.item.id, r.score ?? 1]));
   });
 
-  // Find items that appear in ALL token result sets (AND logic)
   const firstSet = tokenResults[0];
   const matchedIds: { id: string; combinedScore: number }[] = [];
 
@@ -95,31 +136,26 @@ function fuseMultiTokenSearch(items: SupplierProduct[], fuse: Fuse<SupplierProdu
     let matchAll = true;
     for (let i = 1; i < tokenResults.length; i++) {
       const s = tokenResults[i].get(id);
-      if (s === undefined) {
-        matchAll = false;
-        break;
-      }
+      if (s === undefined) { matchAll = false; break; }
       totalScore += s;
     }
-    if (matchAll) {
-      matchedIds.push({ id, combinedScore: totalScore });
-    }
+    if (matchAll) matchedIds.push({ id, combinedScore: totalScore });
   });
 
-  // Sort by combined score (lower = better match)
   matchedIds.sort((a, b) => a.combinedScore - b.combinedScore);
-
   const itemMap = new Map(items.map((p) => [p.id, p]));
   return matchedIds.map((m) => itemMap.get(m.id)!).filter(Boolean);
 }
 
+// ── Component ───────────────────────────────────────────
 const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrowserProps) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("__all__");
   const [sortBy, setSortBy] = useState<"pinned" | "usage" | "price_asc" | "price_desc" | "name">("pinned");
   const [showArchived, setShowArchived] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<SupplierProduct | null>(null);
+  const [filters, setFilters] = useState<CatalogFilters>({ ...DEFAULT_FILTERS });
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -129,23 +165,15 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
     window.addEventListener("online", handler);
     window.addEventListener("offline", handler);
     setIsOffline(!navigator.onLine);
-    return () => {
-      window.removeEventListener("online", handler);
-      window.removeEventListener("offline", handler);
-    };
+    return () => { window.removeEventListener("online", handler); window.removeEventListener("offline", handler); };
   }, []);
 
-  // Fetch ALL products (no search filter — searching is done client-side with Fuse.js)
   const { data: allProducts = [], isLoading } = useQuery({
     queryKey: ["supplier-products-all", supplierId, showArchived],
     queryFn: async () => {
       try {
         const { data, error } = await supabase.rpc("search_supplier_products", {
-          p_query: null,
-          p_category: null,
-          p_supplier_id: supplierId || null,
-          p_limit: 2000,
-          p_include_archived: showArchived,
+          p_query: null, p_category: null, p_supplier_id: supplierId || null, p_limit: 2000, p_include_archived: showArchived,
         });
         if (error) throw error;
         const results = (data || []) as SupplierProduct[];
@@ -172,79 +200,58 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
     staleTime: 60000,
   });
 
-  // Build Fuse index over all products
+  // Derive available brands from data
+  const availableBrands = useMemo(() => {
+    const brands = new Set<string>();
+    allProducts.forEach((p) => {
+      const b = deriveBrand(p);
+      if (b) brands.add(b);
+    });
+    return [...brands];
+  }, [allProducts]);
+
   const fuse = useMemo(
-    () =>
-      new Fuse(allProducts, {
-        keys: [
-          { name: "product_code", weight: 2 },
-          { name: "short_name", weight: 2 },
-          { name: "description", weight: 1.5 },
-          { name: "category", weight: 1 },
-          { name: "supplier_name", weight: 1 },
-          { name: "subcategory", weight: 0.8 },
-          { name: "pipe_size", weight: 0.5 },
-          { name: "refrigerant_type", weight: 0.5 },
-        ],
-        threshold: 0.4,
-        ignoreLocation: true,
-        includeScore: true,
-      }),
+    () => new Fuse(allProducts, {
+      keys: [
+        { name: "product_code", weight: 2 },
+        { name: "short_name", weight: 2 },
+        { name: "description", weight: 1.5 },
+        { name: "category", weight: 1 },
+        { name: "supplier_name", weight: 1 },
+        { name: "subcategory", weight: 0.8 },
+        { name: "pipe_size", weight: 0.5 },
+        { name: "refrigerant_type", weight: 0.5 },
+      ],
+      threshold: 0.4,
+      ignoreLocation: true,
+      includeScore: true,
+    }),
     [allProducts]
   );
 
-  // Apply client-side fuzzy search + category filter
+  // Apply search + structured filters with AND logic
   const filtered = useMemo(() => {
     let results: SupplierProduct[];
-
     if (searchQuery.trim().length > 0) {
       results = fuseMultiTokenSearch(allProducts, fuse, searchQuery);
     } else {
       results = allProducts;
     }
-
-    // Category filter
-    if (selectedCategory !== "__all__") {
-      results = results.filter((p) => p.category === selectedCategory);
-    }
-
+    // Apply structured filters
+    results = results.filter((p) => matchesFilters(p, filters));
     return results;
-  }, [allProducts, fuse, searchQuery, selectedCategory]);
-
-  const { data: categories = [] } = useQuery({
-    queryKey: ["product-categories", showArchived],
-    queryFn: async () => {
-      let query = supabase
-        .from("supplier_products" as any)
-        .select("category")
-        .eq("is_active", true)
-        .order("category");
-      if (!showArchived) {
-        query = query.eq("archived", false);
-      }
-      const { data, error } = await query;
-      if (error) throw error;
-      const dbCategories = [...new Set((data || []).map((d: any) => d.category))].filter(Boolean) as string[];
-      const allCategories = [...new Set([...HVAC_CATEGORIES, ...dbCategories])];
-      return allCategories.sort();
-    },
-  });
+  }, [allProducts, fuse, searchQuery, filters]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
     const pinnedSort = (a: SupplierProduct, b: SupplierProduct) => {
-      const aPinned = (a as any).is_pinned ? 1 : 0;
-      const bPinned = (b as any).is_pinned ? 1 : 0;
+      const aPinned = a.is_pinned ? 1 : 0;
+      const bPinned = b.is_pinned ? 1 : 0;
       if (bPinned !== aPinned) return bPinned - aPinned;
-      if (aPinned && bPinned) return ((a as any).pin_order || 0) - ((b as any).pin_order || 0);
+      if (aPinned && bPinned) return ((a.pin_order || 0) - (b.pin_order || 0));
       return 0;
     };
-
-    // If there's a search query, preserve fuzzy relevance order (just pin pinned to top)
-    if (searchQuery.trim().length > 0) {
-      return arr.sort(pinnedSort);
-    }
-
+    if (searchQuery.trim().length > 0) return arr.sort(pinnedSort);
     switch (sortBy) {
       case "price_asc": return arr.sort((a, b) => pinnedSort(a, b) || a.cost_price - b.cost_price);
       case "price_desc": return arr.sort((a, b) => pinnedSort(a, b) || b.cost_price - a.cost_price);
@@ -255,7 +262,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
     }
   }, [filtered, sortBy, searchQuery]);
 
-  const pinnedCount = useMemo(() => filtered.filter(p => (p as any).is_pinned).length, [filtered]);
+  const pinnedCount = useMemo(() => filtered.filter(p => p.is_pinned).length, [filtered]);
 
   const unarchiveMutation = useMutation({
     mutationFn: async (productId: string) => {
@@ -263,75 +270,66 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
         .update({ archived: false, archived_at: null } as any).eq("id", productId);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] });
-      toast({ title: "Product unarchived" });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] }); toast({ title: "Product unarchived" }); },
   });
 
   const togglePinMutation = useMutation({
     mutationFn: async ({ productId, isPinned }: { productId: string; isPinned: boolean }) => {
       const { error } = await supabase.from("supplier_products" as any)
-        .update({ is_pinned: !isPinned, pin_order: isPinned ? 0 : Date.now() } as any)
-        .eq("id", productId);
+        .update({ is_pinned: !isPinned, pin_order: isPinned ? 0 : Date.now() } as any).eq("id", productId);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] }),
   });
 
   const incrementUsageMutation = useMutation({
-    mutationFn: async (productId: string) => {
-      await supabase.rpc("increment_product_usage", { p_product_id: productId });
-    },
+    mutationFn: async (productId: string) => { await supabase.rpc("increment_product_usage", { p_product_id: productId }); },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] }),
   });
 
   const handleAddToQuote = (product: SupplierProduct) => {
     if (onAddToQuote) {
-      onAddToQuote({
-        description: `${product.product_code} - ${product.description}`,
-        quantity: 1,
-        unit_price: product.selling_price,
-      });
+      onAddToQuote({ description: `${product.product_code} - ${product.description}`, quantity: 1, unit_price: product.selling_price });
       incrementUsageMutation.mutate(product.id);
       toast({ title: "Added to quote", description: product.product_code });
     }
   };
 
+  const handleSuggestionFilter = useCallback((action: string) => {
+    const [key, value] = action.split(":");
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    setSearchQuery("");
+  }, []);
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {isOffline && (
         <div className="flex items-center gap-2 bg-destructive/10 text-destructive border border-destructive/20 rounded-lg px-3 py-2 text-xs">
-          <WifiOff className="h-3.5 w-3.5 shrink-0" />
-          Browsing offline cache
+          <WifiOff className="h-3.5 w-3.5 shrink-0" /> Browsing offline cache
         </div>
       )}
 
+      {/* Search bar */}
       <div className="flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search products, codes, brands... (fuzzy)"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => { setSearchQuery(e.target.value); setShowSuggestions(true); }}
+            onFocus={() => setShowSuggestions(true)}
             className="pl-9"
+          />
+          <CatalogSearchSuggestions
+            query={searchQuery}
+            products={sorted}
+            visible={showSuggestions && searchQuery.trim().length > 0}
+            onSelectFilter={handleSuggestionFilter}
+            onSelectProduct={(id) => { const p = allProducts.find(x => x.id === id); if (p) setSelectedProduct(p); setShowSuggestions(false); }}
+            onClose={() => setShowSuggestions(false)}
           />
         </div>
         <div className="flex gap-2">
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className={isMobile ? "flex-1" : "w-48"}>
-              <Filter className="h-3 w-3 mr-1" />
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All Categories</SelectItem>
-              {categories.map((c) => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
             <SelectTrigger className={isMobile ? "flex-1" : "w-40"}>
               <ArrowUpDown className="h-3 w-3 mr-1" />
@@ -346,6 +344,17 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      {/* Sticky filter bar */}
+      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pb-2 -mx-1 px-1">
+        <CatalogFilterBar
+          filters={filters}
+          onChange={setFilters}
+          availableBrands={availableBrands}
+          totalCount={allProducts.length}
+          filteredCount={sorted.length}
+        />
       </div>
 
       <div className="flex items-center justify-between">
@@ -377,7 +386,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {sorted.map((product) => {
-            const isPinned = !!(product as any).is_pinned;
+            const isPinned = !!product.is_pinned;
             return (
               <Card
                 key={product.id}
@@ -387,9 +396,9 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
                 <CardContent className={isMobile ? "p-3" : "p-4"}>
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <div className="flex-1 min-w-0">
-                      {(product as any).short_name && (
+                      {product.short_name && (
                         <p className={`font-bold text-primary ${isMobile ? "text-sm" : "text-base"} ${(product as any).archived ? "line-through" : ""}`}>
-                          {(product as any).short_name}
+                          {product.short_name}
                         </p>
                       )}
                       <p className={`text-xs font-mono text-muted-foreground ${(product as any).archived ? "line-through" : ""}`}>{product.product_code}</p>
@@ -403,27 +412,18 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
                       )}
                       {product.quote_usage_count > 0 && (
                         <Badge variant="secondary" className="text-[10px]">
-                          <TrendingUp className="h-3 w-3 mr-0.5" />
-                          {product.quote_usage_count}
+                          <TrendingUp className="h-3 w-3 mr-0.5" />{product.quote_usage_count}
                         </Badge>
                       )}
                     </div>
                   </div>
 
                   <div className="flex flex-wrap gap-1 mb-2">
-                    {(product as any).archived && (
-                      <Badge variant="destructive" className="text-[10px]">Archived</Badge>
-                    )}
+                    {(product as any).archived && <Badge variant="destructive" className="text-[10px]">Archived</Badge>}
                     <Badge variant="outline" className="text-[10px]">{product.category}</Badge>
-                    {product.btu_rating && (
-                      <Badge variant="outline" className="text-[10px]">{(product.btu_rating / 1000).toFixed(0)}K BTU</Badge>
-                    )}
-                    {product.refrigerant_type && (
-                      <Badge variant="outline" className="text-[10px]">{product.refrigerant_type}</Badge>
-                    )}
-                    {product.pipe_size && (
-                      <Badge variant="outline" className="text-[10px]">⌀ {product.pipe_size}</Badge>
-                    )}
+                    {product.btu_rating && <Badge variant="outline" className="text-[10px]">{(product.btu_rating / 1000).toFixed(0)}K BTU</Badge>}
+                    {product.refrigerant_type && <Badge variant="outline" className="text-[10px]">{product.refrigerant_type}</Badge>}
+                    {product.pipe_size && <Badge variant="outline" className="text-[10px]">⌀ {product.pipe_size}</Badge>}
                   </div>
 
                   <Separator className="mb-2" />
@@ -435,8 +435,8 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
                       ) : (
                         <>
                           <p className="text-[10px] text-muted-foreground">Cost: {formatZAR(product.cost_price)}</p>
-                          {(product as any).rrp && (product as any).rrp > product.selling_price && (
-                            <p className="text-[10px] text-muted-foreground line-through">{formatZAR((product as any).rrp)}</p>
+                          {product.rrp && product.rrp > product.selling_price && (
+                            <p className="text-[10px] text-muted-foreground line-through">{formatZAR(product.rrp)}</p>
                           )}
                           <p className="text-sm font-bold text-primary">{formatZAR(product.selling_price)}</p>
                         </>
@@ -444,24 +444,19 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
                     </div>
                     <div className="flex items-center gap-1">
                       <Button
-                        size="icon"
-                        variant="ghost"
+                        size="icon" variant="ghost"
                         className={`h-7 w-7 ${isPinned ? "text-amber-500" : "text-muted-foreground"}`}
                         onClick={(e) => { e.stopPropagation(); togglePinMutation.mutate({ productId: product.id, isPinned }); }}
                       >
                         <Star className={`h-3.5 w-3.5 ${isPinned ? "fill-current" : ""}`} />
                       </Button>
                       {(product as any).archived ? (
-                        <Button
-                          size="sm" variant="outline"
+                        <Button size="sm" variant="outline"
                           onClick={(e) => { e.stopPropagation(); unarchiveMutation.mutate(product.id); }}
                           className={`text-xs ${isMobile ? "h-8 px-3" : "h-7"}`}
-                        >
-                          Unarchive
-                        </Button>
+                        >Unarchive</Button>
                       ) : onAddToQuote && !product.is_price_on_request ? (
-                        <Button
-                          size="sm"
+                        <Button size="sm"
                           onClick={(e) => { e.stopPropagation(); handleAddToQuote(product); }}
                           className={`text-xs ${isMobile ? "h-8 px-3" : "h-7"}`}
                         >
