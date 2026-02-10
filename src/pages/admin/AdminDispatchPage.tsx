@@ -8,9 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import {
   CalendarDays, Clock, MapPin, Search, Users, AlertTriangle, Wifi, WifiOff,
-  GripVertical, ChevronRight, ChevronLeft, Loader2, Filter, Zap
+  GripVertical, ChevronRight, ChevronLeft, Loader2, Filter, Zap, Phone, User, FileText, Info
 } from "lucide-react";
 import { format, addDays, startOfWeek, endOfWeek, isToday, isSameDay, parseISO } from "date-fns";
 import mapboxgl from "mapbox-gl";
@@ -107,6 +111,13 @@ const AdminDispatchPage = () => {
   const [showMapPane, setShowMapPane] = useState(false);
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [quickAssignLead, setQuickAssignLead] = useState<Lead | null>(null);
+  const [quickAssignAgent, setQuickAssignAgent] = useState("");
+  const [quickAssignDate, setQuickAssignDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [quickAssignStart, setQuickAssignStart] = useState("08:00");
+  const [quickAssignEnd, setQuickAssignEnd] = useState("10:00");
+  const [jobInfoLead, setJobInfoLead] = useState<Lead | null>(null);
+  const [jobInfoSchedule, setJobInfoSchedule] = useState<Schedule | null>(null);
 
   const PX_PER_HOUR = 80;
 
@@ -493,18 +504,13 @@ const AdminDispatchPage = () => {
                       draggable
                       onDragStart={(e) => handleDragStart(e, lead)}
                       className="bg-background border rounded-lg p-2.5 cursor-grab active:cursor-grabbing hover:border-primary/50 transition-colors group"
-                      onClick={() => {
-                        setSelectedJobIds(prev => {
-                          const next = new Set(prev);
-                          if (next.has(lead.id)) next.delete(lead.id);
-                          else next.add(lead.id);
-                          return next;
-                        });
-                      }}
                     >
                       <div className="flex items-start justify-between gap-1">
                         <GripVertical className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div className="flex-1 min-w-0">
+                        <div
+                          className="flex-1 min-w-0 cursor-pointer"
+                          onClick={(e) => { e.stopPropagation(); setJobInfoLead(lead); setJobInfoSchedule(null); }}
+                        >
                           <p className="font-medium text-xs truncate">{lead.customer_name}</p>
                           <p className="text-[11px] text-muted-foreground truncate">{getSuburb(lead.customer_address)}</p>
                         </div>
@@ -521,6 +527,22 @@ const AdminDispatchPage = () => {
                             <Clock className="h-2.5 w-2.5" />{lead.scheduled_time}
                           </span>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="ml-auto h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setQuickAssignLead(lead);
+                            setQuickAssignAgent("");
+                            setQuickAssignDate(format(currentDate, "yyyy-MM-dd"));
+                            setQuickAssignStart("08:00");
+                            setQuickAssignEnd("10:00");
+                          }}
+                          title="Quick Assign"
+                        >
+                          <User className="h-3 w-3" />
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -558,6 +580,7 @@ const AdminDispatchPage = () => {
                 onScheduleDragStart={handleScheduleDragStart}
                 pxPerHour={PX_PER_HOUR}
                 allLeads={allLeads}
+                onJobInfoClick={(lead, schedule) => { setJobInfoLead(lead); setJobInfoSchedule(schedule); }}
               />
             ) : (
               <WeekTimeline
@@ -571,11 +594,176 @@ const AdminDispatchPage = () => {
                 onScheduleDragStart={handleScheduleDragStart}
                 pxPerHour={PX_PER_HOUR}
                 allLeads={allLeads}
+                onJobInfoClick={(lead, schedule) => { setJobInfoLead(lead); setJobInfoSchedule(schedule); }}
               />
             )}
           </div>
         </div>
       </div>
+
+      {/* ─── Quick Assign Dialog ─── */}
+      <Dialog open={!!quickAssignLead} onOpenChange={(open) => { if (!open) setQuickAssignLead(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Quick Assign Job</DialogTitle>
+            <DialogDescription>
+              Assign <span className="font-semibold">{quickAssignLead?.customer_name}</span> – {quickAssignLead?.service_type}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm">Technician</Label>
+              <Select value={quickAssignAgent} onValueChange={setQuickAssignAgent}>
+                <SelectTrigger><SelectValue placeholder="Select technician" /></SelectTrigger>
+                <SelectContent>
+                  {agents.map(a => (
+                    <SelectItem key={a.id} value={a.id}>
+                      <div className="flex items-center gap-2">
+                        <div className={`h-2 w-2 rounded-full ${isAgentOnline(a.id) ? "bg-success" : "bg-muted-foreground/40"}`} />
+                        {a.full_name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm">Date</Label>
+              <Input type="date" value={quickAssignDate} onChange={e => setQuickAssignDate(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-sm">Start Time</Label>
+                <Input type="time" value={quickAssignStart} onChange={e => setQuickAssignStart(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">End Time</Label>
+                <Input type="time" value={quickAssignEnd} onChange={e => setQuickAssignEnd(e.target.value)} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuickAssignLead(null)}>Cancel</Button>
+            <Button
+              disabled={!quickAssignAgent || assignMutation.isPending}
+              onClick={() => {
+                if (!quickAssignLead || !quickAssignAgent) return;
+                assignMutation.mutate(
+                  { leadId: quickAssignLead.id, agentId: quickAssignAgent, date: quickAssignDate, startTime: quickAssignStart, endTime: quickAssignEnd },
+                  { onSuccess: () => setQuickAssignLead(null) }
+                );
+              }}
+            >
+              {assignMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              Assign Job
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Job Info Dialog ─── */}
+      <Dialog open={!!jobInfoLead} onOpenChange={(open) => { if (!open) { setJobInfoLead(null); setJobInfoSchedule(null); } }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Info className="h-5 w-5 text-primary" />
+              Job Details
+            </DialogTitle>
+            <DialogDescription>Full information for this job.</DialogDescription>
+          </DialogHeader>
+          {jobInfoLead && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <div>
+                  <p className="text-muted-foreground text-xs">Customer</p>
+                  <p className="font-medium">{jobInfoLead.customer_name}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Phone</p>
+                  <p className="font-medium flex items-center gap-1">
+                    <Phone className="h-3 w-3" />
+                    {jobInfoLead.customer_phone || "N/A"}
+                  </p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-muted-foreground text-xs">Address</p>
+                  <p className="font-medium flex items-center gap-1">
+                    <MapPin className="h-3 w-3 shrink-0" />
+                    {jobInfoLead.customer_address}
+                  </p>
+                </div>
+              </div>
+              <Separator />
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <div>
+                  <p className="text-muted-foreground text-xs">Job Type</p>
+                  <Badge variant="outline">{jobInfoLead.service_type}</Badge>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Priority</p>
+                  <Badge variant={PRIORITY_COLORS[jobInfoLead.priority] as any || "secondary"}>{jobInfoLead.priority}</Badge>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Status</p>
+                  <Badge style={{ backgroundColor: STATUS_COLORS[jobInfoLead.status], color: "white" }}>{jobInfoLead.status.replace("_", " ")}</Badge>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Assigned To</p>
+                  <p className="font-medium">
+                    {jobInfoLead.assigned_agent_id
+                      ? agents.find(a => a.id === jobInfoLead.assigned_agent_id)?.full_name || "Unknown"
+                      : "Unassigned"}
+                  </p>
+                </div>
+              </div>
+              {jobInfoSchedule && (
+                <>
+                  <Separator />
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <div>
+                      <p className="text-muted-foreground text-xs">Scheduled Date</p>
+                      <p className="font-medium">{jobInfoSchedule.scheduled_date}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Time Slot</p>
+                      <p className="font-medium">{jobInfoSchedule.start_time} – {jobInfoSchedule.end_time}</p>
+                    </div>
+                  </div>
+                </>
+              )}
+              {jobInfoLead.notes && (
+                <>
+                  <Separator />
+                  <div className="text-sm">
+                    <p className="text-muted-foreground text-xs mb-1">Notes</p>
+                    <p className="text-sm bg-muted/50 rounded p-2">{jobInfoLead.notes}</p>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            {jobInfoLead && !jobInfoLead.assigned_agent_id && (
+              <Button
+                onClick={() => {
+                  const lead = jobInfoLead;
+                  setJobInfoLead(null);
+                  setJobInfoSchedule(null);
+                  setQuickAssignLead(lead);
+                  setQuickAssignAgent("");
+                  setQuickAssignDate(format(currentDate, "yyyy-MM-dd"));
+                  setQuickAssignStart("08:00");
+                  setQuickAssignEnd("10:00");
+                }}
+              >
+                <User className="h-4 w-4 mr-1" />
+                Assign Job
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => { setJobInfoLead(null); setJobInfoSchedule(null); }}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -598,7 +786,7 @@ const StatBadge = ({ icon, label, value, variant }: { icon: React.ReactNode; lab
 
 // ─── Day Timeline ───
 const DayTimeline = ({
-  date, agents, schedules, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads,
+  date, agents, schedules, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads, onJobInfoClick,
 }: {
   date: Date;
   agents: Agent[];
@@ -610,6 +798,7 @@ const DayTimeline = ({
   onScheduleDragStart: (e: React.DragEvent, schedule: Schedule) => void;
   pxPerHour: number;
   allLeads: Lead[];
+  onJobInfoClick: (lead: Lead, schedule: Schedule) => void;
 }) => {
   const dateStr = format(date, "yyyy-MM-dd");
   const now = new Date();
@@ -674,7 +863,7 @@ const DayTimeline = ({
                       key={schedule.id}
                       draggable
                       onDragStart={(e) => onScheduleDragStart(e, schedule)}
-                      className="absolute left-1 right-1 rounded-md px-1.5 py-0.5 text-[10px] cursor-grab active:cursor-grabbing overflow-hidden border border-white/20 shadow-sm"
+                      className="absolute left-1 right-1 rounded-md px-1.5 py-0.5 text-[10px] cursor-pointer overflow-hidden border border-white/20 shadow-sm"
                       style={{
                         top,
                         height,
@@ -682,6 +871,10 @@ const DayTimeline = ({
                         color: "white",
                       }}
                       title={`${schedule.leads?.customer_name} • ${schedule.start_time}–${schedule.end_time}`}
+                      onClick={() => {
+                        const lead = allLeads.find(l => l.id === schedule.lead_id);
+                        if (lead) { onJobInfoClick(lead, schedule); }
+                      }}
                     >
                       <p className="font-semibold truncate leading-tight">{schedule.leads?.customer_name || "Job"}</p>
                       {height > 30 && <p className="truncate opacity-80">{schedule.leads?.service_type}</p>}
@@ -710,7 +903,7 @@ const DayTimeline = ({
 
 // ─── Week Timeline (compact) ───
 const WeekTimeline = ({
-  dates, agents, schedulesMap, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads,
+  dates, agents, schedulesMap, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads, onJobInfoClick,
 }: {
   dates: Date[];
   agents: Agent[];
@@ -722,6 +915,7 @@ const WeekTimeline = ({
   onScheduleDragStart: (e: React.DragEvent, schedule: Schedule) => void;
   pxPerHour: number;
   allLeads: Lead[];
+  onJobInfoClick: (lead: Lead, schedule: Schedule) => void;
 }) => {
   const COMPACT_HEIGHT = 52;
 
@@ -769,9 +963,13 @@ const WeekTimeline = ({
                             key={schedule.id}
                             draggable
                             onDragStart={(e) => onScheduleDragStart(e, schedule)}
-                            className="rounded px-1.5 py-0.5 text-[10px] text-white cursor-grab active:cursor-grabbing truncate"
+                            className="rounded px-1.5 py-0.5 text-[10px] text-white cursor-pointer truncate"
                             style={{ backgroundColor: STATUS_COLORS[status] || "#6b7280" }}
                             title={`${schedule.leads?.customer_name} ${schedule.start_time}–${schedule.end_time}`}
+                            onClick={() => {
+                              const lead = allLeads.find(l => l.id === schedule.lead_id);
+                              if (lead) onJobInfoClick(lead, schedule);
+                            }}
                           >
                             <span className="font-medium">{schedule.start_time}</span> {schedule.leads?.customer_name || "Job"}
                           </div>
