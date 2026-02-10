@@ -10,11 +10,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Search, ChevronDown, ChevronRight, History, Loader2 } from "lucide-react";
 import { format } from "date-fns";
+import AuditLogExpandedRow from "./AuditLogExpandedRow";
 
 const ACTION_COLORS: Record<string, string> = {
-  insert: "bg-green-500 text-white",
-  update: "bg-blue-500 text-white",
-  delete: "bg-red-500 text-white",
+  insert: "bg-green-500/90",
+  update: "bg-blue-500/90",
+  delete: "bg-red-500/90",
 };
 
 const AuditLogViewer = () => {
@@ -67,34 +68,7 @@ const AuditLogViewer = () => {
   const tables = ["all", "quotes", "invoices", "payments", "leads", "service_agreements"];
   const actions = ["all", "insert", "update", "delete"];
 
-  const renderJsonDiff = (log: any) => {
-    if (log.action === "update" && log.old_data && log.new_data) {
-      const changes: { key: string; old: any; new: any }[] = [];
-      for (const key of Object.keys(log.new_data)) {
-        if (JSON.stringify(log.old_data[key]) !== JSON.stringify(log.new_data[key])) {
-          changes.push({ key, old: log.old_data[key], new: log.new_data[key] });
-        }
-      }
-      if (changes.length === 0) return <p className="text-xs text-muted-foreground">No visible changes</p>;
-      return (
-        <div className="space-y-1">
-          {changes.map((c) => (
-            <div key={c.key} className="text-xs font-mono">
-              <span className="font-semibold text-foreground">{c.key}:</span>{" "}
-              <span className="text-red-500 line-through">{JSON.stringify(c.old)}</span>{" "}
-              → <span className="text-green-600">{JSON.stringify(c.new)}</span>
-            </div>
-          ))}
-        </div>
-      );
-    }
-    const data = log.new_data || log.old_data;
-    return (
-      <pre className="text-xs font-mono bg-muted p-2 rounded max-h-48 overflow-auto whitespace-pre-wrap">
-        {JSON.stringify(data, null, 2)}
-      </pre>
-    );
-  };
+  // renderJsonDiff replaced by AuditLogExpandedRow component
 
   return (
     <div className="space-y-4 p-4 max-w-6xl mx-auto">
@@ -184,7 +158,7 @@ const AuditLogViewer = () => {
                     <CollapsibleContent asChild>
                       <TableRow>
                         <TableCell colSpan={5} className="bg-muted/30 p-4">
-                          {renderJsonDiff(log)}
+                          <AuditLogExpandedRow log={log} />
                         </TableCell>
                       </TableRow>
                     </CollapsibleContent>
