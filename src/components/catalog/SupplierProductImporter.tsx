@@ -274,24 +274,51 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
     if (!extractedText.trim()) return;
     setAiParsing(true); setError(null); setAiResult(null); setParsedRows([]);
     setDiffRows([]); setShowDiff(false); setShowPriceConfig(false);
-    try {
+
+    const MAX_PAYLOAD_SIZE = 50000;
+    const truncatedText = extractedText.length > MAX_PAYLOAD_SIZE
+      ? extractedText.substring(0, MAX_PAYLOAD_SIZE)
+      : extractedText;
+
+    const invokeAI = async () => {
       const { data, error: fnError } = await supabase.functions.invoke("parse-pdf-with-grok", {
-        body: { extracted_text: extractedText, supplier_id: supplierId, supplier_name: supplierName, markup_percent: aiMarkup },
+        body: { extracted_text: truncatedText, supplier_id: supplierId, supplier_name: supplierName, markup_percent: aiMarkup },
       });
       if (fnError) throw fnError;
+      return data;
+    };
+
+    try {
+      let data: any;
+      try {
+        data = await invokeAI();
+      } catch (firstErr: any) {
+        console.error("[AI Parse] First attempt failed:", firstErr);
+        // Retry once after 2 seconds
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        try {
+          data = await invokeAI();
+        } catch (retryErr: any) {
+          console.error("[AI Parse] Retry also failed:", retryErr);
+          const msg = retryErr?.message || "";
+          if (msg.includes("FunctionsFetchError") || msg.includes("Failed to send")) {
+            throw new Error("Edge function request failed – the PDF text may be too large. Try a smaller PDF or reduce the text.");
+          }
+          throw retryErr;
+        }
+      }
+
       if (data?.error && !data?.products?.length) throw new Error(data.error);
 
       const columns: string[] = data.detected_price_columns || [];
       const products = data.products || [];
 
       if (columns.length > 0) {
-        // Store raw products and show price config step
         setDetectedPriceColumns(columns);
         setRawParsedProducts(products);
         setShowPriceConfig(true);
         toast({ title: `AI parsed ${products.length} products`, description: `Found ${columns.length} price column(s). Configure pricing next.` });
       } else {
-        // Fallback: no multi-price, go straight to diff
         const rows: ParsedRow[] = products.map((p: any) => ({
           product_code: p.product_code || "",
           description: p.description || "",
@@ -310,6 +337,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
         toast({ title: `AI parsed ${rows.length} products`, description: "Review the diff below before importing" });
       }
     } catch (err: any) {
+      console.error("[AI Parse] Final error:", err);
       setError(err.message || "AI parsing failed");
       toast({ title: "AI Parse Failed", description: err.message, variant: "destructive" });
     } finally { setAiParsing(false); }
