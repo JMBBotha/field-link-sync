@@ -42,8 +42,7 @@ const WhatsAppShareButton = ({
       onClick={handleClick}
       className={`gap-2 ${className}`}
     >
-      <MessageCircle className="h-4 w-4 text-green-600" />
-      {children || "WhatsApp"}
+      {children || <><MessageCircle className="h-4 w-4 text-green-600" />WhatsApp</>}
     </Button>
   );
 };
