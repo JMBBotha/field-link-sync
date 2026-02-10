@@ -7,7 +7,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, FileText, BarChart3, ClipboardList, AlertTriangle, CheckCircle2, Clock, DollarSign, Users, Wrench } from "lucide-react";
 import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
 import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
-import { format } from "date-fns";
+import KpiDetailDialog from "@/components/admin/KpiDetailDialog";
+import { format, subDays } from "date-fns";
+import { useState, useMemo } from "react";
+import { Area, AreaChart, ResponsiveContainer } from "recharts";
 
 interface AdminHomeProps {
   onNavigate: (tab: string) => void;
@@ -16,6 +19,7 @@ interface AdminHomeProps {
 
 const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   const today = new Date().toISOString().split("T")[0];
+  const [selectedKpi, setSelectedKpi] = useState<string | null>(null);
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ["admin-home-stats", today],
@@ -47,14 +51,48 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
     refetchInterval: 30000,
   });
 
-  const kpiCards = [
-    { label: "New Leads Today", value: stats?.newLeads ?? 0, icon: Plus, color: "text-blue-500" },
-    { label: "Pending Quotes", value: stats?.pendingQuotes ?? 0, icon: FileText, color: "text-orange-500" },
-    { label: "Active Jobs", value: stats?.activeJobs ?? 0, icon: Clock, color: "text-green-500" },
-    { label: "Overdue Invoices", value: stats?.overdueInvoices ?? 0, icon: AlertTriangle, color: "text-destructive" },
-    { label: "Overdue Maintenance", value: stats?.overdueMaintenance ?? 0, icon: Wrench, color: "text-red-500" },
-    { label: "Revenue Today", value: `R ${(stats?.revenueToday ?? 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, icon: DollarSign, color: "text-primary" },
-  ];
+  // Fetch 7-day trend data for sparklines
+  const sevenDaysAgo = subDays(new Date(), 6).toISOString().split("T")[0];
+  const { data: trendData } = useQuery({
+    queryKey: ["kpi-trends", sevenDaysAgo],
+    queryFn: async () => {
+      const [leadsRes, revenueRes] = await Promise.all([
+        supabase.from("leads").select("created_at, status").gte("created_at", sevenDaysAgo + "T00:00:00"),
+        supabase.from("invoices").select("paid_date, grand_total").eq("status", "paid").gte("paid_date", sevenDaysAgo),
+      ]);
+
+      const days: Record<string, { leads: number; active: number; revenue: number }> = {};
+      for (let i = 0; i < 7; i++) {
+        const d = subDays(new Date(), 6 - i).toISOString().split("T")[0];
+        days[d] = { leads: 0, active: 0, revenue: 0 };
+      }
+      (leadsRes.data || []).forEach((l) => {
+        const d = l.created_at?.split("T")[0];
+        if (d && days[d]) {
+          days[d].leads++;
+          if (["accepted", "en_route", "on_site"].includes(l.status)) days[d].active++;
+        }
+      });
+      (revenueRes.data || []).forEach((inv) => {
+        const d = inv.paid_date?.split("T")[0];
+        if (d && days[d]) days[d].revenue += Number(inv.grand_total || 0);
+      });
+
+      return Object.entries(days).map(([date, v]) => ({ date, ...v }));
+    },
+    staleTime: 60000,
+  });
+
+  const kpiCards = useMemo(() => [
+    { key: "new_leads", label: "New Leads Today", value: stats?.newLeads ?? 0, icon: Plus, color: "text-blue-500", sparkKey: "leads" as const, sparkColor: "#3b82f6" },
+    { key: "pending_quotes", label: "Pending Quotes", value: stats?.pendingQuotes ?? 0, icon: FileText, color: "text-orange-500", sparkKey: "leads" as const, sparkColor: "#f97316" },
+    { key: "active_jobs", label: "Active Jobs", value: stats?.activeJobs ?? 0, icon: Clock, color: "text-green-500", sparkKey: "active" as const, sparkColor: "#22c55e" },
+    { key: "overdue_invoices", label: "Overdue Invoices", value: stats?.overdueInvoices ?? 0, icon: AlertTriangle, color: "text-destructive", sparkKey: "leads" as const, sparkColor: "#ef4444" },
+    { key: "overdue_maintenance", label: "Overdue Maintenance", value: stats?.overdueMaintenance ?? 0, icon: Wrench, color: "text-red-500", sparkKey: "leads" as const, sparkColor: "#ef4444" },
+    { key: "revenue_today", label: "Revenue Today", value: `R ${(stats?.revenueToday ?? 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, icon: DollarSign, color: "text-primary", sparkKey: "revenue" as const, sparkColor: "#0077B6" },
+  ], [stats]);
+
+  const activeKpi = kpiCards.find((k) => k.key === selectedKpi);
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
@@ -69,21 +107,61 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                     <Skeleton className="h-3 w-20 dark:bg-slate-700/30" />
                   </div>
                   <Skeleton className="h-8 w-16 dark:bg-slate-700/30" />
+                  <Skeleton className="h-6 w-full rounded dark:bg-slate-700/30" />
                 </CardContent>
               </Card>
             ))
           : kpiCards.map((kpi) => (
-              <Card key={kpi.label}>
+              <Card
+                key={kpi.key}
+                className="cursor-pointer rounded-xl border border-border transition-all duration-200 hover:border-primary/30 hover:bg-muted/40 dark:hover:bg-[#1a2a4a]/50 hover:shadow-md"
+                onClick={() => setSelectedKpi(kpi.key)}
+              >
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-1">
                     <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
                     <span className="text-xs text-muted-foreground">{kpi.label}</span>
                   </div>
                   <p className="text-2xl font-bold">{kpi.value}</p>
+                  {trendData && trendData.length > 0 && (
+                    <div className="h-8 mt-1 -mx-1">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={trendData}>
+                          <defs>
+                            <linearGradient id={`grad-${kpi.key}`} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={kpi.sparkColor} stopOpacity={0.4} />
+                              <stop offset="100%" stopColor={kpi.sparkColor} stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <Area
+                            type="monotone"
+                            dataKey={kpi.sparkKey}
+                            stroke={kpi.sparkColor}
+                            strokeWidth={1.5}
+                            fill={`url(#grad-${kpi.key})`}
+                            dot={false}
+                            isAnimationActive={false}
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
       </div>
+
+      {/* KPI Detail Dialog */}
+      {activeKpi && (
+        <KpiDetailDialog
+          open={!!selectedKpi}
+          onOpenChange={(open) => !open && setSelectedKpi(null)}
+          kpiKey={activeKpi.key}
+          label={activeKpi.label}
+          icon={activeKpi.icon}
+          color={activeKpi.color}
+        />
+      )}
 
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-2">
