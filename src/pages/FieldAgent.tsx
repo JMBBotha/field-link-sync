@@ -37,6 +37,7 @@ import FieldAgentLeadCard from "@/components/FieldAgentLeadCard";
 import CompletedJobsFilterDrawer from "@/components/CompletedJobsFilterDrawer";
 import { useCompletedJobsFilter } from "@/hooks/useCompletedJobsFilter";
 import { Filter } from "lucide-react";
+import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
 
 interface Lead {
   id: string;
@@ -1953,6 +1954,27 @@ const FieldAgent = () => {
           onOpenChange={setShowUpgradeModal}
           reason={subscription.isExpired ? "trial_expired" : "limit_reached"}
         />
+
+        {/* Fixed Bottom Navigation - Mobile Only */}
+        {isMobile && (
+          <FieldAgentBottomNav
+            activeTab={showMapOnMobile ? "map" : mobileTab === "available" ? "available" : mobileTab === "active" ? "active" : "profile"}
+            onTabChange={(tab) => {
+              if (tab === "map") {
+                setShowMapOnMobile(true);
+                setMobileSheetOpen(false);
+              } else if (tab === "profile") {
+                setShowMapOnMobile(false);
+                setMobileSheetOpen(true);
+                setMobileTab("completed");
+              } else {
+                setShowMapOnMobile(false);
+                setMobileSheetOpen(true);
+                setMobileTab(tab as "available" | "active");
+              }
+            }}
+          />
+        )}
       </div>
     </Layout>
   );

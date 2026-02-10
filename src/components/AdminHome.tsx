@@ -60,23 +60,29 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-        {kpiCards.map((kpi) => (
-          <Card key={kpi.label}>
-            <CardContent className="p-4">
-              {isLoading ? (
-                <Skeleton className="h-12 w-full" />
-              ) : (
-                <>
+        {isLoading
+          ? Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-4 rounded dark:bg-slate-700/30" />
+                    <Skeleton className="h-3 w-20 dark:bg-slate-700/30" />
+                  </div>
+                  <Skeleton className="h-8 w-16 dark:bg-slate-700/30" />
+                </CardContent>
+              </Card>
+            ))
+          : kpiCards.map((kpi) => (
+              <Card key={kpi.label}>
+                <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-1">
                     <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
                     <span className="text-xs text-muted-foreground">{kpi.label}</span>
                   </div>
                   <p className="text-2xl font-bold">{kpi.value}</p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                </CardContent>
+              </Card>
+            ))}
       </div>
 
       {/* Quick Actions */}
