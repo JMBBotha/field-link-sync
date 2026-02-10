@@ -235,7 +235,7 @@ const CustomerPortal = () => {
   if (!customer) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-[#070e1a] dark:to-[#0a1628]">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-[#070e1a] dark:to-[#0a1628] animate-fade-in">
       {/* Header */}
       <header className="bg-primary text-primary-foreground p-4 shadow-md">
         <div className="max-w-2xl mx-auto flex items-center gap-4">

@@ -142,11 +142,11 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
         }}
         data-lead-id={lead.id}
         className={cn(
-          "cursor-pointer transition-all duration-300 relative shadow-md border-border/50 dark:border-blue-400/20",
+          "cursor-pointer transition-all duration-200 relative shadow-md border-border/50 dark:border-blue-400/20",
           // Default gradient
           "bg-gradient-to-r from-blue-100 to-slate-50 dark:from-[#0a1628]/60 dark:via-[#1a3a6a]/50 dark:to-[#0a1628]/60 dark:backdrop-blur-md",
-          // Hover state
-          "hover:from-blue-50 hover:to-white dark:hover:from-[#0f2240]/65 dark:hover:via-[#1e4d8a]/55 dark:hover:to-[#0f2240]/65",
+          // Hover state with subtle scale
+          "hover:scale-[1.02] hover:shadow-lg hover:from-blue-50 hover:to-white dark:hover:from-[#0f2240]/65 dark:hover:via-[#1e4d8a]/55 dark:hover:to-[#0f2240]/65",
           // Highlighted state - ring animation
           isHighlighted && [
             "ring-2 ring-primary ring-offset-2",
