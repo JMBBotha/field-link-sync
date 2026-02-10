@@ -8,8 +8,7 @@ interface FooterProps {
 const Footer = ({ leftContent }: FooterProps) => {
   return (
     <footer 
-      className="fixed bottom-0 left-0 right-0 z-30 px-4 py-2 flex items-center justify-between border-t"
-      style={{ backgroundColor: '#0077B6', borderColor: '#006699' }}
+      className="fixed bottom-0 left-0 right-0 z-30 px-4 py-2 flex items-center justify-between border-t bg-[#0077B6] dark:bg-slate-900 border-[#006699] dark:border-slate-700"
     >
       {/* Left: Optional action content (e.g., toggle buttons) */}
       <div className="flex items-center gap-2">
