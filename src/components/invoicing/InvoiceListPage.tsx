@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
-import { FileText, Filter, ChevronRight, Loader2, Search, Plus } from "lucide-react";
+import { FileText, Filter, ChevronRight, Loader2, Search, Plus, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { exportToCSV } from "@/lib/csvExport";
+import jsPDF from "jspdf";
 
 interface Invoice {
   id: string;
@@ -104,6 +106,51 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
     );
   }
 
+  const handleCSVExport = () => {
+    const rows = filteredInvoices.map(inv => ({
+      invoice: inv.invoice_number,
+      customer: inv.customer_name,
+      amount: inv.grand_total,
+      status: inv.status,
+      issued: inv.issue_date,
+      due: inv.due_date || "",
+      paid: inv.paid_date || "",
+    }));
+    exportToCSV(rows, `invoices-${new Date().toISOString().split("T")[0]}`);
+  };
+
+  const handlePDFExport = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text("Invoice Report", 14, 20);
+    doc.setFontSize(9);
+    doc.text(`Generated: ${new Date().toLocaleDateString("en-ZA")}`, 14, 28);
+    doc.text(`Outstanding: ${formatCurrency(totalOutstanding)} | Collected: ${formatCurrency(totalPaid)}`, 14, 34);
+
+    let y = 44;
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.text("Invoice #", 14, y);
+    doc.text("Customer", 50, y);
+    doc.text("Amount", 120, y);
+    doc.text("Status", 155, y);
+    doc.text("Date", 180, y);
+    y += 6;
+    doc.setFont("helvetica", "normal");
+
+    filteredInvoices.forEach(inv => {
+      if (y > 280) { doc.addPage(); y = 20; }
+      doc.text(inv.invoice_number, 14, y);
+      doc.text(inv.customer_name?.slice(0, 35) || "", 50, y);
+      doc.text(formatCurrency(inv.grand_total), 120, y);
+      doc.text(inv.status, 155, y);
+      doc.text(formatDate(inv.issue_date), 180, y);
+      y += 5;
+    });
+
+    doc.save(`invoices-${new Date().toISOString().split("T")[0]}.pdf`);
+  };
+
   return (
     <div className="space-y-4 p-4 max-w-lg mx-auto">
       {/* Summary Cards */}
@@ -120,6 +167,16 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
             <p className="text-lg font-bold text-green-600">{formatCurrency(totalPaid)}</p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Export Buttons */}
+      <div className="flex gap-2 justify-end">
+        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleCSVExport}>
+          <Download className="h-3 w-3 mr-1" />CSV
+        </Button>
+        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handlePDFExport}>
+          <FileText className="h-3 w-3 mr-1" />PDF
+        </Button>
       </div>
 
       {/* Search */}

@@ -10,13 +10,14 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format, subDays, startOfWeek, startOfMonth, endOfDay, differenceInMinutes } from "date-fns";
 import {
-  DollarSign, Briefcase, Clock, Users, FileCheck, CalendarDays, Download, TrendingUp, Award, Filter, Wrench, AlertTriangle, Percent,
+  DollarSign, Briefcase, Clock, Users, FileCheck, CalendarDays, Download, TrendingUp, Award, Filter, Wrench, AlertTriangle, Percent, FileText,
 } from "lucide-react";
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend,
 } from "recharts";
 import KPICard from "./KPICard";
 import { exportToCSV } from "@/lib/csvExport";
+import jsPDF from "jspdf";
 
 type DatePreset = "this_week" | "this_month" | "last_30" | "custom";
 
@@ -235,9 +236,37 @@ const AnalyticsDashboard = () => {
             <h1 className="text-2xl font-bold text-foreground">Business Analytics</h1>
             <p className="text-sm text-muted-foreground">Key metrics for HVAC business owners</p>
           </div>
-          <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="mr-2 h-4 w-4" />Export CSV
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleExport}>
+              <Download className="mr-2 h-4 w-4" />CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => {
+              const doc = new jsPDF();
+              doc.setFontSize(16);
+              doc.text("Analytics Report", 14, 20);
+              doc.setFontSize(9);
+              doc.text(`Period: ${format(dateRange.from, "dd MMM yyyy")} - ${format(dateRange.to, "dd MMM yyyy")}`, 14, 28);
+              doc.text(`Total Jobs: ${completedJobs.length} | Revenue: R ${(revenueMetrics?.totalPaid || 0).toLocaleString("en-ZA")}`, 14, 34);
+              let y = 44;
+              doc.setFontSize(8);
+              doc.setFont("helvetica", "bold");
+              doc.text("Service", 14, y); doc.text("Agent", 70, y); doc.text("Completed", 130, y); doc.text("Duration", 170, y);
+              y += 6;
+              doc.setFont("helvetica", "normal");
+              (completedJobs || []).slice(0, 100).forEach(j => {
+                if (y > 280) { doc.addPage(); y = 20; }
+                doc.text(j.service_type?.slice(0, 28) || "", 14, y);
+                doc.text(agents.find(a => a.id === j.assigned_agent_id)?.full_name?.slice(0, 28) || "—", 70, y);
+                doc.text(j.completed_at ? format(new Date(j.completed_at), "dd MMM yy") : "", 130, y);
+                const dur = j.started_at && j.completed_at ? differenceInMinutes(new Date(j.completed_at), new Date(j.started_at)) : null;
+                doc.text(dur != null ? `${dur} min` : "—", 170, y);
+                y += 5;
+              });
+              doc.save(`analytics-${format(new Date(), "yyyy-MM-dd")}.pdf`);
+            }}>
+              <FileText className="mr-2 h-4 w-4" />PDF
+            </Button>
+          </div>
         </div>
 
         {/* Filters row */}

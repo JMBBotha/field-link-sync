@@ -5,12 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle2, AlertCircle, RefreshCw, FilePlus } from "lucide-react";
+import { CheckCircle2, AlertCircle, RefreshCw, FilePlus, Download, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import LeadDetailSheet from "@/components/LeadDetailSheet";
 import LeadActionButtons from "./LeadActionButtons";
 import CreateInvoiceDialog from "@/components/invoicing/CreateInvoiceDialog";
+import { exportToCSV } from "@/lib/csvExport";
+import jsPDF from "jspdf";
 
 type FilterTab = "all" | "invoiced" | "not_invoiced" | "paid" | "unpaid";
 
@@ -137,11 +139,65 @@ const CompletedLeadsList = () => {
   // Stub handlers for LeadDetailSheet (read-only context on admin home)
   const noOp = async () => {};
 
+  const handleCSVExport = () => {
+    const rows = filtered.map(l => ({
+      customer: l.customer_name,
+      service: l.service_type,
+      completed: l.completed_at ? format(new Date(l.completed_at), "yyyy-MM-dd HH:mm") : "",
+      invoice: l.invoice_number || "N/A",
+      status: l.invoice_status || "Not invoiced",
+      amount: l.invoice_total ?? "",
+    }));
+    exportToCSV(rows, `completed-leads-${format(new Date(), "yyyy-MM-dd")}`);
+  };
+
+  const handlePDFExport = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text("Completed Leads Report", 14, 20);
+    doc.setFontSize(9);
+    doc.text(`Generated: ${format(new Date(), "dd MMM yyyy HH:mm")}`, 14, 28);
+    doc.text(`Total: ${filtered.length} leads | Invoiced Value: R ${stats.totalValue.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, 14, 34);
+
+    let y = 44;
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.text("Customer", 14, y);
+    doc.text("Service", 70, y);
+    doc.text("Completed", 110, y);
+    doc.text("Invoice", 145, y);
+    doc.text("Amount", 175, y);
+    y += 6;
+    doc.setFont("helvetica", "normal");
+
+    filtered.forEach(l => {
+      if (y > 280) { doc.addPage(); y = 20; }
+      doc.text(l.customer_name?.slice(0, 30) || "", 14, y);
+      doc.text(l.service_type?.slice(0, 20) || "", 70, y);
+      doc.text(l.completed_at ? format(new Date(l.completed_at), "dd MMM yy") : "", 110, y);
+      doc.text(l.invoice_number || "—", 145, y);
+      doc.text(l.invoice_total != null ? `R ${l.invoice_total.toLocaleString()}` : "—", 175, y);
+      y += 5;
+    });
+
+    doc.save(`completed-leads-${format(new Date(), "yyyy-MM-dd")}.pdf`);
+  };
+
   return (
     <>
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Completed Leads</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Completed Leads</CardTitle>
+            <div className="flex items-center gap-1.5">
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleCSVExport}>
+                <Download className="h-3 w-3 mr-1" />CSV
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handlePDFExport}>
+                <FileText className="h-3 w-3 mr-1" />PDF
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Summary Bar */}

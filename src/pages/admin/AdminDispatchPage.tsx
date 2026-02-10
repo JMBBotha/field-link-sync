@@ -103,6 +103,7 @@ const AdminDispatchPage = () => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -483,6 +484,34 @@ const AdminDispatchPage = () => {
   const goPrev = () => setCurrentDate(d => addDays(d, viewMode === "day" ? -1 : -7));
   const goNext = () => setCurrentDate(d => addDays(d, viewMode === "day" ? 1 : 7));
 
+  // ─── Keyboard shortcuts ───
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Ignore when typing in inputs
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+        if (e.key === "Escape") {
+          (e.target as HTMLElement).blur();
+          setMultiSelectedIds(new Set());
+        }
+        return;
+      }
+      if (e.key === "a" || e.key === "A") {
+        e.preventDefault();
+        setSidebarCollapsed(false);
+        setTimeout(() => searchInputRef.current?.focus(), 100);
+      } else if (e.key === "t" || e.key === "T") {
+        e.preventDefault();
+        setViewMode(prev => prev === "day" ? "week" : "day");
+      } else if (e.key === "Escape") {
+        setMultiSelectedIds(new Set());
+        setDraggingLead(null);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
   // ─── Agent online status helper ───
   const isAgentOnline = (agentId: string) => {
     const loc = agentLocations.find(a => a.agent_id === agentId);
@@ -565,7 +594,8 @@ const AdminDispatchPage = () => {
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
-                    placeholder="Search jobs..."
+                    ref={searchInputRef}
+                    placeholder="Search jobs... (A)"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-8 h-8 text-xs"
