@@ -21,6 +21,28 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Helper to notify admins of webhook failures
+    const notifyAdmins = async (title: string, body: string) => {
+      try {
+        const { data: admins } = await supabase
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", "admin");
+        
+        if (admins?.length) {
+          const notifications = admins.map((a) => ({
+            user_id: a.user_id,
+            type: "webhook_failure",
+            title,
+            body,
+          }));
+          await supabase.from("notifications").insert(notifications);
+        }
+      } catch (err) {
+        console.error("[Stripe Webhook] Failed to notify admins:", err);
+      }
+    };
+
     switch (type) {
       case "checkout.session.completed": {
         const session = data.object;
@@ -29,6 +51,7 @@ serve(async (req) => {
 
         if (!userId) {
           console.error("[Stripe Webhook] No user_id in session metadata");
+          await notifyAdmins("⚠️ Stripe Webhook Issue", "checkout.session.completed received without user_id in metadata");
           break;
         }
 
@@ -40,12 +63,13 @@ serve(async (req) => {
             subscription_status: "active",
             subscription_plan: "pro",
             stripe_customer_id: customerId,
-            jobs_limit: 999999, // Unlimited for pro
+            jobs_limit: 999999,
           })
           .eq("id", userId);
 
         if (error) {
           console.error("[Stripe Webhook] Update error:", error);
+          await notifyAdmins("⚠️ Subscription Activation Failed", `Failed to activate subscription for user ${userId}: ${error.message}`);
         } else {
           console.log("[Stripe Webhook] Subscription activated for:", userId);
         }
@@ -59,7 +83,6 @@ serve(async (req) => {
 
         console.log("[Stripe Webhook] Subscription updated:", customerId, status);
 
-        // Map Stripe status to our status
         let subStatus = "active";
         if (status === "canceled" || status === "unpaid") subStatus = "canceled";
         if (status === "past_due") subStatus = "expired";
@@ -73,7 +96,10 @@ serve(async (req) => {
           })
           .eq("stripe_customer_id", customerId);
 
-        if (error) console.error("[Stripe Webhook] Update error:", error);
+        if (error) {
+          console.error("[Stripe Webhook] Update error:", error);
+          await notifyAdmins("⚠️ Subscription Update Failed", `Failed to update subscription for Stripe customer ${customerId}: ${error.message}`);
+        }
         break;
       }
 
@@ -92,7 +118,10 @@ serve(async (req) => {
           })
           .eq("stripe_customer_id", customerId);
 
-        if (error) console.error("[Stripe Webhook] Cancel update error:", error);
+        if (error) {
+          console.error("[Stripe Webhook] Cancel update error:", error);
+          await notifyAdmins("⚠️ Subscription Cancel Failed", `Failed to process cancellation for Stripe customer ${customerId}: ${error.message}`);
+        }
         break;
       }
 
@@ -102,13 +131,15 @@ serve(async (req) => {
 
         console.log("[Stripe Webhook] Payment succeeded for:", customerId);
 
-        // Ensure subscription remains active
         const { error } = await supabase
           .from("profiles")
           .update({ subscription_status: "active" })
           .eq("stripe_customer_id", customerId);
 
-        if (error) console.error("[Stripe Webhook] Payment update error:", error);
+        if (error) {
+          console.error("[Stripe Webhook] Payment update error:", error);
+          await notifyAdmins("⚠️ Payment Update Failed", `Payment succeeded but status update failed for ${customerId}: ${error.message}`);
+        }
         break;
       }
 
@@ -123,7 +154,12 @@ serve(async (req) => {
           .update({ subscription_status: "expired" })
           .eq("stripe_customer_id", customerId);
 
-        if (error) console.error("[Stripe Webhook] Failed payment update error:", error);
+        if (error) {
+          console.error("[Stripe Webhook] Failed payment update error:", error);
+        }
+
+        // Always alert admins on payment failure
+        await notifyAdmins("💳 Payment Failed", `Stripe payment failed for customer ${customerId}. Subscription marked as expired.`);
         break;
       }
 
