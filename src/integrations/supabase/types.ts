@@ -301,67 +301,138 @@ export type Database = {
           },
         ]
       }
+      customer_units: {
+        Row: {
+          created_at: string
+          customer_id: string
+          full_address: string | null
+          id: string
+          label: string
+          notes: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          full_address?: string | null
+          id?: string
+          label: string
+          notes?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          full_address?: string | null
+          id?: string
+          label?: string
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_units_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
           area: string | null
+          city: string | null
+          company_name: string | null
           created_at: string
           created_by: string | null
           data_consent: boolean | null
           data_consent_date: string | null
           email: string | null
           email_verified: boolean | null
+          first_name: string | null
           id: string
+          is_company: boolean | null
+          last_name: string | null
           latitude: number | null
           longitude: number | null
           name: string
+          normalized_email: string | null
+          normalized_phone: string | null
           notes: string | null
           notification_opt_in: boolean | null
           phone: string
           phone_verified: boolean | null
+          postal_code: string | null
           preferred_contact_method: string | null
+          primary_address_line1: string | null
+          primary_address_line2: string | null
+          secondary_phone: string | null
+          status: string | null
           updated_at: string
           vat_number: string | null
         }
         Insert: {
           address?: string | null
           area?: string | null
+          city?: string | null
+          company_name?: string | null
           created_at?: string
           created_by?: string | null
           data_consent?: boolean | null
           data_consent_date?: string | null
           email?: string | null
           email_verified?: boolean | null
+          first_name?: string | null
           id?: string
+          is_company?: boolean | null
+          last_name?: string | null
           latitude?: number | null
           longitude?: number | null
           name: string
+          normalized_email?: string | null
+          normalized_phone?: string | null
           notes?: string | null
           notification_opt_in?: boolean | null
           phone: string
           phone_verified?: boolean | null
+          postal_code?: string | null
           preferred_contact_method?: string | null
+          primary_address_line1?: string | null
+          primary_address_line2?: string | null
+          secondary_phone?: string | null
+          status?: string | null
           updated_at?: string
           vat_number?: string | null
         }
         Update: {
           address?: string | null
           area?: string | null
+          city?: string | null
+          company_name?: string | null
           created_at?: string
           created_by?: string | null
           data_consent?: boolean | null
           data_consent_date?: string | null
           email?: string | null
           email_verified?: boolean | null
+          first_name?: string | null
           id?: string
+          is_company?: boolean | null
+          last_name?: string | null
           latitude?: number | null
           longitude?: number | null
           name?: string
+          normalized_email?: string | null
+          normalized_phone?: string | null
           notes?: string | null
           notification_opt_in?: boolean | null
           phone?: string
           phone_verified?: boolean | null
+          postal_code?: string | null
           preferred_contact_method?: string | null
+          primary_address_line1?: string | null
+          primary_address_line2?: string | null
+          secondary_phone?: string | null
+          status?: string | null
           updated_at?: string
           vat_number?: string | null
         }
@@ -1005,6 +1076,7 @@ export type Database = {
           service_type: string
           started_at: string | null
           status: string
+          unit_id: string | null
         }
         Insert: {
           accepted_at?: string | null
@@ -1031,6 +1103,7 @@ export type Database = {
           service_type: string
           started_at?: string | null
           status?: string
+          unit_id?: string | null
         }
         Update: {
           accepted_at?: string | null
@@ -1057,6 +1130,7 @@ export type Database = {
           service_type?: string
           started_at?: string | null
           status?: string
+          unit_id?: string | null
         }
         Relationships: [
           {
@@ -1078,6 +1152,13 @@ export type Database = {
             columns: ["equipment_id"]
             isOneToOne: false
             referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "customer_units"
             referencedColumns: ["id"]
           },
         ]
@@ -1882,6 +1963,7 @@ export type Database = {
           price: number
           start_date: string
           status: string
+          unit_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1901,6 +1983,7 @@ export type Database = {
           price?: number
           start_date: string
           status?: string
+          unit_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1920,6 +2003,7 @@ export type Database = {
           price?: number
           start_date?: string
           status?: string
+          unit_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1935,6 +2019,13 @@ export type Database = {
             columns: ["equipment_id"]
             isOneToOne: false
             referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_agreements_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "customer_units"
             referencedColumns: ["id"]
           },
         ]
@@ -2168,6 +2259,25 @@ export type Database = {
         Args: { lat1: number; lat2: number; lng1: number; lng2: number }
         Returns: number
       }
+      check_customer_duplicates: {
+        Args: {
+          p_address?: string
+          p_email?: string
+          p_first_name?: string
+          p_last_name?: string
+          p_phone?: string
+        }
+        Returns: {
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          match_score: number
+          match_type: string
+          phone: string
+          primary_address_line1: string
+        }[]
+      }
       convert_time_to_invoice_items: {
         Args: {
           p_hourly_rate?: number
@@ -2244,6 +2354,7 @@ export type Database = {
           service_type: string
           started_at: string | null
           status: string
+          unit_id: string | null
         }[]
         SetofOptions: {
           from: "*"
@@ -2287,6 +2398,7 @@ export type Database = {
         }[]
       }
       mark_overdue_maintenance: { Args: never; Returns: number }
+      normalize_phone: { Args: { phone: string }; Returns: string }
       past_quote_analytics: {
         Args: { p_job_type?: string }
         Returns: {
@@ -2324,6 +2436,22 @@ export type Database = {
           revenue: number
         }[]
       }
+      search_customers: {
+        Args: { max_results?: number; search_term: string }
+        Returns: {
+          city: string
+          company_name: string
+          email: string
+          first_name: string
+          id: string
+          is_company: boolean
+          last_name: string
+          phone: string
+          primary_address_line1: string
+          relevance: number
+          status: string
+        }[]
+      }
       search_supplier_products: {
         Args: {
           p_category?: string
@@ -2352,6 +2480,8 @@ export type Database = {
           supplier_name: string
         }[]
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       validate_customer_token: { Args: { p_token: string }; Returns: string }
     }
     Enums: {
