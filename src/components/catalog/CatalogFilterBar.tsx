@@ -13,6 +13,7 @@ export interface CatalogFilters {
   refrigerant: string;
   phase: string;
   brand: string;
+  pipeSize: string;
   priceMin: string;
   priceMax: string;
 }
@@ -24,6 +25,7 @@ export const DEFAULT_FILTERS: CatalogFilters = {
   refrigerant: "__all__",
   phase: "__all__",
   brand: "__all__",
+  pipeSize: "__all__",
   priceMin: "",
   priceMax: "",
 };
@@ -45,12 +47,24 @@ const PHASES = [
   { label: "Three Phase (3Ph)", value: "3Ph" },
 ];
 
+export interface FilterCounts {
+  speedType: Record<string, number>;
+  unitType: Record<string, number>;
+  btu: Record<string, number>;
+  refrigerant: Record<string, number>;
+  phase: Record<string, number>;
+  brand: Record<string, number>;
+  pipeSize: Record<string, number>;
+}
+
 interface Props {
   filters: CatalogFilters;
   onChange: (filters: CatalogFilters) => void;
   availableBrands: string[];
+  availablePipeSizes: string[];
   totalCount: number;
   filteredCount: number;
+  counts: FilterCounts;
 }
 
 function ChipGroup({
@@ -60,7 +74,7 @@ function ChipGroup({
   onChange,
 }: {
   label: string;
-  options: { label: string; value: string }[];
+  options: { label: string; value: string; count?: number }[];
   value: string;
   onChange: (v: string) => void;
 }) {
@@ -88,13 +102,16 @@ function ChipGroup({
           }`}
         >
           {opt.label}
+          {opt.count !== undefined && (
+            <span className="ml-1 opacity-70">({opt.count})</span>
+          )}
         </button>
       ))}
     </div>
   );
 }
 
-const CatalogFilterBar = ({ filters, onChange, availableBrands, totalCount, filteredCount }: Props) => {
+const CatalogFilterBar = ({ filters, onChange, availableBrands, availablePipeSizes, totalCount, filteredCount, counts }: Props) => {
   const [isOpen, setIsOpen] = useState(true);
 
   const set = (key: keyof CatalogFilters, value: string) => {
@@ -109,6 +126,7 @@ const CatalogFilterBar = ({ filters, onChange, availableBrands, totalCount, filt
     if (filters.refrigerant !== "__all__") active.push({ key: "refrigerant", label: filters.refrigerant });
     if (filters.phase !== "__all__") active.push({ key: "phase", label: `Phase: ${filters.phase}` });
     if (filters.brand !== "__all__") active.push({ key: "brand", label: `Brand: ${filters.brand}` });
+    if (filters.pipeSize !== "__all__") active.push({ key: "pipeSize", label: `Pipe: ${filters.pipeSize}` });
     if (filters.priceMin) active.push({ key: "priceMin", label: `Min: R${filters.priceMin}` });
     if (filters.priceMax) active.push({ key: "priceMax", label: `Max: R${filters.priceMax}` });
     return active;
@@ -146,7 +164,7 @@ const CatalogFilterBar = ({ filters, onChange, availableBrands, totalCount, filt
           <div className="rounded-lg border bg-card/50 p-3 space-y-2">
             <ChipGroup
               label="Speed"
-              options={SPEED_TYPES.map((s) => ({ label: s, value: s }))}
+              options={SPEED_TYPES.map((s) => ({ label: s, value: s, count: counts.speedType[s] ?? 0 }))}
               value={filters.speedType}
               onChange={(v) => set("speedType", v)}
             />
@@ -154,14 +172,15 @@ const CatalogFilterBar = ({ filters, onChange, availableBrands, totalCount, filt
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-16 shrink-0">Type</span>
               <Select value={filters.unitType} onValueChange={(v) => set("unitType", v)}>
-                <SelectTrigger className="h-7 text-[11px] w-36">
+                <SelectTrigger className="h-7 text-[11px] w-44">
                   <SelectValue placeholder="All Types" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">All Types</SelectItem>
-                  {UNIT_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
-                  ))}
+                  {UNIT_TYPES.map((t) => {
+                    const c = counts.unitType[t] ?? 0;
+                    return <SelectItem key={t} value={t}>{t} ({c})</SelectItem>;
+                  })}
                 </SelectContent>
               </Select>
             </div>
@@ -169,38 +188,55 @@ const CatalogFilterBar = ({ filters, onChange, availableBrands, totalCount, filt
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-16 shrink-0">BTU</span>
               <Select value={filters.btu} onValueChange={(v) => set("btu", v)}>
-                <SelectTrigger className="h-7 text-[11px] w-28">
+                <SelectTrigger className="h-7 text-[11px] w-32">
                   <SelectValue placeholder="All BTU" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">All BTU</SelectItem>
-                  {BTU_OPTIONS.map((b) => (
-                    <SelectItem key={b} value={b}>{b}</SelectItem>
-                  ))}
+                  {BTU_OPTIONS.map((b) => {
+                    const c = counts.btu[b] ?? 0;
+                    return <SelectItem key={b} value={b}>{b} ({c})</SelectItem>;
+                  })}
                 </SelectContent>
               </Select>
             </div>
 
             <ChipGroup
               label="Refrig."
-              options={REFRIGERANTS.map((r) => ({ label: r, value: r }))}
+              options={REFRIGERANTS.map((r) => ({ label: r, value: r, count: counts.refrigerant[r] ?? 0 }))}
               value={filters.refrigerant}
               onChange={(v) => set("refrigerant", v)}
             />
 
             <ChipGroup
               label="Phase"
-              options={PHASES.map((p) => ({ label: p.label, value: p.value }))}
+              options={PHASES.map((p) => ({ label: p.label, value: p.value, count: counts.phase[p.value] ?? 0 }))}
               value={filters.phase}
               onChange={(v) => set("phase", v)}
             />
 
             <ChipGroup
               label="Brand"
-              options={[...availableBrands].sort().map((b) => ({ label: b, value: b }))}
+              options={[...availableBrands].sort().map((b) => ({ label: b, value: b, count: counts.brand[b] ?? 0 }))}
               value={filters.brand}
               onChange={(v) => set("brand", v)}
             />
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-16 shrink-0">Pipe</span>
+              <Select value={filters.pipeSize} onValueChange={(v) => set("pipeSize", v)}>
+                <SelectTrigger className="h-7 text-[11px] w-44">
+                  <SelectValue placeholder="All Pipe Sizes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All Pipe Sizes</SelectItem>
+                  {availablePipeSizes.map((ps) => {
+                    const c = counts.pipeSize[ps] ?? 0;
+                    return <SelectItem key={ps} value={ps}>{ps} ({c})</SelectItem>;
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
 
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-16 shrink-0">Price</span>

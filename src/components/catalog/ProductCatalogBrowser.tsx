@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { offlineDb } from "@/lib/offlineDb";
 import ProductDetailModal from "./ProductDetailModal";
-import CatalogFilterBar, { CatalogFilters, DEFAULT_FILTERS } from "./CatalogFilterBar";
+import CatalogFilterBar, { CatalogFilters, DEFAULT_FILTERS, FilterCounts } from "./CatalogFilterBar";
 import CatalogSearchSuggestions from "./CatalogSearchSuggestions";
 import {
   Search,
@@ -93,7 +93,26 @@ function derivePhase(p: SupplierProduct): string {
 }
 
 function deriveBrand(p: SupplierProduct): string {
-  return p.supplier_name || "";
+  const code = (p.product_code || "").toUpperCase();
+  const desc = (p.description || "").toLowerCase();
+  if (code.startsWith("FOUR") || desc.includes("alliance")) return "Alliance";
+  return "Midea";
+}
+
+function derivePipeSize(p: SupplierProduct): string {
+  return (p.pipe_size || "").trim();
+}
+
+/** Build a synthetic search string with BTU variants and normalized brand for better Fuse.js matching */
+function buildSearchBlob(p: SupplierProduct): string {
+  const parts = [p.product_code, p.short_name || "", p.description, p.category, p.subcategory || "", p.supplier_name, p.refrigerant_type || "", p.pipe_size || ""];
+  const brand = deriveBrand(p);
+  parts.push(brand);
+  if (p.btu_rating) {
+    const k = Math.round(p.btu_rating / 1000);
+    parts.push(`${k}K`, `${p.btu_rating}`);
+  }
+  return parts.join(" ");
 }
 
 function deriveBtuBucket(p: SupplierProduct): string {
@@ -112,7 +131,8 @@ function matchesFilters(p: SupplierProduct, f: CatalogFilters): boolean {
   if (f.btu !== "__all__" && deriveBtuBucket(p) !== f.btu) return false;
   if (f.refrigerant !== "__all__" && (p.refrigerant_type || "").toUpperCase() !== f.refrigerant.toUpperCase()) return false;
   if (f.phase !== "__all__" && derivePhase(p) !== f.phase) return false;
-  if (f.brand !== "__all__" && deriveBrand(p).toLowerCase() !== f.brand.toLowerCase()) return false;
+  if (f.brand !== "__all__" && deriveBrand(p) !== f.brand) return false;
+  if (f.pipeSize !== "__all__" && derivePipeSize(p) !== f.pipeSize) return false;
   if (f.priceMin && p.selling_price < parseFloat(f.priceMin)) return false;
   if (f.priceMax && p.selling_price > parseFloat(f.priceMax)) return false;
   return true;
@@ -210,11 +230,28 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
     return [...brands];
   }, [allProducts]);
 
+  // Derive available pipe sizes
+  const availablePipeSizes = useMemo(() => {
+    const sizes = new Set<string>();
+    allProducts.forEach((p) => {
+      const ps = derivePipeSize(p);
+      if (ps) sizes.add(ps);
+    });
+    return [...sizes].sort();
+  }, [allProducts]);
+
+  // Build enriched items for Fuse with a searchBlob field
+  const enrichedProducts = useMemo(() =>
+    allProducts.map(p => ({ ...p, _searchBlob: buildSearchBlob(p) })),
+    [allProducts]
+  );
+
   const fuse = useMemo(
-    () => new Fuse(allProducts, {
+    () => new Fuse(enrichedProducts, {
       keys: [
         { name: "product_code", weight: 2 },
         { name: "short_name", weight: 2 },
+        { name: "_searchBlob", weight: 1.5 },
         { name: "description", weight: 1.5 },
         { name: "category", weight: 1 },
         { name: "supplier_name", weight: 1 },
@@ -226,21 +263,63 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
       ignoreLocation: true,
       includeScore: true,
     }),
-    [allProducts]
+    [enrichedProducts]
   );
 
   // Apply search + structured filters with AND logic
   const filtered = useMemo(() => {
     let results: SupplierProduct[];
     if (searchQuery.trim().length > 0) {
-      results = fuseMultiTokenSearch(allProducts, fuse, searchQuery);
+      results = fuseMultiTokenSearch(enrichedProducts, fuse, searchQuery);
     } else {
-      results = allProducts;
+      results = [...allProducts];
     }
     // Apply structured filters
     results = results.filter((p) => matchesFilters(p, filters));
     return results;
-  }, [allProducts, fuse, searchQuery, filters]);
+  }, [allProducts, enrichedProducts, fuse, searchQuery, filters]);
+
+  // Compute dynamic filter counts: for each filter dimension, count products matching ALL OTHER active filters
+  const filterCounts = useMemo<FilterCounts>(() => {
+    // Base set: search-filtered products (before structured filters)
+    let baseResults: SupplierProduct[];
+    if (searchQuery.trim().length > 0) {
+      baseResults = fuseMultiTokenSearch(enrichedProducts, fuse, searchQuery);
+    } else {
+      baseResults = allProducts;
+    }
+
+    const countFor = (dimension: keyof CatalogFilters) => {
+      const otherFilters = { ...filters, [dimension]: "__all__" };
+      // Also reset price filters if checking price dimension
+      const pool = baseResults.filter(p => matchesFilters(p, otherFilters));
+      const counts: Record<string, number> = {};
+      for (const p of pool) {
+        let val = "";
+        switch (dimension) {
+          case "speedType": val = deriveSpeedType(p); break;
+          case "unitType": val = deriveUnitType(p); break;
+          case "btu": val = deriveBtuBucket(p); break;
+          case "refrigerant": val = (p.refrigerant_type || "").toUpperCase(); break;
+          case "phase": val = derivePhase(p); break;
+          case "brand": val = deriveBrand(p); break;
+          case "pipeSize": val = derivePipeSize(p); break;
+        }
+        if (val) counts[val] = (counts[val] || 0) + 1;
+      }
+      return counts;
+    };
+
+    return {
+      speedType: countFor("speedType"),
+      unitType: countFor("unitType"),
+      btu: countFor("btu"),
+      refrigerant: countFor("refrigerant"),
+      phase: countFor("phase"),
+      brand: countFor("brand"),
+      pipeSize: countFor("pipeSize"),
+    };
+  }, [allProducts, enrichedProducts, fuse, searchQuery, filters]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -352,8 +431,10 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
           filters={filters}
           onChange={setFilters}
           availableBrands={availableBrands}
+          availablePipeSizes={availablePipeSizes}
           totalCount={allProducts.length}
           filteredCount={sorted.length}
+          counts={filterCounts}
         />
       </div>
 
