@@ -70,12 +70,19 @@ export function deriveBrand(p: SearchableProduct): string {
   return "Midea";
 }
 
+const BTU_BUCKETS = [9, 12, 18, 24, 36, 48, 60, 76, 100, 120, 150, 200, 250, 300, 350, 400, 500];
+
+function closestBtuBucket(k: number): string {
+  if (k > 500) return "500K+";
+  const closest = BTU_BUCKETS.reduce((prev, curr) => Math.abs(curr - k) < Math.abs(prev - k) ? curr : prev);
+  return `${closest}K`;
+}
+
 export function deriveBtuBucket(p: SearchableProduct): string {
   const btu = p.btu_rating;
   if (!btu) return "";
   const k = btu / 1000;
-  if (k >= 76) return "76K+";
-  return `${Math.round(k)}K`;
+  return closestBtuBucket(k);
 }
 
 export function derivePipeSize(p: SearchableProduct): string {
@@ -151,7 +158,7 @@ const BRAND_PATTERNS: { pattern: RegExp; value: string }[] = [
   { pattern: /\blg\b/gi, value: "LG" },
 ];
 
-/** Match full BTU values like "24 000" or "41000" and convert to bucket dynamically */
+/** Match full BTU values like "24 000" or "41000" and convert to closest standard bucket */
 const BTU_FULL_PATTERN = /\b(\d{1,3})\s*000\b/gi;
 
 const REFRIGERANT_PREPROCESS: { pattern: RegExp; value: string }[] = [
@@ -265,7 +272,7 @@ export function preprocessQuery(query: string, currentFilters: CatalogFilters): 
   if (btuShorthand && currentFilters.btu === "__all__") {
     const kVal = parseInt(btuShorthand[1], 10);
     if (kVal >= 1 && kVal <= 999) {
-      autoFilters.btu = kVal >= 76 ? "76K+" : `${kVal}K`;
+      autoFilters.btu = closestBtuBucket(kVal);
       q = q.replace(btuShorthand[0], "");
     }
   }
@@ -275,7 +282,7 @@ export function preprocessQuery(query: string, currentFilters: CatalogFilters): 
     if (fullBtuMatch && currentFilters.btu === "__all__") {
       const kVal = parseInt(fullBtuMatch[1], 10);
       if (kVal >= 1 && kVal <= 999) {
-        autoFilters.btu = kVal >= 76 ? "76K+" : `${kVal}K`;
+        autoFilters.btu = closestBtuBucket(kVal);
         q = q.replace(BTU_FULL_PATTERN, "");
       }
     }
