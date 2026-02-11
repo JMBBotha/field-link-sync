@@ -12,11 +12,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { offlineDb } from "@/lib/offlineDb";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import ProductDetailModal from "./ProductDetailModal";
 import ProductSlideOverPanel from "./ProductSlideOverPanel";
 import ProductCompareTable from "./ProductCompareTable";
 import CatalogFilterBar, { CatalogFilters, DEFAULT_FILTERS, FilterCounts, SortOption } from "./CatalogFilterBar";
 import CatalogSearchSuggestions, { FILTER_MATCHERS } from "./CatalogSearchSuggestions";
+import BulkActionBar from "../bulk/BulkActionBar";
 import {
   deriveSpeedType, deriveUnitType, derivePhase, deriveBrand, derivePipeSize,
   deriveBtuBucket, buildSearchBlob, matchesFilters, preprocessQuery,
@@ -33,6 +38,10 @@ import {
   Star,
   GitCompareArrows,
   ChevronDown,
+  Tags,
+  FolderInput,
+  ArrowRightLeft,
+  Trash2,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -125,6 +134,98 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+
+  // ── Bulk selection state ──
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
+  const [bulkAction, setBulkAction] = useState<"brand" | "category" | "supplier" | "delete" | null>(null);
+  const [bulkBrand, setBulkBrand] = useState("");
+  const [bulkCategory, setBulkCategory] = useState("");
+  const [bulkSupplierId, setBulkSupplierId] = useState("");
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+
+  const { data: allSuppliers = [] } = useQuery({
+    queryKey: ["suppliers-for-move"],
+    queryFn: async () => {
+      const { data } = await supabase.from("suppliers").select("id, name").eq("is_active", true).order("name");
+      return (data || []) as { id: string; name: string }[];
+    },
+  });
+
+  const toggleBulkSelect = useCallback((id: string) => {
+    setBulkSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // selectAllVisible defined after sorted
+
+  const bulkUpdateMutation = useMutation({
+    mutationFn: async ({ ids, updates }: { ids: string[]; updates: Record<string, any> }) => {
+      const batchSize = 50;
+      for (let i = 0; i < ids.length; i += batchSize) {
+        const batch = ids.slice(i, i + batchSize);
+        const { error } = await supabase.from("supplier_products" as any)
+          .update(updates as any).in("id", batch);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] });
+      queryClient.invalidateQueries({ queryKey: ["product-category-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
+      setBulkSelected(new Set());
+      setBulkConfirmOpen(false);
+      setBulkAction(null);
+      toast({ title: "Bulk update complete" });
+    },
+    onError: (err: any) => toast({ title: "Bulk update failed", description: err.message, variant: "destructive" }),
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const batchSize = 50;
+      for (let i = 0; i < ids.length; i += batchSize) {
+        const batch = ids.slice(i, i + batchSize);
+        const { error } = await supabase.from("supplier_products" as any).delete().in("id", batch);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] });
+      queryClient.invalidateQueries({ queryKey: ["product-category-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
+      setBulkSelected(new Set());
+      setBulkConfirmOpen(false);
+      setBulkAction(null);
+      toast({ title: "Products deleted" });
+    },
+    onError: (err: any) => toast({ title: "Delete failed", description: err.message, variant: "destructive" }),
+  });
+
+  const executeBulkAction = () => {
+    const ids = [...bulkSelected];
+    if (bulkAction === "brand" && bulkBrand) {
+      bulkUpdateMutation.mutate({ ids, updates: { brand: bulkBrand } });
+    } else if (bulkAction === "category" && bulkCategory) {
+      bulkUpdateMutation.mutate({ ids, updates: { product_category: bulkCategory } });
+    } else if (bulkAction === "supplier" && bulkSupplierId) {
+      bulkUpdateMutation.mutate({ ids, updates: { supplier_id: bulkSupplierId } });
+    } else if (bulkAction === "delete") {
+      bulkDeleteMutation.mutate(ids);
+    }
+  };
+
+  const bulkConfirmMessage = bulkAction === "brand"
+    ? `Change brand to "${bulkBrand}" for ${bulkSelected.size} products?`
+    : bulkAction === "category"
+    ? `Change category to "${bulkCategory}" for ${bulkSelected.size} products?`
+    : bulkAction === "supplier"
+    ? `Move ${bulkSelected.size} products to "${allSuppliers.find(s => s.id === bulkSupplierId)?.name}"?`
+    : bulkAction === "delete"
+    ? `Permanently delete ${bulkSelected.size} products?`
+    : "";
 
   const addToHistory = useCallback((term: string) => {
     const t = term.trim();
@@ -342,6 +443,10 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
 
   const pinnedCount = useMemo(() => filtered.filter(p => p.is_pinned).length, [filtered]);
 
+  const selectAllVisible = useCallback(() => {
+    setBulkSelected(new Set(sorted.map(p => p.id)));
+  }, [sorted]);
+
   const preferredBrand = useMemo(() => {
     if (!supplierId) return "";
     const sp = allProducts.find(p => p.supplier_id === supplierId);
@@ -528,6 +633,126 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
         />
       </div>
 
+      {/* Bulk action bar */}
+      {bulkSelected.size > 0 && (
+        <div className="sticky top-12 z-20 bg-primary text-primary-foreground px-4 py-2.5 flex items-center gap-3 rounded-lg shadow-lg animate-in slide-in-from-top-2">
+          <Checkbox
+            checked={bulkSelected.size === sorted.length && sorted.length > 0}
+            onCheckedChange={(checked) => checked ? selectAllVisible() : setBulkSelected(new Set())}
+            className="border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary"
+          />
+          <span className="text-sm font-medium">{bulkSelected.size} selected</span>
+          <div className="flex-1" />
+
+          {/* Change Brand */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="secondary" className="gap-1.5 text-xs">
+                <Tags className="h-3 w-3" /> Brand
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-3 space-y-2">
+              <p className="text-xs font-medium">Change brand to:</p>
+              <Input
+                placeholder="Type brand name..."
+                value={bulkBrand}
+                onChange={(e) => setBulkBrand(e.target.value)}
+                className="h-8 text-xs"
+              />
+              <div className="flex flex-wrap gap-1">
+                {availableBrands.map(b => (
+                  <Badge key={b} variant="outline" className="cursor-pointer text-[10px]" onClick={() => setBulkBrand(b)}>
+                    {b}
+                  </Badge>
+                ))}
+              </div>
+              <Button size="sm" className="w-full text-xs" disabled={!bulkBrand}
+                onClick={() => { setBulkAction("brand"); setBulkConfirmOpen(true); }}>
+                Apply to {bulkSelected.size} products
+              </Button>
+            </PopoverContent>
+          </Popover>
+
+          {/* Change Category */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="secondary" className="gap-1.5 text-xs">
+                <FolderInput className="h-3 w-3" /> Category
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-3 space-y-2">
+              <p className="text-xs font-medium">Change category to:</p>
+              <Select value={bulkCategory} onValueChange={setBulkCategory}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectContent>
+                  {["Air Conditioning", "Water Heaters", "Inverters", "Batteries", "Consumables"].map(c => (
+                    <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button size="sm" className="w-full text-xs" disabled={!bulkCategory}
+                onClick={() => { setBulkAction("category"); setBulkConfirmOpen(true); }}>
+                Apply to {bulkSelected.size} products
+              </Button>
+            </PopoverContent>
+          </Popover>
+
+          {/* Move to Supplier */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="secondary" className="gap-1.5 text-xs">
+                <ArrowRightLeft className="h-3 w-3" /> Move
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-3 space-y-2">
+              <p className="text-xs font-medium">Move to supplier:</p>
+              <Select value={bulkSupplierId} onValueChange={setBulkSupplierId}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectContent>
+                  {allSuppliers.map(s => (
+                    <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button size="sm" className="w-full text-xs" disabled={!bulkSupplierId}
+                onClick={() => { setBulkAction("supplier"); setBulkConfirmOpen(true); }}>
+                Move {bulkSelected.size} products
+              </Button>
+            </PopoverContent>
+          </Popover>
+
+          {/* Delete */}
+          <Button size="sm" variant="destructive" className="gap-1.5 text-xs"
+            onClick={() => { setBulkAction("delete"); setBulkConfirmOpen(true); }}>
+            <Trash2 className="h-3 w-3" /> Delete
+          </Button>
+
+          <Button size="sm" variant="ghost" onClick={() => setBulkSelected(new Set())}
+            className="text-primary-foreground hover:bg-primary-foreground/10 text-xs">
+            Clear
+          </Button>
+        </div>
+      )}
+
+      {/* Bulk confirmation dialog */}
+      <AlertDialog open={bulkConfirmOpen} onOpenChange={setBulkConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Bulk Action</AlertDialogTitle>
+            <AlertDialogDescription>{bulkConfirmMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={executeBulkAction}
+              className={bulkAction === "delete" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}>
+              {bulkUpdateMutation.isPending || bulkDeleteMutation.isPending
+                ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="flex items-center justify-between">
         <div className="text-xs text-muted-foreground flex items-center gap-2">
           {isLoading ? "Loading products..." : `${sorted.length} products found`}
@@ -563,19 +788,24 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
         <div className="space-y-1">
           {/* List header */}
           <div className="grid grid-cols-[24px_1fr_2fr_80px_60px_80px_100px_40px] gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b">
-            <span></span><span>Model</span><span>Description</span><span>BTU</span><span>Refrig.</span><span>Pipe</span><span className="text-right">Price</span><span></span>
+            <Checkbox
+              checked={bulkSelected.size === sorted.length && sorted.length > 0}
+              onCheckedChange={(checked) => checked ? selectAllVisible() : setBulkSelected(new Set())}
+              className="h-3.5 w-3.5"
+            />
+            <span>Model</span><span>Description</span><span>BTU</span><span>Refrig.</span><span>Pipe</span><span className="text-right">Price</span><span></span>
           </div>
           {sorted.map((product) => {
             const isPinned = !!product.is_pinned;
-            const isCompared = compareIds.includes(product.id);
+            const isBulkSelected = bulkSelected.has(product.id);
             return (
               <div
                 key={product.id}
-                className={`grid grid-cols-[24px_1fr_2fr_80px_60px_80px_100px_40px] gap-2 items-center px-3 py-2 rounded-md border cursor-pointer hover:bg-accent/30 transition-colors ${(product as any).archived ? "opacity-50" : ""} ${isPinned ? "ring-1 ring-primary/30" : ""} ${isCompared ? "ring-1 ring-accent" : ""}`}
+                className={`grid grid-cols-[24px_1fr_2fr_80px_60px_80px_100px_40px] gap-2 items-center px-3 py-2 rounded-md border cursor-pointer hover:bg-accent/30 transition-colors ${(product as any).archived ? "opacity-50" : ""} ${isPinned ? "ring-1 ring-primary/30" : ""} ${isBulkSelected ? "ring-1 ring-accent bg-accent/10" : ""}`}
                 onClick={() => openPanel(product)}
               >
                 <div onClick={(e) => e.stopPropagation()}>
-                  <Checkbox checked={isCompared} onCheckedChange={() => toggleCompare(product.id)} className="h-3.5 w-3.5" />
+                  <Checkbox checked={isBulkSelected} onCheckedChange={() => toggleBulkSelect(product.id)} className="h-3.5 w-3.5" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-mono font-medium truncate">{highlightText(product.product_code, searchQuery)}</p>
@@ -659,18 +889,18 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {sorted.map((product) => {
             const isPinned = !!product.is_pinned;
-            const isCompared = compareIds.includes(product.id);
+            const isBulkSelected = bulkSelected.has(product.id);
             return (
               <Card
                 key={product.id}
-                className={`hover:shadow-md transition-shadow active:scale-[0.99] cursor-pointer ${(product as any).archived ? "opacity-50" : ""} ${isPinned ? "ring-1 ring-primary/30" : ""} ${isCompared ? "ring-1 ring-accent" : ""}`}
+                className={`hover:shadow-md transition-shadow active:scale-[0.99] cursor-pointer ${(product as any).archived ? "opacity-50" : ""} ${isPinned ? "ring-1 ring-primary/30" : ""} ${isBulkSelected ? "ring-1 ring-accent bg-accent/10" : ""}`}
                 onClick={() => openPanel(product)}
               >
                 <CardContent className={isMobile ? "p-3" : "p-4"}>
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <div className="flex items-start gap-2 flex-1 min-w-0">
                       <div onClick={(e) => e.stopPropagation()} className="pt-0.5">
-                        <Checkbox checked={isCompared} onCheckedChange={() => toggleCompare(product.id)} className="h-3.5 w-3.5" />
+                        <Checkbox checked={isBulkSelected} onCheckedChange={() => toggleBulkSelect(product.id)} className="h-3.5 w-3.5" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`font-bold text-primary ${isMobile ? "text-sm" : "text-base"} ${(product as any).archived ? "line-through" : ""}`}>

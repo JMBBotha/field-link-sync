@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -110,6 +110,8 @@ interface ParsedRow {
   unit_length_unit?: string;
   price_per_metre?: number | null;
   min_cut_length?: number;
+  brand?: string | null;
+  product_category?: string;
 }
 
 type DiffAction = "new" | "update" | "archive" | "unchanged";
@@ -449,6 +451,8 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
           unit_length_unit: p.unit_length_unit || "m",
           price_per_metre: p.price_per_metre || null,
           min_cut_length: p.min_cut_length || 0.5,
+          brand: p.brand || null,
+          product_category: p.product_category || (isConsumablesSupplier ? "Consumables" : "Air Conditioning"),
         }));
         setParsedRows(rows);
         const diff = await buildDiff(rows);
@@ -523,6 +527,8 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         unit_length_unit: p.unit_length_unit || "m",
         price_per_metre: pricePerMetre,
         min_cut_length: p.min_cut_length || 0.5,
+        brand: p.brand || null,
+        product_category: p.product_category || (isConsumablesSupplier ? "Consumables" : "Air Conditioning"),
         // Extra price data stored for import
         _cost_excl_vat: calculated.costExclVat,
         _cost_incl_vat: calculated.costInclVat,
@@ -729,6 +735,17 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
     unchanged: diffRows.filter(r => r.action === "unchanged").length,
   };
 
+  // Brand summary from parsed rows
+  const brandSummary = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const row of diffRows) {
+      if (row.action === "archive") continue;
+      const brand = (row as any).brand || "Unknown";
+      counts[brand] = (counts[brand] || 0) + 1;
+    }
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [diffRows]);
+
   return (
     <Card>
       <CardHeader className="py-3 px-4">
@@ -909,7 +926,20 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
                   )}
                 </div>
 
-                {/* Diff table */}
+                {/* Brand summary */}
+                {brandSummary.length > 0 && (
+                  <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                    <p className="text-xs font-semibold">Brand Detection Summary</p>
+                    <div className="flex flex-wrap gap-2">
+                      {brandSummary.map(([brand, count]) => (
+                        <Badge key={brand} variant="outline" className="text-xs gap-1">
+                          {brand}: {count}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="max-h-80 overflow-auto rounded-lg border border-border">
                   <table className="w-full text-xs">
                     <thead className="bg-muted/50 sticky top-0">
