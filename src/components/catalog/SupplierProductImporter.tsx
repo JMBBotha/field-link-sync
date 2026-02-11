@@ -302,7 +302,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
 
     const invokeAI = async () => {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 min timeout
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 min timeout
       try {
         const resp = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-pdf-with-grok`,
@@ -325,7 +325,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
         return await resp.json();
       } catch (err: any) {
         clearTimeout(timeoutId);
-        if (err.name === "AbortError") throw new Error("Request timed out after 2 minutes. The PDF may be too large.");
+        if (err.name === "AbortError") throw new Error("Request timed out after 5 minutes. The AI parser may still be processing—try again or reduce the PDF.");
         throw err;
       }
     };
@@ -342,10 +342,6 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
           data = await invokeAI();
         } catch (retryErr: any) {
           console.error("[AI Parse] Retry also failed:", retryErr);
-          const msg = retryErr?.message || "";
-          if (msg.includes("FunctionsFetchError") || msg.includes("Failed to send")) {
-            throw new Error("Edge function request failed – the PDF text may be too large. Try a smaller PDF or reduce the text.");
-          }
           throw retryErr;
         }
       }
