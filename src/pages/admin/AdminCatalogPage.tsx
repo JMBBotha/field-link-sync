@@ -79,6 +79,7 @@ const AdminCatalogPage = () => {
         selectedSupplierId={selectedSupplierId}
         onSelectSupplier={setSelectedSupplierId}
         supplierTypeFilter={supplierTypeFilter === "all" ? undefined : supplierTypeFilter}
+        activeTypeFilter={supplierTypeFilter}
       />
 
       <Tabs value={tab} onValueChange={setTab}>

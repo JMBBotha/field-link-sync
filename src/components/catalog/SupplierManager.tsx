@@ -28,9 +28,10 @@ interface SupplierManagerProps {
   selectedSupplierId: string | null;
   onSelectSupplier: (id: string) => void;
   supplierTypeFilter?: string;
+  activeTypeFilter?: string;
 }
 
-const SupplierManager = ({ selectedSupplierId, onSelectSupplier, supplierTypeFilter }: SupplierManagerProps) => {
+const SupplierManager = ({ selectedSupplierId, onSelectSupplier, supplierTypeFilter, activeTypeFilter }: SupplierManagerProps) => {
   const [formOpen, setFormOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [name, setName] = useState("");
@@ -134,7 +135,7 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier, supplierTypeFil
       setContactEmail("");
       setContactPhone("");
       setWebsite("");
-      setIsConsumables(false);
+      setIsConsumables(activeTypeFilter === "consumables");
     }
     setFormOpen(true);
   };
@@ -160,6 +161,18 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier, supplierTypeFil
             <p className="text-sm text-muted-foreground">Loading...</p>
           ) : suppliers.length === 0 ? (
             <p className="text-sm text-muted-foreground">Creating default supplier...</p>
+          ) : displayedSuppliers.length === 0 && supplierTypeFilter ? (
+            <div className="text-center py-6 space-y-3">
+              <Wrench className="h-8 w-8 mx-auto text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                No {supplierTypeFilter === "consumables" ? "consumables" : "AC unit"} suppliers yet.
+                <br />
+                Click <strong>+ Add Supplier</strong> and enable the <strong>'Consumables Supplier'</strong> toggle to get started.
+              </p>
+              <Button size="sm" variant="outline" onClick={() => openForm()} className="text-xs">
+                <Plus className="h-3 w-3 mr-1" /> Add Supplier
+              </Button>
+            </div>
           ) : (
             <div className="flex flex-wrap gap-2">
               {displayedSuppliers.map((s) => (
