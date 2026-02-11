@@ -71,12 +71,21 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { extracted_text, supplier_id, supplier_name } = await req.json();
-    console.log("[Grok] Request:", { textLength: extracted_text?.length, supplier_id });
+    const { extracted_text, supplier_id, supplier_name, chunk_index, chunk_total } = await req.json();
+    const chunkIndex = Number.isFinite(Number(chunk_index)) ? Number(chunk_index) : 0;
+    const chunkTotal = Number.isFinite(Number(chunk_total)) ? Number(chunk_total) : 1;
+
+    console.log("[Grok] Request:", {
+      textLength: extracted_text?.length,
+      supplier_id,
+      chunkIndex,
+      chunkTotal,
+    });
 
     if (!extracted_text || !supplier_id) {
       return new Response(JSON.stringify({ error: "extracted_text and supplier_id required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -85,14 +94,27 @@ Deno.serve(async (req) => {
 
     if (!xaiApiKey && !lovableApiKey) {
       return new Response(JSON.stringify({ error: "No API key configured" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const systemPrompt = SYSTEM_PROMPT_TEMPLATE + (supplier_name || "Unknown");
     const truncatedText = extracted_text.substring(0, MAX_TEXT);
-    const chunks = splitIntoChunks(truncatedText, CHUNK_SIZE);
-    console.log("[Grok] Split into", chunks.length, "chunks");
+
+    // IMPORTANT: this function is intentionally single-chunk to stay under the backend wall-clock limit.
+    // The client is responsible for splitting long PDFs into <= CHUNK_SIZE chunks and calling this
+    // function multiple times.
+    if (truncatedText.length > CHUNK_SIZE) {
+      return new Response(
+        JSON.stringify({
+          error: `Chunk too large (${truncatedText.length} chars). Split the text into <= ${CHUNK_SIZE} char chunks and retry.`,
+          products: [],
+          detected_price_columns: [],
+        }),
+        { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const callAI = async (text: string, url: string, key: string, mdl: string, isXai: boolean) => {
       const resp = await fetch(url, {
@@ -111,7 +133,7 @@ Deno.serve(async (req) => {
       return resp;
     };
 
-    const processChunk = async (chunkText: string, chunkIndex: number): Promise<{ cols: string[]; products: ParsedProduct[] }> => {
+    const processChunk = async (chunkText: string, chunkIndexForLogs: number): Promise<{ cols: string[]; products: ParsedProduct[] }> => {
       const t0 = Date.now();
       let apiUrl: string, apiKey: string, model: string, useXai: boolean;
 
@@ -132,7 +154,7 @@ Deno.serve(async (req) => {
       // Fallback to Lovable AI if xAI fails
       if (!resp.ok && useXai && lovableApiKey) {
         const errText = await resp.text();
-        console.warn(`[Grok] Chunk ${chunkIndex}: xAI failed (${resp.status}), falling back`);
+        console.warn(`[Grok] Chunk ${chunkIndexForLogs}: xAI failed (${resp.status}), falling back`);
         resp = await callAI(
           chunkText,
           "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -144,7 +166,7 @@ Deno.serve(async (req) => {
 
       if (!resp.ok) {
         const errText = await resp.text();
-        console.error(`[Grok] Chunk ${chunkIndex} failed:`, resp.status, errText.substring(0, 300));
+        console.error(`[Grok] Chunk ${chunkIndexForLogs} failed:`, resp.status, errText.substring(0, 300));
         return { cols: [], products: [] };
       }
 
@@ -152,30 +174,23 @@ Deno.serve(async (req) => {
       const content = data.choices?.[0]?.message?.content || "";
       const result = parseAIContent(content);
       const durationS = (Date.now() - t0) / 1000;
-      console.log(`[Grok] Chunk ${chunkIndex}: ${result.products.length} products in ${durationS.toFixed(1)}s`);
+      console.log(`[Grok] Chunk ${chunkIndexForLogs}: ${result.products.length} products in ${durationS.toFixed(1)}s`);
       return { cols: result.detected_price_columns, products: result.products };
     };
 
-    // Process chunks sequentially to reduce per-call latency spikes and avoid rate-limit bursts
-    let allProducts: ParsedProduct[] = [];
-    const allCols = new Set<string>();
+    // Process a single chunk per request.
+    const result = await processChunk(truncatedText, chunkIndex);
 
-    for (let i = 0; i < chunks.length; i++) {
-      const result = await processChunk(chunks[i], i);
-      allProducts.push(...result.products);
-      result.cols.forEach((c) => allCols.add(c));
-    }
-
-    // Deduplicate by SKU (keep first occurrence)
+    // Deduplicate by SKU within this chunk (keep first occurrence)
     const seen = new Set<string>();
-    const deduped = allProducts.filter(p => {
+    const deduped = result.products.filter((p) => {
       const key = (p.sku || "").toLowerCase();
       if (!key || seen.has(key)) return !key ? true : false;
       seen.add(key);
       return true;
     });
 
-    // Collect all price keys from products too
+    const allCols = new Set<string>(result.cols || []);
     for (const p of deduped) {
       if (p.prices) for (const k of Object.keys(p.prices)) allCols.add(k);
     }
@@ -187,7 +202,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log("[Grok] Total products:", deduped.length, "from", chunks.length, "chunks");
+    console.log("[Grok] Products:", deduped.length, `chunk ${chunkIndex + 1}/${chunkTotal}`);
 
     return new Response(
       JSON.stringify({

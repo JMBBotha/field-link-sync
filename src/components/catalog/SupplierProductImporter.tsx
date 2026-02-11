@@ -292,17 +292,40 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
   // ─── AI Parse extracted text ───
   const handleAIParse = async () => {
     if (!extractedText.trim()) return;
-    setAiParsing(true); setError(null); setAiResult(null); setParsedRows([]);
-    setDiffRows([]); setShowDiff(false); setShowPriceConfig(false);
+    setAiParsing(true);
+    setError(null);
+    setAiResult(null);
+    setParsedRows([]);
+    setDiffRows([]);
+    setShowDiff(false);
+    setShowPriceConfig(false);
 
     const MAX_PAYLOAD_SIZE = 200000;
-    const truncatedText = extractedText.length > MAX_PAYLOAD_SIZE
-      ? extractedText.substring(0, MAX_PAYLOAD_SIZE)
-      : extractedText;
+    const truncatedText =
+      extractedText.length > MAX_PAYLOAD_SIZE
+        ? extractedText.substring(0, MAX_PAYLOAD_SIZE)
+        : extractedText;
 
-    const invokeAI = async () => {
+    const CHUNK_SIZE = 12000;
+    const splitIntoChunks = (text: string, chunkSize: number): string[] => {
+      const chunks: string[] = [];
+      let i = 0;
+      while (i < text.length) {
+        let end = Math.min(i + chunkSize, text.length);
+        // Try to break at a newline to avoid splitting a product row
+        if (end < text.length) {
+          const lastNewline = text.lastIndexOf("\n", end);
+          if (lastNewline > i + chunkSize * 0.5) end = lastNewline + 1;
+        }
+        chunks.push(text.substring(i, end));
+        i = end;
+      }
+      return chunks;
+    };
+
+    const invokeAI = async (chunkText: string, chunkIndex: number, chunkTotal: number) => {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 min timeout
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 min timeout (overall parsing)
       try {
         const resp = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-pdf-with-grok`,
@@ -311,51 +334,97 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
             headers: {
               "Content-Type": "application/json",
               "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-              "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             },
-            body: JSON.stringify({ extracted_text: truncatedText, supplier_id: supplierId, supplier_name: supplierName, markup_percent: aiMarkup }),
+            body: JSON.stringify({
+              extracted_text: chunkText,
+              supplier_id: supplierId,
+              supplier_name: supplierName,
+              markup_percent: aiMarkup,
+              chunk_index: chunkIndex,
+              chunk_total: chunkTotal,
+            }),
             signal: controller.signal,
           }
         );
         clearTimeout(timeoutId);
         if (!resp.ok) {
           const errText = await resp.text();
-          throw new Error(`Edge function returned ${resp.status}: ${errText.substring(0, 200)}`);
+          throw new Error(`AI parser returned ${resp.status}: ${errText.substring(0, 300)}`);
         }
         return await resp.json();
       } catch (err: any) {
         clearTimeout(timeoutId);
-        if (err.name === "AbortError") throw new Error("Request timed out after 5 minutes. The AI parser may still be processing—try again or reduce the PDF.");
+        if (err?.name === "AbortError") {
+          throw new Error(
+            "Request timed out after 5 minutes. The AI parser may still be processing—try again."
+          );
+        }
+        // Browser fetch will throw TypeError on connection resets/timeouts.
+        if (err instanceof TypeError && /failed to fetch/i.test(err.message || "")) {
+          throw new Error(
+            "Network error calling the AI parser (the backend may have timed out). Try again."
+          );
+        }
         throw err;
       }
     };
 
-    try {
-      let data: any;
+    const invokeAIWithRetry = async (chunkText: string, chunkIndex: number, chunkTotal: number) => {
       try {
-        data = await invokeAI();
+        return await invokeAI(chunkText, chunkIndex, chunkTotal);
       } catch (firstErr: any) {
-        console.error("[AI Parse] First attempt failed:", firstErr);
-        // Retry once after 2 seconds
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.error("[AI Parse] Chunk first attempt failed:", { chunkIndex, err: firstErr });
+        await new Promise((resolve) => setTimeout(resolve, 1500));
         try {
-          data = await invokeAI();
+          return await invokeAI(chunkText, chunkIndex, chunkTotal);
         } catch (retryErr: any) {
-          console.error("[AI Parse] Retry also failed:", retryErr);
+          console.error("[AI Parse] Chunk retry also failed:", { chunkIndex, err: retryErr });
           throw retryErr;
         }
       }
+    };
 
-      if (data?.error && !data?.products?.length) throw new Error(data.error);
+    try {
+      const chunks = splitIntoChunks(truncatedText, CHUNK_SIZE);
 
-      const columns: string[] = data.detected_price_columns || [];
-      const products = data.products || [];
+      const allCols = new Set<string>();
+      const allProducts: any[] = [];
+
+      for (let i = 0; i < chunks.length; i++) {
+        const chunkData = await invokeAIWithRetry(chunks[i], i, chunks.length);
+        const cols: string[] = chunkData?.detected_price_columns || [];
+        const products: any[] = chunkData?.products || [];
+        cols.forEach((c) => allCols.add(c));
+        allProducts.push(...products);
+      }
+
+      // Merge + dedupe by product_code (keep first)
+      const seen = new Set<string>();
+      const mergedProducts = allProducts.filter((p) => {
+        const key = String(p?.product_code || "").toLowerCase();
+        if (!key) return true;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      // Also collect any price keys from products
+      for (const p of mergedProducts) {
+        if (p?.prices) for (const k of Object.keys(p.prices)) allCols.add(k);
+      }
+
+      const columns: string[] = [...allCols];
+      const products = mergedProducts;
 
       if (columns.length > 0) {
         setDetectedPriceColumns(columns);
         setRawParsedProducts(products);
         setShowPriceConfig(true);
-        toast({ title: `AI parsed ${products.length} products`, description: `Found ${columns.length} price column(s). Configure pricing next.` });
+        toast({
+          title: `AI parsed ${products.length} products`,
+          description: `Found ${columns.length} price column(s). Configure pricing next.`,
+        });
       } else {
         const rows: ParsedRow[] = products.map((p: any) => ({
           product_code: p.product_code || "",
@@ -372,14 +441,20 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
         const diff = await buildDiff(rows);
         setDiffRows(diff);
         setShowDiff(true);
-        toast({ title: `AI parsed ${rows.length} products`, description: "Review the diff below before importing" });
+        toast({
+          title: `AI parsed ${rows.length} products`,
+          description: "Review the diff below before importing",
+        });
       }
     } catch (err: any) {
       console.error("[AI Parse] Final error:", err);
       setError(err.message || "AI parsing failed");
       toast({ title: "AI Parse Failed", description: err.message, variant: "destructive" });
-    } finally { setAiParsing(false); }
+    } finally {
+      setAiParsing(false);
+    }
   };
+
 
   // ─── Price Config confirmed → build diff ───
   const handlePriceConfigConfirm = async (config: PriceConfig) => {
