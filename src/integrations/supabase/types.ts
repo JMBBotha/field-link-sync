@@ -122,6 +122,57 @@ export type Database = {
         }
         Relationships: []
       }
+      bundle_items: {
+        Row: {
+          bundle_id: string
+          created_at: string
+          id: string
+          is_length_item: boolean
+          length_metres: number | null
+          notes: string | null
+          quantity: number
+          sort_order: number
+          supplier_product_id: string
+        }
+        Insert: {
+          bundle_id: string
+          created_at?: string
+          id?: string
+          is_length_item?: boolean
+          length_metres?: number | null
+          notes?: string | null
+          quantity?: number
+          sort_order?: number
+          supplier_product_id: string
+        }
+        Update: {
+          bundle_id?: string
+          created_at?: string
+          id?: string
+          is_length_item?: boolean
+          length_metres?: number | null
+          notes?: string | null
+          quantity?: number
+          sort_order?: number
+          supplier_product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bundle_items_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "installation_bundles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bundle_items_supplier_product_id_fkey"
+            columns: ["supplier_product_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       communication_log: {
         Row: {
           agent_id: string
@@ -562,6 +613,42 @@ export type Database = {
           is_active?: boolean
           name?: string
           unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      installation_bundles: {
+        Row: {
+          ac_type: string | null
+          btu_rating: number | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          pipe_size: string | null
+          updated_at: string
+        }
+        Insert: {
+          ac_type?: string | null
+          btu_rating?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          pipe_size?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ac_type?: string | null
+          btu_rating?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          pipe_size?: string | null
           updated_at?: string
         }
         Relationships: []
