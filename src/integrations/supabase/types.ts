@@ -2820,26 +2820,35 @@ export type Database = {
         | {
             Args: {
               p_category?: string
+              p_include_archived?: boolean
               p_limit?: number
-              p_query: string
+              p_query?: string
               p_supplier_id?: string
             }
             Returns: {
+              brand: string
               btu_rating: number
               category: string
+              cost_excl_vat: number
+              cost_incl_vat: number
               cost_price: number
               default_markup_percent: number
               description: string
               id: string
               image_url: string
+              is_pinned: boolean
               is_price_on_request: boolean
               last_quoted_at: string
+              pin_order: number
               pipe_size: string
+              product_category: string
               product_code: string
               quote_usage_count: number
               refrigerant_type: string
+              rrp: number
               search_rank: number
               selling_price: number
+              short_name: string
               subcategory: string
               supplier_id: string
               supplier_name: string
@@ -2848,13 +2857,11 @@ export type Database = {
         | {
             Args: {
               p_category?: string
-              p_include_archived?: boolean
               p_limit?: number
               p_query: string
               p_supplier_id?: string
             }
             Returns: {
-              archived: boolean
               btu_rating: number
               category: string
               cost_price: number

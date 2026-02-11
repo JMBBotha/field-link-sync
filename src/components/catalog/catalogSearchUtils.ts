@@ -58,16 +58,17 @@ export function derivePhase(p: SearchableProduct): string {
 }
 
 export function deriveBrand(p: SearchableProduct): string {
+  // Use the explicit brand column first if available
+  if ((p as any).brand) return (p as any).brand;
   const supplierName = (p.supplier_name || "").toLowerCase();
   if (supplierName.includes("samsung")) return "Samsung";
   if (supplierName.includes("alliance")) return "Alliance";
   const code = (p.product_code || "").toUpperCase();
   if (code.startsWith("FOUR")) return "Alliance";
   if (supplierName) {
-    // Capitalize first letter of each word
     return supplierName.replace(/\b\w/g, c => c.toUpperCase());
   }
-  return "Midea";
+  return "";
 }
 
 const BTU_BUCKETS = [9, 12, 18, 24, 36, 48, 60, 76, 100, 120, 150, 200, 250, 300, 350, 400, 500];

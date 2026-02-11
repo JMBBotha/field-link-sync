@@ -87,6 +87,8 @@ interface SupplierProduct {
   rrp?: number | null;
   cost_excl_vat?: number | null;
   cost_incl_vat?: number | null;
+  brand?: string | null;
+  product_category?: string | null;
 }
 
 interface ProductCatalogBrowserProps {
@@ -372,7 +374,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
     }
     // Apply product category filter
     if (productCategoryFilter) {
-      results = results.filter((p) => (p as any).product_category === productCategoryFilter);
+      results = results.filter((p) => p.product_category === productCategoryFilter);
     }
     // Apply structured filters
     results = results.filter((p) => matchesFilters(p, filters));
