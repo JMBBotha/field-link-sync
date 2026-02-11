@@ -15,7 +15,7 @@ interface ParsedProduct {
   shortName?: string | null;
 }
 
-const CHUNK_SIZE = 40000;
+const CHUNK_SIZE = 12000;
 const MAX_TEXT = 250000;
 
 const SYSTEM_PROMPT_TEMPLATE = `HVAC price list parser. Extract products as JSON.
@@ -112,6 +112,7 @@ Deno.serve(async (req) => {
     };
 
     const processChunk = async (chunkText: string, chunkIndex: number): Promise<{ cols: string[]; products: ParsedProduct[] }> => {
+      const t0 = Date.now();
       let apiUrl: string, apiKey: string, model: string, useXai: boolean;
 
       if (xaiApiKey) {
@@ -150,24 +151,19 @@ Deno.serve(async (req) => {
       const data = await resp.json();
       const content = data.choices?.[0]?.message?.content || "";
       const result = parseAIContent(content);
-      console.log(`[Grok] Chunk ${chunkIndex}: ${result.products.length} products`);
+      const durationS = (Date.now() - t0) / 1000;
+      console.log(`[Grok] Chunk ${chunkIndex}: ${result.products.length} products in ${durationS.toFixed(1)}s`);
       return { cols: result.detected_price_columns, products: result.products };
     };
 
-    // Process chunks: single chunk sequentially, multiple in parallel
+    // Process chunks sequentially to reduce per-call latency spikes and avoid rate-limit bursts
     let allProducts: ParsedProduct[] = [];
     const allCols = new Set<string>();
 
-    if (chunks.length === 1) {
-      const result = await processChunk(chunks[0], 0);
-      allProducts = result.products;
-      result.cols.forEach(c => allCols.add(c));
-    } else {
-      const results = await Promise.all(chunks.map((chunk, i) => processChunk(chunk, i)));
-      for (const r of results) {
-        allProducts.push(...r.products);
-        r.cols.forEach(c => allCols.add(c));
-      }
+    for (let i = 0; i < chunks.length; i++) {
+      const result = await processChunk(chunks[i], i);
+      allProducts.push(...result.products);
+      result.cols.forEach((c) => allCols.add(c));
     }
 
     // Deduplicate by SKU (keep first occurrence)
