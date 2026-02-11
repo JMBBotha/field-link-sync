@@ -2275,18 +2275,24 @@ export type Database = {
           is_pinned: boolean
           is_price_on_request: boolean
           last_quoted_at: string | null
+          min_cut_length: number
           model_range: string | null
           pin_order: number
           pipe_size: string | null
+          price_per_metre: number | null
           product_code: string
+          product_type: string
           quote_usage_count: number
           refrigerant_type: string | null
           rrp: number | null
           selling_price: number | null
           short_name: string | null
+          sold_in_length: boolean
           subcategory: string | null
           supplier_discount_percent: number
           supplier_id: string
+          unit_length: number | null
+          unit_length_unit: string
           unit_type: string | null
           updated_at: string
           vat_rate: number
@@ -2310,18 +2316,24 @@ export type Database = {
           is_pinned?: boolean
           is_price_on_request?: boolean
           last_quoted_at?: string | null
+          min_cut_length?: number
           model_range?: string | null
           pin_order?: number
           pipe_size?: string | null
+          price_per_metre?: number | null
           product_code: string
+          product_type?: string
           quote_usage_count?: number
           refrigerant_type?: string | null
           rrp?: number | null
           selling_price?: number | null
           short_name?: string | null
+          sold_in_length?: boolean
           subcategory?: string | null
           supplier_discount_percent?: number
           supplier_id: string
+          unit_length?: number | null
+          unit_length_unit?: string
           unit_type?: string | null
           updated_at?: string
           vat_rate?: number
@@ -2345,18 +2357,24 @@ export type Database = {
           is_pinned?: boolean
           is_price_on_request?: boolean
           last_quoted_at?: string | null
+          min_cut_length?: number
           model_range?: string | null
           pin_order?: number
           pipe_size?: string | null
+          price_per_metre?: number | null
           product_code?: string
+          product_type?: string
           quote_usage_count?: number
           refrigerant_type?: string | null
           rrp?: number | null
           selling_price?: number | null
           short_name?: string | null
+          sold_in_length?: boolean
           subcategory?: string | null
           supplier_discount_percent?: number
           supplier_id?: string
+          unit_length?: number | null
+          unit_length_unit?: string
           unit_type?: string | null
           updated_at?: string
           vat_rate?: number
@@ -2387,6 +2405,7 @@ export type Database = {
           price_includes_vat: boolean
           supplier_discount_percent: number
           supplier_markup_percent: number
+          supplier_type: string
           updated_at: string
           website: string | null
         }
@@ -2405,6 +2424,7 @@ export type Database = {
           price_includes_vat?: boolean
           supplier_discount_percent?: number
           supplier_markup_percent?: number
+          supplier_type?: string
           updated_at?: string
           website?: string | null
         }
@@ -2423,6 +2443,7 @@ export type Database = {
           price_includes_vat?: boolean
           supplier_discount_percent?: number
           supplier_markup_percent?: number
+          supplier_type?: string
           updated_at?: string
           website?: string | null
         }
