@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard,
   MapPin,
@@ -63,6 +65,18 @@ const AdminSidebar = ({
   const navigate = useNavigate();
   const location = useLocation();
 
+  const { data: lowStockCount = 0 } = useQuery({
+    queryKey: ["low-stock-count-sidebar"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("inventory_stock")
+        .select("quantity, low_stock_threshold");
+      if (error) return 0;
+      return (data || []).filter((r: any) => r.quantity <= r.low_stock_threshold).length;
+    },
+    refetchInterval: 60000,
+  });
+
   const navGroups: NavGroup[] = [
     {
       title: "Main",
@@ -89,7 +103,7 @@ const AdminSidebar = ({
       items: [
         { path: "/admin/catalog", label: "Catalog", icon: ShoppingBag },
         { path: "/admin/maintenance", label: "Maintenance", icon: CalendarDays },
-        { path: "/admin/inventory", label: "Inventory", icon: Package },
+        { path: "/admin/inventory", label: "Inventory", icon: Package, badge: lowStockCount > 0 ? lowStockCount : undefined },
         { path: "/admin/flat-rate", label: "Flat Rate", icon: DollarSign },
         { path: "/admin/reports", label: "Reports", icon: BarChart3 },
         { path: "/admin/reports/advanced", label: "Advanced Reports", icon: TrendingUp },
