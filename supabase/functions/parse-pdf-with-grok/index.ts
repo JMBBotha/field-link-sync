@@ -15,8 +15,8 @@ interface ParsedProduct {
   shortName?: string | null;
 }
 
-const CHUNK_SIZE = 25000;
-const MAX_TEXT = 120000;
+const CHUNK_SIZE = 40000;
+const MAX_TEXT = 250000;
 
 const SYSTEM_PROMPT_TEMPLATE = `HVAC price list parser. Extract products as JSON.
 
@@ -24,7 +24,8 @@ Return: {"detected_price_columns":[...],"products":[...]}
 
 Product fields: sku, name, description, category, prices (object: column→number), pipeSize, btuRating, refrigerantType, shortName.
 
-Categories: Midwall Inverter, Cassette Inverter, Ducted, Floor Standing, Portable, Accessories, etc.
+Categories: Midwall Inverter, Midwall Fixed Speed, Cassette Inverter, Cassette Fixed Speed, Ducted, Under Ceiling, Floor Standing, Wind-Free, BREEZELESS, Portable, Accessories, etc.
+Samsung AC models typically start with AR (e.g. AR09TXHQA, AR12TXHQA, AR18TXHQA, AR24TXHQA) for indoor units and AR for outdoor units. Look for Samsung Wind-Free, BREEZELESS, Digital Inverter product lines. These have BTU ratings of 9000, 12000, 18000, 24000 BTU. Also detect kW values like 2.6kW=9K, 3.5kW=12K, 5.0kW=18K, 7.0kW=24K and convert to BTU.
 shortName format: BRAND BTU/kW ABBREV. Abbrevs: INV MW, FS MW, INV DUCT, FS DUCT, CASS, UC, WW, PORT, FS FLOOR, MULTI, VRF. Suffixes: BRZ, XTR, AUR, ULT.
 Prices: ZAR format "R 7 700,00"=7700. Detect BTU from "9000 BTU"/"2.6kW". Multiple price columns→use all. Single→"Unit Price".
 Skip headers/totals. Supplier: `;

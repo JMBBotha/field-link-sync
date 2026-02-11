@@ -203,8 +203,13 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
         }
         fullText += `\n--- Page ${i} ---\n${pageText}`;
       }
-      setExtractedText(fullText.trim());
-      toast({ title: `PDF loaded: ${pdf.numPages} pages extracted` });
+      const trimmed = fullText.trim();
+      setExtractedText(trimmed);
+      // Progress logging: count product-like rows
+      const lines = trimmed.split("\n");
+      const productRows = lines.filter(l => l.includes("\t") && /R\s*\d/.test(l));
+      console.log(`[PDF Extract] ${trimmed.length} chars, ${pdf.numPages} pages, ~${productRows.length} product rows detected`);
+      toast({ title: `PDF loaded: ${pdf.numPages} pages, ${trimmed.length.toLocaleString()} chars`, description: `~${productRows.length} product-like rows detected` });
     } catch (err: any) {
       setError("Failed to read PDF. Ensure it's a valid, non-password-protected PDF.");
       setPdfFile(null);
@@ -290,7 +295,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
     setAiParsing(true); setError(null); setAiResult(null); setParsedRows([]);
     setDiffRows([]); setShowDiff(false); setShowPriceConfig(false);
 
-    const MAX_PAYLOAD_SIZE = 100000;
+    const MAX_PAYLOAD_SIZE = 200000;
     const truncatedText = extractedText.length > MAX_PAYLOAD_SIZE
       ? extractedText.substring(0, MAX_PAYLOAD_SIZE)
       : extractedText;
@@ -694,12 +699,20 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
                 </div>
 
                 {extractedText && (
-                  <div>
-                    <Label className="text-xs">Extracted Text Preview</Label>
-                    <Textarea value={extractedText} readOnly rows={6} className="text-xs font-mono mt-1 bg-muted/30" />
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      {extractedText.length.toLocaleString()} characters extracted
-                    </p>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Extraction Summary</Label>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <Badge variant="secondary">{extractedText.length.toLocaleString()} chars</Badge>
+                      <Badge variant="secondary">{pdfPageCount} pages</Badge>
+                      <Badge variant="secondary">
+                        ~{extractedText.split("\n").filter(l => l.includes("\t") && /R\s*\d/.test(l)).length} product rows
+                      </Badge>
+                    </div>
+                    <Textarea value={extractedText.substring(0, 2000) + (extractedText.length > 2000 ? "\n... (truncated preview)" : "")} readOnly rows={6} className="text-xs font-mono mt-1 bg-muted/30" />
+                    <details className="text-xs">
+                      <summary className="cursor-pointer text-primary hover:underline">Show Full Extracted Text ({extractedText.length.toLocaleString()} chars)</summary>
+                      <Textarea value={extractedText} readOnly rows={20} className="text-xs font-mono mt-1 bg-muted/30 w-full" />
+                    </details>
                   </div>
                 )}
 
