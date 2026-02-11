@@ -565,6 +565,8 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
               archived: false,
               short_name: row.short_name,
               product_type: isConsumablesSupplier ? "consumable" : "ac_unit",
+              product_category: (row as any).product_category || (isConsumablesSupplier ? "Consumables" : "Air Conditioning"),
+              brand: (row as any).brand || null,
               sold_in_length: row.sold_in_length || false,
               unit_length: row.unit_length || null,
               unit_length_unit: row.unit_length_unit || "m",

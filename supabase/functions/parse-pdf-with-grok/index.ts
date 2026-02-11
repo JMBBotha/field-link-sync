@@ -18,6 +18,8 @@ interface ParsedProduct {
   unitLengthUnit?: string;
   pricePerMetre?: number | null;
   minCutLength?: number;
+  productCategory?: string;
+  brand?: string | null;
 }
 
 const CHUNK_SIZE = 12000;
@@ -27,9 +29,20 @@ const SYSTEM_PROMPT_TEMPLATE = `HVAC price list parser. Extract products as JSON
 
 Return: {"detected_price_columns":[...],"products":[...]}
 
-Product fields: sku, name, description, category, prices (object: column→number), pipeSize, btuRating, refrigerantType, shortName.
+Product fields: sku, name, description, category, prices (object: column→number), pipeSize, btuRating, refrigerantType, shortName, productCategory, brand.
 
-Categories: Midwall Inverter, Midwall Fixed Speed, Cassette Inverter, Cassette Fixed Speed, Ducted, Under Ceiling, Floor Standing, Wind-Free, BREEZELESS, Portable, Accessories, etc.
+productCategory must be one of: "Air Conditioning", "Water Heaters", "Inverters", "Batteries", "Consumables".
+Auto-detect based on keywords:
+- "heat pump" + "water"/"geyser" = "Water Heaters"
+- "inverter" + ("solar"/"power"/"hybrid") AND NOT "air" = "Inverters"
+- "battery"/"lithium"/"kwh" storage = "Batteries"
+- copper/cable/trunking/insulation/bracket/fitting/pipe/gas/refrigerant/flare/tape = "Consumables"
+- Everything else (split, midwall, cassette, ducted, AC, air con) = "Air Conditioning"
+Default: "Air Conditioning"
+
+brand: detect sub-brand from product name/description. Common sub-brands under Samsung distributors: "Samsung", "Comfy", "Alliance". For Midea distributors: "Midea", "Alliance". Look for brand names in the product description or model prefix. If unclear, leave null.
+
+Categories (subcategories): Midwall Inverter, Midwall Fixed Speed, Cassette Inverter, Cassette Fixed Speed, Ducted, Under Ceiling, Floor Standing, Wind-Free, BREEZELESS, Portable, Accessories, etc.
 Samsung AC models typically start with AR (e.g. AR09TXHQA, AR12TXHQA, AR18TXHQA, AR24TXHQA) for indoor units and AR for outdoor units. Look for Samsung Wind-Free, BREEZELESS, Digital Inverter product lines. These have BTU ratings of 9000, 12000, 18000, 24000 BTU. Also detect kW values like 2.6kW=9K, 3.5kW=12K, 5.0kW=18K, 7.0kW=24K and convert to BTU.
 shortName format: BRAND BTU/kW ABBREV. Abbrevs: INV MW, FS MW, INV DUCT, FS DUCT, CASS, UC, WW, PORT, FS FLOOR, MULTI, VRF. Suffixes: BRZ, XTR, AUR, ULT.
 Prices: ZAR format "R 7 700,00"=7700. Detect BTU from "9000 BTU"/"2.6kW". Multiple price columns→use all. Single→"Unit Price".
@@ -68,6 +81,22 @@ function parseAIContent(content: string): { detected_price_columns: string[]; pr
     return p;
   });
   return { detected_price_columns: parsed.detected_price_columns || [], products };
+}
+
+/** Fallback auto-detect product category from description/name keywords */
+function autoDetectCategory(p: ParsedProduct): string {
+  const text = `${p.name || ""} ${p.description || ""} ${p.category || ""}`.toLowerCase();
+  // Consumables
+  if (/\b(copper|cable|cabtyre|trunking|insulation|bracket|fitting|flare|tape|drain|pvc|tube\b|piping)/i.test(text)) return "Consumables";
+  if (/\b(gas|refrigerant|r410a|r32|r22)\b/i.test(text) && !/\b(split|midwall|cassette|ducted)\b/i.test(text)) return "Consumables";
+  // Water Heaters
+  if (/\b(geyser|water\s*heat|hot\s*water|heat\s*pump.*water)/i.test(text)) return "Water Heaters";
+  // Batteries
+  if (/\b(battery|batteries|lithium|kwh\s*storage|powerwall|backup\s*power)/i.test(text)) return "Batteries";
+  // Inverters (solar/power, not AC inverter)
+  if (/\b(solar\s*inverter|hybrid\s*inverter|power\s*inverter|mppt|grid.tie)/i.test(text)) return "Inverters";
+  // Default: Air Conditioning
+  return "Air Conditioning";
 }
 
 Deno.serve(async (req) => {
@@ -263,6 +292,8 @@ Categories for consumables: Copper Tube, Insulation, Cable, Trunking, Brackets, 
             unit_length_unit: p.unitLengthUnit || "m",
             price_per_metre: pricePerMetre,
             min_cut_length: p.minCutLength || 0.5,
+            product_category: p.productCategory || autoDetectCategory(p),
+            brand: p.brand || null,
           };
         }),
       }),

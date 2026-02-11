@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, Upload, GitCompare, Package, Snowflake, Wrench, Layers } from "lucide-react";
+import { Search, Upload, GitCompare, Package, Snowflake, Wrench, Layers, Zap, BatteryCharging, Droplets } from "lucide-react";
 import SupplierManager from "@/components/catalog/SupplierManager";
 import SupplierProductImporter from "@/components/catalog/SupplierProductImporter";
 import ProductCatalogBrowser from "@/components/catalog/ProductCatalogBrowser";
@@ -11,13 +11,22 @@ import BundlesList from "@/components/catalog/BundlesList";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-type SupplierTypeFilter = "all" | "ac_units" | "consumables";
+const PRODUCT_CATEGORIES = [
+  { value: "all", label: "All", icon: Package },
+  { value: "Air Conditioning", label: "Air Conditioning", icon: Snowflake },
+  { value: "Water Heaters", label: "Water Heaters", icon: Droplets },
+  { value: "Inverters", label: "Inverters", icon: Zap },
+  { value: "Batteries", label: "Batteries", icon: BatteryCharging },
+  { value: "Consumables", label: "Consumables", icon: Wrench },
+] as const;
+
+type ProductCategoryFilter = typeof PRODUCT_CATEGORIES[number]["value"];
 
 const AdminCatalogPage = () => {
   const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
   const [tab, setTab] = useState("browse");
   const [importKey, setImportKey] = useState(0);
-  const [supplierTypeFilter, setSupplierTypeFilter] = useState<SupplierTypeFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState<ProductCategoryFilter>("all");
 
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers"],
@@ -32,12 +41,29 @@ const AdminCatalogPage = () => {
     },
   });
 
+  // Product counts per category
+  const { data: categoryCounts = {} } = useQuery({
+    queryKey: ["product-category-counts"],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("supplier_products") as any)
+        .select("product_category")
+        .eq("archived", false);
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      let total = 0;
+      (data || []).forEach((row: any) => {
+        const cat = row.product_category || "Air Conditioning";
+        counts[cat] = (counts[cat] || 0) + 1;
+        total++;
+      });
+      counts["all"] = total;
+      return counts;
+    },
+  });
+
   const selectedSupplier = suppliers.find((s) => s.id === selectedSupplierId);
   const selectedSupplierName = selectedSupplier?.name || "";
   const isConsumablesSupplier = selectedSupplier?.supplier_type === "consumables";
-
-  const acCount = suppliers.filter(s => s.supplier_type !== "consumables").length;
-  const consumableCount = suppliers.filter(s => s.supplier_type === "consumables").length;
 
   return (
     <div className="p-4 max-w-7xl mx-auto space-y-4">
@@ -46,40 +72,36 @@ const AdminCatalogPage = () => {
         <h2 className="text-xl font-bold">Product Catalog</h2>
       </div>
 
-      {/* Supplier type filter pills */}
+      {/* Product category filter pills */}
       <div className="flex flex-wrap gap-2">
-        <Badge
-          variant={supplierTypeFilter === "all" ? "default" : "outline"}
-          className="cursor-pointer text-xs gap-1"
-          onClick={() => setSupplierTypeFilter("all")}
-        >
-          All ({suppliers.length})
-        </Badge>
-        <Badge
-          variant={supplierTypeFilter === "ac_units" ? "default" : "outline"}
-          className="cursor-pointer text-xs gap-1"
-          onClick={() => setSupplierTypeFilter("ac_units")}
-        >
-          <Snowflake className="h-3 w-3" /> AC Units ({acCount})
-        </Badge>
-        <Badge
-          variant={supplierTypeFilter === "consumables" ? "default" : "outline"}
-          className={`cursor-pointer text-xs gap-1 ${
-            supplierTypeFilter === "consumables"
-              ? "bg-orange-600 hover:bg-orange-700 border-orange-600"
-              : "border-orange-500/50 text-orange-600"
-          }`}
-          onClick={() => setSupplierTypeFilter("consumables")}
-        >
-          <Wrench className="h-3 w-3" /> Consumables ({consumableCount})
-        </Badge>
+        {PRODUCT_CATEGORIES.map((cat) => {
+          const count = categoryCounts[cat.value] || 0;
+          const Icon = cat.icon;
+          const isActive = categoryFilter === cat.value;
+          const isConsumable = cat.value === "Consumables";
+          return (
+            <Badge
+              key={cat.value}
+              variant={isActive ? "default" : "outline"}
+              className={`cursor-pointer text-xs gap-1 ${
+                isConsumable && isActive
+                  ? "bg-orange-600 hover:bg-orange-700 border-orange-600"
+                  : isConsumable && !isActive
+                  ? "border-orange-500/50 text-orange-600"
+                  : ""
+              }`}
+              onClick={() => setCategoryFilter(cat.value)}
+            >
+              <Icon className="h-3 w-3" />
+              {cat.label} ({count})
+            </Badge>
+          );
+        })}
       </div>
 
       <SupplierManager
         selectedSupplierId={selectedSupplierId}
         onSelectSupplier={setSelectedSupplierId}
-        supplierTypeFilter={supplierTypeFilter === "all" ? undefined : supplierTypeFilter}
-        activeTypeFilter={supplierTypeFilter}
       />
 
       <Tabs value={tab} onValueChange={setTab}>
@@ -99,10 +121,13 @@ const AdminCatalogPage = () => {
         </TabsList>
 
         <TabsContent value="browse" className="mt-4">
-          {selectedSupplierId && isConsumablesSupplier ? (
+          {selectedSupplierId && categoryFilter === "Consumables" ? (
             <ConsumablesCatalogTable supplierId={selectedSupplierId} />
           ) : (
-            <ProductCatalogBrowser supplierId={selectedSupplierId} />
+            <ProductCatalogBrowser
+              supplierId={selectedSupplierId}
+              productCategoryFilter={categoryFilter === "all" ? undefined : categoryFilter}
+            />
           )}
         </TabsContent>
 
@@ -113,7 +138,10 @@ const AdminCatalogPage = () => {
               supplierId={selectedSupplierId}
               supplierName={selectedSupplierName}
               isConsumablesSupplier={isConsumablesSupplier}
-              onComplete={() => setImportKey((k) => k + 1)}
+              onComplete={() => {
+                setImportKey((k) => k + 1);
+                // Invalidate category counts
+              }}
             />
           ) : (
             <div className="text-center py-12">
