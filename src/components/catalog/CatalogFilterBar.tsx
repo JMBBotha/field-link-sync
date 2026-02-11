@@ -39,7 +39,7 @@ const UNIT_TYPES = [
   "Accessories", "Large Ducted",
 ];
 
-const BTU_OPTIONS = ["9K", "12K", "18K", "24K", "34K", "36K", "48K", "60K", "76K+"];
+// BTU options are now derived dynamically from product data via FilterCounts
 
 const REFRIGERANTS = ["R32", "R410A"];
 
@@ -215,7 +215,7 @@ const CatalogFilterBar = ({
             onChange={(v) => set("speedType", v)}
           />
 
-          <div className="flex items-center gap-1 flex-wrap">
+        <div className="flex items-center gap-1 flex-wrap">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-14 shrink-0">BTU</span>
             <Select value={filters.btu} onValueChange={(v) => set("btu", v)}>
               <SelectTrigger className="h-7 text-[11px] w-28">
@@ -223,10 +223,15 @@ const CatalogFilterBar = ({
               </SelectTrigger>
               <SelectContent className="bg-popover z-50">
                 <SelectItem value="__all__">All BTU</SelectItem>
-                {BTU_OPTIONS.map((b) => {
-                  const c = counts.btu[b] ?? 0;
-                  return <SelectItem key={b} value={b}>{b} ({c})</SelectItem>;
-                })}
+                {Object.keys(counts.btu)
+                  .sort((a, b) => {
+                    const numA = parseInt(a.replace(/[^0-9]/g, ""), 10) || 0;
+                    const numB = parseInt(b.replace(/[^0-9]/g, ""), 10) || 0;
+                    return numA - numB;
+                  })
+                  .map((bucket) => (
+                    <SelectItem key={bucket} value={bucket}>{bucket} ({counts.btu[bucket]})</SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
