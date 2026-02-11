@@ -17,6 +17,7 @@ import PriceConfigPanel, { calculatePrices, type PriceConfig } from "./PriceConf
 interface SupplierProductImporterProps {
   supplierId: string;
   supplierName: string;
+  isConsumablesSupplier?: boolean;
   onComplete: () => void;
 }
 
@@ -103,6 +104,12 @@ interface ParsedRow {
   refrigerant_type: string | null;
   is_price_on_request: boolean;
   short_name: string | null;
+  product_type?: string;
+  sold_in_length?: boolean;
+  unit_length?: number | null;
+  unit_length_unit?: string;
+  price_per_metre?: number | null;
+  min_cut_length?: number;
 }
 
 type DiffAction = "new" | "update" | "archive" | "unchanged";
@@ -116,7 +123,7 @@ interface DiffRow extends ParsedRow {
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 
-const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: SupplierProductImporterProps) => {
+const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSupplier, onComplete }: SupplierProductImporterProps) => {
   const [tab, setTab] = useState<"paste" | "ai">("paste");
   const [pasteText, setPasteText] = useState("");
   const [markupPercent, setMarkupPercent] = useState(30);
@@ -340,6 +347,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
               extracted_text: chunkText,
               supplier_id: supplierId,
               supplier_name: supplierName,
+              supplier_type: isConsumablesSupplier ? "consumables" : "ac_units",
               markup_percent: aiMarkup,
               chunk_index: chunkIndex,
               chunk_total: chunkTotal,
@@ -436,6 +444,11 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
           refrigerant_type: p.refrigerant_type || null,
           is_price_on_request: p.is_price_on_request || false,
           short_name: p.short_name || null,
+          sold_in_length: p.sold_in_length || false,
+          unit_length: p.unit_length || null,
+          unit_length_unit: p.unit_length_unit || "m",
+          price_per_metre: p.price_per_metre || null,
+          min_cut_length: p.min_cut_length || 0.5,
         }));
         setParsedRows(rows);
         const diff = await buildDiff(rows);
@@ -488,6 +501,13 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
         }
       }
 
+      // Compute consumable length fields
+      const soldInLength = p.sold_in_length || false;
+      const unitLength = p.unit_length || null;
+      const pricePerMetre = soldInLength && unitLength && calculated.trueCost > 0
+        ? Math.round((calculated.trueCost / unitLength) * 100) / 100
+        : (p.price_per_metre || null);
+
       return {
         product_code: p.product_code || "",
         description: p.description || "",
@@ -498,6 +518,11 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
         refrigerant_type: p.refrigerant_type || null,
         is_price_on_request: rawPrice <= 0,
         short_name: p.short_name || null,
+        sold_in_length: soldInLength,
+        unit_length: unitLength,
+        unit_length_unit: p.unit_length_unit || "m",
+        price_per_metre: pricePerMetre,
+        min_cut_length: p.min_cut_length || 0.5,
         // Extra price data stored for import
         _cost_excl_vat: calculated.costExclVat,
         _cost_incl_vat: calculated.costInclVat,
@@ -525,7 +550,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
       for (let i = 0; i < activeRows.length; i++) {
           const row = activeRows[i];
           if (row.action === "new") {
-            const insertData: any = {
+             const insertData: any = {
               supplier_id: supplierId,
               product_code: row.product_code,
               description: row.description,
@@ -539,6 +564,12 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
               is_active: true,
               archived: false,
               short_name: row.short_name,
+              product_type: isConsumablesSupplier ? "consumable" : "ac_unit",
+              sold_in_length: row.sold_in_length || false,
+              unit_length: row.unit_length || null,
+              unit_length_unit: row.unit_length_unit || "m",
+              price_per_metre: row.price_per_metre || null,
+              min_cut_length: row.min_cut_length || 0.5,
             };
             // Add multi-price data if available
             if ((row as any)._cost_excl_vat !== undefined) {
@@ -885,7 +916,8 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
                         <th className="text-left p-2 font-medium">SKU</th>
                         <th className="text-left p-2 font-medium">Description</th>
                         <th className="text-left p-2 font-medium">Category</th>
-                        <th className="text-right p-2 font-medium">Cost</th>
+                         <th className="text-right p-2 font-medium">Cost</th>
+                        {isConsumablesSupplier && <th className="text-right p-2 font-medium">Per Metre</th>}
                         <th className="p-2 w-8"></th>
                       </tr>
                     </thead>
@@ -934,6 +966,16 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
                               <span className="text-emerald-400 font-semibold">{formatZAR(row.cost_price)}</span>
                             )}
                           </td>
+                          {isConsumablesSupplier && (
+                            <td className="p-2 text-right whitespace-nowrap">
+                              {row.sold_in_length && row.price_per_metre ? (
+                                <span className="text-primary font-semibold text-[10px]">
+                                  {formatZAR(row.price_per_metre)}/m
+                                  <span className="text-muted-foreground font-normal ml-1">({row.unit_length}m)</span>
+                                </span>
+                              ) : "—"}
+                            </td>
+                          )}
                           <td className="p-2">
                             <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => removeDiffRow(diffRows.indexOf(row))}>
                               <Trash2 className="h-3 w-3 text-muted-foreground" />

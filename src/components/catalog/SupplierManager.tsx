@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Building2, Pencil, Trash2 } from "lucide-react";
+import { Plus, Building2, Pencil, Trash2, Wrench, Snowflake } from "lucide-react";
 
 interface Supplier {
   id: string;
@@ -20,14 +21,16 @@ interface Supplier {
   notes: string | null;
   is_active: boolean;
   created_at: string;
+  supplier_type: string;
 }
 
 interface SupplierManagerProps {
   selectedSupplierId: string | null;
   onSelectSupplier: (id: string) => void;
+  supplierTypeFilter?: string;
 }
 
-const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManagerProps) => {
+const SupplierManager = ({ selectedSupplierId, onSelectSupplier, supplierTypeFilter }: SupplierManagerProps) => {
   const [formOpen, setFormOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [name, setName] = useState("");
@@ -35,6 +38,7 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [website, setWebsite] = useState("");
+  const [isConsumables, setIsConsumables] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -47,9 +51,13 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
         .eq("is_active", true)
         .order("name");
       if (error) throw error;
-      return data as Supplier[];
+      return data as unknown as Supplier[];
     },
   });
+
+  const displayedSuppliers = supplierTypeFilter
+    ? suppliers.filter(s => s.supplier_type === supplierTypeFilter)
+    : suppliers;
 
   // Auto-create default supplier if none exist
   useEffect(() => {
@@ -73,12 +81,13 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload = {
+      const payload: any = {
         name,
         contact_name: contactName || null,
         contact_email: contactEmail || null,
         contact_phone: contactPhone || null,
         website: website || null,
+        supplier_type: isConsumables ? "consumables" : "ac_units",
         updated_at: new Date().toISOString(),
       };
       if (editingSupplier) {
@@ -117,6 +126,7 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
       setContactEmail(supplier.contact_email || "");
       setContactPhone(supplier.contact_phone || "");
       setWebsite(supplier.website || "");
+      setIsConsumables(supplier.supplier_type === "consumables");
     } else {
       setEditingSupplier(null);
       setName("");
@@ -124,6 +134,7 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
       setContactEmail("");
       setContactPhone("");
       setWebsite("");
+      setIsConsumables(false);
     }
     setFormOpen(true);
   };
@@ -151,13 +162,22 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
             <p className="text-sm text-muted-foreground">Creating default supplier...</p>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {suppliers.map((s) => (
+              {displayedSuppliers.map((s) => (
                 <div key={s.id} className="flex items-center gap-1">
                   <Badge
                     variant={selectedSupplierId === s.id ? "default" : "outline"}
-                    className="cursor-pointer"
+                    className={`cursor-pointer gap-1 ${
+                      s.supplier_type === "consumables"
+                        ? selectedSupplierId === s.id
+                          ? "bg-orange-600 hover:bg-orange-700 border-orange-600"
+                          : "border-orange-500/50 text-orange-600"
+                        : ""
+                    }`}
                     onClick={() => onSelectSupplier(s.id)}
                   >
+                    {s.supplier_type === "consumables"
+                      ? <Wrench className="h-3 w-3" />
+                      : <Snowflake className="h-3 w-3" />}
                     {s.name}
                   </Badge>
                   <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => openForm(s)}>
@@ -200,6 +220,16 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
                 <Input value={website} onChange={(e) => setWebsite(e.target.value)} />
               </div>
             </div>
+            <div className="flex items-center justify-between py-2 px-1 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-2">
+                <Wrench className="h-4 w-4 text-orange-500" />
+                <Label className="text-sm">Consumables Supplier</Label>
+              </div>
+              <Switch checked={isConsumables} onCheckedChange={setIsConsumables} />
+            </div>
+            <p className="text-[10px] text-muted-foreground -mt-1">
+              Enable for suppliers that sell piping, cable, insulation, brackets, fittings, gas, tools etc.
+            </p>
             <div className="flex gap-2 pt-2">
               <Button variant="outline" className="flex-1" onClick={closeForm}>Cancel</Button>
               <Button className="flex-1" onClick={() => saveMutation.mutate()} disabled={!name || saveMutation.isPending}>

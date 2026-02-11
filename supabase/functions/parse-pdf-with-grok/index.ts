@@ -13,6 +13,11 @@ interface ParsedProduct {
   btuRating?: number | null;
   refrigerantType?: string | null;
   shortName?: string | null;
+  soldInLength?: boolean;
+  unitLength?: number | null;
+  unitLengthUnit?: string;
+  pricePerMetre?: number | null;
+  minCutLength?: number;
 }
 
 const CHUNK_SIZE = 12000;
@@ -71,7 +76,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { extracted_text, supplier_id, supplier_name, chunk_index, chunk_total } = await req.json();
+    const { extracted_text, supplier_id, supplier_name, supplier_type, chunk_index, chunk_total } = await req.json();
+    const isConsumables = supplier_type === "consumables";
     const chunkIndex = Number.isFinite(Number(chunk_index)) ? Number(chunk_index) : 0;
     const chunkTotal = Number.isFinite(Number(chunk_total)) ? Number(chunk_total) : 1;
 
@@ -99,7 +105,33 @@ Deno.serve(async (req) => {
       });
     }
 
-    const systemPrompt = SYSTEM_PROMPT_TEMPLATE + (supplier_name || "Unknown");
+    let systemPrompt = SYSTEM_PROMPT_TEMPLATE + (supplier_name || "Unknown");
+    if (isConsumables) {
+      systemPrompt += `\n\nThis is a CONSUMABLES/INSTALLATION MATERIALS supplier (NOT AC units). Products include piping, cable, insulation, brackets, fittings, gas, tools etc.
+
+IMPORTANT: Detect LENGTH-BASED products. Look for length patterns in descriptions like "15M", "50M", "100M", "1.8M", "5.5M", "15.24M", "3M", "4M", "6M" etc.
+For each product, add these extra fields:
+- soldInLength: boolean (true if sold by length)
+- unitLength: number (the total length, e.g. 15 for "15M", 100 for "100M", 1.8 for "1.8M")
+- unitLengthUnit: string (always "m")
+- pricePerMetre: number (cost_price / unitLength, auto-calculate)
+- minCutLength: number (default 0.5)
+
+Examples of LENGTH items:
+- "ALUMINIUM TUBE 1/4 1.0MM 15M" → soldInLength=true, unitLength=15
+- "R410A 1/4 S-DRAWN 6.35X0.91X15.24M" → soldInLength=true, unitLength=15.24
+- "CABTYRE 1.5MM 4-CORE 100M" → soldInLength=true, unitLength=100
+- "INSULATION 1/4ID X 1/4WT X 1.8M" → soldInLength=true, unitLength=1.8
+- "PVC TRUNKING 100X40 3M" → soldInLength=true, unitLength=3
+
+Examples of NON-length items (sold per unit):
+- "BRACKETS-450MM" → soldInLength=false (450mm is bracket size, not sold by length)
+- "FLARE NUTS 1/4" → soldInLength=false
+- "R410A GAS DISP 11.3KG" → soldInLength=false
+- "CABLE TIES 390mm-50x" → soldInLength=false (390mm is tie size)
+
+Categories for consumables: Copper Tube, Insulation, Cable, Trunking, Brackets, Fittings, Gas/Refrigerant, Tools, Tape, Drainage, Accessories, etc.`;
+    }
     const truncatedText = extracted_text.substring(0, MAX_TEXT);
 
     // IMPORTANT: this function is intentionally single-chunk to stay under the backend wall-clock limit.
@@ -208,18 +240,31 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         detected_price_columns: [...allCols],
-        products: deduped.map(p => ({
-          product_code: p.sku || "",
-          description: p.name ? `${p.name} - ${p.description}` : p.description || "",
-          category: p.category || "Uncategorized",
-          prices: p.prices || {},
-          cost_price: Object.values(p.prices || {})[0] || 0,
-          pipe_size: p.pipeSize || null,
-          btu_rating: p.btuRating || null,
-          refrigerant_type: p.refrigerantType || null,
-          is_price_on_request: !Object.values(p.prices || {}).some(v => v > 0),
-          short_name: p.shortName || null,
-        })),
+        products: deduped.map(p => {
+          const costPrice = Object.values(p.prices || {})[0] || 0;
+          const soldInLength = p.soldInLength || false;
+          const unitLength = p.unitLength || null;
+          const pricePerMetre = soldInLength && unitLength && costPrice > 0
+            ? Math.round((costPrice / unitLength) * 100) / 100
+            : (p.pricePerMetre || null);
+          return {
+            product_code: p.sku || "",
+            description: p.name ? `${p.name} - ${p.description}` : p.description || "",
+            category: p.category || "Uncategorized",
+            prices: p.prices || {},
+            cost_price: costPrice,
+            pipe_size: p.pipeSize || null,
+            btu_rating: p.btuRating || null,
+            refrigerant_type: p.refrigerantType || null,
+            is_price_on_request: !Object.values(p.prices || {}).some(v => v > 0),
+            short_name: p.shortName || null,
+            sold_in_length: soldInLength,
+            unit_length: unitLength,
+            unit_length_unit: p.unitLengthUnit || "m",
+            price_per_metre: pricePerMetre,
+            min_cut_length: p.minCutLength || 0.5,
+          };
+        }),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
