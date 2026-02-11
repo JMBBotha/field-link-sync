@@ -301,11 +301,33 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
       : extractedText;
 
     const invokeAI = async () => {
-      const { data, error: fnError } = await supabase.functions.invoke("parse-pdf-with-grok", {
-        body: { extracted_text: truncatedText, supplier_id: supplierId, supplier_name: supplierName, markup_percent: aiMarkup },
-      });
-      if (fnError) throw fnError;
-      return data;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 min timeout
+      try {
+        const resp = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-pdf-with-grok`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            },
+            body: JSON.stringify({ extracted_text: truncatedText, supplier_id: supplierId, supplier_name: supplierName, markup_percent: aiMarkup }),
+            signal: controller.signal,
+          }
+        );
+        clearTimeout(timeoutId);
+        if (!resp.ok) {
+          const errText = await resp.text();
+          throw new Error(`Edge function returned ${resp.status}: ${errText.substring(0, 200)}`);
+        }
+        return await resp.json();
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        if (err.name === "AbortError") throw new Error("Request timed out after 2 minutes. The PDF may be too large.");
+        throw err;
+      }
     };
 
     try {
