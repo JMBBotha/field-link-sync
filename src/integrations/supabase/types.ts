@@ -2346,6 +2346,7 @@ export type Database = {
         Row: {
           archived: boolean
           archived_at: string | null
+          brand: string | null
           btu_rating: number | null
           capacity_btu: number | null
           category: string
@@ -2367,6 +2368,7 @@ export type Database = {
           pin_order: number
           pipe_size: string | null
           price_per_metre: number | null
+          product_category: string
           product_code: string
           product_type: string
           quote_usage_count: number
@@ -2387,6 +2389,7 @@ export type Database = {
         Insert: {
           archived?: boolean
           archived_at?: string | null
+          brand?: string | null
           btu_rating?: number | null
           capacity_btu?: number | null
           category?: string
@@ -2408,6 +2411,7 @@ export type Database = {
           pin_order?: number
           pipe_size?: string | null
           price_per_metre?: number | null
+          product_category?: string
           product_code: string
           product_type?: string
           quote_usage_count?: number
@@ -2428,6 +2432,7 @@ export type Database = {
         Update: {
           archived?: boolean
           archived_at?: string | null
+          brand?: string | null
           btu_rating?: number | null
           capacity_btu?: number | null
           category?: string
@@ -2449,6 +2454,7 @@ export type Database = {
           pin_order?: number
           pipe_size?: string | null
           price_per_metre?: number | null
+          product_category?: string
           product_code?: string
           product_type?: string
           quote_usage_count?: number

@@ -83,6 +83,7 @@ interface SupplierProduct {
 interface ProductCatalogBrowserProps {
   onAddToQuote?: (item: { description: string; quantity: number; unit_price: number }) => void;
   supplierId?: string | null;
+  productCategoryFilter?: string;
 }
 
 // Derive helpers, preprocessQuery, fuseMultiTokenSearch, buildSearchBlob etc.
@@ -101,7 +102,7 @@ function generateShortName(p: SupplierProduct): string {
 }
 
 // ── Component ───────────────────────────────────────────
-const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrowserProps) => {
+const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter }: ProductCatalogBrowserProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("pinned");
   const [viewMode, setViewMode] = useState<"grid" | "list" | "grouped">("grid");
@@ -268,10 +269,14 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
     } else {
       results = [...allProducts];
     }
+    // Apply product category filter
+    if (productCategoryFilter) {
+      results = results.filter((p) => (p as any).product_category === productCategoryFilter);
+    }
     // Apply structured filters
     results = results.filter((p) => matchesFilters(p, filters));
     return results;
-  }, [allProducts, enrichedProducts, fuse, searchQuery, filters]);
+  }, [allProducts, enrichedProducts, fuse, searchQuery, filters, productCategoryFilter]);
 
   // Compute dynamic filter counts: for each filter dimension, count products matching ALL OTHER active filters + search
   const filterCounts = useMemo<FilterCounts>(() => {
