@@ -70,9 +70,11 @@ const AdminSidebar = ({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("inventory_stock")
-        .select("quantity, low_stock_threshold");
+        .select("quantity, low_stock_threshold, stock_mode");
       if (error) return 0;
-      return (data || []).filter((r: any) => r.quantity <= r.low_stock_threshold).length;
+      return (data || []).filter(
+        (r: any) => r.stock_mode === "stock_sensitive" && r.quantity <= r.low_stock_threshold
+      ).length;
     },
     refetchInterval: 60000,
   });

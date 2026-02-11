@@ -3,11 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCallback } from "react";
 
+export type StockMode = "order_as_needed" | "stock_sensitive";
+
 export interface StockRecord {
   id: string;
   product_id: string;
   quantity: number;
   low_stock_threshold: number;
+  stock_mode: StockMode;
 }
 
 export interface StockAdjustment {
@@ -29,7 +32,7 @@ export function useInventoryStock() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("inventory_stock")
-        .select("id, product_id, quantity, low_stock_threshold");
+        .select("id, product_id, quantity, low_stock_threshold, stock_mode");
       if (error) throw error;
       const map = new Map<string, StockRecord>();
       (data || []).forEach((row: any) => map.set(row.product_id, row as StockRecord));
@@ -42,17 +45,11 @@ export function useInventoryStock() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("inventory_stock")
-        .select("id", { count: "exact" })
-        .filter("quantity", "lte", "low_stock_threshold" as any);
-      // Workaround: fetch all and count client-side
-      if (error) {
-        const { data: all, error: e2 } = await supabase
-          .from("inventory_stock")
-          .select("quantity, low_stock_threshold");
-        if (e2) return 0;
-        return (all || []).filter((r: any) => r.quantity <= r.low_stock_threshold).length;
-      }
-      return data?.length ?? 0;
+        .select("quantity, low_stock_threshold, stock_mode");
+      if (error) return 0;
+      return (data || []).filter(
+        (r: any) => r.stock_mode === "stock_sensitive" && r.quantity <= r.low_stock_threshold
+      ).length;
     },
   });
 
@@ -88,7 +85,7 @@ export function useInventoryStock() {
       } else {
         const { data: newStock, error } = await supabase
           .from("inventory_stock")
-          .insert({ product_id: productId, quantity: newQuantity })
+          .insert({ product_id: productId, quantity: newQuantity, stock_mode: "stock_sensitive" as any })
           .select("id")
           .single();
         if (error) throw error;
@@ -104,9 +101,92 @@ export function useInventoryStock() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory-stock"] });
       queryClient.invalidateQueries({ queryKey: ["low-stock-count"] });
+      queryClient.invalidateQueries({ queryKey: ["low-stock-count-sidebar"] });
     },
     onError: (err: Error) => {
       toast({ title: "Stock update failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const updateStockMode = useMutation({
+    mutationFn: async ({
+      productId,
+      mode,
+    }: {
+      productId: string;
+      mode: StockMode;
+    }) => {
+      const existing = stockMap.get(productId);
+
+      if (existing) {
+        const updatePayload: any = { stock_mode: mode };
+        if (mode === "stock_sensitive" && existing.quantity === null) {
+          updatePayload.quantity = 0;
+        }
+        const { error } = await supabase
+          .from("inventory_stock")
+          .update(updatePayload)
+          .eq("id", existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("inventory_stock")
+          .insert({
+            product_id: productId,
+            quantity: 0,
+            stock_mode: mode as any,
+          });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inventory-stock"] });
+      queryClient.invalidateQueries({ queryKey: ["low-stock-count"] });
+      queryClient.invalidateQueries({ queryKey: ["low-stock-count-sidebar"] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Mode update failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const bulkUpdateMode = useMutation({
+    mutationFn: async ({
+      productIds,
+      mode,
+    }: {
+      productIds: string[];
+      mode: StockMode;
+    }) => {
+      for (const productId of productIds) {
+        const existing = stockMap.get(productId);
+        if (existing) {
+          const updatePayload: any = { stock_mode: mode };
+          if (mode === "stock_sensitive" && (existing.quantity === null || existing.quantity === undefined)) {
+            updatePayload.quantity = 0;
+          }
+          await supabase
+            .from("inventory_stock")
+            .update(updatePayload)
+            .eq("id", existing.id);
+        } else {
+          await supabase
+            .from("inventory_stock")
+            .insert({
+              product_id: productId,
+              quantity: 0,
+              stock_mode: mode as any,
+            });
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inventory-stock"] });
+      queryClient.invalidateQueries({ queryKey: ["low-stock-count"] });
+      queryClient.invalidateQueries({ queryKey: ["low-stock-count-sidebar"] });
+      toast({ title: "Stock modes updated" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Bulk mode update failed", description: err.message, variant: "destructive" });
     },
   });
 
@@ -151,6 +231,7 @@ export function useInventoryStock() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory-stock"] });
       queryClient.invalidateQueries({ queryKey: ["low-stock-count"] });
+      queryClient.invalidateQueries({ queryKey: ["low-stock-count-sidebar"] });
       toast({ title: "Bulk stock update complete" });
     },
     onError: (err: Error) => {
@@ -163,6 +244,8 @@ export function useInventoryStock() {
     isLoadingStock: isLoading,
     lowStockCount: lowStockCount.data ?? 0,
     updateStock,
+    updateStockMode,
+    bulkUpdateMode,
     bulkUpdate,
   };
 }
