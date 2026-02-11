@@ -58,9 +58,15 @@ export function derivePhase(p: SearchableProduct): string {
 }
 
 export function deriveBrand(p: SearchableProduct): string {
+  const supplierName = (p.supplier_name || "").toLowerCase();
+  if (supplierName.includes("samsung")) return "Samsung";
+  if (supplierName.includes("alliance")) return "Alliance";
   const code = (p.product_code || "").toUpperCase();
-  const desc = (p.description || "").toLowerCase();
-  if (code.startsWith("FOUR") || desc.includes("alliance")) return "Alliance";
+  if (code.startsWith("FOUR")) return "Alliance";
+  if (supplierName) {
+    // Capitalize first letter of each word
+    return supplierName.replace(/\b\w/g, c => c.toUpperCase());
+  }
   return "Midea";
 }
 
