@@ -15,8 +15,8 @@ interface ParsedProduct {
   shortName?: string | null;
 }
 
-const CHUNK_SIZE = 15000;
-const MAX_TEXT = 60000;
+const CHUNK_SIZE = 25000;
+const MAX_TEXT = 120000;
 
 const SYSTEM_PROMPT_TEMPLATE = `HVAC price list parser. Extract products as JSON.
 
