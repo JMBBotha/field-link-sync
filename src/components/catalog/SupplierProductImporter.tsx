@@ -182,10 +182,25 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       setPdfPageCount(pdf.numPages);
       let fullText = "";
+      const Y_TOLERANCE = 2;
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
-        const pageText = content.items.map((item: any) => item.str).join(" ");
+        const textItems = (content.items as any[]).filter((item: any) => item.str && item.transform);
+        const rowMap = new Map<number, { str: string; x: number }[]>();
+        for (const item of textItems) {
+          const y = Math.round(item.transform[5] / Y_TOLERANCE) * Y_TOLERANCE;
+          if (!rowMap.has(y)) rowMap.set(y, []);
+          rowMap.get(y)!.push({ str: item.str, x: item.transform[4] });
+        }
+        const sortedRows = Array.from(rowMap.entries())
+          .sort((a, b) => b[0] - a[0])
+          .map(([, items]) => items);
+        let pageText = "";
+        for (const rowItems of sortedRows) {
+          const sorted = rowItems.sort((a, b) => a.x - b.x);
+          pageText += sorted.map(it => it.str.trim()).filter(Boolean).join("\t") + "\n";
+        }
         fullText += `\n--- Page ${i} ---\n${pageText}`;
       }
       setExtractedText(fullText.trim());
@@ -275,7 +290,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, onComplete }: Suppl
     setAiParsing(true); setError(null); setAiResult(null); setParsedRows([]);
     setDiffRows([]); setShowDiff(false); setShowPriceConfig(false);
 
-    const MAX_PAYLOAD_SIZE = 50000;
+    const MAX_PAYLOAD_SIZE = 100000;
     const truncatedText = extractedText.length > MAX_PAYLOAD_SIZE
       ? extractedText.substring(0, MAX_PAYLOAD_SIZE)
       : extractedText;
