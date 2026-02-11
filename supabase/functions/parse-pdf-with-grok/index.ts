@@ -40,7 +40,11 @@ Auto-detect based on keywords:
 - Everything else (split, midwall, cassette, ducted, AC, air con) = "Air Conditioning"
 Default: "Air Conditioning"
 
-brand: detect sub-brand from product name/description. Common sub-brands under Samsung distributors: "Samsung", "Comfy", "Alliance". For Midea distributors: "Midea", "Alliance". Look for brand names in the product description or model prefix. If unclear, leave null.
+brand: detect sub-brand from product name/description/model code. Rules:
+- "SAMSUNG" in name OR model starts with "AR" or "AJ" = "Samsung"
+- "COMFY" or "COMFEE" in name = "Comfy"
+- "ALLIANCE" in name OR model starts with "FOUR" or "ALL" = "Alliance"
+- For Midea distributors: "Midea", "Alliance". Look for brand names in the product description or model prefix. If unclear, leave null.
 
 Categories (subcategories): Midwall Inverter, Midwall Fixed Speed, Cassette Inverter, Cassette Fixed Speed, Ducted, Under Ceiling, Floor Standing, Wind-Free, BREEZELESS, Portable, Accessories, etc.
 Samsung AC models typically start with AR (e.g. AR09TXHQA, AR12TXHQA, AR18TXHQA, AR24TXHQA) for indoor units and AR for outdoor units. Look for Samsung Wind-Free, BREEZELESS, Digital Inverter product lines. These have BTU ratings of 9000, 12000, 18000, 24000 BTU. Also detect kW values like 2.6kW=9K, 3.5kW=12K, 5.0kW=18K, 7.0kW=24K and convert to BTU.
@@ -81,6 +85,17 @@ function parseAIContent(content: string): { detected_price_columns: string[]; pr
     return p;
   });
   return { detected_price_columns: parsed.detected_price_columns || [], products };
+}
+
+/** Fallback auto-detect brand from product name/code */
+function autoDetectBrand(p: ParsedProduct): string | null {
+  const name = `${p.name || ""} ${p.description || ""}`;
+  const code = (p.sku || "").toUpperCase();
+  if (/\bSAMSUNG\b/i.test(name) || /^(AR|AJ)\d/i.test(code)) return "Samsung";
+  if (/\bCOMF(Y|EE)\b/i.test(name)) return "Comfy";
+  if (/\bALLIANCE\b/i.test(name) || /^(FOUR|ALL)\d/i.test(code)) return "Alliance";
+  if (/\bMIDEA\b/i.test(name)) return "Midea";
+  return null;
 }
 
 /** Fallback auto-detect product category from description/name keywords */
@@ -293,7 +308,7 @@ Categories for consumables: Copper Tube, Insulation, Cable, Trunking, Brackets, 
             price_per_metre: pricePerMetre,
             min_cut_length: p.minCutLength || 0.5,
             product_category: p.productCategory || autoDetectCategory(p),
-            brand: p.brand || null,
+            brand: p.brand || autoDetectBrand(p),
           };
         }),
       }),
