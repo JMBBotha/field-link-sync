@@ -1,18 +1,42 @@
 import { useState, useMemo, ReactNode, KeyboardEvent } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronDown, ChevronUp, X, SlidersHorizontal, Search, ArrowUpDown, LayoutGrid, List, FolderTree } from "lucide-react";
+import { type ProductCategory, getFilterConfig, type FilterDimension } from "./categoryFilterConfig";
 
 export interface CatalogFilters {
+  // AC-specific
   speedType: string;
   unitType: string;
   btu: string;
   refrigerant: string;
   phase: string;
-  brand: string;
   pipeSize: string;
+  // Water Heaters
+  whCapacity: string;
+  whType: string;
+  whMounting: string;
+  whElement: string;
+  whPressure: string;
+  // Inverters
+  invPower: string;
+  invPhase: string;
+  invType: string;
+  invMppt: string;
+  invBatteryVoltage: string;
+  // Batteries
+  batCapacity: string;
+  batVoltage: string;
+  batChemistry: string;
+  batMounting: string;
+  // Consumables
+  consSubCategory: string;
+  consSize: string;
+  consMaterial: string;
+  consSoldBy: string;
+  // Common
+  brand: string;
   priceMin: string;
   priceMax: string;
 }
@@ -20,52 +44,37 @@ export interface CatalogFilters {
 export type SortOption = "pinned" | "price_asc" | "price_desc" | "btu_asc" | "btu_desc" | "name";
 
 export const DEFAULT_FILTERS: CatalogFilters = {
-  speedType: "__all__",
-  unitType: "__all__",
-  btu: "__all__",
-  refrigerant: "__all__",
-  phase: "__all__",
-  brand: "__all__",
-  pipeSize: "__all__",
-  priceMin: "",
-  priceMax: "",
+  speedType: "__all__", unitType: "__all__", btu: "__all__", refrigerant: "__all__",
+  phase: "__all__", brand: "__all__", pipeSize: "__all__",
+  whCapacity: "__all__", whType: "__all__", whMounting: "__all__", whElement: "__all__", whPressure: "__all__",
+  invPower: "__all__", invPhase: "__all__", invType: "__all__", invMppt: "__all__", invBatteryVoltage: "__all__",
+  batCapacity: "__all__", batVoltage: "__all__", batChemistry: "__all__", batMounting: "__all__",
+  consSubCategory: "__all__", consSize: "__all__", consMaterial: "__all__", consSoldBy: "__all__",
+  priceMin: "", priceMax: "",
 };
 
-const SPEED_TYPES = ["Fixed Speed", "Inverter"];
+/** Dynamic filter counts: key → value → count */
+export type DynamicFilterCounts = Record<string, Record<string, number>>;
 
-const UNIT_TYPES = [
-  "Midwall", "Cassette", "Ducted", "Under Ceiling", "Floor Standing",
-  "Window Wall", "Portable", "Rooftop Package", "Air Cooled Chiller",
-  "Accessories", "Large Ducted",
-];
+// Keep FilterCounts for backward compat but DynamicFilterCounts is the new API
+export type FilterCounts = DynamicFilterCounts;
 
-const BTU_OPTIONS = ["9K", "12K", "18K", "24K", "36K", "48K", "60K", "76K", "100K", "120K", "150K", "200K", "250K", "300K", "350K", "400K", "500K+"];
-
-const REFRIGERANTS = ["R32", "R410A"];
-
-const PHASES = [
-  { label: "Single (1Ph)", value: "1Ph" },
-  { label: "Three (3Ph)", value: "3Ph" },
-];
-
-export interface FilterCounts {
-  speedType: Record<string, number>;
-  unitType: Record<string, number>;
-  btu: Record<string, number>;
-  refrigerant: Record<string, number>;
-  phase: Record<string, number>;
-  brand: Record<string, number>;
-  pipeSize: Record<string, number>;
-}
+// ── Filter label map for active pills ───────────────────
+const FILTER_LABELS: Record<string, string> = {
+  speedType: "Speed", unitType: "Type", btu: "BTU", refrigerant: "Refrig", phase: "Phase",
+  pipeSize: "Pipe", brand: "Brand",
+  whCapacity: "Capacity", whType: "Type", whMounting: "Mounting", whElement: "Element", whPressure: "Pressure",
+  invPower: "Power", invPhase: "Phase", invType: "Type", invMppt: "MPPT", invBatteryVoltage: "Battery V",
+  batCapacity: "Capacity", batVoltage: "Voltage", batChemistry: "Chemistry", batMounting: "Mounting",
+  consSubCategory: "Sub-Cat", consSize: "Size", consMaterial: "Material", consSoldBy: "Sold By",
+};
 
 interface Props {
   filters: CatalogFilters;
   onChange: (filters: CatalogFilters) => void;
-  availableBrands: string[];
-  availablePipeSizes: string[];
   totalCount: number;
   filteredCount: number;
-  counts: FilterCounts;
+  counts: DynamicFilterCounts;
   searchQuery: string;
   onSearchChange: (q: string) => void;
   sortBy: SortOption;
@@ -75,6 +84,10 @@ interface Props {
   onSearchKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void;
   viewMode: "grid" | "list" | "grouped";
   onViewModeChange: (mode: "grid" | "list" | "grouped") => void;
+  productCategory?: ProductCategory;
+  // Legacy props (kept for backward compat but no longer needed)
+  availableBrands?: string[];
+  availablePipeSizes?: string[];
 }
 
 function ChipGroup({
@@ -112,7 +125,7 @@ function ChipGroup({
           }`}
         >
           {opt.label}
-          {opt.count !== undefined && (
+          {opt.count !== undefined && opt.count > 0 && (
             <span className="ml-0.5 opacity-70 text-[10px]">({opt.count})</span>
           )}
         </button>
@@ -121,12 +134,78 @@ function ChipGroup({
   );
 }
 
+function DropdownFilter({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: { label: string; value: string; count?: number }[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1 flex-wrap">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-14 shrink-0">{label}</span>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="h-7 text-[11px] w-44">
+          <SelectValue placeholder={`All ${label}`} />
+        </SelectTrigger>
+        <SelectContent className="bg-popover z-50">
+          <SelectItem value="__all__">All {label}</SelectItem>
+          {options.filter(o => (o.count ?? 1) > 0).map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label} {o.count !== undefined ? `(${o.count})` : ""}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+function renderFilterDimension(
+  dim: FilterDimension,
+  value: string,
+  onChange: (v: string) => void,
+  counts: Record<string, number>,
+) {
+  const options = Object.entries(counts)
+    .filter(([, c]) => c > 0)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([val, count]) => ({ label: val, value: val, count }));
+
+  if (options.length === 0) return null;
+
+  if (dim.type === "chips") {
+    return (
+      <ChipGroup
+        key={dim.key}
+        label={dim.label}
+        options={options}
+        value={value}
+        onChange={onChange}
+      />
+    );
+  }
+
+  return (
+    <DropdownFilter
+      key={dim.key}
+      label={dim.label}
+      options={options}
+      value={value}
+      onChange={onChange}
+    />
+  );
+}
+
 const CatalogFilterBar = ({
-  filters, onChange, availableBrands, availablePipeSizes,
-  totalCount, filteredCount, counts,
+  filters, onChange, totalCount, filteredCount, counts,
   searchQuery, onSearchChange, sortBy, onSortChange,
   searchSuggestions, onSearchFocus, onSearchKeyDown,
-  viewMode, onViewModeChange,
+  viewMode, onViewModeChange, productCategory = "all",
 }: Props) => {
   const [showMore, setShowMore] = useState(false);
 
@@ -134,19 +213,28 @@ const CatalogFilterBar = ({
     onChange({ ...filters, [key]: value });
   };
 
+  const dimensions = useMemo(() => getFilterConfig(productCategory), [productCategory]);
+  const primaryDims = useMemo(() => dimensions.filter(d => d.row === "primary"), [dimensions]);
+  const secondaryDims = useMemo(() => dimensions.filter(d => d.row === "secondary"), [dimensions]);
+
+  // Always show price in secondary
+  const showPriceFilter = true;
+
   const activeFilters = useMemo(() => {
     const active: { key: keyof CatalogFilters; label: string }[] = [];
-    if (filters.speedType !== "__all__") active.push({ key: "speedType", label: `Speed: ${filters.speedType}` });
-    if (filters.unitType !== "__all__") active.push({ key: "unitType", label: `Type: ${filters.unitType}` });
-    if (filters.btu !== "__all__") active.push({ key: "btu", label: `BTU: ${filters.btu}` });
-    if (filters.refrigerant !== "__all__") active.push({ key: "refrigerant", label: filters.refrigerant });
-    if (filters.phase !== "__all__") active.push({ key: "phase", label: `Phase: ${filters.phase}` });
-    if (filters.brand !== "__all__") active.push({ key: "brand", label: `Brand: ${filters.brand}` });
-    if (filters.pipeSize !== "__all__") active.push({ key: "pipeSize", label: `Pipe: ${filters.pipeSize}` });
+    // Check all filter keys that have active dimensions
+    const allDimKeys = dimensions.map(d => d.key);
+    for (const dim of dimensions) {
+      const k = dim.key as keyof CatalogFilters;
+      const v = filters[k];
+      if (v && v !== "__all__") {
+        active.push({ key: k, label: `${FILTER_LABELS[k] || k}: ${v}` });
+      }
+    }
     if (filters.priceMin) active.push({ key: "priceMin", label: `Min: R${filters.priceMin}` });
     if (filters.priceMax) active.push({ key: "priceMax", label: `Max: R${filters.priceMax}` });
     return active;
-  }, [filters]);
+  }, [filters, dimensions]);
 
   const hasActiveFilters = activeFilters.length > 0;
   const clearAll = () => onChange({ ...DEFAULT_FILTERS });
@@ -155,12 +243,13 @@ const CatalogFilterBar = ({
     set(key, defaults[key] ?? "__all__");
   };
 
-  const moreFilterCount = [filters.unitType, filters.phase, filters.brand, filters.pipeSize]
-    .filter(v => v !== "__all__").length + (filters.priceMin ? 1 : 0) + (filters.priceMax ? 1 : 0);
+  const moreFilterCount = secondaryDims
+    .filter(d => filters[d.key as keyof CatalogFilters] !== "__all__")
+    .length + (filters.priceMin ? 1 : 0) + (filters.priceMax ? 1 : 0);
 
   return (
     <div className="space-y-1.5">
-      {/* ── ROW 1: Search + Speed + BTU + Refrigerant + Sort ── */}
+      {/* ── ROW 1: Search + Primary filters + Sort ── */}
       <div className="rounded-lg border bg-card/50 p-2.5 space-y-2">
         {/* Search + Sort row */}
         <div className="flex gap-2">
@@ -215,51 +304,33 @@ const CatalogFilterBar = ({
           </div>
         </div>
 
-        {/* Primary filters inline */}
+        {/* Primary filters */}
         <div className="space-y-1.5">
-          <ChipGroup
-            label="Speed"
-            options={SPEED_TYPES.map((s) => ({ label: s, value: s, count: counts.speedType[s] ?? 0 }))}
-            value={filters.speedType}
-            onChange={(v) => set("speedType", v)}
-          />
-
-        <div className="flex items-center gap-1 flex-wrap">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-14 shrink-0">BTU</span>
-            <Select value={filters.btu} onValueChange={(v) => set("btu", v)}>
-              <SelectTrigger className="h-7 text-[11px] w-28">
-                <SelectValue placeholder="All BTU" />
-              </SelectTrigger>
-              <SelectContent className="bg-popover z-50">
-                <SelectItem value="__all__">All BTU</SelectItem>
-                {BTU_OPTIONS.filter((b) => (counts.btu[b] ?? 0) > 0).map((b) => (
-                  <SelectItem key={b} value={b}>{b} ({counts.btu[b]})</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <ChipGroup
-            label="Refrig."
-            options={REFRIGERANTS.map((r) => ({ label: r, value: r, count: counts.refrigerant[r] ?? 0 }))}
-            value={filters.refrigerant}
-            onChange={(v) => set("refrigerant", v)}
-          />
+          {primaryDims.map(dim =>
+            renderFilterDimension(
+              dim,
+              filters[dim.key as keyof CatalogFilters] || "__all__",
+              (v) => set(dim.key as keyof CatalogFilters, v),
+              counts[dim.key] || {},
+            )
+          )}
         </div>
 
         {/* Count + More filters toggle */}
         <div className="flex items-center justify-between pt-0.5">
-          <button
-            onClick={() => setShowMore(!showMore)}
-            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <SlidersHorizontal className="h-3 w-3" />
-            {showMore ? "Hide filters" : "More filters"}
-            {moreFilterCount > 0 && !showMore && (
-              <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">{moreFilterCount}</Badge>
-            )}
-            {showMore ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          </button>
+          {(secondaryDims.length > 0 || showPriceFilter) ? (
+            <button
+              onClick={() => setShowMore(!showMore)}
+              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <SlidersHorizontal className="h-3 w-3" />
+              {showMore ? "Hide filters" : "More filters"}
+              {moreFilterCount > 0 && !showMore && (
+                <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">{moreFilterCount}</Badge>
+              )}
+              {showMore ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </button>
+          ) : <div />}
           <span className="text-[11px] text-muted-foreground">
             {filteredCount} of {totalCount}
           </span>
@@ -269,52 +340,16 @@ const CatalogFilterBar = ({
       {/* ── ROW 2: Expanded filters ── */}
       {showMore && (
         <div className="rounded-lg border bg-card/50 p-2.5 space-y-1.5 animate-in slide-in-from-top-1 duration-150">
-          <div className="flex items-center gap-1 flex-wrap">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-14 shrink-0">Type</span>
-            <Select value={filters.unitType} onValueChange={(v) => set("unitType", v)}>
-              <SelectTrigger className="h-7 text-[11px] w-44">
-                <SelectValue placeholder="All Types" />
-              </SelectTrigger>
-              <SelectContent className="bg-popover z-50">
-                <SelectItem value="__all__">All Types</SelectItem>
-                {UNIT_TYPES.map((t) => {
-                  const c = counts.unitType[t] ?? 0;
-                  return <SelectItem key={t} value={t}>{t} ({c})</SelectItem>;
-                })}
-              </SelectContent>
-            </Select>
-          </div>
+          {secondaryDims.map(dim =>
+            renderFilterDimension(
+              dim,
+              filters[dim.key as keyof CatalogFilters] || "__all__",
+              (v) => set(dim.key as keyof CatalogFilters, v),
+              counts[dim.key] || {},
+            )
+          )}
 
-          <ChipGroup
-            label="Phase"
-            options={PHASES.map((p) => ({ label: p.label, value: p.value, count: counts.phase[p.value] ?? 0 }))}
-            value={filters.phase}
-            onChange={(v) => set("phase", v)}
-          />
-
-          <ChipGroup
-            label="Brand"
-            options={[...availableBrands].sort().map((b) => ({ label: b, value: b, count: counts.brand[b] ?? 0 }))}
-            value={filters.brand}
-            onChange={(v) => set("brand", v)}
-          />
-
-          <div className="flex items-center gap-1 flex-wrap">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-14 shrink-0">Pipe</span>
-            <Select value={filters.pipeSize} onValueChange={(v) => set("pipeSize", v)}>
-              <SelectTrigger className="h-7 text-[11px] w-44">
-                <SelectValue placeholder="All Pipe Sizes" />
-              </SelectTrigger>
-              <SelectContent className="bg-popover z-50">
-                <SelectItem value="__all__">All Pipe Sizes</SelectItem>
-                {availablePipeSizes.map((ps) => {
-                  const c = counts.pipeSize[ps] ?? 0;
-                  return <SelectItem key={ps} value={ps}>{ps} ({c})</SelectItem>;
-                })}
-              </SelectContent>
-            </Select>
-          </div>
-
+          {/* Price range – always available */}
           <div className="flex items-center gap-1">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground w-14 shrink-0">Price</span>
             <Input

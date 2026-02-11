@@ -4,6 +4,7 @@
  */
 import Fuse from "fuse.js";
 import type { CatalogFilters, SortOption } from "./CatalogFilterBar";
+import { deriveCategoryFilterValue, getFilterConfig, type ProductCategory } from "./categoryFilterConfig";
 
 // ── Types ───────────────────────────────────────────────
 export interface SearchableProduct {
@@ -105,6 +106,7 @@ export function buildSearchBlob(p: SearchableProduct): string {
 }
 
 export function matchesFilters(p: SearchableProduct, f: CatalogFilters): boolean {
+  // AC filters
   if (f.speedType !== "__all__" && deriveSpeedType(p) !== f.speedType) return false;
   if (f.unitType !== "__all__" && deriveUnitType(p) !== f.unitType) return false;
   if (f.btu !== "__all__" && deriveBtuBucket(p) !== f.btu) return false;
@@ -112,9 +114,38 @@ export function matchesFilters(p: SearchableProduct, f: CatalogFilters): boolean
   if (f.phase !== "__all__" && derivePhase(p) !== f.phase) return false;
   if (f.brand !== "__all__" && deriveBrand(p) !== f.brand) return false;
   if (f.pipeSize !== "__all__" && derivePipeSize(p) !== f.pipeSize) return false;
+  // Category-specific filters
+  const categoryKeys = [
+    "whCapacity", "whType", "whMounting", "whElement", "whPressure",
+    "invPower", "invPhase", "invType", "invMppt", "invBatteryVoltage",
+    "batCapacity", "batVoltage", "batChemistry", "batMounting",
+    "consSubCategory", "consSize", "consMaterial", "consSoldBy",
+  ] as const;
+  for (const key of categoryKeys) {
+    const val = f[key as keyof CatalogFilters];
+    if (val && val !== "__all__") {
+      const derived = deriveCategoryFilterValue(p, key);
+      if (derived !== val) return false;
+    }
+  }
+  // Price filters
   if (f.priceMin && (p.selling_price ?? 0) < parseFloat(f.priceMin)) return false;
   if (f.priceMax && (p.selling_price ?? 0) > parseFloat(f.priceMax)) return false;
   return true;
+}
+
+/** Derive a filter value for any dimension key (AC + category-specific) */
+export function deriveFilterValue(p: SearchableProduct, filterKey: string): string {
+  switch (filterKey) {
+    case "speedType": return deriveSpeedType(p);
+    case "unitType": return deriveUnitType(p);
+    case "btu": return deriveBtuBucket(p);
+    case "refrigerant": return (p.refrigerant_type || "").toUpperCase();
+    case "phase": return derivePhase(p);
+    case "brand": return deriveBrand(p);
+    case "pipeSize": return derivePipeSize(p);
+    default: return deriveCategoryFilterValue(p, filterKey);
+  }
 }
 
 // ── Levenshtein distance for fuzzy brand matching ───────

@@ -19,16 +19,17 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import ProductDetailModal from "./ProductDetailModal";
 import ProductSlideOverPanel from "./ProductSlideOverPanel";
 import ProductCompareTable from "./ProductCompareTable";
-import CatalogFilterBar, { CatalogFilters, DEFAULT_FILTERS, FilterCounts, SortOption } from "./CatalogFilterBar";
+import CatalogFilterBar, { CatalogFilters, DEFAULT_FILTERS, DynamicFilterCounts, SortOption } from "./CatalogFilterBar";
 import CatalogSearchSuggestions, { FILTER_MATCHERS } from "./CatalogSearchSuggestions";
 import BulkActionBar from "../bulk/BulkActionBar";
 import {
   deriveSpeedType, deriveUnitType, derivePhase, deriveBrand, derivePipeSize,
   deriveBtuBucket, buildSearchBlob, matchesFilters, preprocessQuery,
   fuseMultiTokenSearch, FUSE_OPTIONS, FUSE_SCORE_THRESHOLD,
-  levenshteinDistance, KNOWN_BRANDS, getCategoryPriority,
+  levenshteinDistance, KNOWN_BRANDS, getCategoryPriority, deriveFilterValue,
   type SearchableProduct,
 } from "./catalogSearchUtils";
+import { getFilterConfig, type ProductCategory } from "./categoryFilterConfig";
 import {
   Package,
   TrendingUp,
@@ -121,6 +122,11 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
   const [isOffline, setIsOffline] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<SupplierProduct | null>(null);
   const [filters, setFilters] = useState<CatalogFilters>({ ...DEFAULT_FILTERS });
+
+  // Reset filters when category changes
+  useEffect(() => {
+    setFilters({ ...DEFAULT_FILTERS });
+  }, [productCategoryFilter]);
   const [panelProductId, setPanelProductId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [compareIds, setCompareIds] = useState<string[]>([]);
@@ -381,9 +387,12 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
     return results;
   }, [allProducts, enrichedProducts, fuse, searchQuery, filters, productCategoryFilter]);
 
+  // Determine effective category for filter config
+  const effectiveCategory: ProductCategory = productCategoryFilter as ProductCategory || "all";
+  const filterDimensions = useMemo(() => getFilterConfig(effectiveCategory), [effectiveCategory]);
+
   // Compute dynamic filter counts: for each filter dimension, count products matching ALL OTHER active filters + search
-  const filterCounts = useMemo<FilterCounts>(() => {
-    // Base set: search-filtered products (before structured filters)
+  const filterCounts = useMemo<DynamicFilterCounts>(() => {
     let baseResults: SupplierProduct[];
     const effectiveQuery = searchQuery.trim();
     if (effectiveQuery.length > 0) {
@@ -392,36 +401,25 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
       baseResults = allProducts;
     }
 
-    const countFor = (dimension: keyof CatalogFilters) => {
-      const otherFilters = { ...filters, [dimension]: "__all__" };
-      const pool = baseResults.filter(p => matchesFilters(p, otherFilters));
+    // Apply product category filter to base
+    let categoryFiltered = baseResults;
+    if (productCategoryFilter) {
+      categoryFiltered = baseResults.filter((p) => p.product_category === productCategoryFilter);
+    }
+
+    const result: DynamicFilterCounts = {};
+    for (const dim of filterDimensions) {
+      const otherFilters = { ...filters, [dim.key]: "__all__" };
+      const pool = categoryFiltered.filter(p => matchesFilters(p, otherFilters));
       const counts: Record<string, number> = {};
       for (const p of pool) {
-        let val = "";
-        switch (dimension) {
-          case "speedType": val = deriveSpeedType(p); break;
-          case "unitType": val = deriveUnitType(p); break;
-          case "btu": val = deriveBtuBucket(p); break;
-          case "refrigerant": val = (p.refrigerant_type || "").toUpperCase(); break;
-          case "phase": val = derivePhase(p); break;
-          case "brand": val = deriveBrand(p); break;
-          case "pipeSize": val = derivePipeSize(p); break;
-        }
+        const val = deriveFilterValue(p, dim.key);
         if (val) counts[val] = (counts[val] || 0) + 1;
       }
-      return counts;
-    };
-
-    return {
-      speedType: countFor("speedType"),
-      unitType: countFor("unitType"),
-      btu: countFor("btu"),
-      refrigerant: countFor("refrigerant"),
-      phase: countFor("phase"),
-      brand: countFor("brand"),
-      pipeSize: countFor("pipeSize"),
-    };
-  }, [allProducts, enrichedProducts, fuse, searchQuery, filters]);
+      result[dim.key] = counts;
+    }
+    return result;
+  }, [allProducts, enrichedProducts, fuse, searchQuery, filters, filterDimensions, productCategoryFilter]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -605,10 +603,9 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
         <CatalogFilterBar
           filters={filters}
           onChange={setFilters}
-          availableBrands={availableBrands}
-          availablePipeSizes={availablePipeSizes}
-          totalCount={allProducts.length}
+          totalCount={productCategoryFilter ? allProducts.filter(p => p.product_category === productCategoryFilter).length : allProducts.length}
           filteredCount={sorted.length}
+          productCategory={effectiveCategory}
           counts={filterCounts}
           searchQuery={searchQuery}
           onSearchChange={(q) => { setSearchQuery(q); setShowSuggestions(true); setSuggestionIndex(-1); }}
