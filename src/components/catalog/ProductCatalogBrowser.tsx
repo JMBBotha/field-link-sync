@@ -21,7 +21,7 @@ import {
   deriveSpeedType, deriveUnitType, derivePhase, deriveBrand, derivePipeSize,
   deriveBtuBucket, buildSearchBlob, matchesFilters, preprocessQuery,
   fuseMultiTokenSearch, FUSE_OPTIONS, FUSE_SCORE_THRESHOLD,
-  levenshteinDistance, KNOWN_BRANDS,
+  levenshteinDistance, KNOWN_BRANDS, getCategoryPriority,
   type SearchableProduct,
 } from "./catalogSearchUtils";
 import {
@@ -32,7 +32,9 @@ import {
   WifiOff,
   Star,
   GitCompareArrows,
+  ChevronDown,
 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -102,7 +104,7 @@ function generateShortName(p: SupplierProduct): string {
 const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrowserProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("pinned");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list" | "grouped">("grid");
   const [showArchived, setShowArchived] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<SupplierProduct | null>(null);
@@ -335,6 +337,35 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
 
   const pinnedCount = useMemo(() => filtered.filter(p => p.is_pinned).length, [filtered]);
 
+  const preferredBrand = useMemo(() => {
+    if (!supplierId) return "";
+    const sp = allProducts.find(p => p.supplier_id === supplierId);
+    return sp ? deriveBrand(sp) : "";
+  }, [supplierId, allProducts]);
+
+  const groupedData = useMemo(() => {
+    if (viewMode !== "grouped") return [];
+    const brandMap = new Map<string, Map<string, SupplierProduct[]>>();
+    for (const p of sorted) {
+      const brand = deriveBrand(p);
+      const category = p.category || "Uncategorized";
+      if (!brandMap.has(brand)) brandMap.set(brand, new Map());
+      const catMap = brandMap.get(brand)!;
+      if (!catMap.has(category)) catMap.set(category, []);
+      catMap.get(category)!.push(p);
+    }
+    const brandEntries = Array.from(brandMap.entries()).sort((a, b) => {
+      if (a[0] === preferredBrand) return -1;
+      if (b[0] === preferredBrand) return 1;
+      return a[0].localeCompare(b[0]);
+    });
+    return brandEntries.map(([brand, catMap]) => {
+      const cats = Array.from(catMap.entries())
+        .sort((a, b) => getCategoryPriority(a[0]) - getCategoryPriority(b[0]) || a[0].localeCompare(b[0]));
+      return { brand, categories: cats.map(([cat, products]) => ({ category: cat, products })) };
+    });
+  }, [sorted, viewMode, preferredBrand]);
+
   const unarchiveMutation = useMutation({
     mutationFn: async (productId: string) => {
       const { error } = await supabase.from("supplier_products" as any)
@@ -566,6 +597,58 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId }: ProductCatalogBrows
               </div>
             );
           })}
+        </div>
+      ) : viewMode === "grouped" ? (
+        <div className="space-y-4">
+          {groupedData.map(({ brand, categories }) => (
+            <Collapsible key={brand} defaultOpen>
+              <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors group">
+                <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-data-[state=closed]:-rotate-90" />
+                <span className="text-base font-bold">{brand}</span>
+                <Badge variant="secondary" className="text-[10px] ml-auto">
+                  {categories.reduce((sum, c) => sum + c.products.length, 0)}
+                </Badge>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-2 pt-2 space-y-3">
+                {categories.map(({ category, products }) => (
+                  <Collapsible key={category} defaultOpen>
+                    <CollapsibleTrigger className="flex items-center gap-1.5 w-full text-left py-1 px-2 rounded hover:bg-accent/30 transition-colors group">
+                      <ChevronDown className="h-3 w-3 shrink-0 transition-transform group-data-[state=closed]:-rotate-90 text-muted-foreground" />
+                      <span className="text-sm font-semibold text-muted-foreground">{category}</span>
+                      <span className="text-[10px] text-muted-foreground">({products.length})</span>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pt-1">
+                      <div className="border rounded-md overflow-hidden">
+                        <div className="grid grid-cols-[1fr_2fr_60px_55px_70px_90px] gap-2 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b bg-muted/30">
+                          <span>Model</span><span>Description</span><span>BTU</span><span>Refrig.</span><span>Pipe</span><span className="text-right">Price</span>
+                        </div>
+                        {products.map((product) => (
+                          <div
+                            key={product.id}
+                            className="grid grid-cols-[1fr_2fr_60px_55px_70px_90px] gap-2 items-center px-3 py-1.5 border-b last:border-b-0 cursor-pointer hover:bg-accent/20 transition-colors text-xs"
+                            onClick={() => openPanel(product)}
+                          >
+                            <div className="min-w-0">
+                              <p className="font-mono font-medium truncate text-[11px]">{highlightText(product.product_code, searchQuery)}</p>
+                            </div>
+                            <p className="text-muted-foreground truncate text-[11px]">{highlightText(product.description, searchQuery)}</p>
+                            <span className="text-muted-foreground">{product.btu_rating ? `${(product.btu_rating / 1000).toFixed(0)}K` : "—"}</span>
+                            <span className="text-muted-foreground">{product.refrigerant_type || "—"}</span>
+                            <span className="text-muted-foreground">{product.pipe_size || "—"}</span>
+                            <span className="font-bold text-right">
+                              {product.is_price_on_request || (!product.selling_price && !product.cost_price)
+                                ? <Badge variant="outline" className="text-[9px] border-amber-500/50 text-amber-600 bg-amber-500/10 font-semibold px-1">POR</Badge>
+                                : <span className="text-primary">{formatZAR(product.selling_price)}</span>}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
+          ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
