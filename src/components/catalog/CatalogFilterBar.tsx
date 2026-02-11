@@ -39,7 +39,7 @@ const UNIT_TYPES = [
   "Accessories", "Large Ducted",
 ];
 
-// BTU options are now derived dynamically from product data via FilterCounts
+const BTU_OPTIONS = ["9K", "12K", "18K", "24K", "36K", "48K", "60K", "76K", "100K", "120K", "150K", "200K", "250K", "300K", "350K", "400K", "500K+"];
 
 const REFRIGERANTS = ["R32", "R410A"];
 
@@ -223,15 +223,9 @@ const CatalogFilterBar = ({
               </SelectTrigger>
               <SelectContent className="bg-popover z-50">
                 <SelectItem value="__all__">All BTU</SelectItem>
-                {Object.keys(counts.btu)
-                  .sort((a, b) => {
-                    const numA = parseInt(a.replace(/[^0-9]/g, ""), 10) || 0;
-                    const numB = parseInt(b.replace(/[^0-9]/g, ""), 10) || 0;
-                    return numA - numB;
-                  })
-                  .map((bucket) => (
-                    <SelectItem key={bucket} value={bucket}>{bucket} ({counts.btu[bucket]})</SelectItem>
-                  ))}
+                {BTU_OPTIONS.filter((b) => (counts.btu[b] ?? 0) > 0).map((b) => (
+                  <SelectItem key={b} value={b}>{b} ({counts.btu[b]})</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
