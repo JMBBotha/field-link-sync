@@ -650,6 +650,7 @@ export type Database = {
           low_stock_threshold: number
           product_id: string
           quantity: number
+          stock_mode: string
           updated_at: string
         }
         Insert: {
@@ -658,6 +659,7 @@ export type Database = {
           low_stock_threshold?: number
           product_id: string
           quantity?: number
+          stock_mode?: string
           updated_at?: string
         }
         Update: {
@@ -666,6 +668,7 @@ export type Database = {
           low_stock_threshold?: number
           product_id?: string
           quantity?: number
+          stock_mode?: string
           updated_at?: string
         }
         Relationships: [
@@ -2178,6 +2181,79 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      stock_documents: {
+        Row: {
+          file_name: string
+          file_path: string
+          file_type: string
+          id: string
+          receipt_id: string
+          uploaded_at: string
+        }
+        Insert: {
+          file_name: string
+          file_path: string
+          file_type?: string
+          id?: string
+          receipt_id: string
+          uploaded_at?: string
+        }
+        Update: {
+          file_name?: string
+          file_path?: string
+          file_type?: string
+          id?: string
+          receipt_id?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_documents_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "stock_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_receipts: {
+        Row: {
+          created_at: string
+          id: string
+          items_received: Json
+          notes: string | null
+          receipt_date: string
+          supplier_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          items_received?: Json
+          notes?: string | null
+          receipt_date?: string
+          supplier_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          items_received?: Json
+          notes?: string | null
+          receipt_date?: string
+          supplier_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_receipts_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       supplier_products: {
         Row: {
