@@ -5,9 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import BulkActionBar from "@/components/bulk/BulkActionBar";
 import { useToast } from "@/hooks/use-toast";
-import { Package, Ruler, Calculator, ArrowUpDown, Search, Loader2 } from "lucide-react";
+import { Package, Ruler, Calculator, ArrowUpDown, Search, Loader2, Trash2 } from "lucide-react";
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -40,7 +46,10 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
   const [sortKey, setSortKey] = useState<SortKey>("description");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [categoryFilter, setCategoryFilter] = useState<string>("__all__");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["consumable-products", supplierId],
@@ -93,6 +102,39 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
     return arr;
   }, [filtered, sortKey, sortDir]);
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await (supabase.from("supplier_products") as any)
+        .delete()
+        .in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["consumable-products"] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
+      toast({ title: `${selectedIds.size} products deleted` });
+      setSelectedIds(new Set());
+      setConfirmBulkDelete(false);
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === sorted.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(sorted.map(p => p.id)));
+    }
+  };
+
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortDir(d => d === "asc" ? "desc" : "asc");
@@ -126,6 +168,19 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
 
   return (
     <div className="space-y-3">
+      <BulkActionBar
+        selectedCount={selectedIds.size}
+        onClear={() => setSelectedIds(new Set())}
+        actions={[
+          {
+            label: "Delete",
+            icon: <Trash2 className="h-3.5 w-3.5" />,
+            onClick: () => setConfirmBulkDelete(true),
+            variant: "destructive",
+          },
+        ]}
+      />
+
       {/* Search + Category filter */}
       <div className="flex flex-wrap gap-2 items-center">
         <div className="relative flex-1 min-w-[200px]">
@@ -177,6 +232,12 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
           <table className="w-full text-xs">
             <thead className="bg-muted/50 sticky top-0 z-10">
               <tr className="text-muted-foreground">
+                <th className="p-2 w-8">
+                  <Checkbox
+                    checked={selectedIds.size === sorted.length && sorted.length > 0}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                </th>
                 <SortHeader label="SKU" colKey="product_code" />
                 <SortHeader label="Description" colKey="description" />
                 <SortHeader label="Category" colKey="category" />
@@ -190,7 +251,13 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
             </thead>
             <tbody>
               {sorted.map(product => (
-                <tr key={product.id} className="border-t border-border hover:bg-accent/20 transition-colors">
+                <tr key={product.id} className={`border-t border-border hover:bg-accent/20 transition-colors ${selectedIds.has(product.id) ? "bg-accent/30" : ""}`}>
+                  <td className="p-2">
+                    <Checkbox
+                      checked={selectedIds.has(product.id)}
+                      onCheckedChange={() => toggleSelect(product.id)}
+                    />
+                  </td>
                   <td className="p-2 font-mono whitespace-nowrap">{product.product_code}</td>
                   <td className="p-2 max-w-[300px]">
                     <span className="line-clamp-2">{product.description}</span>
@@ -235,6 +302,26 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
           </table>
         </div>
       )}
+
+      <AlertDialog open={confirmBulkDelete} onOpenChange={setConfirmBulkDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedIds.size} products?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the selected products. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => bulkDeleteMutation.mutate([...selectedIds])}
+            >
+              {bulkDeleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

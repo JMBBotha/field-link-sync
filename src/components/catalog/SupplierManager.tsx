@@ -8,8 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Building2, Pencil, Trash2, Wrench, Snowflake } from "lucide-react";
+import { Plus, Building2, Pencil, Trash2, Wrench, Snowflake, Package } from "lucide-react";
 
 interface Supplier {
   id: string;
@@ -40,6 +44,7 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier, supplierTypeFil
   const [contactPhone, setContactPhone] = useState("");
   const [website, setWebsite] = useState("");
   const [isConsumables, setIsConsumables] = useState(false);
+  const [deleteAllSupplierId, setDeleteAllSupplierId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -53,6 +58,22 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier, supplierTypeFil
         .order("name");
       if (error) throw error;
       return data as unknown as Supplier[];
+    },
+  });
+
+  // Product counts per supplier
+  const { data: productCounts = {} } = useQuery({
+    queryKey: ["supplier-product-counts"],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("supplier_products") as any)
+        .select("supplier_id")
+        .eq("archived", false);
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data || []).forEach((row: any) => {
+        counts[row.supplier_id] = (counts[row.supplier_id] || 0) + 1;
+      });
+      return counts;
     },
   });
 
@@ -119,6 +140,23 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier, supplierTypeFil
     },
   });
 
+  const deleteAllProductsMutation = useMutation({
+    mutationFn: async (supplierId: string) => {
+      const { error } = await (supabase.from("supplier_products") as any)
+        .delete()
+        .eq("supplier_id", supplierId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
+      queryClient.invalidateQueries({ queryKey: ["consumable-products"] });
+      toast({ title: "All products deleted for this supplier" });
+      setDeleteAllSupplierId(null);
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
   const openForm = (supplier?: Supplier) => {
     if (supplier) {
       setEditingSupplier(supplier);
@@ -175,29 +213,44 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier, supplierTypeFil
             </div>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {displayedSuppliers.map((s) => (
-                <div key={s.id} className="flex items-center gap-1">
-                  <Badge
-                    variant={selectedSupplierId === s.id ? "default" : "outline"}
-                    className={`cursor-pointer gap-1 ${
-                      s.supplier_type === "consumables"
-                        ? selectedSupplierId === s.id
-                          ? "bg-orange-600 hover:bg-orange-700 border-orange-600"
-                          : "border-orange-500/50 text-orange-600"
-                        : ""
-                    }`}
-                    onClick={() => onSelectSupplier(s.id)}
-                  >
-                    {s.supplier_type === "consumables"
-                      ? <Wrench className="h-3 w-3" />
-                      : <Snowflake className="h-3 w-3" />}
-                    {s.name}
-                  </Badge>
-                  <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => openForm(s)}>
-                    <Pencil className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
+              {displayedSuppliers.map((s) => {
+                const count = productCounts[s.id] || 0;
+                return (
+                  <div key={s.id} className="flex items-center gap-1">
+                    <Badge
+                      variant={selectedSupplierId === s.id ? "default" : "outline"}
+                      className={`cursor-pointer gap-1 ${
+                        s.supplier_type === "consumables"
+                          ? selectedSupplierId === s.id
+                            ? "bg-orange-600 hover:bg-orange-700 border-orange-600"
+                            : "border-orange-500/50 text-orange-600"
+                          : ""
+                      }`}
+                      onClick={() => onSelectSupplier(s.id)}
+                    >
+                      {s.supplier_type === "consumables"
+                        ? <Wrench className="h-3 w-3" />
+                        : <Snowflake className="h-3 w-3" />}
+                      {s.name}
+                      <span className="ml-1 bg-background/20 text-[10px] px-1 rounded-full">{count}</span>
+                    </Badge>
+                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => openForm(s)}>
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    {count > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 text-destructive hover:text-destructive"
+                        onClick={() => setDeleteAllSupplierId(s.id)}
+                        title="Delete all products"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -257,6 +310,26 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier, supplierTypeFil
           </div>
         </DialogContent>
       </Dialog>
+      <AlertDialog open={!!deleteAllSupplierId} onOpenChange={(o) => !o && setDeleteAllSupplierId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete all products?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete all {deleteAllSupplierId ? (productCounts[deleteAllSupplierId] || 0) : 0} products
+              for supplier "{suppliers.find(s => s.id === deleteAllSupplierId)?.name}". This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteAllSupplierId && deleteAllProductsMutation.mutate(deleteAllSupplierId)}
+            >
+              {deleteAllProductsMutation.isPending ? "Deleting..." : "Delete All Products"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
