@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, Upload, GitCompare, Package, Snowflake, Wrench, Layers, Zap, BatteryCharging, Droplets } from "lucide-react";
+import { Search, Upload, GitCompare, Package, Snowflake, Wrench, Layers, Zap, BatteryCharging, Droplets, PenTool } from "lucide-react";
 import SupplierManager from "@/components/catalog/SupplierManager";
 import SupplierProductImporter from "@/components/catalog/SupplierProductImporter";
 import ProductCatalogBrowser from "@/components/catalog/ProductCatalogBrowser";
 import SupplierComparison from "@/components/catalog/SupplierComparison";
 import ConsumablesCatalogTable from "@/components/catalog/ConsumablesCatalogTable";
 import BundlesList from "@/components/catalog/BundlesList";
+import QuoteBuilderTab from "@/components/catalog/QuoteBuilderTab";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -118,6 +119,9 @@ const AdminCatalogPage = () => {
           <TabsTrigger value="bundles" className="gap-1.5">
             <Layers className="h-3.5 w-3.5" /> Bundles
           </TabsTrigger>
+          <TabsTrigger value="quote-builder" className="gap-1.5">
+            <PenTool className="h-3.5 w-3.5" /> Quote Builder
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="browse" className="mt-4">
@@ -157,6 +161,10 @@ const AdminCatalogPage = () => {
 
         <TabsContent value="bundles" className="mt-4">
           <BundlesList />
+        </TabsContent>
+
+        <TabsContent value="quote-builder" className="mt-4">
+          <QuoteBuilderTab />
         </TabsContent>
       </Tabs>
     </div>
