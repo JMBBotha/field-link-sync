@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronDown, ChevronUp, X, SlidersHorizontal, Search, ArrowUpDown, LayoutGrid, List } from "lucide-react";
+import { ChevronDown, ChevronUp, X, SlidersHorizontal, Search, ArrowUpDown, LayoutGrid, List, FolderTree } from "lucide-react";
 
 export interface CatalogFilters {
   speedType: string;
@@ -73,8 +73,8 @@ interface Props {
   searchSuggestions?: ReactNode;
   onSearchFocus?: () => void;
   onSearchKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void;
-  viewMode: "grid" | "list";
-  onViewModeChange: (mode: "grid" | "list") => void;
+  viewMode: "grid" | "list" | "grouped";
+  onViewModeChange: (mode: "grid" | "list" | "grouped") => void;
 }
 
 function ChipGroup({
@@ -194,14 +194,23 @@ const CatalogFilterBar = ({
             <button
               onClick={() => onViewModeChange("grid")}
               className={`p-1.5 transition-colors ${viewMode === "grid" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}
+              title="Grid view"
             >
               <LayoutGrid className="h-3.5 w-3.5" />
             </button>
             <button
               onClick={() => onViewModeChange("list")}
               className={`p-1.5 transition-colors ${viewMode === "list" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}
+              title="List view"
             >
               <List className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => onViewModeChange("grouped")}
+              className={`p-1.5 transition-colors ${viewMode === "grouped" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}
+              title="Group by category"
+            >
+              <FolderTree className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
