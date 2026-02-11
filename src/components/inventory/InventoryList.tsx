@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef, KeyboardEvent } from "react";
+import { useState, useMemo, useCallback, useRef, KeyboardEvent } from "react";
 import Fuse from "fuse.js";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Package, Download, RefreshCw, Loader2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Search, Package, Download, RefreshCw, Loader2, AlertTriangle, History, Upload, Minus, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { exportToCSV } from "@/lib/csvExport";
 import CatalogSearchSuggestions, { FILTER_MATCHERS } from "@/components/catalog/CatalogSearchSuggestions";
@@ -26,6 +27,11 @@ import {
   FUSE_OPTIONS,
   type SearchableProduct,
 } from "@/components/catalog/catalogSearchUtils";
+import { useInventoryStock, type StockRecord } from "@/hooks/useInventoryStock";
+import StockAdjustmentHistory from "@/components/inventory/StockAdjustmentHistory";
+import StockReasonDialog from "@/components/inventory/StockReasonDialog";
+import BulkStockUpdateModal from "@/components/inventory/BulkStockUpdateModal";
+import { cn } from "@/lib/utils";
 
 interface CatalogProduct extends SearchableProduct {
   id: string;
@@ -54,9 +60,23 @@ const formatZAR = (n: number) =>
 
 const SEARCH_HISTORY_KEY = "inventorySearchHistory";
 
+// Stock quantity color helpers
+const getQtyColorClass = (qty: number, threshold: number) => {
+  if (qty === 0) return "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400";
+  if (qty <= threshold) return "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400";
+  return "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400";
+};
+
+const getRowHighlight = (qty: number, threshold: number) => {
+  if (qty === 0) return "border-l-2 border-l-red-500";
+  if (qty <= threshold) return "border-l-2 border-l-amber-500";
+  return "";
+};
+
 const InventoryList = () => {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [lowStockFilter, setLowStockFilter] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestionIndex, setSuggestionIndex] = useState(-1);
   const [searchHistory, setSearchHistory] = useState<string[]>(() => {
@@ -67,6 +87,24 @@ const InventoryList = () => {
   });
   const searchRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Stock management state
+  const { stockMap, isLoadingStock, lowStockCount, updateStock, bulkUpdate } = useInventoryStock();
+  const [editingQty, setEditingQty] = useState<{ productId: string; value: number } | null>(null);
+  const [reasonDialog, setReasonDialog] = useState<{
+    productId: string;
+    productName: string;
+    oldQty: number;
+    newQty: number;
+  } | null>(null);
+  const [historyDialog, setHistoryDialog] = useState<{
+    stockId: string;
+    productName: string;
+  } | null>(null);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+
+  // Debounce ref for inline qty edits
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const addToHistory = useCallback((term: string) => {
     const t = term.trim();
@@ -114,7 +152,6 @@ const InventoryList = () => {
 
   const supplierName = (id: string) => suppliers.find(s => s.id === id)?.name || "—";
 
-  // Enrich items with search_blob and supplier_name for Fuse.js
   const enrichedItems = useMemo(() =>
     items.map(item => ({
       ...item,
@@ -124,31 +161,36 @@ const InventoryList = () => {
     [items, suppliers]
   );
 
-  // Create Fuse instance
   const fuse = useMemo(() => new Fuse(enrichedItems, FUSE_OPTIONS), [enrichedItems]);
 
-  // Categories sorted by unit type priority
   const categories = useMemo(() => {
     const cats = [...new Set(items.map(i => i.category).filter(Boolean))] as string[];
     return sortCategoriesByPriority(cats);
   }, [items]);
 
-  // Apply advanced search + category filter + unit type priority sorting
+  // Apply search + category + low stock filter
   const filtered = useMemo(() => {
-    // Start with category filter
     let pool = categoryFilter
       ? enrichedItems.filter(item => item.category === categoryFilter)
       : enrichedItems;
+
+    // Apply low stock filter
+    if (lowStockFilter) {
+      pool = pool.filter(item => {
+        const stock = stockMap.get(item.id);
+        const qty = stock?.quantity ?? 0;
+        const threshold = stock?.low_stock_threshold ?? 3;
+        return qty <= threshold;
+      });
+    }
 
     if (!search.trim()) {
       return sortByUnitTypePriority(pool);
     }
 
-    // Preprocess query for auto-filters
     const baseFilters = { ...DEFAULT_FILTERS };
     const { cleanedQuery, autoFilters } = preprocessQuery(search, baseFilters);
 
-    // Apply auto-filters as additional constraints
     if (autoFilters.btu && autoFilters.btu !== "__all__") {
       pool = pool.filter(p => deriveBtuBucket(p) === autoFilters.btu);
     }
@@ -174,29 +216,31 @@ const InventoryList = () => {
       pool = pool.filter(p => p.selling_price >= parseFloat(autoFilters.priceMin!));
     }
 
-    // If cleaned query has tokens, run fuzzy search
     if (cleanedQuery.trim()) {
       const poolFuse = new Fuse(pool, FUSE_OPTIONS);
-      const fuzzyResults = fuseMultiTokenSearch(pool, poolFuse, cleanedQuery);
-      // Fuzzy results are already relevance-sorted; apply unit type priority as tiebreaker
-      return fuzzyResults;
+      return fuseMultiTokenSearch(pool, poolFuse, cleanedQuery);
     }
 
     return sortByUnitTypePriority(pool);
-  }, [search, categoryFilter, enrichedItems, fuse]);
+  }, [search, categoryFilter, lowStockFilter, enrichedItems, fuse, stockMap]);
 
   const handleExportCSV = () => {
-    const rows = filtered.map(i => ({
-      SKU: i.product_code,
-      Name: i.description,
-      Category: i.category || "",
-      "Cost Price": i.cost_price,
-      "Sell Price": i.selling_price,
-      Supplier: supplierName(i.supplier_id),
-      BTU: i.btu_rating || "",
-      Refrigerant: i.refrigerant_type || "",
-      "Times Quoted": i.quote_usage_count,
-    }));
+    const rows = filtered.map(i => {
+      const stock = stockMap.get(i.id);
+      return {
+        SKU: i.product_code,
+        Name: i.description,
+        Category: i.category || "",
+        "Cost Price": i.cost_price,
+        "Sell Price": i.selling_price,
+        Supplier: supplierName(i.supplier_id),
+        BTU: i.btu_rating || "",
+        Refrigerant: i.refrigerant_type || "",
+        "Times Quoted": i.quote_usage_count,
+        Quantity: stock?.quantity ?? 0,
+        "Low Stock Threshold": stock?.low_stock_threshold ?? 3,
+      };
+    });
     exportToCSV(rows, `inventory-export-${new Date().toISOString().split("T")[0]}`);
     toast({ title: `${rows.length} items exported` });
   };
@@ -218,8 +262,6 @@ const InventoryList = () => {
 
   const handleSelectFilter = useCallback((action: string, removePattern: RegExp) => {
     setSearch(prev => prev.replace(removePattern, "").trim());
-    // The filter is automatically applied via preprocessQuery in the search
-    // Re-add the filter keyword so the user sees it applied
     const filterLabel = action.split(":")[1];
     setSearch(prev => {
       const cleaned = prev.replace(removePattern, "").trim();
@@ -242,6 +284,48 @@ const InventoryList = () => {
     setShowSuggestions(false);
   }, []);
 
+  // Stock quantity inline edit handlers
+  const handleQtyChange = useCallback((productId: string, newValue: number) => {
+    setEditingQty({ productId, value: Math.max(0, newValue) });
+  }, []);
+
+  const handleQtyBlur = useCallback((productId: string, productName: string) => {
+    if (!editingQty || editingQty.productId !== productId) return;
+    const stock = stockMap.get(productId);
+    const oldQty = stock?.quantity ?? 0;
+    const newQty = editingQty.value;
+
+    if (newQty === oldQty) {
+      setEditingQty(null);
+      return;
+    }
+
+    setReasonDialog({ productId, productName, oldQty, newQty });
+  }, [editingQty, stockMap]);
+
+  const handleQtyIncrement = useCallback((productId: string, productName: string, delta: number) => {
+    const stock = stockMap.get(productId);
+    const oldQty = stock?.quantity ?? 0;
+    const newQty = Math.max(0, oldQty + delta);
+    if (newQty === oldQty) return;
+    setReasonDialog({ productId, productName, oldQty, newQty });
+  }, [stockMap]);
+
+  const handleReasonConfirm = useCallback((reason: string) => {
+    if (!reasonDialog) return;
+    updateStock.mutate({
+      productId: reasonDialog.productId,
+      newQuantity: reasonDialog.newQty,
+      reason,
+    });
+    setReasonDialog(null);
+    setEditingQty(null);
+  }, [reasonDialog, updateStock]);
+
+  const handleBulkUpdate = useCallback(async (updates: { productId: string; quantity: number; reason?: string }[]) => {
+    await bulkUpdate.mutateAsync(updates);
+  }, [bulkUpdate]);
+
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -252,11 +336,19 @@ const InventoryList = () => {
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             {items.length} products from catalog
+            {lowStockCount > 0 && (
+              <span className="ml-2 text-red-600 dark:text-red-400 font-medium">
+                • {lowStockCount} low stock
+              </span>
+            )}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="h-3.5 w-3.5 mr-1" /> Sync
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowBulkModal(true)}>
+            <Upload className="h-3.5 w-3.5 mr-1" /> Bulk Update
           </Button>
           <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={filtered.length === 0}>
             <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
@@ -295,18 +387,32 @@ const InventoryList = () => {
         </div>
         <div className="flex gap-1 flex-wrap">
           <Button
-            variant={categoryFilter === null ? "secondary" : "ghost"}
+            variant={categoryFilter === null && !lowStockFilter ? "secondary" : "ghost"}
             size="sm"
-            onClick={() => setCategoryFilter(null)}
+            onClick={() => { setCategoryFilter(null); setLowStockFilter(false); }}
           >
             All
+          </Button>
+          <Button
+            variant={lowStockFilter ? "destructive" : "ghost"}
+            size="sm"
+            onClick={() => setLowStockFilter(!lowStockFilter)}
+            className="text-xs"
+          >
+            <AlertTriangle className="h-3 w-3 mr-1" />
+            Low Stock
+            {lowStockCount > 0 && (
+              <Badge variant="destructive" className="ml-1 h-4 min-w-4 px-1 text-[9px]">
+                {lowStockCount}
+              </Badge>
+            )}
           </Button>
           {categories.map((cat) => (
             <Button
               key={cat}
               variant={categoryFilter === cat ? "secondary" : "ghost"}
               size="sm"
-              onClick={() => setCategoryFilter(cat)}
+              onClick={() => { setCategoryFilter(cat); setLowStockFilter(false); }}
               className="text-xs"
             >
               {cat}
@@ -315,10 +421,12 @@ const InventoryList = () => {
         </div>
       </div>
 
-      {/* Results count when searching */}
-      {search.trim() && (
+      {/* Results count */}
+      {(search.trim() || lowStockFilter) && (
         <p className="text-xs text-muted-foreground">
-          {filtered.length} result{filtered.length !== 1 ? "s" : ""} for "{search}"
+          {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+          {search.trim() && <> for "{search}"</>}
+          {lowStockFilter && <> (low stock only)</>}
         </p>
       )}
 
@@ -334,61 +442,155 @@ const InventoryList = () => {
                 <TableHead className="text-right">Cost</TableHead>
                 <TableHead className="text-right">Sell</TableHead>
                 <TableHead>Supplier</TableHead>
+                <TableHead className="text-center">Qty</TableHead>
                 <TableHead className="text-center">Quoted</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
+              {(isLoading || isLoadingStock) ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
+                  <TableCell colSpan={8} className="text-center py-8">
                     <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     {items.length === 0
                       ? "No products yet. Import from the Catalog page."
                       : "No matching products"}
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium text-sm max-w-[200px] truncate">
-                      {item.description}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-xs font-mono">
-                      {item.product_code || "—"}
-                    </TableCell>
-                    <TableCell>
-                      {item.category && (
-                        <Badge variant="outline" className="text-xs">
-                          {item.category}
+                filtered.map((item) => {
+                  const stock = stockMap.get(item.id);
+                  const qty = stock?.quantity ?? 0;
+                  const threshold = stock?.low_stock_threshold ?? 3;
+                  const isEditing = editingQty?.productId === item.id;
+                  const displayQty = isEditing ? editingQty.value : qty;
+
+                  return (
+                    <TableRow key={item.id} className={getRowHighlight(qty, threshold)}>
+                      <TableCell className="font-medium text-sm max-w-[200px] truncate">
+                        {item.description}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-xs font-mono">
+                        {item.product_code || "—"}
+                      </TableCell>
+                      <TableCell>
+                        {item.category && (
+                          <Badge variant="outline" className="text-xs">
+                            {item.category}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right text-xs text-muted-foreground">
+                        {item.is_price_on_request ? "POR" : formatZAR(item.cost_price)}
+                      </TableCell>
+                      <TableCell className="text-right text-sm font-semibold text-primary">
+                        {item.is_price_on_request ? "POR" : formatZAR(item.selling_price)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {supplierName(item.supplier_id)}
                         </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right text-xs text-muted-foreground">
-                      {item.is_price_on_request ? "POR" : formatZAR(item.cost_price)}
-                    </TableCell>
-                    <TableCell className="text-right text-sm font-semibold text-primary">
-                      {item.is_price_on_request ? "POR" : formatZAR(item.selling_price)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="text-[10px]">
-                        {supplierName(item.supplier_id)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center text-xs text-muted-foreground">
-                      {item.quote_usage_count || "—"}
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-0.5">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => handleQtyIncrement(item.id, item.description, -1)}
+                            disabled={qty === 0}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Input
+                                type="number"
+                                min={0}
+                                value={displayQty}
+                                onChange={(e) => handleQtyChange(item.id, parseInt(e.target.value) || 0)}
+                                onBlur={() => handleQtyBlur(item.id, item.description)}
+                                onFocus={() => setEditingQty({ productId: item.id, value: qty })}
+                                className={cn(
+                                  "w-14 h-7 text-center text-xs font-bold p-0 rounded",
+                                  getQtyColorClass(qty, threshold)
+                                )}
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs">
+                              {qty === 0
+                                ? "Out of stock"
+                                : qty <= threshold
+                                  ? `Low stock (threshold: ${threshold})`
+                                  : `In stock (threshold: ${threshold})`}
+                            </TooltipContent>
+                          </Tooltip>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => handleQtyIncrement(item.id, item.description, 1)}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                          {stock && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-muted-foreground"
+                                  onClick={() => setHistoryDialog({ stockId: stock.id, productName: item.description })}
+                                >
+                                  <History className="h-3 w-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">View history</TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center text-xs text-muted-foreground">
+                        {item.quote_usage_count || "—"}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
+      {/* Dialogs */}
+      {reasonDialog && (
+        <StockReasonDialog
+          open={!!reasonDialog}
+          productName={reasonDialog.productName}
+          oldQty={reasonDialog.oldQty}
+          newQty={reasonDialog.newQty}
+          onConfirm={handleReasonConfirm}
+          onCancel={() => { setReasonDialog(null); setEditingQty(null); }}
+        />
+      )}
+
+      <StockAdjustmentHistory
+        stockId={historyDialog?.stockId || null}
+        productName={historyDialog?.productName || ""}
+        open={!!historyDialog}
+        onClose={() => setHistoryDialog(null)}
+      />
+
+      <BulkStockUpdateModal
+        open={showBulkModal}
+        onClose={() => setShowBulkModal(false)}
+        products={items.map(i => ({ id: i.id, product_code: i.product_code, description: i.description }))}
+        onBulkUpdate={handleBulkUpdate}
+      />
     </div>
   );
 };

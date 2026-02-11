@@ -566,6 +566,44 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_adjustments: {
+        Row: {
+          changed_at: string
+          id: string
+          new_quantity: number
+          old_quantity: number
+          reason: string | null
+          stock_id: string
+          user_id: string | null
+        }
+        Insert: {
+          changed_at?: string
+          id?: string
+          new_quantity: number
+          old_quantity: number
+          reason?: string | null
+          stock_id: string
+          user_id?: string | null
+        }
+        Update: {
+          changed_at?: string
+          id?: string
+          new_quantity?: number
+          old_quantity?: number
+          reason?: string | null
+          stock_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_adjustments_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_stock"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_items: {
         Row: {
           category: string | null
@@ -604,6 +642,41 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      inventory_stock: {
+        Row: {
+          created_at: string
+          id: string
+          low_stock_threshold: number
+          product_id: string
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          low_stock_threshold?: number
+          product_id: string
+          quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          low_stock_threshold?: number
+          product_id?: string
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_stock_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "supplier_products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoice_items: {
         Row: {
