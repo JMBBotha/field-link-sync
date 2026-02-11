@@ -75,9 +75,7 @@ export function deriveBtuBucket(p: SearchableProduct): string {
   if (!btu) return "";
   const k = btu / 1000;
   if (k >= 76) return "76K+";
-  const buckets = [9, 12, 18, 24, 34, 36, 48, 60];
-  const closest = buckets.reduce((prev, curr) => Math.abs(curr - k) < Math.abs(prev - k) ? curr : prev);
-  return `${closest}K`;
+  return `${Math.round(k)}K`;
 }
 
 export function derivePipeSize(p: SearchableProduct): string {
@@ -153,16 +151,8 @@ const BRAND_PATTERNS: { pattern: RegExp; value: string }[] = [
   { pattern: /\blg\b/gi, value: "LG" },
 ];
 
-const BTU_PREPROCESS_PATTERNS: { pattern: RegExp; bucket: string }[] = [
-  { pattern: /\b9\s*000\b/gi, bucket: "9K" },
-  { pattern: /\b12\s*000\b/gi, bucket: "12K" },
-  { pattern: /\b18\s*000\b/gi, bucket: "18K" },
-  { pattern: /\b24\s*000\b/gi, bucket: "24K" },
-  { pattern: /\b34\s*000\b/gi, bucket: "34K" },
-  { pattern: /\b36\s*000\b/gi, bucket: "36K" },
-  { pattern: /\b48\s*000\b/gi, bucket: "48K" },
-  { pattern: /\b60\s*000\b/gi, bucket: "60K" },
-];
+/** Match full BTU values like "24 000" or "41000" and convert to bucket dynamically */
+const BTU_FULL_PATTERN = /\b(\d{1,3})\s*000\b/gi;
 
 const REFRIGERANT_PREPROCESS: { pattern: RegExp; value: string }[] = [
   { pattern: /\br32\b/gi, value: "R32" },
@@ -274,19 +264,19 @@ export function preprocessQuery(query: string, currentFilters: CatalogFilters): 
   const btuShorthand = q.match(/\b(\d{1,3})\s*k\b/i);
   if (btuShorthand && currentFilters.btu === "__all__") {
     const kVal = parseInt(btuShorthand[1], 10);
-    const validBuckets = [9, 12, 18, 24, 34, 36, 48, 60, 76];
-    if (validBuckets.includes(kVal)) {
+    if (kVal >= 1 && kVal <= 999) {
       autoFilters.btu = kVal >= 76 ? "76K+" : `${kVal}K`;
       q = q.replace(btuShorthand[0], "");
     }
   }
 
   if (!autoFilters.btu) {
-    for (const bp of BTU_PREPROCESS_PATTERNS) {
-      if (bp.pattern.test(q) && currentFilters.btu === "__all__") {
-        autoFilters.btu = bp.bucket;
-        q = q.replace(bp.pattern, "");
-        break;
+    const fullBtuMatch = q.match(BTU_FULL_PATTERN);
+    if (fullBtuMatch && currentFilters.btu === "__all__") {
+      const kVal = parseInt(fullBtuMatch[1], 10);
+      if (kVal >= 1 && kVal <= 999) {
+        autoFilters.btu = kVal >= 76 ? "76K+" : `${kVal}K`;
+        q = q.replace(BTU_FULL_PATTERN, "");
       }
     }
   }
