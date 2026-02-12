@@ -10,7 +10,6 @@ import {
   useSensors,
   type DragStartEvent,
   type DragEndEvent,
-  type DragOverEvent,
 } from "@dnd-kit/core";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -59,6 +58,7 @@ const QuoteBuilderTab = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [acModalOpen, setAcModalOpen] = useState(false);
   const [acModalProduct, setAcModalProduct] = useState<PaletteProduct | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Fetch products for the palette
   const { data: products = [], isLoading } = useQuery({
@@ -163,10 +163,17 @@ const QuoteBuilderTab = () => {
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const product = (event.active.data.current as any)?.product as PaletteProduct | undefined;
     if (product) setActiveProduct(product);
+    setIsDragging(true);
+  }, []);
+
+  const handleDragCancel = useCallback(() => {
+    setActiveProduct(null);
+    setIsDragging(false);
   }, []);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     setActiveProduct(null);
+    setIsDragging(false);
     const { active, over } = event;
     if (!over) return;
 
@@ -174,7 +181,6 @@ const QuoteBuilderTab = () => {
     if (!product) return;
 
     const overId = String(over.id);
-    // Find which basket was dropped on
     let targetBasketId: string | null = null;
     for (const basket of baskets) {
       if (basket.id === overId) {
@@ -184,11 +190,9 @@ const QuoteBuilderTab = () => {
     }
     if (!targetBasketId) return;
 
-    // Drag always adds directly — no modal
     addProductToBasket(targetBasketId, product);
   }, [baskets, addProductToBasket]);
 
-  const handleDragOver = useCallback((_event: DragOverEvent) => {}, []);
 
   const handleRemoveItem = useCallback((basketId: string, instanceId: string) => {
     setBaskets((prev) =>
@@ -313,7 +317,7 @@ const QuoteBuilderTab = () => {
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        onDragOver={handleDragOver}
+        onDragCancel={handleDragCancel}
       >
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4" style={{ minHeight: 500 }}>
           <div className="md:col-span-2 md:max-h-[calc(100vh-280px)] md:overflow-y-auto">
@@ -325,6 +329,7 @@ const QuoteBuilderTab = () => {
               categoryFilter={categoryFilter}
               onCategoryChange={setCategoryFilter}
               onProductClick={handleProductClick}
+              isDragging={isDragging}
             />
           </div>
           <div className="md:col-span-3 md:max-h-[calc(100vh-280px)] md:overflow-y-auto">
@@ -340,6 +345,7 @@ const QuoteBuilderTab = () => {
               onDuplicateBasket={handleDuplicateBasket}
               onApplyTemplate={handleApplyTemplate}
               onClearAll={handleClearAll}
+              isDragging={isDragging}
             />
           </div>
         </div>

@@ -22,6 +22,7 @@ interface BasketCanvasProps {
   onDuplicateBasket: (id: string) => void;
   onApplyTemplate: (zones: string[]) => void;
   onClearAll: () => void;
+  isDragging?: boolean;
 }
 
 function DroppableBasket({
@@ -33,6 +34,7 @@ function DroppableBasket({
   onRemoveItem,
   onUpdateQuantity,
   onAddProduct,
+  isDragActive,
 }: {
   basket: Basket;
   allProducts: PaletteProduct[];
@@ -42,6 +44,7 @@ function DroppableBasket({
   onRemoveItem: (instanceId: string) => void;
   onUpdateQuantity: (instanceId: string, qty: number) => void;
   onAddProduct: (product: PaletteProduct) => void;
+  isDragActive?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: basket.id });
   const [editing, setEditing] = useState(false);
@@ -57,8 +60,12 @@ function DroppableBasket({
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-lg border-2 border-dashed transition-colors ${
-        isOver ? "border-primary bg-primary/5" : "border-border bg-card"
+      className={`rounded-lg border-2 border-dashed transition-all duration-200 ${
+        isOver
+          ? "border-primary bg-primary/10 shadow-lg ring-2 ring-primary/20"
+          : isDragActive
+            ? "border-primary/40 bg-primary/5"
+            : "border-border bg-card"
       }`}
     >
       {/* Basket header */}
@@ -127,11 +134,13 @@ function DroppableBasket({
       </div>
 
       {/* Items */}
-      <div className="p-2 min-h-[60px] space-y-1.5">
+      <div className="p-2 space-y-1.5" style={{ minHeight: 120 }}>
         {basket.items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-4 text-muted-foreground">
-            <Package className="h-5 w-5 mb-1 opacity-40" />
-            <p className="text-[10px]">Drop products here</p>
+          <div className={`flex flex-col items-center justify-center py-6 rounded-md transition-colors ${
+            isOver ? "bg-primary/10 text-primary" : isDragActive ? "bg-muted/50 text-muted-foreground" : "text-muted-foreground"
+          }`}>
+            <Package className={`h-6 w-6 mb-1 ${isOver ? "opacity-80" : "opacity-40"}`} />
+            <p className="text-xs font-medium">{isOver ? "Release to drop" : isDragActive ? "Drop products here" : "Drop products here"}</p>
           </div>
         ) : (
           <>
@@ -229,6 +238,7 @@ const BasketCanvas = ({
   onDuplicateBasket,
   onApplyTemplate,
   onClearAll,
+  isDragging,
 }: BasketCanvasProps) => {
   return (
     <div className="flex flex-col rounded-lg border bg-muted/30 overflow-hidden">
@@ -267,6 +277,7 @@ const BasketCanvas = ({
                 onRemoveItem={(instanceId) => onRemoveItem(basket.id, instanceId)}
                 onUpdateQuantity={(instanceId, qty) => onUpdateQuantity(basket.id, instanceId, qty)}
                 onAddProduct={(product) => onAddProductToBasket(basket.id, product)}
+                isDragActive={isDragging}
               />
             ))
           )}
