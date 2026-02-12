@@ -92,7 +92,11 @@ const AdminCatalogPage = () => {
 
       queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
       queryClient.invalidateQueries({ queryKey: ["product-category-counts"] });
-      toast.success(`Scanned ${(products || []).length} products, updated ${updated} with /m pricing`);
+      queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] });
+      toast.success(
+        `Scanned ${(products || []).length} products — matched ${matched}, updated ${updated}, errors ${skipped}, already set ${alreadySet}`,
+        { duration: 30000 }
+      );
     } catch (e: any) {
       toast.error(e.message || "Scan failed");
     } finally {
