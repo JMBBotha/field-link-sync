@@ -18,10 +18,11 @@ import DragOverlayCard from "./quote-builder/DragOverlayCard";
 
 export interface PaletteProduct {
   id: string;
-  model_number: string;
+  product_code: string;
   short_name: string;
   brand: string;
   product_category: string;
+  category: string;
   cost_excl_vat: number;
   cost_incl_vat: number;
   selling_price: number;
@@ -58,24 +59,26 @@ const QuoteBuilderTab = () => {
     queryKey: ["quote-builder-products", searchQuery, categoryFilter],
     queryFn: async () => {
       let query = (supabase.from("supplier_products") as any)
-        .select("id, model_number, short_name, brand, product_category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, suppliers!inner(name)")
-        .eq("archived", false)
+        .select("id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, suppliers!inner(name)")
+        .or("archived.is.null,archived.eq.false")
+        .or("is_active.is.null,is_active.eq.true")
         .order("is_pinned", { ascending: false })
         .order("pin_order", { ascending: true, nullsFirst: false })
         .limit(80);
 
       if (categoryFilter !== "all") {
-        query = query.eq("product_category", categoryFilter);
+        query = query.or(`product_category.eq.${categoryFilter},category.ilike.%${categoryFilter}%`);
       }
 
       if (searchQuery.trim()) {
-        query = query.or(`model_number.ilike.%${searchQuery}%,short_name.ilike.%${searchQuery}%,brand.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+        query = query.or(`product_code.ilike.%${searchQuery}%,short_name.ilike.%${searchQuery}%,brand.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%`);
       }
 
       const { data, error } = await query;
       if (error) throw error;
       return (data || []).map((p: any) => ({
         ...p,
+        product_category: p.product_category || p.category || "",
         supplier_name: p.suppliers?.name || "",
       })) as PaletteProduct[];
     },

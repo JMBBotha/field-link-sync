@@ -134,7 +134,7 @@ function BasketItemCard({
     <div className="flex items-center gap-2 rounded-md border bg-background p-1.5 text-xs">
       <div className="min-w-0 flex-1">
         <p className="font-medium truncate">
-          {item.product.brand} {item.product.short_name || item.product.model_number}
+          {item.product.brand} {item.product.short_name || item.product.product_code}
         </p>
         <p className="text-[10px] text-muted-foreground">
           R{price.toLocaleString("en-ZA")} each
