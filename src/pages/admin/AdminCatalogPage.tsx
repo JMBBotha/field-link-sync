@@ -49,8 +49,10 @@ const AdminCatalogPage = () => {
       let updated = 0;
 
       for (const p of (products || [])) {
-        const text = p.short_name || p.description || "";
+        // Check description FIRST (contains actual product specs), then short_name
+        const text = p.description || p.short_name || "";
         const match = text.match(lengthRegex);
+        console.log(`[Scan] id=${p.id} desc="${(p.description || '').slice(0,60)}" match=${match ? match[1] : 'none'}`);
         if (match) {
           const rollLength = parseFloat(match[1]);
           if (rollLength > 0) {
