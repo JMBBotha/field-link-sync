@@ -90,6 +90,9 @@ interface SupplierProduct {
   cost_incl_vat?: number | null;
   brand?: string | null;
   product_category?: string | null;
+  sold_in_length?: boolean;
+  price_per_metre?: number | null;
+  unit_length?: number | null;
 }
 
 interface ProductCatalogBrowserProps {
@@ -821,11 +824,16 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
                 <span className="text-xs text-muted-foreground">{product.btu_rating ? `${(product.btu_rating / 1000).toFixed(0)}K` : "—"}</span>
                 <span className="text-xs text-muted-foreground">{product.refrigerant_type || "—"}</span>
                 <span className="text-xs text-muted-foreground">{product.pipe_size || "—"}</span>
-                <span className="text-xs font-bold text-right">
-                  {product.is_price_on_request || (!product.selling_price && !product.cost_price)
-                    ? <Badge variant="outline" className="text-[9px] border-amber-500/50 text-amber-600 bg-amber-500/10 font-semibold px-1">POR</Badge>
-                    : <span className="text-primary">{formatZAR(product.selling_price)}</span>}
-                </span>
+                <div className="text-right">
+                  <span className="text-xs font-bold">
+                    {product.is_price_on_request || (!product.selling_price && !product.cost_price)
+                      ? <Badge variant="outline" className="text-[9px] border-amber-500/50 text-amber-600 bg-amber-500/10 font-semibold px-1">POR</Badge>
+                      : <span className="text-primary">{formatZAR(product.selling_price)}</span>}
+                  </span>
+                  {product.sold_in_length && product.price_per_metre && (
+                    <p className="text-[9px] text-green-700">📏 R{product.price_per_metre.toFixed(2)}/m</p>
+                  )}
+                </div>
                 <div className="flex items-center justify-end">
                   <Button
                     size="icon" variant="ghost"
@@ -936,6 +944,11 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
                     {product.btu_rating && <Badge variant="outline" className="text-[10px]">{(product.btu_rating / 1000).toFixed(0)}K BTU</Badge>}
                     {product.refrigerant_type && <Badge variant="outline" className="text-[10px]">{product.refrigerant_type}</Badge>}
                     {product.pipe_size && <Badge variant="outline" className="text-[10px]">⌀ {product.pipe_size}</Badge>}
+                    {product.sold_in_length && product.price_per_metre && (
+                      <Badge variant="outline" className="text-[10px] gap-0.5 border-green-500/50 text-green-700 bg-green-500/10">
+                        📏 R{product.price_per_metre.toFixed(2)}/m
+                      </Badge>
+                    )}
                   </div>
 
                   <Separator className="mb-2" />
