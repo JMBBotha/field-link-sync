@@ -1,20 +1,63 @@
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useDraggable } from "@dnd-kit/core";
-import { Search, Snowflake, Droplets, Zap, BatteryCharging, Wrench, Package, GripVertical } from "lucide-react";
+import {
+  Search, Snowflake, Droplets, Zap, BatteryCharging, Wrench, Package,
+  GripVertical, Star, StarOff,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import type { PaletteProduct } from "../QuoteBuilderTab";
+
+const LS_FAVORITES_KEY = "quote-builder-favorites";
+
+function loadFavorites(): Set<string> {
+  try {
+    const raw = localStorage.getItem(LS_FAVORITES_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveFavorites(ids: Set<string>) {
+  localStorage.setItem(LS_FAVORITES_KEY, JSON.stringify([...ids]));
+}
 
 const CATEGORIES = [
   { value: "all", label: "All", icon: Package },
+  { value: "favorites", label: "★ Favs", icon: Star },
   { value: "Air Conditioning", label: "AC", icon: Snowflake },
   { value: "Water Heaters", label: "Geyser", icon: Droplets },
   { value: "Inverters", label: "Inverter", icon: Zap },
   { value: "Batteries", label: "Battery", icon: BatteryCharging },
   { value: "Consumables", label: "Parts", icon: Wrench },
 ];
+
+export function getCategoryIcon(category: string, size = "h-5 w-5") {
+  switch (category) {
+    case "Air Conditioning": return <Snowflake className={`${size} text-primary`} />;
+    case "Water Heaters": return <Droplets className={`${size} text-blue-500`} />;
+    case "Inverters": return <Zap className={`${size} text-amber-500`} />;
+    case "Batteries": return <BatteryCharging className={`${size} text-green-600`} />;
+    case "Consumables": return <Wrench className={`${size} text-orange-500`} />;
+    default: return <Package className={`${size} text-muted-foreground`} />;
+  }
+}
+
+export function getCategoryBg(category: string) {
+  switch (category) {
+    case "Air Conditioning": return "bg-primary/10";
+    case "Water Heaters": return "bg-blue-500/10";
+    case "Inverters": return "bg-amber-500/10";
+    case "Batteries": return "bg-green-600/10";
+    case "Consumables": return "bg-orange-500/10";
+    default: return "bg-muted";
+  }
+}
 
 interface ProductPaletteProps {
   products: PaletteProduct[];
@@ -23,25 +66,26 @@ interface ProductPaletteProps {
   onSearchChange: (q: string) => void;
   categoryFilter: string;
   onCategoryChange: (c: string) => void;
+  onProductClick?: (product: PaletteProduct) => void;
 }
 
-function DraggableProductCard({ product }: { product: PaletteProduct }) {
+function DraggableProductCard({
+  product,
+  isFavorite,
+  onToggleFavorite,
+  onProductClick,
+}: {
+  product: PaletteProduct;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
+  onProductClick?: (p: PaletteProduct) => void;
+}) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: product.id,
   });
 
-  const categoryIcon = () => {
-    switch (product.product_category) {
-      case "Air Conditioning": return <Snowflake className="h-4 w-4 text-primary" />;
-      case "Water Heaters": return <Droplets className="h-4 w-4 text-blue-500" />;
-      case "Inverters": return <Zap className="h-4 w-4 text-amber-500" />;
-      case "Batteries": return <BatteryCharging className="h-4 w-4 text-green-600" />;
-      case "Consumables": return <Wrench className="h-4 w-4 text-orange-500" />;
-      default: return <Package className="h-4 w-4 text-muted-foreground" />;
-    }
-  };
-
   const price = product.selling_price || product.cost_incl_vat || 0;
+  const catBg = getCategoryBg(product.product_category);
 
   return (
     <HoverCard openDelay={400} closeDelay={100}>
@@ -50,25 +94,78 @@ function DraggableProductCard({ product }: { product: PaletteProduct }) {
           ref={setNodeRef}
           {...listeners}
           {...attributes}
-          className={`flex items-center gap-2 rounded-md border bg-card p-2 cursor-grab active:cursor-grabbing transition-shadow hover:shadow-md ${
-            isDragging ? "opacity-40 shadow-lg" : ""
+          className={`group relative flex items-start gap-2.5 rounded-lg border bg-card p-2.5 cursor-grab active:cursor-grabbing transition-all hover:shadow-md hover:border-primary/20 ${
+            isDragging ? "opacity-40 shadow-lg scale-95" : ""
           } ${product.is_pinned ? "border-primary/30" : ""}`}
         >
-          <GripVertical className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
-          <div className="shrink-0">{categoryIcon()}</div>
+          {/* Category icon block */}
+          <div className={`shrink-0 rounded-md p-1.5 ${catBg}`}>
+            {getCategoryIcon(product.product_category, "h-4 w-4")}
+          </div>
+
+          {/* Product info */}
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium truncate">
+            <p className="text-xs font-semibold truncate leading-tight text-foreground">
               {product.brand || ""} {product.short_name || product.product_code}
             </p>
-            <p className="text-[10px] text-muted-foreground truncate">{product.product_code}</p>
+            <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+              {product.product_code}
+            </p>
+            <div className="flex items-center gap-1.5 mt-1">
+              <span className="text-xs font-bold text-foreground">
+                {price > 0 ? `R${price.toLocaleString("en-ZA")}` : "POR"}
+              </span>
+              {product.supplier_name && (
+                <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5">
+                  {product.supplier_name}
+                </Badge>
+              )}
+            </div>
           </div>
-          <span className="text-xs font-semibold text-foreground whitespace-nowrap">
-            {price > 0 ? `R${price.toLocaleString("en-ZA")}` : "POR"}
-          </span>
+
+          {/* Grip + Favorite */}
+          <div className="flex flex-col items-center gap-1 shrink-0">
+            <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onToggleFavorite();
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              {isFavorite ? (
+                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+              ) : (
+                <StarOff className="h-3 w-3 text-muted-foreground" />
+              )}
+            </Button>
+          </div>
+
+          {/* Click overlay for AC products to open options modal */}
+          {(product.product_category === "Air Conditioning") && onProductClick && (
+            <button
+              className="absolute inset-0 z-10 opacity-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                onProductClick(product);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              aria-label="Open product options"
+            />
+          )}
         </div>
       </HoverCardTrigger>
       <HoverCardContent side="right" className="w-64 text-xs space-y-1.5">
-        <p className="font-semibold">{product.brand} {product.short_name || product.product_code}</p>
+        <div className="flex items-center gap-2">
+          <div className={`rounded-md p-1 ${catBg}`}>
+            {getCategoryIcon(product.product_category, "h-3.5 w-3.5")}
+          </div>
+          <p className="font-semibold">{product.brand} {product.short_name || product.product_code}</p>
+        </div>
         <p className="text-muted-foreground">{product.product_code}</p>
         <div className="flex justify-between">
           <span>Cost excl.</span>
@@ -96,14 +193,47 @@ const ProductPalette = ({
   onSearchChange,
   categoryFilter,
   onCategoryChange,
+  onProductClick,
 }: ProductPaletteProps) => {
-  // Group products: pinned first, then by category
-  const grouped = products.reduce<Record<string, PaletteProduct[]>>((acc, p) => {
-    const key = p.product_category || "Other";
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(p);
-    return acc;
-  }, {});
+  const [favorites, setFavorites] = useState<Set<string>>(loadFavorites);
+
+  useEffect(() => {
+    saveFavorites(favorites);
+  }, [favorites]);
+
+  const toggleFavorite = useCallback((id: string) => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // Filter by favorites if selected
+  const filteredProducts = useMemo(() => {
+    if (categoryFilter === "favorites") {
+      return products.filter((p) => favorites.has(p.id));
+    }
+    return products;
+  }, [products, categoryFilter, favorites]);
+
+  // Group products by category, favorites first
+  const grouped = useMemo(() => {
+    const favProds: PaletteProduct[] = [];
+    const rest: PaletteProduct[] = [];
+    filteredProducts.forEach((p) => {
+      if (favorites.has(p.id)) favProds.push(p);
+      else rest.push(p);
+    });
+    const sorted = [...favProds, ...rest];
+    return sorted.reduce<Record<string, PaletteProduct[]>>((acc, p) => {
+      const key = p.product_category || "Other";
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(p);
+      return acc;
+    }, {});
+  }, [filteredProducts, favorites]);
 
   return (
     <div className="flex flex-col rounded-lg border bg-card overflow-hidden">
@@ -127,11 +257,16 @@ const ProductPalette = ({
               <Badge
                 key={cat.value}
                 variant={isActive ? "default" : "outline"}
-                className="cursor-pointer text-[10px] gap-0.5 px-1.5 py-0.5"
+                className={`cursor-pointer text-[10px] gap-0.5 px-1.5 py-0.5 ${
+                  cat.value === "favorites" && favorites.size > 0 ? "border-amber-400/50" : ""
+                }`}
                 onClick={() => onCategoryChange(cat.value)}
               >
                 <Icon className="h-2.5 w-2.5" />
                 {cat.label}
+                {cat.value === "favorites" && favorites.size > 0 && (
+                  <span className="ml-0.5">({favorites.size})</span>
+                )}
               </Badge>
             );
           })}
@@ -139,23 +274,31 @@ const ProductPalette = ({
       </div>
 
       {/* Product list */}
-      <ScrollArea className="flex-1" style={{ maxHeight: 420 }}>
+      <ScrollArea className="flex-1" style={{ maxHeight: 480 }}>
         <div className="p-2 space-y-3">
           {isLoading ? (
             Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full" />
+              <Skeleton key={i} className="h-16 w-full rounded-lg" />
             ))
-          ) : products.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-8">No products found</p>
+          ) : filteredProducts.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-8">
+              {categoryFilter === "favorites" ? "No favorites yet — star products to add them" : "No products found"}
+            </p>
           ) : (
             Object.entries(grouped).map(([category, items]) => (
               <div key={category}>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 px-1">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-1">
                   {category} ({items.length})
                 </p>
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   {items.map((product) => (
-                    <DraggableProductCard key={product.id} product={product} />
+                    <DraggableProductCard
+                      key={product.id}
+                      product={product}
+                      isFavorite={favorites.has(product.id)}
+                      onToggleFavorite={() => toggleFavorite(product.id)}
+                      onProductClick={onProductClick}
+                    />
                   ))}
                 </div>
               </div>

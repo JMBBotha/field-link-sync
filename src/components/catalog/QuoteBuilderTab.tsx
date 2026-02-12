@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import ProductPalette from "./quote-builder/ProductPalette";
 import BasketCanvas from "./quote-builder/BasketCanvas";
 import DragOverlayCard from "./quote-builder/DragOverlayCard";
+import ACOptionsModal from "./quote-builder/ACOptionsModal";
 
 export interface PaletteProduct {
   id: string;
@@ -53,27 +54,20 @@ const QuoteBuilderTab = () => {
   const [activeProduct, setActiveProduct] = useState<PaletteProduct | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [acModalOpen, setAcModalOpen] = useState(false);
+  const [acModalProduct, setAcModalProduct] = useState<PaletteProduct | null>(null);
 
   // Fetch products for the palette
   const { data: products = [], isLoading } = useQuery({
-    queryKey: ["quote-builder-products", searchQuery, categoryFilter],
+    queryKey: ["quote-builder-products"],
     queryFn: async () => {
-      let query = (supabase.from("supplier_products") as any)
+      const { data, error } = await (supabase.from("supplier_products") as any)
         .select("id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, suppliers(name)")
         .or("archived.is.null,archived.eq.false")
         .order("is_pinned", { ascending: false })
         .order("pin_order", { ascending: true, nullsFirst: false })
-        .limit(80);
+        .limit(500);
 
-      if (categoryFilter !== "all") {
-        query = query.or(`product_category.eq.${categoryFilter},category.ilike.%${categoryFilter}%`);
-      }
-
-      if (searchQuery.trim()) {
-        query = query.or(`product_code.ilike.%${searchQuery}%,short_name.ilike.%${searchQuery}%,brand.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%`);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
       return (data || []).map((p: any) => ({
         ...p,
@@ -81,11 +75,61 @@ const QuoteBuilderTab = () => {
         supplier_name: p.suppliers?.name || "",
       })) as PaletteProduct[];
     },
+    staleTime: 60000,
   });
+
+  // Client-side filtering
+  const filteredProducts = useMemo(() => {
+    let result = products;
+
+    if (categoryFilter !== "all" && categoryFilter !== "favorites") {
+      result = result.filter((p) =>
+        p.product_category === categoryFilter ||
+        (p.category || "").toLowerCase().includes(categoryFilter.toLowerCase())
+      );
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((p) =>
+        (p.product_code || "").toLowerCase().includes(q) ||
+        (p.short_name || "").toLowerCase().includes(q) ||
+        (p.brand || "").toLowerCase().includes(q) ||
+        (p.description || "").toLowerCase().includes(q) ||
+        (p.category || "").toLowerCase().includes(q)
+      );
+    }
+
+    return result;
+  }, [products, categoryFilter, searchQuery]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
+
+  const addProductToBasket = useCallback((basketId: string, product: PaletteProduct) => {
+    setBaskets((prev) =>
+      prev.map((basket) => {
+        if (basket.id !== basketId) return basket;
+        const existing = basket.items.find((i) => i.product.id === product.id);
+        if (existing) {
+          return {
+            ...basket,
+            items: basket.items.map((i) =>
+              i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
+            ),
+          };
+        }
+        return {
+          ...basket,
+          items: [
+            ...basket.items,
+            { instanceId: `${product.id}-${Date.now()}`, product, quantity: 1 },
+          ],
+        };
+      })
+    );
+  }, []);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const product = products.find((p) => p.id === event.active.id);
@@ -98,12 +142,10 @@ const QuoteBuilderTab = () => {
     if (!over) return;
 
     const overId = String(over.id);
-    // Find the target basket
     let targetBasketId: string | null = null;
     if (overId.startsWith("basket-")) {
       targetBasketId = overId;
     } else {
-      // Could be dropping over an item inside a basket
       for (const basket of baskets) {
         if (basket.items.some((i) => i.instanceId === overId)) {
           targetBasketId = basket.id;
@@ -118,33 +160,10 @@ const QuoteBuilderTab = () => {
     const product = products.find((p) => p.id === productId);
     if (!product) return;
 
-    setBaskets((prev) =>
-      prev.map((basket) => {
-        if (basket.id !== targetBasketId) return basket;
-        // Check if product already exists in basket
-        const existing = basket.items.find((i) => i.product.id === productId);
-        if (existing) {
-          return {
-            ...basket,
-            items: basket.items.map((i) =>
-              i.product.id === productId ? { ...i, quantity: i.quantity + 1 } : i
-            ),
-          };
-        }
-        return {
-          ...basket,
-          items: [
-            ...basket.items,
-            { instanceId: `${productId}-${Date.now()}`, product, quantity: 1 },
-          ],
-        };
-      })
-    );
-  }, [products, baskets]);
+    addProductToBasket(targetBasketId, product);
+  }, [products, baskets, addProductToBasket]);
 
-  const handleDragOver = useCallback((event: DragOverEvent) => {
-    // intentionally minimal for now
-  }, []);
+  const handleDragOver = useCallback((_event: DragOverEvent) => {}, []);
 
   const handleRemoveItem = useCallback((basketId: string, instanceId: string) => {
     setBaskets((prev) =>
@@ -187,6 +206,21 @@ const QuoteBuilderTab = () => {
     setBaskets((prev) => prev.filter((b) => b.id !== basketId));
   }, []);
 
+  const handleProductClick = useCallback((product: PaletteProduct) => {
+    if (product.product_category === "Air Conditioning") {
+      setAcModalProduct(product);
+      setAcModalOpen(true);
+    }
+  }, []);
+
+  const handleACConfirm = useCallback((product: PaletteProduct) => {
+    // Add to first basket by default
+    const targetBasket = baskets[0];
+    if (targetBasket) {
+      addProductToBasket(targetBasket.id, product);
+    }
+  }, [baskets, addProductToBasket]);
+
   const totalCost = useMemo(() => {
     return baskets.reduce(
       (sum, b) =>
@@ -199,12 +233,14 @@ const QuoteBuilderTab = () => {
     );
   }, [baskets]);
 
+  const totalItems = baskets.reduce((s, b) => s + b.items.reduce((qs, i) => qs + i.quantity, 0), 0);
+
   return (
     <div className="space-y-3">
       {/* Total bar */}
       <div className="flex items-center justify-between rounded-lg border bg-card p-3">
         <span className="text-sm font-medium text-muted-foreground">
-          Quote Total ({baskets.reduce((s, b) => s + b.items.length, 0)} items)
+          Quote Total ({totalItems} items across {baskets.length} zones)
         </span>
         <span className="text-lg font-bold text-foreground">
           R {totalCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -221,22 +257,25 @@ const QuoteBuilderTab = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" style={{ minHeight: 500 }}>
           {/* Left: Product Palette */}
           <ProductPalette
-            products={products}
+            products={filteredProducts}
             isLoading={isLoading}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             categoryFilter={categoryFilter}
             onCategoryChange={setCategoryFilter}
+            onProductClick={handleProductClick}
           />
 
           {/* Right: Basket Canvas */}
           <BasketCanvas
             baskets={baskets}
+            allProducts={products}
             onAddBasket={handleAddBasket}
             onRenameBasket={handleRenameBasket}
             onRemoveBasket={handleRemoveBasket}
             onRemoveItem={handleRemoveItem}
             onUpdateQuantity={handleUpdateQuantity}
+            onAddProductToBasket={addProductToBasket}
           />
         </div>
 
@@ -244,6 +283,15 @@ const QuoteBuilderTab = () => {
           {activeProduct ? <DragOverlayCard product={activeProduct} /> : null}
         </DragOverlay>
       </DndContext>
+
+      {/* AC Options Modal */}
+      <ACOptionsModal
+        open={acModalOpen}
+        onClose={() => setAcModalOpen(false)}
+        products={products}
+        initialProduct={acModalProduct}
+        onConfirm={handleACConfirm}
+      />
     </div>
   );
 };
