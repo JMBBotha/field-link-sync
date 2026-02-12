@@ -48,7 +48,7 @@ const AdminCatalogPage = () => {
     queryFn: async () => {
       const { data, error } = await (supabase.from("supplier_products") as any)
         .select("product_category")
-        .eq("archived", false);
+        .or("archived.is.null,archived.eq.false");
       if (error) throw error;
       const counts: Record<string, number> = {};
       let total = 0;

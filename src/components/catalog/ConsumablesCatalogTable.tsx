@@ -58,7 +58,7 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
         .from("supplier_products") as any)
         .select("id, product_code, description, category, cost_price, selling_price, default_markup_percent, sold_in_length, unit_length, unit_length_unit, price_per_metre, min_cut_length, is_price_on_request, pipe_size, archived")
         .eq("supplier_id", supplierId)
-        .eq("archived", false)
+        .or("archived.is.null,archived.eq.false")
         .eq("product_type", "consumable")
         .order("description");
       if (error) throw error;
