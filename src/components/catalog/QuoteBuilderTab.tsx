@@ -184,13 +184,7 @@ const QuoteBuilderTab = () => {
     }
     if (!targetBasketId) return;
 
-    // AC products open the modal instead of direct add
-    if (product.product_category === "Air Conditioning") {
-      setAcModalProduct(product);
-      setAcModalOpen(true);
-      return;
-    }
-
+    // Drag always adds directly — no modal
     addProductToBasket(targetBasketId, product);
   }, [baskets, addProductToBasket]);
 
@@ -321,29 +315,33 @@ const QuoteBuilderTab = () => {
         onDragEnd={handleDragEnd}
         onDragOver={handleDragOver}
       >
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-4" style={{ minHeight: 500 }}>
-          <ProductPalette
-            products={filteredProducts}
-            isLoading={isLoading}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            categoryFilter={categoryFilter}
-            onCategoryChange={setCategoryFilter}
-            onProductClick={handleProductClick}
-          />
-          <BasketCanvas
-            baskets={baskets}
-            allProducts={products}
-            onAddBasket={handleAddBasket}
-            onRenameBasket={handleRenameBasket}
-            onRemoveBasket={handleRemoveBasket}
-            onRemoveItem={handleRemoveItem}
-            onUpdateQuantity={handleUpdateQuantity}
-            onAddProductToBasket={addProductToBasket}
-            onDuplicateBasket={handleDuplicateBasket}
-            onApplyTemplate={handleApplyTemplate}
-            onClearAll={handleClearAll}
-          />
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4" style={{ minHeight: 500 }}>
+          <div className="lg:col-span-2 lg:max-h-[calc(100vh-280px)] lg:overflow-y-auto">
+            <ProductPalette
+              products={filteredProducts}
+              isLoading={isLoading}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              categoryFilter={categoryFilter}
+              onCategoryChange={setCategoryFilter}
+              onProductClick={handleProductClick}
+            />
+          </div>
+          <div className="lg:col-span-3 lg:max-h-[calc(100vh-280px)] lg:overflow-y-auto">
+            <BasketCanvas
+              baskets={baskets}
+              allProducts={products}
+              onAddBasket={handleAddBasket}
+              onRenameBasket={handleRenameBasket}
+              onRemoveBasket={handleRemoveBasket}
+              onRemoveItem={handleRemoveItem}
+              onUpdateQuantity={handleUpdateQuantity}
+              onAddProductToBasket={addProductToBasket}
+              onDuplicateBasket={handleDuplicateBasket}
+              onApplyTemplate={handleApplyTemplate}
+              onClearAll={handleClearAll}
+            />
+          </div>
         </div>
 
         <DragOverlay dropAnimation={null}>
