@@ -265,11 +265,18 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
     queryKey: ["supplier-products-all", supplierId, showArchived],
     queryFn: async () => {
       try {
-        const { data, error } = await supabase.rpc("search_supplier_products", {
-          p_query: null, p_category: null, p_supplier_id: supplierId || null, p_limit: 2000, p_include_archived: showArchived,
-        });
+        let query = (supabase.from("supplier_products") as any)
+          .select("*, suppliers!inner(name)");
+        if (supplierId) query = query.eq("supplier_id", supplierId);
+        if (!showArchived) query = query.or("archived.is.null,archived.eq.false");
+        query = query.limit(2000);
+        const { data, error } = await query;
         if (error) throw error;
-        const results = (data || []) as SupplierProduct[];
+        const results = ((data || []) as any[]).map((p: any) => ({
+          ...p,
+          supplier_name: p.suppliers?.name || "",
+          product_category: p.product_category || p.category || "",
+        })) as SupplierProduct[];
         if (results.length > 0) {
           offlineDb.cacheCatalogProducts(results.map(p => ({
             id: p.id, supplier_id: p.supplier_id, supplier_name: p.supplier_name,
