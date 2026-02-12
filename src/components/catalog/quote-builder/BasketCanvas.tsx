@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
-import { Plus, Trash2, Pencil, Check, Minus, Package, ShoppingBag } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, Minus, Package, ShoppingBag, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getCategoryIcon, getCategoryBg } from "./ProductPalette";
 import ConsumablesSuggestionPanel from "./ConsumablesSuggestionPanel";
+import ZoneTemplateSelector from "./ZoneTemplateSelector";
 import type { Basket, BasketItem, PaletteProduct } from "../QuoteBuilderTab";
 
 interface BasketCanvasProps {
@@ -17,6 +18,8 @@ interface BasketCanvasProps {
   onRemoveItem: (basketId: string, instanceId: string) => void;
   onUpdateQuantity: (basketId: string, instanceId: string, qty: number) => void;
   onAddProductToBasket: (basketId: string, product: PaletteProduct) => void;
+  onDuplicateBasket: (id: string) => void;
+  onApplyTemplate: (zones: string[]) => void;
 }
 
 function DroppableBasket({
@@ -24,6 +27,7 @@ function DroppableBasket({
   allProducts,
   onRename,
   onRemove,
+  onDuplicate,
   onRemoveItem,
   onUpdateQuantity,
   onAddProduct,
@@ -32,6 +36,7 @@ function DroppableBasket({
   allProducts: PaletteProduct[];
   onRename: (name: string) => void;
   onRemove: () => void;
+  onDuplicate: () => void;
   onRemoveItem: (instanceId: string) => void;
   onUpdateQuantity: (instanceId: string, qty: number) => void;
   onAddProduct: (product: PaletteProduct) => void;
@@ -92,13 +97,22 @@ function DroppableBasket({
             <Pencil className="h-2.5 w-2.5 text-muted-foreground" />
           </button>
         )}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <span className="text-[10px] text-muted-foreground">
             {basket.items.length} item{basket.items.length !== 1 ? "s" : ""} · {totalQty} qty
           </span>
           <span className="text-xs font-bold text-foreground">
             R{subtotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
           </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5 text-muted-foreground hover:text-foreground"
+            onClick={onDuplicate}
+            title="Duplicate zone"
+          >
+            <Copy className="h-3 w-3" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -210,14 +224,19 @@ const BasketCanvas = ({
   onRemoveItem,
   onUpdateQuantity,
   onAddProductToBasket,
+  onDuplicateBasket,
+  onApplyTemplate,
 }: BasketCanvasProps) => {
   return (
     <div className="flex flex-col rounded-lg border bg-muted/30 overflow-hidden">
       <div className="flex items-center justify-between p-3 border-b">
         <h3 className="text-sm font-semibold text-foreground">Quote Canvas</h3>
-        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={onAddBasket}>
-          <Plus className="h-3 w-3" /> Add Zone
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <ZoneTemplateSelector onApplyTemplate={onApplyTemplate} />
+          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={onAddBasket}>
+            <Plus className="h-3 w-3" /> Add Zone
+          </Button>
+        </div>
       </div>
 
       <ScrollArea className="flex-1" style={{ maxHeight: 480 }}>
@@ -226,7 +245,7 @@ const BasketCanvas = ({
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Package className="h-8 w-8 mb-2 opacity-30" />
               <p className="text-sm">No zones yet</p>
-              <p className="text-xs">Click "Add Zone" to get started</p>
+              <p className="text-xs">Click "Add Zone" or use a template</p>
             </div>
           ) : (
             baskets.map((basket) => (
@@ -236,6 +255,7 @@ const BasketCanvas = ({
                 allProducts={allProducts}
                 onRename={(name) => onRenameBasket(basket.id, name)}
                 onRemove={() => onRemoveBasket(basket.id)}
+                onDuplicate={() => onDuplicateBasket(basket.id)}
                 onRemoveItem={(instanceId) => onRemoveItem(basket.id, instanceId)}
                 onUpdateQuantity={(instanceId, qty) => onUpdateQuantity(basket.id, instanceId, qty)}
                 onAddProduct={(product) => onAddProductToBasket(basket.id, product)}
