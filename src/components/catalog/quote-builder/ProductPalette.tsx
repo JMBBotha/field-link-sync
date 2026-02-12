@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { useDraggable } from "@dnd-kit/core";
+import { useDraggable, useDndContext } from "@dnd-kit/core";
 import {
   Search, Snowflake, Droplets, Zap, BatteryCharging, Wrench, Package,
   GripVertical, Star, StarOff,
@@ -82,6 +82,8 @@ function DraggableProductCard({
   onProductClick?: (p: PaletteProduct) => void;
 }) {
   const gripRef = useRef<HTMLDivElement>(null);
+  const { active } = useDndContext();
+  const isAnyDragging = !!active;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `palette-${product.id}`,
     data: { product },
@@ -96,6 +98,7 @@ function DraggableProductCard({
         <div
           ref={setNodeRef}
           {...attributes}
+          style={{ pointerEvents: isAnyDragging ? 'none' : 'auto' }}
           onClick={() => onProductClick?.(product)}
           className={`group relative flex items-start gap-2.5 rounded-lg border bg-card p-2.5 cursor-pointer transition-all hover:shadow-md hover:border-primary/20 ${
             isDragging ? "opacity-40 shadow-lg scale-95" : ""
@@ -132,6 +135,7 @@ function DraggableProductCard({
               ref={gripRef}
               {...listeners}
               className="cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-muted"
+              style={{ touchAction: 'none' }}
               onClick={(e) => e.stopPropagation()}
             >
               <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
