@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, Upload, GitCompare, Package, Snowflake, Wrench, Layers, Zap, BatteryCharging, Droplets, PenTool } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, Upload, GitCompare, Package, Snowflake, Wrench, Layers, Zap, BatteryCharging, Droplets, PenTool, Ruler, Loader2 } from "lucide-react";
 import SupplierManager from "@/components/catalog/SupplierManager";
 import BrandDiscountsSection from "@/components/catalog/BrandDiscountsSection";
 import SupplierProductImporter from "@/components/catalog/SupplierProductImporter";
@@ -10,8 +11,9 @@ import SupplierComparison from "@/components/catalog/SupplierComparison";
 import ConsumablesCatalogTable from "@/components/catalog/ConsumablesCatalogTable";
 import BundlesList from "@/components/catalog/BundlesList";
 import QuoteBuilderTab from "@/components/catalog/QuoteBuilderTab";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const PRODUCT_CATEGORIES = [
   { value: "all", label: "All", icon: Package },
@@ -29,6 +31,53 @@ const AdminCatalogPage = () => {
   const [tab, setTab] = useState("browse");
   const [importKey, setImportKey] = useState(0);
   const [categoryFilter, setCategoryFilter] = useState<ProductCategoryFilter>("all");
+  const [scanning, setScanning] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleScanLengths = async () => {
+    setScanning(true);
+    try {
+      // Fetch all products that don't yet have price_per_metre set
+      const { data: products, error } = await (supabase.from("supplier_products") as any)
+        .select("id, description, short_name, cost_excl_vat, cost_price, sold_in_length, price_per_metre, unit_length")
+        .or("archived.is.null,archived.eq.false");
+      if (error) throw error;
+
+      const lengthRegex = /(\d+\.?\d*)\s*[Mm](?:\s|$|-)/;
+      let updated = 0;
+
+      for (const p of (products || [])) {
+        const text = p.short_name || p.description || "";
+        const match = text.match(lengthRegex);
+        if (match) {
+          const rollLength = parseFloat(match[1]);
+          if (rollLength > 0) {
+            const cost = p.cost_excl_vat || p.cost_price || 0;
+            const pricePerMetre = cost / rollLength;
+            // Only update if not already set or values changed
+            if (!p.sold_in_length || !p.price_per_metre || Math.abs(p.price_per_metre - pricePerMetre) > 0.01) {
+              const { error: uErr } = await (supabase.from("supplier_products") as any)
+                .update({
+                  sold_in_length: true,
+                  price_per_metre: Math.round(pricePerMetre * 100) / 100,
+                  unit_length: rollLength,
+                })
+                .eq("id", p.id);
+              if (!uErr) updated++;
+            }
+          }
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
+      queryClient.invalidateQueries({ queryKey: ["product-category-counts"] });
+      toast.success(`Scanned ${(products || []).length} products, updated ${updated} with /m pricing`);
+    } catch (e: any) {
+      toast.error(e.message || "Scan failed");
+    } finally {
+      setScanning(false);
+    }
+  };
 
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers"],
@@ -69,9 +118,21 @@ const AdminCatalogPage = () => {
 
   return (
     <div className="p-4 max-w-7xl mx-auto space-y-4">
-      <div className="flex items-center gap-2 mb-2">
-        <Package className="h-5 w-5 text-primary" />
-        <h2 className="text-xl font-bold">Product Catalog</h2>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Package className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-bold">Product Catalog</h2>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={handleScanLengths}
+          disabled={scanning}
+        >
+          {scanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ruler className="h-3.5 w-3.5" />}
+          {scanning ? "Scanning..." : "Scan & Calculate /m Pricing"}
+        </Button>
       </div>
 
       {/* Product category filter pills */}
