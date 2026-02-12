@@ -270,8 +270,12 @@ const QuoteBuilderTab = () => {
     if (product.product_category === "Air Conditioning") {
       setAcModalProduct(product);
       setAcModalOpen(true);
+    } else {
+      // Non-AC: add to first zone directly
+      const target = baskets[0];
+      if (target) addProductToBasket(target.id, product);
     }
-  }, []);
+  }, [baskets, addProductToBasket]);
 
   const handleACConfirm = useCallback((product: PaletteProduct) => {
     const targetBasket = baskets[0];
@@ -317,7 +321,7 @@ const QuoteBuilderTab = () => {
         onDragEnd={handleDragEnd}
         onDragOver={handleDragOver}
       >
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" style={{ minHeight: 500 }}>
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-4" style={{ minHeight: 500 }}>
           <ProductPalette
             products={filteredProducts}
             isLoading={isLoading}
