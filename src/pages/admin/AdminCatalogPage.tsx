@@ -47,31 +47,48 @@ const AdminCatalogPage = () => {
       // or standalone number+M (e.g. "50M", "15M") but NOT MM (millimeters)
       const lengthRegex = /(?:^|[X×x\s])(\d+\.?\d*)M(?:\s|$|-)/i;
       let updated = 0;
+      let matched = 0;
+      let skipped = 0;
+      let alreadySet = 0;
+
+      console.log(`[Scan] Total products fetched: ${(products || []).length}`);
+      console.log(`[Scan] Regex: ${lengthRegex}`);
+
+      // Log first 5 products for debugging
+      (products || []).slice(0, 5).forEach((p: any, i: number) => {
+        console.log(`[Scan] Product ${i}: id=${p.id}, short_name="${(p.short_name || '').slice(0,30)}", desc="${(p.description || '').slice(0,80)}"`);
+      });
 
       for (const p of (products || [])) {
-        // Check description FIRST (contains actual product specs), then short_name
+        if (p.sold_in_length) alreadySet++;
+
         const text = p.description || p.short_name || "";
         const match = text.match(lengthRegex);
-        console.log(`[Scan] id=${p.id} desc="${(p.description || '').slice(0,60)}" match=${match ? match[1] : 'none'}`);
         if (match) {
+          matched++;
           const rollLength = parseFloat(match[1]);
           if (rollLength > 0) {
             const cost = p.cost_excl_vat || p.cost_price || 0;
             const pricePerMetre = cost / rollLength;
-            // Only update if not already set or values changed
-            if (!p.sold_in_length || !p.price_per_metre || Math.abs(p.price_per_metre - pricePerMetre) > 0.01) {
-              const { error: uErr } = await (supabase.from("supplier_products") as any)
-                .update({
-                  sold_in_length: true,
-                  price_per_metre: Math.round(pricePerMetre * 100) / 100,
-                  unit_length: rollLength,
-                })
-                .eq("id", p.id);
-              if (!uErr) updated++;
+            console.log(`[Scan] MATCH id=${p.id} length=${rollLength}m cost=${cost} ppm=${pricePerMetre.toFixed(2)} current_sil=${p.sold_in_length} current_ppm=${p.price_per_metre}`);
+            const { error: uErr } = await (supabase.from("supplier_products") as any)
+              .update({
+                sold_in_length: true,
+                price_per_metre: Math.round(pricePerMetre * 100) / 100,
+                unit_length: rollLength,
+              })
+              .eq("id", p.id);
+            if (uErr) {
+              console.error(`[Scan] UPDATE FAILED for ${p.id}:`, uErr);
+              skipped++;
+            } else {
+              updated++;
             }
           }
         }
       }
+
+      console.log(`[Scan] Summary: matched=${matched}, updated=${updated}, skipped=${skipped}, alreadySet=${alreadySet}`);
 
       queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
       queryClient.invalidateQueries({ queryKey: ["product-category-counts"] });
