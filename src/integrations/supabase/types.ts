@@ -2882,6 +2882,33 @@ export type Database = {
               supplier_name: string
             }[]
           }
+        | {
+            Args: {
+              brand_filter?: string
+              category_filter?: string
+              max_results?: number
+              search_term?: string
+              sort_by?: string
+            }
+            Returns: {
+              archived: boolean
+              brand: string
+              category: string
+              cost_excl_vat: number
+              cost_incl_vat: number
+              description: string
+              id: string
+              is_pinned: boolean
+              pin_order: number
+              product_category: string
+              product_code: string
+              rrp: number
+              selling_price: number
+              short_name: string
+              supplier_id: string
+              supplier_name: string
+            }[]
+          }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       validate_customer_token: { Args: { p_token: string }; Returns: string }

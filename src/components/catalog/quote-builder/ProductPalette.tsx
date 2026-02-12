@@ -58,9 +58,9 @@ function DraggableProductCard({ product }: { product: PaletteProduct }) {
           <div className="shrink-0">{categoryIcon()}</div>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium truncate">
-              {product.brand || ""} {product.short_name || product.model_number}
+              {product.brand || ""} {product.short_name || product.product_code}
             </p>
-            <p className="text-[10px] text-muted-foreground truncate">{product.model_number}</p>
+            <p className="text-[10px] text-muted-foreground truncate">{product.product_code}</p>
           </div>
           <span className="text-xs font-semibold text-foreground whitespace-nowrap">
             {price > 0 ? `R${price.toLocaleString("en-ZA")}` : "POR"}
@@ -68,8 +68,8 @@ function DraggableProductCard({ product }: { product: PaletteProduct }) {
         </div>
       </HoverCardTrigger>
       <HoverCardContent side="right" className="w-64 text-xs space-y-1.5">
-        <p className="font-semibold">{product.brand} {product.short_name || product.model_number}</p>
-        <p className="text-muted-foreground">{product.model_number}</p>
+        <p className="font-semibold">{product.brand} {product.short_name || product.product_code}</p>
+        <p className="text-muted-foreground">{product.product_code}</p>
         <div className="flex justify-between">
           <span>Cost excl.</span>
           <span className="font-medium">R{(product.cost_excl_vat || 0).toLocaleString("en-ZA")}</span>

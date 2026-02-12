@@ -20,9 +20,9 @@ const DragOverlayCard = ({ product }: { product: PaletteProduct }) => {
       {categoryIcon()}
       <div className="min-w-0 flex-1">
         <p className="text-xs font-medium truncate">
-          {product.brand} {product.short_name || product.model_number}
+          {product.brand} {product.short_name || product.product_code}
         </p>
-        <p className="text-[10px] text-muted-foreground truncate">{product.model_number}</p>
+        <p className="text-[10px] text-muted-foreground truncate">{product.product_code}</p>
       </div>
       <span className="text-xs font-semibold text-foreground whitespace-nowrap">
         R{price.toLocaleString("en-ZA")}
