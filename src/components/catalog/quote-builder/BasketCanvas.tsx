@@ -247,7 +247,7 @@ const BasketCanvas = ({
         </div>
       </div>
 
-      <ScrollArea className="flex-1" style={{ maxHeight: 480 }}>
+      <ScrollArea className="flex-1" style={{ maxHeight: "calc(100vh - 300px)" }}>
         <div className="p-3 space-y-3">
           {baskets.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">

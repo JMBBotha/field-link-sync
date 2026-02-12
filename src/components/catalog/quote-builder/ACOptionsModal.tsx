@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,55 @@ function extractACType(p: PaletteProduct): string | null {
   return null;
 }
 
+
+function ModelList({ products, selectedProductId, onSelect }: {
+  products: PaletteProduct[];
+  selectedProductId: string;
+  onSelect: (id: string) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const selectedRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (selectedRef.current && containerRef.current) {
+      selectedRef.current.scrollIntoView({ block: "center", behavior: "instant" });
+    }
+  }, [selectedProductId, products]);
+
+  if (products.length === 0) {
+    return <div className="max-h-48 overflow-y-auto border rounded-md p-1.5">
+      <p className="text-xs text-muted-foreground text-center py-4">No matching models</p>
+    </div>;
+  }
+
+  return (
+    <div ref={containerRef} className="max-h-48 overflow-y-auto space-y-1 border rounded-md p-1.5">
+      {products.map((p) => {
+        const price = p.selling_price || p.cost_incl_vat || 0;
+        const isSelected = selectedProductId === p.id;
+        return (
+          <button
+            key={p.id}
+            ref={isSelected ? selectedRef : undefined}
+            className={`w-full flex items-center gap-2 rounded-md p-2 text-left text-xs transition-colors ${
+              isSelected ? "bg-primary/10 border border-primary/30" : "hover:bg-muted border border-transparent"
+            }`}
+            onClick={() => onSelect(p.id)}
+          >
+            <div className="min-w-0 flex-1">
+              <p className="font-medium truncate">{getProductDisplayName(p)}</p>
+              <p className="text-[10px] font-mono font-medium text-primary/80 truncate">{p.product_code}</p>
+            </div>
+            <span className="font-bold shrink-0">
+              {price > 0 ? `R${price.toLocaleString("en-ZA")}` : "POR"}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 const ACOptionsModal = ({ open, onClose, products, initialProduct, onConfirm, inferredBrand, inferredType }: ACOptionsModalProps) => {
   const acProducts = useMemo(
     () => products.filter((p) => p.product_category === "Air Conditioning"),
@@ -65,9 +114,14 @@ const ACOptionsModal = ({ open, onClose, products, initialProduct, onConfirm, in
   // Reset selections when modal opens with new inferred values
   useMemo(() => {
     if (open) {
-      setSelectedBrand(initialProduct?.brand || inferredBrand || "all");
-      setSelectedType(inferredType || "all");
-      setSelectedBTU("all");
+      const brand = initialProduct?.brand || inferredBrand || "all";
+      setSelectedBrand(brand);
+      // Pre-select BTU from the clicked product
+      const clickedBTU = initialProduct ? extractBTU(initialProduct) : null;
+      setSelectedBTU(clickedBTU ? String(clickedBTU) : "all");
+      // Pre-select type from clicked product
+      const clickedType = initialProduct ? extractACType(initialProduct) : (inferredType || "all");
+      setSelectedType(clickedType || inferredType || "all");
       setSelectedProductId(initialProduct?.id || "");
     }
   }, [open, inferredBrand, inferredType, initialProduct]);
@@ -200,33 +254,11 @@ const ACOptionsModal = ({ open, onClose, products, initialProduct, onConfirm, in
             <label className="text-xs font-medium text-muted-foreground">
               Model ({filteredProducts.length} available)
             </label>
-            <div className="max-h-48 overflow-y-auto space-y-1 border rounded-md p-1.5">
-              {filteredProducts.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">No matching models</p>
-              ) : (
-                filteredProducts.map((p) => {
-                  const price = p.selling_price || p.cost_incl_vat || 0;
-                  const isSelected = selectedProductId === p.id;
-                  return (
-                    <button
-                      key={p.id}
-                      className={`w-full flex items-center gap-2 rounded-md p-2 text-left text-xs transition-colors ${
-                        isSelected ? "bg-primary/10 border border-primary/30" : "hover:bg-muted border border-transparent"
-                      }`}
-                      onClick={() => setSelectedProductId(p.id)}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate">{getProductDisplayName(p)}</p>
-                        <p className="text-[10px] font-mono font-medium text-primary/80 truncate">{p.product_code}</p>
-                      </div>
-                      <span className="font-bold shrink-0">
-                        {price > 0 ? `R${price.toLocaleString("en-ZA")}` : "POR"}
-                      </span>
-                    </button>
-                  );
-                })
-              )}
-            </div>
+            <ModelList
+              products={filteredProducts}
+              selectedProductId={selectedProductId}
+              onSelect={setSelectedProductId}
+            />
           </div>
 
           {/* Selected product preview */}
