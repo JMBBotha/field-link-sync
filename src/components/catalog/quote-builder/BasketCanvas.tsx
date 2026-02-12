@@ -1,32 +1,40 @@
 import { useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
-import { Plus, Trash2, Pencil, Check, Minus, Package } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, Minus, Package, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { Basket, BasketItem } from "../QuoteBuilderTab";
+import { getCategoryIcon, getCategoryBg } from "./ProductPalette";
+import ConsumablesSuggestionPanel from "./ConsumablesSuggestionPanel";
+import type { Basket, BasketItem, PaletteProduct } from "../QuoteBuilderTab";
 
 interface BasketCanvasProps {
   baskets: Basket[];
+  allProducts: PaletteProduct[];
   onAddBasket: () => void;
   onRenameBasket: (id: string, name: string) => void;
   onRemoveBasket: (id: string) => void;
   onRemoveItem: (basketId: string, instanceId: string) => void;
   onUpdateQuantity: (basketId: string, instanceId: string, qty: number) => void;
+  onAddProductToBasket: (basketId: string, product: PaletteProduct) => void;
 }
 
 function DroppableBasket({
   basket,
+  allProducts,
   onRename,
   onRemove,
   onRemoveItem,
   onUpdateQuantity,
+  onAddProduct,
 }: {
   basket: Basket;
+  allProducts: PaletteProduct[];
   onRename: (name: string) => void;
   onRemove: () => void;
   onRemoveItem: (instanceId: string) => void;
   onUpdateQuantity: (instanceId: string, qty: number) => void;
+  onAddProduct: (product: PaletteProduct) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: basket.id });
   const [editing, setEditing] = useState(false);
@@ -37,6 +45,8 @@ function DroppableBasket({
     0
   );
 
+  const totalQty = basket.items.reduce((s, i) => s + i.quantity, 0);
+
   return (
     <div
       ref={setNodeRef}
@@ -45,7 +55,7 @@ function DroppableBasket({
       }`}
     >
       {/* Basket header */}
-      <div className="flex items-center justify-between p-2 border-b border-border/50">
+      <div className="flex items-center justify-between p-2.5 border-b border-border/50">
         {editing ? (
           <div className="flex items-center gap-1 flex-1">
             <Input
@@ -74,15 +84,19 @@ function DroppableBasket({
           </div>
         ) : (
           <button
-            className="flex items-center gap-1 text-xs font-semibold text-foreground hover:text-primary transition-colors"
+            className="flex items-center gap-1.5 text-xs font-semibold text-foreground hover:text-primary transition-colors"
             onClick={() => setEditing(true)}
           >
+            <ShoppingBag className="h-3.5 w-3.5 text-muted-foreground" />
             {basket.name}
             <Pencil className="h-2.5 w-2.5 text-muted-foreground" />
           </button>
         )}
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-medium text-muted-foreground">
+          <span className="text-[10px] text-muted-foreground">
+            {basket.items.length} item{basket.items.length !== 1 ? "s" : ""} · {totalQty} qty
+          </span>
+          <span className="text-xs font-bold text-foreground">
             R{subtotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
           </span>
           <Button
@@ -97,21 +111,29 @@ function DroppableBasket({
       </div>
 
       {/* Items */}
-      <div className="p-2 min-h-[60px] space-y-1">
+      <div className="p-2 min-h-[60px] space-y-1.5">
         {basket.items.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-4 text-muted-foreground">
             <Package className="h-5 w-5 mb-1 opacity-40" />
             <p className="text-[10px]">Drop products here</p>
           </div>
         ) : (
-          basket.items.map((item) => (
-            <BasketItemCard
-              key={item.instanceId}
-              item={item}
-              onRemove={() => onRemoveItem(item.instanceId)}
-              onUpdateQuantity={(qty) => onUpdateQuantity(item.instanceId, qty)}
+          <>
+            {basket.items.map((item) => (
+              <BasketItemCard
+                key={item.instanceId}
+                item={item}
+                onRemove={() => onRemoveItem(item.instanceId)}
+                onUpdateQuantity={(qty) => onUpdateQuantity(item.instanceId, qty)}
+              />
+            ))}
+            {/* Consumables auto-suggest */}
+            <ConsumablesSuggestionPanel
+              basketItems={basket.items}
+              allProducts={allProducts}
+              onAddProduct={onAddProduct}
             />
-          ))
+          </>
         )}
       </div>
     </div>
@@ -129,9 +151,13 @@ function BasketItemCard({
 }) {
   const price = item.product.selling_price || item.product.cost_incl_vat || 0;
   const lineTotal = price * item.quantity;
+  const catBg = getCategoryBg(item.product.product_category);
 
   return (
     <div className="flex items-center gap-2 rounded-md border bg-background p-1.5 text-xs">
+      <div className={`shrink-0 rounded p-1 ${catBg}`}>
+        {getCategoryIcon(item.product.product_category, "h-3 w-3")}
+      </div>
       <div className="min-w-0 flex-1">
         <p className="font-medium truncate">
           {item.product.brand} {item.product.short_name || item.product.product_code}
@@ -177,11 +203,13 @@ function BasketItemCard({
 
 const BasketCanvas = ({
   baskets,
+  allProducts,
   onAddBasket,
   onRenameBasket,
   onRemoveBasket,
   onRemoveItem,
   onUpdateQuantity,
+  onAddProductToBasket,
 }: BasketCanvasProps) => {
   return (
     <div className="flex flex-col rounded-lg border bg-muted/30 overflow-hidden">
@@ -192,7 +220,7 @@ const BasketCanvas = ({
         </Button>
       </div>
 
-      <ScrollArea className="flex-1" style={{ maxHeight: 420 }}>
+      <ScrollArea className="flex-1" style={{ maxHeight: 480 }}>
         <div className="p-3 space-y-3">
           {baskets.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
@@ -205,10 +233,12 @@ const BasketCanvas = ({
               <DroppableBasket
                 key={basket.id}
                 basket={basket}
+                allProducts={allProducts}
                 onRename={(name) => onRenameBasket(basket.id, name)}
                 onRemove={() => onRemoveBasket(basket.id)}
                 onRemoveItem={(instanceId) => onRemoveItem(basket.id, instanceId)}
                 onUpdateQuantity={(instanceId, qty) => onUpdateQuantity(basket.id, instanceId, qty)}
+                onAddProduct={(product) => onAddProductToBasket(basket.id, product)}
               />
             ))
           )}
