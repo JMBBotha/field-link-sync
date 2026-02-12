@@ -61,7 +61,6 @@ const QuoteBuilderTab = () => {
       let query = (supabase.from("supplier_products") as any)
         .select("id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, suppliers!inner(name)")
         .or("archived.is.null,archived.eq.false")
-        .or("is_active.is.null,is_active.eq.true")
         .order("is_pinned", { ascending: false })
         .order("pin_order", { ascending: true, nullsFirst: false })
         .limit(80);
