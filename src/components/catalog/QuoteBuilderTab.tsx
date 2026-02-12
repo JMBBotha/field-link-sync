@@ -4,6 +4,8 @@ import {
   DragOverlay,
   closestCenter,
   PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   type DragStartEvent,
@@ -129,7 +131,9 @@ const QuoteBuilderTab = () => {
   }, [products, categoryFilter, searchQuery]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(KeyboardSensor)
   );
 
   const addProductToBasket = useCallback((basketId: string, product: PaletteProduct) => {
@@ -157,36 +161,38 @@ const QuoteBuilderTab = () => {
   }, []);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
-    const product = products.find((p) => p.id === event.active.id);
+    const product = (event.active.data.current as any)?.product as PaletteProduct | undefined;
     if (product) setActiveProduct(product);
-  }, [products]);
+  }, []);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     setActiveProduct(null);
     const { active, over } = event;
     if (!over) return;
 
-    const overId = String(over.id);
-    let targetBasketId: string | null = null;
-    if (overId.startsWith("basket-") || overId.startsWith("basket_")) {
-      targetBasketId = overId;
-    } else {
-      for (const basket of baskets) {
-        if (basket.items.some((i) => i.instanceId === overId)) {
-          targetBasketId = basket.id;
-          break;
-        }
-      }
-    }
-
-    if (!targetBasketId) return;
-
-    const productId = String(active.id);
-    const product = products.find((p) => p.id === productId);
+    const product = (active.data.current as any)?.product as PaletteProduct | undefined;
     if (!product) return;
 
+    const overId = String(over.id);
+    // Find which basket was dropped on
+    let targetBasketId: string | null = null;
+    for (const basket of baskets) {
+      if (basket.id === overId) {
+        targetBasketId = basket.id;
+        break;
+      }
+    }
+    if (!targetBasketId) return;
+
+    // AC products open the modal instead of direct add
+    if (product.product_category === "Air Conditioning") {
+      setAcModalProduct(product);
+      setAcModalOpen(true);
+      return;
+    }
+
     addProductToBasket(targetBasketId, product);
-  }, [products, baskets, addProductToBasket]);
+  }, [baskets, addProductToBasket]);
 
   const handleDragOver = useCallback((_event: DragOverEvent) => {}, []);
 
