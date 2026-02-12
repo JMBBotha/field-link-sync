@@ -15,7 +15,8 @@ import { supabase } from "@/integrations/supabase/client";
 import ProductPalette from "./quote-builder/ProductPalette";
 import BasketCanvas from "./quote-builder/BasketCanvas";
 import DragOverlayCard from "./quote-builder/DragOverlayCard";
-import ACOptionsModal from "./quote-builder/ACOptionsModal";
+import ACOptionsModal, { detectACType } from "./quote-builder/ACOptionsModal";
+import QuoteSummaryPanel from "./quote-builder/QuoteSummaryPanel";
 
 export interface PaletteProduct {
   id: string;
@@ -77,6 +78,30 @@ const QuoteBuilderTab = () => {
     },
     staleTime: 60000,
   });
+
+  // ─── Brand & Type Inference ───
+  const inferredBrand = useMemo(() => {
+    for (const basket of baskets) {
+      for (const item of basket.items) {
+        if (item.product.product_category === "Air Conditioning" && item.product.brand) {
+          return item.product.brand;
+        }
+      }
+    }
+    return null;
+  }, [baskets]);
+
+  const inferredType = useMemo(() => {
+    for (const basket of baskets) {
+      for (const item of basket.items) {
+        if (item.product.product_category === "Air Conditioning") {
+          const t = detectACType(item.product);
+          if (t) return t;
+        }
+      }
+    }
+    return null;
+  }, [baskets]);
 
   // Client-side filtering
   const filteredProducts = useMemo(() => {
@@ -143,7 +168,7 @@ const QuoteBuilderTab = () => {
 
     const overId = String(over.id);
     let targetBasketId: string | null = null;
-    if (overId.startsWith("basket-")) {
+    if (overId.startsWith("basket-") || overId.startsWith("basket_")) {
       targetBasketId = overId;
     } else {
       for (const basket of baskets) {
@@ -206,6 +231,35 @@ const QuoteBuilderTab = () => {
     setBaskets((prev) => prev.filter((b) => b.id !== basketId));
   }, []);
 
+  const handleDuplicateBasket = useCallback((basketId: string) => {
+    setBaskets((prev) => {
+      const source = prev.find((b) => b.id === basketId);
+      if (!source) return prev;
+      const newId = `basket-${Date.now()}`;
+      const duplicate: Basket = {
+        id: newId,
+        name: `${source.name} (copy)`,
+        items: source.items.map((i) => ({
+          ...i,
+          instanceId: `${i.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        })),
+      };
+      const idx = prev.indexOf(source);
+      const next = [...prev];
+      next.splice(idx + 1, 0, duplicate);
+      return next;
+    });
+  }, []);
+
+  const handleApplyTemplate = useCallback((zoneNames: string[]) => {
+    const newBaskets = zoneNames.map((name, i) => ({
+      id: `basket-${Date.now()}-${i}`,
+      name,
+      items: [] as BasketItem[],
+    }));
+    setBaskets(newBaskets);
+  }, []);
+
   const handleProductClick = useCallback((product: PaletteProduct) => {
     if (product.product_category === "Air Conditioning") {
       setAcModalProduct(product);
@@ -214,7 +268,6 @@ const QuoteBuilderTab = () => {
   }, []);
 
   const handleACConfirm = useCallback((product: PaletteProduct) => {
-    // Add to first basket by default
     const targetBasket = baskets[0];
     if (targetBasket) {
       addProductToBasket(targetBasket.id, product);
@@ -255,7 +308,6 @@ const QuoteBuilderTab = () => {
         onDragOver={handleDragOver}
       >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" style={{ minHeight: 500 }}>
-          {/* Left: Product Palette */}
           <ProductPalette
             products={filteredProducts}
             isLoading={isLoading}
@@ -265,8 +317,6 @@ const QuoteBuilderTab = () => {
             onCategoryChange={setCategoryFilter}
             onProductClick={handleProductClick}
           />
-
-          {/* Right: Basket Canvas */}
           <BasketCanvas
             baskets={baskets}
             allProducts={products}
@@ -276,6 +326,8 @@ const QuoteBuilderTab = () => {
             onRemoveItem={handleRemoveItem}
             onUpdateQuantity={handleUpdateQuantity}
             onAddProductToBasket={addProductToBasket}
+            onDuplicateBasket={handleDuplicateBasket}
+            onApplyTemplate={handleApplyTemplate}
           />
         </div>
 
@@ -284,13 +336,18 @@ const QuoteBuilderTab = () => {
         </DragOverlay>
       </DndContext>
 
-      {/* AC Options Modal */}
+      {/* Quote Summary & Export */}
+      <QuoteSummaryPanel baskets={baskets} />
+
+      {/* AC Options Modal with inference */}
       <ACOptionsModal
         open={acModalOpen}
         onClose={() => setAcModalOpen(false)}
         products={products}
         initialProduct={acModalProduct}
         onConfirm={handleACConfirm}
+        inferredBrand={inferredBrand}
+        inferredType={inferredType}
       />
     </div>
   );

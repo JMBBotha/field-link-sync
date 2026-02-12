@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Snowflake } from "lucide-react";
+import { Snowflake, Info } from "lucide-react";
 import type { PaletteProduct } from "../QuoteBuilderTab";
 
 interface ACOptionsModalProps {
@@ -12,9 +12,13 @@ interface ACOptionsModalProps {
   products: PaletteProduct[];
   initialProduct?: PaletteProduct | null;
   onConfirm: (product: PaletteProduct) => void;
+  inferredBrand?: string | null;
+  inferredType?: string | null;
 }
 
 const BTU_SIZES = [9000, 12000, 18000, 24000, 30000, 36000, 42000, 48000, 60000, 76000];
+
+const AC_TYPES = ["Wall Mount", "Cassette", "Ducted", "Floor Standing", "Ceiling", "Portable"];
 
 function extractBTU(p: PaletteProduct): number | null {
   const desc = `${p.description || ""} ${p.short_name || ""} ${p.product_code || ""}`.toLowerCase();
@@ -25,7 +29,18 @@ function extractBTU(p: PaletteProduct): number | null {
   return null;
 }
 
-const ACOptionsModal = ({ open, onClose, products, initialProduct, onConfirm }: ACOptionsModalProps) => {
+function extractACType(p: PaletteProduct): string | null {
+  const desc = `${p.description || ""} ${p.short_name || ""} ${p.product_code || ""}`.toLowerCase();
+  if (desc.includes("wall") || desc.includes("split") || desc.includes("hi-wall") || desc.includes("hi wall")) return "Wall Mount";
+  if (desc.includes("cassette")) return "Cassette";
+  if (desc.includes("ducted") || desc.includes("duct")) return "Ducted";
+  if (desc.includes("floor")) return "Floor Standing";
+  if (desc.includes("ceiling")) return "Ceiling";
+  if (desc.includes("portable")) return "Portable";
+  return null;
+}
+
+const ACOptionsModal = ({ open, onClose, products, initialProduct, onConfirm, inferredBrand, inferredType }: ACOptionsModalProps) => {
   const acProducts = useMemo(
     () => products.filter((p) => p.product_category === "Air Conditioning"),
     [products]
@@ -37,9 +52,24 @@ const ACOptionsModal = ({ open, onClose, products, initialProduct, onConfirm }: 
     return [...set].sort();
   }, [acProducts]);
 
-  const [selectedBrand, setSelectedBrand] = useState<string>(initialProduct?.brand || "all");
+  // Use inferred brand if available, otherwise fall back to initial product brand
+  const defaultBrand = initialProduct?.brand || inferredBrand || "all";
+  const defaultType = inferredType || "all";
+
+  const [selectedBrand, setSelectedBrand] = useState<string>(defaultBrand);
   const [selectedBTU, setSelectedBTU] = useState<string>("all");
+  const [selectedType, setSelectedType] = useState<string>(defaultType);
   const [selectedProductId, setSelectedProductId] = useState<string>(initialProduct?.id || "");
+
+  // Reset selections when modal opens with new inferred values
+  useMemo(() => {
+    if (open) {
+      setSelectedBrand(initialProduct?.brand || inferredBrand || "all");
+      setSelectedType(inferredType || "all");
+      setSelectedBTU("all");
+      setSelectedProductId(initialProduct?.id || "");
+    }
+  }, [open, inferredBrand, inferredType, initialProduct]);
 
   const filteredProducts = useMemo(() => {
     return acProducts.filter((p) => {
@@ -48,18 +78,36 @@ const ACOptionsModal = ({ open, onClose, products, initialProduct, onConfirm }: 
         const btu = extractBTU(p);
         if (!btu || btu !== Number(selectedBTU)) return false;
       }
+      if (selectedType !== "all") {
+        const type = extractACType(p);
+        if (type !== selectedType) return false;
+      }
       return true;
     });
-  }, [acProducts, selectedBrand, selectedBTU]);
+  }, [acProducts, selectedBrand, selectedBTU, selectedType]);
 
   const availableBTUs = useMemo(() => {
     const btus = new Set<number>();
-    const brandFiltered = selectedBrand === "all" ? acProducts : acProducts.filter((p) => p.brand === selectedBrand);
-    brandFiltered.forEach((p) => {
+    const preFiltered = acProducts.filter((p) => {
+      if (selectedBrand !== "all" && p.brand !== selectedBrand) return false;
+      if (selectedType !== "all" && extractACType(p) !== selectedType) return false;
+      return true;
+    });
+    preFiltered.forEach((p) => {
       const btu = extractBTU(p);
       if (btu) btus.add(btu);
     });
     return [...btus].sort((a, b) => a - b);
+  }, [acProducts, selectedBrand, selectedType]);
+
+  const availableTypes = useMemo(() => {
+    const types = new Set<string>();
+    const brandFiltered = selectedBrand === "all" ? acProducts : acProducts.filter((p) => p.brand === selectedBrand);
+    brandFiltered.forEach((p) => {
+      const t = extractACType(p);
+      if (t) types.add(t);
+    });
+    return [...types].sort();
   }, [acProducts, selectedBrand]);
 
   const selectedProduct = filteredProducts.find((p) => p.id === selectedProductId) || filteredProducts[0] || null;
@@ -70,6 +118,8 @@ const ACOptionsModal = ({ open, onClose, products, initialProduct, onConfirm }: 
       onClose();
     }
   };
+
+  const showInferenceBanner = inferredBrand && selectedBrand === inferredBrand;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -82,6 +132,16 @@ const ACOptionsModal = ({ open, onClose, products, initialProduct, onConfirm }: 
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Inference banner */}
+          {showInferenceBanner && (
+            <div className="flex items-center gap-2 rounded-md bg-primary/10 border border-primary/20 px-3 py-2">
+              <Info className="h-3.5 w-3.5 text-primary shrink-0" />
+              <p className="text-[11px] text-foreground">
+                Based on your quote, suggesting <span className="font-semibold">{inferredBrand}</span> products. Change brand below if needed.
+              </p>
+            </div>
+          )}
+
           {/* Brand */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Brand</label>
@@ -97,6 +157,24 @@ const ACOptionsModal = ({ open, onClose, products, initialProduct, onConfirm }: 
               </SelectContent>
             </Select>
           </div>
+
+          {/* Type */}
+          {availableTypes.length > 0 && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Unit Type</label>
+              <Select value={selectedType} onValueChange={(v) => { setSelectedType(v); setSelectedProductId(""); }}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="All types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {availableTypes.map((t) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* BTU */}
           <div className="space-y-1.5">
@@ -177,3 +255,15 @@ const ACOptionsModal = ({ open, onClose, products, initialProduct, onConfirm }: 
 };
 
 export default ACOptionsModal;
+
+// Export helper for use in QuoteBuilderTab
+export function detectACType(p: PaletteProduct): string | null {
+  const desc = `${p.description || ""} ${p.short_name || ""} ${p.product_code || ""}`.toLowerCase();
+  if (desc.includes("wall") || desc.includes("split") || desc.includes("hi-wall") || desc.includes("hi wall")) return "Wall Mount";
+  if (desc.includes("cassette")) return "Cassette";
+  if (desc.includes("ducted") || desc.includes("duct")) return "Ducted";
+  if (desc.includes("floor")) return "Floor Standing";
+  if (desc.includes("ceiling")) return "Ceiling";
+  if (desc.includes("portable")) return "Portable";
+  return null;
+}
