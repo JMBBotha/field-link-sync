@@ -82,7 +82,8 @@ function DraggableProductCard({
   onProductClick?: (p: PaletteProduct) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: product.id,
+    id: `palette-${product.id}`,
+    data: { product },
   });
 
   const price = product.selling_price || product.cost_incl_vat || 0;
@@ -146,18 +147,6 @@ function DraggableProductCard({
             </Button>
           </div>
 
-          {/* Click overlay for AC products to open options modal */}
-          {(product.product_category === "Air Conditioning") && onProductClick && (
-            <button
-              className="absolute inset-0 z-10 opacity-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                onProductClick(product);
-              }}
-              onPointerDown={(e) => e.stopPropagation()}
-              aria-label="Open product options"
-            />
-          )}
         </div>
       </HoverCardTrigger>
       <HoverCardContent side="right" className="w-64 text-xs space-y-1.5">
