@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Basket } from "../QuoteBuilderTab";
 import { generateQuoteBuilderPDF } from "@/lib/quoteBuilderPDF";
+import { getProductDisplayName } from "./productDisplayUtils";
 
 interface QuoteSummaryPanelProps {
   baskets: Basket[];
@@ -72,7 +73,7 @@ const QuoteSummaryPanel = ({ baskets }: QuoteSummaryPanelProps) => {
         items: b.items.map((i) => ({
           productId: i.product.id,
           productCode: i.product.product_code,
-          productName: `${i.product.brand || ""} ${i.product.short_name || i.product.product_code}`.trim(),
+          productName: getProductDisplayName(i.product),
           quantity: i.quantity,
           unitPrice: i.product.selling_price || i.product.cost_incl_vat || 0,
           category: i.product.product_category,

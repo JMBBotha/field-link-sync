@@ -1,6 +1,7 @@
 import type { PaletteProduct } from "../QuoteBuilderTab";
 import { getCategoryIcon, getCategoryBg } from "./ProductPalette";
 import { Badge } from "@/components/ui/badge";
+import { getProductDisplayName } from "./productDisplayUtils";
 
 const DragOverlayCard = ({ product }: { product: PaletteProduct }) => {
   const price = product.selling_price || product.cost_incl_vat || 0;
@@ -13,9 +14,9 @@ const DragOverlayCard = ({ product }: { product: PaletteProduct }) => {
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-xs font-semibold truncate">
-          {product.brand} {product.short_name || product.product_code}
+          {getProductDisplayName(product)}
         </p>
-        <p className="text-[10px] text-muted-foreground truncate">{product.product_code}</p>
+        <p className="text-[10px] font-mono font-medium truncate text-primary/80">{product.product_code}</p>
       </div>
       <Badge variant="secondary" className="text-xs font-bold shrink-0">
         {price > 0 ? `R${price.toLocaleString("en-ZA")}` : "POR"}

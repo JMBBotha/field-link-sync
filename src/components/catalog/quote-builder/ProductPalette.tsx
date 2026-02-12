@@ -11,6 +11,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import type { PaletteProduct } from "../QuoteBuilderTab";
+import { getProductDisplayName } from "./productDisplayUtils";
 
 const LS_FAVORITES_KEY = "quote-builder-favorites";
 
@@ -106,9 +107,9 @@ function DraggableProductCard({
           {/* Product info */}
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold truncate leading-tight text-foreground">
-              {product.brand || ""} {product.short_name || product.product_code}
+              {getProductDisplayName(product)}
             </p>
-            <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+            <p className="text-[10px] font-mono font-medium truncate mt-0.5 text-primary/80">
               {product.product_code}
             </p>
             <div className="flex items-center gap-1.5 mt-1">
@@ -164,9 +165,9 @@ function DraggableProductCard({
           <div className={`rounded-md p-1 ${catBg}`}>
             {getCategoryIcon(product.product_category, "h-3.5 w-3.5")}
           </div>
-          <p className="font-semibold">{product.brand} {product.short_name || product.product_code}</p>
+          <p className="font-semibold">{getProductDisplayName(product)}</p>
         </div>
-        <p className="text-muted-foreground">{product.product_code}</p>
+        <p className="font-mono font-medium text-primary/80">{product.product_code}</p>
         <div className="flex justify-between">
           <span>Cost excl.</span>
           <span className="font-medium">R{(product.cost_excl_vat || 0).toLocaleString("en-ZA")}</span>
