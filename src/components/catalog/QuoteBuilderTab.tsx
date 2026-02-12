@@ -33,12 +33,16 @@ export interface PaletteProduct {
   is_pinned: boolean;
   pin_order: number | null;
   supplier_name: string;
+  price_per_metre: number | null;
+  sold_in_length: boolean;
+  unit_length: number | null;
 }
 
 export interface BasketItem {
   instanceId: string;
   product: PaletteProduct;
   quantity: number;
+  length?: number; // metres for length-based items
 }
 
 export interface Basket {
@@ -65,7 +69,7 @@ const QuoteBuilderTab = () => {
     queryKey: ["quote-builder-products"],
     queryFn: async () => {
       const { data, error } = await (supabase.from("supplier_products") as any)
-        .select("id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, suppliers(name)")
+        .select("id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, suppliers(name)")
         .or("archived.is.null,archived.eq.false")
         .order("is_pinned", { ascending: false })
         .order("pin_order", { ascending: true, nullsFirst: false })
@@ -76,6 +80,9 @@ const QuoteBuilderTab = () => {
         ...p,
         product_category: p.product_category || p.category || "",
         supplier_name: p.suppliers?.name || "",
+        price_per_metre: p.price_per_metre || null,
+        sold_in_length: p.sold_in_length || false,
+        unit_length: p.unit_length || null,
       })) as PaletteProduct[];
     },
     staleTime: 60000,
@@ -142,6 +149,15 @@ const QuoteBuilderTab = () => {
         if (basket.id !== basketId) return basket;
         const existing = basket.items.find((i) => i.product.id === product.id);
         if (existing) {
+          if (product.sold_in_length && product.price_per_metre) {
+            // For length items, add 1m more
+            return {
+              ...basket,
+              items: basket.items.map((i) =>
+                i.product.id === product.id ? { ...i, length: (i.length || 1) + 1 } : i
+              ),
+            };
+          }
           return {
             ...basket,
             items: basket.items.map((i) =>
@@ -149,11 +165,17 @@ const QuoteBuilderTab = () => {
             ),
           };
         }
+        const isLengthItem = product.sold_in_length && !!product.price_per_metre;
         return {
           ...basket,
           items: [
             ...basket.items,
-            { instanceId: `${product.id}-${Date.now()}`, product, quantity: 1 },
+            {
+              instanceId: `${product.id}-${Date.now()}`,
+              product,
+              quantity: 1,
+              ...(isLengthItem ? { length: product.unit_length || 1 } : {}),
+            },
           ],
         };
       })
@@ -221,6 +243,22 @@ const QuoteBuilderTab = () => {
     );
   }, []);
 
+  const handleUpdateLength = useCallback((basketId: string, instanceId: string, length: number) => {
+    if (length < 0.1) return;
+    setBaskets((prev) =>
+      prev.map((b) =>
+        b.id === basketId
+          ? {
+              ...b,
+              items: b.items.map((i) =>
+                i.instanceId === instanceId ? { ...i, length } : i
+              ),
+            }
+          : b
+      )
+    );
+  }, []);
+
   const handleAddBasket = useCallback(() => {
     const id = `basket-${Date.now()}`;
     setBaskets((prev) => [...prev, { id, name: `Zone ${prev.length + 1}`, items: [] }]);
@@ -278,10 +316,12 @@ const QuoteBuilderTab = () => {
     return baskets.reduce(
       (sum, b) =>
         sum +
-        b.items.reduce(
-          (s, i) => s + (i.product.selling_price || i.product.cost_incl_vat || 0) * i.quantity,
-          0
-        ),
+        b.items.reduce((s, i) => {
+          if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
+            return s + i.product.price_per_metre * i.length;
+          }
+          return s + (i.product.selling_price || i.product.cost_incl_vat || 0) * i.quantity;
+        }, 0),
       0
     );
   }, [baskets]);
@@ -336,6 +376,7 @@ const QuoteBuilderTab = () => {
               onDuplicateBasket={handleDuplicateBasket}
               onApplyTemplate={handleApplyTemplate}
               onClearAll={handleClearAll}
+              onUpdateLength={handleUpdateLength}
               isDragging={isDragging}
             />
           </div>

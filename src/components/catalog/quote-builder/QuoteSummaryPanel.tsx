@@ -28,8 +28,12 @@ const QuoteSummaryPanel = ({ baskets }: QuoteSummaryPanelProps) => {
       let zoneTotal = 0;
       let zoneQty = 0;
       b.items.forEach((i) => {
-        const price = i.product.selling_price || i.product.cost_incl_vat || 0;
-        zoneTotal += price * i.quantity;
+        if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
+          zoneTotal += i.product.price_per_metre * i.length;
+        } else {
+          const price = i.product.selling_price || i.product.cost_incl_vat || 0;
+          zoneTotal += price * i.quantity;
+        }
         zoneQty += i.quantity;
       });
       totalItems += b.items.length;
@@ -75,6 +79,9 @@ const QuoteSummaryPanel = ({ baskets }: QuoteSummaryPanelProps) => {
           productCode: i.product.product_code,
           productName: getProductDisplayName(i.product),
           quantity: i.quantity,
+          length: i.length || null,
+          isLengthItem: i.product.sold_in_length && !!i.product.price_per_metre,
+          pricePerMetre: i.product.price_per_metre || null,
           unitPrice: i.product.selling_price || i.product.cost_incl_vat || 0,
           category: i.product.product_category,
         })),
