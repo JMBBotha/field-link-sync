@@ -131,8 +131,8 @@ const QuoteBuilderTab = () => {
   }, [products, categoryFilter, searchQuery]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
     useSensor(KeyboardSensor)
   );
 
@@ -175,7 +175,7 @@ const QuoteBuilderTab = () => {
     setActiveProduct(null);
     setIsDragging(false);
     const { active, over } = event;
-    console.log('onDragEnd', { activeId: active.id, overId: over?.id });
+    console.log('[DnD] onDragEnd', { activeId: active.id, overId: over?.id });
     if (!over) return;
 
     const product = (active.data.current as any)?.product as PaletteProduct | undefined;
@@ -265,16 +265,7 @@ const QuoteBuilderTab = () => {
     setBaskets(newBaskets);
   }, []);
 
-  const handleProductClick = useCallback((product: PaletteProduct) => {
-    if (product.product_category === "Air Conditioning") {
-      setAcModalProduct(product);
-      setAcModalOpen(true);
-    } else {
-      // Non-AC: add to first zone directly
-      const target = baskets[0];
-      if (target) addProductToBasket(target.id, product);
-    }
-  }, [baskets, addProductToBasket]);
+  // handleProductClick removed — cards are drag-only now
 
   const handleACConfirm = useCallback((product: PaletteProduct) => {
     const targetBasket = baskets[0];
@@ -329,7 +320,6 @@ const QuoteBuilderTab = () => {
               onSearchChange={setSearchQuery}
               categoryFilter={categoryFilter}
               onCategoryChange={setCategoryFilter}
-              onProductClick={handleProductClick}
               isDragging={isDragging}
             />
           </div>

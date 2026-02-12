@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import {
   Search, Snowflake, Droplets, Zap, BatteryCharging, Wrench, Package,
@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import type { PaletteProduct } from "../QuoteBuilderTab";
 import { getProductDisplayName } from "./productDisplayUtils";
 
@@ -26,6 +25,13 @@ function loadFavorites(): Set<string> {
 
 function saveFavorites(ids: Set<string>) {
   localStorage.setItem(LS_FAVORITES_KEY, JSON.stringify([...ids]));
+}
+
+function HighlightText({ text, searchTerm }: { text: string; searchTerm: string }) {
+  if (!searchTerm || !text) return <>{text}</>;
+  const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const parts = text.split(regex);
+  return <>{parts.map((part, i) => regex.test(part) ? <span key={i} className="bg-amber-400/40 rounded px-0.5">{part}</span> : part)}</>;
 }
 
 const CATEGORIES = [
@@ -67,7 +73,6 @@ interface ProductPaletteProps {
   onSearchChange: (q: string) => void;
   categoryFilter: string;
   onCategoryChange: (c: string) => void;
-  onProductClick?: (product: PaletteProduct) => void;
   isDragging?: boolean;
 }
 
@@ -75,57 +80,25 @@ function DraggableProductCard({
   product,
   isFavorite,
   onToggleFavorite,
-  onProductClick,
   isDraggingGlobal,
+  searchTerm,
 }: {
   product: PaletteProduct;
   isFavorite: boolean;
   onToggleFavorite: () => void;
-  onProductClick?: (p: PaletteProduct) => void;
   isDraggingGlobal?: boolean;
+  searchTerm: string;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `palette-${product.id}`,
     data: { product },
   });
 
-  const [ignoreClick, setIgnoreClick] = useState(false);
-  const dragAttemptRef = useRef(false);
-  const isDownRef = useRef(false);
   const [hoverOpen, setHoverOpen] = useState(false);
 
   useEffect(() => {
     if (isDragging || isDraggingGlobal) setHoverOpen(false);
   }, [isDragging, isDraggingGlobal]);
-
-  const customListeners = useMemo(() => {
-    if (!listeners) return {};
-    return {
-      ...listeners,
-      onPointerDown: (e: React.PointerEvent) => {
-        isDownRef.current = true;
-        dragAttemptRef.current = false;
-        if ((listeners as any).onPointerDown) (listeners as any).onPointerDown(e);
-      },
-      onPointerMove: (e: React.PointerEvent) => {
-        if (isDownRef.current) dragAttemptRef.current = true;
-        if ((listeners as any).onPointerMove) (listeners as any).onPointerMove(e);
-      },
-      onPointerUp: (e: React.PointerEvent) => {
-        if ((listeners as any).onPointerUp) (listeners as any).onPointerUp(e);
-        if (isDownRef.current && dragAttemptRef.current) {
-          setIgnoreClick(true);
-          setTimeout(() => setIgnoreClick(false), 0);
-        }
-        isDownRef.current = false;
-      },
-    };
-  }, [listeners]);
-
-  const handleClick = useCallback(() => {
-    if (ignoreClick || isDraggingGlobal) return;
-    onProductClick?.(product);
-  }, [ignoreClick, isDraggingGlobal, onProductClick, product]);
 
   const price = product.selling_price || product.cost_incl_vat || 0;
   const catBg = getCategoryBg(product.product_category);
@@ -136,8 +109,7 @@ function DraggableProductCard({
         <div
           ref={setNodeRef}
           {...attributes}
-          {...customListeners}
-          onClick={handleClick}
+          {...listeners}
           style={{ touchAction: 'none', pointerEvents: isDraggingGlobal && !isDragging ? 'none' : 'auto' }}
           className={`group relative flex items-start gap-2.5 rounded-lg border bg-card p-2.5 cursor-grab active:cursor-grabbing transition-all hover:shadow-md hover:border-primary/20 ${
             isDragging ? "opacity-40 shadow-lg scale-95" : ""
@@ -148,10 +120,10 @@ function DraggableProductCard({
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold truncate leading-tight text-foreground">
-              {getProductDisplayName(product)}
+              <HighlightText text={getProductDisplayName(product)} searchTerm={searchTerm} />
             </p>
             <p className="text-[10px] font-mono font-medium truncate mt-0.5 text-primary/80">
-              {product.product_code}
+              <HighlightText text={product.product_code} searchTerm={searchTerm} />
             </p>
             <div className="flex items-center gap-1.5 mt-1">
               <span className="text-xs font-bold text-foreground">
@@ -229,7 +201,6 @@ const ProductPalette = ({
   onSearchChange,
   categoryFilter,
   onCategoryChange,
-  onProductClick,
   isDragging: isDraggingGlobal,
 }: ProductPaletteProps) => {
   const [favorites, setFavorites] = useState<Set<string>>(loadFavorites);
@@ -247,7 +218,6 @@ const ProductPalette = ({
     });
   }, []);
 
-  // Filter by favorites if selected
   const filteredProducts = useMemo(() => {
     if (categoryFilter === "favorites") {
       return products.filter((p) => favorites.has(p.id));
@@ -255,7 +225,6 @@ const ProductPalette = ({
     return products;
   }, [products, categoryFilter, favorites]);
 
-  // Group products by category, favorites first
   const grouped = useMemo(() => {
     const favProds: PaletteProduct[] = [];
     const rest: PaletteProduct[] = [];
@@ -274,7 +243,6 @@ const ProductPalette = ({
 
   return (
     <div className="flex flex-col rounded-lg border bg-card overflow-hidden">
-      {/* Header */}
       <div className="p-3 border-b space-y-2">
         <h3 className="text-sm font-semibold text-foreground">Product Palette</h3>
         <div className="relative">
@@ -310,7 +278,6 @@ const ProductPalette = ({
         </div>
       </div>
 
-      {/* Product list */}
       <ScrollArea className="flex-1" style={{ maxHeight: "calc(100vh - 280px)" }}>
         <div className="p-2 space-y-3">
           {isLoading ? (
@@ -334,8 +301,8 @@ const ProductPalette = ({
                       product={product}
                       isFavorite={favorites.has(product.id)}
                       onToggleFavorite={() => toggleFavorite(product.id)}
-                      onProductClick={onProductClick}
                       isDraggingGlobal={isDraggingGlobal}
+                      searchTerm={searchQuery}
                     />
                   ))}
                 </div>
