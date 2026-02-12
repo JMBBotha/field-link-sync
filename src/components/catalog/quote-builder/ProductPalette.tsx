@@ -137,23 +137,28 @@ function DraggableProductCard({
             <div className="p-0.5 rounded">
               <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+            <button
+              type="button"
+              className="h-5 w-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-muted"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+              }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+              }}
               onClick={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
                 onToggleFavorite();
               }}
-              onPointerDown={(e) => e.stopPropagation()}
             >
               {isFavorite ? (
                 <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
               ) : (
                 <StarOff className="h-3 w-3 text-muted-foreground" />
               )}
-            </Button>
+            </button>
           </div>
 
         </div>
