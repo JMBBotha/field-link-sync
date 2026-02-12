@@ -1,21 +1,22 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, GripVertical, Search, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Search, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-const AC_TYPES = [
-  "Midwall Inverter", "Midwall Fixed Speed", "Cassette", "Ducted",
-  "Under Ceiling", "Floor Standing", "Portable",
+const BUNDLE_TYPES = [
+  { value: "piping_kit", label: "Piping Kit", desc: "Copper + Lagging" },
+  { value: "electrical_kit", label: "Electrical Kit", desc: "Cable + Drain" },
+  { value: "full_install_kit", label: "Full Install Kit", desc: "All materials" },
 ];
-const BTU_OPTIONS = [9000, 12000, 18000, 24000, 36000, 48000];
-const PIPE_OPTIONS = ["1/4 x 3/8", "1/4 x 1/2", "1/4 x 5/8", "3/8 x 3/4"];
 
 type BundleItemLocal = {
   id?: string;
@@ -23,15 +24,17 @@ type BundleItemLocal = {
   quantity: number;
   length_metres: number | null;
   is_length_item: boolean;
+  is_optional: boolean;
   notes: string;
   sort_order: number;
-  // joined product info
   description: string;
   product_code: string;
   cost_price: number;
   price_per_metre: number | null;
   sold_in_length: boolean;
   supplier_name?: string;
+  pipe_size?: string;
+  short_name?: string;
 };
 
 type Props = {
@@ -40,14 +43,11 @@ type Props = {
 };
 
 const BundleBuilder = ({ bundleId, onClose }: Props) => {
-  const queryClient = useQueryClient();
   const isEditing = !!bundleId;
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [acType, setAcType] = useState<string>("");
-  const [btuRating, setBtuRating] = useState<string>("");
-  const [pipeSize, setPipeSize] = useState<string>("");
+  const [bundleType, setBundleType] = useState("full_install_kit");
   const [items, setItems] = useState<BundleItemLocal[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -74,7 +74,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bundle_items")
-        .select("*, supplier_products(description, product_code, cost_price, price_per_metre, sold_in_length, suppliers(name))")
+        .select("*, supplier_products(description, product_code, cost_price, price_per_metre, sold_in_length, pipe_size, short_name, suppliers(name))")
         .eq("bundle_id", bundleId!)
         .order("sort_order");
       if (error) throw error;
@@ -86,9 +86,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
     if (existingBundle) {
       setName(existingBundle.name);
       setDescription(existingBundle.description || "");
-      setAcType(existingBundle.ac_type || "");
-      setBtuRating(existingBundle.btu_rating?.toString() || "");
-      setPipeSize(existingBundle.pipe_size || "");
+      setBundleType((existingBundle as any).bundle_type || "full_install_kit");
     }
   }, [existingBundle]);
 
@@ -100,6 +98,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
         quantity: item.quantity,
         length_metres: item.length_metres,
         is_length_item: item.is_length_item,
+        is_optional: item.is_optional ?? false,
         notes: item.notes || "",
         sort_order: item.sort_order,
         description: item.supplier_products?.description || "",
@@ -108,29 +107,34 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
         price_per_metre: item.supplier_products?.price_per_metre,
         sold_in_length: item.supplier_products?.sold_in_length || false,
         supplier_name: item.supplier_products?.suppliers?.name,
+        pipe_size: item.supplier_products?.pipe_size,
+        short_name: item.supplier_products?.short_name,
       })));
     }
   }, [existingItems]);
 
-  // Product search
+  // Product search — search product_code, description, AND short_name
   const { data: searchResults = [] } = useQuery({
     queryKey: ["bundle-product-search", search],
     enabled: search.length >= 2,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("supplier_products")
-        .select("id, description, product_code, cost_price, price_per_metre, sold_in_length, suppliers(name)")
+        .select("id, description, product_code, cost_price, price_per_metre, sold_in_length, pipe_size, short_name, suppliers(name)")
         .or("archived.is.null,archived.eq.false")
-        .or(`description.ilike.%${search}%,product_code.ilike.%${search}%`)
-        .limit(20);
-      if (error) throw error;
+        .or(`description.ilike.%${search}%,product_code.ilike.%${search}%,short_name.ilike.%${search}%`)
+        .limit(30);
+      if (error) {
+        console.error("[BundleSearch] query error:", error);
+        throw error;
+      }
+      console.log(`[BundleSearch] "${search}" → ${data?.length} results`);
       return data as any[];
     },
   });
 
   const addItem = (product: any) => {
-    const alreadyAdded = items.some(i => i.supplier_product_id === product.id);
-    if (alreadyAdded) {
+    if (items.some(i => i.supplier_product_id === product.id)) {
       toast.info("Item already in bundle");
       return;
     }
@@ -138,15 +142,18 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
       supplier_product_id: product.id,
       quantity: product.sold_in_length ? 1 : 1,
       length_metres: product.sold_in_length ? 4 : null,
-      is_length_item: product.sold_in_length,
+      is_length_item: product.sold_in_length || false,
+      is_optional: false,
       notes: "",
       sort_order: prev.length,
       description: product.description,
       product_code: product.product_code,
       cost_price: product.cost_price,
       price_per_metre: product.price_per_metre,
-      sold_in_length: product.sold_in_length,
+      sold_in_length: product.sold_in_length || false,
       supplier_name: product.suppliers?.name,
+      pipe_size: product.pipe_size,
+      short_name: product.short_name,
     }]);
     setPickerOpen(false);
     setSearch("");
@@ -160,12 +167,14 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
     setItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
   };
 
-  const subtotal = items.reduce((sum, item) => {
+  const getLineTotal = (item: BundleItemLocal) => {
     if (item.is_length_item && item.length_metres) {
-      return sum + item.length_metres * (item.price_per_metre || 0);
+      return item.length_metres * (item.price_per_metre || 0);
     }
-    return sum + item.quantity * item.cost_price;
-  }, 0);
+    return item.quantity * item.cost_price;
+  };
+
+  const bundleTotal = items.reduce((sum, item) => sum + getLineTotal(item), 0);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -175,19 +184,19 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
     setSaving(true);
     try {
       let bid: string;
-      const bundleData = {
+      const bundleData: any = {
         name: name.trim(),
         description: description.trim() || null,
-        ac_type: acType || null,
-        btu_rating: btuRating ? parseInt(btuRating) : null,
-        pipe_size: pipeSize || null,
+        bundle_type: bundleType,
+        ac_type: null,
+        btu_rating: null,
+        pipe_size: null,
       };
 
       if (isEditing) {
         const { error } = await supabase.from("installation_bundles").update(bundleData).eq("id", bundleId!);
         if (error) throw error;
         bid = bundleId!;
-        // Delete old items and re-insert
         await supabase.from("bundle_items").delete().eq("bundle_id", bid);
       } else {
         const { data, error } = await supabase.from("installation_bundles").insert(bundleData).select().single();
@@ -202,6 +211,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
           quantity: item.quantity,
           length_metres: item.length_metres,
           is_length_item: item.is_length_item,
+          is_optional: item.is_optional,
           notes: item.notes || null,
           sort_order: i,
         }));
@@ -231,40 +241,25 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
       <Card className="p-4 space-y-3">
         <div>
           <Label className="text-xs">Bundle Name *</Label>
-          <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Samsung 12K Midwall Install Kit" />
+          <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. 12K Midwall Piping Kit" />
         </div>
         <div>
           <Label className="text-xs">Description</Label>
           <Input value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional description" />
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <Label className="text-xs">AC Type</Label>
-            <Select value={acType} onValueChange={setAcType}>
-              <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-              <SelectContent>
-                {AC_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label className="text-xs">BTU Rating</Label>
-            <Select value={btuRating} onValueChange={setBtuRating}>
-              <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-              <SelectContent>
-                {BTU_OPTIONS.map(b => <SelectItem key={b} value={b.toString()}>{(b/1000).toFixed(0)}K</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label className="text-xs">Pipe Size</Label>
-            <Select value={pipeSize} onValueChange={setPipeSize}>
-              <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-              <SelectContent>
-                {PIPE_OPTIONS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+        <div>
+          <Label className="text-xs">Bundle Type</Label>
+          <Select value={bundleType} onValueChange={setBundleType}>
+            <SelectTrigger><SelectValue placeholder="Select type..." /></SelectTrigger>
+            <SelectContent>
+              {BUNDLE_TYPES.map(t => (
+                <SelectItem key={t.value} value={t.value}>
+                  <span>{t.label}</span>
+                  <span className="text-muted-foreground ml-1.5 text-xs">— {t.desc}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </Card>
 
@@ -286,27 +281,28 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-muted-foreground border-b">
-                  <th className="w-6"></th>
-                  <th className="text-left font-medium py-1.5">Product</th>
-                  <th className="text-right font-medium py-1.5 w-24">Qty / Length</th>
-                  <th className="text-right font-medium py-1.5 w-20">Unit Cost</th>
+                  <th className="text-left font-medium py-1.5 w-20">Code</th>
+                  <th className="text-left font-medium py-1.5">Description</th>
+                  <th className="text-right font-medium py-1.5 w-24">Length / Qty</th>
+                  <th className="text-right font-medium py-1.5 w-20">Cost/m</th>
                   <th className="text-right font-medium py-1.5 w-20">Line Total</th>
-                  <th className="text-left font-medium py-1.5 w-28 pl-2">Notes</th>
+                  <th className="text-center font-medium py-1.5 w-16">Optional</th>
                   <th className="w-8"></th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((item, idx) => {
                   const unitCost = item.is_length_item ? (item.price_per_metre || 0) : item.cost_price;
-                  const qtyOrLen = item.is_length_item ? (item.length_metres || 0) : item.quantity;
-                  const lineTotal = qtyOrLen * unitCost;
+                  const lineTotal = getLineTotal(item);
                   return (
                     <tr key={idx} className="border-b border-dashed">
-                      <td className="py-1.5 text-muted-foreground"><GripVertical className="h-3 w-3" /></td>
                       <td className="py-1.5">
-                        <div className="font-medium truncate max-w-[250px]">{item.description}</div>
-                        {item.supplier_name && (
-                          <span className="text-muted-foreground">{item.supplier_name}</span>
+                        <span className="font-mono text-[10px] text-muted-foreground">{item.product_code}</span>
+                      </td>
+                      <td className="py-1.5">
+                        <div className="font-medium truncate max-w-[220px] text-xs">{item.description?.slice(0, 50)}</div>
+                        {item.pipe_size && (
+                          <span className="text-[10px] text-muted-foreground">⌀ {item.pipe_size}</span>
                         )}
                       </td>
                       <td className="text-right py-1.5">
@@ -333,16 +329,14 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
                           />
                         )}
                       </td>
-                      <td className="text-right py-1.5">
+                      <td className="text-right py-1.5 text-muted-foreground">
                         R{unitCost.toFixed(2)}{item.is_length_item ? "/m" : ""}
                       </td>
                       <td className="text-right py-1.5 font-medium">R{lineTotal.toFixed(2)}</td>
-                      <td className="py-1.5 pl-2">
-                        <Input
-                          value={item.notes}
-                          onChange={e => updateItem(idx, "notes", e.target.value)}
-                          placeholder="note..."
-                          className="h-6 text-xs px-1"
+                      <td className="text-center py-1.5">
+                        <Checkbox
+                          checked={item.is_optional}
+                          onCheckedChange={(checked) => updateItem(idx, "is_optional", !!checked)}
                         />
                       </td>
                       <td className="py-1.5">
@@ -354,16 +348,14 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
                   );
                 })}
               </tbody>
+              <tfoot>
+                <tr className="border-t-2">
+                  <td colSpan={4} className="py-2 text-right font-semibold text-sm">Bundle Total:</td>
+                  <td className="py-2 text-right font-bold text-sm text-primary">R{bundleTotal.toFixed(2)}</td>
+                  <td colSpan={2}></td>
+                </tr>
+              </tfoot>
             </table>
-          </div>
-        )}
-
-        {items.length > 0 && (
-          <div className="flex justify-end mt-3 pt-2 border-t">
-            <div className="text-sm">
-              <span className="text-muted-foreground">Subtotal: </span>
-              <span className="font-semibold">R{subtotal.toFixed(2)}</span>
-            </div>
           </div>
         )}
       </Card>
@@ -387,7 +379,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
             <Input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search by code or description..."
+              placeholder="Search by code, name or description..."
               className="pl-9"
               autoFocus
             />
@@ -410,14 +402,21 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
                   onClick={() => addItem(p)}
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{p.description}</div>
-                    <div className="text-xs text-muted-foreground flex gap-2">
-                      <span>{p.product_code}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs text-muted-foreground shrink-0">{p.product_code}</span>
+                      <span className="font-medium truncate text-xs">{p.short_name || p.description?.slice(0, 40)}</span>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground flex gap-2 flex-wrap mt-0.5">
+                      {p.pipe_size && <span>⌀ {p.pipe_size}</span>}
                       {p.suppliers?.name && <span>• {p.suppliers.name}</span>}
-                      {p.sold_in_length && <span className="text-accent-foreground">📏 R{p.price_per_metre?.toFixed(2)}/m</span>}
+                      {p.sold_in_length && p.price_per_metre && (
+                        <Badge variant="outline" className="text-[9px] h-4 border-green-500/50 text-green-700 bg-green-500/10 px-1">
+                          📏 R{p.price_per_metre.toFixed(2)}/m
+                        </Badge>
+                      )}
                     </div>
                   </div>
-                  <span className="text-xs font-medium ml-2 shrink-0">R{p.cost_price.toFixed(2)}</span>
+                  <span className="text-xs font-medium ml-2 shrink-0">R{p.cost_price?.toFixed(2) || "0.00"}</span>
                 </div>
               ))
             )}

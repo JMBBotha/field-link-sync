@@ -149,6 +149,7 @@ export type Database = {
           created_at: string
           id: string
           is_length_item: boolean
+          is_optional: boolean
           length_metres: number | null
           notes: string | null
           quantity: number
@@ -160,6 +161,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_length_item?: boolean
+          is_optional?: boolean
           length_metres?: number | null
           notes?: string | null
           quantity?: number
@@ -171,6 +173,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_length_item?: boolean
+          is_optional?: boolean
           length_metres?: number | null
           notes?: string | null
           quantity?: number
@@ -642,6 +645,7 @@ export type Database = {
         Row: {
           ac_type: string | null
           btu_rating: number | null
+          bundle_type: string | null
           created_at: string
           description: string | null
           id: string
@@ -653,6 +657,7 @@ export type Database = {
         Insert: {
           ac_type?: string | null
           btu_rating?: number | null
+          bundle_type?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -664,6 +669,7 @@ export type Database = {
         Update: {
           ac_type?: string | null
           btu_rating?: number | null
+          bundle_type?: string | null
           created_at?: string
           description?: string | null
           id?: string
