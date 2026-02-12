@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import {
   Search, Snowflake, Droplets, Zap, BatteryCharging, Wrench, Package,
@@ -81,6 +81,7 @@ function DraggableProductCard({
   onToggleFavorite: () => void;
   onProductClick?: (p: PaletteProduct) => void;
 }) {
+  const gripRef = useRef<HTMLDivElement>(null);
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `palette-${product.id}`,
     data: { product },
@@ -94,9 +95,9 @@ function DraggableProductCard({
       <HoverCardTrigger asChild>
         <div
           ref={setNodeRef}
-          {...listeners}
           {...attributes}
-          className={`group relative flex items-start gap-2.5 rounded-lg border bg-card p-2.5 cursor-grab active:cursor-grabbing transition-all hover:shadow-md hover:border-primary/20 ${
+          onClick={() => onProductClick?.(product)}
+          className={`group relative flex items-start gap-2.5 rounded-lg border bg-card p-2.5 cursor-pointer transition-all hover:shadow-md hover:border-primary/20 ${
             isDragging ? "opacity-40 shadow-lg scale-95" : ""
           } ${product.is_pinned ? "border-primary/30" : ""}`}
         >
@@ -125,9 +126,16 @@ function DraggableProductCard({
             </div>
           </div>
 
-          {/* Grip + Favorite */}
+          {/* Grip (drag handle) + Favorite */}
           <div className="flex flex-col items-center gap-1 shrink-0">
-            <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
+            <div
+              ref={gripRef}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-muted"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
+            </div>
             <Button
               variant="ghost"
               size="icon"
@@ -264,7 +272,7 @@ const ProductPalette = ({
       </div>
 
       {/* Product list */}
-      <ScrollArea className="flex-1" style={{ maxHeight: 480 }}>
+      <ScrollArea className="flex-1" style={{ maxHeight: "calc(100vh - 280px)" }}>
         <div className="p-2 space-y-3">
           {isLoading ? (
             Array.from({ length: 6 }).map((_, i) => (
