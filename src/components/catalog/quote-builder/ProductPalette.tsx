@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import {
   Search, Snowflake, Droplets, Zap, BatteryCharging, Wrench, Package,
@@ -89,30 +89,63 @@ function DraggableProductCard({
     data: { product },
   });
 
+  const [ignoreClick, setIgnoreClick] = useState(false);
+  const dragAttemptRef = useRef(false);
+  const isDownRef = useRef(false);
+  const [hoverOpen, setHoverOpen] = useState(false);
+
+  useEffect(() => {
+    if (isDragging || isDraggingGlobal) setHoverOpen(false);
+  }, [isDragging, isDraggingGlobal]);
+
+  const customListeners = useMemo(() => {
+    if (!listeners) return {};
+    return {
+      ...listeners,
+      onPointerDown: (e: React.PointerEvent) => {
+        isDownRef.current = true;
+        dragAttemptRef.current = false;
+        if ((listeners as any).onPointerDown) (listeners as any).onPointerDown(e);
+      },
+      onPointerMove: (e: React.PointerEvent) => {
+        if (isDownRef.current) dragAttemptRef.current = true;
+        if ((listeners as any).onPointerMove) (listeners as any).onPointerMove(e);
+      },
+      onPointerUp: (e: React.PointerEvent) => {
+        if ((listeners as any).onPointerUp) (listeners as any).onPointerUp(e);
+        if (isDownRef.current && dragAttemptRef.current) {
+          setIgnoreClick(true);
+          setTimeout(() => setIgnoreClick(false), 0);
+        }
+        isDownRef.current = false;
+      },
+    };
+  }, [listeners]);
+
+  const handleClick = useCallback(() => {
+    if (ignoreClick || isDraggingGlobal) return;
+    onProductClick?.(product);
+  }, [ignoreClick, isDraggingGlobal, onProductClick, product]);
+
   const price = product.selling_price || product.cost_incl_vat || 0;
   const catBg = getCategoryBg(product.product_category);
 
   return (
-    <HoverCard openDelay={400} closeDelay={100} open={isDraggingGlobal ? false : undefined}>
+    <HoverCard openDelay={400} closeDelay={100} open={isDraggingGlobal ? false : hoverOpen} onOpenChange={setHoverOpen}>
       <HoverCardTrigger asChild>
         <div
           ref={setNodeRef}
           {...attributes}
-          {...listeners}
+          {...customListeners}
+          onClick={handleClick}
           style={{ touchAction: 'none', pointerEvents: isDraggingGlobal && !isDragging ? 'none' : 'auto' }}
-          onClick={() => {
-            if (!isDraggingGlobal) onProductClick?.(product);
-          }}
           className={`group relative flex items-start gap-2.5 rounded-lg border bg-card p-2.5 cursor-grab active:cursor-grabbing transition-all hover:shadow-md hover:border-primary/20 ${
             isDragging ? "opacity-40 shadow-lg scale-95" : ""
           } ${product.is_pinned ? "border-primary/30" : ""}`}
         >
-          {/* Category icon block */}
           <div className={`shrink-0 rounded-md p-1.5 ${catBg}`}>
             {getCategoryIcon(product.product_category, "h-4 w-4")}
           </div>
-
-          {/* Product info */}
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold truncate leading-tight text-foreground">
               {getProductDisplayName(product)}
@@ -131,8 +164,6 @@ function DraggableProductCard({
               )}
             </div>
           </div>
-
-          {/* Grip visual + Favorite */}
           <div className="flex flex-col items-center gap-1 shrink-0">
             <div className="p-0.5 rounded">
               <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
@@ -140,18 +171,9 @@ function DraggableProductCard({
             <button
               type="button"
               className="h-5 w-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-muted"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-              }}
-              onMouseDown={(e) => {
-                e.stopPropagation();
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                onToggleFavorite();
-              }}
+              onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+              onMouseDown={(e) => { e.stopPropagation(); }}
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); onToggleFavorite(); }}
             >
               {isFavorite ? (
                 <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
@@ -160,7 +182,6 @@ function DraggableProductCard({
               )}
             </button>
           </div>
-
         </div>
       </HoverCardTrigger>
       <HoverCardContent side="right" className="w-64 text-xs space-y-1.5">

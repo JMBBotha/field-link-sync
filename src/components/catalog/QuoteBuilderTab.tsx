@@ -175,6 +175,7 @@ const QuoteBuilderTab = () => {
     setActiveProduct(null);
     setIsDragging(false);
     const { active, over } = event;
+    console.log('onDragEnd', { activeId: active.id, overId: over?.id });
     if (!over) return;
 
     const product = (active.data.current as any)?.product as PaletteProduct | undefined;
