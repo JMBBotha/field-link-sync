@@ -315,8 +315,8 @@ const QuoteBuilderTab = () => {
         onDragEnd={handleDragEnd}
         onDragOver={handleDragOver}
       >
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4" style={{ minHeight: 500 }}>
-          <div className="lg:col-span-2 lg:max-h-[calc(100vh-280px)] lg:overflow-y-auto">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4" style={{ minHeight: 500 }}>
+          <div className="md:col-span-2 md:max-h-[calc(100vh-280px)] md:overflow-y-auto">
             <ProductPalette
               products={filteredProducts}
               isLoading={isLoading}
@@ -327,7 +327,7 @@ const QuoteBuilderTab = () => {
               onProductClick={handleProductClick}
             />
           </div>
-          <div className="lg:col-span-3 lg:max-h-[calc(100vh-280px)] lg:overflow-y-auto">
+          <div className="md:col-span-3 md:max-h-[calc(100vh-280px)] md:overflow-y-auto">
             <BasketCanvas
               baskets={baskets}
               allProducts={products}

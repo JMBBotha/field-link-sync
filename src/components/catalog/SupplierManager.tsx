@@ -30,7 +30,7 @@ interface Supplier {
 
 interface SupplierManagerProps {
   selectedSupplierId: string | null;
-  onSelectSupplier: (id: string) => void;
+  onSelectSupplier: (id: string | null) => void;
 }
 
 const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManagerProps) => {
@@ -88,12 +88,9 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
           .single();
         if (!error && data) {
           queryClient.invalidateQueries({ queryKey: ["suppliers"] });
-          onSelectSupplier(data.id);
         }
       };
       createDefault();
-    } else if (!isLoading && suppliers.length > 0 && !selectedSupplierId) {
-      onSelectSupplier(suppliers[0].id);
     }
   }, [isLoading, suppliers.length]);
 
@@ -210,7 +207,7 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
                             : "border-orange-500/50 text-orange-600"
                           : ""
                       }`}
-                      onClick={() => onSelectSupplier(s.id)}
+                      onClick={() => onSelectSupplier(selectedSupplierId === s.id ? null : s.id)}
                     >
                       {s.supplier_type === "consumables"
                         ? <Wrench className="h-3 w-3" />
