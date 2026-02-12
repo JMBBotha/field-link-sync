@@ -171,9 +171,20 @@ function DraggableProductCard({
             <button
               type="button"
               className="h-5 w-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-muted"
-              onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
-              onMouseDown={(e) => { e.stopPropagation(); }}
-              onClick={(e) => { e.stopPropagation(); e.preventDefault(); onToggleFavorite(); }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                e.nativeEvent.stopImmediatePropagation();
+              }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                e.nativeEvent.stopImmediatePropagation();
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onToggleFavorite();
+              }}
             >
               {isFavorite ? (
                 <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
