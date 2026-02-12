@@ -43,7 +43,9 @@ const AdminCatalogPage = () => {
         .or("archived.is.null,archived.eq.false");
       if (error) throw error;
 
-      const lengthRegex = /(\d+\.?\d*)\s*[Mm](?:\s|$|-)/;
+      // Match length in meters: after 'X' separator (e.g. "12.70X0.91X15.24M"), 
+      // or standalone number+M (e.g. "50M", "15M") but NOT MM (millimeters)
+      const lengthRegex = /(?:^|[X×x\s])(\d+\.?\d*)M(?:\s|$|-)/i;
       let updated = 0;
 
       for (const p of (products || [])) {
