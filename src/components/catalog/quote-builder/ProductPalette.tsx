@@ -1,5 +1,5 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { useDraggable, useDndContext } from "@dnd-kit/core";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useDraggable } from "@dnd-kit/core";
 import {
   Search, Snowflake, Droplets, Zap, BatteryCharging, Wrench, Package,
   GripVertical, Star, StarOff,
@@ -68,6 +68,7 @@ interface ProductPaletteProps {
   categoryFilter: string;
   onCategoryChange: (c: string) => void;
   onProductClick?: (product: PaletteProduct) => void;
+  isDragging?: boolean;
 }
 
 function DraggableProductCard({
@@ -75,15 +76,14 @@ function DraggableProductCard({
   isFavorite,
   onToggleFavorite,
   onProductClick,
+  isDraggingGlobal,
 }: {
   product: PaletteProduct;
   isFavorite: boolean;
   onToggleFavorite: () => void;
   onProductClick?: (p: PaletteProduct) => void;
+  isDraggingGlobal?: boolean;
 }) {
-  const gripRef = useRef<HTMLDivElement>(null);
-  const { active } = useDndContext();
-  const isAnyDragging = !!active;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `palette-${product.id}`,
     data: { product },
@@ -93,14 +93,17 @@ function DraggableProductCard({
   const catBg = getCategoryBg(product.product_category);
 
   return (
-    <HoverCard openDelay={400} closeDelay={100}>
+    <HoverCard openDelay={400} closeDelay={100} open={isDraggingGlobal ? false : undefined}>
       <HoverCardTrigger asChild>
         <div
           ref={setNodeRef}
           {...attributes}
-          style={{ pointerEvents: isAnyDragging ? 'none' : 'auto' }}
-          onClick={() => onProductClick?.(product)}
-          className={`group relative flex items-start gap-2.5 rounded-lg border bg-card p-2.5 cursor-pointer transition-all hover:shadow-md hover:border-primary/20 ${
+          {...listeners}
+          style={{ touchAction: 'none', pointerEvents: isDraggingGlobal && !isDragging ? 'none' : 'auto' }}
+          onClick={() => {
+            if (!isDraggingGlobal) onProductClick?.(product);
+          }}
+          className={`group relative flex items-start gap-2.5 rounded-lg border bg-card p-2.5 cursor-grab active:cursor-grabbing transition-all hover:shadow-md hover:border-primary/20 ${
             isDragging ? "opacity-40 shadow-lg scale-95" : ""
           } ${product.is_pinned ? "border-primary/30" : ""}`}
         >
@@ -129,15 +132,9 @@ function DraggableProductCard({
             </div>
           </div>
 
-          {/* Grip (drag handle) + Favorite */}
+          {/* Grip visual + Favorite */}
           <div className="flex flex-col items-center gap-1 shrink-0">
-            <div
-              ref={gripRef}
-              {...listeners}
-              className="cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-muted"
-              style={{ touchAction: 'none' }}
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="p-0.5 rounded">
               <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
             </div>
             <Button
@@ -196,6 +193,7 @@ const ProductPalette = ({
   categoryFilter,
   onCategoryChange,
   onProductClick,
+  isDragging: isDraggingGlobal,
 }: ProductPaletteProps) => {
   const [favorites, setFavorites] = useState<Set<string>>(loadFavorites);
 
@@ -300,6 +298,7 @@ const ProductPalette = ({
                       isFavorite={favorites.has(product.id)}
                       onToggleFavorite={() => toggleFavorite(product.id)}
                       onProductClick={onProductClick}
+                      isDraggingGlobal={isDraggingGlobal}
                     />
                   ))}
                 </div>
