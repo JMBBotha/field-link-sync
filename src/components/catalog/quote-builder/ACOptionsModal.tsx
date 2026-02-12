@@ -32,7 +32,7 @@ function extractBTU(p: PaletteProduct): number | null {
 
 function extractACType(p: PaletteProduct): string | null {
   const desc = `${p.description || ""} ${p.short_name || ""} ${p.product_code || ""}`.toLowerCase();
-  if (desc.includes("wall") || desc.includes("split") || desc.includes("hi-wall") || desc.includes("hi wall")) return "Wall Mount";
+  if (desc.includes("wall") || desc.includes("split") || desc.includes("hi-wall") || desc.includes("hi wall") || desc.includes(" mw ") || desc.includes("midwall") || desc.endsWith(" mw") || desc.endsWith("mw wf") || /\bmw\b/.test(desc)) return "Wall Mount";
   if (desc.includes("cassette")) return "Cassette";
   if (desc.includes("ducted") || desc.includes("duct")) return "Ducted";
   if (desc.includes("floor")) return "Floor Standing";
@@ -292,7 +292,7 @@ export default ACOptionsModal;
 // Export helper for use in QuoteBuilderTab
 export function detectACType(p: PaletteProduct): string | null {
   const desc = `${p.description || ""} ${p.short_name || ""} ${p.product_code || ""}`.toLowerCase();
-  if (desc.includes("wall") || desc.includes("split") || desc.includes("hi-wall") || desc.includes("hi wall")) return "Wall Mount";
+  if (desc.includes("wall") || desc.includes("split") || desc.includes("hi-wall") || desc.includes("hi wall") || desc.includes(" mw ") || desc.includes("midwall") || desc.endsWith(" mw") || desc.endsWith("mw wf") || /\bmw\b/.test(desc)) return "Wall Mount";
   if (desc.includes("cassette")) return "Cassette";
   if (desc.includes("ducted") || desc.includes("duct")) return "Ducted";
   if (desc.includes("floor")) return "Floor Standing";
