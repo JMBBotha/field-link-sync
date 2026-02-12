@@ -116,13 +116,13 @@ const QuoteBuilderTab = () => {
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      result = result.filter((p) =>
-        (p.product_code || "").toLowerCase().includes(q) ||
-        (p.short_name || "").toLowerCase().includes(q) ||
-        (p.brand || "").toLowerCase().includes(q) ||
-        (p.description || "").toLowerCase().includes(q) ||
-        (p.category || "").toLowerCase().includes(q)
-      );
+      result = result.filter((p) => {
+        const blob = [
+          p.product_code, p.short_name, p.brand,
+          p.description, p.category, p.product_category, p.supplier_name,
+        ].filter(Boolean).join(" ").toLowerCase();
+        return blob.includes(q);
+      });
     }
 
     return result;

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getCategoryIcon, getCategoryBg } from "./ProductPalette";
+import { getProductDisplayName } from "./productDisplayUtils";
 import ConsumablesSuggestionPanel from "./ConsumablesSuggestionPanel";
 import ZoneTemplateSelector from "./ZoneTemplateSelector";
 import type { Basket, BasketItem, PaletteProduct } from "../QuoteBuilderTab";
@@ -175,10 +176,10 @@ function BasketItemCard({
       </div>
       <div className="min-w-0 flex-1">
         <p className="font-medium truncate">
-          {item.product.brand} {item.product.short_name || item.product.product_code}
+          {getProductDisplayName(item.product)}
         </p>
-        <p className="text-[10px] text-muted-foreground">
-          R{price.toLocaleString("en-ZA")} each
+        <p className="text-[10px] font-mono font-medium text-primary/80 truncate">
+          {item.product.product_code}
         </p>
       </div>
       <div className="flex items-center gap-0.5 shrink-0">

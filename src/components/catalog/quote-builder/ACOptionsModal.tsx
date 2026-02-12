@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Snowflake, Info } from "lucide-react";
 import type { PaletteProduct } from "../QuoteBuilderTab";
+import { getProductDisplayName } from "./productDisplayUtils";
 
 interface ACOptionsModalProps {
   open: boolean;
@@ -215,8 +216,8 @@ const ACOptionsModal = ({ open, onClose, products, initialProduct, onConfirm, in
                       onClick={() => setSelectedProductId(p.id)}
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate">{p.brand} {p.short_name || p.product_code}</p>
-                        <p className="text-[10px] text-muted-foreground truncate">{p.product_code}</p>
+                        <p className="font-medium truncate">{getProductDisplayName(p)}</p>
+                        <p className="text-[10px] font-mono font-medium text-primary/80 truncate">{p.product_code}</p>
                       </div>
                       <span className="font-bold shrink-0">
                         {price > 0 ? `R${price.toLocaleString("en-ZA")}` : "POR"}
@@ -231,7 +232,7 @@ const ACOptionsModal = ({ open, onClose, products, initialProduct, onConfirm, in
           {/* Selected product preview */}
           {selectedProduct && (
             <div className="rounded-md bg-muted/50 p-2.5 text-xs space-y-1">
-              <p className="font-semibold text-foreground">{selectedProduct.brand} {selectedProduct.short_name || selectedProduct.product_code}</p>
+              <p className="font-semibold text-foreground">{getProductDisplayName(selectedProduct)}</p>
               <p className="text-muted-foreground line-clamp-2">{selectedProduct.description}</p>
               <div className="flex gap-2 mt-1">
                 <Badge variant="outline" className="text-[10px]">{selectedProduct.supplier_name}</Badge>
