@@ -266,7 +266,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
     queryFn: async () => {
       try {
         let query = (supabase.from("supplier_products") as any)
-          .select("*, suppliers!inner(name)");
+          .select("*, suppliers(name)");
         if (supplierId) query = query.eq("supplier_id", supplierId);
         if (!showArchived) query = query.or("archived.is.null,archived.eq.false");
         query = query.limit(2000);
