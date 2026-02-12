@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Search, Upload, GitCompare, Package, Snowflake, Wrench, Layers, Zap, BatteryCharging, Droplets, PenTool } from "lucide-react";
 import SupplierManager from "@/components/catalog/SupplierManager";
+import BrandDiscountsSection from "@/components/catalog/BrandDiscountsSection";
 import SupplierProductImporter from "@/components/catalog/SupplierProductImporter";
 import ProductCatalogBrowser from "@/components/catalog/ProductCatalogBrowser";
 import SupplierComparison from "@/components/catalog/SupplierComparison";
@@ -104,6 +105,8 @@ const AdminCatalogPage = () => {
         selectedSupplierId={selectedSupplierId}
         onSelectSupplier={setSelectedSupplierId}
       />
+
+      <BrandDiscountsSection />
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>

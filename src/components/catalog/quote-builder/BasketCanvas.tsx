@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
-import { Plus, Trash2, Pencil, Check, Minus, Package, ShoppingBag, Copy } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, Minus, Package, ShoppingBag, Copy, Ruler } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import { getCategoryIcon, getCategoryBg } from "./ProductPalette";
 import { getProductDisplayName } from "./productDisplayUtils";
 import ConsumablesSuggestionPanel from "./ConsumablesSuggestionPanel";
@@ -18,6 +19,7 @@ interface BasketCanvasProps {
   onRemoveBasket: (id: string) => void;
   onRemoveItem: (basketId: string, instanceId: string) => void;
   onUpdateQuantity: (basketId: string, instanceId: string, qty: number) => void;
+  onUpdateLength: (basketId: string, instanceId: string, length: number) => void;
   onAddProductToBasket: (basketId: string, product: PaletteProduct) => void;
   onDuplicateBasket: (id: string) => void;
   onApplyTemplate: (zones: string[]) => void;
@@ -33,6 +35,7 @@ function DroppableBasket({
   onDuplicate,
   onRemoveItem,
   onUpdateQuantity,
+  onUpdateLength,
   onAddProduct,
   isDragActive,
 }: {
@@ -43,6 +46,7 @@ function DroppableBasket({
   onDuplicate: () => void;
   onRemoveItem: (instanceId: string) => void;
   onUpdateQuantity: (instanceId: string, qty: number) => void;
+  onUpdateLength: (instanceId: string, length: number) => void;
   onAddProduct: (product: PaletteProduct) => void;
   isDragActive?: boolean;
 }) {
@@ -50,10 +54,12 @@ function DroppableBasket({
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(basket.name);
 
-  const subtotal = basket.items.reduce(
-    (s, i) => s + (i.product.selling_price || i.product.cost_incl_vat || 0) * i.quantity,
-    0
-  );
+  const subtotal = basket.items.reduce((s, i) => {
+    if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
+      return s + i.product.price_per_metre * i.length;
+    }
+    return s + (i.product.selling_price || i.product.cost_incl_vat || 0) * i.quantity;
+  }, 0);
 
   const totalQty = basket.items.reduce((s, i) => s + i.quantity, 0);
 
@@ -150,6 +156,7 @@ function DroppableBasket({
                 item={item}
                 onRemove={() => onRemoveItem(item.instanceId)}
                 onUpdateQuantity={(qty) => onUpdateQuantity(item.instanceId, qty)}
+                onUpdateLength={(len) => onUpdateLength(item.instanceId, len)}
               />
             ))}
             {/* Consumables auto-suggest */}
@@ -169,13 +176,17 @@ function BasketItemCard({
   item,
   onRemove,
   onUpdateQuantity,
+  onUpdateLength,
 }: {
   item: BasketItem;
   onRemove: () => void;
   onUpdateQuantity: (qty: number) => void;
+  onUpdateLength: (length: number) => void;
 }) {
-  const price = item.product.selling_price || item.product.cost_incl_vat || 0;
-  const lineTotal = price * item.quantity;
+  const isLengthItem = item.product.sold_in_length && !!item.product.price_per_metre;
+  const price = isLengthItem
+    ? (item.product.price_per_metre || 0) * (item.length || 1)
+    : (item.product.selling_price || item.product.cost_incl_vat || 0) * item.quantity;
   const catBg = getCategoryBg(item.product.product_category);
 
   return (
@@ -187,32 +198,54 @@ function BasketItemCard({
         <p className="font-medium truncate">
           {getProductDisplayName(item.product)}
         </p>
-        <p className="text-[10px] font-mono font-medium text-primary/80 truncate">
-          {item.product.product_code}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-[10px] font-mono font-medium text-primary/80 truncate">
+            {item.product.product_code}
+          </p>
+          {isLengthItem && (
+            <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 gap-0.5 border-orange-400/40 text-orange-600">
+              <Ruler className="h-2 w-2" />
+              R{(item.product.price_per_metre || 0).toFixed(2)}/m
+            </Badge>
+          )}
+        </div>
       </div>
-      <div className="flex items-center gap-0.5 shrink-0">
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-5 w-5"
-          onClick={() => onUpdateQuantity(item.quantity - 1)}
-          disabled={item.quantity <= 1}
-        >
-          <Minus className="h-2.5 w-2.5" />
-        </Button>
-        <span className="w-6 text-center font-semibold text-xs">{item.quantity}</span>
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-5 w-5"
-          onClick={() => onUpdateQuantity(item.quantity + 1)}
-        >
-          <Plus className="h-2.5 w-2.5" />
-        </Button>
-      </div>
+      {isLengthItem ? (
+        <div className="flex items-center gap-1 shrink-0">
+          <Input
+            type="number"
+            min={0.1}
+            step={0.5}
+            value={item.length || 1}
+            onChange={(e) => onUpdateLength(parseFloat(e.target.value) || 0.1)}
+            className="h-6 w-14 text-xs text-center px-1"
+          />
+          <span className="text-[10px] text-muted-foreground">m</span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-0.5 shrink-0">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-5 w-5"
+            onClick={() => onUpdateQuantity(item.quantity - 1)}
+            disabled={item.quantity <= 1}
+          >
+            <Minus className="h-2.5 w-2.5" />
+          </Button>
+          <span className="w-6 text-center font-semibold text-xs">{item.quantity}</span>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-5 w-5"
+            onClick={() => onUpdateQuantity(item.quantity + 1)}
+          >
+            <Plus className="h-2.5 w-2.5" />
+          </Button>
+        </div>
+      )}
       <span className="text-xs font-bold w-16 text-right shrink-0">
-        R{lineTotal.toLocaleString("en-ZA")}
+        R{price.toLocaleString("en-ZA")}
       </span>
       <Button
         variant="ghost"
@@ -234,6 +267,7 @@ const BasketCanvas = ({
   onRemoveBasket,
   onRemoveItem,
   onUpdateQuantity,
+  onUpdateLength,
   onAddProductToBasket,
   onDuplicateBasket,
   onApplyTemplate,
@@ -276,6 +310,7 @@ const BasketCanvas = ({
                 onDuplicate={() => onDuplicateBasket(basket.id)}
                 onRemoveItem={(instanceId) => onRemoveItem(basket.id, instanceId)}
                 onUpdateQuantity={(instanceId, qty) => onUpdateQuantity(basket.id, instanceId, qty)}
+                onUpdateLength={(instanceId, len) => onUpdateLength(basket.id, instanceId, len)}
                 onAddProduct={(product) => onAddProductToBasket(basket.id, product)}
                 isDragActive={isDragging}
               />

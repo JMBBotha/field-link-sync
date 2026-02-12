@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import {
   Search, Snowflake, Droplets, Zap, BatteryCharging, Wrench, Package,
-  GripVertical, Star, StarOff,
+  GripVertical, Star, StarOff, Ruler,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -125,10 +125,16 @@ function DraggableProductCard({
             <p className="text-[10px] font-mono font-medium truncate mt-0.5 text-primary/80">
               <HighlightText text={product.product_code} searchTerm={searchTerm} />
             </p>
-            <div className="flex items-center gap-1.5 mt-1">
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               <span className="text-xs font-bold text-foreground">
                 {price > 0 ? `R${price.toLocaleString("en-ZA")}` : "POR"}
               </span>
+              {product.sold_in_length && product.price_per_metre && (
+                <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 gap-0.5 border-orange-400/40 text-orange-600">
+                  <Ruler className="h-2 w-2" />
+                  R{product.price_per_metre.toFixed(2)}/m
+                </Badge>
+              )}
               {product.supplier_name && (
                 <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5">
                   {product.supplier_name}

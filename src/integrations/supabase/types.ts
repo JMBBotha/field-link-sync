@@ -122,6 +122,27 @@ export type Database = {
         }
         Relationships: []
       }
+      brand_discounts: {
+        Row: {
+          applied_at: string
+          brand: string
+          discount_percentage: number
+          id: string
+        }
+        Insert: {
+          applied_at?: string
+          brand: string
+          discount_percentage?: number
+          id?: string
+        }
+        Update: {
+          applied_at?: string
+          brand?: string
+          discount_percentage?: number
+          id?: string
+        }
+        Relationships: []
+      }
       bundle_items: {
         Row: {
           bundle_id: string
@@ -2365,6 +2386,7 @@ export type Database = {
           last_quoted_at: string | null
           min_cut_length: number
           model_range: string | null
+          original_cost_excl_vat: number | null
           pin_order: number
           pipe_size: string | null
           price_per_metre: number | null
@@ -2408,6 +2430,7 @@ export type Database = {
           last_quoted_at?: string | null
           min_cut_length?: number
           model_range?: string | null
+          original_cost_excl_vat?: number | null
           pin_order?: number
           pipe_size?: string | null
           price_per_metre?: number | null
@@ -2451,6 +2474,7 @@ export type Database = {
           last_quoted_at?: string | null
           min_cut_length?: number
           model_range?: string | null
+          original_cost_excl_vat?: number | null
           pin_order?: number
           pipe_size?: string | null
           price_per_metre?: number | null
