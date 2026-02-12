@@ -288,10 +288,14 @@ const QuoteBuilderTab = () => {
 
   const totalItems = baskets.reduce((s, b) => s + b.items.reduce((qs, i) => qs + i.quantity, 0), 0);
 
+  const handleClearAll = useCallback(() => {
+    setBaskets([]);
+  }, []);
+
   return (
     <div className="space-y-3">
-      {/* Total bar */}
-      <div className="flex items-center justify-between rounded-lg border bg-card p-3">
+      {/* Sticky total bar */}
+      <div className="flex items-center justify-between rounded-lg border bg-card p-3 sticky top-0 z-10 shadow-sm">
         <span className="text-sm font-medium text-muted-foreground">
           Quote Total ({totalItems} items across {baskets.length} zones)
         </span>
@@ -328,6 +332,7 @@ const QuoteBuilderTab = () => {
             onAddProductToBasket={addProductToBasket}
             onDuplicateBasket={handleDuplicateBasket}
             onApplyTemplate={handleApplyTemplate}
+            onClearAll={handleClearAll}
           />
         </div>
 

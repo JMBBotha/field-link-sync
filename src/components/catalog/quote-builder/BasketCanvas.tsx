@@ -20,6 +20,7 @@ interface BasketCanvasProps {
   onAddProductToBasket: (basketId: string, product: PaletteProduct) => void;
   onDuplicateBasket: (id: string) => void;
   onApplyTemplate: (zones: string[]) => void;
+  onClearAll: () => void;
 }
 
 function DroppableBasket({
@@ -226,12 +227,18 @@ const BasketCanvas = ({
   onAddProductToBasket,
   onDuplicateBasket,
   onApplyTemplate,
+  onClearAll,
 }: BasketCanvasProps) => {
   return (
     <div className="flex flex-col rounded-lg border bg-muted/30 overflow-hidden">
       <div className="flex items-center justify-between p-3 border-b">
         <h3 className="text-sm font-semibold text-foreground">Quote Canvas</h3>
         <div className="flex items-center gap-1.5">
+          {baskets.length > 0 && (
+            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive hover:text-destructive" onClick={onClearAll}>
+              <Trash2 className="h-3 w-3" /> Clear All
+            </Button>
+          )}
           <ZoneTemplateSelector onApplyTemplate={onApplyTemplate} />
           <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={onAddBasket}>
             <Plus className="h-3 w-3" /> Add Zone

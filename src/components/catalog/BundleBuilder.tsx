@@ -120,8 +120,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
       const { data, error } = await supabase
         .from("supplier_products")
         .select("id, description, product_code, cost_price, price_per_metre, sold_in_length, suppliers(name)")
-        .eq("is_active", true)
-        .eq("archived", false)
+        .or("archived.is.null,archived.eq.false")
         .or(`description.ilike.%${search}%,product_code.ilike.%${search}%`)
         .limit(20);
       if (error) throw error;

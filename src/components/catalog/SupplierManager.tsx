@@ -65,7 +65,7 @@ const SupplierManager = ({ selectedSupplierId, onSelectSupplier }: SupplierManag
     queryFn: async () => {
       const { data, error } = await (supabase.from("supplier_products") as any)
         .select("supplier_id")
-        .eq("archived", false);
+        .or("archived.is.null,archived.eq.false");
       if (error) throw error;
       const counts: Record<string, number> = {};
       (data || []).forEach((row: any) => {

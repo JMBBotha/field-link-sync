@@ -248,7 +248,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
       .from("supplier_products" as any)
       .select("id, product_code, cost_price, archived")
       .eq("supplier_id", supplierId)
-      .eq("archived", false);
+      .or("archived.is.null,archived.eq.false");
 
     const existingMap = new Map<string, { id: string; cost_price: number }>();
     (existing || []).forEach((e: any) => {
