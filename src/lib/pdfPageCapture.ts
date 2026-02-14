@@ -41,37 +41,18 @@ export async function capturePdfPages(
   supplierName: string,
   onProgress?: (current: number, total: number) => void
 ): Promise<CaptureResult> {
+  console.log("[PDF Capture] Loading pdfjs...");
   const pdfjsLib = await loadPdfJs();
+  console.log("[PDF Capture] Reading file ArrayBuffer...");
   const arrayBuffer = await file.arrayBuffer();
+  console.log(`[PDF Capture] ArrayBuffer size: ${arrayBuffer.byteLength}`);
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  console.log(`[PDF Capture] PDF loaded, ${pdf.numPages} pages`);
   const numPages = pdf.numPages;
 
   let pagesStored = 0;
   let errors = 0;
-  const SCALE = 1.5; // balance between quality and size
-
-  // Upload original PDF to storage for live text extraction
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const pdfStoragePath = `${supplierName}/${safeName}`;
-  let pdfPublicUrl: string | null = null;
-  try {
-    const { error: pdfUploadErr } = await supabase.storage
-      .from("supplier-pdf-pages")
-      .upload(pdfStoragePath, file, {
-        contentType: "application/pdf",
-        upsert: true,
-      });
-    if (!pdfUploadErr) {
-      const { data: pdfUrlData } = supabase.storage
-        .from("supplier-pdf-pages")
-        .getPublicUrl(pdfStoragePath);
-      pdfPublicUrl = pdfUrlData.publicUrl;
-    } else {
-      console.warn("[PDF Capture] Could not upload original PDF:", pdfUploadErr);
-    }
-  } catch (e) {
-    console.warn("[PDF Capture] PDF upload failed:", e);
-  }
+  const SCALE = 1.5;
 
   for (let pageNum = 1; pageNum <= numPages; pageNum++) {
     onProgress?.(pageNum, numPages);
@@ -123,7 +104,6 @@ export async function capturePdfPages(
         pdf_filename: file.name,
         page_number: pageNum,
         page_image_url: urlData.publicUrl,
-        pdf_storage_path: pdfPublicUrl,
       });
 
       if (insertError) {
@@ -140,6 +120,35 @@ export async function capturePdfPages(
     } catch (err) {
       console.error(`[PDF Capture] Error processing page ${pageNum}:`, err);
       errors++;
+    }
+  }
+
+  // Optional: upload original PDF for live text extraction overlays (non-blocking)
+  if (pagesStored > 0) {
+    try {
+      const safePdfName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const pdfStoragePath = `${supplierName}/${safePdfName}`;
+      const { error: pdfUploadErr } = await supabase.storage
+        .from("supplier-pdf-pages")
+        .upload(pdfStoragePath, file, {
+          contentType: "application/pdf",
+          upsert: true,
+        });
+      if (!pdfUploadErr) {
+        const { data: pdfUrlData } = supabase.storage
+          .from("supplier-pdf-pages")
+          .getPublicUrl(pdfStoragePath);
+        // Update all page records with the PDF storage path
+        await (supabase.from("supplier_pdf_pages") as any)
+          .update({ pdf_storage_path: pdfUrlData.publicUrl })
+          .eq("supplier_id", supplierName)
+          .eq("pdf_filename", file.name);
+        console.log("[PDF Capture] Original PDF linked for live overlays");
+      } else {
+        console.warn("[PDF Capture] Optional PDF upload failed (non-blocking):", pdfUploadErr);
+      }
+    } catch (e) {
+      console.warn("[PDF Capture] Optional PDF upload error (non-blocking):", e);
     }
   }
 

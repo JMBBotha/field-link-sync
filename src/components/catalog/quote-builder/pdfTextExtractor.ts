@@ -6,11 +6,17 @@
  *
  * Requires the original PDF URL (pdf_storage_path on supplier_pdf_pages).
  */
-import * as pdfjsLib from "pdfjs-dist";
 import type { PaletteProduct } from "../QuoteBuilderTab";
 
-// Configure worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+/** Lazily load pdfjs-dist to avoid top-level import conflicts with CDN version */
+let _pdfjsLib: any = null;
+async function getPdfjsLib() {
+  if (_pdfjsLib) return _pdfjsLib;
+  const lib = await import("pdfjs-dist");
+  lib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${lib.version}/pdf.worker.min.mjs`;
+  _pdfjsLib = lib;
+  return lib;
+}
 
 export interface ExtractedTextItem {
   text: string;
@@ -42,9 +48,10 @@ export async function extractTextItemsFromPdfPage(
   pageWidth: number;
   pageHeight: number;
 }> {
+  const pdfjsLib = await getPdfjsLib();
   const loadingTask = pdfjsLib.getDocument({
     url: pdfUrl,
-    cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/cmaps/",
+    cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
     cMapPacked: true,
   });
 
