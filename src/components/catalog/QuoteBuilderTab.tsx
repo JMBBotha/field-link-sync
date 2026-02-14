@@ -21,8 +21,10 @@ import type { PaletteBundle } from "./quote-builder/ProductPalette";
 import VisualCatalogPanel from "./quote-builder/VisualCatalogPanel";
 import BasketCanvas from "./quote-builder/BasketCanvas";
 import DragOverlayCard from "./quote-builder/DragOverlayCard";
+import FloatingDropZoneStrip from "./quote-builder/FloatingDropZoneStrip";
 import ACOptionsModal, { detectACType } from "./quote-builder/ACOptionsModal";
 import QuoteSummaryPanel from "./quote-builder/QuoteSummaryPanel";
+import { toast } from "@/hooks/use-toast";
 // favorites now derived from is_pinned on product data
 import { useProductUsageStats } from "@/hooks/useProductUsageStats";
 import { allTermsMatchBlob } from "./searchSynonyms";
@@ -336,25 +338,28 @@ const QuoteBuilderTab = () => {
     if (!over) return;
 
     const overId = String(over.id);
-    let targetBasketId: string | null = null;
+    let targetBasket: Basket | null = null;
     for (const basket of baskets) {
       if (basket.id === overId) {
-        targetBasketId = basket.id;
+        targetBasket = basket;
         break;
       }
     }
-    if (!targetBasketId) return;
+    if (!targetBasket) return;
 
     // Check if it's a bundle drop
     const bundleData = (active.data.current as any)?.bundle;
     if (bundleData) {
-      addBundleToBasket(targetBasketId, bundleData);
+      addBundleToBasket(targetBasket.id, bundleData);
+      toast({ title: `Added bundle "${bundleData.name}" to ${targetBasket.name}` });
       return;
     }
 
     const product = (active.data.current as any)?.product as PaletteProduct | undefined;
     if (!product) return;
-    addProductToBasket(targetBasketId, product);
+    addProductToBasket(targetBasket.id, product);
+    const displayName = product.short_name || product.product_code;
+    toast({ title: `Added ${displayName} to ${targetBasket.name}` });
   }, [baskets, addProductToBasket, addBundleToBasket]);
 
   const handleRemoveItem = useCallback((basketId: string, instanceId: string) => {
@@ -542,12 +547,16 @@ const QuoteBuilderTab = () => {
           {activeProduct ? <DragOverlayCard product={activeProduct} /> : null}
         </DragOverlay>
 
+        {/* Floating drop zone strip visible when dragging while Visual Catalog is open */}
+        <FloatingDropZoneStrip baskets={baskets} visible={isDragging && visualPanelOpen} />
+
         <VisualCatalogPanel
           open={visualPanelOpen}
           onClose={() => setVisualPanelOpen(false)}
           baskets={baskets}
           onAddProductToBasket={addProductToBasket}
           products={products}
+          isDragging={isDragging}
         />
       </DndContext>
 
