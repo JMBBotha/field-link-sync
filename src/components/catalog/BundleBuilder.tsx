@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { allTermsMatchBlob } from "./searchSynonyms";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -139,7 +140,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
       const filtered = (data || []).filter(p => {
         const blob = [p.product_code, p.short_name, p.description, p.brand, p.category, p.suppliers?.name]
           .filter(Boolean).join(" ").toLowerCase();
-        return terms.every(t => blob.includes(t));
+        return allTermsMatchBlob(terms, blob);
       });
 
       console.log(`[BundleSearch] "${search}" → DB: ${data?.length}, after multi-term filter: ${filtered.length}`);
