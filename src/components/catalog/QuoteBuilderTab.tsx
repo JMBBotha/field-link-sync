@@ -18,6 +18,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import ProductPalette from "./quote-builder/ProductPalette";
 import type { PaletteBundle } from "./quote-builder/ProductPalette";
+import VisualCatalogPanel from "./quote-builder/VisualCatalogPanel";
 import BasketCanvas from "./quote-builder/BasketCanvas";
 import DragOverlayCard from "./quote-builder/DragOverlayCard";
 import ACOptionsModal, { detectACType } from "./quote-builder/ACOptionsModal";
@@ -86,6 +87,7 @@ const QuoteBuilderTab = () => {
   const [acModalOpen, setAcModalOpen] = useState(false);
   const [acModalProduct, setAcModalProduct] = useState<PaletteProduct | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [visualPanelOpen, setVisualPanelOpen] = useState(false);
 
   const queryClient = useQueryClient();
   const { usageMap, trackUsage } = useProductUsageStats();
@@ -514,6 +516,7 @@ const QuoteBuilderTab = () => {
               bundlesLoading={bundlesLoading}
               baskets={baskets}
               onAddProductToBasket={addProductToBasket}
+              onOpenVisualPanel={() => setVisualPanelOpen(true)}
             />
           </div>
           <div ref={canvasRef} className="md:col-span-3 md:max-h-[calc(100vh-280px)] md:overflow-y-auto">
@@ -541,6 +544,13 @@ const QuoteBuilderTab = () => {
       </DndContext>
 
       <QuoteSummaryPanel baskets={baskets} />
+
+      <VisualCatalogPanel
+        open={visualPanelOpen}
+        onClose={() => setVisualPanelOpen(false)}
+        baskets={baskets}
+        onAddProductToBasket={addProductToBasket}
+      />
 
       <ACOptionsModal
         open={acModalOpen}
