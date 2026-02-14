@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import {
   Search, Snowflake, Droplets, Zap, BatteryCharging, Wrench, Package,
-  GripVertical, Star, StarOff, Ruler,
+  GripVertical, Star, StarOff, Ruler, ChevronDown, ChevronRight,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -11,21 +11,6 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { Skeleton } from "@/components/ui/skeleton";
 import type { PaletteProduct } from "../QuoteBuilderTab";
 import { getProductDisplayName } from "./productDisplayUtils";
-
-const LS_FAVORITES_KEY = "quote-builder-favorites";
-
-function loadFavorites(): Set<string> {
-  try {
-    const raw = localStorage.getItem(LS_FAVORITES_KEY);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
-  } catch {
-    return new Set();
-  }
-}
-
-function saveFavorites(ids: Set<string>) {
-  localStorage.setItem(LS_FAVORITES_KEY, JSON.stringify([...ids]));
-}
 
 function HighlightText({ text, searchTerm }: { text: string; searchTerm: string }) {
   if (!searchTerm || !text) return <>{text}</>;
@@ -66,6 +51,99 @@ export function getCategoryBg(category: string) {
   }
 }
 
+// ── Bundle card in palette ──
+interface PaletteBundle {
+  id: string;
+  name: string;
+  description: string | null;
+  bundle_type: string | null;
+  items: Array<{
+    id: string;
+    supplier_product_id: string;
+    quantity: number;
+    length_metres: number | null;
+    is_length_item: boolean;
+    is_optional: boolean;
+    product: PaletteProduct | null;
+  }>;
+}
+
+function BundlePaletteCard({
+  bundle,
+  searchTerm,
+  isDraggingGlobal,
+}: {
+  bundle: PaletteBundle;
+  searchTerm: string;
+  isDraggingGlobal?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `bundle-${bundle.id}`,
+    data: { bundle, type: "bundle" },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      style={{ touchAction: "none", pointerEvents: isDraggingGlobal && !isDragging ? "none" : "auto" }}
+      className={`group rounded-lg border bg-card p-2 cursor-grab active:cursor-grabbing transition-all hover:shadow-md hover:border-primary/20 ${
+        isDragging ? "opacity-40 scale-95" : ""
+      } border-primary/20 bg-primary/5`}
+    >
+      <div className="flex items-center gap-2">
+        <Package className="h-4 w-4 text-primary shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold truncate text-foreground">
+            <HighlightText text={bundle.name} searchTerm={searchTerm} />
+          </p>
+          <div className="flex items-center gap-1 mt-0.5">
+            <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5">
+              {bundle.bundle_type || "Kit"}
+            </Badge>
+            <span className="text-[10px] text-muted-foreground">
+              {bundle.items.length} items
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
+          <button
+            type="button"
+            className="h-5 w-5 flex items-center justify-center"
+            data-no-dnd="true"
+            onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); e.nativeEvent.stopImmediatePropagation(); }}
+            onMouseDown={(e) => { e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); }}
+            onTouchStart={(e) => { e.stopPropagation(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              setExpanded(!expanded);
+            }}
+          >
+            {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          </button>
+        </div>
+      </div>
+      {expanded && (
+        <div className="mt-1.5 pl-6 space-y-0.5 text-[10px] text-muted-foreground border-t pt-1.5">
+          {bundle.items.map((item) => (
+            <div key={item.id} className="flex justify-between">
+              <span className="truncate">{item.product?.product_code || "?"} — {item.product ? getProductDisplayName(item.product) : "Unknown"}</span>
+              <span className="shrink-0 ml-1">
+                {item.is_length_item ? `${item.length_metres || 0}m` : `×${item.quantity}`}
+                {item.is_optional && " (opt)"}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface ProductPaletteProps {
   products: PaletteProduct[];
   isLoading: boolean;
@@ -74,6 +152,11 @@ interface ProductPaletteProps {
   categoryFilter: string;
   onCategoryChange: (c: string) => void;
   isDragging?: boolean;
+  favorites: Set<string>;
+  onToggleFavorite: (id: string) => void;
+  usageMap: Record<string, number>;
+  bundles?: PaletteBundle[];
+  bundlesLoading?: boolean;
 }
 
 function DraggableProductCard({
@@ -82,12 +165,14 @@ function DraggableProductCard({
   onToggleFavorite,
   isDraggingGlobal,
   searchTerm,
+  usageCount,
 }: {
   product: PaletteProduct;
   isFavorite: boolean;
   onToggleFavorite: () => void;
   isDraggingGlobal?: boolean;
   searchTerm: string;
+  usageCount: number;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `palette-${product.id}`,
@@ -113,7 +198,9 @@ function DraggableProductCard({
           style={{ touchAction: 'none', pointerEvents: isDraggingGlobal && !isDragging ? 'none' : 'auto' }}
           className={`group relative flex items-start gap-2.5 rounded-lg border bg-card p-2.5 cursor-grab active:cursor-grabbing transition-all hover:shadow-md hover:border-primary/20 ${
             isDragging ? "opacity-40 shadow-lg scale-95" : ""
-          } ${product.is_pinned ? "border-primary/30" : ""}`}
+          } ${product.is_pinned ? "border-primary/30" : ""} ${
+            isFavorite ? "border-l-2 border-l-amber-400 bg-amber-50/50 dark:bg-amber-950/20" : ""
+          }`}
         >
           <div className={`shrink-0 rounded-md p-1.5 ${catBg}`}>
             {getCategoryIcon(product.product_category, "h-4 w-4")}
@@ -140,6 +227,11 @@ function DraggableProductCard({
                   {product.supplier_name}
                 </Badge>
               )}
+              {usageCount > 5 && (
+                <Badge variant="secondary" className="text-[8px] px-1 py-0 h-3.5">
+                  Used {usageCount}x
+                </Badge>
+              )}
             </div>
           </div>
           <div className="flex flex-col items-center gap-1 shrink-0">
@@ -148,6 +240,7 @@ function DraggableProductCard({
             </div>
             <button
               type="button"
+              data-no-dnd="true"
               className="h-5 w-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-muted"
               onPointerDown={(e) => {
                 e.stopPropagation();
@@ -157,6 +250,10 @@ function DraggableProductCard({
               onMouseDown={(e) => {
                 e.stopPropagation();
                 e.nativeEvent.stopImmediatePropagation();
+              }}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+                (e.nativeEvent as any).stopImmediatePropagation?.();
               }}
               onClick={(e) => {
                 e.stopPropagation();
@@ -208,22 +305,12 @@ const ProductPalette = ({
   categoryFilter,
   onCategoryChange,
   isDragging: isDraggingGlobal,
+  favorites,
+  onToggleFavorite,
+  usageMap,
+  bundles = [],
+  bundlesLoading = false,
 }: ProductPaletteProps) => {
-  const [favorites, setFavorites] = useState<Set<string>>(loadFavorites);
-
-  useEffect(() => {
-    saveFavorites(favorites);
-  }, [favorites]);
-
-  const toggleFavorite = useCallback((id: string) => {
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
-
   const filteredProducts = useMemo(() => {
     if (categoryFilter === "favorites") {
       return products.filter((p) => favorites.has(p.id));
@@ -231,21 +318,42 @@ const ProductPalette = ({
     return products;
   }, [products, categoryFilter, favorites]);
 
-  const grouped = useMemo(() => {
-    const favProds: PaletteProduct[] = [];
-    const rest: PaletteProduct[] = [];
-    filteredProducts.forEach((p) => {
-      if (favorites.has(p.id)) favProds.push(p);
-      else rest.push(p);
+  // Sort: favorites first, then by usage count DESC, then alphabetical
+  const sortedProducts = useMemo(() => {
+    return [...filteredProducts].sort((a, b) => {
+      const aFav = favorites.has(a.id) ? 1 : 0;
+      const bFav = favorites.has(b.id) ? 1 : 0;
+      if (aFav !== bFav) return bFav - aFav;
+      const aUsage = usageMap[a.id] || 0;
+      const bUsage = usageMap[b.id] || 0;
+      if (aUsage !== bUsage) return bUsage - aUsage;
+      return (getProductDisplayName(a)).localeCompare(getProductDisplayName(b));
     });
-    const sorted = [...favProds, ...rest];
-    return sorted.reduce<Record<string, PaletteProduct[]>>((acc, p) => {
+  }, [filteredProducts, favorites, usageMap]);
+
+  const grouped = useMemo(() => {
+    return sortedProducts.reduce<Record<string, PaletteProduct[]>>((acc, p) => {
       const key = p.product_category || "Other";
       if (!acc[key]) acc[key] = [];
       acc[key].push(p);
       return acc;
     }, {});
-  }, [filteredProducts, favorites]);
+  }, [sortedProducts]);
+
+  // Filter bundles by search
+  const filteredBundles = useMemo(() => {
+    if (categoryFilter === "favorites") return [];
+    if (!searchQuery.trim()) return bundles;
+    const q = searchQuery.toLowerCase();
+    return bundles.filter((b) => {
+      if (b.name.toLowerCase().includes(q)) return true;
+      return b.items.some((item) => {
+        if (!item.product) return false;
+        const blob = [item.product.product_code, item.product.short_name, item.product.description].filter(Boolean).join(" ").toLowerCase();
+        return blob.includes(q);
+      });
+    });
+  }, [bundles, searchQuery, categoryFilter]);
 
   return (
     <div className="flex flex-col rounded-lg border bg-card overflow-hidden">
@@ -286,11 +394,30 @@ const ProductPalette = ({
 
       <ScrollArea className="flex-1" style={{ maxHeight: "calc(100vh - 280px)" }}>
         <div className="p-2 space-y-3">
+          {/* Bundles section */}
+          {filteredBundles.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-1">
+                📦 Bundles ({filteredBundles.length})
+              </p>
+              <div className="space-y-1.5">
+                {filteredBundles.map((bundle) => (
+                  <BundlePaletteCard
+                    key={bundle.id}
+                    bundle={bundle}
+                    searchTerm={searchQuery}
+                    isDraggingGlobal={isDraggingGlobal}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {isLoading ? (
             Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-16 w-full rounded-lg" />
             ))
-          ) : filteredProducts.length === 0 ? (
+          ) : sortedProducts.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-8">
               {categoryFilter === "favorites" ? "No favorites yet — star products to add them" : "No products found"}
             </p>
@@ -306,9 +433,10 @@ const ProductPalette = ({
                       key={product.id}
                       product={product}
                       isFavorite={favorites.has(product.id)}
-                      onToggleFavorite={() => toggleFavorite(product.id)}
+                      onToggleFavorite={() => onToggleFavorite(product.id)}
                       isDraggingGlobal={isDraggingGlobal}
                       searchTerm={searchQuery}
+                      usageCount={usageMap[product.id] || 0}
                     />
                   ))}
                 </div>
@@ -321,4 +449,5 @@ const ProductPalette = ({
   );
 };
 
+export { type PaletteBundle };
 export default ProductPalette;
