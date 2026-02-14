@@ -1,8 +1,10 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { X, ChevronLeft, ChevronRight, Plus, Cpu, Wind, Ruler } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Plus, Cpu, Wind, Ruler, Upload, ImageIcon, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -23,6 +25,7 @@ interface Product {
   quote_usage_count: number;
   short_name?: string | null;
   rrp?: number | null;
+  image_url?: string | null;
 }
 
 interface Props {
@@ -57,6 +60,45 @@ const ProductSlideOverPanel = ({
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
+
+  const { toast } = useToast();
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [localImageUrl, setLocalImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLocalImageUrl(product?.image_url || null);
+  }, [product?.id, product?.image_url]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !product) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Image too large", description: "Max 5MB", variant: "destructive" });
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${product.id}.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("product-images")
+        .upload(path, file, { contentType: file.type, upsert: true });
+      if (uploadErr) throw uploadErr;
+      const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
+      const imageUrl = urlData.publicUrl;
+      await (supabase.from("supplier_products") as any)
+        .update({ image_url: imageUrl })
+        .eq("id", product.id);
+      setLocalImageUrl(imageUrl);
+      toast({ title: "Image uploaded" });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploadingImage(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  };
 
   if (!product) return null;
 
@@ -106,6 +148,32 @@ const ProductSlideOverPanel = ({
               <p className="text-lg font-bold text-primary mb-1">{product.short_name}</p>
             )}
             <p className="text-base font-mono font-semibold">{product.product_code}</p>
+          </div>
+
+          {/* Product Image */}
+          <div className="flex items-center gap-3">
+            {localImageUrl ? (
+              <div className="w-24 h-24 rounded-lg overflow-hidden border bg-muted/20 shrink-0">
+                <img src={localImageUrl} alt="" className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="w-24 h-24 rounded-lg border border-dashed bg-muted/10 flex items-center justify-center shrink-0">
+                <ImageIcon className="h-8 w-8 text-muted-foreground/30" />
+              </div>
+            )}
+            <div>
+              <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs gap-1"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={uploadingImage}
+              >
+                {uploadingImage ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                {localImageUrl ? "Replace Image" : "Upload Image"}
+              </Button>
+            </div>
           </div>
 
           {/* Description */}
