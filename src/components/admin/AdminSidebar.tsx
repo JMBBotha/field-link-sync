@@ -27,6 +27,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -103,6 +104,7 @@ const AdminSidebar = ({
     {
       title: "Operations",
       items: [
+        { path: "/admin/suppliers", label: "Suppliers", icon: Building2 },
         { path: "/admin/catalog", label: "Catalog", icon: ShoppingBag },
         { path: "/admin/maintenance", label: "Maintenance", icon: CalendarDays },
         { path: "/admin/inventory", label: "Inventory", icon: Package, badge: lowStockCount > 0 ? lowStockCount : undefined },

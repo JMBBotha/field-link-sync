@@ -2468,6 +2468,97 @@ export type Database = {
           },
         ]
       }
+      supplier_contacts: {
+        Row: {
+          contact_name: string
+          created_at: string
+          department: string | null
+          email: string | null
+          id: string
+          is_primary: boolean
+          location_branch: string | null
+          mobile: string | null
+          phone: string | null
+          role_title: string | null
+          supplier_id: string
+          updated_at: string
+        }
+        Insert: {
+          contact_name: string
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          id?: string
+          is_primary?: boolean
+          location_branch?: string | null
+          mobile?: string | null
+          phone?: string | null
+          role_title?: string | null
+          supplier_id: string
+          updated_at?: string
+        }
+        Update: {
+          contact_name?: string
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          id?: string
+          is_primary?: boolean
+          location_branch?: string | null
+          mobile?: string | null
+          phone?: string | null
+          role_title?: string | null
+          supplier_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_contacts_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_documents: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_type: string | null
+          id: string
+          storage_path: string
+          supplier_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_type?: string | null
+          id?: string
+          storage_path: string
+          supplier_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_type?: string | null
+          id?: string
+          storage_path?: string
+          supplier_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_documents_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supplier_pdf_pages: {
         Row: {
           id: string
@@ -2650,6 +2741,7 @@ export type Database = {
       }
       suppliers: {
         Row: {
+          company_name: string | null
           contact_email: string | null
           contact_name: string | null
           contact_phone: string | null
@@ -2658,17 +2750,24 @@ export type Database = {
           default_vat_rate: number
           id: string
           is_active: boolean
+          logo_url: string | null
           name: string
           notes: string | null
+          physical_address: string | null
+          postal_address: string | null
           price_includes_markup: boolean
           price_includes_vat: boolean
+          registration_number: string | null
           supplier_discount_percent: number
           supplier_markup_percent: number
           supplier_type: string
+          trading_name: string | null
           updated_at: string
+          vat_number: string | null
           website: string | null
         }
         Insert: {
+          company_name?: string | null
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
@@ -2677,17 +2776,24 @@ export type Database = {
           default_vat_rate?: number
           id?: string
           is_active?: boolean
+          logo_url?: string | null
           name: string
           notes?: string | null
+          physical_address?: string | null
+          postal_address?: string | null
           price_includes_markup?: boolean
           price_includes_vat?: boolean
+          registration_number?: string | null
           supplier_discount_percent?: number
           supplier_markup_percent?: number
           supplier_type?: string
+          trading_name?: string | null
           updated_at?: string
+          vat_number?: string | null
           website?: string | null
         }
         Update: {
+          company_name?: string | null
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
@@ -2696,14 +2802,20 @@ export type Database = {
           default_vat_rate?: number
           id?: string
           is_active?: boolean
+          logo_url?: string | null
           name?: string
           notes?: string | null
+          physical_address?: string | null
+          postal_address?: string | null
           price_includes_markup?: boolean
           price_includes_vat?: boolean
+          registration_number?: string | null
           supplier_discount_percent?: number
           supplier_markup_percent?: number
           supplier_type?: string
+          trading_name?: string | null
           updated_at?: string
+          vat_number?: string | null
           website?: string | null
         }
         Relationships: []

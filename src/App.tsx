@@ -38,6 +38,7 @@ import AdminAdvancedReportsPage from "./pages/admin/AdminAdvancedReportsPage";
 import AdminTeamPage from "./pages/admin/AdminTeamPage";
 import AdminBillingPage from "./pages/admin/AdminBillingPage";
 import AdminInvoiceTemplatesPage from "./pages/admin/AdminInvoiceTemplatesPage";
+import AdminSuppliersPage from "./pages/admin/AdminSuppliersPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -94,6 +95,7 @@ const App = () => (
                 <Route path="settings" element={<AdminSettingsPage />} />
                 <Route path="team" element={<AdminTeamPage />} />
                 <Route path="billing" element={<AdminBillingPage />} />
+                <Route path="suppliers" element={<AdminSuppliersPage />} />
               </Route>
 
               {/* Redirects from old standalone routes */}

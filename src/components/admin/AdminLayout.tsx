@@ -68,6 +68,7 @@ const AdminLayout = () => {
     "/admin/settings": "Settings",
     "/admin/team": "Team Management",
     "/admin/billing": "Billing & Subscription",
+    "/admin/suppliers": "Supplier Database",
   };
   const pageTitle = pageTitles[location.pathname] || "Admin Dashboard";
 
