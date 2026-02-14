@@ -547,6 +547,7 @@ const QuoteBuilderTab = () => {
           onClose={() => setVisualPanelOpen(false)}
           baskets={baskets}
           onAddProductToBasket={addProductToBasket}
+          products={products}
         />
       </DndContext>
 
