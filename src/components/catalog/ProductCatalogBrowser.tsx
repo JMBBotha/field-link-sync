@@ -840,7 +840,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
                     className={`h-6 w-6 ${isPinned ? "text-amber-500" : "text-muted-foreground"}`}
                     onClick={(e) => { e.stopPropagation(); togglePinMutation.mutate({ productId: product.id, isPinned }); }}
                   >
-                    <Star className={`h-3 w-3 ${isPinned ? "fill-current" : ""}`} />
+                    <Star className={`h-3 w-3 ${isPinned ? "fill-amber-400 text-amber-400" : ""}`} />
                   </Button>
                 </div>
               </div>
@@ -983,7 +983,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
                         className={`h-7 w-7 ${isPinned ? "text-amber-500" : "text-muted-foreground"}`}
                         onClick={(e) => { e.stopPropagation(); togglePinMutation.mutate({ productId: product.id, isPinned }); }}
                       >
-                        <Star className={`h-3.5 w-3.5 ${isPinned ? "fill-current" : ""}`} />
+                        <Star className={`h-3.5 w-3.5 ${isPinned ? "fill-amber-400 text-amber-400" : ""}`} />
                       </Button>
                       {(product as any).archived ? (
                         <Button size="sm" variant="outline"
