@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import {
   Search, Snowflake, Droplets, Zap, BatteryCharging, Wrench, Package,
-  GripVertical, Star, StarOff, Ruler, ChevronDown, ChevronRight, Image, List,
+  GripVertical, Star, StarOff, Ruler, ChevronDown, ChevronRight, Image,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,6 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { Skeleton } from "@/components/ui/skeleton";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import { getProductDisplayName } from "./productDisplayUtils";
-import VisualCatalogView from "./VisualCatalogView";
 
 function HighlightText({ text, searchTerm }: { text: string; searchTerm: string }) {
   if (!searchTerm || !text) return <>{text}</>;
@@ -160,6 +159,7 @@ interface ProductPaletteProps {
   bundlesLoading?: boolean;
   baskets?: Basket[];
   onAddProductToBasket?: (basketId: string, product: PaletteProduct) => void;
+  onOpenVisualPanel?: () => void;
 }
 
 function DraggableProductCard({
@@ -315,8 +315,8 @@ const ProductPalette = ({
   bundlesLoading = false,
   baskets = [],
   onAddProductToBasket,
+  onOpenVisualPanel,
 }: ProductPaletteProps) => {
-  const [viewMode, setViewMode] = useState<"list" | "visual">("list");
   const filteredProducts = useMemo(() => {
     if (categoryFilter === "favorites") {
       return products.filter((p) => favorites.has(p.id));
@@ -366,29 +366,18 @@ const ProductPalette = ({
       <div className="p-3 border-b space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-foreground">Product Palette</h3>
-          <div className="flex items-center gap-0.5 rounded-md border bg-muted/30 p-0.5">
+          {onOpenVisualPanel && (
             <button
-              className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors ${
-                viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-              onClick={() => setViewMode("list")}
-            >
-              <List className="h-3 w-3" />
-              List
-            </button>
-            <button
-              className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors ${
-                viewMode === "visual" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-              onClick={() => setViewMode("visual")}
+              className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors border bg-muted/30 text-muted-foreground hover:text-foreground hover:bg-muted"
+              onClick={onOpenVisualPanel}
             >
               <Image className="h-3 w-3" />
               Visual
             </button>
-          </div>
+          )}
         </div>
 
-        {viewMode === "list" && (
+        {(
           <>
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
@@ -425,15 +414,7 @@ const ProductPalette = ({
         )}
       </div>
 
-      {viewMode === "visual" ? (
-        <ScrollArea className="flex-1" style={{ maxHeight: "calc(100vh - 280px)" }}>
-          <VisualCatalogView
-            baskets={baskets}
-            onAddProductToBasket={onAddProductToBasket || (() => {})}
-          />
-        </ScrollArea>
-      ) : (
-        <ScrollArea className="flex-1" style={{ maxHeight: "calc(100vh - 280px)" }}>
+      <ScrollArea className="flex-1" style={{ maxHeight: "calc(100vh - 280px)" }}>
           <div className="p-2 space-y-3">
             {/* Bundles section */}
             {filteredBundles.length > 0 && (
@@ -486,7 +467,6 @@ const ProductPalette = ({
             )}
           </div>
         </ScrollArea>
-      )}
     </div>
   );
 };
