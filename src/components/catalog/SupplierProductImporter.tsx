@@ -560,68 +560,113 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
   // ─── Apply diff import ───
   const handleApplyDiff = async () => {
     setImportingDiff(true); setError(null); setProgress(0);
-    const activeRows = diffRows.filter(r => r.action !== "unchanged");
-    const total = activeRows.length;
+    const newRows = diffRows.filter(r => r.action === "new");
+    const updateRows = diffRows.filter(r => r.action === "update");
+    const archiveRows = diffRows.filter(r => r.action === "archive");
+    const total = newRows.length + updateRows.length + archiveRows.length;
+    if (total === 0) { setImportingDiff(false); return; }
+
     let imported = 0, updated = 0, archived = 0, errors = 0;
+    let firstError = "";
+    let processed = 0;
+
+    const tick = () => { processed++; setProgress(Math.round((processed / total) * 100)); };
 
     try {
-      for (let i = 0; i < activeRows.length; i++) {
-          const row = activeRows[i];
-          if (row.action === "new") {
-             const insertData: any = {
-              supplier_id: supplierId,
-              product_code: row.product_code,
-              description: row.description,
-              category: row.category,
-              cost_price: row.cost_price,
-              pipe_size: row.pipe_size,
-              btu_rating: row.btu_rating,
-              refrigerant_type: row.refrigerant_type,
-              is_price_on_request: row.is_price_on_request,
-              default_markup_percent: aiMarkup,
-              is_active: true,
-              archived: false,
-              short_name: row.short_name,
-              product_type: isConsumablesSupplier ? "consumable" : "ac_unit",
-              product_category: (row as any).product_category || (isConsumablesSupplier ? "Consumables" : "Air Conditioning"),
-              brand: (row as any).brand || null,
-              sold_in_length: row.sold_in_length || false,
-              unit_length: row.unit_length || null,
-              unit_length_unit: row.unit_length_unit || "m",
-              price_per_metre: row.price_per_metre || null,
-              min_cut_length: row.min_cut_length || 0.5,
-            };
-            // Add multi-price data if available
-            if ((row as any)._cost_excl_vat !== undefined) {
-              insertData.cost_excl_vat = (row as any)._cost_excl_vat;
-              insertData.cost_incl_vat = (row as any)._cost_incl_vat;
-              insertData.rrp = (row as any)._rrp;
-              insertData.supplier_discount_percent = (row as any)._supplier_discount_percent || 0;
-              insertData.vat_rate = (row as any)._vat_rate || 15;
-            }
-            const { error: err } = await supabase.from("supplier_products" as any).insert(insertData as any);
-          if (err) {
-            console.error(`[Import] INSERT failed for ${row.product_code}:`, err.message, err.details, err.hint, err);
-            errors++;
-          } else imported++;
-        } else if (row.action === "update" && row.existing_id) {
-          const { error: err } = await supabase.from("supplier_products" as any)
-            .update({ cost_price: row.cost_price, updated_at: new Date().toISOString(), archived: false, archived_at: null } as any)
-            .eq("id", row.existing_id);
-          if (err) {
-            console.error(`[Import] UPDATE failed for ${row.product_code}:`, err.message, err.details, err.hint, err);
-            errors++;
-          } else updated++;
-        } else if (row.action === "archive" && row.existing_id) {
+      // ── PHASE 1: INSERT new products (in batches of 50) ──
+      const BATCH = 50;
+      for (let b = 0; b < newRows.length; b += BATCH) {
+        const batch = newRows.slice(b, b + BATCH);
+        const batchData = batch.map(row => ({
+          supplier_id: supplierId,
+          product_code: row.product_code,
+          description: row.description,
+          category: row.category || "General",
+          cost_price: row.cost_price,
+          pipe_size: row.pipe_size,
+          btu_rating: row.btu_rating,
+          refrigerant_type: row.refrigerant_type,
+          is_price_on_request: row.is_price_on_request,
+          default_markup_percent: aiMarkup,
+          is_active: true,
+          archived: false,
+          short_name: row.short_name,
+          product_type: isConsumablesSupplier ? "consumable" : "ac_unit",
+          product_category: (row as any).product_category || (isConsumablesSupplier ? "Consumables" : "Air Conditioning"),
+          brand: (row as any).brand || null,
+          sold_in_length: row.sold_in_length || false,
+          unit_length: row.unit_length || null,
+          unit_length_unit: row.unit_length_unit || "m",
+          price_per_metre: row.price_per_metre || null,
+          min_cut_length: row.min_cut_length || 0.5,
+          // Optional price columns
+          cost_excl_vat: (row as any)._cost_excl_vat ?? null,
+          cost_incl_vat: (row as any)._cost_incl_vat ?? null,
+          rrp: (row as any)._rrp ?? null,
+          supplier_discount_percent: (row as any)._supplier_discount_percent || 0,
+          vat_rate: (row as any)._vat_rate || 15,
+        }));
+
+        const { error: err, data } = await supabase.from("supplier_products" as any).insert(batchData as any).select("id");
+        if (err) {
+          const msg = `INSERT batch failed: ${err.message} | ${err.details || ""} | ${err.hint || ""}`;
+          console.error(`[Import]`, msg, err);
+          if (!firstError) firstError = msg;
+          errors += batch.length;
+        } else {
+          imported += (data as any[])?.length || batch.length;
+        }
+        for (let i = 0; i < batch.length; i++) tick();
+      }
+
+      // ── PHASE 2: UPDATE existing products ──
+      for (const row of updateRows) {
+        const updateData: any = {
+          cost_price: row.cost_price,
+          updated_at: new Date().toISOString(),
+          archived: false,
+          archived_at: null,
+        };
+        if ((row as any)._cost_excl_vat !== undefined) {
+          updateData.cost_excl_vat = (row as any)._cost_excl_vat;
+          updateData.cost_incl_vat = (row as any)._cost_incl_vat;
+          updateData.rrp = (row as any)._rrp;
+        }
+        const { error: err } = await supabase.from("supplier_products" as any)
+          .update(updateData)
+          .eq("id", row.existing_id);
+        if (err) {
+          const msg = `UPDATE failed for ${row.product_code}: ${err.message}`;
+          console.error(`[Import]`, msg, err);
+          if (!firstError) firstError = msg;
+          errors++;
+        } else updated++;
+        tick();
+      }
+
+      // ── PHASE 3: ARCHIVE only if inserts + updates had no errors ──
+      if (errors > 0 && archiveRows.length > 0) {
+        console.warn(`[Import] Skipping archive of ${archiveRows.length} products because ${errors} insert/update errors occurred`);
+        toast({
+          title: "Archive skipped",
+          description: `${archiveRows.length} products were NOT archived because ${errors} errors occurred during insert/update. Fix errors first.`,
+          variant: "destructive",
+        });
+        // Count them as processed for the progress bar
+        for (let i = 0; i < archiveRows.length; i++) tick();
+      } else {
+        for (const row of archiveRows) {
           const { error: err } = await supabase.from("supplier_products" as any)
             .update({ archived: true, archived_at: new Date().toISOString() } as any)
             .eq("id", row.existing_id);
           if (err) {
-            console.error(`[Import] ARCHIVE failed for ${row.product_code}:`, err.message, err.details, err.hint, err);
+            const msg = `ARCHIVE failed for ${row.product_code}: ${err.message}`;
+            console.error(`[Import]`, msg, err);
+            if (!firstError) firstError = msg;
             errors++;
           } else archived++;
+          tick();
         }
-        setProgress(Math.round(((i + 1) / total) * 100));
       }
 
       // Record import history
@@ -630,7 +675,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         supplier_id: supplierId,
         file_name: pdfFile?.name || "AI Import",
         file_type: "pdf",
-        status: "completed",
+        status: errors > 0 ? "partial" : "completed",
         products_imported: imported,
         products_updated: updated,
         products_skipped: errors,
@@ -644,7 +689,6 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
           try {
             const captureResult = await capturePdfPages(pdfFile, supplierName);
             toast({ title: `Visual Catalog`, description: `Stored ${captureResult.pagesStored} pages from ${pdfFile.name}` });
-            // Match imported products to pages
             const importedCodes = diffRows.filter(r => r.action === "new" || r.action === "update").map(r => r.product_code);
             if (importedCodes.length > 0) {
               await matchProductsToPdfPages(supplierName, pdfFile.name, importedCodes);
@@ -658,15 +702,20 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
       setAiResult({ imported, updated, skipped: errors, archived });
       setShowDiff(false);
       if (errors > 0) {
-        toast({ title: "Import Complete (with errors)", description: `${imported} new, ${updated} updated, ${archived} archived, ${errors} failed — check browser console for details`, variant: "destructive" });
+        toast({
+          title: "Import failed",
+          description: `${imported} new, ${updated} updated, ${archived} archived, ${errors} FAILED. Error: ${firstError.substring(0, 120)}`,
+          variant: "destructive",
+        });
+        setError(`Import had ${errors} errors. First error: ${firstError}`);
       } else {
         toast({ title: "Import Complete", description: `${imported} new, ${updated} updated, ${archived} archived` });
       }
-      console.log(`[Import] Final results: ${imported} new, ${updated} updated, ${archived} archived, ${errors} failed`);
       invalidateAll();
       onComplete();
     } catch (err: any) {
       setError(err.message || "Import failed");
+      toast({ title: "Import crashed", description: err.message, variant: "destructive" });
     } finally { setImportingDiff(false); }
   };
 
