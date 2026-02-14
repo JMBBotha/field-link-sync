@@ -9,11 +9,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Plus, Check, ZoomIn, ZoomOut, X, Maximize2, Minimize2,
-  ChevronLeft, ChevronRight, FileImage, ArrowLeft, ScanSearch,
+  ChevronLeft, ChevronRight, FileImage, ArrowLeft, ScanSearch, Loader2,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import PdfPageOverlay from "./PdfPageOverlay";
 import type { OverlayRegion } from "./PdfPageOverlay";
+import { extractAndMatchPage, clearExtractionCache } from "./pdfTextExtractor";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
 interface VisualCatalogPanelProps {
@@ -21,6 +22,7 @@ interface VisualCatalogPanelProps {
   onClose: () => void;
   baskets: Basket[];
   onAddProductToBasket: (basketId: string, product: PaletteProduct) => void;
+  products: PaletteProduct[];
 }
 
 interface PdfPage {
@@ -29,23 +31,10 @@ interface PdfPage {
   pdf_filename: string;
   page_number: number;
   page_image_url: string;
+  pdf_storage_path: string | null;
 }
 
-interface ProductRegion {
-  id: string;
-  pdf_page_id: string;
-  product_id: string | null;
-  product_code: string;
-  label: string;
-  region_x: number | null;
-  region_y: number | null;
-  region_width: number | null;
-  region_height: number | null;
-  auto_matched: boolean | null;
-  product?: PaletteProduct | null;
-}
-
-const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket }: VisualCatalogPanelProps) => {
+const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, products }: VisualCatalogPanelProps) => {
   const isMobile = useIsMobile();
   const [expanded, setExpanded] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
@@ -109,7 +98,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket }: Vi
     enabled: open,
     queryFn: async () => {
       let query = (supabase.from("supplier_pdf_pages") as any)
-        .select("id, supplier_id, pdf_filename, page_number, page_image_url")
+        .select("id, supplier_id, pdf_filename, page_number, page_image_url, pdf_storage_path")
         .order("supplier_id")
         .order("pdf_filename")
         .order("page_number");
@@ -125,39 +114,27 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket }: Vi
     staleTime: 30000,
   });
 
-  // Fetch product regions for current page
   const currentPage = pages[currentPageIndex] || null;
-  const { data: regions = [] } = useQuery<ProductRegion[]>({
-    queryKey: ["visual-panel-regions", currentPage?.id],
-    enabled: open && !!currentPage,
+
+  // LIVE text extraction + product matching from PDF
+  const { data: liveRegions = [], isLoading: extracting } = useQuery({
+    queryKey: ["visual-panel-live-extract", currentPage?.id, currentPage?.pdf_storage_path, products.length],
+    enabled: open && !!currentPage?.pdf_storage_path && products.length > 0,
     queryFn: async () => {
-      if (!currentPage) return [];
-      const { data, error } = await (supabase.from("pdf_product_regions") as any)
-        .select(
-          "id, pdf_page_id, product_id, product_code, label, region_x, region_y, region_width, region_height, auto_matched, supplier_products(id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, suppliers(name))"
-        )
-        .eq("pdf_page_id", currentPage.id);
-      if (error) throw error;
-      return (data || []).map((r: any) => ({
-        ...r,
-        region_x: r.region_x ?? null,
-        region_y: r.region_y ?? null,
-        region_width: r.region_width ?? null,
-        region_height: r.region_height ?? null,
-        auto_matched: r.auto_matched ?? null,
-        product: r.supplier_products
-          ? {
-              ...r.supplier_products,
-              product_category: r.supplier_products.product_category || r.supplier_products.category || "",
-              supplier_name: r.supplier_products.suppliers?.name || "",
-              price_per_metre: r.supplier_products.price_per_metre || null,
-              sold_in_length: r.supplier_products.sold_in_length || false,
-              unit_length: r.supplier_products.unit_length || null,
-            }
-          : null,
-      }));
+      if (!currentPage?.pdf_storage_path) return [];
+      try {
+        const regions = await extractAndMatchPage(
+          currentPage.pdf_storage_path,
+          currentPage.page_number,
+          products
+        );
+        return regions;
+      } catch (err) {
+        console.error("[VisualCatalog] Live extraction failed:", err);
+        return [];
+      }
     },
-    staleTime: 30000,
+    staleTime: 120000, // cache for 2 minutes
   });
 
   // Track what's in baskets
@@ -171,24 +148,25 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket }: Vi
     return counts;
   }, [baskets]);
 
-  // Build overlay regions from database regions with coordinates
+  // Build overlay regions from live extraction results
   const overlayRegions: OverlayRegion[] = useMemo(() =>
-    regions
-      .filter((r) => r.region_x != null && r.region_y != null)
-      .map((r) => ({
-        id: r.id,
-        x_pct: r.region_x ?? 0,
-        y_pct: r.region_y ?? 0,
-        w_pct: r.region_width ?? 0,
-        h_pct: r.region_height ?? 0,
-        product: r.product as PaletteProduct | null,
-        product_code: r.product_code || "",
-        label: r.label || "",
-      })),
-    [regions]
+    liveRegions.map((r, idx) => ({
+      id: `live-${currentPage?.id || "x"}-${idx}`,
+      x_pct: r.x_pct,
+      y_pct: r.y_pct,
+      w_pct: r.w_pct,
+      h_pct: r.h_pct,
+      product: r.product as PaletteProduct | null,
+      product_code: r.product_code || "",
+      label: r.label || "",
+    })),
+    [liveRegions, currentPage?.id]
   );
 
   const hasOverlayRegions = overlayRegions.length > 0;
+  const matchedCount = overlayRegions.filter(r => r.product).length;
+  const unmatchedCount = overlayRegions.filter(r => !r.product).length;
+  const noPdfUrl = currentPage && !currentPage.pdf_storage_path;
 
   const currentSupplierName = currentPage ? (supplierNameMap[currentPage.supplier_id] || currentPage.supplier_id) : "";
   const currentFilename = currentPage?.pdf_filename || "";
@@ -350,86 +328,27 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket }: Vi
               </ScrollArea>
 
               {/* Overlay stats bar */}
-              {hasOverlayRegions && (
-                <div className="border-t bg-muted/20 px-3 py-1 shrink-0 flex items-center gap-2">
-                  <ScanSearch className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-[10px] text-muted-foreground">
-                    {overlayRegions.filter(r => r.product).length} matched · {overlayRegions.filter(r => !r.product).length} unmatched
+              <div className="border-t bg-muted/20 px-3 py-1 shrink-0 flex items-center gap-2">
+                <ScanSearch className="h-3 w-3 text-muted-foreground" />
+                {extracting ? (
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Scanning PDF text…
                   </span>
-                </div>
-              )}
-
-              {/* Products from this page */}
-              {regions.length > 0 && (
-                <div className="border-t bg-card shrink-0 max-h-[200px] overflow-y-auto">
-                  <div className="px-3 py-2 space-y-1">
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                      Products on this page ({regions.length})
-                    </p>
-                    {regions.map((region) => {
-                      const product = region.product as PaletteProduct | null;
-                      if (!product) {
-                        // Unmatched item
-                        return (
-                          <div
-                            key={region.id}
-                            className="flex items-center gap-2 py-1.5 border-b last:border-0 border-dashed opacity-60"
-                          >
-                            <span className="text-[10px] font-mono text-muted-foreground truncate min-w-[80px]">
-                              {region.product_code}
-                            </span>
-                            <span className="text-[10px] truncate flex-1 text-muted-foreground italic">
-                              {region.label || "Unknown product"}
-                            </span>
-                            <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 border-dashed text-muted-foreground">
-                              Not in catalog
-                            </Badge>
-                          </div>
-                        );
-                      }
-
-                      const inQuoteQty = basketProductCounts[product.id] || 0;
-                      const price = product.selling_price || product.cost_incl_vat || 0;
-
-                      return (
-                        <div
-                          key={region.id}
-                          className="flex items-center gap-2 py-1.5 border-b last:border-0 hover:bg-muted/30 rounded px-1 -mx-1 transition-colors"
-                        >
-                          <span className="text-[10px] font-mono font-medium text-primary/80 truncate min-w-[80px]">
-                            {product.product_code}
-                          </span>
-                          <span className="text-[10px] truncate flex-1 text-foreground">
-                            {product.short_name || product.description}
-                          </span>
-                          {product.sold_in_length && product.price_per_metre && (
-                            <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 border-orange-400/40 text-orange-600">
-                              R{product.price_per_metre.toFixed(2)}/m
-                            </Badge>
-                          )}
-                          <span className="text-[10px] font-bold text-foreground whitespace-nowrap">
-                            R{price.toLocaleString("en-ZA")}
-                          </span>
-                          {inQuoteQty > 0 && (
-                            <Badge
-                              variant="secondary"
-                              className="text-[8px] px-1 py-0 h-4 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                            >
-                              <Check className="h-2 w-2 mr-0.5" />
-                              {inQuoteQty}
-                            </Badge>
-                          )}
-                          <AddToZoneButton
-                            baskets={baskets}
-                            product={product}
-                            onAdd={onAddProductToBasket}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                ) : noPdfUrl ? (
+                  <span className="text-[10px] text-muted-foreground">
+                    ⚠ Original PDF not stored — re-import this PDF to enable live overlays
+                  </span>
+                ) : hasOverlayRegions ? (
+                  <span className="text-[10px] text-muted-foreground">
+                    {matchedCount} matched · {unmatchedCount} unmatched
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground">
+                    No text extracted — this may be an image-based PDF
+                  </span>
+                )}
+              </div>
             </div>
           ) : null}
         </div>
@@ -452,56 +371,5 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket }: Vi
     </>
   );
 };
-
-function AddToZoneButton({
-  baskets,
-  product,
-  onAdd,
-}: {
-  baskets: Basket[];
-  product: PaletteProduct;
-  onAdd: (basketId: string, product: PaletteProduct) => void;
-}) {
-  if (baskets.length === 0) return null;
-
-  if (baskets.length === 1) {
-    return (
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6 shrink-0"
-        onClick={() => onAdd(baskets[0].id, product)}
-      >
-        <Plus className="h-3 w-3" />
-      </Button>
-    );
-  }
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0">
-          <Plus className="h-3 w-3" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-40 p-1" align="end">
-        <p className="text-[9px] font-semibold text-muted-foreground uppercase px-2 py-1">
-          Add to zone
-        </p>
-        {baskets.map((basket) => (
-          <Button
-            key={basket.id}
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start text-xs h-7"
-            onClick={() => onAdd(basket.id, product)}
-          >
-            {basket.name}
-          </Button>
-        ))}
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 export default VisualCatalogPanel;

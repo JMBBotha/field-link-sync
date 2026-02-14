@@ -50,6 +50,29 @@ export async function capturePdfPages(
   let errors = 0;
   const SCALE = 1.5; // balance between quality and size
 
+  // Upload original PDF to storage for live text extraction
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const pdfStoragePath = `${supplierName}/${safeName}`;
+  let pdfPublicUrl: string | null = null;
+  try {
+    const { error: pdfUploadErr } = await supabase.storage
+      .from("supplier-pdf-pages")
+      .upload(pdfStoragePath, file, {
+        contentType: "application/pdf",
+        upsert: true,
+      });
+    if (!pdfUploadErr) {
+      const { data: pdfUrlData } = supabase.storage
+        .from("supplier-pdf-pages")
+        .getPublicUrl(pdfStoragePath);
+      pdfPublicUrl = pdfUrlData.publicUrl;
+    } else {
+      console.warn("[PDF Capture] Could not upload original PDF:", pdfUploadErr);
+    }
+  } catch (e) {
+    console.warn("[PDF Capture] PDF upload failed:", e);
+  }
+
   for (let pageNum = 1; pageNum <= numPages; pageNum++) {
     onProgress?.(pageNum, numPages);
     try {
@@ -100,6 +123,7 @@ export async function capturePdfPages(
         pdf_filename: file.name,
         page_number: pageNum,
         page_image_url: urlData.publicUrl,
+        pdf_storage_path: pdfPublicUrl,
       });
 
       if (insertError) {

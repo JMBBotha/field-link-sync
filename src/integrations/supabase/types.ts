@@ -2565,6 +2565,7 @@ export type Database = {
           page_image_url: string
           page_number: number
           pdf_filename: string
+          pdf_storage_path: string | null
           supplier_id: string
           uploaded_at: string
         }
@@ -2573,6 +2574,7 @@ export type Database = {
           page_image_url: string
           page_number: number
           pdf_filename: string
+          pdf_storage_path?: string | null
           supplier_id: string
           uploaded_at?: string
         }
@@ -2581,6 +2583,7 @@ export type Database = {
           page_image_url?: string
           page_number?: number
           pdf_filename?: string
+          pdf_storage_path?: string | null
           supplier_id?: string
           uploaded_at?: string
         }
