@@ -2,15 +2,16 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import {
   Search, Snowflake, Droplets, Zap, BatteryCharging, Wrench, Package,
-  GripVertical, Star, StarOff, Ruler, ChevronDown, ChevronRight,
+  GripVertical, Star, StarOff, Ruler, ChevronDown, ChevronRight, Image, List,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { PaletteProduct } from "../QuoteBuilderTab";
+import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import { getProductDisplayName } from "./productDisplayUtils";
+import VisualCatalogView from "./VisualCatalogView";
 
 function HighlightText({ text, searchTerm }: { text: string; searchTerm: string }) {
   if (!searchTerm || !text) return <>{text}</>;
@@ -157,6 +158,8 @@ interface ProductPaletteProps {
   usageMap: Record<string, number>;
   bundles?: PaletteBundle[];
   bundlesLoading?: boolean;
+  baskets?: Basket[];
+  onAddProductToBasket?: (basketId: string, product: PaletteProduct) => void;
 }
 
 function DraggableProductCard({
@@ -310,7 +313,10 @@ const ProductPalette = ({
   usageMap,
   bundles = [],
   bundlesLoading = false,
+  baskets = [],
+  onAddProductToBasket,
 }: ProductPaletteProps) => {
+  const [viewMode, setViewMode] = useState<"list" | "visual">("list");
   const filteredProducts = useMemo(() => {
     if (categoryFilter === "favorites") {
       return products.filter((p) => favorites.has(p.id));
@@ -358,93 +364,129 @@ const ProductPalette = ({
   return (
     <div className="flex flex-col rounded-lg border bg-card overflow-hidden">
       <div className="p-3 border-b space-y-2">
-        <h3 className="text-sm font-semibold text-foreground">Product Palette</h3>
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search products..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-8 h-8 text-xs"
-          />
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-foreground">Product Palette</h3>
+          <div className="flex items-center gap-0.5 rounded-md border bg-muted/30 p-0.5">
+            <button
+              className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors ${
+                viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setViewMode("list")}
+            >
+              <List className="h-3 w-3" />
+              List
+            </button>
+            <button
+              className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors ${
+                viewMode === "visual" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setViewMode("visual")}
+            >
+              <Image className="h-3 w-3" />
+              Visual
+            </button>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-1">
-          {CATEGORIES.map((cat) => {
-            const Icon = cat.icon;
-            const isActive = categoryFilter === cat.value;
-            return (
-              <Badge
-                key={cat.value}
-                variant={isActive ? "default" : "outline"}
-                className={`cursor-pointer text-[10px] gap-0.5 px-1.5 py-0.5 ${
-                  cat.value === "favorites" && favorites.size > 0 ? "border-amber-400/50" : ""
-                }`}
-                onClick={() => onCategoryChange(cat.value)}
-              >
-                <Icon className="h-2.5 w-2.5" />
-                {cat.label}
-                {cat.value === "favorites" && favorites.size > 0 && (
-                  <span className="ml-0.5">({favorites.size})</span>
-                )}
-              </Badge>
-            );
-          })}
-        </div>
+
+        {viewMode === "list" && (
+          <>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
+                className="pl-8 h-8 text-xs"
+              />
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {CATEGORIES.map((cat) => {
+                const Icon = cat.icon;
+                const isActive = categoryFilter === cat.value;
+                return (
+                  <Badge
+                    key={cat.value}
+                    variant={isActive ? "default" : "outline"}
+                    className={`cursor-pointer text-[10px] gap-0.5 px-1.5 py-0.5 ${
+                      cat.value === "favorites" && favorites.size > 0 ? "border-amber-400/50" : ""
+                    }`}
+                    onClick={() => onCategoryChange(cat.value)}
+                  >
+                    <Icon className="h-2.5 w-2.5" />
+                    {cat.label}
+                    {cat.value === "favorites" && favorites.size > 0 && (
+                      <span className="ml-0.5">({favorites.size})</span>
+                    )}
+                  </Badge>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
-      <ScrollArea className="flex-1" style={{ maxHeight: "calc(100vh - 280px)" }}>
-        <div className="p-2 space-y-3">
-          {/* Bundles section */}
-          {filteredBundles.length > 0 && (
-            <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-1">
-                📦 Bundles ({filteredBundles.length})
-              </p>
-              <div className="space-y-1.5">
-                {filteredBundles.map((bundle) => (
-                  <BundlePaletteCard
-                    key={bundle.id}
-                    bundle={bundle}
-                    searchTerm={searchQuery}
-                    isDraggingGlobal={isDraggingGlobal}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {isLoading ? (
-            Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full rounded-lg" />
-            ))
-          ) : sortedProducts.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-8">
-              {categoryFilter === "favorites" ? "No favorites yet — star products to add them" : "No products found"}
-            </p>
-          ) : (
-            Object.entries(grouped).map(([category, items]) => (
-              <div key={category}>
+      {viewMode === "visual" ? (
+        <ScrollArea className="flex-1" style={{ maxHeight: "calc(100vh - 280px)" }}>
+          <VisualCatalogView
+            baskets={baskets}
+            onAddProductToBasket={onAddProductToBasket || (() => {})}
+          />
+        </ScrollArea>
+      ) : (
+        <ScrollArea className="flex-1" style={{ maxHeight: "calc(100vh - 280px)" }}>
+          <div className="p-2 space-y-3">
+            {/* Bundles section */}
+            {filteredBundles.length > 0 && (
+              <div>
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-1">
-                  {category} ({items.length})
+                  📦 Bundles ({filteredBundles.length})
                 </p>
                 <div className="space-y-1.5">
-                  {items.map((product) => (
-                    <DraggableProductCard
-                      key={product.id}
-                      product={product}
-                      isFavorite={favorites.has(product.id)}
-                      onToggleFavorite={() => onToggleFavorite(product.id)}
-                      isDraggingGlobal={isDraggingGlobal}
+                  {filteredBundles.map((bundle) => (
+                    <BundlePaletteCard
+                      key={bundle.id}
+                      bundle={bundle}
                       searchTerm={searchQuery}
-                      usageCount={usageMap[product.id] || 0}
+                      isDraggingGlobal={isDraggingGlobal}
                     />
                   ))}
                 </div>
               </div>
-            ))
-          )}
-        </div>
-      </ScrollArea>
+            )}
+
+            {isLoading ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-lg" />
+              ))
+            ) : sortedProducts.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-8">
+                {categoryFilter === "favorites" ? "No favorites yet — star products to add them" : "No products found"}
+              </p>
+            ) : (
+              Object.entries(grouped).map(([category, items]) => (
+                <div key={category}>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-1">
+                    {category} ({items.length})
+                  </p>
+                  <div className="space-y-1.5">
+                    {items.map((product) => (
+                      <DraggableProductCard
+                        key={product.id}
+                        product={product}
+                        isFavorite={favorites.has(product.id)}
+                        onToggleFavorite={() => onToggleFavorite(product.id)}
+                        isDraggingGlobal={isDraggingGlobal}
+                        searchTerm={searchQuery}
+                        usageCount={usageMap[product.id] || 0}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </ScrollArea>
+      )}
     </div>
   );
 };

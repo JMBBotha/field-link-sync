@@ -916,6 +916,16 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
                       <div onClick={(e) => e.stopPropagation()} className="pt-0.5">
                         <Checkbox checked={isBulkSelected} onCheckedChange={() => toggleBulkSelect(product.id)} className="h-3.5 w-3.5" />
                       </div>
+                      {/* Product image thumbnail */}
+                      {product.image_url ? (
+                        <div className="shrink-0 w-12 h-12 rounded-md overflow-hidden border bg-muted/20">
+                          <img src={product.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                        </div>
+                      ) : (
+                        <div className="shrink-0 w-12 h-12 rounded-md border bg-muted/20 flex items-center justify-center">
+                          <Package className="h-5 w-5 text-muted-foreground/40" />
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <p className={`font-bold text-primary ${isMobile ? "text-sm" : "text-base"} ${(product as any).archived ? "line-through" : ""}`}>
                           {highlightText(product.short_name || generateShortName(product), searchQuery)}

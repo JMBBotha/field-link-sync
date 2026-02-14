@@ -1716,6 +1716,60 @@ export type Database = {
           },
         ]
       }
+      pdf_product_regions: {
+        Row: {
+          auto_matched: boolean | null
+          id: string
+          label: string | null
+          pdf_page_id: string
+          product_code: string | null
+          product_id: string | null
+          region_height: number | null
+          region_width: number | null
+          region_x: number | null
+          region_y: number | null
+        }
+        Insert: {
+          auto_matched?: boolean | null
+          id?: string
+          label?: string | null
+          pdf_page_id: string
+          product_code?: string | null
+          product_id?: string | null
+          region_height?: number | null
+          region_width?: number | null
+          region_x?: number | null
+          region_y?: number | null
+        }
+        Update: {
+          auto_matched?: boolean | null
+          id?: string
+          label?: string | null
+          pdf_page_id?: string
+          product_code?: string | null
+          product_id?: string | null
+          region_height?: number | null
+          region_width?: number | null
+          region_x?: number | null
+          region_y?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdf_product_regions_pdf_page_id_fkey"
+            columns: ["pdf_page_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_pdf_pages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdf_product_regions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       price_list_uploads: {
         Row: {
           created_at: string
@@ -2414,6 +2468,33 @@ export type Database = {
           },
         ]
       }
+      supplier_pdf_pages: {
+        Row: {
+          id: string
+          page_image_url: string
+          page_number: number
+          pdf_filename: string
+          supplier_id: string
+          uploaded_at: string
+        }
+        Insert: {
+          id?: string
+          page_image_url: string
+          page_number: number
+          pdf_filename: string
+          supplier_id: string
+          uploaded_at?: string
+        }
+        Update: {
+          id?: string
+          page_image_url?: string
+          page_number?: number
+          pdf_filename?: string
+          supplier_id?: string
+          uploaded_at?: string
+        }
+        Relationships: []
+      }
       supplier_products: {
         Row: {
           archived: boolean
@@ -2438,6 +2519,7 @@ export type Database = {
           min_cut_length: number
           model_range: string | null
           original_cost_excl_vat: number | null
+          pdf_page_id: string | null
           pin_order: number
           pipe_size: string | null
           price_per_metre: number | null
@@ -2482,6 +2564,7 @@ export type Database = {
           min_cut_length?: number
           model_range?: string | null
           original_cost_excl_vat?: number | null
+          pdf_page_id?: string | null
           pin_order?: number
           pipe_size?: string | null
           price_per_metre?: number | null
@@ -2526,6 +2609,7 @@ export type Database = {
           min_cut_length?: number
           model_range?: string | null
           original_cost_excl_vat?: number | null
+          pdf_page_id?: string | null
           pin_order?: number
           pipe_size?: string | null
           price_per_metre?: number | null
@@ -2548,6 +2632,13 @@ export type Database = {
           vat_rate?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "supplier_products_pdf_page_id_fkey"
+            columns: ["pdf_page_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_pdf_pages"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "supplier_products_supplier_id_fkey"
             columns: ["supplier_id"]

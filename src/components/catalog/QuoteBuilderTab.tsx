@@ -464,6 +464,8 @@ const QuoteBuilderTab = () => {
               usageMap={usageMap}
               bundles={bundles}
               bundlesLoading={bundlesLoading}
+              baskets={baskets}
+              onAddProductToBasket={addProductToBasket}
             />
           </div>
           <div className="md:col-span-3 md:max-h-[calc(100vh-280px)] md:overflow-y-auto">

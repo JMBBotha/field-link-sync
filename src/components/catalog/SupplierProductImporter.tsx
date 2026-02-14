@@ -617,6 +617,23 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         uploaded_by: userData?.user?.id || null,
       } as any);
 
+      // Capture PDF pages for visual catalog (fire-and-forget)
+      if (pdfFile) {
+        import("@/lib/pdfPageCapture").then(async ({ capturePdfPages, matchProductsToPdfPages }) => {
+          try {
+            const captureResult = await capturePdfPages(pdfFile, supplierName);
+            toast({ title: `Visual Catalog`, description: `Stored ${captureResult.pagesStored} pages from ${pdfFile.name}` });
+            // Match imported products to pages
+            const importedCodes = diffRows.filter(r => r.action === "new" || r.action === "update").map(r => r.product_code);
+            if (importedCodes.length > 0) {
+              await matchProductsToPdfPages(supplierName, pdfFile.name, importedCodes);
+            }
+          } catch (err) {
+            console.error("[PDF Capture] Error:", err);
+          }
+        });
+      }
+
       setAiResult({ imported, updated, skipped: errors, archived });
       setShowDiff(false);
       toast({ title: "Import Complete", description: `${imported} new, ${updated} updated, ${archived} archived` });
