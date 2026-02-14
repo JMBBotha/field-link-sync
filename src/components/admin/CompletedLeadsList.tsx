@@ -281,7 +281,8 @@ const CompletedLeadsList = () => {
                   }}
                   className={cn(
                     "w-full text-left rounded-lg border p-3 transition-colors",
-                    "hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    "hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "dark:bg-gradient-to-r dark:from-[#0b1a2e] dark:via-[#153258]/40 dark:to-[#0b1a2e] dark:border-[#153258]/50 dark:hover:border-[#1e4a80]/60"
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
