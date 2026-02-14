@@ -10,7 +10,7 @@ import * as pdfjsLib from "pdfjs-dist";
 import type { PaletteProduct } from "../QuoteBuilderTab";
 
 // Configure worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
 export interface ExtractedTextItem {
   text: string;
