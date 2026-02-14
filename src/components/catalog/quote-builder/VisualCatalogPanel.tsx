@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,14 +7,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ZoomIn, ZoomOut, X, Maximize2, Minimize2,
-  ChevronLeft, ChevronRight, FileImage, ArrowLeft, ScanSearch, Loader2, Lightbulb,
+  ChevronLeft, ChevronRight, FileImage, ArrowLeft, ScanSearch, Loader2, Lightbulb, Search,
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import PdfPageOverlay from "./PdfPageOverlay";
 import type { OverlayRegion } from "./PdfPageOverlay";
 import { extractAndMatchPage } from "./pdfTextExtractor";
 import FallbackProductPanel from "./FallbackProductPanel";
 import PdfLinkButton from "./PdfLinkButton";
+import PdfMagnifier from "./PdfMagnifier";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
 interface VisualCatalogPanelProps {
@@ -41,6 +43,8 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, prod
   const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
+  const [loupeActive, setLoupeActive] = useState(false);
+  const pdfAreaRef = useRef<HTMLDivElement | null>(null);
 
   // Auto-shrink when dragging to reveal drop zones
   const isFullWidth = isMobile || (expanded && !isDraggingExternal);
@@ -195,6 +199,19 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, prod
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom((z) => Math.min(3, z + 0.25))}>
               <ZoomIn className="h-3.5 w-3.5" />
             </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={loupeActive ? "secondary" : "ghost"}
+                  size="icon"
+                  className={`h-7 w-7 ${loupeActive ? "ring-1 ring-primary" : ""}`}
+                  onClick={() => setLoupeActive(a => !a)}
+                >
+                  <Search className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-[10px]">Magnifying glass (scroll to adjust)</TooltipContent>
+            </Tooltip>
           </div>
 
           <Select value={selectedSupplier} onValueChange={(v) => { setSelectedSupplier(v); setCurrentPageIndex(0); }}>
@@ -233,7 +250,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, prod
               <div className="flex flex-1 overflow-hidden">
                 {/* PDF image area */}
                 <ScrollArea className="flex-1">
-                  <div className="relative bg-muted/10 min-h-[400px] overflow-hidden" style={{ cursor: zoom > 1 ? "grab" : "default" }}>
+                  <div ref={pdfAreaRef} className="relative bg-muted/10 min-h-[400px] overflow-hidden" style={{ cursor: loupeActive ? "none" : zoom > 1 ? "grab" : "default" }}>
                     <div className="relative origin-top-left transition-transform" style={{ transform: `scale(${zoom})` }}>
                       <img
                         src={currentPage.page_image_url}
@@ -251,6 +268,12 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, prod
                         />
                       )}
                     </div>
+                    <PdfMagnifier
+                      active={loupeActive}
+                      imageUrl={currentPage.page_image_url}
+                      containerRef={pdfAreaRef}
+                      baseZoom={zoom}
+                    />
                   </div>
                 </ScrollArea>
 
