@@ -2,19 +2,19 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Plus, Check, ZoomIn, ZoomOut, X, Maximize2, Minimize2,
-  ChevronLeft, ChevronRight, FileImage, ArrowLeft, ScanSearch, Loader2,
+  ZoomIn, ZoomOut, X, Maximize2, Minimize2,
+  ChevronLeft, ChevronRight, FileImage, ArrowLeft, ScanSearch, Loader2, Lightbulb,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import PdfPageOverlay from "./PdfPageOverlay";
 import type { OverlayRegion } from "./PdfPageOverlay";
-import { extractAndMatchPage, clearExtractionCache } from "./pdfTextExtractor";
+import { extractAndMatchPage } from "./pdfTextExtractor";
+import FallbackProductPanel from "./FallbackProductPanel";
+import PdfLinkButton from "./PdfLinkButton";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
 interface VisualCatalogPanelProps {
@@ -43,48 +43,32 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, prod
 
   const isFullWidth = isMobile || expanded;
 
-  // Reset state when opening
-  useEffect(() => {
-    if (open) {
-      setCurrentPageIndex(0);
-      setZoom(1);
-    }
-  }, [open]);
+  useEffect(() => { if (open) { setCurrentPageIndex(0); setZoom(1); } }, [open]);
 
-  // Close on Escape
   useEffect(() => {
     if (!open) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
+    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
 
-  // Fetch suppliers from pdf pages
+  // Fetch suppliers
   const { data: supplierOptions = [] } = useQuery({
     queryKey: ["visual-panel-suppliers"],
     enabled: open,
     queryFn: async () => {
-      const { data } = await (supabase.from("supplier_pdf_pages") as any)
-        .select("supplier_id")
-        .order("supplier_id");
+      const { data } = await (supabase.from("supplier_pdf_pages") as any).select("supplier_id").order("supplier_id");
       if (!data) return [];
-      const unique = [...new Set((data as any[]).map((d) => d.supplier_id))];
-      return unique as string[];
+      return [...new Set((data as any[]).map((d) => d.supplier_id))] as string[];
     },
     staleTime: 60000,
   });
 
-  // Fetch supplier names for display
   const { data: supplierNameMap = {} } = useQuery({
     queryKey: ["visual-panel-supplier-names", supplierOptions],
     enabled: open && supplierOptions.length > 0,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("suppliers")
-        .select("id, name")
-        .in("id", supplierOptions);
+      const { data } = await supabase.from("suppliers").select("id, name").in("id", supplierOptions);
       const map: Record<string, string> = {};
       (data || []).forEach((s: any) => { map[s.id] = s.name; });
       return map;
@@ -92,21 +76,14 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, prod
     staleTime: 60000,
   });
 
-  // Fetch pdf pages
   const { data: pages = [], isLoading: pagesLoading } = useQuery<PdfPage[]>({
     queryKey: ["visual-panel-pages", selectedSupplier],
     enabled: open,
     queryFn: async () => {
       let query = (supabase.from("supplier_pdf_pages") as any)
         .select("id, supplier_id, pdf_filename, page_number, page_image_url, pdf_storage_path")
-        .order("supplier_id")
-        .order("pdf_filename")
-        .order("page_number");
-
-      if (selectedSupplier !== "all") {
-        query = query.eq("supplier_id", selectedSupplier);
-      }
-
+        .order("supplier_id").order("pdf_filename").order("page_number");
+      if (selectedSupplier !== "all") query = query.eq("supplier_id", selectedSupplier);
       const { data, error } = await query.limit(500);
       if (error) throw error;
       return data || [];
@@ -115,29 +92,24 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, prod
   });
 
   const currentPage = pages[currentPageIndex] || null;
+  const hasPdfSource = !!currentPage?.pdf_storage_path;
 
-  // LIVE text extraction + product matching from PDF
+  // Live extraction only when PDF source available
   const { data: liveRegions = [], isLoading: extracting } = useQuery({
     queryKey: ["visual-panel-live-extract", currentPage?.id, currentPage?.pdf_storage_path, products.length],
-    enabled: open && !!currentPage?.pdf_storage_path && products.length > 0,
+    enabled: open && hasPdfSource && products.length > 0,
     queryFn: async () => {
       if (!currentPage?.pdf_storage_path) return [];
       try {
-        const regions = await extractAndMatchPage(
-          currentPage.pdf_storage_path,
-          currentPage.page_number,
-          products
-        );
-        return regions;
+        return await extractAndMatchPage(currentPage.pdf_storage_path, currentPage.page_number, products);
       } catch (err) {
         console.error("[VisualCatalog] Live extraction failed:", err);
         return [];
       }
     },
-    staleTime: 120000, // cache for 2 minutes
+    staleTime: 120000,
   });
 
-  // Track what's in baskets
   const basketProductCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const basket of baskets) {
@@ -148,14 +120,10 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, prod
     return counts;
   }, [baskets]);
 
-  // Build overlay regions from live extraction results
   const overlayRegions: OverlayRegion[] = useMemo(() =>
     liveRegions.map((r, idx) => ({
       id: `live-${currentPage?.id || "x"}-${idx}`,
-      x_pct: r.x_pct,
-      y_pct: r.y_pct,
-      w_pct: r.w_pct,
-      h_pct: r.h_pct,
+      x_pct: r.x_pct, y_pct: r.y_pct, w_pct: r.w_pct, h_pct: r.h_pct,
       product: r.product as PaletteProduct | null,
       product_code: r.product_code || "",
       label: r.label || "",
@@ -166,7 +134,12 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, prod
   const hasOverlayRegions = overlayRegions.length > 0;
   const matchedCount = overlayRegions.filter(r => r.product).length;
   const unmatchedCount = overlayRegions.filter(r => !r.product).length;
-  const noPdfUrl = currentPage && !currentPage.pdf_storage_path;
+
+  // Pages for current filename group (for PDF link button)
+  const currentFilePages = useMemo(() => {
+    if (!currentPage) return [];
+    return pages.filter(p => p.supplier_id === currentPage.supplier_id && p.pdf_filename === currentPage.pdf_filename);
+  }, [pages, currentPage]);
 
   const currentSupplierName = currentPage ? (supplierNameMap[currentPage.supplier_id] || currentPage.supplier_id) : "";
   const currentFilename = currentPage?.pdf_filename || "";
@@ -184,60 +157,33 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, prod
 
   return (
     <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-40 bg-black/40 transition-opacity"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 z-40 bg-black/40 transition-opacity" onClick={onClose} />
 
-      {/* Slide-in Panel */}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-background border-r shadow-2xl transition-all duration-300 ease-in-out ${
-          isFullWidth ? "w-full" : "w-1/2"
-        }`}
-      >
-        {/* Panel Header */}
+      <div className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-background border-r shadow-2xl transition-all duration-300 ease-in-out ${isFullWidth ? "w-full" : "w-1/2"}`}>
+        {/* Header */}
         <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/30 shrink-0">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <FileImage className="h-4 w-4 text-primary shrink-0" />
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold truncate text-foreground">
-                {currentSupplierName || "Visual Catalog"}
-              </p>
-              {currentFilename && (
-                <p className="text-[10px] text-muted-foreground truncate">{currentFilename}</p>
-              )}
+              <p className="text-xs font-semibold truncate text-foreground">{currentSupplierName || "Visual Catalog"}</p>
+              {currentFilename && <p className="text-[10px] text-muted-foreground truncate">{currentFilename}</p>}
             </div>
           </div>
 
-          {/* Page navigation */}
           {pages.length > 0 && (
             <div className="flex items-center gap-1 shrink-0">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => goToPage(-1)}
-                disabled={currentPageIndex === 0}
-              >
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => goToPage(-1)} disabled={currentPageIndex === 0}>
                 <ChevronLeft className="h-3.5 w-3.5" />
               </Button>
               <span className="text-[10px] font-medium text-muted-foreground min-w-[60px] text-center">
                 Page {currentPageIndex + 1} of {pages.length}
               </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => goToPage(1)}
-                disabled={currentPageIndex >= pages.length - 1}
-              >
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => goToPage(1)} disabled={currentPageIndex >= pages.length - 1}>
                 <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             </div>
           )}
 
-          {/* Zoom */}
           <div className="flex items-center gap-0.5 shrink-0">
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}>
               <ZoomOut className="h-3.5 w-3.5" />
@@ -248,38 +194,21 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, prod
             </Button>
           </div>
 
-          {/* Supplier filter */}
           <Select value={selectedSupplier} onValueChange={(v) => { setSelectedSupplier(v); setCurrentPageIndex(0); }}>
-            <SelectTrigger className="h-7 w-32 text-[10px]">
-              <SelectValue placeholder="All Suppliers" />
-            </SelectTrigger>
+            <SelectTrigger className="h-7 w-32 text-[10px]"><SelectValue placeholder="All Suppliers" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Suppliers</SelectItem>
-              {supplierOptions.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {supplierNameMap[s] || s}
-                </SelectItem>
-              ))}
+              {supplierOptions.map((s) => (<SelectItem key={s} value={s}>{supplierNameMap[s] || s}</SelectItem>))}
             </SelectContent>
           </Select>
 
-          {/* Width toggle — hidden on mobile (always full) */}
           {!isMobile && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 shrink-0"
-              onClick={() => setExpanded((e) => !e)}
-              title={expanded ? "Half screen" : "Full screen"}
-            >
+            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setExpanded((e) => !e)} title={expanded ? "Half screen" : "Full screen"}>
               {expanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
             </Button>
           )}
 
-          {/* Close */}
-          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}><X className="h-4 w-4" /></Button>
         </div>
 
         {/* Content */}
@@ -293,51 +222,59 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, prod
             <div className="flex flex-col items-center justify-center flex-1 text-center text-muted-foreground">
               <FileImage className="h-12 w-12 mb-3 opacity-40" />
               <p className="text-sm font-medium">No Visual Catalog Pages</p>
-              <p className="text-xs mt-1 max-w-[250px]">
-                Import a supplier PDF via the Catalog → Import tab to populate the visual catalog.
-              </p>
+              <p className="text-xs mt-1 max-w-[250px]">Import a supplier PDF via the Catalog → Import tab to populate the visual catalog.</p>
             </div>
           ) : currentPage ? (
             <div className="flex flex-col flex-1 overflow-hidden">
-              {/* PDF Page with interactive overlays */}
-              <ScrollArea className="flex-1">
-                <div
-                  className="relative bg-muted/10 min-h-[400px] overflow-hidden"
-                  style={{ cursor: zoom > 1 ? "grab" : "default" }}
-                >
-                  <div
-                    className="relative origin-top-left transition-transform"
-                    style={{ transform: `scale(${zoom})` }}
-                  >
-                    <img
-                      src={currentPage.page_image_url}
-                      alt={`Page ${currentPage.page_number}`}
-                      className="w-full block select-none"
-                      loading="lazy"
-                      draggable={false}
-                    />
-                    {/* Live interactive overlay hotspots */}
-                    <PdfPageOverlay
-                      regions={overlayRegions}
-                      baskets={baskets}
-                      onAddProductToBasket={onAddProductToBasket}
-                      basketProductCounts={basketProductCounts}
-                    />
+              {/* Main content: PDF + optional fallback sidebar */}
+              <div className="flex flex-1 overflow-hidden">
+                {/* PDF image area */}
+                <ScrollArea className="flex-1">
+                  <div className="relative bg-muted/10 min-h-[400px] overflow-hidden" style={{ cursor: zoom > 1 ? "grab" : "default" }}>
+                    <div className="relative origin-top-left transition-transform" style={{ transform: `scale(${zoom})` }}>
+                      <img
+                        src={currentPage.page_image_url}
+                        alt={`Page ${currentPage.page_number}`}
+                        className="w-full block select-none"
+                        loading="lazy"
+                        draggable={false}
+                      />
+                      {hasPdfSource && (
+                        <PdfPageOverlay
+                          regions={overlayRegions}
+                          baskets={baskets}
+                          onAddProductToBasket={onAddProductToBasket}
+                          basketProductCounts={basketProductCounts}
+                        />
+                      )}
+                    </div>
                   </div>
-                </div>
-              </ScrollArea>
+                </ScrollArea>
 
-              {/* Overlay stats bar */}
+                {/* Fallback product sidebar when no PDF source */}
+                {!hasPdfSource && (
+                  <FallbackProductPanel
+                    products={products}
+                    supplierId={currentPage.supplier_id}
+                    baskets={baskets}
+                    onAddProductToBasket={onAddProductToBasket}
+                    basketProductCounts={basketProductCounts}
+                  />
+                )}
+              </div>
+
+              {/* Status bar */}
               <div className="border-t bg-muted/20 px-3 py-1 shrink-0 flex items-center gap-2">
                 <ScanSearch className="h-3 w-3 text-muted-foreground" />
                 {extracting ? (
                   <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Scanning PDF text…
+                    <Loader2 className="h-3 w-3 animate-spin" />Scanning PDF text…
                   </span>
-                ) : noPdfUrl ? (
-                  <span className="text-[10px] text-muted-foreground">
-                    ⚠ Original PDF not stored — re-import this PDF to enable live overlays
+                ) : !hasPdfSource ? (
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-2">
+                    <Lightbulb className="h-3 w-3" />
+                    Tip: Link the original PDF for interactive overlays
+                    <PdfLinkButton pages={currentFilePages} />
                   </span>
                 ) : hasOverlayRegions ? (
                   <span className="text-[10px] text-muted-foreground">
@@ -353,17 +290,10 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, prod
           ) : null}
         </div>
 
-        {/* Floating "Back to Quote" button — visible in full-width mode */}
         {isFullWidth && (
           <div className="absolute bottom-4 right-4 z-10">
-            <Button
-              variant="default"
-              size="sm"
-              className="shadow-lg gap-1.5"
-              onClick={onClose}
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Back to Quote
+            <Button variant="default" size="sm" className="shadow-lg gap-1.5" onClick={onClose}>
+              <ArrowLeft className="h-3.5 w-3.5" />Back to Quote
             </Button>
           </div>
         )}
