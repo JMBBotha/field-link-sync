@@ -35,6 +35,36 @@ const SYNONYM_MAP: Record<string, string[]> = {
   "n2": ["nitrogen"],
 };
 
+/** Get a term + all its synonyms as a group */
+export function expandTerm(term: string): string[] {
+  const syns = SYNONYM_MAP[term];
+  return syns ? [term, ...syns] : [term];
+}
+
+/** Get all unique expanded terms across all search terms (for broad DB fetch) */
+export function allExpandedTerms(terms: string[]): string[] {
+  const set = new Set<string>();
+  for (const t of terms) {
+    for (const s of expandTerm(t)) set.add(s);
+  }
+  return Array.from(set);
+}
+
+/**
+ * Build a Supabase .or() filter string that matches ANY expanded term across multiple fields.
+ */
+export function buildSupabaseOrFilter(terms: string[], fields: string[]): string {
+  const expanded = allExpandedTerms(terms);
+  const parts: string[] = [];
+  for (const term of expanded) {
+    const escaped = term.replace(/[%_]/g, "\\$&");
+    for (const field of fields) {
+      parts.push(`${field}.ilike.%${escaped}%`);
+    }
+  }
+  return parts.join(",");
+}
+
 /**
  * Check if a single search term (or any of its synonyms) appears in the blob.
  */
@@ -49,6 +79,7 @@ export function termMatchesBlob(term: string, blob: string): boolean {
 
 /**
  * Check if ALL search terms match the blob (with synonym expansion).
+ * Each original term is a "group" — the product must match at least one synonym from each group.
  */
 export function allTermsMatchBlob(terms: string[], blob: string): boolean {
   return terms.every(t => termMatchesBlob(t, blob));
