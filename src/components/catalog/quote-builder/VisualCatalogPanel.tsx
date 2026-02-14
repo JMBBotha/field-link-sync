@@ -9,9 +9,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Plus, Check, ZoomIn, ZoomOut, X, Maximize2, Minimize2,
-  ChevronLeft, ChevronRight, FileImage, ArrowLeft,
+  ChevronLeft, ChevronRight, FileImage, ArrowLeft, ScanSearch,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import PdfPageOverlay from "./PdfPageOverlay";
+import type { OverlayRegion } from "./PdfPageOverlay";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
 interface VisualCatalogPanelProps {
@@ -35,6 +37,11 @@ interface ProductRegion {
   product_id: string | null;
   product_code: string;
   label: string;
+  region_x: number | null;
+  region_y: number | null;
+  region_width: number | null;
+  region_height: number | null;
+  auto_matched: boolean | null;
   product?: PaletteProduct | null;
 }
 
@@ -127,12 +134,17 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket }: Vi
       if (!currentPage) return [];
       const { data, error } = await (supabase.from("pdf_product_regions") as any)
         .select(
-          "id, pdf_page_id, product_id, product_code, label, supplier_products(id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, suppliers(name))"
+          "id, pdf_page_id, product_id, product_code, label, region_x, region_y, region_width, region_height, auto_matched, supplier_products(id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, suppliers(name))"
         )
         .eq("pdf_page_id", currentPage.id);
       if (error) throw error;
       return (data || []).map((r: any) => ({
         ...r,
+        region_x: r.region_x ?? null,
+        region_y: r.region_y ?? null,
+        region_width: r.region_width ?? null,
+        region_height: r.region_height ?? null,
+        auto_matched: r.auto_matched ?? null,
         product: r.supplier_products
           ? {
               ...r.supplier_products,
@@ -158,6 +170,25 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket }: Vi
     }
     return counts;
   }, [baskets]);
+
+  // Build overlay regions from database regions with coordinates
+  const overlayRegions: OverlayRegion[] = useMemo(() =>
+    regions
+      .filter((r) => r.region_x != null && r.region_y != null)
+      .map((r) => ({
+        id: r.id,
+        x_pct: r.region_x ?? 0,
+        y_pct: r.region_y ?? 0,
+        w_pct: r.region_width ?? 0,
+        h_pct: r.region_height ?? 0,
+        product: r.product as PaletteProduct | null,
+        product_code: r.product_code || "",
+        label: r.label || "",
+      })),
+    [regions]
+  );
+
+  const hasOverlayRegions = overlayRegions.length > 0;
 
   const currentSupplierName = currentPage ? (supplierNameMap[currentPage.supplier_id] || currentPage.supplier_id) : "";
   const currentFilename = currentPage?.pdf_filename || "";
@@ -290,24 +321,43 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket }: Vi
             </div>
           ) : currentPage ? (
             <div className="flex flex-col flex-1 overflow-hidden">
-              {/* PDF Page image */}
+              {/* PDF Page with interactive overlays */}
               <ScrollArea className="flex-1">
                 <div
-                  className="relative bg-muted/10 min-h-[400px]"
+                  className="relative bg-muted/10 min-h-[400px] overflow-hidden"
                   style={{ cursor: zoom > 1 ? "grab" : "default" }}
                 >
-                  <img
-                    src={currentPage.page_image_url}
-                    alt={`Page ${currentPage.page_number}`}
-                    className="w-full transition-transform origin-top-left"
+                  <div
+                    className="relative origin-top-left transition-transform"
                     style={{ transform: `scale(${zoom})` }}
-                    loading="lazy"
-                  />
-
-                  {/* Product overlays would go here when region positioning data is available */}
-                  {/* For now, products are listed below the PDF */}
+                  >
+                    <img
+                      src={currentPage.page_image_url}
+                      alt={`Page ${currentPage.page_number}`}
+                      className="w-full block select-none"
+                      loading="lazy"
+                      draggable={false}
+                    />
+                    {/* Live interactive overlay hotspots */}
+                    <PdfPageOverlay
+                      regions={overlayRegions}
+                      baskets={baskets}
+                      onAddProductToBasket={onAddProductToBasket}
+                      basketProductCounts={basketProductCounts}
+                    />
+                  </div>
                 </div>
               </ScrollArea>
+
+              {/* Overlay stats bar */}
+              {hasOverlayRegions && (
+                <div className="border-t bg-muted/20 px-3 py-1 shrink-0 flex items-center gap-2">
+                  <ScanSearch className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-[10px] text-muted-foreground">
+                    {overlayRegions.filter(r => r.product).length} matched · {overlayRegions.filter(r => !r.product).length} unmatched
+                  </span>
+                </div>
+              )}
 
               {/* Products from this page */}
               {regions.length > 0 && (
