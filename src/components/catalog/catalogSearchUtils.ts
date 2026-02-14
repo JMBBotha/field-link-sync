@@ -5,6 +5,7 @@
 import Fuse from "fuse.js";
 import type { CatalogFilters, SortOption } from "./CatalogFilterBar";
 import { deriveCategoryFilterValue, getFilterConfig, type ProductCategory } from "./categoryFilterConfig";
+import { expandTerm } from "./searchSynonyms";
 
 // ── Types ───────────────────────────────────────────────
 export interface SearchableProduct {
@@ -346,10 +347,23 @@ export function fuseMultiTokenSearch<T extends SearchableProduct>(items: T[], fu
   const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return [];
 
+  // For each token, expand with synonyms and search Fuse for all variants,
+  // merging results (best score wins) so "soft" also finds "s-drawn" products
   const tokenResults = tokens.map((token) => {
-    const results = fuse.search(token);
-    const good = results.filter(r => (r.score ?? 1) <= FUSE_SCORE_THRESHOLD);
-    return new Map(good.map((r) => [r.item.id, r.score ?? 1]));
+    const variants = expandTerm(token);
+    const merged = new Map<string, number>();
+    for (const variant of variants) {
+      const results = fuse.search(variant);
+      const good = results.filter(r => (r.score ?? 1) <= FUSE_SCORE_THRESHOLD);
+      for (const r of good) {
+        const existing = merged.get(r.item.id);
+        const score = r.score ?? 1;
+        if (existing === undefined || score < existing) {
+          merged.set(r.item.id, score);
+        }
+      }
+    }
+    return merged;
   });
 
   const firstSet = tokenResults[0];
