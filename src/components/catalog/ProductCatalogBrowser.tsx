@@ -497,15 +497,16 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
 
   const togglePinMutation = useMutation({
     mutationFn: async ({ productId, isPinned }: { productId: string; isPinned: boolean }) => {
+      const pinOrder = isPinned ? 0 : Math.floor(Date.now() / 1000) % 2000000000;
       const { error } = await supabase.from("supplier_products" as any)
-        .update({ is_pinned: !isPinned, pin_order: isPinned ? 0 : Date.now() } as any).eq("id", productId);
+        .update({ is_pinned: !isPinned, pin_order: pinOrder } as any).eq("id", productId);
       if (error) throw error;
     },
     onMutate: async ({ productId, isPinned }) => {
       await queryClient.cancelQueries({ queryKey: ["supplier-products-all"] });
       queryClient.setQueriesData<SupplierProduct[]>(
         { queryKey: ["supplier-products-all"] },
-        (old) => old?.map((p) => p.id === productId ? { ...p, is_pinned: !isPinned, pin_order: isPinned ? 0 : Date.now() } : p)
+        (old) => old?.map((p) => p.id === productId ? { ...p, is_pinned: !isPinned } : p)
       );
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] }),
