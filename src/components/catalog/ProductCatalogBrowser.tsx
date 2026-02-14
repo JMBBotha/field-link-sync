@@ -501,7 +501,14 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
         .update({ is_pinned: !isPinned, pin_order: isPinned ? 0 : Date.now() } as any).eq("id", productId);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] }),
+    onMutate: async ({ productId, isPinned }) => {
+      await queryClient.cancelQueries({ queryKey: ["supplier-products-all"] });
+      queryClient.setQueriesData<SupplierProduct[]>(
+        { queryKey: ["supplier-products-all"] },
+        (old) => old?.map((p) => p.id === productId ? { ...p, is_pinned: !isPinned, pin_order: isPinned ? 0 : Date.now() } : p)
+      );
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] }),
   });
 
   const incrementUsageMutation = useMutation({
