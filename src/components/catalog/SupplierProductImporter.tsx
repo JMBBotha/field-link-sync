@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileSpreadsheet, Loader2, AlertCircle, Check, Sparkles, FileUp, FileText, X, Trash2, ArrowUp, ArrowDown, Minus } from "lucide-react";
+import { Upload, FileSpreadsheet, Loader2, AlertCircle, Check, Sparkles, FileUp, FileText, X, Trash2, ArrowUp, ArrowDown, Minus, RefreshCw, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -114,7 +114,7 @@ interface ParsedRow {
   product_category?: string;
 }
 
-type DiffAction = "new" | "update" | "archive" | "unchanged";
+type DiffAction = "new" | "update" | "archive" | "unchanged" | "restore";
 
 interface DiffRow extends ParsedRow {
   action: DiffAction;
@@ -250,21 +250,28 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
 
   // ─── Build diff against existing catalog ───
   const buildDiff = async (incoming: ParsedRow[]): Promise<DiffRow[]> => {
-    // Fetch ALL existing products (override default 1000 row limit)
+    // Fetch ALL existing products INCLUDING archived (to detect restores)
     const { data: existing, error: fetchErr } = await supabase
       .from("supplier_products" as any)
-      .select("id, product_code, cost_price, archived")
+      .select("id, product_code, cost_price, archived, description, brand, product_category, category")
       .eq("supplier_id", supplierId)
-      .or("archived.is.null,archived.eq.false")
       .limit(5000);
     
     if (fetchErr) {
       console.error("[Import] Failed to fetch existing products for diff:", fetchErr);
     }
 
-    const existingMap = new Map<string, { id: string; cost_price: number }>();
+    const existingMap = new Map<string, { id: string; cost_price: number; archived: boolean; description: string; brand: string | null; product_category: string | null; category: string | null }>();
     (existing || []).forEach((e: any) => {
-      existingMap.set(e.product_code.toUpperCase(), { id: e.id, cost_price: e.cost_price });
+      existingMap.set((e.product_code || "").toUpperCase(), {
+        id: e.id,
+        cost_price: e.cost_price || 0,
+        archived: !!e.archived,
+        description: e.description || "",
+        brand: e.brand || null,
+        product_category: e.product_category || null,
+        category: e.category || null,
+      });
     });
 
     const incomingCodes = new Set(incoming.map(r => r.product_code.toUpperCase()));
@@ -275,10 +282,25 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
       const key = row.product_code.toUpperCase();
       const match = existingMap.get(key);
       if (match) {
+        // If product is archived, mark as "restore"
+        if (match.archived) {
+          diff.push({
+            ...row,
+            action: "restore",
+            old_cost_price: match.cost_price,
+            existing_id: match.id,
+          });
+          continue;
+        }
+        // Compare multiple fields, not just price
         const priceChanged = Math.abs(match.cost_price - row.cost_price) > 0.01;
+        const descChanged = row.description && row.description !== match.description;
+        const brandChanged = row.brand && row.brand !== match.brand;
+        const catChanged = row.product_category && row.product_category !== (match.product_category || match.category);
+        const hasChanges = priceChanged || descChanged || brandChanged || catChanged;
         diff.push({
           ...row,
-          action: priceChanged ? "update" : "unchanged",
+          action: hasChanges ? "update" : "unchanged",
           old_cost_price: match.cost_price,
           existing_id: match.id,
         });
@@ -287,9 +309,9 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
       }
     }
 
-    // Products to archive (in existing but not in incoming)
+    // Products to archive (active in existing but not in incoming)
     for (const [code, data] of existingMap) {
-      if (!incomingCodes.has(code)) {
+      if (!incomingCodes.has(code) && !data.archived) {
         diff.push({
           product_code: code,
           description: "(existing product not in new list)",
@@ -558,13 +580,22 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
   };
 
   // ─── Apply diff import ───
-  const handleApplyDiff = async () => {
+  const handleApplyDiff = async (forceAll = false) => {
     setImportingDiff(true); setError(null); setProgress(0);
-    const newRows = diffRows.filter(r => r.action === "new");
-    const updateRows = diffRows.filter(r => r.action === "update");
-    const archiveRows = diffRows.filter(r => r.action === "archive");
+    
+    // If forceAll, convert all unchanged to update
+    const workingRows = forceAll
+      ? diffRows.map(r => r.action === "unchanged" ? { ...r, action: "update" as DiffAction } : r)
+      : diffRows;
+    
+    const newRows = workingRows.filter(r => r.action === "new");
+    const updateRows = workingRows.filter(r => r.action === "update" || r.action === "restore");
+    const archiveRows = workingRows.filter(r => r.action === "archive");
     const total = newRows.length + updateRows.length + archiveRows.length;
-    if (total === 0) { setImportingDiff(false); return; }
+    if (total === 0) { 
+      toast({ title: "Nothing to apply", description: "All products are unchanged. Use 'Force Re-import All' to refresh all products.", variant: "destructive" });
+      setImportingDiff(false); return; 
+    }
 
     let imported = 0, updated = 0, archived = 0, errors = 0;
     let firstError = "";
@@ -619,10 +650,15 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         for (let i = 0; i < batch.length; i++) tick();
       }
 
-      // ── PHASE 2: UPDATE existing products ──
+      // ── PHASE 2: UPDATE existing products (including restores) ──
       for (const row of updateRows) {
         const updateData: any = {
           cost_price: row.cost_price,
+          description: row.description,
+          category: row.category || "General",
+          brand: (row as any).brand || null,
+          product_category: (row as any).product_category || null,
+          short_name: row.short_name,
           updated_at: new Date().toISOString(),
           archived: false,
           archived_at: null,
@@ -825,6 +861,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
     update: diffRows.filter(r => r.action === "update").length,
     archive: diffRows.filter(r => r.action === "archive").length,
     unchanged: diffRows.filter(r => r.action === "unchanged").length,
+    restore: diffRows.filter(r => r.action === "restore").length,
   };
 
   // Brand summary from parsed rows
@@ -1011,6 +1048,11 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
                       <Minus className="h-3 w-3 mr-1" /> {diffSummary.archive} To Archive
                     </Badge>
                   )}
+                  {diffSummary.restore > 0 && (
+                    <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">
+                      <RotateCcw className="h-3 w-3 mr-1" /> {diffSummary.restore} Restore
+                    </Badge>
+                  )}
                   {diffSummary.unchanged > 0 && (
                     <Badge variant="secondary" className="text-xs">
                       {diffSummary.unchanged} Unchanged
@@ -1050,15 +1092,17 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
                         <tr key={idx} className={`border-t border-border ${
                           row.action === "new" ? "bg-emerald-500/5" :
                           row.action === "update" ? "bg-amber-500/5" :
+                          row.action === "restore" ? "bg-blue-500/5" :
                           row.action === "archive" ? "bg-red-500/5" : ""
                         }`}>
                           <td className="p-2">
                             <Badge variant="outline" className={`text-[10px] ${
                               row.action === "new" ? "border-emerald-500/50 text-emerald-400" :
                               row.action === "update" ? "border-amber-500/50 text-amber-400" :
+                              row.action === "restore" ? "border-blue-500/50 text-blue-400" :
                               "border-red-500/50 text-red-400"
                             }`}>
-                              {row.action === "new" ? "NEW" : row.action === "update" ? "UPDATE" : "ARCHIVE"}
+                              {row.action === "new" ? "NEW" : row.action === "update" ? "UPDATE" : row.action === "restore" ? "RESTORE" : "ARCHIVE"}
                             </Badge>
                           </td>
                           <td className="p-2 font-mono">{row.product_code}</td>
@@ -1112,16 +1156,24 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
                 </div>
 
                 {/* Apply button */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <div className="flex items-center gap-2">
                     <Label className="text-xs whitespace-nowrap">Markup %</Label>
                     <Input type="number" value={aiMarkup} onChange={(e) => setAiMarkup(Number(e.target.value) || 0)}
                       className="w-20 h-8 text-sm" min={0} max={200} />
                   </div>
-                  <Button size="sm" onClick={handleApplyDiff} disabled={importingDiff} className="ml-auto">
-                    {importingDiff ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
-                    Apply {diffSummary.new + diffSummary.update + diffSummary.archive} Changes
-                  </Button>
+                  <div className="flex items-center gap-2 ml-auto">
+                    {diffSummary.unchanged > 0 && (
+                      <Button size="sm" variant="outline" onClick={() => handleApplyDiff(true)} disabled={importingDiff}>
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Force Re-import All ({diffSummary.unchanged + diffSummary.new + diffSummary.update + diffSummary.restore})
+                      </Button>
+                    )}
+                    <Button size="sm" onClick={() => handleApplyDiff(false)} disabled={importingDiff}>
+                      {importingDiff ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
+                      Apply {diffSummary.new + diffSummary.update + diffSummary.archive + diffSummary.restore} Changes
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
