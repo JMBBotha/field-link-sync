@@ -113,23 +113,37 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
     }
   }, [existingItems]);
 
-  // Product search — search product_code, description, AND short_name
+  // Product search — multi-term search across all fields (same logic as ProductPalette)
   const { data: searchResults = [] } = useQuery({
     queryKey: ["bundle-product-search", search],
     enabled: search.length >= 2,
     queryFn: async () => {
+      // Split into individual terms for multi-term matching
+      const terms = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      if (terms.length === 0) return [];
+
+      // Use the first term for the Supabase query to get a broad result set
+      const firstTerm = terms[0].replace(/[%_]/g, "\\$&");
       const { data, error } = await supabase
         .from("supplier_products")
-        .select("id, description, product_code, cost_price, price_per_metre, sold_in_length, pipe_size, short_name, suppliers(name)")
+        .select("id, description, product_code, cost_price, price_per_metre, sold_in_length, pipe_size, short_name, brand, category, suppliers(name)")
         .or("archived.is.null,archived.eq.false")
-        .or(`description.ilike.%${search}%,product_code.ilike.%${search}%,short_name.ilike.%${search}%`)
-        .limit(30);
+        .or(`description.ilike.%${firstTerm}%,product_code.ilike.%${firstTerm}%,short_name.ilike.%${firstTerm}%,brand.ilike.%${firstTerm}%,category.ilike.%${firstTerm}%`)
+        .limit(200);
       if (error) {
         console.error("[BundleSearch] query error:", error);
         throw error;
       }
-      console.log(`[BundleSearch] "${search}" → ${data?.length} results`);
-      return data as any[];
+
+      // Client-side: require ALL terms match in the combined blob
+      const filtered = (data || []).filter(p => {
+        const blob = [p.product_code, p.short_name, p.description, p.brand, p.category, p.suppliers?.name]
+          .filter(Boolean).join(" ").toLowerCase();
+        return terms.every(t => blob.includes(t));
+      });
+
+      console.log(`[BundleSearch] "${search}" → DB: ${data?.length}, after multi-term filter: ${filtered.length}`);
+      return filtered as any[];
     },
   });
 
