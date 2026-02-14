@@ -203,6 +203,18 @@ const AdminLayout = () => {
           </div>
         </header>
 
+        {/* Sticky mobile search bar */}
+        <div className="shrink-0 sm:hidden sticky top-0 z-10 border-b bg-background/95 backdrop-blur-sm px-3 py-2">
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            className="flex w-full items-center gap-2 rounded-md border border-input bg-muted/50 px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors"
+          >
+            <Search className="h-4 w-4 shrink-0" />
+            <span>Search agents, leads, customers…</span>
+          </button>
+        </div>
+
         <main className="flex-1 overflow-auto bg-background dark:bg-gradient-to-br dark:from-[#070e1a] dark:via-[#132f52]/40 dark:to-[#0b1a2e]">
           <AnimatePresence mode="wait">
             <motion.div
