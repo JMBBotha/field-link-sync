@@ -541,16 +541,16 @@ const QuoteBuilderTab = () => {
         <DragOverlay dropAnimation={null}>
           {activeProduct ? <DragOverlayCard product={activeProduct} /> : null}
         </DragOverlay>
+
+        <VisualCatalogPanel
+          open={visualPanelOpen}
+          onClose={() => setVisualPanelOpen(false)}
+          baskets={baskets}
+          onAddProductToBasket={addProductToBasket}
+        />
       </DndContext>
 
       <QuoteSummaryPanel baskets={baskets} />
-
-      <VisualCatalogPanel
-        open={visualPanelOpen}
-        onClose={() => setVisualPanelOpen(false)}
-        baskets={baskets}
-        onAddProductToBasket={addProductToBasket}
-      />
 
       <ACOptionsModal
         open={acModalOpen}
