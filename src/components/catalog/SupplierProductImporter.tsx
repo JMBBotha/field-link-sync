@@ -186,9 +186,14 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
     setError(null); setPdfFile(file); setParsedRows([]); setDiffRows([]); setShowDiff(false);
     setAiResult(null); setExtractedText(""); setExtracting(true);
     try {
+      console.log("[PDF Import] Loading pdfjs-dist...");
       const pdfjsLib = await loadPdfJs();
+      console.log("[PDF Import] Reading file...");
       const arrayBuffer = await file.arrayBuffer();
+      console.log(`[PDF Import] Got ArrayBuffer, size: ${arrayBuffer.byteLength}`);
+      console.log("[PDF Import] Loading PDF with pdfjs...");
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      console.log(`[PDF Import] PDF loaded, pages: ${pdf.numPages}`);
       setPdfPageCount(pdf.numPages);
       let fullText = "";
       const Y_TOLERANCE = 2;
@@ -220,6 +225,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
       console.log(`[PDF Extract] ${trimmed.length} chars, ${pdf.numPages} pages, ~${productRows.length} product rows detected`);
       toast({ title: `PDF loaded: ${pdf.numPages} pages, ${trimmed.length.toLocaleString()} chars`, description: `~${productRows.length} product-like rows detected` });
     } catch (err: any) {
+      console.error("[PDF Import] Failed to read PDF:", err);
       setError("Failed to read PDF. Ensure it's a valid, non-password-protected PDF.");
       setPdfFile(null);
     } finally { setExtracting(false); }
