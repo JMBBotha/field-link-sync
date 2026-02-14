@@ -21,6 +21,7 @@ import ACOptionsModal, { detectACType } from "./quote-builder/ACOptionsModal";
 import QuoteSummaryPanel from "./quote-builder/QuoteSummaryPanel";
 import { useProductFavorites } from "@/hooks/useProductFavorites";
 import { useProductUsageStats } from "@/hooks/useProductUsageStats";
+import { allTermsMatchBlob } from "./searchSynonyms";
 
 export interface PaletteProduct {
   id: string;
@@ -200,8 +201,8 @@ const QuoteBuilderTab = () => {
           p.product_code, p.short_name, p.brand,
           p.description, p.category, p.product_category, p.supplier_name,
         ].filter(Boolean).join(" ").toLowerCase();
-        // ALL terms must match somewhere in the combined blob
-        return terms.every((term) => blob.includes(term));
+        // ALL terms must match somewhere in the combined blob (with synonym expansion)
+        return allTermsMatchBlob(terms, blob);
       });
       console.log(`[Search] query="${searchQuery}" terms=[${terms.join(",")}] results=${result.length}`);
     }
