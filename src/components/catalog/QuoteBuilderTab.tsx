@@ -1,4 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
+import { Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import {
   DndContext,
   DragOverlay,
@@ -455,13 +457,24 @@ const QuoteBuilderTab = () => {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between rounded-lg border bg-card p-3 sticky top-0 z-10 shadow-sm">
-        <span className="text-sm font-medium text-muted-foreground">
-          Quote Total ({totalItems} items across {baskets.length} zones)
-        </span>
-        <span className="text-lg font-bold text-foreground">
-          R {totalCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </span>
+      <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 sticky top-0 z-10 shadow-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-muted-foreground">
+            Quote Total ({totalItems} items across {baskets.length} zones)
+          </span>
+          <span className="text-lg font-bold text-foreground">
+            R {totalCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        </div>
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search products..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8 h-8 text-xs"
+          />
+        </div>
       </div>
 
       <DndContext
