@@ -14,10 +14,13 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import ProductPalette from "./quote-builder/ProductPalette";
+import type { PaletteBundle } from "./quote-builder/ProductPalette";
 import BasketCanvas from "./quote-builder/BasketCanvas";
 import DragOverlayCard from "./quote-builder/DragOverlayCard";
 import ACOptionsModal, { detectACType } from "./quote-builder/ACOptionsModal";
 import QuoteSummaryPanel from "./quote-builder/QuoteSummaryPanel";
+import { useProductFavorites } from "@/hooks/useProductFavorites";
+import { useProductUsageStats } from "@/hooks/useProductUsageStats";
 
 export interface PaletteProduct {
   id: string;
@@ -42,13 +45,29 @@ export interface BasketItem {
   instanceId: string;
   product: PaletteProduct;
   quantity: number;
-  length?: number; // metres for length-based items
+  length?: number;
 }
 
 export interface Basket {
   id: string;
   name: string;
   items: BasketItem[];
+}
+
+// Custom shouldHandleEvent to skip data-no-dnd elements
+class NoDndPointerSensor extends PointerSensor {
+  static activators = [
+    {
+      eventName: "onPointerDown" as const,
+      handler: ({ nativeEvent }: { nativeEvent: PointerEvent }) => {
+        const target = nativeEvent.target as HTMLElement | null;
+        if (target?.closest?.('[data-no-dnd="true"]')) {
+          return false;
+        }
+        return true;
+      },
+    },
+  ];
 }
 
 const QuoteBuilderTab = () => {
@@ -64,7 +83,10 @@ const QuoteBuilderTab = () => {
   const [acModalProduct, setAcModalProduct] = useState<PaletteProduct | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Fetch products for the palette
+  const { favorites, toggleFavorite } = useProductFavorites();
+  const { usageMap, trackUsage } = useProductUsageStats();
+
+  // Fetch products
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["quote-builder-products"],
     queryFn: async () => {
@@ -88,7 +110,54 @@ const QuoteBuilderTab = () => {
     staleTime: 60000,
   });
 
-  // ─── Brand & Type Inference ───
+  // Fetch bundles with their items + products
+  const { data: bundles = [], isLoading: bundlesLoading } = useQuery<PaletteBundle[]>({
+    queryKey: ["quote-builder-bundles"],
+    queryFn: async () => {
+      const { data: bundleData, error: bErr } = await supabase
+        .from("installation_bundles")
+        .select("id, name, description, bundle_type")
+        .eq("is_active", true)
+        .order("name");
+      if (bErr) throw bErr;
+      if (!bundleData || bundleData.length === 0) return [];
+
+      const { data: itemsData, error: iErr } = await (supabase.from("bundle_items") as any)
+        .select("id, bundle_id, supplier_product_id, quantity, length_metres, is_length_item, is_optional, sort_order, supplier_products(id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, suppliers(name))")
+        .order("sort_order");
+      if (iErr) throw iErr;
+
+      const itemsByBundle: Record<string, any[]> = {};
+      (itemsData || []).forEach((item: any) => {
+        if (!itemsByBundle[item.bundle_id]) itemsByBundle[item.bundle_id] = [];
+        const sp = item.supplier_products;
+        itemsByBundle[item.bundle_id].push({
+          id: item.id,
+          supplier_product_id: item.supplier_product_id,
+          quantity: item.quantity,
+          length_metres: item.length_metres,
+          is_length_item: item.is_length_item,
+          is_optional: item.is_optional || false,
+          product: sp ? {
+            ...sp,
+            product_category: sp.product_category || sp.category || "",
+            supplier_name: sp.suppliers?.name || "",
+            price_per_metre: sp.price_per_metre || null,
+            sold_in_length: sp.sold_in_length || false,
+            unit_length: sp.unit_length || null,
+          } : null,
+        });
+      });
+
+      return bundleData.map((b) => ({
+        ...b,
+        items: itemsByBundle[b.id] || [],
+      }));
+    },
+    staleTime: 60000,
+  });
+
+  // Brand & Type Inference
   const inferredBrand = useMemo(() => {
     for (const basket of baskets) {
       for (const item of basket.items) {
@@ -112,11 +181,12 @@ const QuoteBuilderTab = () => {
     return null;
   }, [baskets]);
 
-  // Client-side filtering
+  // Client-side filtering — multi-word search across all fields, ignoring category during search
   const filteredProducts = useMemo(() => {
     let result = products;
 
-    if (categoryFilter !== "all" && categoryFilter !== "favorites") {
+    // Only filter by category when NOT searching
+    if (!searchQuery.trim() && categoryFilter !== "all" && categoryFilter !== "favorites") {
       result = result.filter((p) =>
         p.product_category === categoryFilter ||
         (p.category || "").toLowerCase().includes(categoryFilter.toLowerCase())
@@ -124,33 +194,37 @@ const QuoteBuilderTab = () => {
     }
 
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
+      const terms = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
       result = result.filter((p) => {
         const blob = [
           p.product_code, p.short_name, p.brand,
           p.description, p.category, p.product_category, p.supplier_name,
         ].filter(Boolean).join(" ").toLowerCase();
-        return blob.includes(q);
+        // ALL terms must match somewhere in the combined blob
+        return terms.every((term) => blob.includes(term));
       });
+      console.log(`[Search] query="${searchQuery}" terms=[${terms.join(",")}] results=${result.length}`);
     }
 
     return result;
   }, [products, categoryFilter, searchQuery]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(NoDndPointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
     useSensor(KeyboardSensor)
   );
 
   const addProductToBasket = useCallback((basketId: string, product: PaletteProduct) => {
+    // Track usage
+    trackUsage(product.id);
+
     setBaskets((prev) =>
       prev.map((basket) => {
         if (basket.id !== basketId) return basket;
         const existing = basket.items.find((i) => i.product.id === product.id);
         if (existing) {
           if (product.sold_in_length && product.price_per_metre) {
-            // For length items, add 1m more
             return {
               ...basket,
               items: basket.items.map((i) =>
@@ -180,7 +254,29 @@ const QuoteBuilderTab = () => {
         };
       })
     );
-  }, []);
+  }, [trackUsage]);
+
+  const addBundleToBasket = useCallback((basketId: string, bundle: PaletteBundle) => {
+    setBaskets((prev) =>
+      prev.map((basket) => {
+        if (basket.id !== basketId) return basket;
+        const newItems: BasketItem[] = [];
+        for (const bItem of bundle.items) {
+          if (!bItem.product) continue;
+          if (bItem.is_optional) continue; // skip optional by default
+          trackUsage(bItem.product.id);
+          const isLengthItem = bItem.is_length_item && !!bItem.product.price_per_metre;
+          newItems.push({
+            instanceId: `${bItem.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            product: bItem.product as PaletteProduct,
+            quantity: bItem.quantity,
+            ...(isLengthItem ? { length: bItem.length_metres || bItem.product.unit_length || 1 } : {}),
+          });
+        }
+        return { ...basket, items: [...basket.items, ...newItems] };
+      })
+    );
+  }, [trackUsage]);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const product = (event.active.data.current as any)?.product as PaletteProduct | undefined;
@@ -197,11 +293,7 @@ const QuoteBuilderTab = () => {
     setActiveProduct(null);
     setIsDragging(false);
     const { active, over } = event;
-    console.log('[DnD] onDragEnd', { activeId: active.id, overId: over?.id });
     if (!over) return;
-
-    const product = (active.data.current as any)?.product as PaletteProduct | undefined;
-    if (!product) return;
 
     const overId = String(over.id);
     let targetBasketId: string | null = null;
@@ -213,9 +305,17 @@ const QuoteBuilderTab = () => {
     }
     if (!targetBasketId) return;
 
-    addProductToBasket(targetBasketId, product);
-  }, [baskets, addProductToBasket]);
+    // Check if it's a bundle drop
+    const bundleData = (active.data.current as any)?.bundle;
+    if (bundleData) {
+      addBundleToBasket(targetBasketId, bundleData);
+      return;
+    }
 
+    const product = (active.data.current as any)?.product as PaletteProduct | undefined;
+    if (!product) return;
+    addProductToBasket(targetBasketId, product);
+  }, [baskets, addProductToBasket, addBundleToBasket]);
 
   const handleRemoveItem = useCallback((basketId: string, instanceId: string) => {
     setBaskets((prev) =>
@@ -303,8 +403,6 @@ const QuoteBuilderTab = () => {
     setBaskets(newBaskets);
   }, []);
 
-  // handleProductClick removed — cards are drag-only now
-
   const handleACConfirm = useCallback((product: PaletteProduct) => {
     const targetBasket = baskets[0];
     if (targetBasket) {
@@ -334,7 +432,6 @@ const QuoteBuilderTab = () => {
 
   return (
     <div className="space-y-3">
-      {/* Sticky total bar */}
       <div className="flex items-center justify-between rounded-lg border bg-card p-3 sticky top-0 z-10 shadow-sm">
         <span className="text-sm font-medium text-muted-foreground">
           Quote Total ({totalItems} items across {baskets.length} zones)
@@ -361,6 +458,11 @@ const QuoteBuilderTab = () => {
               categoryFilter={categoryFilter}
               onCategoryChange={setCategoryFilter}
               isDragging={isDragging}
+              favorites={favorites}
+              onToggleFavorite={toggleFavorite}
+              usageMap={usageMap}
+              bundles={bundles}
+              bundlesLoading={bundlesLoading}
             />
           </div>
           <div className="md:col-span-3 md:max-h-[calc(100vh-280px)] md:overflow-y-auto">
@@ -387,10 +489,8 @@ const QuoteBuilderTab = () => {
         </DragOverlay>
       </DndContext>
 
-      {/* Quote Summary & Export */}
       <QuoteSummaryPanel baskets={baskets} />
 
-      {/* AC Options Modal with inference */}
       <ACOptionsModal
         open={acModalOpen}
         onClose={() => setAcModalOpen(false)}

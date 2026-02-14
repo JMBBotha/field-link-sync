@@ -1769,6 +1769,51 @@ export type Database = {
           },
         ]
       }
+      product_favorites: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      product_usage_stats: {
+        Row: {
+          id: string
+          last_used_at: string
+          product_id: string
+          usage_count: number
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          last_used_at?: string
+          product_id: string
+          usage_count?: number
+          user_id: string
+        }
+        Update: {
+          id?: string
+          last_used_at?: string
+          product_id?: string
+          usage_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           availability_status: string | null
