@@ -250,11 +250,17 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
 
   // ─── Build diff against existing catalog ───
   const buildDiff = async (incoming: ParsedRow[]): Promise<DiffRow[]> => {
-    const { data: existing } = await supabase
+    // Fetch ALL existing products (override default 1000 row limit)
+    const { data: existing, error: fetchErr } = await supabase
       .from("supplier_products" as any)
       .select("id, product_code, cost_price, archived")
       .eq("supplier_id", supplierId)
-      .or("archived.is.null,archived.eq.false");
+      .or("archived.is.null,archived.eq.false")
+      .limit(5000);
+    
+    if (fetchErr) {
+      console.error("[Import] Failed to fetch existing products for diff:", fetchErr);
+    }
 
     const existingMap = new Map<string, { id: string; cost_price: number }>();
     (existing || []).forEach((e: any) => {
@@ -594,17 +600,26 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
               insertData.vat_rate = (row as any)._vat_rate || 15;
             }
             const { error: err } = await supabase.from("supplier_products" as any).insert(insertData as any);
-          if (err) errors++; else imported++;
+          if (err) {
+            console.error(`[Import] INSERT failed for ${row.product_code}:`, err.message, err.details, err.hint, err);
+            errors++;
+          } else imported++;
         } else if (row.action === "update" && row.existing_id) {
           const { error: err } = await supabase.from("supplier_products" as any)
             .update({ cost_price: row.cost_price, updated_at: new Date().toISOString(), archived: false, archived_at: null } as any)
             .eq("id", row.existing_id);
-          if (err) errors++; else updated++;
+          if (err) {
+            console.error(`[Import] UPDATE failed for ${row.product_code}:`, err.message, err.details, err.hint, err);
+            errors++;
+          } else updated++;
         } else if (row.action === "archive" && row.existing_id) {
           const { error: err } = await supabase.from("supplier_products" as any)
             .update({ archived: true, archived_at: new Date().toISOString() } as any)
             .eq("id", row.existing_id);
-          if (err) errors++; else archived++;
+          if (err) {
+            console.error(`[Import] ARCHIVE failed for ${row.product_code}:`, err.message, err.details, err.hint, err);
+            errors++;
+          } else archived++;
         }
         setProgress(Math.round(((i + 1) / total) * 100));
       }
@@ -642,7 +657,12 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
 
       setAiResult({ imported, updated, skipped: errors, archived });
       setShowDiff(false);
-      toast({ title: "Import Complete", description: `${imported} new, ${updated} updated, ${archived} archived` });
+      if (errors > 0) {
+        toast({ title: "Import Complete (with errors)", description: `${imported} new, ${updated} updated, ${archived} archived, ${errors} failed — check browser console for details`, variant: "destructive" });
+      } else {
+        toast({ title: "Import Complete", description: `${imported} new, ${updated} updated, ${archived} archived` });
+      }
+      console.log(`[Import] Final results: ${imported} new, ${updated} updated, ${archived} archived, ${errors} failed`);
       invalidateAll();
       onComplete();
     } catch (err: any) {
