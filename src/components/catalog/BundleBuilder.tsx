@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { allTermsMatchBlob } from "./searchSynonyms";
+import { allTermsMatchBlob, buildSupabaseOrFilter } from "./searchSynonyms";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -123,14 +123,16 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
       const terms = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
       if (terms.length === 0) return [];
 
-      // Use the first term for the Supabase query to get a broad result set
-      const firstTerm = terms[0].replace(/[%_]/g, "\\$&");
+      // Build broad OR filter using ALL terms + their synonyms
+      const searchFields = ["description", "product_code", "short_name", "brand", "category"];
+      const orFilter = buildSupabaseOrFilter(terms, searchFields);
+
       const { data, error } = await supabase
         .from("supplier_products")
         .select("id, description, product_code, cost_price, price_per_metre, sold_in_length, pipe_size, short_name, brand, category, suppliers(name)")
         .or("archived.is.null,archived.eq.false")
-        .or(`description.ilike.%${firstTerm}%,product_code.ilike.%${firstTerm}%,short_name.ilike.%${firstTerm}%,brand.ilike.%${firstTerm}%,category.ilike.%${firstTerm}%`)
-        .limit(200);
+        .or(orFilter)
+        .limit(300);
       if (error) {
         console.error("[BundleSearch] query error:", error);
         throw error;
