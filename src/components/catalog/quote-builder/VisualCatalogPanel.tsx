@@ -23,6 +23,7 @@ interface VisualCatalogPanelProps {
   baskets: Basket[];
   onAddProductToBasket: (basketId: string, product: PaletteProduct) => void;
   products: PaletteProduct[];
+  isDragging?: boolean;
 }
 
 interface PdfPage {
@@ -34,14 +35,16 @@ interface PdfPage {
   pdf_storage_path: string | null;
 }
 
-const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, products }: VisualCatalogPanelProps) => {
+const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, products, isDragging: isDraggingExternal }: VisualCatalogPanelProps) => {
   const isMobile = useIsMobile();
   const [expanded, setExpanded] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
 
-  const isFullWidth = isMobile || expanded;
+  // Auto-shrink when dragging to reveal drop zones
+  const isFullWidth = isMobile || (expanded && !isDraggingExternal);
+  const panelWidth = isDraggingExternal ? "w-2/5" : isFullWidth ? "w-full" : "w-1/2";
 
   useEffect(() => { if (open) { setCurrentPageIndex(0); setZoom(1); } }, [open]);
 
@@ -159,7 +162,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, prod
     <>
       <div className="fixed inset-0 z-40 bg-black/40 transition-opacity" onClick={onClose} />
 
-      <div className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-background border-r shadow-2xl transition-all duration-300 ease-in-out ${isFullWidth ? "w-full" : "w-1/2"}`}>
+      <div className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-background border-r shadow-2xl transition-all duration-300 ease-in-out ${panelWidth}`}>
         {/* Header */}
         <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/30 shrink-0">
           <div className="flex items-center gap-2 flex-1 min-w-0">
