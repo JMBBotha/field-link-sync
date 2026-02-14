@@ -1,6 +1,7 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   DndContext,
   DragOverlay,
@@ -88,6 +89,16 @@ const QuoteBuilderTab = () => {
 
   const queryClient = useQueryClient();
   const { usageMap, trackUsage } = useProductUsageStats();
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
+
+  const scrollToCanvas = useCallback(() => {
+    if (isMobile && canvasRef.current) {
+      setTimeout(() => {
+        canvasRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 150);
+    }
+  }, [isMobile]);
 
   // Fetch products
   const { data: products = [], isLoading } = useQuery({
@@ -279,7 +290,8 @@ const QuoteBuilderTab = () => {
         };
       })
     );
-  }, [trackUsage]);
+    scrollToCanvas();
+  }, [trackUsage, scrollToCanvas]);
 
   const addBundleToBasket = useCallback((basketId: string, bundle: PaletteBundle) => {
     setBaskets((prev) =>
@@ -288,7 +300,7 @@ const QuoteBuilderTab = () => {
         const newItems: BasketItem[] = [];
         for (const bItem of bundle.items) {
           if (!bItem.product) continue;
-          if (bItem.is_optional) continue; // skip optional by default
+          if (bItem.is_optional) continue;
           trackUsage(bItem.product.id);
           const isLengthItem = bItem.is_length_item && !!bItem.product.price_per_metre;
           newItems.push({
@@ -301,7 +313,8 @@ const QuoteBuilderTab = () => {
         return { ...basket, items: [...basket.items, ...newItems] };
       })
     );
-  }, [trackUsage]);
+    scrollToCanvas();
+  }, [trackUsage, scrollToCanvas]);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const product = (event.active.data.current as any)?.product as PaletteProduct | undefined;
@@ -503,7 +516,7 @@ const QuoteBuilderTab = () => {
               onAddProductToBasket={addProductToBasket}
             />
           </div>
-          <div className="md:col-span-3 md:max-h-[calc(100vh-280px)] md:overflow-y-auto">
+          <div ref={canvasRef} className="md:col-span-3 md:max-h-[calc(100vh-280px)] md:overflow-y-auto">
             <BasketCanvas
               baskets={baskets}
               allProducts={products}
