@@ -194,8 +194,10 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
     onError: (err: any) => toast({ title: "Bulk update failed", description: err.message, variant: "destructive" }),
   });
 
+  const bulkDeleteCountRef = { current: 0 };
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
+      bulkDeleteCountRef.current = ids.length;
       const batchSize = 50;
       for (let i = 0; i < ids.length; i += batchSize) {
         const batch = ids.slice(i, i + batchSize);
@@ -207,10 +209,12 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
       queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] });
       queryClient.invalidateQueries({ queryKey: ["product-category-counts"] });
       queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
+      const count = bulkDeleteCountRef.current;
       setBulkSelected(new Set());
       setBulkConfirmOpen(false);
       setBulkAction(null);
-      toast({ title: "Products deleted" });
+      toast({ title: `${count} product${count !== 1 ? "s" : ""} deleted`, description: "The supplier record remains intact." });
     },
     onError: (err: any) => toast({ title: "Delete failed", description: err.message, variant: "destructive" }),
   });
@@ -228,6 +232,11 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
     }
   };
 
+  const supplierNameForBulk = useMemo(() => {
+    if (!supplierId) return "";
+    return allSuppliers.find(s => s.id === supplierId)?.name || "";
+  }, [supplierId, allSuppliers]);
+
   const bulkConfirmMessage = bulkAction === "brand"
     ? `Change brand to "${bulkBrand}" for ${bulkSelected.size} products?`
     : bulkAction === "category"
@@ -235,7 +244,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
     : bulkAction === "supplier"
     ? `Move ${bulkSelected.size} products to "${allSuppliers.find(s => s.id === bulkSupplierId)?.name}"?`
     : bulkAction === "delete"
-    ? `Permanently delete ${bulkSelected.size} products?`
+    ? `Delete ${bulkSelected.size} product${bulkSelected.size !== 1 ? "s" : ""}? This will permanently remove these products but keep the supplier${supplierNameForBulk ? ` (${supplierNameForBulk})` : ""} intact.`
     : "";
 
   const addToHistory = useCallback((term: string) => {
@@ -755,7 +764,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
       <AlertDialog open={bulkConfirmOpen} onOpenChange={setBulkConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Bulk Action</AlertDialogTitle>
+            <AlertDialogTitle>{bulkAction === "delete" ? `Delete ${bulkSelected.size} products?` : "Confirm Bulk Action"}</AlertDialogTitle>
             <AlertDialogDescription>{bulkConfirmMessage}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -764,7 +773,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
               className={bulkAction === "delete" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}>
               {bulkUpdateMutation.isPending || bulkDeleteMutation.isPending
                 ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              Confirm
+              {bulkAction === "delete" ? "Confirm Delete" : "Confirm"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
