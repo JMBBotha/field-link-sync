@@ -539,6 +539,7 @@ const QuoteBuilderTab = () => {
               onClearAll={handleClearAll}
               onUpdateLength={handleUpdateLength}
               isDragging={isDragging}
+              isCompact={visualPanelOpen}
             />
           </div>
         </div>
