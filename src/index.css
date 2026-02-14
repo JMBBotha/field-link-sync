@@ -114,6 +114,12 @@ All colors MUST be HSL.
   border-color: rgba(30, 58, 95, 0.5);
 }
 
+/* Dark mode ambient glow for muted background areas */
+.dark [class*="bg-muted/50"],
+.dark [class*="bg-muted/30"] {
+  background: linear-gradient(135deg, rgba(11, 26, 46, 0.6) 0%, rgba(21, 50, 88, 0.25) 50%, rgba(11, 26, 46, 0.6) 100%);
+}
+
 @layer base {
   * {
     @apply border-border;
