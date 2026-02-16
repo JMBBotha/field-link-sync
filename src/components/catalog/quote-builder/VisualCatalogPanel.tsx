@@ -1,14 +1,19 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ZoomIn, ZoomOut, X, Maximize2, Minimize2,
-  ChevronLeft, ChevronRight, FileImage, ArrowLeft, ScanSearch, Loader2, Lightbulb, Search,
+  ChevronLeft, ChevronRight, FileImage, ArrowLeft, ScanSearch, Loader2, Lightbulb, Search, Trash2,
 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import PdfPageOverlay from "./PdfPageOverlay";
@@ -39,12 +44,50 @@ interface PdfPage {
 
 const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, products, isDragging: isDraggingExternal }: VisualCatalogPanelProps) => {
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [loupeActive, setLoupeActive] = useState(false);
   const pdfAreaRef = useRef<HTMLDivElement | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteSupplierPdf = useCallback(async (supplierId: string) => {
+    setDeleting(true);
+    try {
+      // Get all pages for this supplier to find storage paths
+      const { data: pagesToDelete } = await (supabase.from("supplier_pdf_pages") as any)
+        .select("id, pdf_storage_path")
+        .eq("supplier_id", supplierId);
+
+      // Delete storage files
+      const storagePaths = (pagesToDelete || [])
+        .map((p: any) => p.pdf_storage_path)
+        .filter(Boolean);
+      if (storagePaths.length > 0) {
+        await supabase.storage.from("supplier-pdfs").remove(storagePaths);
+      }
+
+      // Delete DB rows
+      const { error } = await (supabase.from("supplier_pdf_pages") as any)
+        .delete()
+        .eq("supplier_id", supplierId);
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ["visual-panel-pages"] });
+      queryClient.invalidateQueries({ queryKey: ["visual-panel-suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["visual-catalog-pages"] });
+      queryClient.invalidateQueries({ queryKey: ["visual-catalog-suppliers"] });
+      setCurrentPageIndex(0);
+      toast({ title: "PDF pages deleted successfully" });
+    } catch (err) {
+      console.error("Delete PDF failed:", err);
+      toast({ title: "Failed to delete PDF pages", variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
+  }, [queryClient]);
 
   // Auto-shrink when dragging to reveal drop zones
   const isFullWidth = isMobile || (expanded && !isDraggingExternal);
@@ -175,6 +218,32 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, prod
               <p className="text-xs font-semibold truncate text-foreground">{currentSupplierName || "Visual Catalog"}</p>
               {currentFilename && <p className="text-[10px] text-muted-foreground truncate">{currentFilename}</p>}
             </div>
+            {currentPage && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 text-destructive hover:bg-destructive/10" disabled={deleting}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete PDF pages?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Delete all PDF pages for <strong>{currentSupplierName}</strong>? This cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={() => handleDeleteSupplierPdf(currentPage.supplier_id)}
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
 
           {pages.length > 0 && (
@@ -277,11 +346,12 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, prod
                   </div>
                 </ScrollArea>
 
-                {/* Fallback product sidebar when no PDF source */}
-                {!hasPdfSource && (
+                {/* Fallback product sidebar — show when no PDF source OR no overlay regions */}
+                {(!hasPdfSource || !hasOverlayRegions) && (
                   <FallbackProductPanel
                     products={products}
                     supplierId={currentPage.supplier_id}
+                    supplierName={currentSupplierName}
                     baskets={baskets}
                     onAddProductToBasket={onAddProductToBasket}
                     basketProductCounts={basketProductCounts}
@@ -304,7 +374,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, prod
                   </span>
                 ) : hasOverlayRegions ? (
                   <span className="text-[10px] text-muted-foreground">
-                    {matchedCount} matched · {unmatchedCount} unmatched
+                    {matchedCount} matched · {unmatchedCount} unmatched · Click any highlight to add to quote
                   </span>
                 ) : (
                   <span className="text-[10px] text-muted-foreground">

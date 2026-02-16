@@ -67,8 +67,10 @@ const DraggableRegion = memo(({
         isDragging ? "opacity-40 ring-2 ring-primary" : ""
       } ${
         isMatched
-          ? "border border-transparent hover:border-blue-400/60 hover:bg-blue-500/10 hover:shadow-[0_0_12px_rgba(59,130,246,0.25)]"
-          : "border border-transparent hover:border-dashed hover:border-muted-foreground/40 hover:bg-muted/10"
+          ? inQuoteQty > 0
+            ? "border-2 border-green-400/50 bg-green-500/5 hover:bg-green-500/15 hover:shadow-[0_0_12px_rgba(34,197,94,0.3)]"
+            : "border border-blue-400/40 bg-blue-500/5 hover:border-blue-400/70 hover:bg-blue-500/15 hover:shadow-[0_0_12px_rgba(59,130,246,0.25)]"
+          : "border border-dashed border-amber-400/30 hover:border-amber-400/60 hover:bg-amber-500/5"
       }`}
       style={{
         left: `${region.x_pct}%`,
@@ -83,13 +85,13 @@ const DraggableRegion = memo(({
     >
       {/* Corner indicator badge */}
       {isMatched && (
-        <div className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <div className="absolute -top-1.5 -right-1.5 opacity-70 group-hover:opacity-100 transition-opacity z-10">
           {inQuoteQty > 0 ? (
-            <div className="h-4 w-4 rounded-full bg-blue-500 flex items-center justify-center shadow-sm">
-              <Check className="h-2.5 w-2.5 text-white" />
+            <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center shadow-sm text-[8px] font-bold text-white">
+              {inQuoteQty}
             </div>
           ) : (
-            <div className="h-4 w-4 rounded-full bg-green-500 flex items-center justify-center shadow-sm">
+            <div className="h-4 w-4 rounded-full bg-blue-500 flex items-center justify-center shadow-sm">
               <ShoppingCart className="h-2.5 w-2.5 text-white" />
             </div>
           )}

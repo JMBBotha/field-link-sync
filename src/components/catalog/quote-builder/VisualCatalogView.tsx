@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useMemo, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +7,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Check, ZoomIn, ZoomOut, FileImage } from "lucide-react";
+import { Plus, Check, ZoomIn, ZoomOut, FileImage, Trash2 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { toast } from "@/hooks/use-toast";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
 interface VisualCatalogViewProps {
@@ -33,8 +38,29 @@ interface ProductRegion {
 }
 
 const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewProps) => {
+  const queryClient = useQueryClient();
   const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
   const [zoomLevels, setZoomLevels] = useState<Record<string, number>>({});
+
+  const handleDeleteSupplierPdf = useCallback(async (supplierId: string) => {
+    try {
+      const { data: pagesToDelete } = await (supabase.from("supplier_pdf_pages") as any)
+        .select("id, pdf_storage_path")
+        .eq("supplier_id", supplierId);
+      const storagePaths = (pagesToDelete || []).map((p: any) => p.pdf_storage_path).filter(Boolean);
+      if (storagePaths.length > 0) {
+        await supabase.storage.from("supplier-pdfs").remove(storagePaths);
+      }
+      const { error } = await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", supplierId);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["visual-catalog-pages"] });
+      queryClient.invalidateQueries({ queryKey: ["visual-catalog-suppliers"] });
+      toast({ title: "PDF pages deleted successfully" });
+    } catch (err) {
+      console.error("Delete PDF failed:", err);
+      toast({ title: "Failed to delete PDF pages", variant: "destructive" });
+    }
+  }, [queryClient]);
 
   // Fetch available suppliers from pdf pages
   const { data: suppliers = [] } = useQuery({
@@ -189,9 +215,33 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
             return (
               <div key={fileKey} className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex-1">
                     {supplier} — {filename}
                   </p>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10">
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete PDF pages?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Delete all PDF pages for <strong>{supplier}</strong>? This cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={() => handleDeleteSupplierPdf(filePages[0]?.supplier_id || supplier)}
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {filePages.map((page) => {

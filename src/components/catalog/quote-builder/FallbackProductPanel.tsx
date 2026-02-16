@@ -11,6 +11,7 @@ import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 interface FallbackProductPanelProps {
   products: PaletteProduct[];
   supplierId: string | null;
+  supplierName?: string;
   baskets: Basket[];
   onAddProductToBasket: (basketId: string, product: PaletteProduct) => void;
   basketProductCounts: Record<string, number>;
@@ -113,14 +114,25 @@ const DraggableProductRow = ({
 const FallbackProductPanel = ({
   products,
   supplierId,
+  supplierName,
   baskets,
   onAddProductToBasket,
   basketProductCounts,
 }: FallbackProductPanelProps) => {
   const [search, setSearch] = useState("");
 
+  const supplierProducts = useMemo(() => {
+    if (!supplierId) return products;
+    return products.filter((p) => {
+      // Match by supplier_name (from join) containing supplierId or matching name
+      const sName = (p.supplier_name || "").toLowerCase();
+      const sId = supplierId.toLowerCase();
+      return sName === sId || sName.includes(sId) || sId.includes(sName);
+    });
+  }, [products, supplierId]);
+
   const filtered = useMemo(() => {
-    let list = products;
+    let list = supplierProducts;
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -131,11 +143,16 @@ const FallbackProductPanel = ({
       );
     }
     return list.slice(0, 100);
-  }, [products, search]);
+  }, [supplierProducts, search]);
 
   return (
     <div className="flex flex-col h-full border-l bg-background w-[240px] shrink-0">
       <div className="px-2 py-1.5 border-b bg-muted/20">
+        {supplierName && (
+          <Badge variant="outline" className="text-[9px] mb-1 w-full justify-center truncate">
+            {supplierProducts.length} products for {supplierName}
+          </Badge>
+        )}
         <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
           Supplier Products
         </p>
@@ -151,7 +168,14 @@ const FallbackProductPanel = ({
       </div>
       <ScrollArea className="flex-1">
         <div className="p-1 space-y-0.5">
-          {filtered.length === 0 ? (
+          {supplierProducts.length === 0 ? (
+            <div className="text-center py-6 px-2">
+              <p className="text-[11px] font-medium text-muted-foreground">No products imported</p>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                {supplierName ? `Import products for ${supplierName} first.` : "Import products first."}
+              </p>
+            </div>
+          ) : filtered.length === 0 ? (
             <p className="text-[10px] text-muted-foreground text-center py-4">No products found</p>
           ) : (
             filtered.map((p) => (
