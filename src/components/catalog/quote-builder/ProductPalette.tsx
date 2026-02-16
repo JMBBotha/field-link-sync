@@ -9,6 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import { getProductDisplayName } from "./productDisplayUtils";
 
@@ -183,6 +187,7 @@ function DraggableProductCard({
   });
 
   const [hoverOpen, setHoverOpen] = useState(false);
+  const [confirmUnfav, setConfirmUnfav] = useState(false);
 
   useEffect(() => {
     if (isDragging || isDraggingGlobal) setHoverOpen(false);
@@ -191,112 +196,142 @@ function DraggableProductCard({
   const price = product.selling_price || product.cost_incl_vat || 0;
   const catBg = getCategoryBg(product.product_category);
 
+  const handleStarClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (isFavorite) {
+      setConfirmUnfav(true);
+    } else {
+      onToggleFavorite();
+    }
+  };
+
   return (
-    <HoverCard openDelay={400} closeDelay={100} open={isDraggingGlobal ? false : hoverOpen} onOpenChange={setHoverOpen}>
-      <HoverCardTrigger asChild>
-        <div
-          ref={setNodeRef}
-          {...attributes}
-          {...listeners}
-          style={{ touchAction: 'none', pointerEvents: isDraggingGlobal && !isDragging ? 'none' : 'auto' }}
-          className={`group relative flex items-start gap-2.5 rounded-lg border bg-card p-2.5 cursor-grab active:cursor-grabbing transition-all hover:shadow-md hover:border-primary/20 ${
-            isDragging ? "opacity-40 shadow-lg scale-95" : ""
-          } ${product.is_pinned ? "border-primary/30" : ""} ${
-            isFavorite ? "border-l-2 border-l-amber-400 bg-amber-50/50 dark:bg-amber-950/20" : ""
-          }`}
-        >
-          <div className={`shrink-0 rounded-md p-1.5 ${catBg}`}>
-            {getCategoryIcon(product.product_category, "h-4 w-4")}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold truncate leading-tight text-foreground">
-              <HighlightText text={getProductDisplayName(product)} searchTerm={searchTerm} />
-            </p>
-            <p className="text-[10px] font-mono font-medium truncate mt-0.5 text-primary/80">
-              <HighlightText text={product.product_code} searchTerm={searchTerm} />
-            </p>
-            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              <span className="text-xs font-bold text-foreground">
-                {price > 0 ? `R${price.toLocaleString("en-ZA")}` : "POR"}
-              </span>
-              {product.sold_in_length && product.price_per_metre && (
-                <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 gap-0.5 border-orange-400/40 text-orange-600">
-                  <Ruler className="h-2 w-2" />
-                  R{product.price_per_metre.toFixed(2)}/m
-                </Badge>
-              )}
-              {product.supplier_name && (
-                <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5">
-                  {product.supplier_name}
-                </Badge>
-              )}
-              {usageCount > 5 && (
-                <Badge variant="secondary" className="text-[8px] px-1 py-0 h-3.5">
-                  Used {usageCount}x
-                </Badge>
-              )}
+    <>
+      <HoverCard openDelay={400} closeDelay={100} open={isDraggingGlobal ? false : hoverOpen} onOpenChange={setHoverOpen}>
+        <HoverCardTrigger asChild>
+          <div
+            ref={setNodeRef}
+            {...attributes}
+            {...listeners}
+            style={{ touchAction: 'none', pointerEvents: isDraggingGlobal && !isDragging ? 'none' : 'auto' }}
+            className={`group relative flex items-start gap-2.5 rounded-lg border bg-card p-2.5 cursor-grab active:cursor-grabbing transition-all hover:shadow-md hover:border-primary/20 ${
+              isDragging ? "opacity-40 shadow-lg scale-95" : ""
+            } ${product.is_pinned ? "border-primary/30" : ""} ${
+              isFavorite ? "border-l-2 border-l-yellow-400 bg-yellow-50/50 dark:bg-yellow-950/20" : ""
+            }`}
+          >
+            <div className={`shrink-0 rounded-md p-1.5 ${catBg}`}>
+              {getCategoryIcon(product.product_category, "h-4 w-4")}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold truncate leading-tight text-foreground">
+                <HighlightText text={getProductDisplayName(product)} searchTerm={searchTerm} />
+              </p>
+              <p className="text-[10px] font-mono font-medium truncate mt-0.5 text-primary/80">
+                <HighlightText text={product.product_code} searchTerm={searchTerm} />
+              </p>
+              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                <span className="text-xs font-bold text-foreground">
+                  {price > 0 ? `R${price.toLocaleString("en-ZA")}` : "POR"}
+                </span>
+                {product.sold_in_length && product.price_per_metre && (
+                  <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 gap-0.5 border-orange-400/40 text-orange-600">
+                    <Ruler className="h-2 w-2" />
+                    R{product.price_per_metre.toFixed(2)}/m
+                  </Badge>
+                )}
+                {product.supplier_name && (
+                  <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5">
+                    {product.supplier_name}
+                  </Badge>
+                )}
+                {usageCount > 5 && (
+                  <Badge variant="secondary" className="text-[8px] px-1 py-0 h-3.5">
+                    Used {usageCount}x
+                  </Badge>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col items-center gap-1 shrink-0">
+              <div className="p-0.5 rounded">
+                <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
+              </div>
+              <button
+                type="button"
+                data-no-dnd="true"
+                className={`h-5 w-5 flex items-center justify-center transition-opacity rounded hover:bg-muted ${
+                  isFavorite ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                }`}
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  e.nativeEvent.stopImmediatePropagation();
+                }}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  e.nativeEvent.stopImmediatePropagation();
+                }}
+                onTouchStart={(e) => {
+                  e.stopPropagation();
+                  (e.nativeEvent as any).stopImmediatePropagation?.();
+                }}
+                onClick={handleStarClick}
+              >
+                {isFavorite ? (
+                  <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-500" />
+                ) : (
+                  <StarOff className="h-3 w-3 text-muted-foreground" />
+                )}
+              </button>
             </div>
           </div>
-          <div className="flex flex-col items-center gap-1 shrink-0">
-            <div className="p-0.5 rounded">
-              <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
+        </HoverCardTrigger>
+        <HoverCardContent side="right" className="w-64 text-xs space-y-1.5">
+          <div className="flex items-center gap-2">
+            <div className={`rounded-md p-1 ${catBg}`}>
+              {getCategoryIcon(product.product_category, "h-3.5 w-3.5")}
             </div>
-            <button
-              type="button"
-              data-no-dnd="true"
-              className="h-5 w-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-muted"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                e.nativeEvent.stopImmediatePropagation();
-              }}
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                e.nativeEvent.stopImmediatePropagation();
-              }}
-              onTouchStart={(e) => {
-                e.stopPropagation();
-                (e.nativeEvent as any).stopImmediatePropagation?.();
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                onToggleFavorite();
-              }}
+            <p className="font-semibold">{getProductDisplayName(product)}</p>
+          </div>
+          <p className="font-mono font-medium text-primary/80">{product.product_code}</p>
+          <div className="flex justify-between">
+            <span>Cost excl.</span>
+            <span className="font-medium">R{(product.cost_excl_vat || 0).toLocaleString("en-ZA")}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Cost incl.</span>
+            <span className="font-medium">R{(product.cost_incl_vat || 0).toLocaleString("en-ZA")}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Selling</span>
+            <span className="font-bold">R{(product.selling_price || 0).toLocaleString("en-ZA")}</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground line-clamp-3">{product.description}</p>
+          <Badge variant="outline" className="text-[10px]">{product.supplier_name}</Badge>
+        </HoverCardContent>
+      </HoverCard>
+
+      <AlertDialog open={confirmUnfav} onOpenChange={setConfirmUnfav}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove from favorites?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <strong>{getProductDisplayName(product)}</strong> from your favorites?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => onToggleFavorite()}
             >
-              {isFavorite ? (
-                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-              ) : (
-                <StarOff className="h-3 w-3 text-muted-foreground" />
-              )}
-            </button>
-          </div>
-        </div>
-      </HoverCardTrigger>
-      <HoverCardContent side="right" className="w-64 text-xs space-y-1.5">
-        <div className="flex items-center gap-2">
-          <div className={`rounded-md p-1 ${catBg}`}>
-            {getCategoryIcon(product.product_category, "h-3.5 w-3.5")}
-          </div>
-          <p className="font-semibold">{getProductDisplayName(product)}</p>
-        </div>
-        <p className="font-mono font-medium text-primary/80">{product.product_code}</p>
-        <div className="flex justify-between">
-          <span>Cost excl.</span>
-          <span className="font-medium">R{(product.cost_excl_vat || 0).toLocaleString("en-ZA")}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Cost incl.</span>
-          <span className="font-medium">R{(product.cost_incl_vat || 0).toLocaleString("en-ZA")}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Selling</span>
-          <span className="font-bold">R{(product.selling_price || 0).toLocaleString("en-ZA")}</span>
-        </div>
-        <p className="text-[10px] text-muted-foreground line-clamp-3">{product.description}</p>
-        <Badge variant="outline" className="text-[10px]">{product.supplier_name}</Badge>
-      </HoverCardContent>
-    </HoverCard>
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

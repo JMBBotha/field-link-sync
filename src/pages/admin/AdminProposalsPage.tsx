@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileText } from "lucide-react";
 import ProposalBuilder from "@/components/proposals/ProposalBuilder";
 import QuoteStatusBadge from "@/components/quoting/QuoteStatusBadge";
+import FloatingQuoteBuilderButton from "@/components/shared/FloatingQuoteBuilderButton";
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -88,6 +89,7 @@ const AdminProposalsPage = () => {
           })}
         </div>
       )}
+      <FloatingQuoteBuilderButton />
     </div>
   );
 };
