@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Building2, Plus, Search, Users, Package } from "lucide-react";
 import SupplierDetailSheet from "@/components/suppliers/SupplierDetailSheet";
 import SupplierFormDialog from "@/components/suppliers/SupplierFormDialog";
+import FloatingQuoteBuilderButton from "@/components/shared/FloatingQuoteBuilderButton";
 
 interface SupplierRow {
   id: string;
@@ -189,6 +190,8 @@ const AdminSuppliersPage = () => {
         onOpenChange={setFormOpen}
         supplierId={editingSupplierId}
       />
+
+      <FloatingQuoteBuilderButton />
     </div>
   );
 };

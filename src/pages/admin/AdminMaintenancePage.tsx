@@ -21,6 +21,7 @@ import {
   ChevronLeft, ChevronRight, Loader2, Wrench, ArrowRight, Calendar as CalendarIcon,
   BarChart3, DollarSign, Percent, List, LayoutGrid, Plus,
 } from "lucide-react";
+import FloatingQuoteBuilderButton from "@/components/shared/FloatingQuoteBuilderButton";
 
 interface MaintenanceSchedule {
   id: string;
@@ -430,6 +431,7 @@ const AdminMaintenancePage = () => {
           )}
         </div>
       )}
+      <FloatingQuoteBuilderButton />
     </div>
   );
 };
