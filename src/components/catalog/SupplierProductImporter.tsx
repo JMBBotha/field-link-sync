@@ -136,6 +136,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
 
   // AI / PDF state
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [enhanceImages, setEnhanceImages] = useState(true);
   const [pdfPageCount, setPdfPageCount] = useState(0);
   const [extractedText, setExtractedText] = useState("");
   const [extracting, setExtracting] = useState(false);
@@ -723,7 +724,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
       if (pdfFile) {
         import("@/lib/pdfPageCapture").then(async ({ capturePdfPages, matchProductsToPdfPages }) => {
           try {
-            const captureResult = await capturePdfPages(pdfFile, supplierName);
+            const captureResult = await capturePdfPages(pdfFile, supplierName, undefined, enhanceImages);
             toast({ title: `Visual Catalog`, description: `Stored ${captureResult.pagesStored} pages from ${pdfFile.name}` });
             const importedCodes = diffRows.filter(r => r.action === "new" || r.action === "update").map(r => r.product_code);
             if (importedCodes.length > 0) {
@@ -969,6 +970,17 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
                     </Tooltip>
                   </TooltipProvider>
                 </div>
+
+                <label className="flex items-center gap-2 px-1 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={enhanceImages}
+                    onChange={(e) => setEnhanceImages(e.target.checked)}
+                    className="rounded border-input"
+                  />
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-xs text-muted-foreground">Enhance image quality (sharper text, better for visual catalog)</span>
+                </label>
 
                 {extractedText && (
                   <div className="space-y-2">
