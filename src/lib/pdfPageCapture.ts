@@ -39,7 +39,8 @@ interface CaptureResult {
 export async function capturePdfPages(
   file: File,
   supplierName: string,
-  onProgress?: (current: number, total: number) => void
+  onProgress?: (current: number, total: number) => void,
+  enhanceImages: boolean = false
 ): Promise<CaptureResult> {
   console.log("[PDF Capture] Loading pdfjs...");
   const pdfjsLib = await loadPdfJs();
@@ -68,13 +69,28 @@ export async function capturePdfPages(
       await page.render({ canvasContext: ctx, viewport }).promise;
 
       // Convert canvas to JPEG blob
-      const blob = await new Promise<Blob>((resolve) => {
+      let blob = await new Promise<Blob>((resolve) => {
         canvas.toBlob(
           (b) => resolve(b!),
           "image/jpeg",
           0.85
         );
       });
+
+      // Enhance if requested
+      if (enhanceImages) {
+        try {
+          const { enhanceImageBlob } = await import("@/lib/canvasImageEnhance");
+          blob = await enhanceImageBlob(blob, {
+            upscale: 1.5,
+            sharpenAmount: 0.4,
+            contrastBoost: 0.25,
+            noiseReductionPasses: 1,
+          });
+        } catch (enhErr) {
+          console.warn(`[PDF Capture] Enhancement failed page ${pageNum}, using original:`, enhErr);
+        }
+      }
 
       // Upload to storage
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
