@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  ZoomIn, ZoomOut, X, Maximize2, Minimize2,
-  ChevronLeft, ChevronRight, FileImage, ArrowLeft, ScanSearch, Loader2, Lightbulb, Search, Trash2, Star,
+  ZoomIn, ZoomOut, X, FileImage, ScanSearch, Loader2, Lightbulb, Search, Trash2, Star,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -50,14 +49,14 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
-  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const [visiblePageIndex, setVisiblePageIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [loupeActive, setLoupeActive] = useState(false);
   const pdfAreaRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [popupProduct, setPopupProduct] = useState<PaletteProduct | null>(null);
-  const [autoScrollDone, setAutoScrollDone] = useState(false);
+  const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const handleDeleteSupplierPdf = useCallback(async (supplierId: string) => {
     setDeleting(true);
@@ -75,7 +74,6 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       queryClient.invalidateQueries({ queryKey: ["visual-panel-suppliers"] });
       queryClient.invalidateQueries({ queryKey: ["visual-catalog-pages"] });
       queryClient.invalidateQueries({ queryKey: ["visual-catalog-suppliers"] });
-      setCurrentPageIndex(0);
       toast({ title: "PDF pages deleted successfully" });
     } catch (err) {
       console.error("Delete PDF failed:", err);
@@ -88,7 +86,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const isFullWidth = isMobile || (expanded && !isDraggingExternal);
   const panelWidth = isDraggingExternal ? "w-2/5" : isFullWidth ? "w-full" : "w-full";
 
-  useEffect(() => { if (open) { setCurrentPageIndex(0); setZoom(1); setAutoScrollDone(false); } }, [open]);
+  useEffect(() => { if (open) { setVisiblePageIndex(0); setZoom(1); } }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -136,24 +134,68 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     staleTime: 30000,
   });
 
-  const currentPage = pages[currentPageIndex] || null;
-  const hasPdfSource = !!currentPage?.pdf_storage_path;
+  // IntersectionObserver to track visible page
+  useEffect(() => {
+    if (!open || pages.length === 0) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
 
-  // Live extraction
-  const { data: liveRegions = [], isLoading: extracting } = useQuery({
-    queryKey: ["visual-panel-live-extract", currentPage?.id, currentPage?.pdf_storage_path, products.length],
-    enabled: open && hasPdfSource && products.length > 0,
-    queryFn: async () => {
-      if (!currentPage?.pdf_storage_path) return [];
-      try {
-        return await extractAndMatchPage(currentPage.pdf_storage_path, currentPage.page_number, products);
-      } catch (err) {
-        console.error("[VisualCatalog] Live extraction failed:", err);
-        return [];
+    const observer = new IntersectionObserver(
+      (entries) => {
+        let bestIdx = visiblePageIndex;
+        let bestRatio = 0;
+        for (const entry of entries) {
+          const idx = Number(entry.target.getAttribute("data-page-index"));
+          if (!isNaN(idx) && entry.intersectionRatio > bestRatio) {
+            bestRatio = entry.intersectionRatio;
+            bestIdx = idx;
+          }
+        }
+        if (bestRatio > 0) {
+          setVisiblePageIndex(bestIdx);
+        }
+      },
+      {
+        root: container,
+        threshold: [0, 0.25, 0.5, 0.75, 1],
       }
-    },
-    staleTime: 120000,
-  });
+    );
+
+    // Observe all page elements
+    pageRefs.current.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, [open, pages.length]);
+
+  const currentPage = pages[visiblePageIndex] || pages[0] || null;
+
+  const currentSupplierName = currentPage ? (supplierNameMap[currentPage.supplier_id] || currentPage.supplier_id) : "";
+  const currentFilename = currentPage?.pdf_filename || "";
+
+  const scrollToPage = useCallback((index: number) => {
+    const el = pageRefs.current.get(index);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, []);
+
+  const goToPage = useCallback((dir: number) => {
+    const next = visiblePageIndex + dir;
+    if (next < 0 || next >= pages.length) return;
+    setZoom(1);
+    scrollToPage(next);
+  }, [pages.length, visiblePageIndex, scrollToPage]);
+
+  const handleProductClick = useCallback((product: PaletteProduct) => {
+    setPopupProduct(product);
+  }, []);
+
+  const handleAddBasket = useCallback(() => {
+    onAddBasket?.();
+  }, [onAddBasket]);
+
+  // Favorites set
+  const favoriteIds = useMemo(() => new Set(products.filter(p => p.is_pinned).map(p => p.id)), [products]);
 
   const basketProductCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -165,72 +207,14 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     return counts;
   }, [baskets]);
 
-  // Favorites set
-  const favoriteIds = useMemo(() => new Set(products.filter(p => p.is_pinned).map(p => p.id)), [products]);
-
-  const overlayRegions: OverlayRegion[] = useMemo(() =>
-    liveRegions.map((r, idx) => ({
-      id: `live-${currentPage?.id || "x"}-${idx}`,
-      x_pct: r.x_pct, y_pct: r.y_pct, w_pct: r.w_pct, h_pct: r.h_pct,
-      product: r.product as PaletteProduct | null,
-      product_code: r.product_code || "",
-      label: r.label || "",
-    })),
-    [liveRegions, currentPage?.id]
-  );
-
-  const hasOverlayRegions = overlayRegions.length > 0;
-  const matchedCount = overlayRegions.filter(r => r.product).length;
-  const unmatchedCount = overlayRegions.filter(r => !r.product).length;
-
-  // Star overlay positions for favorited products on PDF
-  const starOverlays = useMemo(() => {
-    return overlayRegions.filter(r => r.product && favoriteIds.has(r.product.id));
-  }, [overlayRegions, favoriteIds]);
-
-  // Auto-scroll to first starred product page
-  useEffect(() => {
-    if (!open || autoScrollDone || pages.length === 0 || favoriteIds.size === 0) return;
-    // We need to check all pages' overlay data — for simplicity, just look for favorites in current products
-    // and find a page with a matching region once regions are loaded
-    if (overlayRegions.length > 0 && starOverlays.length > 0) {
-      setAutoScrollDone(true);
-      // Already on a page with starred products — scroll to the first star
-      const firstStar = starOverlays[0];
-      if (scrollContainerRef.current && firstStar) {
-        const container = scrollContainerRef.current;
-        const targetY = (firstStar.y_pct / 100) * container.scrollHeight;
-        setTimeout(() => {
-          container.scrollTo({ top: Math.max(0, targetY - 100), behavior: "smooth" });
-        }, 300);
-      }
-    }
-  }, [open, autoScrollDone, pages, favoriteIds, overlayRegions, starOverlays]);
-
+  // Get all pages for current file (for PdfLinkButton)
   const currentFilePages = useMemo(() => {
     if (!currentPage) return [];
     return pages.filter(p => p.supplier_id === currentPage.supplier_id && p.pdf_filename === currentPage.pdf_filename);
   }, [pages, currentPage]);
 
-  const currentSupplierName = currentPage ? (supplierNameMap[currentPage.supplier_id] || currentPage.supplier_id) : "";
-  const currentFilename = currentPage?.pdf_filename || "";
-
-  const goToPage = useCallback((dir: number) => {
-    setCurrentPageIndex((prev) => {
-      const next = prev + dir;
-      if (next < 0 || next >= pages.length) return prev;
-      setZoom(1);
-      return next;
-    });
-  }, [pages.length]);
-
-  const handleProductClick = useCallback((product: PaletteProduct) => {
-    setPopupProduct(product);
-  }, []);
-
-  const handleAddBasket = useCallback(() => {
-    onAddBasket?.();
-  }, [onAddBasket]);
+  // Check if any page has pdf source
+  const anyPageHasPdfSource = useMemo(() => pages.some(p => !!p.pdf_storage_path), [pages]);
 
   if (!open) return null;
 
@@ -239,7 +223,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       <div className="fixed inset-0 z-40 bg-black/40 transition-opacity" onClick={onClose} />
 
       <div className={`fixed inset-y-0 left-0 z-50 flex bg-background border-r shadow-2xl transition-all duration-300 ease-in-out ${panelWidth}`}>
-        {/* LEFT: Compact Zones Sidebar (50% split) */}
+        {/* LEFT: Compact Zones Sidebar */}
         {!isDraggingExternal && !isMobile && (
           <div className="w-[280px] min-w-[240px] shrink-0 border-r flex flex-col">
             <CompactZonesSidebar
@@ -288,16 +272,17 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
               )}
             </div>
 
+            {/* Page indicator + quick-jump buttons */}
             {pages.length > 0 && (
               <div className="flex items-center gap-1 shrink-0">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => goToPage(-1)} disabled={currentPageIndex === 0}>
-                  <ChevronLeft className="h-3.5 w-3.5" />
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => goToPage(-1)} disabled={visiblePageIndex === 0}>
+                  <span className="text-xs">◀</span>
                 </Button>
                 <span className="text-[10px] font-medium text-muted-foreground min-w-[60px] text-center">
-                  Page {currentPageIndex + 1} of {pages.length}
+                  Page {visiblePageIndex + 1} of {pages.length}
                 </span>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => goToPage(1)} disabled={currentPageIndex >= pages.length - 1}>
-                  <ChevronRight className="h-3.5 w-3.5" />
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => goToPage(1)} disabled={visiblePageIndex >= pages.length - 1}>
+                  <span className="text-xs">▶</span>
                 </Button>
               </div>
             )}
@@ -321,11 +306,11 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                     <Search className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-[10px]">Magnifying glass (scroll to adjust)</TooltipContent>
+                <TooltipContent side="bottom" className="text-[10px]">Magnifying glass</TooltipContent>
               </Tooltip>
             </div>
 
-            <Select value={selectedSupplier} onValueChange={(v) => { setSelectedSupplier(v); setCurrentPageIndex(0); }}>
+            <Select value={selectedSupplier} onValueChange={(v) => { setSelectedSupplier(v); }}>
               <SelectTrigger className="h-7 w-32 text-[10px]"><SelectValue placeholder="All Suppliers" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Suppliers</SelectItem>
@@ -336,10 +321,10 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
             <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}><X className="h-4 w-4" /></Button>
           </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-hidden flex flex-col">
+          {/* Content: Continuous scroll */}
+          <div className="flex-1 overflow-hidden flex">
             {pagesLoading ? (
-              <div className="p-4 space-y-3">
+              <div className="p-4 space-y-3 flex-1">
                 <Skeleton className="h-8 w-48" />
                 <Skeleton className="h-[60vh] w-full" />
               </div>
@@ -349,101 +334,81 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                 <p className="text-sm font-medium">No Visual Catalog Pages</p>
                 <p className="text-xs mt-1 max-w-[250px]">Import a supplier PDF via the Catalog → Import tab to populate the visual catalog.</p>
               </div>
-            ) : currentPage ? (
-              <div className="flex flex-col flex-1 overflow-hidden">
-                <div className="flex flex-1 overflow-hidden">
-                  {/* PDF image area with smooth scrolling */}
-                  <div
-                    ref={scrollContainerRef}
-                    className="flex-1 overflow-auto"
-                    style={{
-                      scrollBehavior: "smooth",
-                      WebkitOverflowScrolling: "touch",
-                      willChange: "transform",
-                    }}
-                  >
-                    <div ref={pdfAreaRef} className="relative bg-muted/10 min-h-[400px]" style={{ cursor: loupeActive ? "none" : zoom > 1 ? "grab" : "default" }}>
-                      <div className="relative origin-top-left transition-transform" style={{ transform: `scale(${zoom})` }}>
-                        <img
-                          src={currentPage.page_image_url}
-                          alt={`Page ${currentPage.page_number}`}
-                          className="w-full block select-none"
-                          loading="lazy"
-                          draggable={false}
+            ) : (
+              <>
+                {/* Scrollable PDF container with all pages stacked */}
+                <div
+                  ref={scrollContainerRef}
+                  className="flex-1 overflow-auto"
+                  style={{
+                    scrollBehavior: "smooth",
+                    WebkitOverflowScrolling: "touch",
+                    willChange: "transform",
+                  }}
+                >
+                  <div ref={pdfAreaRef} style={{ cursor: loupeActive ? "none" : zoom > 1 ? "grab" : "default" }}>
+                    <div className="origin-top-left transition-transform" style={{ transform: `scale(${zoom})`, transformOrigin: "top left" }}>
+                      {pages.map((page, idx) => (
+                        <LazyPdfPage
+                          key={page.id}
+                          page={page}
+                          pageIndex={idx}
+                          products={products}
+                          favoriteIds={favoriteIds}
+                          baskets={baskets}
+                          onAddProductToBasket={onAddProductToBasket}
+                          basketProductCounts={basketProductCounts}
+                          onProductClick={handleProductClick}
+                          scrollContainerRef={scrollContainerRef}
+                          registerRef={(el) => {
+                            if (el) pageRefs.current.set(idx, el);
+                            else pageRefs.current.delete(idx);
+                          }}
                         />
-                        {hasPdfSource && (
-                          <PdfPageOverlay
-                            regions={overlayRegions}
-                            baskets={baskets}
-                            onAddProductToBasket={onAddProductToBasket}
-                            basketProductCounts={basketProductCounts}
-                            onProductClick={handleProductClick}
-                          />
-                        )}
-                        {/* Star overlays for favorited products */}
-                        {starOverlays.map((region) => (
-                          <div
-                            key={`star-${region.id}`}
-                            className="absolute pointer-events-none z-20"
-                            style={{
-                              left: `${Math.max(0, region.x_pct - 2.5)}%`,
-                              top: `${region.y_pct}%`,
-                              width: "20px",
-                              height: "20px",
-                            }}
-                          >
-                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-500 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" />
-                          </div>
-                        ))}
-                      </div>
-                      <PdfMagnifier
-                        active={loupeActive}
-                        imageUrl={currentPage.page_image_url}
-                        containerRef={pdfAreaRef}
-                        baseZoom={zoom}
-                      />
+                      ))}
                     </div>
                   </div>
-
-                  {/* Fallback product sidebar */}
-                  {(!hasPdfSource || !hasOverlayRegions) && (
-                    <FallbackProductPanel
-                      products={products}
-                      supplierId={currentPage.supplier_id}
-                      supplierName={currentSupplierName}
-                      baskets={baskets}
-                      onAddProductToBasket={onAddProductToBasket}
-                      basketProductCounts={basketProductCounts}
-                    />
-                  )}
+                  <PdfMagnifier
+                    active={loupeActive}
+                    imageUrl={currentPage?.page_image_url || ""}
+                    containerRef={pdfAreaRef}
+                    baseZoom={zoom}
+                  />
                 </div>
 
-                {/* Status bar */}
-                <div className="border-t bg-muted/20 px-3 py-1 shrink-0 flex items-center gap-2">
-                  <ScanSearch className="h-3 w-3 text-muted-foreground" />
-                  {extracting ? (
-                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                      <Loader2 className="h-3 w-3 animate-spin" />Scanning PDF text…
-                    </span>
-                  ) : !hasPdfSource ? (
-                    <span className="text-[10px] text-muted-foreground flex items-center gap-2">
-                      <Lightbulb className="h-3 w-3" />
-                      Tip: Link the original PDF for interactive overlays
-                      <PdfLinkButton pages={currentFilePages} />
-                    </span>
-                  ) : hasOverlayRegions ? (
-                    <span className="text-[10px] text-muted-foreground">
-                      {matchedCount} matched · {unmatchedCount} unmatched · {starOverlays.length > 0 && `${starOverlays.length} ★ `}Click any highlight to add to quote
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-muted-foreground">
-                      No text extracted — this may be an image-based PDF
-                    </span>
-                  )}
-                </div>
-              </div>
-            ) : null}
+                {/* Fallback product sidebar when no PDF source */}
+                {!anyPageHasPdfSource && currentPage && (
+                  <FallbackProductPanel
+                    products={products}
+                    supplierId={currentPage.supplier_id}
+                    supplierName={currentSupplierName}
+                    baskets={baskets}
+                    onAddProductToBasket={onAddProductToBasket}
+                    basketProductCounts={basketProductCounts}
+                  />
+                )}
+              </>
+            )}
           </div>
+
+          {/* Status bar */}
+          {pages.length > 0 && (
+            <div className="border-t bg-muted/20 px-3 py-1 shrink-0 flex items-center gap-2">
+              <ScanSearch className="h-3 w-3 text-muted-foreground" />
+              {!anyPageHasPdfSource ? (
+                <span className="text-[10px] text-muted-foreground flex items-center gap-2">
+                  <Lightbulb className="h-3 w-3" />
+                  Tip: Link the original PDF for interactive overlays
+                  <PdfLinkButton pages={currentFilePages} />
+                </span>
+              ) : (
+                <span className="text-[10px] text-muted-foreground">
+                  Scroll through all {pages.length} pages · Click any highlight to add to quote
+                  {favoriteIds.size > 0 && ` · ${favoriteIds.size} ★ favorited`}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -459,6 +424,153 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
         />
       )}
     </>
+  );
+};
+
+// ---- Lazy-loaded PDF Page component ----
+
+interface LazyPdfPageProps {
+  page: PdfPage;
+  pageIndex: number;
+  products: PaletteProduct[];
+  favoriteIds: Set<string>;
+  baskets: Basket[];
+  onAddProductToBasket: (basketId: string, product: PaletteProduct) => void;
+  basketProductCounts: Record<string, number>;
+  onProductClick: (product: PaletteProduct) => void;
+  scrollContainerRef: React.RefObject<HTMLDivElement | null>;
+  registerRef: (el: HTMLDivElement | null) => void;
+}
+
+const LazyPdfPage = ({
+  page,
+  pageIndex,
+  products,
+  favoriteIds,
+  baskets,
+  onAddProductToBasket,
+  basketProductCounts,
+  onProductClick,
+  scrollContainerRef,
+  registerRef,
+}: LazyPdfPageProps) => {
+  const divRef = useRef<HTMLDivElement | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const hasPdfSource = !!page.pdf_storage_path;
+
+  // Lazy visibility detection: render content when within 2 pages of viewport
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    const el = divRef.current;
+    if (!container || !el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+        }
+      },
+      {
+        root: container,
+        rootMargin: "200% 0px", // Pre-load pages 2 viewport-heights ahead
+      }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [scrollContainerRef]);
+
+  // Live extraction for this page
+  const { data: liveRegions = [], isLoading: extracting } = useQuery({
+    queryKey: ["visual-panel-live-extract", page.id, page.pdf_storage_path, products.length],
+    enabled: isVisible && hasPdfSource && products.length > 0,
+    queryFn: async () => {
+      if (!page.pdf_storage_path) return [];
+      try {
+        return await extractAndMatchPage(page.pdf_storage_path, page.page_number, products);
+      } catch (err) {
+        console.error("[VisualCatalog] Live extraction failed:", err);
+        return [];
+      }
+    },
+    staleTime: 120000,
+  });
+
+  const overlayRegions: OverlayRegion[] = useMemo(() =>
+    liveRegions.map((r, idx) => ({
+      id: `live-${page.id}-${idx}`,
+      x_pct: r.x_pct, y_pct: r.y_pct, w_pct: r.w_pct, h_pct: r.h_pct,
+      product: r.product as PaletteProduct | null,
+      product_code: r.product_code || "",
+      label: r.label || "",
+    })),
+    [liveRegions, page.id]
+  );
+
+  // Star overlays for favorited products on this page
+  const starOverlays = useMemo(() => {
+    return overlayRegions.filter(r => r.product && favoriteIds.has(r.product.id));
+  }, [overlayRegions, favoriteIds]);
+
+  return (
+    <div
+      ref={(el) => {
+        divRef.current = el;
+        registerRef(el);
+      }}
+      data-page-index={pageIndex}
+      className="relative border-b border-muted/30"
+      style={{ minHeight: "400px" }}
+    >
+      {/* Page number label */}
+      <div className="absolute top-2 left-2 z-30 bg-black/60 text-white text-[9px] font-mono px-1.5 py-0.5 rounded">
+        Page {page.page_number}
+      </div>
+
+      {isVisible ? (
+        <>
+          <img
+            src={page.page_image_url}
+            alt={`Page ${page.page_number}`}
+            className="w-full block select-none"
+            loading="lazy"
+            draggable={false}
+          />
+          {hasPdfSource && overlayRegions.length > 0 && (
+            <PdfPageOverlay
+              regions={overlayRegions}
+              baskets={baskets}
+              onAddProductToBasket={onAddProductToBasket}
+              basketProductCounts={basketProductCounts}
+              onProductClick={onProductClick}
+            />
+          )}
+          {/* Star overlays for favorited products */}
+          {starOverlays.map((region) => (
+            <div
+              key={`star-${region.id}`}
+              className="absolute pointer-events-none z-30"
+              style={{
+                left: `${Math.max(0, region.x_pct - 3)}%`,
+                top: `${region.y_pct}%`,
+              }}
+            >
+              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-black/50 shadow-lg">
+                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]" />
+              </div>
+            </div>
+          ))}
+          {extracting && (
+            <div className="absolute top-2 right-2 z-30 bg-black/50 text-white text-[9px] px-2 py-1 rounded flex items-center gap-1">
+              <Loader2 className="h-3 w-3 animate-spin" /> Scanning…
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="flex items-center justify-center h-[600px] bg-muted/5">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/40" />
+        </div>
+      )}
+    </div>
   );
 };
 
