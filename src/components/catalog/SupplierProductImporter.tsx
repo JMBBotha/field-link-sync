@@ -174,10 +174,12 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
     queryKey: ["stored-pdf-pages", supplierName],
     queryFn: async () => {
       // supplier_pdf_pages uses supplier name as supplier_id (text field)
-      const { data } = await (supabase.from("supplier_pdf_pages") as any)
+      // supplier_pdf_pages.supplier_id is TEXT, so use ilike for flexible matching
+      const { data, error: fetchErr } = await (supabase.from("supplier_pdf_pages") as any)
         .select("id, supplier_id, pdf_filename, page_number, pdf_storage_path")
-        .or(`supplier_id.eq.${supplierName},supplier_id.ilike.%${supplierName}%`)
+        .ilike("supplier_id", `%${supplierName}%`)
         .order("page_number");
+      if (fetchErr) console.warn("[Stored PDF query]", fetchErr.message);
       return (data || []) as { id: string; supplier_id: string; pdf_filename: string; page_number: number; pdf_storage_path: string | null }[];
     },
   });
@@ -694,6 +696,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
     const tick = () => { processed++; setProgress(Math.round((processed / total) * 100)); };
 
     try {
+      console.log(`[Import] Starting import for supplier "${supplierName}" (id: ${supplierId}), ${newRows.length} new, ${updateRows.length} updates, ${archiveRows.length} archives`);
       // ── PHASE 1: INSERT new products (in batches of 50) ──
       const BATCH = 50;
       for (let b = 0; b < newRows.length; b += BATCH) {
