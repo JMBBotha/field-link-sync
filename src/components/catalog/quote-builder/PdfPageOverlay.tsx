@@ -149,7 +149,7 @@ const DraggableRegion = memo(({
           ? inQuoteQty > 0
             ? "border-2 border-green-400/50 bg-green-500/5 hover:bg-green-500/15 hover:shadow-[0_0_12px_rgba(34,197,94,0.3)]"
             : "border border-blue-400/40 bg-blue-500/5 hover:border-blue-400/70 hover:bg-blue-500/15 hover:shadow-[0_0_12px_rgba(59,130,246,0.25)]"
-          : "border border-dashed border-muted-foreground/30 hover:border-muted-foreground/50 hover:bg-muted/10"
+          : "border border-dashed border-orange-400/40 hover:border-orange-400/70 hover:bg-orange-500/10"
       }`}
       style={{
         left: `${region.x_pct}%`,
@@ -200,8 +200,8 @@ const DraggableRegion = memo(({
             </button>
           )
         ) : (
-          <div className="h-3 w-3 rounded-full border border-muted-foreground/40 bg-background flex items-center justify-center pointer-events-none">
-            <ShoppingCart className="h-1.5 w-1.5 text-muted-foreground/60" />
+          <div className="h-3 w-3 rounded-full bg-orange-500 flex items-center justify-center pointer-events-none">
+            <ShoppingCart className="h-1.5 w-1.5 text-white" />
           </div>
         )}
       </div>

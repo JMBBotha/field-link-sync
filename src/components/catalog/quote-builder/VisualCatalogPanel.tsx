@@ -717,10 +717,10 @@ const LazyPdfPage = ({
     return starred;
   }, [overlayRegions, favoriteIds, page.page_number]);
 
-  // Count matched vs priced vs total
+  // Count matched vs unmatched vs total
   const matchedCount = overlayRegions.filter(r => r.product).length;
-  const pricedCount = overlayRegions.filter(r => !r.product && r.has_price).length;
-  const totalRegions = matchedCount + pricedCount;
+  const unmatchedCount = overlayRegions.filter(r => !r.product).length;
+  const totalRegions = overlayRegions.length;
 
   return (
     <div
@@ -737,7 +737,7 @@ const LazyPdfPage = ({
         <span>Page {page.page_number}</span>
         {isVisible && totalRegions > 0 && (
           <span className="text-green-300">
-            {matchedCount} matched{pricedCount > 0 && <span className="text-gray-300"> · {pricedCount} unmatched</span>}
+            {totalRegions} items · {matchedCount} matched{unmatchedCount > 0 && <span className="text-orange-300"> · {unmatchedCount} new</span>}
           </span>
         )}
         {isVisible && starOverlays.length > 0 && (
