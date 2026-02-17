@@ -118,8 +118,7 @@ const DraggableRegion = memo(({
 
   const price = product?.selling_price || product?.cost_incl_vat || 0;
 
-  // ISSUE 5 FIX: handleClick is for the overlay area (opens popup/details)
-  // handleStarClick is for the icon button (toggles favorite) — this is the primary action
+  // Single click on overlay area → opens product popup / details
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     if (isMatched && product && onProductClick) {
@@ -129,16 +128,14 @@ const DraggableRegion = memo(({
     }
   }, [isMatched, product, onProductClick, onUnmatchedClick, region]);
 
-  const handleStarClick = useCallback((e: React.MouseEvent) => {
+  // Double-click on icon → toggle favorite (instant optimistic update)
+  const handleStarDoubleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
     if (isMatched && product && onToggleFavorite) {
       onToggleFavorite(product);
     }
   }, [isMatched, product, onToggleFavorite]);
-
-  // All regions that pass extraction are shown — matched products get cart/star,
-  // unmatched rows with price or item code get the unmatched indicator
 
   return (
     <div
@@ -166,37 +163,37 @@ const DraggableRegion = memo(({
       }}
       onClick={handleClick}
     >
-      {/* Corner indicator badges */}
-      {/* ISSUE 5 FIX: Icon button is the PRIMARY click target for favorite toggle.
-          Single click on blue cart → yellow star (favorite). Click yellow star → blue cart (unfavorite).
-          Uses pointer-events-auto + e.stopPropagation to prevent overlay click from firing. */}
+      {/* Icon badges — double-click to toggle favorite */}
       <div className="absolute top-1/2 -translate-y-1/2 left-full opacity-70 group-hover:opacity-100 transition-opacity z-10 flex flex-row items-center gap-px" style={{ marginLeft: '16px' }}>
         {isMatched ? (
           isFavorite ? (
-            /* Yellow star — click to unfavorite */
+            /* Yellow star — double-click to unfavorite */
             <button
-              onClick={handleStarClick}
+              onDoubleClick={handleStarDoubleClick}
+              onClick={(e) => e.stopPropagation()}
               className="pointer-events-auto h-4 w-4 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer"
               style={{ background: "rgba(30,30,30,0.8)" }}
-              title="Remove from favorites"
+              title="Double-click to remove from favorites"
             >
               <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400" />
             </button>
           ) : inQuoteQty > 0 ? (
-            /* Green badge with quantity — click to favorite */
+            /* Green badge with quantity — double-click to favorite */
             <button
-              onClick={handleStarClick}
+              onDoubleClick={handleStarDoubleClick}
+              onClick={(e) => e.stopPropagation()}
               className="pointer-events-auto h-4 w-4 rounded-full bg-green-500 flex items-center justify-center text-[7px] font-bold text-white hover:scale-125 transition-transform cursor-pointer"
-              title="Add to favorites"
+              title="Double-click to add to favorites"
             >
               {inQuoteQty}
             </button>
           ) : (
-            /* Blue cart — click to favorite */
+            /* Blue cart — double-click to favorite */
             <button
-              onClick={handleStarClick}
+              onDoubleClick={handleStarDoubleClick}
+              onClick={(e) => e.stopPropagation()}
               className="pointer-events-auto h-4 w-4 rounded-full bg-blue-500 flex items-center justify-center hover:scale-125 transition-transform cursor-pointer"
-              title="Add to favorites"
+              title="Double-click to add to favorites"
             >
               <ShoppingCart className="h-2 w-2 text-white" />
             </button>
