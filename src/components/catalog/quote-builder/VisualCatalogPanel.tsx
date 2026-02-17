@@ -558,17 +558,23 @@ const LazyPdfPage = ({
     return () => observer.disconnect();
   }, [scrollContainerRef]);
 
+  // Filter out archived products before matching
+  const activeProducts = useMemo(
+    () => products.filter(p => !(p as any).archived),
+    [products]
+  );
+
   // Live extraction for this page
   const { data: liveRegions = [], isLoading: extracting } = useQuery({
-    queryKey: ["visual-panel-live-extract", page.id, page.pdf_storage_path, products.length],
-    enabled: isVisible && hasPdfSource && products.length > 0,
+    queryKey: ["visual-panel-live-extract", page.id, page.pdf_storage_path, activeProducts.length],
+    enabled: isVisible && hasPdfSource && activeProducts.length > 0,
     queryFn: async () => {
       if (!page.pdf_storage_path) return [];
       try {
-        console.log(`[VisualCatalog] Extracting page ${page.page_number} from ${page.supplier_id}, matching against ${products.length} products`);
+        console.log(`[VisualCatalog] Extracting page ${page.page_number} from ${page.supplier_id}, matching against ${activeProducts.length} active products`);
         
-        // First pass: extract and match against existing products
-        const regions = await extractAndMatchPage(page.pdf_storage_path, page.page_number, products);
+        // First pass: extract and match against existing non-archived products
+        const regions = await extractAndMatchPage(page.pdf_storage_path, page.page_number, activeProducts);
         const matched = regions.filter(r => r.matched);
         const unmatchedWithPrice = regions.filter(r => !r.matched && r.has_price && r.detected_price);
         
@@ -609,7 +615,7 @@ const LazyPdfPage = ({
             
             // Clear cache and re-extract with augmented product list
             clearExtractionCache();
-            const allProducts = [...products, ...newPaletteProducts];
+            const allProducts = [...activeProducts, ...newPaletteProducts];
             const reMatched = await extractAndMatchPage(page.pdf_storage_path!, page.page_number, allProducts);
             
             // Invalidate the main products query so palette picks up new items

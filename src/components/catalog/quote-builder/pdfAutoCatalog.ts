@@ -125,9 +125,15 @@ export async function autoCatalogFromRegions(
     const sku = extractSku(r.label);
     if (!sku || sku.length < 3) continue; // Skip regions without identifiable SKU
 
+    // Skip junk: price under R50
+    const price = r.detected_price!;
+    if (price < 50) continue;
+
+    // Skip junk: SKU is all letters with no digits (common English word)
+    if (/^[A-Z]+$/i.test(sku)) continue;
+
     const description = stripPrice(r.label);
     const shortName = description.length > 60 ? description.substring(0, 60) : description;
-    const price = r.detected_price!;
 
     // Deduplicate within this batch
     if (candidates.some(c => c.sku === sku)) continue;
