@@ -72,7 +72,7 @@ function areaSummary(area: QuoteArea): string {
   if (area.acUnits.length === 0) return "";
   const parts = area.acUnits.map((u) => {
     const name = u.product.short_name || u.product.product_code;
-    return `${u.product.brand} ${u.btu.toLocaleString()} BTU ${name}`;
+    return `${u.btu.toLocaleString()} BTU ${name}`;
   });
   return parts.length === 1 ? parts[0] : `${parts[0]} +${parts.length - 1} more`;
 }
@@ -216,11 +216,10 @@ export default function ACSelectionStep({ areas, onAreasChange, products }: Prop
                             <div className="flex-1 min-w-0">
                               <div className="font-medium truncate">{unit.product.short_name || unit.product.product_code}</div>
                               <div className="text-muted-foreground flex gap-1 flex-wrap">
-                                <span>{unit.product.brand}</span>
-                                <span>·</span>
                                 <span className="truncate max-w-[140px]">{unit.product.product_code}</span>
                                 <span>·</span>
                                 <span>{unit.btu.toLocaleString()} BTU</span>
+                                {unit.product.pipe_size && (<><span>·</span><span>{unit.product.pipe_size}</span></>)}
                                 <Badge variant="outline" className="text-[10px] px-1 py-0">
                                   Bracket: {getBracketSize(unit.btu)}
                                 </Badge>
@@ -253,11 +252,10 @@ export default function ACSelectionStep({ areas, onAreasChange, products }: Prop
                         <div className="flex-1 min-w-0">
                           <div className="font-medium truncate">{editingUnit.product.short_name || editingUnit.product.product_code}</div>
                           <div className="text-muted-foreground flex gap-1 flex-wrap">
-                            <span>{editingUnit.product.brand}</span>
-                            <span>·</span>
                             <span className="truncate max-w-[140px]">{editingUnit.product.product_code}</span>
                             <span>·</span>
                             <span>{editingUnit.btu.toLocaleString()} BTU</span>
+                            {editingUnit.product.pipe_size && (<><span>·</span><span>{editingUnit.product.pipe_size}</span></>)}
                           </div>
                         </div>
                         <span className="text-xs font-medium">
@@ -290,7 +288,7 @@ export default function ACSelectionStep({ areas, onAreasChange, products }: Prop
                             <PinnedStar pinned={!!(p as any).is_pinned} />
                             <div className="flex-1 min-w-0">
                               <div className="font-medium truncate">{p.short_name || p.product_code}</div>
-                              <div className="text-muted-foreground truncate">{p.brand} · {p.product_code} · {btu.toLocaleString()} BTU</div>
+                              <div className="text-muted-foreground truncate">{p.product_code} · {btu.toLocaleString()} BTU{p.pipe_size ? ` · ${p.pipe_size}` : ""}</div>
                             </div>
                             <span className="font-medium shrink-0">
                               R {(p.selling_price || p.cost_incl_vat || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}

@@ -611,6 +611,7 @@ const LazyPdfPage = ({
               price_per_metre: null,
               sold_in_length: false,
               unit_length: null,
+              pipe_size: null,
             }));
             
             // Clear cache and re-extract with augmented product list
