@@ -1,9 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  return base64Encode(new Uint8Array(buffer));
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -56,10 +61,7 @@ serve(async (req) => {
     const result = await response.json();
     console.log("[enhance-pdf-page] Deep-Image response received");
 
-    // Deep-Image returns the result URL or base64 in the response
-    // The process_result endpoint returns the final image directly
     if (result?.result_url) {
-      // Fetch the result image and return as base64
       const imgResp = await fetch(result.result_url);
       if (!imgResp.ok) {
         return new Response(
@@ -68,13 +70,7 @@ serve(async (req) => {
         );
       }
       const imgBuffer = await imgResp.arrayBuffer();
-      const bytes = new Uint8Array(imgBuffer);
-      let binary = '';
-      const chunkSize = 8192;
-      for (let i = 0; i < bytes.length; i += chunkSize) {
-        binary += String.fromCharCode(...bytes.subarray(i, Math.min(i + chunkSize, bytes.length)));
-      }
-      const base64 = btoa(binary);
+      const base64 = arrayBufferToBase64(imgBuffer);
       const enhancedBase64 = `data:image/jpeg;base64,${base64}`;
       
       return new Response(
@@ -83,7 +79,6 @@ serve(async (req) => {
       );
     }
 
-    // Some responses return base64 directly
     if (result?.output) {
       return new Response(
         JSON.stringify({ enhancedBase64: result.output }),
@@ -91,17 +86,10 @@ serve(async (req) => {
       );
     }
 
-    // If the response itself is an image URL
     if (typeof result === "string" && result.startsWith("http")) {
       const imgResp = await fetch(result);
       const imgBuffer = await imgResp.arrayBuffer();
-      const bytes2 = new Uint8Array(imgBuffer);
-      let binary2 = '';
-      const chunkSize2 = 8192;
-      for (let i = 0; i < bytes2.length; i += chunkSize2) {
-        binary2 += String.fromCharCode(...bytes2.subarray(i, Math.min(i + chunkSize2, bytes2.length)));
-      }
-      const base64 = btoa(binary2);
+      const base64 = arrayBufferToBase64(imgBuffer);
       const enhancedBase64 = `data:image/jpeg;base64,${base64}`;
       
       return new Response(
