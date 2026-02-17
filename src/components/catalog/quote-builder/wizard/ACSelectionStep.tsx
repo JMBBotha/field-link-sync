@@ -96,6 +96,11 @@ export default function ACSelectionStep({ areas, onAreasChange, products }: Prop
     let filtered = products.filter(
       (p) => p.product_category === "Air Conditioning" || (p.category || "").toLowerCase().includes("air conditioning")
     );
+    // Only show products from AC-compatible suppliers
+    filtered = filtered.filter((p) => {
+      const st = (p as any).supplier_type || "both";
+      return st === "ac_units" || st === "ac_equipment" || st === "both";
+    });
     if (searchQuery.trim()) {
       const terms = searchQuery.toLowerCase().split(/\s+/);
       filtered = filtered.filter((p) => {

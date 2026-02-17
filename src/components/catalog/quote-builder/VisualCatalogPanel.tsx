@@ -608,6 +608,7 @@ const LazyPdfPage = ({
               is_pinned: false,
               pin_order: null,
               supplier_name: np.brand || page.supplier_id,
+              supplier_type: "both",
               price_per_metre: null,
               sold_in_length: false,
               unit_length: null,

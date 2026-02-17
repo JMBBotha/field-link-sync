@@ -14,6 +14,21 @@ import { toast } from "@/hooks/use-toast";
 import type { PaletteProduct } from "../../QuoteBuilderTab";
 import type { QuoteArea, AreaMaterial, AreaBracket, AreaConsumable } from "../quoteWizardTypes";
 import { getBracketSize } from "../quoteWizardTypes";
+import { termMatchesBlob } from "../../searchSynonyms";
+
+/* ── Helper: check if a product is an AC unit (should be excluded from materials) ── */
+function isACUnit(p: PaletteProduct): boolean {
+  const cat = (p.product_category || p.category || "").toLowerCase();
+  const name = (p.short_name || "").toLowerCase();
+  // Exclude if category is air conditioning
+  if (cat.includes("air con") || cat.includes("ac unit") || cat.includes("split")) return true;
+  // Exclude if name matches AC unit pattern (BTU + unit type abbreviation)
+  if (/\d+\s*btu/i.test(name) && /\b(inv|mw|fw|fs|cass)\b/i.test(name)) return true;
+  // Exclude if supplier_type is ac-only
+  const st = (p as any).supplier_type || "both";
+  if (st === "ac_units" || st === "ac_equipment") return true;
+  return false;
+}
 
 /* ── Bundle types ── */
 interface BundleItem {
@@ -210,7 +225,16 @@ function MaterialPicker({
   const filtered = useMemo(() => {
     let result = products;
 
-    // Fix 1e: Filter by section type
+    // Exclude AC units from materials/consumables picker
+    result = result.filter((p) => !isACUnit(p));
+
+    // Only show products from installation-material-compatible suppliers
+    result = result.filter((p) => {
+      const st = (p as any).supplier_type || "both";
+      return st === "installation_material" || st === "consumables" || st === "both";
+    });
+
+    // Filter by section type
     if (section === "materials") {
       result = result.filter((p) => p.sold_in_length && typeof p.price_per_metre === "number" && p.price_per_metre > 0);
     } else if (section === "consumables") {
@@ -241,12 +265,12 @@ function MaterialPicker({
       });
     }
 
-    // Search
+    // Search with synonym + pipe size alias expansion
     if (search.trim()) {
       const terms = search.toLowerCase().split(/\s+/);
       result = result.filter((p) => {
         const blob = [p.product_code, p.short_name, p.brand, p.description].filter(Boolean).join(" ").toLowerCase();
-        return terms.every((t) => blob.includes(t));
+        return terms.every((t) => termMatchesBlob(t, blob));
       });
     }
 
@@ -261,8 +285,11 @@ function MaterialPicker({
   }, [products, search, category, section]);
 
   const totalBeforeLimit = useMemo(() => {
-    // Re-run without slice to get count for truncation hint
-    let result = products;
+    let result = products.filter((p) => !isACUnit(p));
+    result = result.filter((p) => {
+      const st = (p as any).supplier_type || "both";
+      return st === "installation_material" || st === "consumables" || st === "both";
+    });
     if (section === "materials") {
       result = result.filter((p) => p.sold_in_length && typeof p.price_per_metre === "number" && p.price_per_metre > 0);
     } else if (section === "consumables") {
@@ -272,7 +299,7 @@ function MaterialPicker({
       const terms = search.toLowerCase().split(/\s+/);
       result = result.filter((p) => {
         const blob = [p.product_code, p.short_name, p.brand, p.description].filter(Boolean).join(" ").toLowerCase();
-        return terms.every((t) => blob.includes(t));
+        return terms.every((t) => termMatchesBlob(t, blob));
       });
     }
     return result.length;

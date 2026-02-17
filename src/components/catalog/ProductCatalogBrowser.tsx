@@ -1029,7 +1029,37 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
 
                   <div className="flex flex-wrap gap-1 mb-2">
                     {(product as any).archived && <Badge variant="destructive" className="text-[10px]">Archived</Badge>}
-                    <Badge variant="outline" className="text-[10px]">{product.category}</Badge>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-accent">{product.category || product.product_category || "Uncategorized"}</Badge>
+                        </div>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-44 p-2" onClick={(e) => e.stopPropagation()}>
+                        <p className="text-xs font-medium mb-1.5">Change Category</p>
+                        <div className="space-y-1">
+                          {["Air Conditioning", "Consumables", "Water Heaters", "Inverters", "Batteries"].map((cat) => (
+                            <button
+                              key={cat}
+                              className={`w-full text-left text-xs px-2 py-1 rounded hover:bg-accent transition-colors ${product.product_category === cat ? "bg-accent font-medium" : ""}`}
+                              onClick={() => {
+                                (supabase.from("supplier_products") as any)
+                                  .update({ product_category: cat })
+                                  .eq("id", product.id)
+                                  .then(() => {
+                                    queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] });
+                                    queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
+                                    queryClient.invalidateQueries({ queryKey: ["product-category-counts"] });
+                                    toast({ title: `Category changed to ${cat}` });
+                                  });
+                              }}
+                            >
+                              {cat}
+                            </button>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                     {product.btu_rating && <Badge variant="outline" className="text-[10px]">{(product.btu_rating / 1000).toFixed(0)}K BTU</Badge>}
                     {product.refrigerant_type && <Badge variant="outline" className="text-[10px]">{product.refrigerant_type}</Badge>}
                     {product.pipe_size && <Badge variant="outline" className="text-[10px]">⌀ {product.pipe_size}</Badge>}
