@@ -61,12 +61,12 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
         baskets.push({ id: `basket-${Date.now()}-${area.id}-ac`, name: `${area.name} AC`, items: acItems });
       }
 
-      // Materials basket
+      // Materials basket (handles both length and unit priced)
       const matItems: BasketItem[] = area.materials.map((m) => ({
         instanceId: `${m.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         product: m.product,
-        quantity: 1,
-        length: m.adjustedLength,
+        quantity: m.pricingMode === "unit" ? m.unitQuantity : 1,
+        ...(m.pricingMode === "length" ? { length: m.adjustedLength } : {}),
       }));
       if (matItems.length > 0) {
         baskets.push({ id: `basket-${Date.now()}-${area.id}-mat`, name: `${area.name} Piping`, items: matItems });

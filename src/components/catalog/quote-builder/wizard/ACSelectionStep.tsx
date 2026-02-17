@@ -101,6 +101,8 @@ export default function ACSelectionStep({ areas, onAreasChange, products }: Prop
       const st = (p as any).supplier_type || "both";
       return st === "ac_units" || st === "ac_equipment" || st === "both";
     });
+    // Exclude material favorites from AC unit picker
+    filtered = filtered.filter((p) => !p.is_material_favorite);
     if (searchQuery.trim()) {
       const terms = searchQuery.toLowerCase().split(/\s+/);
       filtered = filtered.filter((p) => {
