@@ -158,14 +158,24 @@ function buildProductLookup(products: PaletteProduct[]) {
 
 /**
  * Detect price patterns in text. Returns the first detected price or null.
- * Matches: R1,024.07, R 500.00, R12345, R150, or R1,500 (with or without decimals)
+ * Handles South African formats: R1,024.07, R 500.00, R150, R12,15, R 1 234,56
  */
 function detectPrice(text: string): number | null {
-  // Match R-prefixed prices: R followed by digits with optional commas and optional decimals
-  // e.g. R1,024.07, R 500.00, R150, R1500, R12,345
-  const rPriceMatch = text.match(/R\s?(\d{1,3}(?:[,\s]\d{3})*(?:\.\d{1,2})?)/);
+  // Match R-prefixed prices with flexible formatting:
+  // R12,15 (SA comma decimal), R 500.00, R1 234,56, R150, R1,500.00
+  const rPriceMatch = text.match(/R\s*([\d\s,]+(?:[.,]\d{1,2})?)/);
   if (rPriceMatch) {
-    const val = parseFloat(rPriceMatch[1].replace(/[,\s]/g, ""));
+    let raw = rPriceMatch[1].trim();
+    // Determine if comma is decimal separator (SA style) or thousands separator
+    // If string ends with ,XX (1-2 digits after last comma), treat comma as decimal
+    if (/,\d{1,2}$/.test(raw) && !/\.\d/.test(raw)) {
+      // SA format: R12,15 or R1 234,56 — comma is decimal
+      raw = raw.replace(/\s/g, "").replace(/,(?=\d{1,2}$)/, ".");
+    } else {
+      // Standard: R1,500.00 — comma is thousands
+      raw = raw.replace(/[,\s]/g, "");
+    }
+    const val = parseFloat(raw);
     if (!isNaN(val) && val >= 1) return val;
   }
   return null;
@@ -183,15 +193,15 @@ const DESCRIPTION_PHRASES = [
   "for wide rooms", "suitable for", "designed for", "equipped with",
 ];
 
-/** Count how many R-prefixed price values appear in text (relaxed: with or without decimals) */
+/** Count how many R-prefixed price values appear in text (handles SA formats) */
 function countPrices(text: string): number {
-  const matches = text.match(/R\s?\d{1,3}(?:[,\s]\d{3})*(?:\.\d{1,2})?/g);
+  const matches = text.match(/R\s*[\d\s,]+(?:[.,]\d{1,2})?/g);
   return matches ? matches.length : 0;
 }
 
 /** Detect if a row has an R-prefixed price (very permissive) */
 function hasAnyPrice(text: string): boolean {
-  return /R\s*[\d,]+/.test(text);
+  return /R\s*\d/.test(text);
 }
 
 /**
@@ -222,7 +232,7 @@ function detectCatalogStyle(products: PaletteProduct[]): "hvac" | "consumable" {
  * Check if a text row looks like a real product line item (not a description).
  * Two modes:
  *   - Strict (HVAC): requires model code + 2 prices
- *   - Relaxed (consumable): requires alphanumeric item code OR at least 1 price
+ *   - Relaxed (consumable): scoring system — text content + price = valid row
  */
 function isProductRow(text: string, relaxed = false): boolean {
   const trimmed = text.trim();
@@ -241,24 +251,33 @@ function isProductRow(text: string, relaxed = false): boolean {
   if (DESCRIPTION_PHRASES.some(phrase => lower.includes(phrase))) return false;
 
   if (relaxed) {
-    // --- Consumable / materials mode: very permissive ---
+    // --- Consumable / materials mode: scoring system ---
 
-    // BUG 4a: Section headers — ALL CAPS with no numbers at all (e.g. "ALUMINIUM", "BRACKETS", "COPPER TECH")
+    // Section headers — ALL CAPS with no numbers at all (e.g. "ALUMINIUM", "BRACKETS")
     const isSectionHeader = /^[A-Z\s/&-]+$/.test(trimmed) && !/\d/.test(trimmed);
     if (isSectionHeader) return false;
 
-    // BUG 3 FIX: Very broad item code — starts with letter, then 2+ alphanumeric
-    // Matches: ALU002, BRAC01, INS001, PMP001, CBLT01, ALUKIT05, ALUCON001, COPRIT10
-    const hasItemCode = /\b[A-Z][A-Z0-9]{2,}\d+\b/i.test(trimmed);
+    // Skip rows that look like column headers
+    if (/^(item|code|description|product|price|qty|total|unit)\b/i.test(trimmed)) return false;
 
-    // Any R-prefixed price at all (very broad)
-    const hasPrice = hasAnyPrice(trimmed) || /R\s*[\d,]+\.\d{2}/.test(trimmed);
+    // Scoring: +1 for readable text content, +1 for R-prefixed price
+    let score = 0;
 
-    // Also accept if there's any standalone number > 1.00 (could be a price without R prefix)
-    const hasNumericPrice = /\b\d+\.\d{2}\b/.test(trimmed) && parseFloat((trimmed.match(/\b(\d+\.\d{2})\b/) || ["0"])[1]) > 1.0;
+    // +1 for having meaningful text content (6+ chars, already checked above)
+    score += 1;
 
-    // Accept if it has an item code, or any price indicator
-    return hasItemCode || hasPrice || hasNumericPrice;
+    // +1 for having an R-prefixed price
+    if (hasAnyPrice(trimmed)) score += 1;
+
+    // +1 for having a standalone numeric value > 1.00 (price without R prefix)
+    const numMatch = trimmed.match(/\b(\d+[.,]\d{2})\b/);
+    if (numMatch) {
+      const numVal = parseFloat(numMatch[1].replace(",", "."));
+      if (numVal > 1.0) score += 1;
+    }
+
+    // Score >= 2 means valid product row (text + price)
+    return score >= 2;
   }
 
   // Strict mode: require a strict HVAC-style model code + 2 prices
@@ -431,7 +450,7 @@ export function matchTextRowsToProducts(
 }
 
 // Cache for extracted regions per page — versioned to bust on logic changes
-let _extractionVersion = 9; // Bumped: fix dedup removing distinct insulation rows, orange icon pointer-events
+let _extractionVersion = 10; // Bumped: SA price format, scoring-based row detection, auto-catalog error handling
 const extractionCache = new Map<
   string,
   ExtractedProductRegion[]

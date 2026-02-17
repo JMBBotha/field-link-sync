@@ -29,7 +29,7 @@ function extractSku(text: string): string {
  */
 function stripPrice(text: string): string {
   return text
-    .replace(/R\s?[\d,]+(?:\.\d{1,2})?/gi, "")
+    .replace(/R\s*[\d\s,]+(?:[.,]\d{1,2})?/gi, "")
     .replace(/\s{2,}/g, " ")
     .trim();
 }
@@ -94,8 +94,8 @@ export async function autoCatalogFromRegions(
   // Detect catalog style from the regions themselves:
   // If fewer than 30% of priced rows have 2+ prices, treat as consumable
   const pricedRows = regions.filter(r => r.has_price && r.detected_price);
-  // Use relaxed price regex matching extractor (with or without decimals)
-  const priceRegex = /R\s?\d{1,3}(?:[,\s]\d{3})*(?:\.\d{1,2})?/g;
+  // Use relaxed price regex matching SA formats (with or without decimals, comma or dot)
+  const priceRegex = /R\s*[\d\s,]+(?:[.,]\d{1,2})?/g;
   const multiPriceRows = pricedRows.filter(r => {
     const prices = r.label.match(priceRegex);
     return prices && prices.length >= 2;
