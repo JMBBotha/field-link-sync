@@ -163,11 +163,10 @@ const DraggableRegion = memo(({
               {inQuoteQty}
             </div>
           ) : isFavorite ? (
-            <div className="h-5 w-5 flex items-center justify-center relative">
-              <svg viewBox="0 0 24 24" className="h-5 w-5 fill-yellow-400 text-yellow-500 drop-shadow-sm absolute inset-0">
+            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-900/80 shadow-md">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-yellow-400 text-yellow-400 drop-shadow-sm">
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
               </svg>
-              <ShoppingCart className="h-2.5 w-2.5 text-white relative z-10" />
             </div>
           ) : (
             <div className="h-4 w-4 rounded-full bg-blue-500 flex items-center justify-center shadow-sm">

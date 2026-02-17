@@ -721,21 +721,6 @@ const LazyPdfPage = ({
               onQuickAddProduct={onQuickAddProduct}
             />
           )}
-          {/* Star overlays for favorited products */}
-          {starOverlays.map((region) => (
-            <div
-              key={`star-${region.id}`}
-              className="absolute pointer-events-none z-[45]"
-              style={{
-                left: `${Math.max(0, region.x_pct - 3.5)}%`,
-                top: `${region.y_pct}%`,
-              }}
-            >
-              <div className="flex items-center justify-center w-7 h-7 rounded-full bg-black/60 shadow-lg ring-2 ring-yellow-400/50">
-                <Star className="h-5 w-5 fill-yellow-400 text-yellow-400 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]" />
-              </div>
-            </div>
-          ))}
           {extracting && (
             <div className="absolute top-2 right-2 z-30 bg-black/50 text-white text-[9px] px-2 py-1 rounded flex items-center gap-1">
               <Loader2 className="h-3 w-3 animate-spin" /> Scanning…
