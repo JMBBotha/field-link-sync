@@ -241,7 +241,7 @@ function DraggableProductCard({
                     R{product.price_per_metre.toFixed(2)}/m
                   </Badge>
                 )}
-                {product.supplier_name && (
+                {product.supplier_name && product.supplier_name.toLowerCase() !== (product.brand || "").toLowerCase() && (
                   <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5">
                     {product.supplier_name}
                   </Badge>
