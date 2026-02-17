@@ -79,9 +79,9 @@ const DraggableRegion = memo(({
       }}
       onClick={handleClick}
     >
-      {/* Corner indicator badge — shifted right to avoid price overlap */}
+      {/* Corner indicator badge — shifted further right to avoid price overlap */}
       {isMatched && (
-        <div className="absolute -top-1.5 -right-4 opacity-70 group-hover:opacity-100 transition-opacity z-10">
+        <div className="absolute -top-2 opacity-70 group-hover:opacity-100 transition-opacity z-10" style={{ right: "-20px" }}>
           {inQuoteQty > 0 ? (
             <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center shadow-sm text-[8px] font-bold text-white">
               {inQuoteQty}
@@ -96,7 +96,7 @@ const DraggableRegion = memo(({
 
       {/* Unmatched indicator */}
       {!isMatched && (
-        <div className="absolute -top-1.5 -right-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <div className="absolute -top-2 opacity-0 group-hover:opacity-100 transition-opacity z-10" style={{ right: "-20px" }}>
           <div className="h-4 w-4 rounded-full bg-muted border border-dashed border-muted-foreground/50 flex items-center justify-center">
             <AlertCircle className="h-2.5 w-2.5 text-muted-foreground" />
           </div>

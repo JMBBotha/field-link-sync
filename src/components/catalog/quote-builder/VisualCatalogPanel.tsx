@@ -22,6 +22,7 @@ import PdfLinkButton from "./PdfLinkButton";
 import PdfMagnifier from "./PdfMagnifier";
 import CompactZonesSidebar from "./CompactZonesSidebar";
 import EnhancedProductPopup from "./EnhancedProductPopup";
+import CategoryNavBar from "./CategoryNavBar";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
 interface VisualCatalogPanelProps {
@@ -57,6 +58,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const [deleting, setDeleting] = useState(false);
   const [popupProduct, setPopupProduct] = useState<PaletteProduct | null>(null);
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const [activeCategory, setActiveCategory] = useState<string | undefined>();
 
   const handleDeleteSupplierPdf = useCallback(async (supplierId: string) => {
     setDeleting(true);
@@ -113,6 +115,10 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     queryFn: async () => {
       const { data } = await supabase.from("suppliers").select("id, name").in("id", supplierOptions);
       const map: Record<string, string> = {};
+      // Also map supplier_id text values (like "Daikin", "Samsung ") directly
+      for (const opt of supplierOptions) {
+        map[opt] = opt; // fallback to raw supplier_id text
+      }
       (data || []).forEach((s: any) => { map[s.id] = s.name; });
       return map;
     },
@@ -161,7 +167,6 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       }
     );
 
-    // Observe all page elements
     pageRefs.current.forEach((el) => observer.observe(el));
 
     return () => observer.disconnect();
@@ -194,8 +199,21 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     onAddBasket?.();
   }, [onAddBasket]);
 
+  // Category scroll handler
+  const handleScrollToCategory = useCallback((_category: string) => {
+    setActiveCategory(_category);
+    // For now, scroll to first page (category-to-page mapping would need page-level product data)
+    // This is a best-effort — categories map to products, not directly to pages
+  }, []);
+
   // Favorites set
-  const favoriteIds = useMemo(() => new Set(products.filter(p => p.is_pinned).map(p => p.id)), [products]);
+  const favoriteIds = useMemo(() => {
+    const ids = new Set(products.filter(p => p.is_pinned).map(p => p.id));
+    if (ids.size > 0) {
+      console.log(`[VisualCatalog] ${ids.size} favorited products:`, [...ids].slice(0, 5));
+    }
+    return ids;
+  }, [products]);
 
   const basketProductCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -322,7 +340,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
           </div>
 
           {/* Content: Continuous scroll */}
-          <div className="flex-1 overflow-hidden flex">
+          <div className="flex-1 overflow-hidden flex relative">
             {pagesLoading ? (
               <div className="p-4 space-y-3 flex-1">
                 <Skeleton className="h-8 w-48" />
@@ -387,6 +405,15 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                     basketProductCounts={basketProductCounts}
                   />
                 )}
+
+                {/* Floating category navigation bar */}
+                <CategoryNavBar
+                  products={products}
+                  favoriteIds={favoriteIds}
+                  currentSupplierName={currentSupplierName}
+                  onScrollToCategory={handleScrollToCategory}
+                  activeCategory={activeCategory}
+                />
               </>
             )}
           </div>
@@ -458,7 +485,7 @@ const LazyPdfPage = ({
   const [isVisible, setIsVisible] = useState(false);
   const hasPdfSource = !!page.pdf_storage_path;
 
-  // Lazy visibility detection: render content when within 2 pages of viewport
+  // Lazy visibility detection
   useEffect(() => {
     const container = scrollContainerRef.current;
     const el = divRef.current;
@@ -472,7 +499,7 @@ const LazyPdfPage = ({
       },
       {
         root: container,
-        rootMargin: "200% 0px", // Pre-load pages 2 viewport-heights ahead
+        rootMargin: "200% 0px",
       }
     );
     observer.observe(el);
@@ -486,7 +513,11 @@ const LazyPdfPage = ({
     queryFn: async () => {
       if (!page.pdf_storage_path) return [];
       try {
-        return await extractAndMatchPage(page.pdf_storage_path, page.page_number, products);
+        console.log(`[VisualCatalog] Extracting page ${page.page_number} from ${page.supplier_id}, matching against ${products.length} products`);
+        const regions = await extractAndMatchPage(page.pdf_storage_path, page.page_number, products);
+        const matched = regions.filter(r => r.matched);
+        console.log(`[VisualCatalog] Page ${page.page_number}: ${regions.length} text regions found, ${matched.length} matched to products`);
+        return regions;
       } catch (err) {
         console.error("[VisualCatalog] Live extraction failed:", err);
         return [];
@@ -508,8 +539,16 @@ const LazyPdfPage = ({
 
   // Star overlays for favorited products on this page
   const starOverlays = useMemo(() => {
-    return overlayRegions.filter(r => r.product && favoriteIds.has(r.product.id));
-  }, [overlayRegions, favoriteIds]);
+    const starred = overlayRegions.filter(r => r.product && favoriteIds.has(r.product.id));
+    if (starred.length > 0) {
+      console.log(`[VisualCatalog] Page ${page.page_number}: ${starred.length} starred products found on this page`);
+    }
+    return starred;
+  }, [overlayRegions, favoriteIds, page.page_number]);
+
+  // Count matched vs total
+  const matchedCount = overlayRegions.filter(r => r.product).length;
+  const totalRegions = overlayRegions.length;
 
   return (
     <div
@@ -522,8 +561,17 @@ const LazyPdfPage = ({
       style={{ minHeight: "400px" }}
     >
       {/* Page number label */}
-      <div className="absolute top-2 left-2 z-30 bg-black/60 text-white text-[9px] font-mono px-1.5 py-0.5 rounded">
-        Page {page.page_number}
+      <div className="absolute top-2 left-2 z-30 bg-black/60 text-white text-[9px] font-mono px-1.5 py-0.5 rounded flex items-center gap-1.5">
+        <span>Page {page.page_number}</span>
+        {isVisible && totalRegions > 0 && (
+          <span className="text-green-300">{matchedCount}/{totalRegions} matched</span>
+        )}
+        {isVisible && starOverlays.length > 0 && (
+          <span className="flex items-center gap-0.5 text-yellow-300">
+            <Star className="h-2.5 w-2.5 fill-yellow-300" />
+            {starOverlays.length}
+          </span>
+        )}
       </div>
 
       {isVisible ? (
@@ -535,6 +583,7 @@ const LazyPdfPage = ({
             loading="lazy"
             draggable={false}
           />
+          {/* Show overlays for ALL regions (matched + unmatched) */}
           {hasPdfSource && overlayRegions.length > 0 && (
             <PdfPageOverlay
               regions={overlayRegions}
@@ -548,14 +597,14 @@ const LazyPdfPage = ({
           {starOverlays.map((region) => (
             <div
               key={`star-${region.id}`}
-              className="absolute pointer-events-none z-30"
+              className="absolute pointer-events-none z-[45]"
               style={{
-                left: `${Math.max(0, region.x_pct - 3)}%`,
+                left: `${Math.max(0, region.x_pct - 3.5)}%`,
                 top: `${region.y_pct}%`,
               }}
             >
-              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-black/50 shadow-lg">
-                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]" />
+              <div className="flex items-center justify-center w-7 h-7 rounded-full bg-black/60 shadow-lg ring-2 ring-yellow-400/50">
+                <Star className="h-5 w-5 fill-yellow-400 text-yellow-400 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]" />
               </div>
             </div>
           ))}
