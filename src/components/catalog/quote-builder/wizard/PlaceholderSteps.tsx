@@ -7,18 +7,6 @@ interface StepProps {
   onAreasChange: (areas: QuoteArea[]) => void;
 }
 
-export function ConsumablesStep({ areas }: StepProps) {
-  return (
-    <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
-      <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
-      <h3 className="text-sm font-medium">Consumables Selection</h3>
-      <p className="text-xs text-muted-foreground max-w-md">
-        Search and add extras like gas, tape, cable ties per area. This step will be available in Phase 2.
-      </p>
-    </div>
-  );
-}
-
 export function TimeAllocationStep({ areas }: StepProps) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">

@@ -646,10 +646,14 @@ export type Database = {
           ac_type: string | null
           btu_rating: number | null
           bundle_type: string | null
+          compatible_brands: string[] | null
           created_at: string
           description: string | null
           id: string
           is_active: boolean
+          is_favorite: boolean
+          max_btu: number | null
+          min_btu: number | null
           name: string
           pipe_size: string | null
           updated_at: string
@@ -658,10 +662,14 @@ export type Database = {
           ac_type?: string | null
           btu_rating?: number | null
           bundle_type?: string | null
+          compatible_brands?: string[] | null
           created_at?: string
           description?: string | null
           id?: string
           is_active?: boolean
+          is_favorite?: boolean
+          max_btu?: number | null
+          min_btu?: number | null
           name: string
           pipe_size?: string | null
           updated_at?: string
@@ -670,10 +678,14 @@ export type Database = {
           ac_type?: string | null
           btu_rating?: number | null
           bundle_type?: string | null
+          compatible_brands?: string[] | null
           created_at?: string
           description?: string | null
           id?: string
           is_active?: boolean
+          is_favorite?: boolean
+          max_btu?: number | null
+          min_btu?: number | null
           name?: string
           pipe_size?: string | null
           updated_at?: string
@@ -2607,6 +2619,7 @@ export type Database = {
           image_url: string | null
           inverter: boolean | null
           is_active: boolean
+          is_material_favorite: boolean
           is_pinned: boolean
           is_price_on_request: boolean
           last_quoted_at: string | null
@@ -2652,6 +2665,7 @@ export type Database = {
           image_url?: string | null
           inverter?: boolean | null
           is_active?: boolean
+          is_material_favorite?: boolean
           is_pinned?: boolean
           is_price_on_request?: boolean
           last_quoted_at?: string | null
@@ -2697,6 +2711,7 @@ export type Database = {
           image_url?: string | null
           inverter?: boolean | null
           is_active?: boolean
+          is_material_favorite?: boolean
           is_pinned?: boolean
           is_price_on_request?: boolean
           last_quoted_at?: string | null

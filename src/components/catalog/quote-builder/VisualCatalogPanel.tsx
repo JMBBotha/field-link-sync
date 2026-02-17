@@ -612,6 +612,7 @@ const LazyPdfPage = ({
               sold_in_length: false,
               unit_length: null,
               pipe_size: null,
+              is_material_favorite: false,
             }));
             
             // Clear cache and re-extract with augmented product list

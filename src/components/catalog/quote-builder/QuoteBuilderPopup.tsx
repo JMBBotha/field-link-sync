@@ -11,7 +11,7 @@ import { WIZARD_STEPS, computeAreaSubtotal } from "./quoteWizardTypes";
 import AreaDefinitionStep from "./wizard/AreaDefinitionStep";
 import ACSelectionStep from "./wizard/ACSelectionStep";
 import MaterialsStep from "./wizard/MaterialsStep";
-import { ConsumablesStep, TimeAllocationStep, ReviewStep } from "./wizard/PlaceholderSteps";
+import { TimeAllocationStep, ReviewStep } from "./wizard/PlaceholderSteps";
 
 interface PaletteBundle {
   id: string;
@@ -94,9 +94,8 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
       case 0: return <AreaDefinitionStep {...props} />;
       case 1: return <ACSelectionStep {...props} products={products} />;
       case 2: return <MaterialsStep {...props} bundles={bundles} products={products} />;
-      case 3: return <ConsumablesStep {...props} />;
-      case 4: return <TimeAllocationStep {...props} />;
-      case 5: return <ReviewStep {...props} />;
+      case 3: return <TimeAllocationStep {...props} />;
+      case 4: return <ReviewStep {...props} />;
       default: return null;
     }
   }, [currentStep, areas, products, bundles]);
