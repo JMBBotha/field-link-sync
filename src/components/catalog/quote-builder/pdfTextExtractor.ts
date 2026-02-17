@@ -426,7 +426,7 @@ export function matchTextRowsToProducts(
 }
 
 // Cache for extracted regions per page — versioned to bust on logic changes
-let _extractionVersion = 7; // Bumped: broader item code detection, section header filter, phantom removal
+let _extractionVersion = 8; // Bumped: price regex alignment, favorite field fix
 const extractionCache = new Map<
   string,
   ExtractedProductRegion[]

@@ -232,12 +232,18 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     try {
       // If the region has a product_code, try to delete the auto-inserted supplier_product
       if (region.product_code) {
-        const { error } = await (supabase.from("supplier_products") as any)
-          .delete()
+        // Find the product by code + not archived, then delete by id
+        const { data: found } = await (supabase.from("supplier_products") as any)
+          .select("id")
           .eq("product_code", region.product_code)
           .eq("archived", false)
           .limit(1);
-        if (error) console.warn("[VisualCatalog] Delete auto-inserted product failed:", error.message);
+        
+        if (found && found.length > 0) {
+          await (supabase.from("supplier_products") as any)
+            .delete()
+            .eq("id", found[0].id);
+        }
       }
 
       // Remove from cached query data
@@ -247,6 +253,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       });
 
       clearExtractionCache();
+      queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
       toast({ title: "Region removed", duration: 2000 });
     } catch (err) {
       console.error("[VisualCatalog] Remove region failed:", err);
@@ -255,9 +262,8 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   }, [queryClient]);
 
   const handleToggleFavorite = useCallback(async (product: PaletteProduct) => {
-    const isMaterialType = !(product as any).is_pinned && !(product.product_category || "").toLowerCase().includes("air");
-    const fieldToUpdate = isMaterialType ? "is_material_favorite" : "is_pinned";
-    const currentValue = isMaterialType ? !!(product as any).is_material_favorite : !!product.is_pinned;
+    // Always use is_pinned for the visual catalog overlay — this is what the UI checks
+    const currentValue = !!product.is_pinned;
     const newValue = !currentValue;
 
     // Optimistic update: mutate product in all live-extract cached regions
@@ -265,7 +271,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       if (!Array.isArray(old)) return old;
       return old.map((r: any) =>
         r.product?.id === product.id
-          ? { ...r, product: { ...r.product, [fieldToUpdate]: newValue, is_pinned: fieldToUpdate === "is_pinned" ? newValue : r.product.is_pinned } }
+          ? { ...r, product: { ...r.product, is_pinned: newValue } }
           : r
       );
     });
@@ -275,7 +281,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
 
     try {
       const { error } = await (supabase.from("supplier_products") as any)
-        .update({ [fieldToUpdate]: newValue })
+        .update({ is_pinned: newValue })
         .eq("id", product.id);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
@@ -287,7 +293,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
         if (!Array.isArray(old)) return old;
         return old.map((r: any) =>
           r.product?.id === product.id
-            ? { ...r, product: { ...r.product, [fieldToUpdate]: currentValue, is_pinned: fieldToUpdate === "is_pinned" ? currentValue : r.product.is_pinned } }
+            ? { ...r, product: { ...r.product, is_pinned: currentValue } }
             : r
         );
       });
