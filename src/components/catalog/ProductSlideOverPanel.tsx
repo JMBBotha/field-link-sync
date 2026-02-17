@@ -2,7 +2,7 @@ import { useEffect, useCallback, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { X, ChevronLeft, ChevronRight, Plus, Cpu, Wind, Ruler, Upload, ImageIcon, Loader2 } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Plus, Cpu, Wind, Ruler, Upload, ImageIcon, Loader2, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -64,6 +64,7 @@ const ProductSlideOverPanel = ({
   const { toast } = useToast();
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [enhancingImage, setEnhancingImage] = useState(false);
   const [localImageUrl, setLocalImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -161,7 +162,7 @@ const ProductSlideOverPanel = ({
                 <ImageIcon className="h-8 w-8 text-muted-foreground/30" />
               </div>
             )}
-            <div>
+            <div className="flex flex-col gap-1.5">
               <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
               <Button
                 variant="outline"
@@ -173,6 +174,37 @@ const ProductSlideOverPanel = ({
                 {uploadingImage ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
                 {localImageUrl ? "Replace Image" : "Upload Image"}
               </Button>
+              {localImageUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs gap-1"
+                  disabled={enhancingImage}
+                  onClick={async () => {
+                    if (!product || !localImageUrl) return;
+                    setEnhancingImage(true);
+                    try {
+                      const { data, error } = await supabase.functions.invoke("enhance-image", {
+                        body: { image_url: localImageUrl },
+                      });
+                      if (error) throw error;
+                      if (!data?.enhanced_url) throw new Error("No enhanced URL returned");
+                      await (supabase.from("supplier_products") as any)
+                        .update({ image_url: data.enhanced_url })
+                        .eq("id", product.id);
+                      setLocalImageUrl(data.enhanced_url);
+                      toast({ title: "Image enhanced" });
+                    } catch (err: any) {
+                      toast({ title: "Enhancement failed", description: err.message, variant: "destructive" });
+                    } finally {
+                      setEnhancingImage(false);
+                    }
+                  }}
+                >
+                  {enhancingImage ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                  Enhance
+                </Button>
+              )}
             </div>
           </div>
 
