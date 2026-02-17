@@ -167,33 +167,33 @@ const DraggableRegion = memo(({
       onClick={handleClick}
     >
       {/* Corner indicator badges */}
-      <div className="absolute top-1/2 -translate-y-1/2 -right-6 opacity-70 group-hover:opacity-100 transition-opacity z-10 flex flex-col items-center gap-0.5">
+      <div className="absolute top-1/2 -translate-y-1/2 -right-4 opacity-70 group-hover:opacity-100 transition-opacity z-10 flex flex-row items-center gap-px">
         {/* Star toggle for matched products */}
         {isMatched && onToggleFavorite && (
           <button
             onClick={handleStarClick}
-            className="pointer-events-auto h-4 w-4 rounded-full flex items-center justify-center shadow-sm hover:scale-125 transition-transform"
+            className="pointer-events-auto h-3 w-3 rounded-full flex items-center justify-center hover:scale-125 transition-transform"
             style={{ background: isFavorite ? "rgba(30,30,30,0.8)" : "rgba(100,100,100,0.4)" }}
             title={isFavorite ? "Remove from favorites" : "Add to favorites"}
           >
-            <Star className={`h-2.5 w-2.5 ${isFavorite ? "fill-yellow-400 text-yellow-400" : "text-white/70"}`} />
+            <Star className={`h-2 w-2 ${isFavorite ? "fill-yellow-400 text-yellow-400" : "text-white/70"}`} />
           </button>
         )}
         {/* Cart / quantity badge */}
         <div className="pointer-events-none">
           {isMatched ? (
             inQuoteQty > 0 ? (
-              <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center shadow-sm text-[8px] font-bold text-white">
+              <div className="h-3 w-3 rounded-full bg-green-500 flex items-center justify-center text-[6px] font-bold text-white">
                 {inQuoteQty}
               </div>
             ) : (
-              <div className="h-4 w-4 rounded-full bg-blue-500 flex items-center justify-center shadow-sm">
-                <ShoppingCart className="h-2.5 w-2.5 text-white" />
+              <div className="h-3 w-3 rounded-full bg-blue-500 flex items-center justify-center">
+                <ShoppingCart className="h-1.5 w-1.5 text-white" />
               </div>
             )
           ) : (
-            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/40 bg-background flex items-center justify-center shadow-sm">
-              <ShoppingCart className="h-2.5 w-2.5 text-muted-foreground/60" />
+            <div className="h-3 w-3 rounded-full border border-muted-foreground/40 bg-background flex items-center justify-center">
+              <ShoppingCart className="h-1.5 w-1.5 text-muted-foreground/60" />
             </div>
           )}
         </div>
