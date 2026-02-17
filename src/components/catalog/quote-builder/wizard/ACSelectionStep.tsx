@@ -44,6 +44,10 @@ function UnitInfoPopover({ product }: { product: PaletteProduct }) {
         <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
           <span className="text-muted-foreground">Name</span>
           <span className="font-medium">{product.short_name || product.product_code}</span>
+          {product.pipe_size && (<>
+            <span className="text-muted-foreground">Pipe Size</span>
+            <span>{product.pipe_size}</span>
+          </>)}
           <span className="text-muted-foreground">Model No</span>
           <span>{product.product_code}</span>
           <span className="text-muted-foreground">Brand</span>
@@ -71,8 +75,7 @@ function UnitInfoPopover({ product }: { product: PaletteProduct }) {
 function areaSummary(area: QuoteArea): string {
   if (area.acUnits.length === 0) return "";
   const parts = area.acUnits.map((u) => {
-    const name = u.product.short_name || u.product.product_code;
-    return `${u.btu.toLocaleString()} BTU ${name}`;
+    return `${u.btu.toLocaleString()} BTU ${u.product.product_code}`;
   });
   return parts.length === 1 ? parts[0] : `${parts[0]} +${parts.length - 1} more`;
 }
@@ -214,9 +217,9 @@ export default function ACSelectionStep({ areas, onAreasChange, products }: Prop
                             <div className="h-3 w-3 rounded-full border-2 border-primary bg-primary shrink-0" />
                             <PinnedStar pinned={!!(unit.product as any).is_pinned} />
                             <div className="flex-1 min-w-0">
-                              <div className="font-medium truncate">{unit.product.short_name || unit.product.product_code}</div>
+                            <div className="font-medium truncate">{unit.product.product_code}</div>
                               <div className="text-muted-foreground flex gap-1 flex-wrap">
-                                <span className="truncate max-w-[140px]">{unit.product.product_code}</span>
+                                <span className="truncate">{unit.product.short_name || unit.product.product_code}</span>
                                 <span>·</span>
                                 <span>{unit.btu.toLocaleString()} BTU</span>
                                 {unit.product.pipe_size && (<><span>·</span><span>{unit.product.pipe_size}</span></>)}
@@ -250,9 +253,9 @@ export default function ACSelectionStep({ areas, onAreasChange, products }: Prop
                         <div className="h-3 w-3 rounded-full border-2 border-primary bg-primary shrink-0 animate-pulse" />
                         <PinnedStar pinned={!!(editingUnit.product as any).is_pinned} />
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate">{editingUnit.product.short_name || editingUnit.product.product_code}</div>
+                          <div className="font-medium truncate">{editingUnit.product.product_code}</div>
                           <div className="text-muted-foreground flex gap-1 flex-wrap">
-                            <span className="truncate max-w-[140px]">{editingUnit.product.product_code}</span>
+                            <span className="truncate">{editingUnit.product.short_name || editingUnit.product.product_code}</span>
                             <span>·</span>
                             <span>{editingUnit.btu.toLocaleString()} BTU</span>
                             {editingUnit.product.pipe_size && (<><span>·</span><span>{editingUnit.product.pipe_size}</span></>)}
@@ -287,8 +290,8 @@ export default function ACSelectionStep({ areas, onAreasChange, products }: Prop
                           >
                             <PinnedStar pinned={!!(p as any).is_pinned} />
                             <div className="flex-1 min-w-0">
-                              <div className="font-medium truncate">{p.short_name || p.product_code}</div>
-                              <div className="text-muted-foreground truncate">{p.product_code} · {btu.toLocaleString()} BTU{p.pipe_size ? ` · ${p.pipe_size}` : ""}</div>
+                              <div className="font-medium truncate">{p.product_code}</div>
+                              <div className="text-muted-foreground truncate">{p.short_name || p.product_code} · {btu.toLocaleString()} BTU{p.pipe_size ? ` · ${p.pipe_size}` : ""}</div>
                             </div>
                             <span className="font-medium shrink-0">
                               R {(p.selling_price || p.cost_incl_vat || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
