@@ -1,10 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileText, Trash2, Loader2, Eye } from "lucide-react";
+import { Upload, FileText, Trash2, Loader2, Eye, ImagePlus } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -28,7 +29,10 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const priceListInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [processingPriceList, setProcessingPriceList] = useState(false);
+  const [priceListProgress, setPriceListProgress] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [extractedData, setExtractedData] = useState<Record<string, string> | null>(null);
 
@@ -41,6 +45,18 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as SupplierDocument[];
+    },
+  });
+
+  // Check if this supplier already has Visual Catalog pages
+  const { data: catalogPageCount = 0 } = useQuery({
+    queryKey: ["supplier-catalog-pages", supplierId],
+    queryFn: async () => {
+      const { count, error } = await (supabase.from("supplier_pdf_pages") as any)
+        .select("*", { count: "exact", head: true })
+        .eq("supplier_id", supplierId);
+      if (error) return 0;
+      return count || 0;
     },
   });
 
@@ -62,16 +78,11 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
 
   const parseExtractedInfo = (text: string): Record<string, string> => {
     const result: Record<string, string> = {};
-
-    // Phone numbers (SA format)
     const phoneMatch = text.match(/(?:\+27|0)\s*\d{2}\s*\d{3}\s*\d{4}/g);
     if (phoneMatch) result.phone = phoneMatch[0].replace(/\s/g, "");
-
-    // Email addresses
     const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
     if (emailMatch) {
       result.email = emailMatch[0];
-      // Try to categorize
       const categorized: Record<string, string> = {};
       emailMatch.forEach((em) => {
         const lower = em.toLowerCase();
@@ -85,25 +96,126 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
         result.categorized_emails = JSON.stringify(categorized);
       }
     }
-
-    // VAT number
     const vatMatch = text.match(/(?:VAT|vat)\s*(?:No\.?|Number|#)?\s*:?\s*(\d{10})/i);
     if (vatMatch) result.vat_number = vatMatch[1];
-
-    // Registration number
     const regMatch = text.match(/(?:Reg|Registration|CK)\s*(?:No\.?|Number|#)?\s*:?\s*([\d/]+)/i);
     if (regMatch) result.registration_number = regMatch[1];
-
-    // Website
     const webMatch = text.match(/(?:www\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|https?:\/\/[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/gi);
     if (webMatch) result.website = webMatch[0];
-
-    // Physical address (simple heuristic: look for patterns with street numbers)
     const addressMatch = text.match(/\d+\s+[A-Z][a-zA-Z]+\s+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Lane|Ln|Way|Blvd|Boulevard)[^,\n]*/);
     if (addressMatch) result.physical_address = addressMatch[0].trim();
-
     return result;
   };
+
+  /** Process a PDF into page images for the Visual Catalog */
+  const handlePriceListUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      toast({ title: "Only PDF files supported", variant: "destructive" });
+      return;
+    }
+
+    setProcessingPriceList(true);
+    setPriceListProgress("Loading PDF...");
+
+    try {
+      const pdfjsLib = await import("pdfjs-dist");
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const totalPages = pdf.numPages;
+
+      setPriceListProgress(`Processing ${totalPages} pages...`);
+
+      // Delete existing pages for this supplier first
+      if (catalogPageCount > 0) {
+        await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", supplierId);
+      }
+
+      const SCALE = 1.5; // Good quality for viewing
+      const batchRows: any[] = [];
+
+      for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+        setPriceListProgress(`Rendering page ${pageNum} of ${totalPages}...`);
+
+        const page = await pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale: SCALE });
+
+        const canvas = document.createElement("canvas");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext("2d")!;
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        // Convert to JPEG blob
+        const blob: Blob = await new Promise((resolve) =>
+          canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.85)
+        );
+
+        // Upload to storage
+        const storagePath = `${supplierId}/${file.name}/page_${pageNum}.jpg`;
+        const { error: uploadErr } = await supabase.storage
+          .from("supplier-pdf-pages")
+          .upload(storagePath, blob, { upsert: true, contentType: "image/jpeg" });
+
+        if (uploadErr) {
+          console.error(`[PriceList] Failed to upload page ${pageNum}:`, uploadErr);
+          continue;
+        }
+
+        const { data: urlData } = supabase.storage.from("supplier-pdf-pages").getPublicUrl(storagePath);
+
+        batchRows.push({
+          supplier_id: supplierId,
+          pdf_filename: file.name,
+          page_number: pageNum,
+          page_image_url: urlData.publicUrl,
+        });
+
+        // Insert in batches of 10
+        if (batchRows.length >= 10) {
+          await (supabase.from("supplier_pdf_pages") as any).insert(batchRows.splice(0, 10));
+        }
+
+        // Cleanup canvas
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+
+      // Insert remaining rows
+      if (batchRows.length > 0) {
+        await (supabase.from("supplier_pdf_pages") as any).insert(batchRows);
+      }
+
+      // Also upload the source PDF for interactive overlays
+      const pdfStoragePath = `${supplierId}/${file.name}`;
+      await supabase.storage.from("supplier-pdfs").upload(pdfStoragePath, file, { upsert: true, contentType: "application/pdf" });
+      const { data: pdfUrlData } = supabase.storage.from("supplier-pdfs").getPublicUrl(pdfStoragePath);
+      if (pdfUrlData?.publicUrl) {
+        await (supabase.from("supplier_pdf_pages") as any)
+          .update({ pdf_storage_path: pdfUrlData.publicUrl })
+          .eq("supplier_id", supplierId)
+          .eq("pdf_filename", file.name);
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["visual-panel-suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["visual-panel-pages"] });
+      queryClient.invalidateQueries({ queryKey: ["visual-catalog-suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["visual-catalog-pages"] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-catalog-pages", supplierId] });
+
+      toast({ title: `Price list uploaded`, description: `${totalPages} pages processed for Visual Catalog.` });
+    } catch (err: any) {
+      console.error("[PriceList] Processing failed:", err);
+      toast({ title: "Price list processing failed", description: err.message, variant: "destructive" });
+    } finally {
+      setProcessingPriceList(false);
+      setPriceListProgress("");
+      if (priceListInputRef.current) priceListInputRef.current.value = "";
+    }
+  }, [supplierId, catalogPageCount, queryClient, toast]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -128,7 +240,6 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
       queryClient.invalidateQueries({ queryKey: ["supplier-documents", supplierId] });
       toast({ title: "Document uploaded" });
 
-      // If PDF, extract info
       if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
         try {
           const text = await extractTextFromPDF(file);
@@ -167,6 +278,53 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
 
   return (
     <div className="space-y-3 mt-2">
+      {/* Price List Upload for Visual Catalog */}
+      <Card className="border-dashed border-primary/30 bg-primary/5">
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-sm font-medium flex items-center gap-1.5">
+                <ImagePlus className="h-4 w-4 text-primary shrink-0" />
+                Visual Catalog PDF
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Upload a price list PDF to browse in the Visual Catalog viewer.
+              </p>
+              {catalogPageCount > 0 && (
+                <Badge variant="secondary" className="mt-1 text-[10px]">
+                  {catalogPageCount} pages loaded
+                </Badge>
+              )}
+            </div>
+            <div className="shrink-0">
+              <input
+                ref={priceListInputRef}
+                type="file"
+                accept=".pdf"
+                className="hidden"
+                onChange={handlePriceListUpload}
+              />
+              <Button
+                size="sm"
+                variant={catalogPageCount > 0 ? "outline" : "default"}
+                onClick={() => priceListInputRef.current?.click()}
+                disabled={processingPriceList}
+                className="text-xs"
+              >
+                {processingPriceList ? (
+                  <><Loader2 className="h-3 w-3 mr-1 animate-spin" />{priceListProgress || "Processing..."}</>
+                ) : catalogPageCount > 0 ? (
+                  <><ImagePlus className="h-3 w-3 mr-1" />Replace PDF</>
+                ) : (
+                  <><ImagePlus className="h-3 w-3 mr-1" />Upload Price List</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Regular documents */}
       <div className="flex justify-between items-center">
         <p className="text-sm text-muted-foreground">{documents.length} document{documents.length !== 1 ? "s" : ""}</p>
         <div>
@@ -179,7 +337,7 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
           />
           <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
             {uploading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Upload className="h-3 w-3 mr-1" />}
-            Upload PDF
+            Upload Document
           </Button>
         </div>
       </div>
@@ -216,7 +374,6 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
         </div>
       )}
 
-      {/* PDF Extract Review Modal */}
       {extractedData && (
         <PDFExtractReviewModal
           open={!!extractedData}
@@ -226,7 +383,6 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
         />
       )}
 
-      {/* Delete Confirmation */}
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
