@@ -253,10 +253,18 @@ export function matchTextRowsToProducts(
   const { byCode, byName, byDescription } = buildProductLookup(products);
   const regions: ExtractedProductRegion[] = [];
 
-  // Determine if this looks like an HVAC catalog or a consumable catalog
-  const catalogStyle = detectCatalogStyle(products);
-  const isRelaxedCatalog = catalogStyle === "consumable";
-  console.log(`[pdfTextExtractor] Catalog style: ${catalogStyle}, products: ${products.length}, relaxed: ${isRelaxedCatalog}`);
+  // Determine catalog style from products AND from actual PDF text
+  const productStyle = detectCatalogStyle(products);
+  
+  // Also scan PDF rows: if most rows have only 1 price, it's consumable-style
+  const sampleRows = rows.slice(0, 40).map(r => r.map(i => i.text).join(" "));
+  const rowsWithTwoPrices = sampleRows.filter(r => countPrices(r) >= 2).length;
+  const rowsWithOnePrice = sampleRows.filter(r => countPrices(r) >= 1).length;
+  const pdfStyleIsConsumable = rowsWithOnePrice > 5 && rowsWithTwoPrices < rowsWithOnePrice * 0.3;
+  
+  // Use relaxed mode if EITHER the products or the PDF text suggest consumable-style
+  const isRelaxedCatalog = productStyle === "consumable" || pdfStyleIsConsumable;
+  console.log(`[pdfTextExtractor] Catalog style: products=${productStyle}, pdfConsumable=${pdfStyleIsConsumable}, relaxed: ${isRelaxedCatalog}, rows sampled: ${sampleRows.length}, 1-price: ${rowsWithOnePrice}, 2-price: ${rowsWithTwoPrices}`);
 
   for (const row of rows) {
     const rowText = row.map((i) => i.text).join(" ");
@@ -345,7 +353,7 @@ export function matchTextRowsToProducts(
 }
 
 // Cache for extracted regions per page — versioned to bust on logic changes
-let _extractionVersion = 3; // Bumped: consumable catalog detection fix v2
+let _extractionVersion = 4; // Bumped: dual detection (products + PDF text)
 const extractionCache = new Map<
   string,
   ExtractedProductRegion[]
