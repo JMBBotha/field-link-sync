@@ -20,6 +20,7 @@ interface PdfPageOverlayProps {
   baskets: Basket[];
   onAddProductToBasket: (basketId: string, product: PaletteProduct) => void;
   basketProductCounts: Record<string, number>;
+  onProductClick?: (product: PaletteProduct) => void;
 }
 
 const DraggableRegion = memo(({
@@ -27,13 +28,14 @@ const DraggableRegion = memo(({
   baskets,
   onAddProductToBasket,
   inQuoteQty,
+  onProductClick,
 }: {
   region: OverlayRegion;
   baskets: Basket[];
   onAddProductToBasket: (basketId: string, product: PaletteProduct) => void;
   inQuoteQty: number;
+  onProductClick?: (product: PaletteProduct) => void;
 }) => {
-  const [showActions, setShowActions] = useState(false);
   const product = region.product;
   const isMatched = !!product;
 
@@ -46,18 +48,12 @@ const DraggableRegion = memo(({
   const price = product?.selling_price || product?.cost_incl_vat || 0;
 
   const handleClick = useCallback((e: React.MouseEvent) => {
-    if (!isMatched) return;
+    if (!isMatched || !product) return;
     e.stopPropagation();
-    setShowActions((prev) => !prev);
-  }, [isMatched]);
-
-  const handleAddToZone = useCallback((basketId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (product) {
-      onAddProductToBasket(basketId, product);
-      setShowActions(false);
+    if (onProductClick) {
+      onProductClick(product);
     }
-  }, [product, onAddProductToBasket]);
+  }, [isMatched, product, onProductClick]);
 
   return (
     <div
@@ -83,9 +79,9 @@ const DraggableRegion = memo(({
       }}
       onClick={handleClick}
     >
-      {/* Corner indicator badge */}
+      {/* Corner indicator badge — shifted right to avoid price overlap */}
       {isMatched && (
-        <div className="absolute -top-1.5 -right-1.5 opacity-70 group-hover:opacity-100 transition-opacity z-10">
+        <div className="absolute -top-1.5 -right-4 opacity-70 group-hover:opacity-100 transition-opacity z-10">
           {inQuoteQty > 0 ? (
             <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center shadow-sm text-[8px] font-bold text-white">
               {inQuoteQty}
@@ -100,14 +96,14 @@ const DraggableRegion = memo(({
 
       {/* Unmatched indicator */}
       {!isMatched && (
-        <div className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <div className="absolute -top-1.5 -right-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
           <div className="h-4 w-4 rounded-full bg-muted border border-dashed border-muted-foreground/50 flex items-center justify-center">
             <AlertCircle className="h-2.5 w-2.5 text-muted-foreground" />
           </div>
         </div>
       )}
 
-      {/* Hover tooltip — positioned above the region */}
+      {/* Hover tooltip */}
       <div className="absolute left-0 bottom-full mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
         <div className="bg-popover border rounded-lg shadow-xl px-3 py-2 text-[10px] whitespace-nowrap max-w-[280px]">
           {isMatched && product ? (
@@ -133,7 +129,7 @@ const DraggableRegion = memo(({
                 <p className="text-blue-600 font-medium">In quote: ×{inQuoteQty}</p>
               )}
               <p className="text-muted-foreground/60 text-[9px] mt-0.5">
-                Drag to zone or click for options
+                Click for full options · Drag to zone
               </p>
             </div>
           ) : (
@@ -146,31 +142,6 @@ const DraggableRegion = memo(({
           )}
         </div>
       </div>
-
-      {/* Click action popover */}
-      {showActions && isMatched && product && baskets.length > 0 && (
-        <div
-          className="absolute left-0 top-full mt-1.5 z-50 bg-popover border rounded-lg shadow-xl p-1.5 min-w-[150px]"
-          data-no-dnd="true"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-0.5">
-            Add to zone
-          </p>
-          {baskets.map((basket) => (
-            <Button
-              key={basket.id}
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start text-xs h-7 gap-1.5"
-              onClick={(e) => handleAddToZone(basket.id, e)}
-            >
-              <Plus className="h-3 w-3" />
-              {basket.name}
-            </Button>
-          ))}
-        </div>
-      )}
     </div>
   );
 });
@@ -182,8 +153,8 @@ const PdfPageOverlay = ({
   baskets,
   onAddProductToBasket,
   basketProductCounts,
+  onProductClick,
 }: PdfPageOverlayProps) => {
-  // Only render regions with valid coordinate data
   const positionedRegions = regions.filter(
     (r) =>
       r.x_pct != null &&
@@ -208,6 +179,7 @@ const PdfPageOverlay = ({
               ? basketProductCounts[region.product.id] || 0
               : 0
           }
+          onProductClick={onProductClick}
         />
       ))}
     </>
