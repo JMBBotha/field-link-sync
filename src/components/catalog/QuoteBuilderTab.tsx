@@ -524,7 +524,7 @@ const QuoteBuilderTab = () => {
               onOpenVisualPanel={() => setVisualPanelOpen(true)}
             />
           </div>
-          <div ref={canvasRef} className="md:col-span-3 md:max-h-[calc(100vh-280px)] md:overflow-y-auto">
+          <div ref={canvasRef} className="md:col-span-3 md:max-h-[calc(100vh-280px)] md:overflow-y-auto" style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" as any }}>
             <BasketCanvas
               baskets={baskets}
               allProducts={products}
@@ -556,6 +556,8 @@ const QuoteBuilderTab = () => {
           onClose={() => setVisualPanelOpen(false)}
           baskets={baskets}
           onAddProductToBasket={addProductToBasket}
+          onAddBasket={handleAddBasket}
+          onRemoveBasket={handleRemoveBasket}
           products={products}
           isDragging={isDragging}
         />
