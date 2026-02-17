@@ -118,14 +118,16 @@ const DraggableRegion = memo(({
 
   const price = product?.selling_price || product?.cost_incl_vat || 0;
 
+  // ISSUE 5 FIX: handleClick is for the overlay area (opens popup/details)
+  // handleStarClick is for the icon button (toggles favorite) — this is the primary action
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     if (isMatched && product && onProductClick) {
       onProductClick(product);
-    } else if (!isMatched && hasPrice && onUnmatchedClick) {
+    } else if (!isMatched && onUnmatchedClick) {
       onUnmatchedClick(region);
     }
-  }, [isMatched, product, onProductClick, hasPrice, onUnmatchedClick, region]);
+  }, [isMatched, product, onProductClick, onUnmatchedClick, region]);
 
   const handleStarClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -165,43 +167,44 @@ const DraggableRegion = memo(({
       onClick={handleClick}
     >
       {/* Corner indicator badges */}
+      {/* ISSUE 5 FIX: Icon button is the PRIMARY click target for favorite toggle.
+          Single click on blue cart → yellow star (favorite). Click yellow star → blue cart (unfavorite).
+          Uses pointer-events-auto + e.stopPropagation to prevent overlay click from firing. */}
       <div className="absolute top-1/2 -translate-y-1/2 left-full opacity-70 group-hover:opacity-100 transition-opacity z-10 flex flex-row items-center gap-px" style={{ marginLeft: '16px' }}>
         {isMatched ? (
-          isFavorite && onToggleFavorite ? (
-            /* Favorite star replaces cart icon */
+          isFavorite ? (
+            /* Yellow star — click to unfavorite */
             <button
               onClick={handleStarClick}
-              className="pointer-events-auto h-3 w-3 rounded-full flex items-center justify-center hover:scale-125 transition-transform"
+              className="pointer-events-auto h-4 w-4 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer"
               style={{ background: "rgba(30,30,30,0.8)" }}
               title="Remove from favorites"
             >
-              <Star className="h-2 w-2 fill-yellow-400 text-yellow-400" />
+              <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400" />
             </button>
           ) : inQuoteQty > 0 ? (
-            <div className="relative pointer-events-auto">
-              {onToggleFavorite && (
-                <button onClick={handleStarClick} className="h-3 w-3 rounded-full bg-green-500 flex items-center justify-center text-[6px] font-bold text-white hover:scale-125 transition-transform" title="Add to favorites">
-                  {inQuoteQty}
-                </button>
-              )}
-              {!onToggleFavorite && (
-                <div className="h-3 w-3 rounded-full bg-green-500 flex items-center justify-center text-[6px] font-bold text-white">
-                  {inQuoteQty}
-                </div>
-              )}
-            </div>
-          ) : (
+            /* Green badge with quantity — click to favorite */
             <button
-              onClick={onToggleFavorite ? handleStarClick : undefined}
-              className={`h-3 w-3 rounded-full bg-blue-500 flex items-center justify-center ${onToggleFavorite ? 'pointer-events-auto hover:scale-125 transition-transform' : 'pointer-events-none'}`}
+              onClick={handleStarClick}
+              className="pointer-events-auto h-4 w-4 rounded-full bg-green-500 flex items-center justify-center text-[7px] font-bold text-white hover:scale-125 transition-transform cursor-pointer"
               title="Add to favorites"
             >
-              <ShoppingCart className="h-1.5 w-1.5 text-white" />
+              {inQuoteQty}
+            </button>
+          ) : (
+            /* Blue cart — click to favorite */
+            <button
+              onClick={handleStarClick}
+              className="pointer-events-auto h-4 w-4 rounded-full bg-blue-500 flex items-center justify-center hover:scale-125 transition-transform cursor-pointer"
+              title="Add to favorites"
+            >
+              <ShoppingCart className="h-2 w-2 text-white" />
             </button>
           )
         ) : (
-          <div className="h-3 w-3 rounded-full bg-orange-500 flex items-center justify-center pointer-events-none">
-            <ShoppingCart className="h-1.5 w-1.5 text-white" />
+          /* Orange cart for unmatched */
+          <div className="h-4 w-4 rounded-full bg-orange-500 flex items-center justify-center pointer-events-none">
+            <ShoppingCart className="h-2 w-2 text-white" />
           </div>
         )}
       </div>

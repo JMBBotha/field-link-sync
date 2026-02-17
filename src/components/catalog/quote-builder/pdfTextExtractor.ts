@@ -357,26 +357,43 @@ export function matchTextRowsToProducts(
 
     passedRows++;
 
-    // Calculate bounding box for the entire row
+    // ISSUE 1 FIX: Calculate tight bounding box based on font metrics
+    // Use the actual font height of text items, not gap to next row
     const minX = Math.min(...row.map((i) => i.x));
     const maxX = Math.max(...row.map((i) => i.x + i.width));
-    const minY = Math.min(...row.map((i) => i.y));
-    const maxY = Math.max(...row.map((i) => i.y + i.height));
+    // Use the median Y and height from individual text items for tight fit
+    const rowYs = row.map(i => i.y);
+    const rowHeights = row.map(i => i.height);
+    const minY = Math.min(...rowYs);
+    // Use the actual font height (max of individual item heights) instead of gap to next row
+    const maxItemHeight = Math.max(...rowHeights);
+    const tightMaxY = minY + maxItemHeight;
 
     // Convert to percentage coordinates
     const x_pct = (minX / pageWidth) * 100;
     const y_pct = (minY / pageHeight) * 100;
     const w_pct = ((maxX - minX) / pageWidth) * 100;
-    const h_pct = ((maxY - minY) / pageHeight) * 100;
+    const h_pct = ((tightMaxY - minY) / pageHeight) * 100;
 
     // Skip regions that are too narrow or positioned outside page
-    if (w_pct < 1 || h_pct < 0.3) continue;
+    if (w_pct < 1 || h_pct < 0.2) continue;
     if (x_pct < 0 || y_pct < 0 || x_pct > 100 || y_pct > 100) continue;
+
+    // ISSUE 3 FIX: Skip regions with empty labels or oversized height (>5% of page)
+    const trimmedLabel = rowText.trim();
+    if (!trimmedLabel || trimmedLabel.length < 2) continue;
+    if (h_pct > 5) continue;
+
+    // Extract product_code from the row text for dedup
+    const extractedCode = matchedCode || (() => {
+      const codeMatch = rowText.match(/\b([A-Z]{2,}\d+[A-Z0-9]*)\b/);
+      return codeMatch ? codeMatch[1] : rowText.substring(0, 30);
+    })();
 
     regions.push({
       product: matched,
-      product_code: matchedCode || rowText.substring(0, 30),
-      label: rowText.substring(0, 200),
+      product_code: extractedCode,
+      label: trimmedLabel.substring(0, 200),
       x_pct: Math.max(0, x_pct),
       y_pct: Math.max(0, y_pct),
       w_pct: Math.min(100 - x_pct, w_pct),
@@ -387,15 +404,27 @@ export function matchTextRowsToProducts(
     });
   }
 
-  const matchedCount = regions.filter(r => r.matched).length;
-  const unmatchedCount = regions.filter(r => !r.matched).length;
-  console.log(`[pdfTextExtractor] Results: ${regions.length} regions (${matchedCount} matched, ${unmatchedCount} unmatched), ${passedRows} rows passed filter, ${failedRows} rows failed, ${skippedShort} too short`);
+  // ISSUE 2 FIX: Deduplicate regions by product_code — keep first occurrence
+  const seenCodes = new Set<string>();
+  const deduped: ExtractedProductRegion[] = [];
+  for (const r of regions) {
+    const key = r.product_code.toLowerCase().trim();
+    if (key.length >= 3 && seenCodes.has(key)) {
+      continue; // skip duplicate
+    }
+    if (key.length >= 3) seenCodes.add(key);
+    deduped.push(r);
+  }
 
-  return regions;
+  const matchedCount = deduped.filter(r => r.matched).length;
+  const unmatchedCount = deduped.filter(r => !r.matched).length;
+  console.log(`[pdfTextExtractor] Results: ${deduped.length} regions (${matchedCount} matched, ${unmatchedCount} unmatched), ${regions.length - deduped.length} duplicates removed, ${passedRows} rows passed filter, ${failedRows} rows failed, ${skippedShort} too short`);
+
+  return deduped;
 }
 
 // Cache for extracted regions per page — versioned to bust on logic changes
-let _extractionVersion = 5; // Bumped: relaxed price detection + adaptive row grouping
+let _extractionVersion = 6; // Bumped: tight row height, dedup, empty space filter
 const extractionCache = new Map<
   string,
   ExtractedProductRegion[]
