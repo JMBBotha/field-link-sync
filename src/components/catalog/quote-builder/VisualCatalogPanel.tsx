@@ -17,6 +17,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import PdfPageOverlay from "./PdfPageOverlay";
 import type { OverlayRegion } from "./PdfPageOverlay";
 import { extractAndMatchPage, clearExtractionCache } from "./pdfTextExtractor";
+import { autoCatalogFromRegions } from "./pdfAutoCatalog";
 import FallbackProductPanel from "./FallbackProductPanel";
 import PdfLinkButton from "./PdfLinkButton";
 import PdfMagnifier from "./PdfMagnifier";
@@ -523,6 +524,7 @@ const LazyPdfPage = ({
   onCategoriesDetected,
   registerRef,
 }: LazyPdfPageProps) => {
+  const queryClient = useQueryClient();
   const divRef = useRef<HTMLDivElement | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const hasPdfSource = !!page.pdf_storage_path;
@@ -556,9 +558,59 @@ const LazyPdfPage = ({
       if (!page.pdf_storage_path) return [];
       try {
         console.log(`[VisualCatalog] Extracting page ${page.page_number} from ${page.supplier_id}, matching against ${products.length} products`);
+        
+        // First pass: extract and match against existing products
         const regions = await extractAndMatchPage(page.pdf_storage_path, page.page_number, products);
         const matched = regions.filter(r => r.matched);
-        console.log(`[VisualCatalog] Page ${page.page_number}: ${regions.length} text regions found, ${matched.length} matched to products`);
+        const unmatchedWithPrice = regions.filter(r => !r.matched && r.has_price && r.detected_price);
+        
+        console.log(`[VisualCatalog] Page ${page.page_number}: ${regions.length} regions, ${matched.length} matched, ${unmatchedWithPrice.length} unmatched with prices`);
+        
+        // Auto-catalog unmatched items with prices
+        if (unmatchedWithPrice.length > 0) {
+          const result = await autoCatalogFromRegions(regions, page.supplier_id);
+          
+          if (result.insertedCount > 0) {
+            console.log(`[VisualCatalog] Auto-cataloged ${result.insertedCount} new products from page ${page.page_number}`);
+            
+            toast({
+              title: `Auto-cataloged ${result.insertedCount} new products`,
+              description: `Found on ${page.supplier_id} page ${page.page_number}. They are now available in your catalog.`,
+              duration: 5000,
+            });
+            
+            // Build augmented products list with newly inserted products
+            const newPaletteProducts: PaletteProduct[] = result.newProducts.map(np => ({
+              id: np.id,
+              product_code: np.product_code,
+              short_name: np.short_name || np.description,
+              brand: np.brand || page.supplier_id,
+              product_category: "Uncategorized",
+              category: "Uncategorized",
+              cost_excl_vat: np.cost_excl_vat || 0,
+              cost_incl_vat: Math.round((np.cost_excl_vat || 0) * 1.15 * 100) / 100,
+              selling_price: 0,
+              description: np.description || "",
+              is_pinned: false,
+              pin_order: null,
+              supplier_name: np.brand || page.supplier_id,
+              price_per_metre: null,
+              sold_in_length: false,
+              unit_length: null,
+            }));
+            
+            // Clear cache and re-extract with augmented product list
+            clearExtractionCache();
+            const allProducts = [...products, ...newPaletteProducts];
+            const reMatched = await extractAndMatchPage(page.pdf_storage_path!, page.page_number, allProducts);
+            
+            // Invalidate the main products query so palette picks up new items
+            queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
+            
+            return reMatched;
+          }
+        }
+        
         return regions;
       } catch (err) {
         console.error("[VisualCatalog] Live extraction failed:", err);
