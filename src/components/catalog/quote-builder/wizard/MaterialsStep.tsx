@@ -234,13 +234,6 @@ function MaterialPicker({
       return st === "installation_material" || st === "consumables" || st === "both";
     });
 
-    // Filter by section type
-    if (section === "materials") {
-      result = result.filter((p) => p.sold_in_length && typeof p.price_per_metre === "number" && p.price_per_metre > 0);
-    } else if (section === "consumables") {
-      result = result.filter((p) => !p.sold_in_length || typeof p.price_per_metre !== "number" || p.price_per_metre <= 0);
-    }
-
     // Category filter
     if (category !== "all") {
       result = result.filter((p) => {
@@ -249,20 +242,25 @@ function MaterialPicker({
         const desc = (p.description || "").toLowerCase();
         const blob = cat + " " + name + " " + desc;
         switch (category) {
-          case "piping": return blob.includes("pip") || blob.includes("copper") || blob.includes("tube");
-          case "electrical": return blob.includes("electr") || blob.includes("cable") || blob.includes("wire");
-          case "consumables": return blob.includes("consum") || blob.includes("tape") || blob.includes("gas") || blob.includes("drain") || blob.includes("tie");
+          case "piping": return blob.includes("pip") || blob.includes("copper") || blob.includes("tube") || blob.includes("elbow") || blob.includes("coupling") || blob.includes("insulation");
+          case "electrical": return blob.includes("electr") || blob.includes("cable") || blob.includes("wire") || blob.includes("capacitor");
+          case "consumables": return blob.includes("consum") || blob.includes("tape") || blob.includes("gas") || blob.includes("drain") || blob.includes("tie") || blob.includes("solder") || blob.includes("adhesive") || blob.includes("cleaner");
           default: return true;
         }
       });
-    }
-
-    // Default: for consumables section with "all" category, pre-filter
-    if (section === "consumables" && category === "all") {
-      result = result.filter((p) => {
-        const cat = (p.product_category || p.category || "").toLowerCase();
-        return cat.includes("consum") || cat.includes("electr") || cat.includes("accessori") || cat.includes("sundri");
-      });
+    } else if (!search.trim()) {
+      // When no search and "all" category, show installation-relevant categories only (not AC units)
+      if (section === "materials") {
+        result = result.filter((p) => {
+          const cat = (p.product_category || p.category || "").toLowerCase();
+          return cat.includes("pip") || cat.includes("copper") || cat.includes("insulation") || cat.includes("bracket") || cat.includes("elbow") || cat.includes("coupling") || cat.includes("rod") || cat.includes("flare") || cat.includes("saddle") || cat.includes("trunking") || cat.includes("kit");
+        });
+      } else if (section === "consumables") {
+        result = result.filter((p) => {
+          const cat = (p.product_category || p.category || "").toLowerCase();
+          return cat.includes("consum") || cat.includes("electr") || cat.includes("accessori") || cat.includes("sundri") || cat.includes("tape") || cat.includes("cable") || cat.includes("gas") || cat.includes("refrigerant") || cat.includes("drain") || cat.includes("solder") || cat.includes("adhesive") || cat.includes("cleaner") || cat.includes("tool");
+        });
+      }
     }
 
     // Search with synonym + pipe size alias expansion
@@ -290,11 +288,7 @@ function MaterialPicker({
       const st = (p as any).supplier_type || "both";
       return st === "installation_material" || st === "consumables" || st === "both";
     });
-    if (section === "materials") {
-      result = result.filter((p) => p.sold_in_length && typeof p.price_per_metre === "number" && p.price_per_metre > 0);
-    } else if (section === "consumables") {
-      result = result.filter((p) => !p.sold_in_length || typeof p.price_per_metre !== "number" || p.price_per_metre <= 0);
-    }
+    // No strict section filter — matches the filtered logic above
     if (search.trim()) {
       const terms = search.toLowerCase().split(/\s+/);
       result = result.filter((p) => {
