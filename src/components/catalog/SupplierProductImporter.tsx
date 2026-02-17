@@ -169,6 +169,28 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
     },
   });
 
+  // Check for stored PDF pages for this supplier
+  const { data: storedPdfPages = [] } = useQuery({
+    queryKey: ["stored-pdf-pages", supplierName],
+    queryFn: async () => {
+      // supplier_pdf_pages uses supplier name as supplier_id (text field)
+      const { data } = await (supabase.from("supplier_pdf_pages") as any)
+        .select("id, supplier_id, pdf_filename, page_number, pdf_storage_path")
+        .or(`supplier_id.eq.${supplierName},supplier_id.ilike.%${supplierName}%`)
+        .order("page_number");
+      return (data || []) as { id: string; supplier_id: string; pdf_filename: string; page_number: number; pdf_storage_path: string | null }[];
+    },
+  });
+
+  // Get unique PDF storage path from stored pages
+  const storedPdfUrl = useMemo(() => {
+    const withPath = storedPdfPages.filter(p => p.pdf_storage_path);
+    if (withPath.length === 0) return null;
+    return withPath[0].pdf_storage_path;
+  }, [storedPdfPages]);
+
+  const storedPageCount = storedPdfPages.length;
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -179,6 +201,73 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
     queryClient.invalidateQueries({ queryKey: ["inventory-from-catalog"] });
     queryClient.invalidateQueries({ queryKey: ["import-history"] });
   };
+
+  // ─── Extract from stored PDF ───
+  const handleExtractFromStoredPdf = useCallback(async () => {
+    if (!storedPdfUrl) return;
+    setError(null);
+    setParsedRows([]);
+    setDiffRows([]);
+    setShowDiff(false);
+    setAiResult(null);
+    setExtractedText("");
+    setExtracting(true);
+    setPdfFile(null);
+
+    try {
+      console.log("[Stored PDF] Loading pdfjs-dist...");
+      const pdfjsLib = await loadPdfJs();
+      console.log("[Stored PDF] Fetching PDF from:", storedPdfUrl);
+
+      const pdf = await pdfjsLib.getDocument({
+        url: storedPdfUrl,
+        cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/",
+        cMapPacked: true,
+      }).promise;
+
+      console.log(`[Stored PDF] PDF loaded, ${pdf.numPages} pages`);
+      setPdfPageCount(pdf.numPages);
+
+      let fullText = "";
+      const Y_TOLERANCE = 2;
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const textItems = (content.items as any[]).filter((item: any) => item.str && item.transform);
+        const rowMap = new Map<number, { str: string; x: number }[]>();
+        for (const item of textItems) {
+          const y = Math.round(item.transform[5] / Y_TOLERANCE) * Y_TOLERANCE;
+          if (!rowMap.has(y)) rowMap.set(y, []);
+          rowMap.get(y)!.push({ str: item.str, x: item.transform[4] });
+        }
+        const sortedRows = Array.from(rowMap.entries())
+          .sort((a, b) => b[0] - a[0])
+          .map(([, items]) => items);
+        let pageText = "";
+        for (const rowItems of sortedRows) {
+          const sorted = rowItems.sort((a, b) => a.x - b.x);
+          pageText += sorted.map(it => it.str.trim()).filter(Boolean).join("\t") + "\n";
+        }
+        fullText += `\n--- Page ${i} ---\n${pageText}`;
+      }
+
+      const trimmed = fullText.trim();
+      setExtractedText(trimmed);
+
+      const lines = trimmed.split("\n");
+      const productRows = lines.filter(l => l.includes("\t") && /R\s*\d/.test(l));
+      console.log(`[Stored PDF] ${trimmed.length} chars, ${pdf.numPages} pages, ~${productRows.length} product rows detected`);
+      toast({
+        title: `Stored PDF loaded: ${pdf.numPages} pages, ${trimmed.length.toLocaleString()} chars`,
+        description: `~${productRows.length} product-like rows detected. Click "Parse with AI" to extract products.`,
+      });
+    } catch (err: any) {
+      console.error("[Stored PDF] Failed:", err);
+      setError(`Failed to extract from stored PDF: ${err.message}`);
+    } finally {
+      setExtracting(false);
+    }
+  }, [storedPdfUrl, toast]);
 
   // ─── PDF handling ───
   const handlePdfFile = useCallback(async (file: File) => {
@@ -925,7 +1014,27 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
 
           {/* ─── AI PDF Parse Tab ─── */}
           <TabsContent value="ai" className="space-y-3 mt-3">
-            {!pdfFile && !extracting && !showDiff && (
+            {/* Stored PDF extraction option */}
+            {!pdfFile && !extracting && !showDiff && !showPriceConfig && !extractedText && storedPageCount > 0 && storedPdfUrl && (
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-primary shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Stored PDF Available</p>
+                    <p className="text-xs text-muted-foreground">
+                      {storedPageCount} page{storedPageCount !== 1 ? "s" : ""} already stored from a previous upload for {supplierName}.
+                      Extract products without re-uploading.
+                    </p>
+                  </div>
+                </div>
+                <Button size="sm" onClick={handleExtractFromStoredPdf} className="w-full gap-2">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Extract Products from Stored PDF ({storedPageCount} pages)
+                </Button>
+              </div>
+            )}
+
+            {!pdfFile && !extracting && !showDiff && !extractedText && (
               <div
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
@@ -936,7 +1045,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
                 }`}
               >
                 <FileUp className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-                <p className="text-sm font-medium">Drag & drop a PDF price list here</p>
+                <p className="text-sm font-medium">{storedPageCount > 0 ? "Or drag & drop a new PDF" : "Drag & drop a PDF price list here"}</p>
                 <p className="text-xs text-muted-foreground mt-1">or click to browse • Max 10 MB</p>
                 <input ref={fileInputRef} type="file" accept=".pdf,application/pdf" onChange={onFileSelect} className="hidden" />
               </div>
@@ -949,14 +1058,14 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
               </div>
             )}
 
-            {pdfFile && !extracting && !showDiff && !showPriceConfig && (
+            {(pdfFile || extractedText) && !extracting && !showDiff && !showPriceConfig && (
               <>
                 <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-3">
                   <FileText className="h-5 w-5 text-primary shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{pdfFile.name}</p>
+                    <p className="text-sm font-medium truncate">{pdfFile?.name || `${supplierName} Stored PDF`}</p>
                     <p className="text-xs text-muted-foreground">
-                      {pdfPageCount} page{pdfPageCount !== 1 ? "s" : ""} • {(pdfFile.size / 1024).toFixed(0)} KB
+                      {pdfPageCount} page{pdfPageCount !== 1 ? "s" : ""}{pdfFile ? ` • ${(pdfFile.size / 1024).toFixed(0)} KB` : " • from stored catalog"}
                     </p>
                   </div>
                   <TooltipProvider>
@@ -966,21 +1075,23 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
                           <X className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Remove file</TooltipContent>
+                      <TooltipContent>Remove</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 </div>
 
-                <label className="flex items-center gap-2 px-1 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={enhanceImages}
-                    onChange={(e) => setEnhanceImages(e.target.checked)}
-                    className="rounded border-input"
-                  />
-                  <Sparkles className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-xs text-muted-foreground">Enhance image quality (sharper text, better for visual catalog)</span>
-                </label>
+                {pdfFile && (
+                  <label className="flex items-center gap-2 px-1 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={enhanceImages}
+                      onChange={(e) => setEnhanceImages(e.target.checked)}
+                      className="rounded border-input"
+                    />
+                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-xs text-muted-foreground">Enhance image quality (sharper text, better for visual catalog)</span>
+                  </label>
+                )}
 
                 {extractedText && (
                   <div className="space-y-2">
