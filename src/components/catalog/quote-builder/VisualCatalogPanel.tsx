@@ -22,7 +22,7 @@ import PdfLinkButton from "./PdfLinkButton";
 import PdfMagnifier from "./PdfMagnifier";
 import CompactZonesSidebar from "./CompactZonesSidebar";
 import EnhancedProductPopup from "./EnhancedProductPopup";
-import CategoryNavBar from "./CategoryNavBar";
+import CategoryNavBar, { groupCategory } from "./CategoryNavBar";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
 interface VisualCatalogPanelProps {
@@ -59,6 +59,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const [popupProduct, setPopupProduct] = useState<PaletteProduct | null>(null);
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const [activeCategory, setActiveCategory] = useState<string | undefined>();
+  const [categoryPageMap, setCategoryPageMap] = useState<Map<string, number>>(new Map());
 
   const handleDeleteSupplierPdf = useCallback(async (supplierId: string) => {
     setDeleting(true);
@@ -140,7 +141,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     staleTime: 30000,
   });
 
-  // IntersectionObserver to track visible page
+  // IntersectionObserver to track visible page + update active category
   useEffect(() => {
     if (!open || pages.length === 0) return;
     const container = scrollContainerRef.current;
@@ -159,6 +160,16 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
         }
         if (bestRatio > 0) {
           setVisiblePageIndex(bestIdx);
+          // Find which category this page belongs to (first match in categoryPageMap)
+          let bestCat: string | undefined;
+          categoryPageMap.forEach((pageIdx, cat) => {
+            if (pageIdx <= bestIdx) {
+              if (!bestCat || categoryPageMap.get(bestCat)! < pageIdx) {
+                bestCat = cat;
+              }
+            }
+          });
+          if (bestCat) setActiveCategory(bestCat);
         }
       },
       {
@@ -170,7 +181,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     pageRefs.current.forEach((el) => observer.observe(el));
 
     return () => observer.disconnect();
-  }, [open, pages.length]);
+  }, [open, pages.length, categoryPageMap]);
 
   const currentPage = pages[visiblePageIndex] || pages[0] || null;
 
@@ -199,12 +210,29 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     onAddBasket?.();
   }, [onAddBasket]);
 
-  // Category scroll handler
-  const handleScrollToCategory = useCallback((_category: string) => {
-    setActiveCategory(_category);
-    // For now, scroll to first page (category-to-page mapping would need page-level product data)
-    // This is a best-effort — categories map to products, not directly to pages
+
+  const handlePageCategories = useCallback((pageIndex: number, categories: string[]) => {
+    setCategoryPageMap(prev => {
+      const next = new Map(prev);
+      let changed = false;
+      for (const cat of categories) {
+        if (!next.has(cat) || next.get(cat)! > pageIndex) {
+          next.set(cat, pageIndex);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
   }, []);
+
+  // Category scroll handler
+  const handleScrollToCategory = useCallback((category: string) => {
+    setActiveCategory(category);
+    const pageIndex = categoryPageMap.get(category);
+    if (pageIndex !== undefined) {
+      scrollToPage(pageIndex);
+    }
+  }, [categoryPageMap, scrollToPage]);
 
   // Favorites set
   const favoriteIds = useMemo(() => {
@@ -378,6 +406,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           basketProductCounts={basketProductCounts}
                           onProductClick={handleProductClick}
                           scrollContainerRef={scrollContainerRef}
+                          onCategoriesDetected={handlePageCategories}
                           registerRef={(el) => {
                             if (el) pageRefs.current.set(idx, el);
                             else pageRefs.current.delete(idx);
@@ -466,6 +495,7 @@ interface LazyPdfPageProps {
   basketProductCounts: Record<string, number>;
   onProductClick: (product: PaletteProduct) => void;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
+  onCategoriesDetected: (pageIndex: number, categories: string[]) => void;
   registerRef: (el: HTMLDivElement | null) => void;
 }
 
@@ -479,6 +509,7 @@ const LazyPdfPage = ({
   basketProductCounts,
   onProductClick,
   scrollContainerRef,
+  onCategoriesDetected,
   registerRef,
 }: LazyPdfPageProps) => {
   const divRef = useRef<HTMLDivElement | null>(null);
@@ -537,7 +568,20 @@ const LazyPdfPage = ({
     [liveRegions, page.id]
   );
 
-  // Star overlays for favorited products on this page
+  // Report detected categories to parent for category→page mapping
+  useEffect(() => {
+    const cats = new Set<string>();
+    for (const r of overlayRegions) {
+      if (r.product) {
+        const cat = groupCategory((r.product as any).product_category || (r.product as any).category || (r.product as any).description || "");
+        cats.add(cat);
+      }
+    }
+    if (cats.size > 0) {
+      onCategoriesDetected(pageIndex, Array.from(cats));
+    }
+  }, [overlayRegions, pageIndex, onCategoriesDetected]);
+
   const starOverlays = useMemo(() => {
     const starred = overlayRegions.filter(r => r.product && favoriteIds.has(r.product.id));
     if (starred.length > 0) {
