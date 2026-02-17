@@ -85,13 +85,20 @@ export async function autoCatalogFromRegions(
   const empty: AutoCatalogResult = { insertedCount: 0, newProducts: [] };
 
   // Filter to unmatched regions with prices AND identifiable model codes
+  // The pdfTextExtractor already applies strict isProductRow filtering,
+  // so regions here should be valid product rows. Double-check basics.
+  const modelCodeRegex = /\b[A-Z]{2,5}[A-Z0-9]{2,}\d{1,3}[A-Z0-9]*\b/;
+  const priceRegex = /R\s?\d{1,3}(?:[,]\d{3})*\.\d{2}/g;
   const unmatched = regions.filter(r => {
     if (r.matched || !r.has_price || !r.detected_price) return false;
-    // Must have a model code (alphanumeric 5+ chars with letters and digits)
-    const codeMatch = r.label.match(/\b([A-Z0-9]{5,}(?:[-/][A-Z0-9]+)*)\b/i);
-    if (!codeMatch) return false;
-    const code = codeMatch[1];
-    return /[A-Za-z]/.test(code) && /\d/.test(code);
+    // Must have a strict HVAC model code
+    if (!modelCodeRegex.test(r.label)) return false;
+    // Must have at least 2 R-prefixed prices (product rows have multiple price columns)
+    const prices = r.label.match(priceRegex);
+    if (!prices || prices.length < 2) return false;
+    // Exclude long descriptive text
+    if (r.label.length > 120) return false;
+    return true;
   });
   if (unmatched.length === 0) return empty;
 

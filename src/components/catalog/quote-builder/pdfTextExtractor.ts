@@ -140,7 +140,6 @@ function buildProductLookup(products: PaletteProduct[]) {
  */
 function detectPrice(text: string): number | null {
   // Only match explicit Rand prices: R followed by digits with optional commas and mandatory 2 decimal places
-  // e.g. R1,024.07, R16,675.22, R25,880.90, R500.00
   const rPriceMatch = text.match(/R\s?(\d{1,3}(?:[,]\d{3})*\.\d{2})/);
   if (rPriceMatch) {
     const val = parseFloat(rPriceMatch[1].replace(/,/g, ""));
@@ -149,15 +148,50 @@ function detectPrice(text: string): number | null {
   return null;
 }
 
+/** Count how many R-prefixed price values appear in text */
+function countPrices(text: string): number {
+  const matches = text.match(/R\s?\d{1,3}(?:[,]\d{3})*\.\d{2}/g);
+  return matches ? matches.length : 0;
+}
+
+/** Phrases that indicate descriptive text, never found in product model rows */
+const DESCRIPTION_PHRASES = [
+  "can be", "is fitted", "reduces", "automatically", "ensure",
+  "renowned", "operating", "standby", "consumption", "simultaneously",
+  "heating or cooling mode", "outdoor units", "swing compressor",
+  "low noise output", "high energy efficiency", "neat, sturdy",
+  "easily be mounted", "roof or terrace", "energy saving", "standby mode",
+  "current consumption", "about 80%", "unique design", "integrates fully",
+  "no false ceiling", "free floor space", "decoration panel",
+  "for wide rooms", "suitable for", "designed for", "equipped with",
+];
+
 /**
- * Check if text contains what looks like a model/product code.
- * Must be an alphanumeric string of 5+ chars with at least one letter and one digit.
+ * Check if a text row looks like a real product line item (not a description).
+ * Requires: strict model code, multiple prices, no descriptive phrases, not too long.
  */
-function hasModelCode(text: string): boolean {
-  const match = text.match(/\b([A-Z0-9]{5,}(?:[-/][A-Z0-9]+)*)\b/i);
-  if (!match) return false;
-  const code = match[1];
-  return /[A-Za-z]/.test(code) && /\d/.test(code);
+function isProductRow(text: string): boolean {
+  const trimmed = text.trim();
+
+  // Exclude bullet points and dashes
+  if (trimmed.startsWith("•") || trimmed.startsWith("-") || trimmed.startsWith("–")) return false;
+
+  // Exclude long prose (product rows are typically short tabular data)
+  if (trimmed.length > 120) return false;
+
+  // Exclude lines with common description phrases
+  const lower = trimmed.toLowerCase();
+  if (DESCRIPTION_PHRASES.some(phrase => lower.includes(phrase))) return false;
+
+  // Require a strict HVAC-style model code: starts with 2-5 letters, then alphanumeric with digits
+  // e.g. FBA35A9, FTXJ25AW, BRC1H52, AZAS71MV1, RXM25R9, MC55W, EKRS21
+  const modelCodeRegex = /\b[A-Z]{2,5}[A-Z0-9]{2,}\d{1,3}[A-Z0-9]*\b/;
+  if (!modelCodeRegex.test(trimmed)) return false;
+
+  // Require at least 2 R-prefixed price values (product rows have multiple price columns)
+  if (countPrices(trimmed) < 2) return false;
+
+  return true;
 }
 
 /**
@@ -209,9 +243,8 @@ export function matchTextRowsToProducts(
     const detectedPrice = detectPrice(rowText);
     const hasPrice = detectedPrice !== null;
 
-    // Skip rows that have no match AND no qualifying price+model data
-    // For unmatched rows, require BOTH a Rand price AND a model code
-    if (!matched && (!hasPrice || !hasModelCode(rowText))) continue;
+    // For unmatched rows, require the row to pass strict product-row validation
+    if (!matched && !isProductRow(rowText)) continue;
 
     // Calculate bounding box for the entire row
     const minX = Math.min(...row.map((i) => i.x));
