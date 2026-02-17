@@ -35,6 +35,8 @@ export interface ExtractedProductRegion {
   w_pct: number;
   h_pct: number;
   matched: boolean;
+  has_price: boolean;
+  detected_price: number | null;
 }
 
 /**
@@ -133,8 +135,33 @@ function buildProductLookup(products: PaletteProduct[]) {
 }
 
 /**
+ * Detect price patterns in text. Returns the first detected price or null.
+ * Matches: R1,024.07, R 500.00, R12345, or standalone decimal numbers >= 100
+ */
+function detectPrice(text: string): number | null {
+  // Pattern 1: R followed by digits (with optional commas and decimals)
+  const rPriceMatch = text.match(/R\s?([\d,]+(?:\.\d{1,2})?)/i);
+  if (rPriceMatch) {
+    const val = parseFloat(rPriceMatch[1].replace(/,/g, ""));
+    if (!isNaN(val) && val >= 10) return val;
+  }
+
+  // Pattern 2: Standalone numbers that look like prices (≥100, with decimals, in rightmost text)
+  const numberMatches = text.match(/(?:^|\s)([\d,]{3,}(?:\.\d{1,2}))(?:\s|$)/g);
+  if (numberMatches) {
+    for (const m of numberMatches) {
+      const val = parseFloat(m.trim().replace(/,/g, ""));
+      if (!isNaN(val) && val >= 100) return val;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Match extracted text rows against products database.
  * Returns positioned regions with matched/unmatched status.
+ * Regions with price data are always included (even if unmatched).
  */
 export function matchTextRowsToProducts(
   items: ExtractedTextItem[],
@@ -176,6 +203,13 @@ export function matchTextRowsToProducts(
       }
     }
 
+    // Detect price in the row text
+    const detectedPrice = detectPrice(rowText);
+    const hasPrice = detectedPrice !== null;
+
+    // Skip rows that have no match AND no price data
+    if (!matched && !hasPrice) continue;
+
     // Calculate bounding box for the entire row
     const minX = Math.min(...row.map((i) => i.x));
     const maxX = Math.max(...row.map((i) => i.x + i.width));
@@ -201,6 +235,8 @@ export function matchTextRowsToProducts(
       w_pct: Math.min(100 - x_pct, w_pct),
       h_pct: Math.min(100 - y_pct, h_pct),
       matched: !!matched,
+      has_price: hasPrice,
+      detected_price: detectedPrice,
     });
   }
 

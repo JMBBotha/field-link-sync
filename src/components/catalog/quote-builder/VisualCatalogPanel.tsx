@@ -16,7 +16,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useIsMobile } from "@/hooks/use-mobile";
 import PdfPageOverlay from "./PdfPageOverlay";
 import type { OverlayRegion } from "./PdfPageOverlay";
-import { extractAndMatchPage } from "./pdfTextExtractor";
+import { extractAndMatchPage, clearExtractionCache } from "./pdfTextExtractor";
 import FallbackProductPanel from "./FallbackProductPanel";
 import PdfLinkButton from "./PdfLinkButton";
 import PdfMagnifier from "./PdfMagnifier";
@@ -89,7 +89,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const isFullWidth = isMobile || (expanded && !isDraggingExternal);
   const panelWidth = isDraggingExternal ? "w-2/5" : isFullWidth ? "w-full" : "w-full";
 
-  useEffect(() => { if (open) { setVisiblePageIndex(0); setZoom(1); } }, [open]);
+  useEffect(() => { if (open) { setVisiblePageIndex(0); setZoom(1); clearExtractionCache(); } }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -209,6 +209,14 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const handleAddBasket = useCallback(() => {
     onAddBasket?.();
   }, [onAddBasket]);
+
+  const handleQuickAddProduct = useCallback((label: string, productCode: string, price: number | null) => {
+    toast({
+      title: "Quick-add coming soon",
+      description: `Detected: ${productCode || label.substring(0, 40)}${price ? ` — R${price.toLocaleString("en-ZA")}` : ""}. Use the Import tab to add this product to your catalog.`,
+      duration: 8000,
+    });
+  }, []);
 
 
   const handlePageCategories = useCallback((pageIndex: number, categories: string[]) => {
@@ -405,6 +413,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           onAddProductToBasket={onAddProductToBasket}
                           basketProductCounts={basketProductCounts}
                           onProductClick={handleProductClick}
+                          onQuickAddProduct={handleQuickAddProduct}
                           scrollContainerRef={scrollContainerRef}
                           onCategoriesDetected={handlePageCategories}
                           registerRef={(el) => {
@@ -494,6 +503,7 @@ interface LazyPdfPageProps {
   onAddProductToBasket: (basketId: string, product: PaletteProduct) => void;
   basketProductCounts: Record<string, number>;
   onProductClick: (product: PaletteProduct) => void;
+  onQuickAddProduct?: (label: string, productCode: string, price: number | null) => void;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   onCategoriesDetected: (pageIndex: number, categories: string[]) => void;
   registerRef: (el: HTMLDivElement | null) => void;
@@ -508,6 +518,7 @@ const LazyPdfPage = ({
   onAddProductToBasket,
   basketProductCounts,
   onProductClick,
+  onQuickAddProduct,
   scrollContainerRef,
   onCategoriesDetected,
   registerRef,
@@ -564,6 +575,9 @@ const LazyPdfPage = ({
       product: r.product as PaletteProduct | null,
       product_code: r.product_code || "",
       label: r.label || "",
+      has_price: r.has_price,
+      detected_price: r.detected_price,
+      matched: r.matched,
     })),
     [liveRegions, page.id]
   );
@@ -590,9 +604,10 @@ const LazyPdfPage = ({
     return starred;
   }, [overlayRegions, favoriteIds, page.page_number]);
 
-  // Count matched vs total
+  // Count matched vs priced vs total
   const matchedCount = overlayRegions.filter(r => r.product).length;
-  const totalRegions = overlayRegions.length;
+  const pricedCount = overlayRegions.filter(r => !r.product && r.has_price).length;
+  const totalRegions = matchedCount + pricedCount;
 
   return (
     <div
@@ -608,7 +623,9 @@ const LazyPdfPage = ({
       <div className="absolute top-2 left-2 z-30 bg-black/60 text-white text-[9px] font-mono px-1.5 py-0.5 rounded flex items-center gap-1.5">
         <span>Page {page.page_number}</span>
         {isVisible && totalRegions > 0 && (
-          <span className="text-green-300">{matchedCount}/{totalRegions} matched</span>
+          <span className="text-green-300">
+            {matchedCount} matched{pricedCount > 0 && <span className="text-gray-300"> · {pricedCount} unmatched</span>}
+          </span>
         )}
         {isVisible && starOverlays.length > 0 && (
           <span className="flex items-center gap-0.5 text-yellow-300">
@@ -635,6 +652,7 @@ const LazyPdfPage = ({
               onAddProductToBasket={onAddProductToBasket}
               basketProductCounts={basketProductCounts}
               onProductClick={onProductClick}
+              onQuickAddProduct={onQuickAddProduct}
             />
           )}
           {/* Star overlays for favorited products */}
