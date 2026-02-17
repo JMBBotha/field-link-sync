@@ -111,6 +111,17 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     return () => timers.forEach((t) => window.clearTimeout(t));
   }, [mapLoaded, showTokenInput, applyMapChromeBottomOffset]);
 
+  // ResizeObserver to trigger map.resize() when container dimensions change (tab switches, panel toggles)
+  useEffect(() => {
+    const container = mapRef.current;
+    if (!container || !mapInstanceRef.current) return;
+    const ro = new ResizeObserver(() => {
+      mapInstanceRef.current?.resize();
+    });
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [mapLoaded]);
+
   // Expose panToLocation and panToLocationAndOpenPopup methods via ref
   useImperativeHandle(ref, () => ({
     panToLocation: (lat: number, lng: number) => {
@@ -394,6 +405,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       // Offset the navigation control above the footer after map loads
       mapInstanceRef.current.on("load", () => {
         applyMapChromeBottomOffset();
+        // Trigger resize so Mapbox recalculates container dimensions
+        mapInstanceRef.current?.resize();
         if (loadingTimeoutRef.current) {
           clearTimeout(loadingTimeoutRef.current);
         }
