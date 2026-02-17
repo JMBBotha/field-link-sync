@@ -25,7 +25,7 @@ function isACUnit(p: PaletteProduct): boolean {
   // Exclude if name matches AC unit pattern (BTU + unit type abbreviation)
   if (/\d+\s*btu/i.test(name) && /\b(inv|mw|fw|fs|cass)\b/i.test(name)) return true;
   // Exclude if supplier_type is ac-only
-  const st = (p as any).supplier_type || "both";
+  const st = p.supplier_type || "both";
   if (st === "ac_units" || st === "ac_equipment") return true;
   return false;
 }
@@ -181,6 +181,7 @@ const MaterialStar = memo(function MaterialStar({ product }: { product: PaletteP
       disabled={mutation.isPending}
       onClick={(e) => { e.stopPropagation(); mutation.mutate(); }}
       title={isFav ? "Remove from material favorites" : "Add to material favorites"}
+      aria-label={isFav ? "Remove from material favorites" : "Add to material favorites"}
     >
       <Star className={`h-3.5 w-3.5 ${isFav ? "fill-yellow-400 text-yellow-500" : "text-muted-foreground/40"} ${mutation.isPending ? "opacity-50" : ""}`} />
     </button>
@@ -230,7 +231,7 @@ function MaterialPicker({
 
     // Only show products from installation-material-compatible suppliers
     result = result.filter((p) => {
-      const st = (p as any).supplier_type || "both";
+      const st = p.supplier_type || "both";
       return st === "installation_material" || st === "consumables" || st === "both";
     });
 
@@ -285,7 +286,7 @@ function MaterialPicker({
   const totalBeforeLimit = useMemo(() => {
     let result = products.filter((p) => !isACUnit(p));
     result = result.filter((p) => {
-      const st = (p as any).supplier_type || "both";
+      const st = p.supplier_type || "both";
       return st === "installation_material" || st === "consumables" || st === "both";
     });
     // No strict section filter — matches the filtered logic above
@@ -652,6 +653,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                               <button
                                 className="h-5 w-5 rounded flex items-center justify-center hover:bg-destructive/20"
                                 onClick={() => removeMaterial(area.id, mat.id)}
+                                aria-label={`Remove material ${mat.product.short_name || mat.product.product_code}`}
                               >
                                 <Trash2 className="h-3 w-3 text-destructive" />
                               </button>
@@ -709,20 +711,21 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                               <Badge variant="outline" className="text-[10px]">{bracket.size}</Badge>
                               <span className="flex-1">@ R {bracket.price.toFixed(2)} each</span>
                               <div className="flex items-center gap-1">
-                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateBracketQty(area.id, bracket.id, -1)}>
+                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateBracketQty(area.id, bracket.id, -1)} aria-label={`Decrease ${bracket.size} bracket quantity`}>
                                   <Minus className="h-3 w-3" />
                                 </Button>
                                 <span className="w-6 text-center font-medium">{bracket.quantity}</span>
-                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateBracketQty(area.id, bracket.id, 1)}>
+                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateBracketQty(area.id, bracket.id, 1)} aria-label={`Increase ${bracket.size} bracket quantity`}>
                                   <Plus className="h-3 w-3" />
                                 </Button>
                               </div>
                               <span className="font-medium w-20 text-right">
                                 R {(bracket.price * bracket.quantity).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
                               </span>
-                              <button
+                               <button
                                 className="h-5 w-5 rounded flex items-center justify-center hover:bg-destructive/20 shrink-0"
                                 onClick={() => removeBracket(area.id, bracket.id)}
+                                aria-label={`Remove ${bracket.size} bracket`}
                               >
                                 <Trash2 className="h-3 w-3 text-destructive" />
                               </button>
@@ -784,11 +787,11 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                                 <span className="font-medium truncate block">{cons.product.short_name || cons.product.product_code}</span>
                               </div>
                               <div className="flex items-center gap-1">
-                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateConsumableQty(area.id, cons.id, -1)}>
+                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateConsumableQty(area.id, cons.id, -1)} aria-label={`Decrease ${cons.product.short_name || cons.product.product_code} quantity`}>
                                   <Minus className="h-3 w-3" />
                                 </Button>
                                 <span className="w-6 text-center font-medium">{cons.quantity}</span>
-                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateConsumableQty(area.id, cons.id, 1)}>
+                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateConsumableQty(area.id, cons.id, 1)} aria-label={`Increase ${cons.product.short_name || cons.product.product_code} quantity`}>
                                   <Plus className="h-3 w-3" />
                                 </Button>
                               </div>
@@ -798,6 +801,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                               <button
                                 className="h-5 w-5 rounded flex items-center justify-center hover:bg-destructive/20 shrink-0"
                                 onClick={() => removeConsumable(area.id, cons.id)}
+                                aria-label={`Remove consumable ${cons.product.short_name || cons.product.product_code}`}
                               >
                                 <Trash2 className="h-3 w-3 text-destructive" />
                               </button>
