@@ -227,6 +227,39 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     });
   }, []);
 
+  const handleToggleFavorite = useCallback(async (product: PaletteProduct) => {
+    const isMaterialType = !(product as any).is_pinned && !(product.product_category || "").toLowerCase().includes("air");
+    const fieldToUpdate = isMaterialType ? "is_material_favorite" : "is_pinned";
+    const currentValue = isMaterialType ? !!(product as any).is_material_favorite : !!product.is_pinned;
+    const newValue = !currentValue;
+
+    // Optimistic update: mutate the product in live-extract cache
+    queryClient.setQueriesData({ queryKey: ["visual-panel-live-extract"] }, (old: any) => {
+      if (!Array.isArray(old)) return old;
+      return old.map((r: any) =>
+        r.product?.id === product.id ? { ...r, product: { ...r.product, [fieldToUpdate]: newValue, is_pinned: fieldToUpdate === "is_pinned" ? newValue : r.product.is_pinned } } : r
+      );
+    });
+
+    try {
+      const { error } = await (supabase.from("supplier_products") as any)
+        .update({ [fieldToUpdate]: newValue })
+        .eq("id", product.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
+      toast({ title: newValue ? "★ Added to favorites" : "Removed from favorites", duration: 2000 });
+    } catch (err) {
+      // Roll back optimistic update
+      queryClient.setQueriesData({ queryKey: ["visual-panel-live-extract"] }, (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((r: any) =>
+          r.product?.id === product.id ? { ...r, product: { ...r.product, [fieldToUpdate]: currentValue, is_pinned: fieldToUpdate === "is_pinned" ? currentValue : r.product.is_pinned } } : r
+        );
+      });
+      toast({ title: "Failed to update favorite", variant: "destructive" });
+    }
+  }, [queryClient]);
+
 
   const handlePageCategories = useCallback((pageIndex: number, categories: string[]) => {
     setCategoryPageMap(prev => {
@@ -423,6 +456,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           basketProductCounts={basketProductCounts}
                           onProductClick={handleProductClick}
                           onQuickAddProduct={handleQuickAddProduct}
+                          onToggleFavorite={handleToggleFavorite}
                           scrollContainerRef={scrollContainerRef}
                           onCategoriesDetected={handlePageCategories}
                           registerRef={(el) => {
@@ -513,6 +547,7 @@ interface LazyPdfPageProps {
   basketProductCounts: Record<string, number>;
   onProductClick: (product: PaletteProduct) => void;
   onQuickAddProduct?: (label: string, productCode: string, price: number | null) => void;
+  onToggleFavorite?: (product: PaletteProduct) => void;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   onCategoriesDetected: (pageIndex: number, categories: string[]) => void;
   registerRef: (el: HTMLDivElement | null) => void;
@@ -528,6 +563,7 @@ const LazyPdfPage = ({
   basketProductCounts,
   onProductClick,
   onQuickAddProduct,
+  onToggleFavorite,
   scrollContainerRef,
   onCategoriesDetected,
   registerRef,
@@ -722,6 +758,7 @@ const LazyPdfPage = ({
               basketProductCounts={basketProductCounts}
               onProductClick={onProductClick}
               onQuickAddProduct={onQuickAddProduct}
+              onToggleFavorite={onToggleFavorite}
             />
           )}
           {extracting && (
