@@ -26,6 +26,10 @@ export interface AreaMaterial {
   adjustedLength: number;
   costPerMeter: number;
   totalCost: number;
+  /** "length" = sold per metre with slider, "unit" = sold per quantity */
+  pricingMode: "length" | "unit";
+  /** quantity when in "unit" mode */
+  unitQuantity: number;
 }
 
 export interface AreaBracket {
@@ -75,7 +79,12 @@ export function createEmptyArea(name: string): QuoteArea {
 
 export function computeAreaSubtotal(area: QuoteArea): number {
   const acCost = area.acUnits.reduce((s, u) => s + (u.product.selling_price || u.product.cost_incl_vat || 0) * u.quantity, 0);
-  const matCost = area.materials.reduce((s, m) => s + m.totalCost, 0);
+  const matCost = area.materials.reduce((s, m) => {
+    if (m.pricingMode === "unit") {
+      return s + (m.product.selling_price || m.product.cost_incl_vat || 0) * m.unitQuantity;
+    }
+    return s + m.totalCost;
+  }, 0);
   const bracketCost = area.brackets.reduce((s, b) => s + b.price * b.quantity, 0);
   const consCost = area.consumables.reduce((s, c) => s + (c.product.selling_price || c.product.cost_incl_vat || 0) * c.quantity, 0);
   return acCost + matCost + bracketCost + consCost;

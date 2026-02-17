@@ -4,7 +4,8 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Minus, Trash2, Star, Search, Package, X, RefreshCw } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Plus, Minus, Trash2, Star, Search, Package, X, RefreshCw, Ruler } from "lucide-react";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
@@ -130,15 +131,30 @@ function materialsFromBundle(bundle: Bundle): AreaMaterial[] {
   for (const item of bundle.items) {
     if (!item.product || item.is_optional) continue;
     const ppm = item.product.price_per_metre;
-    if (item.is_length_item && typeof ppm === "number" && ppm > 0) {
+    const isLengthItem = item.is_length_item && typeof ppm === "number" && ppm > 0;
+    if (isLengthItem) {
       const len = item.length_metres || item.product.unit_length || 3;
       materials.push({
         id: crypto.randomUUID(),
         product: item.product,
         defaultLength: len,
         adjustedLength: len,
-        costPerMeter: ppm,
-        totalCost: len * ppm,
+        costPerMeter: ppm!,
+        totalCost: len * ppm!,
+        pricingMode: "length",
+        unitQuantity: 1,
+      });
+    } else {
+      // Non-length bundle items get added as unit-priced materials
+      materials.push({
+        id: crypto.randomUUID(),
+        product: item.product,
+        defaultLength: 1,
+        adjustedLength: 1,
+        costPerMeter: 0,
+        totalCost: item.product.selling_price || item.product.cost_incl_vat || 0,
+        pricingMode: "unit",
+        unitQuantity: item.quantity,
       });
     }
   }
@@ -341,6 +357,41 @@ function MaterialPicker({
   );
 }
 
+/* ── Bundle Favorite Star ── */
+const BundleStar = memo(function BundleStar({ bundle }: { bundle: Bundle }) {
+  const queryClient = useQueryClient();
+  const isFav = !!bundle.is_favorite;
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase.from("installation_bundles") as any)
+        .update({ is_favorite: !isFav })
+        .eq("id", bundle.id);
+      if (error) throw error;
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["quote-builder-bundles"] });
+    },
+    onError: () => {
+      toast({ title: "Failed to update bundle favorite", variant: "destructive" });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["quote-builder-bundles"] });
+    },
+  });
+
+  return (
+    <button
+      className="shrink-0 p-0.5"
+      disabled={mutation.isPending}
+      onClick={(e) => { e.stopPropagation(); mutation.mutate(); }}
+      aria-label={isFav ? "Remove bundle from favorites" : "Add bundle to favorites"}
+    >
+      <Star className={`h-3 w-3 ${isFav ? "fill-yellow-400 text-yellow-500" : "text-muted-foreground/40"} ${mutation.isPending ? "opacity-50" : ""}`} />
+    </button>
+  );
+});
+
 /* ── Bundle Picker ── */
 function BundlePicker({
   bundles,
@@ -362,25 +413,26 @@ function BundlePicker({
     <div className="space-y-2 rounded border bg-muted/20 p-2">
       <div className="flex items-center justify-between">
         <Label className="text-xs font-medium">Select Bundle</Label>
-        <button onClick={onClose} className="h-5 w-5 rounded flex items-center justify-center hover:bg-accent">
+        <button onClick={onClose} className="h-5 w-5 rounded flex items-center justify-center hover:bg-accent" aria-label="Close bundle picker">
           <X className="h-3 w-3" />
         </button>
       </div>
       <div className="max-h-36 overflow-y-auto space-y-0.5">
         {sorted.map((b) => (
-          <button
-            key={b.id}
-            className="w-full flex items-center gap-2 rounded px-2 py-1.5 text-xs hover:bg-accent transition-colors text-left"
-            onClick={() => onSelect(b)}
-          >
-            {b.is_favorite && <Star className="h-3 w-3 fill-yellow-400 text-yellow-500 shrink-0" />}
-            <Package className="h-3 w-3 text-muted-foreground shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="font-medium truncate">{b.name}</div>
-              {b.description && <div className="text-muted-foreground truncate">{b.description}</div>}
-            </div>
-            <Badge variant="outline" className="text-[10px] shrink-0">{b.items.length} items</Badge>
-          </button>
+          <div key={b.id} className="flex items-center gap-1">
+            <BundleStar bundle={b} />
+            <button
+              className="flex-1 flex items-center gap-2 rounded px-2 py-1.5 text-xs hover:bg-accent transition-colors text-left"
+              onClick={() => onSelect(b)}
+            >
+              <Package className="h-3 w-3 text-muted-foreground shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="font-medium truncate">{b.name}</div>
+                {b.description && <div className="text-muted-foreground truncate">{b.description}</div>}
+              </div>
+              <Badge variant="outline" className="text-[10px] shrink-0">{b.items.length} items</Badge>
+            </button>
+          </div>
         ))}
       </div>
     </div>
@@ -454,7 +506,6 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
     );
   }, [areas, bundles]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fix 4a: Remove `areas` from useCallback deps, use functional state updates via onAreasChange
   const updateMaterialLength = useCallback((areaId: string, matId: string, length: number) => {
     onAreasChange(
       areas.map((a) => {
@@ -463,6 +514,39 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
           ...a,
           materials: a.materials.map((m) =>
             m.id === matId ? { ...m, adjustedLength: length, totalCost: length * m.costPerMeter } : m
+          ),
+        };
+      })
+    );
+  }, [areas, onAreasChange]);
+
+  const toggleMaterialPricingMode = useCallback((areaId: string, matId: string) => {
+    onAreasChange(
+      areas.map((a) => {
+        if (a.id !== areaId) return a;
+        return {
+          ...a,
+          materials: a.materials.map((m) => {
+            if (m.id !== matId) return m;
+            const newMode = m.pricingMode === "length" ? "unit" as const : "length" as const;
+            if (newMode === "unit") {
+              return { ...m, pricingMode: newMode, unitQuantity: m.unitQuantity || 1 };
+            }
+            return { ...m, pricingMode: newMode, totalCost: m.adjustedLength * m.costPerMeter };
+          }),
+        };
+      })
+    );
+  }, [areas, onAreasChange]);
+
+  const updateMaterialUnitQty = useCallback((areaId: string, matId: string, delta: number) => {
+    onAreasChange(
+      areas.map((a) => {
+        if (a.id !== areaId) return a;
+        return {
+          ...a,
+          materials: a.materials.map((m) =>
+            m.id === matId ? { ...m, unitQuantity: Math.max(1, m.unitQuantity + delta) } : m
           ),
         };
       })
@@ -505,27 +589,27 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
   }, [areas, onAreasChange]);
 
   const addMaterialFromPicker = useCallback((areaId: string, product: PaletteProduct) => {
-    // Fix 1e: materials picker only adds length items (filtering is done in picker)
     const ppm = product.price_per_metre;
-    if (product.sold_in_length && typeof ppm === "number" && ppm > 0) {
-      const len = product.unit_length || 3;
-      onAreasChange(
-        areas.map((a) => {
-          if (a.id !== areaId) return a;
-          return {
-            ...a,
-            materials: [...a.materials, {
-              id: crypto.randomUUID(),
-              product,
-              defaultLength: len,
-              adjustedLength: len,
-              costPerMeter: ppm,
-              totalCost: len * ppm,
-            }],
-          };
-        })
-      );
-    }
+    const isLengthItem = product.sold_in_length && typeof ppm === "number" && ppm > 0;
+    const len = product.unit_length || 3;
+    onAreasChange(
+      areas.map((a) => {
+        if (a.id !== areaId) return a;
+        return {
+          ...a,
+          materials: [...a.materials, {
+            id: crypto.randomUUID(),
+            product,
+            defaultLength: isLengthItem ? len : 1,
+            adjustedLength: isLengthItem ? len : 1,
+            costPerMeter: isLengthItem ? ppm! : 0,
+            totalCost: isLengthItem ? len * ppm! : (product.selling_price || product.cost_incl_vat || 0),
+            pricingMode: isLengthItem ? "length" as const : "unit" as const,
+            unitQuantity: 1,
+          }],
+        };
+      })
+    );
     setOpenPicker((prev) => ({ ...prev, [areaId]: null }));
   }, [areas, onAreasChange]);
 
@@ -591,7 +675,12 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
       {/* Fix 5a: Controlled accordion */}
       <Accordion type="multiple" value={expandedAreas} onValueChange={setExpandedAreas} className="space-y-2">
         {areas.map((area) => {
-          const matTotal = area.materials.reduce((s, m) => s + m.totalCost, 0);
+          const matTotal = area.materials.reduce((s, m) => {
+            if (m.pricingMode === "unit") {
+              return s + (m.product.selling_price || m.product.cost_incl_vat || 0) * m.unitQuantity;
+            }
+            return s + m.totalCost;
+          }, 0);
           const bracketTotal = area.brackets.reduce((s, b) => s + b.price * b.quantity, 0);
           // Fix 2d: Defensive consumables access
           const consTotal = (area.consumables ?? []).reduce((s, c) => s + (c.product.selling_price || c.product.cost_incl_vat || 0) * c.quantity, 0);
@@ -641,54 +730,91 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                       )}
 
                       {/* Materials (length items) */}
-                      {area.materials.map((mat) => (
-                        <div key={mat.id} className="space-y-1.5 rounded border bg-muted/30 p-2">
-                          <div className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <MaterialStar product={mat.product} />
-                              <span className="font-medium truncate">{mat.product.short_name || mat.product.product_code}</span>
+                      {area.materials.map((mat) => {
+                        const isLength = mat.pricingMode === "length";
+                        const canToggle = mat.product.sold_in_length && typeof mat.product.price_per_metre === "number" && mat.product.price_per_metre > 0;
+                        const unitPrice = mat.product.selling_price || mat.product.cost_incl_vat || 0;
+                        const lineTotal = isLength ? mat.totalCost : unitPrice * mat.unitQuantity;
+
+                        return (
+                          <div key={mat.id} className="space-y-1.5 rounded border bg-muted/30 p-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <MaterialStar product={mat.product} />
+                                <span className="font-medium truncate">{mat.product.short_name || mat.product.product_code}</span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {isLength && <span className="text-muted-foreground">R {mat.costPerMeter.toFixed(2)}/m</span>}
+                                {!isLength && <span className="text-muted-foreground">R {unitPrice.toFixed(2)} ea</span>}
+                                {canToggle && (
+                                  <button
+                                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-muted hover:bg-accent transition-colors"
+                                    onClick={() => toggleMaterialPricingMode(area.id, mat.id)}
+                                    aria-label={`Switch to ${isLength ? "per unit" : "per metre"} pricing`}
+                                    title={isLength ? "Switch to per unit" : "Switch to per metre"}
+                                  >
+                                    <Ruler className="h-3 w-3" />
+                                    {isLength ? "m" : "qty"}
+                                  </button>
+                                )}
+                                <button
+                                  className="h-5 w-5 rounded flex items-center justify-center hover:bg-destructive/20"
+                                  onClick={() => removeMaterial(area.id, mat.id)}
+                                  aria-label={`Remove material ${mat.product.short_name || mat.product.product_code}`}
+                                >
+                                  <Trash2 className="h-3 w-3 text-destructive" />
+                                </button>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className="text-muted-foreground">R {mat.costPerMeter.toFixed(2)}/m</span>
-                              <button
-                                className="h-5 w-5 rounded flex items-center justify-center hover:bg-destructive/20"
-                                onClick={() => removeMaterial(area.id, mat.id)}
-                                aria-label={`Remove material ${mat.product.short_name || mat.product.product_code}`}
-                              >
-                                <Trash2 className="h-3 w-3 text-destructive" />
-                              </button>
-                            </div>
+
+                            {isLength ? (
+                              <div className="flex items-center gap-3">
+                                <Input
+                                  type="number"
+                                  min={0.5}
+                                  max={50}
+                                  step={0.5}
+                                  value={mat.adjustedLength}
+                                  onChange={(e) => {
+                                    const parsed = parseFloat(e.target.value);
+                                    const clamped = isNaN(parsed) ? mat.adjustedLength : Math.max(0.5, Math.min(50, parsed));
+                                    updateMaterialLength(area.id, mat.id, clamped);
+                                  }}
+                                  className="h-7 w-20 text-xs"
+                                />
+                                <span className="text-xs text-muted-foreground">m</span>
+                                <Slider
+                                  value={[mat.adjustedLength]}
+                                  onValueChange={([v]) => updateMaterialLength(area.id, mat.id, v)}
+                                  min={0.5}
+                                  max={50}
+                                  step={0.5}
+                                  className="flex-1"
+                                />
+                                <span className="text-xs font-medium w-20 text-right">
+                                  R {lineTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
+                                  <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateMaterialUnitQty(area.id, mat.id, -1)} aria-label="Decrease quantity">
+                                    <Minus className="h-3 w-3" />
+                                  </Button>
+                                  <span className="w-6 text-center text-xs font-medium">{mat.unitQuantity}</span>
+                                  <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateMaterialUnitQty(area.id, mat.id, 1)} aria-label="Increase quantity">
+                                    <Plus className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                                <span className="flex-1" />
+                                <span className="text-xs font-medium w-20 text-right">
+                                  R {lineTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            )}
                           </div>
-                          <div className="flex items-center gap-3">
-                            {/* Fix 2b: Validate parseFloat, clamp NaN */}
-                            <Input
-                              type="number"
-                              min={0.5}
-                              max={50}
-                              step={0.5}
-                              value={mat.adjustedLength}
-                              onChange={(e) => {
-                                const parsed = parseFloat(e.target.value);
-                                const clamped = isNaN(parsed) ? mat.adjustedLength : Math.max(0.5, Math.min(50, parsed));
-                                updateMaterialLength(area.id, mat.id, clamped);
-                              }}
-                              className="h-7 w-20 text-xs"
-                            />
-                            <span className="text-xs text-muted-foreground">m</span>
-                            <Slider
-                              value={[mat.adjustedLength]}
-                              onValueChange={([v]) => updateMaterialLength(area.id, mat.id, v)}
-                              min={0.5}
-                              max={50}
-                              step={0.5}
-                              className="flex-1"
-                            />
-                            <span className="text-xs font-medium w-20 text-right">
-                              R {mat.totalCost.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
 
                       {/* Brackets */}
                       {area.brackets.length > 0 && (
