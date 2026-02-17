@@ -167,7 +167,7 @@ const DraggableRegion = memo(({
       onClick={handleClick}
     >
       {/* Corner indicator badges */}
-      <div className="absolute top-1/2 -translate-y-1/2 -right-4 opacity-70 group-hover:opacity-100 transition-opacity z-10 flex flex-row items-center gap-px">
+      <div className="absolute top-1/2 -translate-y-1/2 left-full ml-1 opacity-70 group-hover:opacity-100 transition-opacity z-10 flex flex-row items-center gap-px">
         {/* Star toggle for matched products */}
         {isMatched && onToggleFavorite && (
           <button
