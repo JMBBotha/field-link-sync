@@ -387,9 +387,13 @@ export function matchTextRowsToProducts(
     if (h_pct > 5) continue;
 
     // Extract product_code from the row text for dedup
+    // Use longer text + price to avoid false dedup of similar rows (e.g. insulation sizes)
     const extractedCode = matchedCode || (() => {
       const codeMatch = rowText.match(/\b([A-Z]{2,}\d+[A-Z0-9]*)\b/);
-      return codeMatch ? codeMatch[1] : rowText.substring(0, 30);
+      if (codeMatch) return codeMatch[1];
+      // Include price in key to differentiate rows with similar descriptions but different prices
+      const priceTag = detectedPrice ? `@${detectedPrice}` : "";
+      return trimmedLabel.substring(0, 80) + priceTag;
     })();
 
     regions.push({
@@ -411,10 +415,11 @@ export function matchTextRowsToProducts(
   const deduped: ExtractedProductRegion[] = [];
   for (const r of regions) {
     const key = r.product_code.toLowerCase().trim();
-    if (key.length >= 3 && seenCodes.has(key)) {
+    // Only dedup short product codes (real SKUs), not long description-based keys
+    if (key.length >= 3 && key.length < 40 && seenCodes.has(key)) {
       continue; // skip duplicate
     }
-    if (key.length >= 3) seenCodes.add(key);
+    if (key.length >= 3 && key.length < 40) seenCodes.add(key);
     deduped.push(r);
   }
 
@@ -426,7 +431,7 @@ export function matchTextRowsToProducts(
 }
 
 // Cache for extracted regions per page — versioned to bust on logic changes
-let _extractionVersion = 8; // Bumped: price regex alignment, favorite field fix
+let _extractionVersion = 9; // Bumped: fix dedup removing distinct insulation rows, orange icon pointer-events
 const extractionCache = new Map<
   string,
   ExtractedProductRegion[]

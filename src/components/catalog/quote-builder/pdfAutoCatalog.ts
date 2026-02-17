@@ -177,10 +177,10 @@ export async function autoCatalogFromRegions(
   if (candidates.length === 0) return empty;
 
   // Check which SKUs already exist for this supplier
+  // Check ALL products (including archived) to avoid unique constraint violations
   const { data: existing } = await (supabase.from("supplier_products") as any)
     .select("product_code")
-    .eq("supplier_id", supplierUuid)
-    .or(`archived.is.null,archived.eq.false`);
+    .eq("supplier_id", supplierUuid);
 
   const existingCodes = new Set(
     (existing || []).map((p: any) => (p.product_code || "").toLowerCase())
@@ -223,12 +223,13 @@ export async function autoCatalogFromRegions(
       archived: false,
     }));
 
+    // Use upsert with ignoreDuplicates to gracefully handle any remaining conflicts
     const { data: inserted, error } = await (supabase.from("supplier_products") as any)
-      .insert(batch)
+      .upsert(batch, { onConflict: "supplier_id,product_code", ignoreDuplicates: true })
       .select("id, product_code, short_name, description, cost_excl_vat, supplier_id, brand");
 
     if (error) {
-      console.error(`[autoCatalog] Insert batch failed:`, error.message);
+      console.error(`[autoCatalog] Upsert batch failed:`, error.message);
       continue;
     }
 
