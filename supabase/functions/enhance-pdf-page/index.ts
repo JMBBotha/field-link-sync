@@ -68,7 +68,13 @@ serve(async (req) => {
         );
       }
       const imgBuffer = await imgResp.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(imgBuffer)));
+      const bytes = new Uint8Array(imgBuffer);
+      let binary = '';
+      const chunkSize = 8192;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, Math.min(i + chunkSize, bytes.length)));
+      }
+      const base64 = btoa(binary);
       const enhancedBase64 = `data:image/jpeg;base64,${base64}`;
       
       return new Response(
@@ -89,7 +95,13 @@ serve(async (req) => {
     if (typeof result === "string" && result.startsWith("http")) {
       const imgResp = await fetch(result);
       const imgBuffer = await imgResp.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(imgBuffer)));
+      const bytes2 = new Uint8Array(imgBuffer);
+      let binary2 = '';
+      const chunkSize2 = 8192;
+      for (let i = 0; i < bytes2.length; i += chunkSize2) {
+        binary2 += String.fromCharCode(...bytes2.subarray(i, Math.min(i + chunkSize2, bytes2.length)));
+      }
+      const base64 = btoa(binary2);
       const enhancedBase64 = `data:image/jpeg;base64,${base64}`;
       
       return new Response(
