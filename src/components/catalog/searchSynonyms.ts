@@ -33,13 +33,18 @@ const SYNONYM_MAP: Record<string, string[]> = {
   "cc": ["coupling"],
   "nitrogen": ["n2"],
   "n2": ["nitrogen"],
-  // Pipe size aliases
-  "1/4": ["6.35", "6mm", "cu6", "¼"],
-  "3/8": ["9.52", "10mm", "cu10"],
-  "1/2": ["12.7", "12mm", "cu12", "½"],
-  "5/8": ["15.88", "16mm", "cu16"],
-  "3/4": ["19.05", "19mm", "cu19", "¾"],
-  "7/8": ["22.22", "22mm", "cu22"],
+  // Pipe size aliases (both directions: typed fractions ↔ metric/unicode)
+  "1/4": ["6.35", "6mm", "cu6", "¼", "1/4\"", "1/4id"],
+  "¼": ["1/4", "6.35", "6mm", "cu6"],
+  "3/8": ["9.52", "10mm", "cu10", "3/8\"", "3/8id"],
+  "1/2": ["12.7", "12mm", "cu12", "½", "1/2\"", "1/2id"],
+  "½": ["1/2", "12.7", "12mm", "cu12"],
+  "5/8": ["15.88", "16mm", "cu16", "5/8\"", "5/8id"],
+  "3/4": ["19.05", "19mm", "cu19", "¾", "3/4\"", "3/4id"],
+  "¾": ["3/4", "19.05", "19mm", "cu19"],
+  "7/8": ["22.22", "22mm", "cu22", "7/8\"", "7/8id"],
+  "1.1/8": ["1-1/8", "28.58", "28mm"],
+  "1.3/8": ["1-3/8", "34.93", "35mm"],
 };
 
 /** Get a term + all its synonyms as a group */
@@ -77,6 +82,8 @@ export function buildSupabaseOrFilter(terms: string[], fields: string[]): string
  */
 export function termMatchesBlob(term: string, blob: string): boolean {
   if (blob.includes(term)) return true;
+  // Also try with common fraction variants embedded in longer strings
+  // e.g., "1/4id" should match when searching "1/4"
   const synonyms = SYNONYM_MAP[term];
   if (synonyms) {
     return synonyms.some(syn => blob.includes(syn));
