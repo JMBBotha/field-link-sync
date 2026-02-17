@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useRef } from "react";
-import { Search } from "lucide-react";
+import { Search, Wand2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -28,6 +29,7 @@ import { toast } from "@/hooks/use-toast";
 // favorites now derived from is_pinned on product data
 import { useProductUsageStats } from "@/hooks/useProductUsageStats";
 import { allTermsMatchBlob } from "./searchSynonyms";
+import QuoteBuilderPopup from "./quote-builder/QuoteBuilderPopup";
 
 export interface PaletteProduct {
   id: string;
@@ -90,7 +92,7 @@ const QuoteBuilderTab = () => {
   const [acModalProduct, setAcModalProduct] = useState<PaletteProduct | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [visualPanelOpen, setVisualPanelOpen] = useState(false);
-
+  const [wizardOpen, setWizardOpen] = useState(false);
   const queryClient = useQueryClient();
   const { usageMap, trackUsage } = useProductUsageStats();
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -476,6 +478,11 @@ const QuoteBuilderTab = () => {
     setBaskets([]);
   }, []);
 
+  const handleWizardSave = useCallback((newBaskets: Basket[]) => {
+    setBaskets((prev) => [...prev, ...newBaskets]);
+    toast({ title: `Added ${newBaskets.length} zones from Area Quote Builder` });
+  }, []);
+
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 sticky top-0 z-10 shadow-sm">
@@ -483,9 +490,14 @@ const QuoteBuilderTab = () => {
           <span className="text-sm font-medium text-muted-foreground">
             Quote Total ({totalItems} items across {baskets.length} zones)
           </span>
-          <span className="text-lg font-bold text-foreground">
-            R {totalCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setWizardOpen(true)}>
+              <Wand2 className="h-3.5 w-3.5" /> Build Area Quote
+            </Button>
+            <span className="text-lg font-bold text-foreground">
+              R {totalCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
         </div>
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
@@ -574,6 +586,14 @@ const QuoteBuilderTab = () => {
         onConfirm={handleACConfirm}
         inferredBrand={inferredBrand}
         inferredType={inferredType}
+      />
+
+      <QuoteBuilderPopup
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        products={products}
+        bundles={bundles}
+        onSave={handleWizardSave}
       />
     </div>
   );
