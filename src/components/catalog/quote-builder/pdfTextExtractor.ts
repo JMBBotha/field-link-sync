@@ -157,12 +157,6 @@ function detectPrice(text: string): number | null {
   return null;
 }
 
-/** Count how many R-prefixed price values appear in text */
-function countPrices(text: string): number {
-  const matches = text.match(/R\s?\d{1,3}(?:[,]\d{3})*\.\d{2}/g);
-  return matches ? matches.length : 0;
-}
-
 /** Phrases that indicate descriptive text, never found in product model rows */
 const DESCRIPTION_PHRASES = [
   "can be", "is fitted", "reduces", "automatically", "ensure",
@@ -175,11 +169,41 @@ const DESCRIPTION_PHRASES = [
   "for wide rooms", "suitable for", "designed for", "equipped with",
 ];
 
+/** Count how many R-prefixed price values appear in text */
+function countPrices(text: string): number {
+  const matches = text.match(/R\s?\d{1,3}(?:[,]\d{3})*\.\d{2}/g);
+  return matches ? matches.length : 0;
+}
+
+/**
+ * Detect if a catalog is "HVAC style" (Samsung, Daikin, etc.) vs consumable/materials.
+ * HVAC catalogs have multi-price columns and complex model codes like AR09TXHQA.
+ * Consumable catalogs have simple codes like ALU001, BRAC01 and typically 1 price column.
+ */
+function detectCatalogStyle(products: PaletteProduct[]): "hvac" | "consumable" {
+  if (products.length === 0) return "consumable";
+
+  // True HVAC model codes: brand prefix + series with kW/BTU-related digits
+  // e.g., AR09TXHQA, AJ020TNTDKH, FTK25TV1, etc.
+  const hvacModelRegex = /^(AR|AJ|AE|AC|AM|AN|AP|DVM|FTK|FTX|RXS|RXL|ARXG|ASYG|MSZ|MUZ|RAK|RAS|ALL|FOUR)\d/i;
+  let hvacStyleCount = 0;
+
+  for (const p of products) {
+    const code = (p.product_code || "").trim();
+    if (hvacModelRegex.test(code)) {
+      hvacStyleCount++;
+    }
+  }
+
+  // If more than 20% of products look like HVAC models, treat as HVAC catalog
+  return hvacStyleCount > products.length * 0.2 ? "hvac" : "consumable";
+}
+
 /**
  * Check if a text row looks like a real product line item (not a description).
  * Two modes:
  *   - Strict (HVAC): requires model code + 2 prices
- *   - Relaxed (consumable): requires at least 1 price + short enough to be tabular
+ *   - Relaxed (consumable): requires alphanumeric item code OR at least 1 price
  */
 function isProductRow(text: string, relaxed = false): boolean {
   const trimmed = text.trim();
@@ -197,8 +221,13 @@ function isProductRow(text: string, relaxed = false): boolean {
   const priceCount = countPrices(trimmed);
 
   if (relaxed) {
-    // For consumable suppliers: just need at least 1 price and reasonable length
-    return priceCount >= 1;
+    // For consumable suppliers: accept rows with a simple item code pattern
+    // Matches: ALU001, ALU002, BRAC01, RAW001, ROT003, CAP004, ALUKIT05, ALUCON001, CLEANER01, etc.
+    const simpleItemCode = /\b[A-Z]{2,}[0-9]{1,}\b/;
+    const hasItemCode = simpleItemCode.test(trimmed);
+
+    // Accept if it has an item code OR at least 1 price
+    return hasItemCode || priceCount >= 1;
   }
 
   // Strict mode: require a strict HVAC-style model code + 2 prices
@@ -225,10 +254,8 @@ export function matchTextRowsToProducts(
   const regions: ExtractedProductRegion[] = [];
 
   // Determine if this looks like an HVAC catalog or a consumable catalog
-  // by checking if the majority of products have HVAC-style model codes
-  const hvacCodeRegex = /^[A-Z]{2,5}[A-Z0-9]{2,}\d{1,3}[A-Z0-9]*$/;
-  const hvacCount = products.filter(p => hvacCodeRegex.test(p.product_code || "")).length;
-  const isRelaxedCatalog = hvacCount < products.length * 0.5; // Less than 50% HVAC codes = relaxed mode
+  const catalogStyle = detectCatalogStyle(products);
+  const isRelaxedCatalog = catalogStyle === "consumable";
 
   for (const row of rows) {
     const rowText = row.map((i) => i.text).join(" ");
@@ -313,7 +340,7 @@ export function matchTextRowsToProducts(
 }
 
 // Cache for extracted regions per page — versioned to bust on logic changes
-let _extractionVersion = 0;
+let _extractionVersion = 2; // Bumped: consumable catalog detection fix
 const extractionCache = new Map<
   string,
   ExtractedProductRegion[]
