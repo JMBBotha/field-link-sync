@@ -84,8 +84,15 @@ export async function autoCatalogFromRegions(
 ): Promise<AutoCatalogResult> {
   const empty: AutoCatalogResult = { insertedCount: 0, newProducts: [] };
 
-  // Filter to unmatched regions with prices
-  const unmatched = regions.filter(r => !r.matched && r.has_price && r.detected_price);
+  // Filter to unmatched regions with prices AND identifiable model codes
+  const unmatched = regions.filter(r => {
+    if (r.matched || !r.has_price || !r.detected_price) return false;
+    // Must have a model code (alphanumeric 5+ chars with letters and digits)
+    const codeMatch = r.label.match(/\b([A-Z0-9]{5,}(?:[-/][A-Z0-9]+)*)\b/i);
+    if (!codeMatch) return false;
+    const code = codeMatch[1];
+    return /[A-Za-z]/.test(code) && /\d/.test(code);
+  });
   if (unmatched.length === 0) return empty;
 
   // Resolve supplier UUID
