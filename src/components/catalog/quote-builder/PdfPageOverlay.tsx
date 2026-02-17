@@ -135,10 +135,8 @@ const DraggableRegion = memo(({
     }
   }, [isMatched, product, onToggleFavorite]);
 
-  // Hide regions that have no match AND no price data
-  // (pdfTextExtractor already filters to only include rows with price+model code,
-  //  but double-check here for safety)
-  if (!isMatched && !hasPrice) return null;
+  // All regions that pass extraction are shown — matched products get cart/star,
+  // unmatched rows with price or item code get the unmatched indicator
 
   return (
     <div

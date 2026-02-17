@@ -256,6 +256,7 @@ export function matchTextRowsToProducts(
   // Determine if this looks like an HVAC catalog or a consumable catalog
   const catalogStyle = detectCatalogStyle(products);
   const isRelaxedCatalog = catalogStyle === "consumable";
+  console.log(`[pdfTextExtractor] Catalog style: ${catalogStyle}, products: ${products.length}, relaxed: ${isRelaxedCatalog}`);
 
   for (const row of rows) {
     const rowText = row.map((i) => i.text).join(" ");
@@ -336,11 +337,15 @@ export function matchTextRowsToProducts(
     });
   }
 
+  const matchedCount = regions.filter(r => r.matched).length;
+  const unmatchedCount = regions.filter(r => !r.matched).length;
+  console.log(`[pdfTextExtractor] Total regions: ${regions.length}, matched: ${matchedCount}, unmatched: ${unmatchedCount}`);
+
   return regions;
 }
 
 // Cache for extracted regions per page — versioned to bust on logic changes
-let _extractionVersion = 2; // Bumped: consumable catalog detection fix
+let _extractionVersion = 3; // Bumped: consumable catalog detection fix v2
 const extractionCache = new Map<
   string,
   ExtractedProductRegion[]
