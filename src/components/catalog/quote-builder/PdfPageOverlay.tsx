@@ -216,10 +216,23 @@ const DraggableRegion = memo(({
             </button>
           )
         ) : (
-          /* Orange cart for unmatched */
-          <div className="h-4 w-4 rounded-full bg-orange-500 flex items-center justify-center pointer-events-none">
+          /* Orange cart for unmatched — pointer-events-auto so right-click works */
+          <button
+            className="pointer-events-auto h-4 w-4 rounded-full bg-orange-500 flex items-center justify-center hover:scale-125 transition-transform cursor-pointer"
+            onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
+            onContextMenu={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              if (onRemoveRegion) {
+                if (window.confirm(`Remove this item?\n\n${region.label.substring(0, 80)}`)) {
+                  onRemoveRegion(region);
+                }
+              }
+            }}
+            title="Right-click to remove"
+          >
             <ShoppingCart className="h-2 w-2 text-white" />
-          </div>
+          </button>
         )}
       </div>
 
