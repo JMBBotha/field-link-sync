@@ -156,7 +156,7 @@ const DraggableRegion = memo(({
       onClick={handleClick}
     >
       {/* Corner indicator badge */}
-      <div className="absolute -top-2 opacity-70 group-hover:opacity-100 transition-opacity z-10" style={{ right: "-20px" }}>
+      <div className="absolute top-1/2 -translate-y-1/2 -right-1 opacity-70 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
         {isMatched ? (
           inQuoteQty > 0 ? (
             <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center shadow-sm text-[8px] font-bold text-white">
