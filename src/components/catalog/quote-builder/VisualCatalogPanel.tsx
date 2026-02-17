@@ -233,13 +233,18 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     const currentValue = isMaterialType ? !!(product as any).is_material_favorite : !!product.is_pinned;
     const newValue = !currentValue;
 
-    // Optimistic update: mutate the product in live-extract cache
+    // Optimistic update: mutate product in all live-extract cached regions
     queryClient.setQueriesData({ queryKey: ["visual-panel-live-extract"] }, (old: any) => {
       if (!Array.isArray(old)) return old;
       return old.map((r: any) =>
-        r.product?.id === product.id ? { ...r, product: { ...r.product, [fieldToUpdate]: newValue, is_pinned: fieldToUpdate === "is_pinned" ? newValue : r.product.is_pinned } } : r
+        r.product?.id === product.id
+          ? { ...r, product: { ...r.product, [fieldToUpdate]: newValue, is_pinned: fieldToUpdate === "is_pinned" ? newValue : r.product.is_pinned } }
+          : r
       );
     });
+
+    // Also clear extraction cache so next re-render uses updated product data
+    clearExtractionCache();
 
     try {
       const { error } = await (supabase.from("supplier_products") as any)
@@ -250,10 +255,13 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       toast({ title: newValue ? "★ Added to favorites" : "Removed from favorites", duration: 2000 });
     } catch (err) {
       // Roll back optimistic update
+      clearExtractionCache();
       queryClient.setQueriesData({ queryKey: ["visual-panel-live-extract"] }, (old: any) => {
         if (!Array.isArray(old)) return old;
         return old.map((r: any) =>
-          r.product?.id === product.id ? { ...r, product: { ...r.product, [fieldToUpdate]: currentValue, is_pinned: fieldToUpdate === "is_pinned" ? currentValue : r.product.is_pinned } } : r
+          r.product?.id === product.id
+            ? { ...r, product: { ...r.product, [fieldToUpdate]: currentValue, is_pinned: fieldToUpdate === "is_pinned" ? currentValue : r.product.is_pinned } }
+            : r
         );
       });
       toast({ title: "Failed to update favorite", variant: "destructive" });
