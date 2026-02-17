@@ -227,6 +227,33 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     });
   }, []);
 
+  // BUG 4b: Remove an auto-inserted region (right-click on orange icon)
+  const handleRemoveRegion = useCallback(async (region: OverlayRegion) => {
+    try {
+      // If the region has a product_code, try to delete the auto-inserted supplier_product
+      if (region.product_code) {
+        const { error } = await (supabase.from("supplier_products") as any)
+          .delete()
+          .eq("product_code", region.product_code)
+          .eq("archived", false)
+          .limit(1);
+        if (error) console.warn("[VisualCatalog] Delete auto-inserted product failed:", error.message);
+      }
+
+      // Remove from cached query data
+      queryClient.setQueriesData({ queryKey: ["visual-panel-live-extract"] }, (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.filter((r: any) => r.product_code !== region.product_code);
+      });
+
+      clearExtractionCache();
+      toast({ title: "Region removed", duration: 2000 });
+    } catch (err) {
+      console.error("[VisualCatalog] Remove region failed:", err);
+      toast({ title: "Failed to remove region", variant: "destructive" });
+    }
+  }, [queryClient]);
+
   const handleToggleFavorite = useCallback(async (product: PaletteProduct) => {
     const isMaterialType = !(product as any).is_pinned && !(product.product_category || "").toLowerCase().includes("air");
     const fieldToUpdate = isMaterialType ? "is_material_favorite" : "is_pinned";
@@ -465,6 +492,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           onProductClick={handleProductClick}
                           onQuickAddProduct={handleQuickAddProduct}
                           onToggleFavorite={handleToggleFavorite}
+                          onRemoveRegion={handleRemoveRegion}
                           scrollContainerRef={scrollContainerRef}
                           onCategoriesDetected={handlePageCategories}
                           registerRef={(el) => {
@@ -556,6 +584,7 @@ interface LazyPdfPageProps {
   onProductClick: (product: PaletteProduct) => void;
   onQuickAddProduct?: (label: string, productCode: string, price: number | null) => void;
   onToggleFavorite?: (product: PaletteProduct) => void;
+  onRemoveRegion?: (region: OverlayRegion) => void;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   onCategoriesDetected: (pageIndex: number, categories: string[]) => void;
   registerRef: (el: HTMLDivElement | null) => void;
@@ -572,6 +601,7 @@ const LazyPdfPage = ({
   onProductClick,
   onQuickAddProduct,
   onToggleFavorite,
+  onRemoveRegion,
   scrollContainerRef,
   onCategoriesDetected,
   registerRef,
@@ -643,8 +673,8 @@ const LazyPdfPage = ({
               product_code: np.product_code,
               short_name: np.short_name || np.description,
               brand: np.brand || page.supplier_id,
-              product_category: "Uncategorized",
-              category: "Uncategorized",
+              product_category: "Consumables",
+              category: "Consumables",
               cost_excl_vat: np.cost_excl_vat || 0,
               cost_incl_vat: Math.round((np.cost_excl_vat || 0) * 1.15 * 100) / 100,
               selling_price: 0,
@@ -767,6 +797,7 @@ const LazyPdfPage = ({
               onProductClick={onProductClick}
               onQuickAddProduct={onQuickAddProduct}
               onToggleFavorite={onToggleFavorite}
+              onRemoveRegion={onRemoveRegion}
             />
           )}
           {extracting && (

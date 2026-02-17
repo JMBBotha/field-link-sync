@@ -228,7 +228,7 @@ function isProductRow(text: string, relaxed = false): boolean {
   const trimmed = text.trim();
 
   // Always exclude empty or very short rows
-  if (trimmed.length < 3) return false;
+  if (trimmed.length < 6) return false;
 
   // Exclude bullet points and dashes
   if (trimmed.startsWith("•") || trimmed.startsWith("-") || trimmed.startsWith("–")) return false;
@@ -243,20 +243,22 @@ function isProductRow(text: string, relaxed = false): boolean {
   if (relaxed) {
     // --- Consumable / materials mode: very permissive ---
 
-    // Item code patterns: 2+ uppercase letters followed by 1+ digits
-    // Matches: ALU001, BRAC01, INS001, RAW001, PMP001, CBLT01, ALUKIT05, etc.
-    const hasItemCode = /\b[A-Z]{2,}\d+\b/.test(trimmed) || /\b[A-Z]+\d{2,}\b/.test(trimmed);
-
-    // Any R-prefixed price at all (very broad)
-    const hasPrice = hasAnyPrice(trimmed);
-
-    // Section headers: ALL CAPS with no price, short text (e.g. "ALUMINIUM", "BRACKETS")
-    const isSectionHeader = /^[A-Z\s/&-]+$/.test(trimmed) && !hasPrice && trimmed.length < 40;
+    // BUG 4a: Section headers — ALL CAPS with no numbers at all (e.g. "ALUMINIUM", "BRACKETS", "COPPER TECH")
+    const isSectionHeader = /^[A-Z\s/&-]+$/.test(trimmed) && !/\d/.test(trimmed);
     if (isSectionHeader) return false;
 
-    // Accept if it has EITHER an item code OR a price
-    // This catches rows where the code or price might be in a different text item
-    return hasItemCode || hasPrice;
+    // BUG 3 FIX: Very broad item code — starts with letter, then 2+ alphanumeric
+    // Matches: ALU002, BRAC01, INS001, PMP001, CBLT01, ALUKIT05, ALUCON001, COPRIT10
+    const hasItemCode = /\b[A-Z][A-Z0-9]{2,}\d+\b/i.test(trimmed);
+
+    // Any R-prefixed price at all (very broad)
+    const hasPrice = hasAnyPrice(trimmed) || /R\s*[\d,]+\.\d{2}/.test(trimmed);
+
+    // Also accept if there's any standalone number > 1.00 (could be a price without R prefix)
+    const hasNumericPrice = /\b\d+\.\d{2}\b/.test(trimmed) && parseFloat((trimmed.match(/\b(\d+\.\d{2})\b/) || ["0"])[1]) > 1.0;
+
+    // Accept if it has an item code, or any price indicator
+    return hasItemCode || hasPrice || hasNumericPrice;
   }
 
   // Strict mode: require a strict HVAC-style model code + 2 prices
@@ -424,7 +426,7 @@ export function matchTextRowsToProducts(
 }
 
 // Cache for extracted regions per page — versioned to bust on logic changes
-let _extractionVersion = 6; // Bumped: tight row height, dedup, empty space filter
+let _extractionVersion = 7; // Bumped: broader item code detection, section header filter, phantom removal
 const extractionCache = new Map<
   string,
   ExtractedProductRegion[]

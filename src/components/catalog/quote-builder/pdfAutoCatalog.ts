@@ -189,7 +189,7 @@ export async function autoCatalogFromRegions(
   const toInsert = candidates.filter(c => !existingCodes.has(c.sku.toLowerCase()));
   if (toInsert.length === 0) return empty;
 
-  // Determine category from heading or default
+  // BUG 1 FIX: Always use "Consumables" for consumable-style catalogs
   const category = isConsumableStyle
     ? "Consumables"
     : pageHeading
@@ -198,6 +198,9 @@ export async function autoCatalogFromRegions(
           .replace(/series/i, "")
           .trim() || "Uncategorized"
       : "Uncategorized";
+
+  // Set product_category explicitly for consumable items
+  const productCategory = isConsumableStyle ? "Consumables" : category;
 
   // Batch insert (50 at a time)
   const allNew: AutoCatalogResult["newProducts"] = [];
@@ -213,8 +216,8 @@ export async function autoCatalogFromRegions(
       cost_excl_vat: c.price,
       cost_incl_vat: Math.round(c.price * 1.15 * 100) / 100,
       brand,
-      product_category: category,
-      category,
+      product_category: productCategory,
+      category: productCategory,
       is_active: true,
       archived: false,
     }));

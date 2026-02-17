@@ -26,6 +26,7 @@ interface PdfPageOverlayProps {
   onProductClick?: (product: PaletteProduct) => void;
   onQuickAddProduct?: (label: string, productCode: string, price: number | null) => void;
   onToggleFavorite?: (product: PaletteProduct) => void;
+  onRemoveRegion?: (region: OverlayRegion) => void;
 }
 
 /** Popup for unmatched items with price data */
@@ -96,6 +97,7 @@ const DraggableRegion = memo(({
   onProductClick,
   onUnmatchedClick,
   onToggleFavorite,
+  onRemoveRegion,
 }: {
   region: OverlayRegion;
   baskets: Basket[];
@@ -104,6 +106,7 @@ const DraggableRegion = memo(({
   onProductClick?: (product: PaletteProduct) => void;
   onUnmatchedClick?: (region: OverlayRegion) => void;
   onToggleFavorite?: (product: PaletteProduct) => void;
+  onRemoveRegion?: (region: OverlayRegion) => void;
 }) => {
   const product = region.product;
   const isMatched = !!product;
@@ -128,7 +131,9 @@ const DraggableRegion = memo(({
     }
   }, [isMatched, product, onProductClick, onUnmatchedClick, region]);
 
-  // Double-click on icon → toggle favorite (instant optimistic update)
+  // BUG 2 FIX: Double-click on icon → toggle favorite
+  // e.stopPropagation + e.preventDefault on BOTH onClick and onDoubleClick
+  // to prevent draggable wrapper and parent overlay from swallowing the event
   const handleStarDoubleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -136,6 +141,17 @@ const DraggableRegion = memo(({
       onToggleFavorite(product);
     }
   }, [isMatched, product, onToggleFavorite]);
+
+  // BUG 4b: Right-click on unmatched region → remove
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    if (!isMatched && onRemoveRegion) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (window.confirm(`Remove this item?\n\n${region.label.substring(0, 80)}`)) {
+        onRemoveRegion(region);
+      }
+    }
+  }, [isMatched, onRemoveRegion, region]);
 
   return (
     <div
@@ -162,6 +178,7 @@ const DraggableRegion = memo(({
         marginBottom: "3px",
       }}
       onClick={handleClick}
+      onContextMenu={handleContextMenu}
     >
       {/* Icon badges — double-click to toggle favorite */}
       <div className="absolute top-1/2 -translate-y-1/2 left-full opacity-70 group-hover:opacity-100 transition-opacity z-10 flex flex-row items-center gap-px" style={{ marginLeft: '16px' }}>
@@ -266,6 +283,7 @@ const PdfPageOverlay = ({
   onProductClick,
   onQuickAddProduct,
   onToggleFavorite,
+  onRemoveRegion,
 }: PdfPageOverlayProps) => {
   const [unmatchedPopup, setUnmatchedPopup] = useState<OverlayRegion | null>(null);
 
@@ -300,6 +318,7 @@ const PdfPageOverlay = ({
           onProductClick={onProductClick}
           onUnmatchedClick={handleUnmatchedClick}
           onToggleFavorite={onToggleFavorite}
+          onRemoveRegion={onRemoveRegion}
         />
       ))}
       {unmatchedPopup && (
