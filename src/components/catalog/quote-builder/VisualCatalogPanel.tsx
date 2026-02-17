@@ -662,49 +662,60 @@ const LazyPdfPage = ({
         
         // Auto-catalog unmatched items with prices
         if (unmatchedWithPrice.length > 0) {
-          const result = await autoCatalogFromRegions(regions, page.supplier_id);
-          
-          if (result.insertedCount > 0) {
-            console.log(`[VisualCatalog] Auto-cataloged ${result.insertedCount} new products from page ${page.page_number}`);
+          try {
+            const result = await autoCatalogFromRegions(regions, page.supplier_id);
             
+            if (result.insertedCount > 0) {
+              console.log(`[VisualCatalog] Auto-cataloged ${result.insertedCount} new products from page ${page.page_number}`);
+              
+              toast({
+                title: `Auto-cataloged ${result.insertedCount} new products`,
+                description: `Found on ${page.supplier_id} page ${page.page_number}. They are now available in your catalog.`,
+                duration: 5000,
+              });
+              
+              // Build augmented products list with newly inserted products
+              const newPaletteProducts: PaletteProduct[] = result.newProducts.map(np => ({
+                id: np.id,
+                product_code: np.product_code,
+                short_name: np.short_name || np.description,
+                brand: np.brand || page.supplier_id,
+                product_category: "Consumables",
+                category: "Consumables",
+                cost_excl_vat: np.cost_excl_vat || 0,
+                cost_incl_vat: Math.round((np.cost_excl_vat || 0) * 1.15 * 100) / 100,
+                selling_price: 0,
+                description: np.description || "",
+                is_pinned: false,
+                pin_order: null,
+                supplier_name: np.brand || page.supplier_id,
+                supplier_type: "both",
+                price_per_metre: null,
+                sold_in_length: false,
+                unit_length: null,
+                pipe_size: null,
+                is_material_favorite: false,
+              }));
+              
+              // Clear cache and re-extract with augmented product list so icons turn blue
+              clearExtractionCache();
+              const allProducts = [...activeProducts, ...newPaletteProducts];
+              const reMatched = await extractAndMatchPage(page.pdf_storage_path!, page.page_number, allProducts);
+              
+              // Invalidate the main products query so palette picks up new items
+              queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
+              
+              return reMatched;
+            }
+          } catch (catalogErr) {
+            console.error("[VisualCatalog] Auto-catalog failed:", catalogErr);
             toast({
-              title: `Auto-cataloged ${result.insertedCount} new products`,
-              description: `Found on ${page.supplier_id} page ${page.page_number}. They are now available in your catalog.`,
-              duration: 5000,
+              title: "Auto-catalog failed",
+              description: `Could not auto-insert ${unmatchedWithPrice.length} products. Icons remain orange — you can retry by scrolling away and back.`,
+              variant: "destructive",
+              duration: 8000,
             });
-            
-            // Build augmented products list with newly inserted products
-            const newPaletteProducts: PaletteProduct[] = result.newProducts.map(np => ({
-              id: np.id,
-              product_code: np.product_code,
-              short_name: np.short_name || np.description,
-              brand: np.brand || page.supplier_id,
-              product_category: "Consumables",
-              category: "Consumables",
-              cost_excl_vat: np.cost_excl_vat || 0,
-              cost_incl_vat: Math.round((np.cost_excl_vat || 0) * 1.15 * 100) / 100,
-              selling_price: 0,
-              description: np.description || "",
-              is_pinned: false,
-              pin_order: null,
-              supplier_name: np.brand || page.supplier_id,
-              supplier_type: "both",
-              price_per_metre: null,
-              sold_in_length: false,
-              unit_length: null,
-              pipe_size: null,
-              is_material_favorite: false,
-            }));
-            
-            // Clear cache and re-extract with augmented product list
-            clearExtractionCache();
-            const allProducts = [...activeProducts, ...newPaletteProducts];
-            const reMatched = await extractAndMatchPage(page.pdf_storage_path!, page.page_number, allProducts);
-            
-            // Invalidate the main products query so palette picks up new items
-            queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
-            
-            return reMatched;
+            // Return original regions with orange icons so user can still interact
           }
         }
         
