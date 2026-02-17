@@ -9,6 +9,7 @@ export interface QuoteArea {
   consumables: AreaConsumable[];
   timeHours: number;
   subtotal: number;
+  appliedBundleId?: string;
 }
 
 export interface AreaACUnit {
