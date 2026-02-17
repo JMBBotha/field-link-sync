@@ -42,6 +42,7 @@ import {
   Tags,
   FolderInput,
   ArrowRightLeft,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -561,6 +562,57 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
 
   const compareProducts = useMemo(() => compareIds.map(id => allProducts.find(p => p.id === id)).filter(Boolean) as SupplierProduct[], [compareIds, allProducts]);
 
+  // ── Image Enhancement ──
+  const [enhancingIds, setEnhancingIds] = useState<Set<string>>(new Set());
+  const [bulkEnhancing, setBulkEnhancing] = useState(false);
+
+  const enhanceProductImage = useCallback(async (productId: string, imageUrl: string) => {
+    setEnhancingIds(prev => new Set(prev).add(productId));
+    try {
+      const { data, error } = await supabase.functions.invoke("enhance-image", {
+        body: { image_url: imageUrl },
+      });
+      if (error) throw error;
+      if (!data?.enhanced_url) throw new Error("No enhanced URL returned");
+      const { error: updateErr } = await (supabase.from("supplier_products") as any)
+        .update({ image_url: data.enhanced_url })
+        .eq("id", productId);
+      if (updateErr) throw updateErr;
+      queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] });
+      toast({ title: "Image enhanced", description: "Product image has been improved." });
+    } catch (err: any) {
+      console.error("[enhance] Failed:", err);
+      toast({ title: "Enhancement failed", description: err.message, variant: "destructive" });
+    } finally {
+      setEnhancingIds(prev => { const next = new Set(prev); next.delete(productId); return next; });
+    }
+  }, [queryClient, toast]);
+
+  const handleBulkEnhance = useCallback(async () => {
+    const candidates = allProducts.filter(p => p.image_url);
+    if (candidates.length === 0) {
+      toast({ title: "No images to enhance", description: "Products need images uploaded first." });
+      return;
+    }
+    setBulkEnhancing(true);
+    let success = 0, failed = 0;
+    for (const p of candidates) {
+      try {
+        const { data, error } = await supabase.functions.invoke("enhance-image", {
+          body: { image_url: p.image_url },
+        });
+        if (error || !data?.enhanced_url) { failed++; continue; }
+        await (supabase.from("supplier_products") as any)
+          .update({ image_url: data.enhanced_url })
+          .eq("id", p.id);
+        success++;
+      } catch { failed++; }
+    }
+    queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] });
+    setBulkEnhancing(false);
+    toast({ title: "Bulk enhance complete", description: `${success} enhanced, ${failed} failed out of ${candidates.length}.` });
+  }, [allProducts, queryClient, toast]);
+
   const handleSuggestionFilter = useCallback((action: string, removePattern: RegExp) => {
     const [key, value] = action.split(":");
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -794,6 +846,16 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
           )}
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs"
+            onClick={handleBulkEnhance}
+            disabled={bulkEnhancing}
+          >
+            {bulkEnhancing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+            {bulkEnhancing ? "Enhancing..." : "Enhance All Images"}
+          </Button>
           <Label className="text-xs text-muted-foreground">Show Archived</Label>
           <Switch checked={showArchived} onCheckedChange={setShowArchived} />
         </div>
@@ -995,6 +1057,17 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
                       )}
                     </div>
                     <div className="flex items-center gap-1">
+                      {product.image_url && (
+                        <Button
+                          size="icon" variant="ghost"
+                          className="h-7 w-7 text-muted-foreground hover:text-primary"
+                          disabled={enhancingIds.has(product.id)}
+                          onClick={(e) => { e.stopPropagation(); enhanceProductImage(product.id, product.image_url!); }}
+                          title="Enhance image with AI"
+                        >
+                          {enhancingIds.has(product.id) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                        </Button>
+                      )}
                       <Button
                         size="icon" variant="ghost"
                         className={`h-7 w-7 ${isPinned ? "text-amber-500" : "text-muted-foreground"}`}

@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.enhance-pdf-page]
 verify_jwt = false
+
+[functions.enhance-image]
+verify_jwt = false
