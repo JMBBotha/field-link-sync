@@ -77,16 +77,44 @@ export async function capturePdfPages(
         );
       });
 
-      // Enhance if requested
+      // Enhance via Deep-Image.ai edge function if requested
       if (enhanceImages) {
         try {
-          const { enhanceImageBlob } = await import("@/lib/canvasImageEnhance");
-          blob = await enhanceImageBlob(blob, {
-            upscale: 1.5,
-            sharpenAmount: 0.4,
-            contrastBoost: 0.25,
-            noiseReductionPasses: 1,
-          });
+          console.log(`[PDF Capture] Enhancing page ${pageNum} via Deep-Image API...`);
+          // Convert blob to base64
+          const arrayBuf = await blob.arrayBuffer();
+          const bytes = new Uint8Array(arrayBuf);
+          let binary = "";
+          for (let i = 0; i < bytes.length; i++) {
+            binary += String.fromCharCode(bytes[i]);
+          }
+          const base64 = `data:image/jpeg;base64,${btoa(binary)}`;
+
+          const resp = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enhance-pdf-page`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+                apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              },
+              body: JSON.stringify({ imageBase64: base64, width: 2000 }),
+            }
+          );
+
+          if (resp.ok) {
+            const { enhancedBase64 } = await resp.json();
+            if (enhancedBase64) {
+              // Convert enhanced base64 back to blob
+              const enhancedResp = await fetch(enhancedBase64);
+              blob = await enhancedResp.blob();
+              console.log(`[PDF Capture] Page ${pageNum} enhanced successfully`);
+            }
+          } else {
+            const errText = await resp.text();
+            console.warn(`[PDF Capture] Enhancement API returned ${resp.status} for page ${pageNum}, using original:`, errText);
+          }
         } catch (enhErr) {
           console.warn(`[PDF Capture] Enhancement failed page ${pageNum}, using original:`, enhErr);
         }

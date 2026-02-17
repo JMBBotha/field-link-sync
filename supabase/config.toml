@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.parse-price-list]
 verify_jwt = false
+
+[functions.enhance-pdf-page]
+verify_jwt = false
