@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Wrench, Snowflake } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Wrench, Snowflake, Package } from "lucide-react";
 
 interface SupplierFormDialogProps {
   open: boolean;
@@ -34,7 +35,7 @@ const SupplierFormDialog = ({ open, onOpenChange, supplierId }: SupplierFormDial
     contact_email: "",
     contact_phone: "",
     notes: "",
-    isConsumables: false,
+    supplier_type: "both",
   });
 
   const { data: supplier } = useQuery({
@@ -67,14 +68,14 @@ const SupplierFormDialog = ({ open, onOpenChange, supplierId }: SupplierFormDial
         contact_email: supplier.contact_email || "",
         contact_phone: supplier.contact_phone || "",
         notes: supplier.notes || "",
-        isConsumables: supplier.supplier_type === "consumables",
+        supplier_type: supplier.supplier_type || "both",
       });
     } else if (!isEditing && open) {
       setForm({
         name: "", company_name: "", trading_name: "", registration_number: "",
         vat_number: "", website: "", physical_address: "", postal_address: "",
         contact_name: "", contact_email: "", contact_phone: "", notes: "",
-        isConsumables: false,
+        supplier_type: "both",
       });
     }
   }, [supplier, isEditing, open]);
@@ -94,7 +95,7 @@ const SupplierFormDialog = ({ open, onOpenChange, supplierId }: SupplierFormDial
         contact_email: form.contact_email || null,
         contact_phone: form.contact_phone || null,
         notes: form.notes || null,
-        supplier_type: form.isConsumables ? "consumables" : "ac_units",
+        supplier_type: form.supplier_type,
         updated_at: new Date().toISOString(),
       };
       if (isEditing) {
@@ -180,12 +181,18 @@ const SupplierFormDialog = ({ open, onOpenChange, supplierId }: SupplierFormDial
             <Textarea value={form.notes} onChange={(e) => set("notes", e.target.value)} rows={2} />
           </div>
 
-          <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/50">
-            <div className="flex items-center gap-2">
-              {form.isConsumables ? <Wrench className="h-4 w-4 text-orange-500" /> : <Snowflake className="h-4 w-4 text-primary" />}
-              <Label className="text-sm">Consumables Supplier</Label>
-            </div>
-            <Switch checked={form.isConsumables} onCheckedChange={(v) => set("isConsumables", v)} />
+          <div className="space-y-1.5">
+            <Label className="text-sm">Supplier Type</Label>
+            <Select value={form.supplier_type} onValueChange={(v) => set("supplier_type", v)}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ac_units"><div className="flex items-center gap-2"><Snowflake className="h-3.5 w-3.5 text-primary" /> AC Equipment Only</div></SelectItem>
+                <SelectItem value="consumables"><div className="flex items-center gap-2"><Wrench className="h-3.5 w-3.5 text-orange-500" /> Consumables / Materials Only</div></SelectItem>
+                <SelectItem value="both"><div className="flex items-center gap-2"><Package className="h-3.5 w-3.5" /> Both (AC + Materials)</div></SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex gap-2 pt-2">

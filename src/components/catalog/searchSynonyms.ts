@@ -33,6 +33,13 @@ const SYNONYM_MAP: Record<string, string[]> = {
   "cc": ["coupling"],
   "nitrogen": ["n2"],
   "n2": ["nitrogen"],
+  // Pipe size aliases
+  "1/4": ["6.35", "6mm", "cu6", "¼"],
+  "3/8": ["9.52", "10mm", "cu10"],
+  "1/2": ["12.7", "12mm", "cu12", "½"],
+  "5/8": ["15.88", "16mm", "cu16"],
+  "3/4": ["19.05", "19mm", "cu19", "¾"],
+  "7/8": ["22.22", "22mm", "cu22"],
 };
 
 /** Get a term + all its synonyms as a group */

@@ -45,6 +45,7 @@ export interface PaletteProduct {
   is_pinned: boolean;
   pin_order: number | null;
   supplier_name: string;
+  supplier_type: string;
   price_per_metre: number | null;
   sold_in_length: boolean;
   unit_length: number | null;
@@ -113,7 +114,7 @@ const QuoteBuilderTab = () => {
     queryKey: ["quote-builder-products"],
     queryFn: async () => {
       const { data, error } = await (supabase.from("supplier_products") as any)
-        .select("id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, suppliers(name)")
+        .select("id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, suppliers(name, supplier_type)")
         .or("archived.is.null,archived.eq.false")
         .order("is_pinned", { ascending: false })
         .order("pin_order", { ascending: true, nullsFirst: false })
@@ -124,6 +125,7 @@ const QuoteBuilderTab = () => {
         ...p,
         product_category: p.product_category || p.category || "",
         supplier_name: p.suppliers?.name || "",
+        supplier_type: p.suppliers?.supplier_type || "both",
         price_per_metre: p.price_per_metre || null,
         sold_in_length: p.sold_in_length || false,
         unit_length: p.unit_length || null,
