@@ -265,7 +265,7 @@ export function matchTextRowsToProducts(
     regions.push({
       product: matched,
       product_code: matchedCode || rowText.substring(0, 30),
-      label: rowText.substring(0, 80),
+      label: rowText.substring(0, 200),
       x_pct: Math.max(0, x_pct),
       y_pct: Math.max(0, y_pct),
       w_pct: Math.min(100 - x_pct, w_pct),
@@ -279,7 +279,8 @@ export function matchTextRowsToProducts(
   return regions;
 }
 
-// Cache for extracted regions per page
+// Cache for extracted regions per page — versioned to bust on logic changes
+let _extractionVersion = 0;
 const extractionCache = new Map<
   string,
   ExtractedProductRegion[]
@@ -294,7 +295,7 @@ export async function extractAndMatchPage(
   pageNumber: number,
   products: PaletteProduct[]
 ): Promise<ExtractedProductRegion[]> {
-  const cacheKey = `${pdfUrl}:${pageNumber}:${products.length}`;
+  const cacheKey = `v${_extractionVersion}:${pdfUrl}:${pageNumber}:${products.length}`;
 
   if (extractionCache.has(cacheKey)) {
     return extractionCache.get(cacheKey)!;
@@ -322,8 +323,10 @@ export async function extractAndMatchPage(
 }
 
 /**
- * Clear the extraction cache (e.g., when products change).
+ * Clear the extraction cache (e.g., when products change or panel reopens).
+ * Bumps version to ensure no stale entries are reused.
  */
 export function clearExtractionCache() {
   extractionCache.clear();
+  _extractionVersion++;
 }
