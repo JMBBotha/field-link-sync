@@ -35,6 +35,10 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
   const [priceListProgress, setPriceListProgress] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [extractedData, setExtractedData] = useState<Record<string, string> | null>(null);
+  const [showDeleteCatalog, setShowDeleteCatalog] = useState(false);
+  const [deletingCatalog, setDeletingCatalog] = useState(false);
+  const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
+  const [pendingReplaceFile, setPendingReplaceFile] = useState<File | null>(null);
 
   const { data: documents = [], isLoading } = useQuery({
     queryKey: ["supplier-documents", supplierId],
@@ -49,16 +53,73 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
   });
 
   // Check if this supplier already has Visual Catalog pages
-  const { data: catalogPageCount = 0 } = useQuery({
+  const { data: catalogInfo = { count: 0, uploadedAt: null, pdfFilename: null } } = useQuery({
     queryKey: ["supplier-catalog-pages", supplierId],
     queryFn: async () => {
-      const { count, error } = await (supabase.from("supplier_pdf_pages") as any)
-        .select("*", { count: "exact", head: true })
-        .eq("supplier_id", supplierId);
-      if (error) return 0;
-      return count || 0;
+      const { data, count, error } = await (supabase.from("supplier_pdf_pages") as any)
+        .select("uploaded_at, pdf_filename", { count: "exact" })
+        .eq("supplier_id", supplierId)
+        .order("page_number", { ascending: true })
+        .limit(1);
+      if (error) return { count: 0, uploadedAt: null, pdfFilename: null };
+      return {
+        count: count || 0,
+        uploadedAt: data?.[0]?.uploaded_at || null,
+        pdfFilename: data?.[0]?.pdf_filename || null,
+      };
     },
   });
+  const catalogPageCount = catalogInfo.count;
+
+  const deleteCatalogPages = async () => {
+    setDeletingCatalog(true);
+    try {
+      // Get all pages to find storage paths
+      const { data: pages } = await (supabase.from("supplier_pdf_pages") as any)
+        .select("page_image_url, pdf_filename, pdf_storage_path")
+        .eq("supplier_id", supplierId);
+
+      if (pages && pages.length > 0) {
+        // Delete image files from storage
+        const imagePaths = pages
+          .map((p: any) => {
+            const url = p.page_image_url || "";
+            const match = url.match(/supplier-pdf-pages\/(.+)$/);
+            return match ? match[1] : null;
+          })
+          .filter(Boolean);
+
+        if (imagePaths.length > 0) {
+          await supabase.storage.from("supplier-pdf-pages").remove(imagePaths);
+        }
+
+        // Delete source PDF from storage
+        const filename = pages[0]?.pdf_filename;
+        if (filename) {
+          const pdfPath = `${supplierId}/${filename}`;
+          await supabase.storage.from("supplier-pdfs").remove([pdfPath]);
+        }
+      }
+
+      // Delete all DB rows
+      await (supabase.from("supplier_pdf_pages") as any)
+        .delete()
+        .eq("supplier_id", supplierId);
+
+      queryClient.invalidateQueries({ queryKey: ["supplier-catalog-pages", supplierId] });
+      queryClient.invalidateQueries({ queryKey: ["visual-panel-suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["visual-panel-pages"] });
+      queryClient.invalidateQueries({ queryKey: ["visual-catalog-suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["visual-catalog-pages"] });
+
+      toast({ title: "PDF catalog deleted", description: `${pages?.length || 0} pages removed.` });
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+    } finally {
+      setDeletingCatalog(false);
+      setShowDeleteCatalog(false);
+    }
+  };
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
     const pdfjsLib = await import("pdfjs-dist");
@@ -107,14 +168,25 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
     return result;
   };
 
-  /** Process a PDF into page images for the Visual Catalog */
-  const handlePriceListUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  /** Handle replace confirmation */
+  const handlePriceListInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.name.toLowerCase().endsWith(".pdf")) {
       toast({ title: "Only PDF files supported", variant: "destructive" });
+      if (priceListInputRef.current) priceListInputRef.current.value = "";
       return;
     }
+    if (catalogPageCount > 0) {
+      setPendingReplaceFile(file);
+      setShowReplaceConfirm(true);
+    } else {
+      processUpload(file);
+    }
+  }, [catalogPageCount, toast]);
+
+  /** Process a PDF into page images for the Visual Catalog */
+  const processUpload = useCallback(async (file: File) => {
 
     setProcessingPriceList(true);
     setPriceListProgress("Loading PDF...");
@@ -291,24 +363,42 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
                 Upload a price list PDF to browse in the Visual Catalog viewer.
               </p>
               {catalogPageCount > 0 && (
-                <Badge variant="secondary" className="mt-1 text-[10px]">
-                  {catalogPageCount} pages loaded
-                </Badge>
+                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                  <Badge variant="secondary" className="text-[10px]">
+                    {catalogPageCount} pages uploaded
+                  </Badge>
+                  {catalogInfo.uploadedAt && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {new Date(catalogInfo.uploadedAt).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
               )}
             </div>
-            <div className="shrink-0">
+            <div className="shrink-0 flex items-center gap-1.5">
+              {catalogPageCount > 0 && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowDeleteCatalog(true)}
+                  disabled={deletingCatalog || processingPriceList}
+                  className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10 h-8 px-2"
+                >
+                  {deletingCatalog ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                </Button>
+              )}
               <input
                 ref={priceListInputRef}
                 type="file"
                 accept=".pdf"
                 className="hidden"
-                onChange={handlePriceListUpload}
+                onChange={handlePriceListInputChange}
               />
               <Button
                 size="sm"
                 variant={catalogPageCount > 0 ? "outline" : "default"}
                 onClick={() => priceListInputRef.current?.click()}
-                disabled={processingPriceList}
+                disabled={processingPriceList || deletingCatalog}
                 className="text-xs"
               >
                 {processingPriceList ? (
@@ -398,6 +488,46 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
               onClick={() => deleteDoc && deleteMutation.mutate(deleteDoc)}
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete catalog confirmation */}
+      <AlertDialog open={showDeleteCatalog} onOpenChange={setShowDeleteCatalog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete PDF Catalog?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete all {catalogPageCount} PDF catalog pages? This cannot be undone. The supplier will be removed from the Visual Catalog until a new PDF is uploaded.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingCatalog}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={deleteCatalogPages}
+              disabled={deletingCatalog}
+            >
+              {deletingCatalog ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Deleting...</> : "Delete All Pages"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Replace catalog confirmation */}
+      <AlertDialog open={showReplaceConfirm} onOpenChange={(o) => { if (!o) { setShowReplaceConfirm(false); setPendingReplaceFile(null); if (priceListInputRef.current) priceListInputRef.current.value = ""; } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace PDF Catalog?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will replace the existing {catalogPageCount} pages with the new PDF. Continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setShowReplaceConfirm(false); if (pendingReplaceFile) { processUpload(pendingReplaceFile); setPendingReplaceFile(null); } }}>
+              Replace
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
