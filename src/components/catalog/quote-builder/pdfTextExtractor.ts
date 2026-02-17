@@ -85,6 +85,7 @@ export async function extractTextItemsFromPdfPage(
 /**
  * Group adjacent text items into rows based on Y-coordinate proximity.
  * Items within `threshold` pixels of each other vertically are grouped.
+ * Uses adaptive threshold: starts with base, widens if rows seem too fragmented.
  */
 function groupTextItemsIntoRows(
   items: ExtractedTextItem[],
@@ -93,12 +94,24 @@ function groupTextItemsIntoRows(
   if (items.length === 0) return [];
 
   const sorted = [...items].sort((a, b) => a.y - b.y);
+
+  // Adaptive threshold: measure median row gap to pick a better threshold
+  const gaps: number[] = [];
+  for (let i = 1; i < Math.min(sorted.length, 200); i++) {
+    const gap = sorted[i].y - sorted[i - 1].y;
+    if (gap > 0.5) gaps.push(gap);
+  }
+  gaps.sort((a, b) => a - b);
+  const medianGap = gaps.length > 0 ? gaps[Math.floor(gaps.length / 2)] : threshold;
+  // Use 60% of median gap as threshold (items closer than this are same row)
+  const adaptiveThreshold = Math.max(threshold, medianGap * 0.6);
+
   const rows: ExtractedTextItem[][] = [];
   let currentRow: ExtractedTextItem[] = [sorted[0]];
   let currentY = sorted[0].y;
 
   for (let i = 1; i < sorted.length; i++) {
-    if (sorted[i].y - currentY > threshold) {
+    if (sorted[i].y - currentY > adaptiveThreshold) {
       rows.push(currentRow);
       currentRow = [];
       currentY = sorted[i].y;
@@ -145,14 +158,15 @@ function buildProductLookup(products: PaletteProduct[]) {
 
 /**
  * Detect price patterns in text. Returns the first detected price or null.
- * Matches: R1,024.07, R 500.00, R12345, or standalone decimal numbers >= 100
+ * Matches: R1,024.07, R 500.00, R12345, R150, or R1,500 (with or without decimals)
  */
 function detectPrice(text: string): number | null {
-  // Only match explicit Rand prices: R followed by digits with optional commas and mandatory 2 decimal places
-  const rPriceMatch = text.match(/R\s?(\d{1,3}(?:[,]\d{3})*\.\d{2})/);
+  // Match R-prefixed prices: R followed by digits with optional commas and optional decimals
+  // e.g. R1,024.07, R 500.00, R150, R1500, R12,345
+  const rPriceMatch = text.match(/R\s?(\d{1,3}(?:[,\s]\d{3})*(?:\.\d{1,2})?)/);
   if (rPriceMatch) {
-    const val = parseFloat(rPriceMatch[1].replace(/,/g, ""));
-    if (!isNaN(val) && val >= 10) return val;
+    const val = parseFloat(rPriceMatch[1].replace(/[,\s]/g, ""));
+    if (!isNaN(val) && val >= 1) return val;
   }
   return null;
 }
@@ -169,10 +183,15 @@ const DESCRIPTION_PHRASES = [
   "for wide rooms", "suitable for", "designed for", "equipped with",
 ];
 
-/** Count how many R-prefixed price values appear in text */
+/** Count how many R-prefixed price values appear in text (relaxed: with or without decimals) */
 function countPrices(text: string): number {
-  const matches = text.match(/R\s?\d{1,3}(?:[,]\d{3})*\.\d{2}/g);
+  const matches = text.match(/R\s?\d{1,3}(?:[,\s]\d{3})*(?:\.\d{1,2})?/g);
   return matches ? matches.length : 0;
+}
+
+/** Detect if a row has an R-prefixed price (very permissive) */
+function hasAnyPrice(text: string): boolean {
+  return /R\s*[\d,]+/.test(text);
 }
 
 /**
@@ -208,32 +227,42 @@ function detectCatalogStyle(products: PaletteProduct[]): "hvac" | "consumable" {
 function isProductRow(text: string, relaxed = false): boolean {
   const trimmed = text.trim();
 
+  // Always exclude empty or very short rows
+  if (trimmed.length < 3) return false;
+
   // Exclude bullet points and dashes
   if (trimmed.startsWith("•") || trimmed.startsWith("-") || trimmed.startsWith("–")) return false;
 
   // Exclude long prose (product rows are typically short tabular data)
-  if (trimmed.length > (relaxed ? 200 : 120)) return false;
+  if (trimmed.length > (relaxed ? 250 : 120)) return false;
 
   // Exclude lines with common description phrases
   const lower = trimmed.toLowerCase();
   if (DESCRIPTION_PHRASES.some(phrase => lower.includes(phrase))) return false;
 
-  const priceCount = countPrices(trimmed);
-
   if (relaxed) {
-    // For consumable suppliers: accept rows with a simple item code pattern
-    // Matches: ALU001, ALU002, BRAC01, RAW001, ROT003, CAP004, ALUKIT05, ALUCON001, CLEANER01, etc.
-    const simpleItemCode = /\b[A-Z]{2,}[0-9]{1,}\b/;
-    const hasItemCode = simpleItemCode.test(trimmed);
+    // --- Consumable / materials mode: very permissive ---
 
-    // Accept if it has an item code OR at least 1 price
-    return hasItemCode || priceCount >= 1;
+    // Item code patterns: 2+ uppercase letters followed by 1+ digits
+    // Matches: ALU001, BRAC01, INS001, RAW001, PMP001, CBLT01, ALUKIT05, etc.
+    const hasItemCode = /\b[A-Z]{2,}\d+\b/.test(trimmed) || /\b[A-Z]+\d{2,}\b/.test(trimmed);
+
+    // Any R-prefixed price at all (very broad)
+    const hasPrice = hasAnyPrice(trimmed);
+
+    // Section headers: ALL CAPS with no price, short text (e.g. "ALUMINIUM", "BRACKETS")
+    const isSectionHeader = /^[A-Z\s/&-]+$/.test(trimmed) && !hasPrice && trimmed.length < 40;
+    if (isSectionHeader) return false;
+
+    // Accept if it has EITHER an item code OR a price
+    // This catches rows where the code or price might be in a different text item
+    return hasItemCode || hasPrice;
   }
 
   // Strict mode: require a strict HVAC-style model code + 2 prices
   const modelCodeRegex = /\b[A-Z]{2,5}[A-Z0-9]{2,}\d{1,3}[A-Z0-9]*\b/;
   if (!modelCodeRegex.test(trimmed)) return false;
-  if (priceCount < 2) return false;
+  if (countPrices(trimmed) < 2) return false;
 
   return true;
 }
@@ -257,21 +286,30 @@ export function matchTextRowsToProducts(
   const productStyle = detectCatalogStyle(products);
   
   // Also scan PDF rows: if most rows have only 1 price, it's consumable-style
-  const sampleRows = rows.slice(0, 40).map(r => r.map(i => i.text).join(" "));
+  const sampleRows = rows.slice(0, 60).map(r => r.map(i => i.text).join(" "));
   const rowsWithTwoPrices = sampleRows.filter(r => countPrices(r) >= 2).length;
-  const rowsWithOnePrice = sampleRows.filter(r => countPrices(r) >= 1).length;
+  const rowsWithOnePrice = sampleRows.filter(r => hasAnyPrice(r)).length;
   const pdfStyleIsConsumable = rowsWithOnePrice > 5 && rowsWithTwoPrices < rowsWithOnePrice * 0.3;
   
   // Use relaxed mode if EITHER the products or the PDF text suggest consumable-style
   const isRelaxedCatalog = productStyle === "consumable" || pdfStyleIsConsumable;
-  console.log(`[pdfTextExtractor] Catalog style: products=${productStyle}, pdfConsumable=${pdfStyleIsConsumable}, relaxed: ${isRelaxedCatalog}, rows sampled: ${sampleRows.length}, 1-price: ${rowsWithOnePrice}, 2-price: ${rowsWithTwoPrices}`);
+
+  // Debug: count rows that pass/fail the filter
+  let passedRows = 0;
+  let failedRows = 0;
+  let skippedShort = 0;
+
+  console.log(`[pdfTextExtractor] Total text rows from PDF: ${rows.length}, Catalog style: products=${productStyle}, pdfConsumable=${pdfStyleIsConsumable}, relaxed: ${isRelaxedCatalog}, sampled: ${sampleRows.length}, hasPrice: ${rowsWithOnePrice}, has2Prices: ${rowsWithTwoPrices}`);
 
   for (const row of rows) {
     const rowText = row.map((i) => i.text).join(" ");
     const rowTextLower = rowText.toLowerCase();
 
     // Skip very short rows (likely headers, page numbers, etc.)
-    if (rowText.length < 3) continue;
+    if (rowText.length < 3) {
+      skippedShort++;
+      continue;
+    }
 
     // Try to match by product code first (most reliable)
     let matched: PaletteProduct | null = null;
@@ -299,7 +337,6 @@ export function matchTextRowsToProducts(
     // Fall back to description matching for consumable-type suppliers
     if (!matched && isRelaxedCatalog) {
       for (const [desc, product] of byDescription) {
-        // Only match if a significant portion of the description appears in the row
         if (desc.length >= 8 && rowTextLower.includes(desc)) {
           matched = product;
           matchedCode = product.product_code;
@@ -313,7 +350,12 @@ export function matchTextRowsToProducts(
     const hasPrice = detectedPrice !== null;
 
     // For unmatched rows, require the row to pass product-row validation
-    if (!matched && !isProductRow(rowText, isRelaxedCatalog)) continue;
+    if (!matched && !isProductRow(rowText, isRelaxedCatalog)) {
+      failedRows++;
+      continue;
+    }
+
+    passedRows++;
 
     // Calculate bounding box for the entire row
     const minX = Math.min(...row.map((i) => i.x));
@@ -347,13 +389,13 @@ export function matchTextRowsToProducts(
 
   const matchedCount = regions.filter(r => r.matched).length;
   const unmatchedCount = regions.filter(r => !r.matched).length;
-  console.log(`[pdfTextExtractor] Total regions: ${regions.length}, matched: ${matchedCount}, unmatched: ${unmatchedCount}`);
+  console.log(`[pdfTextExtractor] Results: ${regions.length} regions (${matchedCount} matched, ${unmatchedCount} unmatched), ${passedRows} rows passed filter, ${failedRows} rows failed, ${skippedShort} too short`);
 
   return regions;
 }
 
 // Cache for extracted regions per page — versioned to bust on logic changes
-let _extractionVersion = 4; // Bumped: dual detection (products + PDF text)
+let _extractionVersion = 5; // Bumped: relaxed price detection + adaptive row grouping
 const extractionCache = new Map<
   string,
   ExtractedProductRegion[]
