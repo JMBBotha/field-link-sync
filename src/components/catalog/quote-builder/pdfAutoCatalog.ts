@@ -1,22 +1,26 @@
 /**
  * Auto-catalog utility: detects unmatched priced items from PDF text extraction
  * and inserts them into supplier_products automatically.
+ *
+ * Supports two modes:
+ *   - HVAC (strict): requires model codes + 2 prices
+ *   - Consumable (relaxed): any row with a detected price gets inserted
  */
 import { supabase } from "@/integrations/supabase/client";
 import type { ExtractedProductRegion } from "./pdfTextExtractor";
 
 /**
  * Extract a likely product/model code from text.
- * Looks for alphanumeric strings that resemble HVAC model codes.
+ * Looks for alphanumeric strings that resemble item codes.
  */
 function extractSku(text: string): string {
-  // Match patterns like FBA35A9, AZAS71MV1, RZASG100MV1, AR09TXHQA, etc.
+  // Match patterns like FBA35A9, ALU001, BRAC01, AR09TXHQA, etc.
   const skuMatch = text.match(/\b([A-Z]{2,}[\d]{1,}[A-Z0-9]*(?:[-/][A-Z0-9]+)?)\b/i);
-  if (skuMatch && skuMatch[1].length >= 5) {
+  if (skuMatch && skuMatch[1].length >= 3) {
     return skuMatch[1].toUpperCase();
   }
   // Fallback: first word-like token with mixed letters and digits
-  const fallback = text.match(/\b([A-Z0-9]{5,})\b/i);
+  const fallback = text.match(/\b([A-Z0-9]{3,})\b/i);
   return fallback ? fallback[1].toUpperCase() : "";
 }
 
@@ -76,6 +80,9 @@ interface AutoCatalogResult {
 /**
  * Auto-catalog unmatched regions that have detected prices.
  * Inserts them into supplier_products and returns the newly created products.
+ *
+ * For consumable-style catalogs (One Stop Shop, etc.), ALL unmatched rows
+ * with a detected price are inserted — no model-code or multi-price gate.
  */
 export async function autoCatalogFromRegions(
   regions: ExtractedProductRegion[],
@@ -84,22 +91,36 @@ export async function autoCatalogFromRegions(
 ): Promise<AutoCatalogResult> {
   const empty: AutoCatalogResult = { insertedCount: 0, newProducts: [] };
 
-  // Filter to unmatched regions with prices AND identifiable model codes
-  // The pdfTextExtractor already applies strict isProductRow filtering,
-  // so regions here should be valid product rows. Double-check basics.
-  const modelCodeRegex = /\b[A-Z]{2,5}[A-Z0-9]{2,}\d{1,3}[A-Z0-9]*\b/;
+  // Detect catalog style from the regions themselves:
+  // If fewer than 30% of priced rows have 2+ prices, treat as consumable
+  const pricedRows = regions.filter(r => r.has_price && r.detected_price);
   const priceRegex = /R\s?\d{1,3}(?:[,]\d{3})*\.\d{2}/g;
+  const multiPriceRows = pricedRows.filter(r => {
+    const prices = r.label.match(priceRegex);
+    return prices && prices.length >= 2;
+  });
+  const isConsumableStyle = pricedRows.length > 3 && multiPriceRows.length < pricedRows.length * 0.3;
+
+  // Filter to unmatched regions with prices
   const unmatched = regions.filter(r => {
     if (r.matched || !r.has_price || !r.detected_price) return false;
-    // Must have a strict HVAC model code
+
+    if (isConsumableStyle) {
+      // Consumable mode: any unmatched row with a price qualifies
+      // Just skip very long descriptive text
+      if (r.label.length > 200) return false;
+      return true;
+    }
+
+    // HVAC strict mode: require model code + 2 prices
+    const modelCodeRegex = /\b[A-Z]{2,5}[A-Z0-9]{2,}\d{1,3}[A-Z0-9]*\b/;
     if (!modelCodeRegex.test(r.label)) return false;
-    // Must have at least 2 R-prefixed prices (product rows have multiple price columns)
     const prices = r.label.match(priceRegex);
     if (!prices || prices.length < 2) return false;
-    // Exclude long descriptive text
     if (r.label.length > 120) return false;
     return true;
   });
+
   if (unmatched.length === 0) return empty;
 
   // Resolve supplier UUID
@@ -123,28 +144,38 @@ export async function autoCatalogFromRegions(
 
   for (const r of unmatched) {
     const sku = extractSku(r.label);
-    if (!sku || sku.length < 3) continue; // Skip regions without identifiable SKU
-
-    // Skip junk: price under R50
     const price = r.detected_price!;
-    if (price < 50) continue;
 
-    // Skip junk: SKU is all letters with no digits (common English word)
-    if (/^[A-Z]+$/i.test(sku)) continue;
+    // Skip very cheap items only for HVAC; consumables can be cheap
+    if (!isConsumableStyle && price < 50) continue;
+    if (isConsumableStyle && price < 1) continue;
+
+    // For consumable items without a clear SKU, generate one from the label
+    let finalSku = sku;
+    if (!finalSku || finalSku.length < 2) {
+      // Generate a deterministic code from the label
+      const words = r.label.replace(/[^A-Za-z0-9\s]/g, "").trim().split(/\s+/);
+      finalSku = words.slice(0, 2).join("").substring(0, 8).toUpperCase() || `ITEM${candidates.length}`;
+    }
+
+    // Skip junk: SKU is all letters with no digits AND not consumable
+    if (!isConsumableStyle && /^[A-Z]+$/i.test(finalSku)) continue;
 
     const description = stripPrice(r.label);
     const shortName = description.length > 60 ? description.substring(0, 60) : description;
 
-    // Deduplicate within this batch
-    if (candidates.some(c => c.sku === sku)) continue;
+    // Deduplicate within this batch by SKU
+    if (candidates.some(c => c.sku === finalSku)) {
+      // If duplicate SKU, append a suffix
+      finalSku = `${finalSku}-${candidates.length}`;
+    }
 
-    candidates.push({ sku, description, shortName, price, label: r.label });
+    candidates.push({ sku: finalSku, description, shortName, price, label: r.label });
   }
 
   if (candidates.length === 0) return empty;
 
   // Check which SKUs already exist for this supplier
-  const skus = candidates.map(c => c.sku.toLowerCase());
   const { data: existing } = await (supabase.from("supplier_products") as any)
     .select("product_code")
     .eq("supplier_id", supplierUuid)
@@ -159,12 +190,14 @@ export async function autoCatalogFromRegions(
   if (toInsert.length === 0) return empty;
 
   // Determine category from heading or default
-  const category = pageHeading
-    ? pageHeading
-        .replace(/^R-?\d+\s*/i, "") // strip refrigerant prefix
-        .replace(/series/i, "")
-        .trim() || "Uncategorized"
-    : "Uncategorized";
+  const category = isConsumableStyle
+    ? "Consumables"
+    : pageHeading
+      ? pageHeading
+          .replace(/^R-?\d+\s*/i, "")
+          .replace(/series/i, "")
+          .trim() || "Uncategorized"
+      : "Uncategorized";
 
   // Batch insert (50 at a time)
   const allNew: AutoCatalogResult["newProducts"] = [];
@@ -200,6 +233,6 @@ export async function autoCatalogFromRegions(
     }
   }
 
-  console.log(`[autoCatalog] Inserted ${allNew.length} new products for ${brand}`);
+  console.log(`[autoCatalog] Inserted ${allNew.length} new products for ${brand} (style: ${isConsumableStyle ? "consumable" : "hvac"})`);
   return { insertedCount: allNew.length, newProducts: allNew };
 }
