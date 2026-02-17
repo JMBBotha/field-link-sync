@@ -57,7 +57,7 @@ const AdminMapPage = () => {
   const infoAction = async () => { toast({ title: "Info", description: "Use field agent view for this action" }); };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col min-h-0">
       {/* Tab switcher */}
       <div className="shrink-0 flex items-center gap-1 px-3 py-2 border-b bg-card/80 backdrop-blur-sm z-20">
         <Button
