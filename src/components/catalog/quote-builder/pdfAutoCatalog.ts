@@ -94,12 +94,13 @@ export async function autoCatalogFromRegions(
   // Detect catalog style from the regions themselves:
   // If fewer than 30% of priced rows have 2+ prices, treat as consumable
   const pricedRows = regions.filter(r => r.has_price && r.detected_price);
-  const priceRegex = /R\s?\d{1,3}(?:[,]\d{3})*\.\d{2}/g;
+  // Use relaxed price regex matching extractor (with or without decimals)
+  const priceRegex = /R\s?\d{1,3}(?:[,\s]\d{3})*(?:\.\d{1,2})?/g;
   const multiPriceRows = pricedRows.filter(r => {
     const prices = r.label.match(priceRegex);
     return prices && prices.length >= 2;
   });
-  const isConsumableStyle = pricedRows.length > 3 && multiPriceRows.length < pricedRows.length * 0.3;
+  const isConsumableStyle = pricedRows.length > 0 && multiPriceRows.length < pricedRows.length * 0.3;
 
   // Filter to unmatched regions with prices
   const unmatched = regions.filter(r => {
