@@ -335,6 +335,7 @@ const QuoteBuilderTab = () => {
     setActiveProduct(null);
     setIsDragging(false);
     const { active, over } = event;
+    console.log('[DnD] onDragEnd', { activeId: active.id, overId: over?.id });
     if (!over) return;
 
     const overId = String(over.id);
