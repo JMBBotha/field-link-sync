@@ -49,6 +49,7 @@ export interface PaletteProduct {
   sold_in_length: boolean;
   unit_length: number | null;
   pipe_size: string | null;
+  is_material_favorite: boolean;
 }
 
 export interface BasketItem {
@@ -112,7 +113,7 @@ const QuoteBuilderTab = () => {
     queryKey: ["quote-builder-products"],
     queryFn: async () => {
       const { data, error } = await (supabase.from("supplier_products") as any)
-        .select("id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, suppliers(name)")
+        .select("id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, suppliers(name)")
         .or("archived.is.null,archived.eq.false")
         .order("is_pinned", { ascending: false })
         .order("pin_order", { ascending: true, nullsFirst: false })
@@ -127,6 +128,7 @@ const QuoteBuilderTab = () => {
         sold_in_length: p.sold_in_length || false,
         unit_length: p.unit_length || null,
         pipe_size: p.pipe_size || null,
+        is_material_favorite: p.is_material_favorite || false,
       })) as PaletteProduct[];
     },
     staleTime: 60000,
@@ -160,7 +162,7 @@ const QuoteBuilderTab = () => {
     queryFn: async () => {
       const { data: bundleData, error: bErr } = await supabase
         .from("installation_bundles")
-        .select("id, name, description, bundle_type")
+        .select("id, name, description, bundle_type, min_btu, max_btu, compatible_brands, is_favorite")
         .eq("is_active", true)
         .order("name");
       if (bErr) throw bErr;

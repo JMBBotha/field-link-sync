@@ -83,8 +83,7 @@ export function computeAreaSubtotal(area: QuoteArea): number {
 export const WIZARD_STEPS = [
   { label: "Areas", description: "Define rooms" },
   { label: "AC Units", description: "Select units" },
-  { label: "Materials", description: "Piping & brackets" },
-  { label: "Consumables", description: "Extras" },
+  { label: "Materials & Extras", description: "Piping, brackets & consumables" },
   { label: "Time", description: "Labour hours" },
   { label: "Review", description: "Summary" },
 ] as const;
