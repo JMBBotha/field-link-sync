@@ -1,7 +1,7 @@
 import { useState, memo, useCallback } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Plus, X } from "lucide-react";
+import { ShoppingCart, Plus, X, Star } from "lucide-react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
 export interface OverlayRegion {
@@ -25,6 +25,7 @@ interface PdfPageOverlayProps {
   basketProductCounts: Record<string, number>;
   onProductClick?: (product: PaletteProduct) => void;
   onQuickAddProduct?: (label: string, productCode: string, price: number | null) => void;
+  onToggleFavorite?: (product: PaletteProduct) => void;
 }
 
 /** Popup for unmatched items with price data */
@@ -94,6 +95,7 @@ const DraggableRegion = memo(({
   inQuoteQty,
   onProductClick,
   onUnmatchedClick,
+  onToggleFavorite,
 }: {
   region: OverlayRegion;
   baskets: Basket[];
@@ -101,6 +103,7 @@ const DraggableRegion = memo(({
   inQuoteQty: number;
   onProductClick?: (product: PaletteProduct) => void;
   onUnmatchedClick?: (region: OverlayRegion) => void;
+  onToggleFavorite?: (product: PaletteProduct) => void;
 }) => {
   const product = region.product;
   const isMatched = !!product;
@@ -123,6 +126,14 @@ const DraggableRegion = memo(({
       onUnmatchedClick(region);
     }
   }, [isMatched, product, onProductClick, hasPrice, onUnmatchedClick, region]);
+
+  const handleStarClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (isMatched && product && onToggleFavorite) {
+      onToggleFavorite(product);
+    }
+  }, [isMatched, product, onToggleFavorite]);
 
   // Hide regions that have no match AND no price data
   // (pdfTextExtractor already filters to only include rows with price+model code,
@@ -155,30 +166,37 @@ const DraggableRegion = memo(({
       }}
       onClick={handleClick}
     >
-      {/* Corner indicator badge */}
-      <div className="absolute top-1/2 -translate-y-1/2 -right-6 opacity-70 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-        {isMatched ? (
-          inQuoteQty > 0 ? (
-            <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center shadow-sm text-[8px] font-bold text-white">
-              {inQuoteQty}
-            </div>
-          ) : isFavorite ? (
-            <div className="flex items-center justify-center w-5 h-5 rounded-full bg-gray-900/80 shadow-sm">
-              <svg viewBox="0 0 24 24" className="h-3 w-3 fill-yellow-400 text-yellow-400 drop-shadow-sm">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-              </svg>
-            </div>
-          ) : (
-            <div className="h-4 w-4 rounded-full bg-blue-500 flex items-center justify-center shadow-sm">
-              <ShoppingCart className="h-2.5 w-2.5 text-white" />
-            </div>
-          )
-        ) : (
-          /* Grey outline basket for unmatched-but-priced items */
-          <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/40 bg-background flex items-center justify-center shadow-sm">
-            <ShoppingCart className="h-2.5 w-2.5 text-muted-foreground/60" />
-          </div>
+      {/* Corner indicator badges */}
+      <div className="absolute top-1/2 -translate-y-1/2 -right-6 opacity-70 group-hover:opacity-100 transition-opacity z-10 flex flex-col items-center gap-0.5">
+        {/* Star toggle for matched products */}
+        {isMatched && onToggleFavorite && (
+          <button
+            onClick={handleStarClick}
+            className="pointer-events-auto h-4 w-4 rounded-full flex items-center justify-center shadow-sm hover:scale-125 transition-transform"
+            style={{ background: isFavorite ? "rgba(30,30,30,0.8)" : "rgba(100,100,100,0.4)" }}
+            title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+          >
+            <Star className={`h-2.5 w-2.5 ${isFavorite ? "fill-yellow-400 text-yellow-400" : "text-white/70"}`} />
+          </button>
         )}
+        {/* Cart / quantity badge */}
+        <div className="pointer-events-none">
+          {isMatched ? (
+            inQuoteQty > 0 ? (
+              <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center shadow-sm text-[8px] font-bold text-white">
+                {inQuoteQty}
+              </div>
+            ) : (
+              <div className="h-4 w-4 rounded-full bg-blue-500 flex items-center justify-center shadow-sm">
+                <ShoppingCart className="h-2.5 w-2.5 text-white" />
+              </div>
+            )
+          ) : (
+            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/40 bg-background flex items-center justify-center shadow-sm">
+              <ShoppingCart className="h-2.5 w-2.5 text-muted-foreground/60" />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Hover tooltip */}
@@ -240,6 +258,7 @@ const PdfPageOverlay = ({
   basketProductCounts,
   onProductClick,
   onQuickAddProduct,
+  onToggleFavorite,
 }: PdfPageOverlayProps) => {
   const [unmatchedPopup, setUnmatchedPopup] = useState<OverlayRegion | null>(null);
 
@@ -273,6 +292,7 @@ const PdfPageOverlay = ({
           }
           onProductClick={onProductClick}
           onUnmatchedClick={handleUnmatchedClick}
+          onToggleFavorite={onToggleFavorite}
         />
       ))}
       {unmatchedPopup && (

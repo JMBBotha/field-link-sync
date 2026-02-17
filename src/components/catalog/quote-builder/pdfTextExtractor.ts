@@ -121,6 +121,7 @@ function groupTextItemsIntoRows(
 function buildProductLookup(products: PaletteProduct[]) {
   const byCode = new Map<string, PaletteProduct>();
   const byName = new Map<string, PaletteProduct>();
+  const byDescription = new Map<string, PaletteProduct>();
 
   for (const p of products) {
     if (p.product_code) {
@@ -129,9 +130,17 @@ function buildProductLookup(products: PaletteProduct[]) {
     if (p.short_name) {
       byName.set(p.short_name.toLowerCase().trim(), p);
     }
+    // Index by description keywords for consumable-type suppliers
+    if (p.description) {
+      // Use the first meaningful portion of the description (before any " - " separator)
+      const descKey = p.description.split(" - ")[0].toLowerCase().trim();
+      if (descKey.length >= 8 && !byDescription.has(descKey)) {
+        byDescription.set(descKey, p);
+      }
+    }
   }
 
-  return { byCode, byName };
+  return { byCode, byName, byDescription };
 }
 
 /**
@@ -168,28 +177,34 @@ const DESCRIPTION_PHRASES = [
 
 /**
  * Check if a text row looks like a real product line item (not a description).
- * Requires: strict model code, multiple prices, no descriptive phrases, not too long.
+ * Two modes:
+ *   - Strict (HVAC): requires model code + 2 prices
+ *   - Relaxed (consumable): requires at least 1 price + short enough to be tabular
  */
-function isProductRow(text: string): boolean {
+function isProductRow(text: string, relaxed = false): boolean {
   const trimmed = text.trim();
 
   // Exclude bullet points and dashes
   if (trimmed.startsWith("•") || trimmed.startsWith("-") || trimmed.startsWith("–")) return false;
 
   // Exclude long prose (product rows are typically short tabular data)
-  if (trimmed.length > 120) return false;
+  if (trimmed.length > (relaxed ? 200 : 120)) return false;
 
   // Exclude lines with common description phrases
   const lower = trimmed.toLowerCase();
   if (DESCRIPTION_PHRASES.some(phrase => lower.includes(phrase))) return false;
 
-  // Require a strict HVAC-style model code: starts with 2-5 letters, then alphanumeric with digits
-  // e.g. FBA35A9, FTXJ25AW, BRC1H52, AZAS71MV1, RXM25R9, MC55W, EKRS21
+  const priceCount = countPrices(trimmed);
+
+  if (relaxed) {
+    // For consumable suppliers: just need at least 1 price and reasonable length
+    return priceCount >= 1;
+  }
+
+  // Strict mode: require a strict HVAC-style model code + 2 prices
   const modelCodeRegex = /\b[A-Z]{2,5}[A-Z0-9]{2,}\d{1,3}[A-Z0-9]*\b/;
   if (!modelCodeRegex.test(trimmed)) return false;
-
-  // Require at least 2 R-prefixed price values (product rows have multiple price columns)
-  if (countPrices(trimmed) < 2) return false;
+  if (priceCount < 2) return false;
 
   return true;
 }
@@ -206,8 +221,14 @@ export function matchTextRowsToProducts(
   products: PaletteProduct[]
 ): ExtractedProductRegion[] {
   const rows = groupTextItemsIntoRows(items);
-  const { byCode, byName } = buildProductLookup(products);
+  const { byCode, byName, byDescription } = buildProductLookup(products);
   const regions: ExtractedProductRegion[] = [];
+
+  // Determine if this looks like an HVAC catalog or a consumable catalog
+  // by checking if the majority of products have HVAC-style model codes
+  const hvacCodeRegex = /^[A-Z]{2,5}[A-Z0-9]{2,}\d{1,3}[A-Z0-9]*$/;
+  const hvacCount = products.filter(p => hvacCodeRegex.test(p.product_code || "")).length;
+  const isRelaxedCatalog = hvacCount < products.length * 0.5; // Less than 50% HVAC codes = relaxed mode
 
   for (const row of rows) {
     const rowText = row.map((i) => i.text).join(" ");
@@ -239,12 +260,24 @@ export function matchTextRowsToProducts(
       }
     }
 
+    // Fall back to description matching for consumable-type suppliers
+    if (!matched && isRelaxedCatalog) {
+      for (const [desc, product] of byDescription) {
+        // Only match if a significant portion of the description appears in the row
+        if (desc.length >= 8 && rowTextLower.includes(desc)) {
+          matched = product;
+          matchedCode = product.product_code;
+          break;
+        }
+      }
+    }
+
     // Detect price in the row text
     const detectedPrice = detectPrice(rowText);
     const hasPrice = detectedPrice !== null;
 
-    // For unmatched rows, require the row to pass strict product-row validation
-    if (!matched && !isProductRow(rowText)) continue;
+    // For unmatched rows, require the row to pass product-row validation
+    if (!matched && !isProductRow(rowText, isRelaxedCatalog)) continue;
 
     // Calculate bounding box for the entire row
     const minX = Math.min(...row.map((i) => i.x));
