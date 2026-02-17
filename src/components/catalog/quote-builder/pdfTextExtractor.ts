@@ -139,23 +139,25 @@ function buildProductLookup(products: PaletteProduct[]) {
  * Matches: R1,024.07, R 500.00, R12345, or standalone decimal numbers >= 100
  */
 function detectPrice(text: string): number | null {
-  // Pattern 1: R followed by digits (with optional commas and decimals)
-  const rPriceMatch = text.match(/R\s?([\d,]+(?:\.\d{1,2})?)/i);
+  // Only match explicit Rand prices: R followed by digits with optional commas and mandatory 2 decimal places
+  // e.g. R1,024.07, R16,675.22, R25,880.90, R500.00
+  const rPriceMatch = text.match(/R\s?(\d{1,3}(?:[,]\d{3})*\.\d{2})/);
   if (rPriceMatch) {
     const val = parseFloat(rPriceMatch[1].replace(/,/g, ""));
     if (!isNaN(val) && val >= 10) return val;
   }
-
-  // Pattern 2: Standalone numbers that look like prices (≥100, with decimals, in rightmost text)
-  const numberMatches = text.match(/(?:^|\s)([\d,]{3,}(?:\.\d{1,2}))(?:\s|$)/g);
-  if (numberMatches) {
-    for (const m of numberMatches) {
-      const val = parseFloat(m.trim().replace(/,/g, ""));
-      if (!isNaN(val) && val >= 100) return val;
-    }
-  }
-
   return null;
+}
+
+/**
+ * Check if text contains what looks like a model/product code.
+ * Must be an alphanumeric string of 5+ chars with at least one letter and one digit.
+ */
+function hasModelCode(text: string): boolean {
+  const match = text.match(/\b([A-Z0-9]{5,}(?:[-/][A-Z0-9]+)*)\b/i);
+  if (!match) return false;
+  const code = match[1];
+  return /[A-Za-z]/.test(code) && /\d/.test(code);
 }
 
 /**
@@ -207,8 +209,9 @@ export function matchTextRowsToProducts(
     const detectedPrice = detectPrice(rowText);
     const hasPrice = detectedPrice !== null;
 
-    // Skip rows that have no match AND no price data
-    if (!matched && !hasPrice) continue;
+    // Skip rows that have no match AND no qualifying price+model data
+    // For unmatched rows, require BOTH a Rand price AND a model code
+    if (!matched && (!hasPrice || !hasModelCode(rowText))) continue;
 
     // Calculate bounding box for the entire row
     const minX = Math.min(...row.map((i) => i.x));
