@@ -14,7 +14,7 @@ interface CategoryNavBarProps {
 }
 
 /** Normalize raw product categories into display-friendly groups */
-function groupCategory(raw: string): string {
+export function groupCategory(raw: string): string {
   const lower = (raw || "").toLowerCase().trim();
 
   // Wall mounted variants
