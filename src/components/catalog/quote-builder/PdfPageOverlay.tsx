@@ -206,9 +206,10 @@ const DraggableRegion = memo(({
             <button
               onDoubleClick={handleStarDoubleClick}
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
+              onContextMenu={handleContextMenu}
               className="pointer-events-auto h-4 w-4 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer"
               style={{ background: "rgba(30,30,30,0.8)" }}
-              title="Double-click to remove from favorites"
+              title="Double-click to remove from favorites · Right-click to hide"
               aria-label="Remove from favorites"
             >
               <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400" />
@@ -217,8 +218,9 @@ const DraggableRegion = memo(({
             <button
               onDoubleClick={handleStarDoubleClick}
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
+              onContextMenu={handleContextMenu}
               className="pointer-events-auto h-4 w-4 rounded-full bg-green-500 flex items-center justify-center text-[7px] font-bold text-white hover:scale-125 transition-transform cursor-pointer"
-              title="Double-click to add to favorites"
+              title="Double-click to add to favorites · Right-click to hide"
               aria-label={`In quote: ${inQuoteQty}. Double-click to favorite`}
             >
               {inQuoteQty}
@@ -227,8 +229,9 @@ const DraggableRegion = memo(({
             <button
               onDoubleClick={handleStarDoubleClick}
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
+              onContextMenu={handleContextMenu}
               className="pointer-events-auto h-4 w-4 rounded-full bg-blue-500 flex items-center justify-center hover:scale-125 transition-transform cursor-pointer"
-              title="Double-click to add to favorites"
+              title="Double-click to add to favorites · Right-click to hide"
               aria-label="Add to favorites"
             >
               <ShoppingCart className="h-2 w-2 text-white" />
@@ -238,6 +241,7 @@ const DraggableRegion = memo(({
           <button
             className="pointer-events-auto h-4 w-4 rounded-full bg-orange-500 flex items-center justify-center hover:scale-125 transition-all cursor-pointer"
             onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
+            onContextMenu={handleContextMenu}
             title="Right-click to hide"
             aria-label="Unmatched product. Right-click to hide"
           >
