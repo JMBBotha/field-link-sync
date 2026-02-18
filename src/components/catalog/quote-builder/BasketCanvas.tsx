@@ -3,7 +3,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { Plus, Trash2, Pencil, Check, Minus, Package, ShoppingBag, Copy, Ruler } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Badge } from "@/components/ui/badge";
 import { getCategoryIcon, getCategoryBg } from "./ProductPalette";
 import { getProductDisplayName } from "./productDisplayUtils";
@@ -295,8 +295,8 @@ const BasketCanvas = ({
   isCompact,
 }: BasketCanvasProps) => {
   return (
-    <div className="flex flex-col rounded-lg border bg-muted/30 overflow-hidden">
-      <div className={`flex items-center justify-between border-b ${isCompact ? "px-2 py-1.5" : "p-3"}`}>
+    <div className="flex flex-col h-full rounded-lg border bg-muted/30 overflow-hidden">
+      <div className={`flex items-center justify-between border-b shrink-0 ${isCompact ? "px-2 py-1.5" : "p-3"}`}>
         <h3 className={`font-semibold text-foreground ${isCompact ? "text-xs" : "text-sm"}`}>
           {isCompact ? "Zones" : "Quote Canvas"}
         </h3>
@@ -315,7 +315,7 @@ const BasketCanvas = ({
         </div>
       </div>
 
-      <ScrollArea className="flex-1" style={{ maxHeight: "calc(100vh - 300px)", scrollBehavior: "smooth" as any }}>
+      <div className="flex-1 overflow-y-auto min-h-0" style={{ scrollBehavior: "smooth" as any }}>
         <div className={`${isCompact ? "p-1.5 space-y-1.5" : "p-3 space-y-3"}`}>
           {baskets.length === 0 ? (
             <div className={`flex flex-col items-center justify-center text-muted-foreground ${isCompact ? "py-6" : "py-12"}`}>
@@ -342,7 +342,7 @@ const BasketCanvas = ({
             ))
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 };
