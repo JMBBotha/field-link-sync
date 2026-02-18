@@ -316,6 +316,21 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
       const productRows = lines.filter(l => l.includes("\t") && /R\s*\d/.test(l));
       console.log(`[PDF Extract] ${trimmed.length} chars, ${pdf.numPages} pages, ~${productRows.length} product rows detected`);
       toast({ title: `PDF loaded: ${pdf.numPages} pages, ${trimmed.length.toLocaleString()} chars`, description: `~${productRows.length} product-like rows detected` });
+
+      // Immediately capture PDF pages for Visual Catalog (don't wait for full AI parse)
+      import("@/lib/pdfPageCapture").then(async ({ capturePdfPages }) => {
+        try {
+          console.log("[PDF Import] Capturing pages for visual catalog...");
+          const captureResult = await capturePdfPages(file, supplierName, undefined, enhanceImages);
+          console.log(`[PDF Import] Captured ${captureResult.pagesStored} pages`);
+          toast({ title: "Visual Catalog Ready", description: `Stored ${captureResult.pagesStored} page images from ${file.name}` });
+          queryClient.invalidateQueries({ queryKey: ["visual-panel-pages"] });
+          queryClient.invalidateQueries({ queryKey: ["visual-panel-suppliers"] });
+          queryClient.invalidateQueries({ queryKey: ["stored-pdf-pages", supplierName] });
+        } catch (captureErr) {
+          console.error("[PDF Import] Page capture failed (non-blocking):", captureErr);
+        }
+      });
     } catch (err: any) {
       console.error("[PDF Import] Failed to read PDF:", err);
       setError("Failed to read PDF. Ensure it's a valid, non-password-protected PDF.");
@@ -812,18 +827,33 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         uploaded_by: userData?.user?.id || null,
       } as any);
 
-      // Capture PDF pages for visual catalog (fire-and-forget)
-      if (pdfFile) {
+      // Capture PDF pages for visual catalog (only if not already captured in handlePdfFile)
+      if (pdfFile && storedPdfPages.length === 0) {
         import("@/lib/pdfPageCapture").then(async ({ capturePdfPages, matchProductsToPdfPages }) => {
           try {
             const captureResult = await capturePdfPages(pdfFile, supplierName, undefined, enhanceImages);
             toast({ title: `Visual Catalog`, description: `Stored ${captureResult.pagesStored} pages from ${pdfFile.name}` });
+            queryClient.invalidateQueries({ queryKey: ["visual-panel-pages"] });
+            queryClient.invalidateQueries({ queryKey: ["visual-panel-suppliers"] });
+            queryClient.invalidateQueries({ queryKey: ["stored-pdf-pages", supplierName] });
             const importedCodes = diffRows.filter(r => r.action === "new" || r.action === "update").map(r => r.product_code);
             if (importedCodes.length > 0) {
               await matchProductsToPdfPages(supplierName, pdfFile.name, importedCodes);
             }
           } catch (err) {
             console.error("[PDF Capture] Error:", err);
+          }
+        });
+      } else if (pdfFile) {
+        // Pages already captured — just match products to existing pages
+        import("@/lib/pdfPageCapture").then(async ({ matchProductsToPdfPages }) => {
+          try {
+            const importedCodes = diffRows.filter(r => r.action === "new" || r.action === "update").map(r => r.product_code);
+            if (importedCodes.length > 0) {
+              await matchProductsToPdfPages(supplierName, pdfFile.name, importedCodes);
+            }
+          } catch (err) {
+            console.error("[PDF Match] Error:", err);
           }
         });
       }
