@@ -240,33 +240,13 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     });
   }, []);
 
-  // BUG 4b: Remove an auto-inserted region (right-click on orange icon)
+  // BUG 4b: Remove region — PdfPageOverlay handles persistence via dismissed_pdf_regions table
   const handleRemoveRegion = useCallback(async (region: OverlayRegion) => {
     try {
-      // If the region has a product_code, archive the product instead of deleting
-      // so autoCatalogFromRegions won't re-insert it on next extraction
-      if (region.product_code) {
-        const { data: found } = await (supabase.from("supplier_products") as any)
-          .select("id")
-          .eq("product_code", region.product_code)
-          .eq("archived", false)
-          .limit(1);
-        
-        if (found && found.length > 0) {
-          const { error } = await (supabase.from("supplier_products") as any)
-            .update({ archived: true })
-            .eq("id", found[0].id);
-          console.log(`[VisualCatalog] Archive product ${found[0].id} for code "${region.product_code}":`, error ? `FAILED: ${error.message}` : "SUCCESS");
-        } else {
-          console.log(`[VisualCatalog] No active product found for code "${region.product_code}" to archive`);
-        }
-      }
-
-      // Clear extraction cache and force full re-extraction so icon disappears immediately
       clearExtractionCache();
       queryClient.removeQueries({ queryKey: ["visual-panel-live-extract"] });
       queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
-      queryClient.invalidateQueries({ queryKey: ["archived-product-codes"] });
+      queryClient.invalidateQueries({ queryKey: ["dismissed-pdf-regions"] });
       toast({ title: "Region removed", duration: 2000 });
     } catch (err) {
       console.error("[VisualCatalog] Remove region failed:", err);
@@ -657,26 +637,7 @@ const LazyPdfPage = ({
     [products]
   );
 
-  // Fetch archived product codes for this supplier to filter out dismissed overlay regions
-  const { data: archivedProductCodes = new Set<string>() } = useQuery({
-    queryKey: ["archived-product-codes"],
-    enabled: isVisible,
-    queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_products") as any)
-        .select("product_code")
-        .eq("archived", true);
-      if (error) {
-        console.error("[VisualCatalog] Failed to fetch archived codes:", error.message);
-        return new Set<string>();
-      }
-      const codes = new Set<string>(
-        (data || []).map((p: any) => (p.product_code || "").toLowerCase()).filter(Boolean)
-      );
-      console.log(`[VisualCatalog] Archived product codes: ${codes.size} found`);
-      return codes;
-    },
-    staleTime: 30000,
-  });
+  // No archived product code filtering needed — PdfPageOverlay handles dismissals via dismissed_pdf_regions table
 
   // Live extraction for this page
   const { data: liveRegions = [], isLoading: extracting } = useQuery({
@@ -772,10 +733,6 @@ const LazyPdfPage = ({
       if (firstPage !== undefined && firstPage !== pageIndex) continue; // duplicate from another page
       globalSeenRegions.set(dedupKey, pageIndex);
 
-      // Skip regions whose product_code matches an archived (dismissed) product
-      const regionCode = (r.product_code || "").toLowerCase();
-      if (regionCode && archivedProductCodes.has(regionCode)) continue;
-
       result.push({
         id: `live-${page.id}-${idx}`,
         x_pct: r.x_pct, y_pct: r.y_pct, w_pct: r.w_pct, h_pct: r.h_pct,
@@ -788,7 +745,7 @@ const LazyPdfPage = ({
       });
     }
     return result;
-  }, [liveRegions, page.id, pageIndex, archivedProductCodes]);
+  }, [liveRegions, page.id, pageIndex]);
 
   // Report detected categories to parent for category→page mapping
   useEffect(() => {

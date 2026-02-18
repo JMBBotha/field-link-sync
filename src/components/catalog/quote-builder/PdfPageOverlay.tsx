@@ -1,7 +1,9 @@
 import { useState, memo, useCallback, useMemo } from "react";
 import { useDraggable } from "@dnd-kit/core";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Plus, X, Star } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
 const DISMISSED_KEY = "dismissedPdfRegions";
@@ -135,7 +137,6 @@ const DraggableRegion = memo(({
 
   const price = product?.selling_price || product?.cost_incl_vat || 0;
 
-  // Single click on overlay area → opens product popup / details
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     if (isMatched && product && onProductClick) {
@@ -145,9 +146,6 @@ const DraggableRegion = memo(({
     }
   }, [isMatched, product, onProductClick, onUnmatchedClick, region]);
 
-  // BUG 2 FIX: Double-click on icon → toggle favorite
-  // e.stopPropagation + e.preventDefault on BOTH onClick and onDoubleClick
-  // to prevent draggable wrapper and parent overlay from swallowing the event
   const handleStarDoubleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -156,7 +154,6 @@ const DraggableRegion = memo(({
     }
   }, [isMatched, product, onToggleFavorite]);
 
-  // Right-click on ANY region → dismiss permanently
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -164,6 +161,13 @@ const DraggableRegion = memo(({
     if (window.confirm(`Hide this overlay icon permanently?\n\n${label}`)) {
       const dismissId = `${region.product_code}|${region.label.substring(0, 40)}`;
       addDismissedId(dismissId);
+      // Persist to Supabase
+      (supabase.from("dismissed_pdf_regions") as any)
+        .upsert({ dismiss_key: dismissId }, { onConflict: "dismiss_key" })
+        .then(({ error }: any) => {
+          if (error) console.error("[PdfOverlay] Failed to persist dismiss:", error.message);
+          else console.log("[PdfOverlay] Persisted dismiss_key:", dismissId);
+        });
       if (onRemoveRegion) onRemoveRegion(region);
     }
   }, [onRemoveRegion, region]);
@@ -195,11 +199,10 @@ const DraggableRegion = memo(({
       onClick={handleClick}
       onContextMenu={handleContextMenu}
     >
-      {/* Icon badges — double-click to toggle favorite */}
+      {/* Icon badges */}
       <div className="absolute top-1/2 -translate-y-1/2 left-full opacity-70 group-hover:opacity-100 transition-opacity z-10 flex flex-row items-center gap-px" style={{ marginLeft: '16px' }}>
         {isMatched ? (
           isFavorite ? (
-            /* Yellow star — double-click to unfavorite */
             <button
               onDoubleClick={handleStarDoubleClick}
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
@@ -211,7 +214,6 @@ const DraggableRegion = memo(({
               <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400" />
             </button>
           ) : inQuoteQty > 0 ? (
-            /* Green badge with quantity — double-click to favorite */
             <button
               onDoubleClick={handleStarDoubleClick}
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
@@ -222,7 +224,6 @@ const DraggableRegion = memo(({
               {inQuoteQty}
             </button>
           ) : (
-            /* Blue cart — double-click to favorite */
             <button
               onDoubleClick={handleStarDoubleClick}
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
@@ -234,7 +235,6 @@ const DraggableRegion = memo(({
             </button>
           )
         ) : (
-          /* Orange cart for unmatched */
           <button
             className="pointer-events-auto h-4 w-4 rounded-full bg-orange-500 flex items-center justify-center hover:scale-125 transition-all cursor-pointer"
             onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
@@ -310,9 +310,31 @@ const PdfPageOverlay = ({
 }: PdfPageOverlayProps) => {
   const [unmatchedPopup, setUnmatchedPopup] = useState<OverlayRegion | null>(null);
   const [, forceUpdate] = useState(0);
+  const queryClient = useQueryClient();
 
-  // Filter out dismissed regions from localStorage
-  const dismissedIds = useMemo(() => getDismissedIds(), []);
+  // Fetch persisted dismissed keys from Supabase
+  const { data: dbDismissedKeys = new Set<string>() } = useQuery({
+    queryKey: ["dismissed-pdf-regions"],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("dismissed_pdf_regions") as any)
+        .select("dismiss_key");
+      if (error) {
+        console.error("[PdfOverlay] Failed to fetch dismissed regions:", error.message);
+        return new Set<string>();
+      }
+      const keys = new Set<string>((data || []).map((r: any) => r.dismiss_key));
+      console.log(`[PdfOverlay] Loaded ${keys.size} dismissed regions from DB`);
+      return keys;
+    },
+    staleTime: 30000,
+  });
+
+  // Merge localStorage (immediate) + DB (persistent) dismissed IDs
+  const dismissedIds = useMemo(() => {
+    const local = getDismissedIds();
+    const merged = new Set([...local, ...dbDismissedKeys]);
+    return merged;
+  }, [dbDismissedKeys]);
 
   const positionedRegions = useMemo(() =>
     regions.filter((r) => {
@@ -330,9 +352,10 @@ const PdfPageOverlay = ({
   }, []);
 
   const handleRemoveRegion = useCallback((region: OverlayRegion) => {
-    forceUpdate(n => n + 1); // trigger re-render to pick up new localStorage
+    forceUpdate(n => n + 1);
+    queryClient.invalidateQueries({ queryKey: ["dismissed-pdf-regions"] });
     onRemoveRegion?.(region);
-  }, [onRemoveRegion]);
+  }, [onRemoveRegion, queryClient]);
 
   if (positionedRegions.length === 0) return null;
 
