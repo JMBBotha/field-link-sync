@@ -159,15 +159,14 @@ function buildProductLookup(products: PaletteProduct[]) {
 /**
  * Detect price patterns in text. Returns the first detected price or null.
  * Handles South African formats: R1,024.07, R 500.00, R150, R12,15, R 1 234,56
+ * Rejects model codes like R32, R410A where R+digits is part of a model identifier.
  */
 function detectPrice(text: string): number | null {
-  // Match R-prefixed prices with flexible formatting:
-  // R12,15 (SA comma decimal), R 500.00, R1 234,56, R150, R1,500.00
-  const rPriceMatch = text.match(/R\s*([\d\s,]+(?:[.,]\d{1,2})?)/);
-  if (rPriceMatch) {
-    let raw = rPriceMatch[1].trim();
+  // Try decimal prices first (most reliable — e.g. R1,738.26, R260.74, R12,15)
+  const decimalMatch = text.match(/R\s*([\d\s,]+[.,]\d{1,2})\b/);
+  if (decimalMatch) {
+    let raw = decimalMatch[1].trim();
     // Determine if comma is decimal separator (SA style) or thousands separator
-    // If string ends with ,XX (1-2 digits after last comma), treat comma as decimal
     if (/,\d{1,2}$/.test(raw) && !/\.\d/.test(raw)) {
       // SA format: R12,15 or R1 234,56 — comma is decimal
       raw = raw.replace(/\s/g, "").replace(/,(?=\d{1,2}$)/, ".");
@@ -178,7 +177,21 @@ function detectPrice(text: string): number | null {
     const val = parseFloat(raw);
     if (!isNaN(val) && val >= 1) return val;
   }
+
+  // Whole number prices >= 50, but NOT followed immediately by a letter (rejects R32W, R410A)
+  const wholeMatch = text.match(/R\s*(\d{2,}(?:\s\d{3})*)(?![A-Za-z])/);
+  if (wholeMatch) {
+    const raw = wholeMatch[1].replace(/\s/g, "");
+    const val = parseFloat(raw);
+    if (!isNaN(val) && val >= 50) return val;
+  }
+
   return null;
+}
+
+/** Detect if a row has a real R-prefixed price (strict — excludes model codes) */
+function hasRealPrice(text: string): boolean {
+  return detectPrice(text) !== null;
 }
 
 /** Phrases that indicate descriptive text, never found in product model rows */
@@ -234,27 +247,21 @@ function isGhostRow(
   return false;
 }
 
-/** Count how many R-prefixed price values appear in text (handles SA formats) */
+/** Count how many real R-prefixed price values appear in text */
 function countPrices(text: string): number {
-  const matches = text.match(/R\s*[\d\s,]+(?:[.,]\d{1,2})?/g);
-  return matches ? matches.length : 0;
-}
-
-/** Detect if a row has an R-prefixed price (very permissive) */
-function hasAnyPrice(text: string): boolean {
-  return /R\s*\d/.test(text);
+  // Count by finding all R+decimal patterns, then R+whole number patterns
+  const decimalMatches = text.match(/R\s*[\d\s,]+[.,]\d{1,2}\b/g) || [];
+  const wholeMatches = text.match(/R\s*\d{3,}(?![A-Za-z])/g) || [];
+  // Deduplicate by position would be complex, so just use the max
+  return Math.max(decimalMatches.length, decimalMatches.length + wholeMatches.length);
 }
 
 /**
  * Detect if a catalog is "HVAC style" (Samsung, Daikin, etc.) vs consumable/materials.
- * HVAC catalogs have multi-price columns and complex model codes like AR09TXHQA.
- * Consumable catalogs have simple codes like ALU001, BRAC01 and typically 1 price column.
  */
 function detectCatalogStyle(products: PaletteProduct[]): "hvac" | "consumable" {
   if (products.length === 0) return "consumable";
 
-  // True HVAC model codes: brand prefix + series with kW/BTU-related digits
-  // e.g., AR09TXHQA, AJ020TNTDKH, FTK25TV1, etc.
   const hvacModelRegex = /^(AR|AJ|AE|AC|AM|AN|AP|DVM|FTK|FTX|RXS|RXL|ARXG|ASYG|MSZ|MUZ|RAK|RAS|ALL|FOUR)\d/i;
   let hvacStyleCount = 0;
 
@@ -265,59 +272,35 @@ function detectCatalogStyle(products: PaletteProduct[]): "hvac" | "consumable" {
     }
   }
 
-  // If more than 20% of products look like HVAC models, treat as HVAC catalog
   return hvacStyleCount > products.length * 0.2 ? "hvac" : "consumable";
 }
 
 /**
  * Check if a text row looks like a real product line item (not a description).
- * Two modes:
- *   - Strict (HVAC): requires model code + 2 prices
- *   - Relaxed (consumable): scoring system — text content + price = valid row
  */
 function isProductRow(text: string, relaxed = false): boolean {
   const trimmed = text.trim();
 
-  // Always exclude empty or very short rows
   if (trimmed.length < 6) return false;
-
-  // Exclude bullet points and dashes
   if (trimmed.startsWith("•") || trimmed.startsWith("-") || trimmed.startsWith("–")) return false;
-
-  // Exclude long prose (product rows are typically short tabular data)
   if (trimmed.length > (relaxed ? 250 : 120)) return false;
 
-  // Exclude lines with common description phrases
   const lower = trimmed.toLowerCase();
   if (DESCRIPTION_PHRASES.some(phrase => lower.includes(phrase))) return false;
 
   if (relaxed) {
-    // --- Consumable / materials mode: scoring system ---
-
-    // Section headers — ALL CAPS with no numbers at all (e.g. "ALUMINIUM", "BRACKETS")
     const isSectionHeader = /^[A-Z\s/&-]+$/.test(trimmed) && !/\d/.test(trimmed);
     if (isSectionHeader) return false;
-
-    // Skip rows that look like column headers
     if (/^(item|code|description|product|price|qty|total|unit)\b/i.test(trimmed)) return false;
 
-    // Scoring: +1 for readable text content, +1 for R-prefixed price
     let score = 0;
-
-    // +1 for having meaningful text content (6+ chars, already checked above)
-    score += 1;
-
-    // +1 for having an R-prefixed price
-    if (hasAnyPrice(trimmed)) score += 1;
-
-    // +1 for having a standalone numeric value > 1.00 (price without R prefix)
+    score += 1; // meaningful text content
+    if (hasRealPrice(trimmed)) score += 1;
     const numMatch = trimmed.match(/\b(\d+[.,]\d{2})\b/);
     if (numMatch) {
       const numVal = parseFloat(numMatch[1].replace(",", "."));
       if (numVal > 1.0) score += 1;
     }
-
-    // Score >= 2 means valid product row (text + price)
     return score >= 2;
   }
 
@@ -330,9 +313,39 @@ function isProductRow(text: string, relaxed = false): boolean {
 }
 
 /**
+ * Merge consecutive rows into "product groups" for table-layout PDFs.
+ * A product group is a set of consecutive rows ending with (or containing) a price row.
+ * Non-price rows (e.g., multi-line features) are merged into the next price row's group.
+ * This ensures one icon per product, anchored to the price row.
+ */
+function mergeRowsIntoProductGroups(
+  rows: ExtractedTextItem[][]
+): { allItems: ExtractedTextItem[]; priceRow: ExtractedTextItem[]; fullText: string }[] {
+  const groups: { allItems: ExtractedTextItem[]; priceRow: ExtractedTextItem[]; fullText: string }[] = [];
+  let pendingRows: ExtractedTextItem[][] = [];
+
+  for (const row of rows) {
+    const rowText = row.map(i => i.text).join(" ");
+    pendingRows.push(row);
+
+    if (hasRealPrice(rowText)) {
+      // This row has a real price — finalize the product group
+      const allItems = pendingRows.flat();
+      const fullText = pendingRows.map(r => r.map(i => i.text).join(" ")).join(" ");
+      groups.push({ allItems, priceRow: row, fullText });
+      pendingRows = [];
+    }
+  }
+
+  // Trailing rows without a price are discarded (no icon for them)
+  return groups;
+}
+
+/**
  * Match extracted text rows against products database.
  * Returns positioned regions with matched/unmatched status.
- * Regions with price data are always included (even if unmatched).
+ * Only creates regions for rows with detected prices.
+ * Icons are anchored to the price text item's y-coordinate, at a fixed x of ~95%.
  */
 export function matchTextRowsToProducts(
   items: ExtractedTextItem[],
@@ -342,63 +355,76 @@ export function matchTextRowsToProducts(
 ): ExtractedProductRegion[] {
   const rows = groupTextItemsIntoRows(items);
   const { byCode, byName, byDescription } = buildProductLookup(products);
-  const regions: ExtractedProductRegion[] = [];
 
-  // Determine catalog style from products AND from actual PDF text
+  // Determine catalog style
   const productStyle = detectCatalogStyle(products);
-  
-  // Also scan PDF rows: if most rows have only 1 price, it's consumable-style
   const sampleRows = rows.slice(0, 60).map(r => r.map(i => i.text).join(" "));
   const rowsWithTwoPrices = sampleRows.filter(r => countPrices(r) >= 2).length;
-  const rowsWithOnePrice = sampleRows.filter(r => hasAnyPrice(r)).length;
+  const rowsWithOnePrice = sampleRows.filter(r => hasRealPrice(r)).length;
   const pdfStyleIsConsumable = rowsWithOnePrice > 5 && rowsWithTwoPrices < rowsWithOnePrice * 0.3;
-  
-  // Use relaxed mode if EITHER the products or the PDF text suggest consumable-style
   const isRelaxedCatalog = productStyle === "consumable" || pdfStyleIsConsumable;
 
-  // Debug: count rows that pass/fail the filter
-  let passedRows = 0;
-  let failedRows = 0;
-  let skippedShort = 0;
+  console.log(`[pdfTextExtractor] Total text rows: ${rows.length}, Products: ${products.length}, Style: products=${productStyle}, pdfConsumable=${pdfStyleIsConsumable}, relaxed: ${isRelaxedCatalog}`);
 
-  console.log(`[pdfTextExtractor] Total text rows from PDF: ${rows.length}, Products for matching: ${products.length}, Catalog style: products=${productStyle}, pdfConsumable=${pdfStyleIsConsumable}, relaxed: ${isRelaxedCatalog}, sampled: ${sampleRows.length}, hasPrice: ${rowsWithOnePrice}, has2Prices: ${rowsWithTwoPrices}`);
-  console.log(`[pdfTextExtractor] byCode entries: ${byCode.size}, byName entries: ${byName.size}, byDescription entries: ${byDescription.size}`);
-  // Log first 5 product codes for debugging
-  const sampleCodes = [...byCode.keys()].slice(0, 10);
-  console.log(`[pdfTextExtractor] Sample product codes in lookup: ${sampleCodes.join(", ")}`);
+  // Merge rows into product groups (multi-line features merged with their price row)
+  const productGroups = mergeRowsIntoProductGroups(rows);
 
-  for (const row of rows) {
-    const rowText = row.map((i) => i.text).join(" ");
-    const rowTextLower = rowText.toLowerCase();
+  console.log(`[pdfTextExtractor] Merged ${rows.length} rows into ${productGroups.length} product groups (each has a price)`);
 
-    // Skip very short rows (likely headers, page numbers, etc.)
-    if (rowText.length < 3) {
-      skippedShort++;
+  const regions: ExtractedProductRegion[] = [];
+  const seenProductCodes = new Set<string>();
+  let ghostCount = 0;
+
+  for (const group of productGroups) {
+    const { allItems, priceRow, fullText } = group;
+    const fullTextLower = fullText.toLowerCase();
+
+    // Skip very short text
+    if (fullText.trim().length < 3) continue;
+
+    // Detect the price from the price row
+    const priceRowText = priceRow.map(i => i.text).join(" ");
+    const detectedPrice = detectPrice(priceRowText);
+    if (detectedPrice === null) continue; // Safety: skip if no price detected
+
+    // Find the exact y-coordinate of the rightmost price text item
+    const priceItemRegex = /R\s*[\d\s,]+(?:[.,]\d{1,2})?/;
+    let anchorY = Math.min(...priceRow.map(i => i.y));
+    let anchorHeight = Math.max(...priceRow.map(i => i.height));
+
+    // Scan for the LAST (rightmost) price item — likely the INC VAT column
+    for (const item of priceRow) {
+      if (priceItemRegex.test(item.text)) {
+        anchorY = item.y;
+        anchorHeight = item.height;
+        // Don't break — keep scanning for the rightmost one
+      }
+    }
+
+    // Ghost row check
+    const y_pct_check = (anchorY / pageHeight) * 100;
+    const hasCodePattern = /\b[A-Z]{2,}\d+[A-Z0-9]*\b/i.test(fullText);
+    if (isGhostRow(fullText, y_pct_check, true, hasCodePattern)) {
+      ghostCount++;
       continue;
     }
 
-    // REQUIRE PRICE — skip all rows that have no R-prefixed price
-    if (!hasAnyPrice(rowText)) {
-      failedRows++;
-      continue;
-    }
-
-    // Try to match by product code first (most reliable)
+    // Try to match by product code
     let matched: PaletteProduct | null = null;
     let matchedCode = "";
 
     for (const [code, product] of byCode) {
-      if (code.length >= 3 && rowTextLower.includes(code)) {
+      if (code.length >= 3 && fullTextLower.includes(code)) {
         matched = product;
         matchedCode = product.product_code;
         break;
       }
     }
 
-    // Fall back to short_name matching if no code match
+    // Fall back to short_name matching
     if (!matched) {
       for (const [name, product] of byName) {
-        if (name.length >= 5 && rowTextLower.includes(name)) {
+        if (name.length >= 5 && fullTextLower.includes(name)) {
           matched = product;
           matchedCode = product.product_code;
           break;
@@ -406,10 +432,10 @@ export function matchTextRowsToProducts(
       }
     }
 
-    // Fall back to description matching for consumable-type suppliers
+    // Fall back to description matching for consumable-type
     if (!matched && isRelaxedCatalog) {
       for (const [desc, product] of byDescription) {
-        if (desc.length >= 8 && rowTextLower.includes(desc)) {
+        if (desc.length >= 8 && fullTextLower.includes(desc)) {
           matched = product;
           matchedCode = product.product_code;
           break;
@@ -417,139 +443,75 @@ export function matchTextRowsToProducts(
       }
     }
 
-    // Detect price in the row text
-    const detectedPrice = detectPrice(rowText);
-    const hasPrice = detectedPrice !== null;
+    // For unmatched rows, validate as product row
+    if (!matched && !isProductRow(fullText, isRelaxedCatalog)) continue;
 
-    // For unmatched rows only, require the row to pass product-row validation
-    // Matched rows are ALWAYS included regardless of isProductRow
-    if (!matched && !isProductRow(rowText, isRelaxedCatalog)) {
-      failedRows++;
-      continue;
-    }
-
-    passedRows++;
-
-    // Ghost row check (needs percentage coords, so compute early)
-    const _minX = Math.min(...row.map((i) => i.x));
-    const _minY = Math.min(...row.map(i => i.y));
-    const _y_pct = (_minY / pageHeight) * 100;
-    const hasCodePattern = /\b[A-Z]{2,}\d+[A-Z0-9]*\b/i.test(rowText);
-    if (isGhostRow(rowText, _y_pct, hasPrice, hasCodePattern)) {
-      failedRows++;
-      continue;
-    }
-
-    // Calculate tight bounding box based on font metrics
-    const rowYs = row.map(i => i.y);
-    const rowHeights = row.map(i => i.height);
-    const minY = Math.min(...rowYs);
-    const maxItemHeight = Math.max(...rowHeights);
-    const tightMaxY = minY + maxItemHeight;
-
-    // Find the rightmost price item to position the icon at the price column
-    const priceRegex = /R\s*[\d\s,]+(?:[.,]\d{1,2})?/;
-    let rightmostPriceRightEdge = -1;
-    for (const item of row) {
-      if (priceRegex.test(item.text)) {
-        const rightEdge = item.x + item.width;
-        if (rightEdge > rightmostPriceRightEdge) {
-          rightmostPriceRightEdge = rightEdge;
-        }
-      }
-    }
-
-    // If no price item found among individual items, fallback to max X of row
-    const maxX = Math.max(...row.map((i) => i.x + i.width));
-    const iconX = rightmostPriceRightEdge > 0 ? rightmostPriceRightEdge : maxX;
-
-    // Convert to percentage coordinates — icon positioned at right edge of price
-    const x_pct = (iconX / pageWidth) * 100;
-    const y_pct = (minY / pageHeight) * 100;
-    const w_pct = 4; // narrow, just for the icon
-    const h_pct = ((tightMaxY - minY) / pageHeight) * 100;
-
-    // Skip regions that are too narrow or positioned outside page
-    if (w_pct < 1 || h_pct < 0.2) continue;
-    if (x_pct < 0 || y_pct < 0 || x_pct > 100 || y_pct > 100) continue;
-
-    // ISSUE 3 FIX: Skip regions with empty labels or oversized height (>5% of page)
-    const trimmedLabel = rowText.trim();
-    if (!trimmedLabel || trimmedLabel.length < 2) continue;
-    if (h_pct > 5) continue;
-
-    // Extract product_code from the row text for dedup
-    // Use longer text + price to avoid false dedup of similar rows (e.g. insulation sizes)
+    // Extract product_code for dedup
     const extractedCode = matchedCode || (() => {
-      const codeMatch = rowText.match(/\b([A-Z]{2,}\d+[A-Z0-9]*)\b/);
+      const codeMatch = fullText.match(/\b([A-Z]{2,}\d+[A-Z0-9]*)\b/);
       if (codeMatch) return codeMatch[1];
-      // Include price in key to differentiate rows with similar descriptions but different prices
+      // Include price in key to differentiate similar rows with different prices
       const priceTag = detectedPrice ? `@${detectedPrice}` : "";
-      return trimmedLabel.substring(0, 80) + priceTag;
+      return fullText.trim().substring(0, 80) + priceTag;
     })();
+
+    // Deduplicate by product_code
+    const codeKey = extractedCode.toLowerCase().trim();
+    if (codeKey.length >= 3 && codeKey.length < 40 && seenProductCodes.has(codeKey)) continue;
+    if (codeKey.length >= 3 && codeKey.length < 40) seenProductCodes.add(codeKey);
+
+    // Convert to percentage coordinates — anchored to price item
+    const y_pct = (anchorY / pageHeight) * 100;
+    const x_pct = 95; // Fixed right edge for all icons
+    const w_pct = 4; // Narrow icon width
+    const h_pct = Math.max((anchorHeight / pageHeight) * 100, 1.5); // Minimum height
+
+    // Bounds check
+    if (y_pct < 0 || y_pct > 100 || h_pct > 5) continue;
+
+    const trimmedLabel = fullText.trim().substring(0, 200);
+    if (!trimmedLabel || trimmedLabel.length < 2) continue;
 
     regions.push({
       product: matched,
       product_code: extractedCode,
-      label: trimmedLabel.substring(0, 200),
-      x_pct: Math.max(0, x_pct),
+      label: trimmedLabel,
+      x_pct: Math.max(0, Math.min(x_pct, 96)),
       y_pct: Math.max(0, y_pct),
-      w_pct: Math.min(100 - x_pct, w_pct),
+      w_pct,
       h_pct: Math.min(100 - y_pct, h_pct),
       matched: !!matched,
-      has_price: hasPrice,
+      has_price: true,
       detected_price: detectedPrice,
     });
   }
 
-  // Deduplicate regions by product_code — keep first occurrence
-  const seenCodes = new Set<string>();
-  const deduped: ExtractedProductRegion[] = [];
-  for (const r of regions) {
-    const key = r.product_code.toLowerCase().trim();
-    // Only dedup short product codes (real SKUs), not long description-based keys
-    if (key.length >= 3 && key.length < 40 && seenCodes.has(key)) {
-      continue; // skip duplicate
-    }
-    if (key.length >= 3 && key.length < 40) seenCodes.add(key);
-    deduped.push(r);
-  }
-
-  // Second dedup pass: group by rounded y_pct, keep only the rightmost icon per row
-  const yBuckets = new Map<number, number>(); // bucket → index of rightmost
+  // Second dedup: group by rounded y_pct, keep matched over unmatched
+  const yBuckets = new Map<number, number>();
   const finalDeduped: ExtractedProductRegion[] = [];
-  for (let i = 0; i < deduped.length; i++) {
-    const bucket = Math.round(deduped[i].y_pct / 1.5) * 1.5;
+  for (let i = 0; i < regions.length; i++) {
+    const bucket = Math.round(regions[i].y_pct / 1.5) * 1.5;
     const existing = yBuckets.get(bucket);
     if (existing !== undefined) {
-      // Keep the one with highest x_pct (rightmost)
-      if (deduped[i].x_pct > finalDeduped[existing].x_pct) {
-        finalDeduped[existing] = deduped[i];
+      // Prefer matched over unmatched
+      if (regions[i].matched && !finalDeduped[existing].matched) {
+        finalDeduped[existing] = regions[i];
       }
     } else {
       yBuckets.set(bucket, finalDeduped.length);
-      finalDeduped.push(deduped[i]);
+      finalDeduped.push(regions[i]);
     }
   }
 
-  // Normalize x_pct: align ALL icons to the same vertical column (rightmost price)
-  const maxXPct = finalDeduped.length > 0 ? Math.max(...finalDeduped.map(r => r.x_pct)) : 90;
-  for (const r of finalDeduped) { r.x_pct = maxXPct; }
-
   const matchedCount = finalDeduped.filter(r => r.matched).length;
   const unmatchedCount = finalDeduped.filter(r => !r.matched).length;
-  const unmatchedWithPrice = finalDeduped.filter(r => !r.matched && r.has_price);
-  console.log(`[pdfTextExtractor] Results: ${finalDeduped.length} regions (${matchedCount} matched, ${unmatchedCount} unmatched, ${unmatchedWithPrice.length} unmatched with price), ${regions.length - finalDeduped.length} duplicates removed, ${passedRows} rows passed filter, ${failedRows} rows failed, ${skippedShort} too short`);
-  const sampleUnmatched = unmatchedWithPrice.slice(0, 5);
-  for (const u of sampleUnmatched) {
-    console.log(`[pdfTextExtractor] UNMATCHED: code="${u.product_code}" price=${u.detected_price} label="${u.label.substring(0, 80)}"`);
-  }
+  console.log(`[pdfTextExtractor] Results: ${finalDeduped.length} regions (${matchedCount} matched, ${unmatchedCount} unmatched), ${ghostCount} ghost rows filtered, ${regions.length - finalDeduped.length} y-bucket deduped`);
 
   return finalDeduped;
 }
 
 // Cache for extracted regions per page — versioned to bust on logic changes
-let _extractionVersion = 14; // v14: normalize all icons to same x column
+let _extractionVersion = 15; // v15: product group merging + price anchoring + model code rejection
 const extractionCache = new Map<
   string,
   ExtractedProductRegion[]
@@ -557,7 +519,6 @@ const extractionCache = new Map<
 
 /**
  * Extract and match products from a PDF page, with caching.
- * Returns cached results if available for the same page + product set.
  */
 export async function extractAndMatchPage(
   pdfUrl: string,
