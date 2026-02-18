@@ -26,6 +26,8 @@ import EnhancedProductPopup from "./EnhancedProductPopup";
 import CategoryNavBar, { groupCategory } from "./CategoryNavBar";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
+// Cross-page dedup: tracks seen region keys across all pages to prevent duplicate icons
+const globalSeenRegions = new Map<string, number>(); // key → first pageIndex
 interface VisualCatalogPanelProps {
   open: boolean;
   onClose: () => void;
@@ -95,6 +97,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       setVisiblePageIndex(0);
       setZoom(1);
       clearExtractionCache();
+      globalSeenRegions.clear(); // Reset cross-page dedup on panel open
       // Force all live-extract queries to re-run with latest detection logic
       queryClient.removeQueries({ queryKey: ["visual-panel-live-extract"] });
     }
@@ -728,19 +731,29 @@ const LazyPdfPage = ({
     staleTime: 120000,
   });
 
-  const overlayRegions: OverlayRegion[] = useMemo(() =>
-    liveRegions.map((r, idx) => ({
-      id: `live-${page.id}-${idx}`,
-      x_pct: r.x_pct, y_pct: r.y_pct, w_pct: r.w_pct, h_pct: r.h_pct,
-      product: r.product as PaletteProduct | null,
-      product_code: r.product_code || "",
-      label: r.label || "",
-      has_price: r.has_price,
-      detected_price: r.detected_price,
-      matched: r.matched,
-    })),
-    [liveRegions, page.id]
-  );
+  const overlayRegions: OverlayRegion[] = useMemo(() => {
+    const result: OverlayRegion[] = [];
+    for (let idx = 0; idx < liveRegions.length; idx++) {
+      const r = liveRegions[idx];
+      // Cross-page dedup: skip if this exact item was already seen on an earlier page
+      const dedupKey = `${(r.label || "").substring(0, 80)}|${r.detected_price ?? "no-price"}`;
+      const firstPage = globalSeenRegions.get(dedupKey);
+      if (firstPage !== undefined && firstPage !== pageIndex) continue; // duplicate from another page
+      globalSeenRegions.set(dedupKey, pageIndex);
+
+      result.push({
+        id: `live-${page.id}-${idx}`,
+        x_pct: r.x_pct, y_pct: r.y_pct, w_pct: r.w_pct, h_pct: r.h_pct,
+        product: r.product as PaletteProduct | null,
+        product_code: r.product_code || "",
+        label: r.label || "",
+        has_price: r.has_price,
+        detected_price: r.detected_price,
+        matched: r.matched,
+      });
+    }
+    return result;
+  }, [liveRegions, page.id, pageIndex]);
 
   // Report detected categories to parent for category→page mapping
   useEffect(() => {

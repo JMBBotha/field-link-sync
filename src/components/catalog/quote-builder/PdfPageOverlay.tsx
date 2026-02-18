@@ -1,8 +1,23 @@
-import { useState, memo, useCallback } from "react";
+import { useState, memo, useCallback, useMemo } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Plus, X, Star } from "lucide-react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
+
+const DISMISSED_KEY = "dismissedPdfRegions";
+
+function getDismissedIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DISMISSED_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch { return new Set(); }
+}
+
+function addDismissedId(id: string) {
+  const set = getDismissedIds();
+  set.add(id);
+  localStorage.setItem(DISMISSED_KEY, JSON.stringify([...set]));
+}
 
 export interface OverlayRegion {
   id: string;
@@ -141,16 +156,17 @@ const DraggableRegion = memo(({
     }
   }, [isMatched, product, onToggleFavorite]);
 
-  // BUG 4b: Right-click on unmatched region → remove
+  // Right-click on ANY region → dismiss permanently
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    if (!isMatched && onRemoveRegion) {
-      e.preventDefault();
-      e.stopPropagation();
-      if (window.confirm(`Remove this item?\n\n${region.label.substring(0, 80)}`)) {
-        onRemoveRegion(region);
-      }
+    e.preventDefault();
+    e.stopPropagation();
+    const label = region.label.substring(0, 80);
+    if (window.confirm(`Hide this overlay icon permanently?\n\n${label}`)) {
+      const dismissId = `${region.product_code}|${region.label.substring(0, 40)}`;
+      addDismissedId(dismissId);
+      if (onRemoveRegion) onRemoveRegion(region);
     }
-  }, [isMatched, onRemoveRegion, region]);
+  }, [onRemoveRegion, region]);
 
   return (
     <div
@@ -218,21 +234,12 @@ const DraggableRegion = memo(({
             </button>
           )
         ) : (
-          /* Orange cart for unmatched — pointer-events-auto so right-click works */
+          /* Orange cart for unmatched */
           <button
             className="pointer-events-auto h-4 w-4 rounded-full bg-orange-500 flex items-center justify-center hover:scale-125 transition-all cursor-pointer"
             onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
-            onContextMenu={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              if (onRemoveRegion) {
-                if (window.confirm(`Remove this item?\n\n${region.label.substring(0, 80)}`)) {
-                  onRemoveRegion(region);
-                }
-              }
-            }}
-            title="Right-click to remove"
-            aria-label="Unmatched product. Right-click to remove"
+            title="Right-click to hide"
+            aria-label="Unmatched product. Right-click to hide"
           >
             <ShoppingCart className="h-2 w-2 text-white" />
           </button>
@@ -302,19 +309,30 @@ const PdfPageOverlay = ({
   onRemoveRegion,
 }: PdfPageOverlayProps) => {
   const [unmatchedPopup, setUnmatchedPopup] = useState<OverlayRegion | null>(null);
+  const [, forceUpdate] = useState(0);
 
-  const positionedRegions = regions.filter(
-    (r) =>
-      r.x_pct != null &&
-      r.y_pct != null &&
-      r.w_pct != null &&
-      r.h_pct != null &&
-      (r.w_pct > 0 || r.h_pct > 0)
+  // Filter out dismissed regions from localStorage
+  const dismissedIds = useMemo(() => getDismissedIds(), []);
+
+  const positionedRegions = useMemo(() =>
+    regions.filter((r) => {
+      if (r.x_pct == null || r.y_pct == null || r.w_pct == null || r.h_pct == null) return false;
+      if (r.w_pct <= 0 && r.h_pct <= 0) return false;
+      const dismissId = `${r.product_code}|${r.label.substring(0, 40)}`;
+      if (dismissedIds.has(dismissId)) return false;
+      return true;
+    }),
+    [regions, dismissedIds]
   );
 
   const handleUnmatchedClick = useCallback((region: OverlayRegion) => {
     setUnmatchedPopup(region);
   }, []);
+
+  const handleRemoveRegion = useCallback((region: OverlayRegion) => {
+    forceUpdate(n => n + 1); // trigger re-render to pick up new localStorage
+    onRemoveRegion?.(region);
+  }, [onRemoveRegion]);
 
   if (positionedRegions.length === 0) return null;
 
@@ -334,7 +352,7 @@ const PdfPageOverlay = ({
           onProductClick={onProductClick}
           onUnmatchedClick={handleUnmatchedClick}
           onToggleFavorite={onToggleFavorite}
-          onRemoveRegion={onRemoveRegion}
+          onRemoveRegion={handleRemoveRegion}
         />
       ))}
       {unmatchedPopup && (

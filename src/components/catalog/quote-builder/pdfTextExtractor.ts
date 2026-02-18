@@ -193,6 +193,47 @@ const DESCRIPTION_PHRASES = [
   "for wide rooms", "suitable for", "designed for", "equipped with",
 ];
 
+/** Branding / boilerplate tokens that indicate a ghost row (not a product) */
+const GHOST_PHRASES = [
+  "pricing is subject", "subject to availability", "prices subject",
+  "all prices", "terms and conditions", "e&oe", "errors and omissions",
+  "page ", "tel:", "fax:", "email:", "www.", ".co.za", ".com",
+  "head office", "branch", "warehouse", "copyright", "©",
+  "vat included", "vat excl", "incl vat", "excl vat",
+  "price list", "pricelist", "catalogue", "catalog",
+];
+
+/**
+ * Detect ghost rows: headers, footers, banners, branding text that should NOT
+ * get overlay icons. Call AFTER converting to percentage coordinates.
+ */
+function isGhostRow(
+  text: string,
+  y_pct: number,
+  hasPrice: boolean,
+  hasProductCode: boolean
+): boolean {
+  const trimmed = text.trim();
+  const lower = trimmed.toLowerCase();
+
+  // Very short text with no product code → ghost
+  if (trimmed.length < 10 && !hasProductCode) return true;
+
+  // Top 8% of page → likely header / banner
+  if (y_pct < 8) return true;
+
+  // Bottom 10% without both a valid code AND price → likely footer
+  if (y_pct > 90 && !(hasProductCode && hasPrice)) return true;
+
+  // ALL-CAPS branding text with no digits at all (e.g. "ALLIANCE", "SAMSUNG")
+  if (/^[A-Z\s/&®™-]+$/.test(trimmed) && !/\d/.test(trimmed) && trimmed.length < 40) return true;
+
+  // Contains known ghost/boilerplate phrases
+  if (GHOST_PHRASES.some(phrase => lower.includes(phrase))) return true;
+
+  return false;
+}
+
 /** Count how many R-prefixed price values appear in text (handles SA formats) */
 function countPrices(text: string): number {
   const matches = text.match(/R\s*[\d\s,]+(?:[.,]\d{1,2})?/g);
@@ -382,6 +423,16 @@ export function matchTextRowsToProducts(
 
     passedRows++;
 
+    // Ghost row check (needs percentage coords, so compute early)
+    const _minX = Math.min(...row.map((i) => i.x));
+    const _minY = Math.min(...row.map(i => i.y));
+    const _y_pct = (_minY / pageHeight) * 100;
+    const hasCodePattern = /\b[A-Z]{2,}\d+[A-Z0-9]*\b/i.test(rowText);
+    if (isGhostRow(rowText, _y_pct, hasPrice, hasCodePattern)) {
+      failedRows++;
+      continue;
+    }
+
     // ISSUE 1 FIX: Calculate tight bounding box based on font metrics
     // Use the actual font height of text items, not gap to next row
     const minX = Math.min(...row.map((i) => i.x));
@@ -460,7 +511,7 @@ export function matchTextRowsToProducts(
 }
 
 // Cache for extracted regions per page — versioned to bust on logic changes
-let _extractionVersion = 11; // Bumped: increased product limit from 500→2000, improved matching & debug logging
+let _extractionVersion = 12; // v12: ghost row filtering, cross-page dedup support
 const extractionCache = new Map<
   string,
   ExtractedProductRegion[]
