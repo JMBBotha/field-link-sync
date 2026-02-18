@@ -259,13 +259,9 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
         }
       }
 
-      // Remove from cached query data
-      queryClient.setQueriesData({ queryKey: ["visual-panel-live-extract"] }, (old: any) => {
-        if (!Array.isArray(old)) return old;
-        return old.filter((r: any) => r.product_code !== region.product_code);
-      });
-
+      // Clear extraction cache and force full re-extraction so icon disappears immediately
       clearExtractionCache();
+      queryClient.removeQueries({ queryKey: ["visual-panel-live-extract"] });
       queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
       toast({ title: "Region removed", duration: 2000 });
     } catch (err) {
