@@ -524,7 +524,7 @@ const QuoteBuilderTab = () => {
         onDragCancel={handleDragCancel}
       >
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4" style={{ minHeight: 500 }}>
-          <div className="md:col-span-2 md:max-h-[calc(100vh-280px)] md:overflow-y-auto">
+          <div className="md:col-span-2 flex flex-col max-h-[60vh] min-h-[300px]">
             <ProductPalette
               products={filteredProducts}
               isLoading={isLoading}
