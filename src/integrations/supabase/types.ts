@@ -513,6 +513,24 @@ export type Database = {
         }
         Relationships: []
       }
+      dismissed_pdf_regions: {
+        Row: {
+          created_at: string
+          dismiss_key: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          dismiss_key: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          dismiss_key?: string
+          id?: string
+        }
+        Relationships: []
+      }
       equipment: {
         Row: {
           brand: string | null
