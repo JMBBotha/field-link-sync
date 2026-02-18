@@ -243,9 +243,9 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   // BUG 4b: Remove an auto-inserted region (right-click on orange icon)
   const handleRemoveRegion = useCallback(async (region: OverlayRegion) => {
     try {
-      // If the region has a product_code, try to delete the auto-inserted supplier_product
+      // If the region has a product_code, archive the product instead of deleting
+      // so autoCatalogFromRegions won't re-insert it on next extraction
       if (region.product_code) {
-        // Find the product by code + not archived, then delete by id
         const { data: found } = await (supabase.from("supplier_products") as any)
           .select("id")
           .eq("product_code", region.product_code)
@@ -254,7 +254,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
         
         if (found && found.length > 0) {
           await (supabase.from("supplier_products") as any)
-            .delete()
+            .update({ archived: true, archived_at: new Date().toISOString() })
             .eq("id", found[0].id);
         }
       }
@@ -653,6 +653,26 @@ const LazyPdfPage = ({
     [products]
   );
 
+  // Fetch archived product codes for this supplier to filter out dismissed overlay regions
+  const { data: archivedProductCodes = new Set<string>() } = useQuery({
+    queryKey: ["archived-product-codes", page.supplier_id],
+    enabled: isVisible,
+    queryFn: async () => {
+      const { data } = await (supabase.from("supplier_products") as any)
+        .select("product_code, suppliers!inner(name)")
+        .eq("archived", true);
+      // Filter to products whose supplier name matches this page's supplier_id text
+      const codes = new Set<string>();
+      for (const p of (data || [])) {
+        if (p.product_code && (p.suppliers?.name || "").toLowerCase().includes(page.supplier_id.toLowerCase())) {
+          codes.add(p.product_code.toLowerCase());
+        }
+      }
+      return codes;
+    },
+    staleTime: 30000,
+  });
+
   // Live extraction for this page
   const { data: liveRegions = [], isLoading: extracting } = useQuery({
     queryKey: ["visual-panel-live-extract", page.id, page.pdf_storage_path, activeProducts.length],
@@ -747,6 +767,10 @@ const LazyPdfPage = ({
       if (firstPage !== undefined && firstPage !== pageIndex) continue; // duplicate from another page
       globalSeenRegions.set(dedupKey, pageIndex);
 
+      // Skip regions whose product_code matches an archived (dismissed) product
+      const regionCode = (r.product_code || "").toLowerCase();
+      if (regionCode && archivedProductCodes.has(regionCode)) continue;
+
       result.push({
         id: `live-${page.id}-${idx}`,
         x_pct: r.x_pct, y_pct: r.y_pct, w_pct: r.w_pct, h_pct: r.h_pct,
@@ -759,7 +783,7 @@ const LazyPdfPage = ({
       });
     }
     return result;
-  }, [liveRegions, page.id, pageIndex]);
+  }, [liveRegions, page.id, pageIndex, archivedProductCodes]);
 
   // Report detected categories to parent for category→page mapping
   useEffect(() => {
