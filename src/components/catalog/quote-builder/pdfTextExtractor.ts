@@ -377,6 +377,12 @@ export function matchTextRowsToProducts(
       continue;
     }
 
+    // REQUIRE PRICE — skip all rows that have no R-prefixed price
+    if (!hasAnyPrice(rowText)) {
+      failedRows++;
+      continue;
+    }
+
     // Try to match by product code first (most reliable)
     let matched: PaletteProduct | null = null;
     let matchedCode = "";
@@ -415,7 +421,8 @@ export function matchTextRowsToProducts(
     const detectedPrice = detectPrice(rowText);
     const hasPrice = detectedPrice !== null;
 
-    // For unmatched rows, require the row to pass product-row validation
+    // For unmatched rows only, require the row to pass product-row validation
+    // Matched rows are ALWAYS included regardless of isProductRow
     if (!matched && !isProductRow(rowText, isRelaxedCatalog)) {
       failedRows++;
       continue;
@@ -433,22 +440,33 @@ export function matchTextRowsToProducts(
       continue;
     }
 
-    // ISSUE 1 FIX: Calculate tight bounding box based on font metrics
-    // Use the actual font height of text items, not gap to next row
-    const minX = Math.min(...row.map((i) => i.x));
-    const maxX = Math.max(...row.map((i) => i.x + i.width));
-    // Use the median Y and height from individual text items for tight fit
+    // Calculate tight bounding box based on font metrics
     const rowYs = row.map(i => i.y);
     const rowHeights = row.map(i => i.height);
     const minY = Math.min(...rowYs);
-    // Use the actual font height (max of individual item heights) instead of gap to next row
     const maxItemHeight = Math.max(...rowHeights);
     const tightMaxY = minY + maxItemHeight;
 
-    // Convert to percentage coordinates
-    const x_pct = (minX / pageWidth) * 100;
+    // Find the rightmost price item to position the icon at the price column
+    const priceRegex = /R\s*[\d\s,]+(?:[.,]\d{1,2})?/;
+    let rightmostPriceRightEdge = -1;
+    for (const item of row) {
+      if (priceRegex.test(item.text)) {
+        const rightEdge = item.x + item.width;
+        if (rightEdge > rightmostPriceRightEdge) {
+          rightmostPriceRightEdge = rightEdge;
+        }
+      }
+    }
+
+    // If no price item found among individual items, fallback to max X of row
+    const maxX = Math.max(...row.map((i) => i.x + i.width));
+    const iconX = rightmostPriceRightEdge > 0 ? rightmostPriceRightEdge : maxX;
+
+    // Convert to percentage coordinates — icon positioned at right edge of price
+    const x_pct = (iconX / pageWidth) * 100;
     const y_pct = (minY / pageHeight) * 100;
-    const w_pct = ((maxX - minX) / pageWidth) * 100;
+    const w_pct = 4; // narrow, just for the icon
     const h_pct = ((tightMaxY - minY) / pageHeight) * 100;
 
     // Skip regions that are too narrow or positioned outside page
@@ -484,7 +502,7 @@ export function matchTextRowsToProducts(
     });
   }
 
-  // ISSUE 2 FIX: Deduplicate regions by product_code — keep first occurrence
+  // Deduplicate regions by product_code — keep first occurrence
   const seenCodes = new Set<string>();
   const deduped: ExtractedProductRegion[] = [];
   for (const r of regions) {
@@ -497,21 +515,37 @@ export function matchTextRowsToProducts(
     deduped.push(r);
   }
 
-  const matchedCount = deduped.filter(r => r.matched).length;
-  const unmatchedCount = deduped.filter(r => !r.matched).length;
-  const unmatchedWithPrice = deduped.filter(r => !r.matched && r.has_price);
-  console.log(`[pdfTextExtractor] Results: ${deduped.length} regions (${matchedCount} matched, ${unmatchedCount} unmatched, ${unmatchedWithPrice.length} unmatched with price), ${regions.length - deduped.length} duplicates removed, ${passedRows} rows passed filter, ${failedRows} rows failed, ${skippedShort} too short`);
-  // Log first 5 unmatched regions for debugging
+  // Second dedup pass: group by rounded y_pct, keep only the rightmost icon per row
+  const yBuckets = new Map<number, number>(); // bucket → index of rightmost
+  const finalDeduped: ExtractedProductRegion[] = [];
+  for (let i = 0; i < deduped.length; i++) {
+    const bucket = Math.round(deduped[i].y_pct / 1.5) * 1.5;
+    const existing = yBuckets.get(bucket);
+    if (existing !== undefined) {
+      // Keep the one with highest x_pct (rightmost)
+      if (deduped[i].x_pct > finalDeduped[existing].x_pct) {
+        finalDeduped[existing] = deduped[i];
+      }
+    } else {
+      yBuckets.set(bucket, finalDeduped.length);
+      finalDeduped.push(deduped[i]);
+    }
+  }
+
+  const matchedCount = finalDeduped.filter(r => r.matched).length;
+  const unmatchedCount = finalDeduped.filter(r => !r.matched).length;
+  const unmatchedWithPrice = finalDeduped.filter(r => !r.matched && r.has_price);
+  console.log(`[pdfTextExtractor] Results: ${finalDeduped.length} regions (${matchedCount} matched, ${unmatchedCount} unmatched, ${unmatchedWithPrice.length} unmatched with price), ${regions.length - finalDeduped.length} duplicates removed, ${passedRows} rows passed filter, ${failedRows} rows failed, ${skippedShort} too short`);
   const sampleUnmatched = unmatchedWithPrice.slice(0, 5);
   for (const u of sampleUnmatched) {
     console.log(`[pdfTextExtractor] UNMATCHED: code="${u.product_code}" price=${u.detected_price} label="${u.label.substring(0, 80)}"`);
   }
 
-  return deduped;
+  return finalDeduped;
 }
 
 // Cache for extracted regions per page — versioned to bust on logic changes
-let _extractionVersion = 12; // v12: ghost row filtering, cross-page dedup support
+let _extractionVersion = 13; // v13: require price, rightmost-price icon position, y-dedup
 const extractionCache = new Map<
   string,
   ExtractedProductRegion[]
