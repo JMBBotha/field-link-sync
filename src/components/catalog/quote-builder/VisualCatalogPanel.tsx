@@ -253,9 +253,12 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
           .limit(1);
         
         if (found && found.length > 0) {
-          await (supabase.from("supplier_products") as any)
-            .update({ archived: true, archived_at: new Date().toISOString() })
+          const { error } = await (supabase.from("supplier_products") as any)
+            .update({ archived: true })
             .eq("id", found[0].id);
+          console.log(`[VisualCatalog] Archive product ${found[0].id} for code "${region.product_code}":`, error ? `FAILED: ${error.message}` : "SUCCESS");
+        } else {
+          console.log(`[VisualCatalog] No active product found for code "${region.product_code}" to archive`);
         }
       }
 
@@ -263,6 +266,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       clearExtractionCache();
       queryClient.removeQueries({ queryKey: ["visual-panel-live-extract"] });
       queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
+      queryClient.invalidateQueries({ queryKey: ["archived-product-codes"] });
       toast({ title: "Region removed", duration: 2000 });
     } catch (err) {
       console.error("[VisualCatalog] Remove region failed:", err);
@@ -655,19 +659,20 @@ const LazyPdfPage = ({
 
   // Fetch archived product codes for this supplier to filter out dismissed overlay regions
   const { data: archivedProductCodes = new Set<string>() } = useQuery({
-    queryKey: ["archived-product-codes", page.supplier_id],
+    queryKey: ["archived-product-codes"],
     enabled: isVisible,
     queryFn: async () => {
-      const { data } = await (supabase.from("supplier_products") as any)
-        .select("product_code, suppliers!inner(name)")
+      const { data, error } = await (supabase.from("supplier_products") as any)
+        .select("product_code")
         .eq("archived", true);
-      // Filter to products whose supplier name matches this page's supplier_id text
-      const codes = new Set<string>();
-      for (const p of (data || [])) {
-        if (p.product_code && (p.suppliers?.name || "").toLowerCase().includes(page.supplier_id.toLowerCase())) {
-          codes.add(p.product_code.toLowerCase());
-        }
+      if (error) {
+        console.error("[VisualCatalog] Failed to fetch archived codes:", error.message);
+        return new Set<string>();
       }
+      const codes = new Set<string>(
+        (data || []).map((p: any) => (p.product_code || "").toLowerCase()).filter(Boolean)
+      );
+      console.log(`[VisualCatalog] Archived product codes: ${codes.size} found`);
       return codes;
     },
     staleTime: 30000,
