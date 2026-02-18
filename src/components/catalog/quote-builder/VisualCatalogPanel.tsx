@@ -148,7 +148,17 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       if (selectedSupplier !== "all") query = query.eq("supplier_id", selectedSupplier);
       const { data, error } = await query.limit(500);
       if (error) throw error;
-      return data || [];
+      // Deduplicate by (supplier_id, pdf_filename, page_number) – keep first occurrence
+      const seen = new Set<string>();
+      const deduped: typeof data = [];
+      for (const row of (data || [])) {
+        const key = `${row.supplier_id}|${row.pdf_filename}|${row.page_number}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          deduped.push(row);
+        }
+      }
+      return deduped;
     },
     staleTime: 30000,
   });
