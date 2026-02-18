@@ -397,7 +397,7 @@ const ProductPalette = ({
   }, [bundles, searchQuery, categoryFilter]);
 
   return (
-    <div className="flex flex-col rounded-lg border bg-card overflow-hidden">
+    <div className="flex flex-col rounded-lg border bg-card overflow-hidden h-full min-h-0">
       <div className="p-3 border-b space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-foreground">Product Palette</h3>
@@ -449,8 +449,8 @@ const ProductPalette = ({
         )}
       </div>
 
-      <ScrollArea className="flex-1" style={{ maxHeight: "calc(100vh - 280px)" }}>
-          <div className="p-2 space-y-3">
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="p-2 space-y-3">
             {/* Bundles section */}
             {filteredBundles.length > 0 && (
               <div>
@@ -501,7 +501,7 @@ const ProductPalette = ({
               ))
             )}
           </div>
-        </ScrollArea>
+        </div>
     </div>
   );
 };
