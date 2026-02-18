@@ -532,6 +532,10 @@ export function matchTextRowsToProducts(
     }
   }
 
+  // Normalize x_pct: align ALL icons to the same vertical column (rightmost price)
+  const maxXPct = finalDeduped.length > 0 ? Math.max(...finalDeduped.map(r => r.x_pct)) : 90;
+  for (const r of finalDeduped) { r.x_pct = maxXPct; }
+
   const matchedCount = finalDeduped.filter(r => r.matched).length;
   const unmatchedCount = finalDeduped.filter(r => !r.matched).length;
   const unmatchedWithPrice = finalDeduped.filter(r => !r.matched && r.has_price);
@@ -545,7 +549,7 @@ export function matchTextRowsToProducts(
 }
 
 // Cache for extracted regions per page — versioned to bust on logic changes
-let _extractionVersion = 13; // v13: require price, rightmost-price icon position, y-dedup
+let _extractionVersion = 14; // v14: normalize all icons to same x column
 const extractionCache = new Map<
   string,
   ExtractedProductRegion[]
