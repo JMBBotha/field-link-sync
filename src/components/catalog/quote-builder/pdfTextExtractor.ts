@@ -320,7 +320,11 @@ export function matchTextRowsToProducts(
   let failedRows = 0;
   let skippedShort = 0;
 
-  console.log(`[pdfTextExtractor] Total text rows from PDF: ${rows.length}, Catalog style: products=${productStyle}, pdfConsumable=${pdfStyleIsConsumable}, relaxed: ${isRelaxedCatalog}, sampled: ${sampleRows.length}, hasPrice: ${rowsWithOnePrice}, has2Prices: ${rowsWithTwoPrices}`);
+  console.log(`[pdfTextExtractor] Total text rows from PDF: ${rows.length}, Products for matching: ${products.length}, Catalog style: products=${productStyle}, pdfConsumable=${pdfStyleIsConsumable}, relaxed: ${isRelaxedCatalog}, sampled: ${sampleRows.length}, hasPrice: ${rowsWithOnePrice}, has2Prices: ${rowsWithTwoPrices}`);
+  console.log(`[pdfTextExtractor] byCode entries: ${byCode.size}, byName entries: ${byName.size}, byDescription entries: ${byDescription.size}`);
+  // Log first 5 product codes for debugging
+  const sampleCodes = [...byCode.keys()].slice(0, 10);
+  console.log(`[pdfTextExtractor] Sample product codes in lookup: ${sampleCodes.join(", ")}`);
 
   for (const row of rows) {
     const rowText = row.map((i) => i.text).join(" ");
@@ -444,13 +448,19 @@ export function matchTextRowsToProducts(
 
   const matchedCount = deduped.filter(r => r.matched).length;
   const unmatchedCount = deduped.filter(r => !r.matched).length;
-  console.log(`[pdfTextExtractor] Results: ${deduped.length} regions (${matchedCount} matched, ${unmatchedCount} unmatched), ${regions.length - deduped.length} duplicates removed, ${passedRows} rows passed filter, ${failedRows} rows failed, ${skippedShort} too short`);
+  const unmatchedWithPrice = deduped.filter(r => !r.matched && r.has_price);
+  console.log(`[pdfTextExtractor] Results: ${deduped.length} regions (${matchedCount} matched, ${unmatchedCount} unmatched, ${unmatchedWithPrice.length} unmatched with price), ${regions.length - deduped.length} duplicates removed, ${passedRows} rows passed filter, ${failedRows} rows failed, ${skippedShort} too short`);
+  // Log first 5 unmatched regions for debugging
+  const sampleUnmatched = unmatchedWithPrice.slice(0, 5);
+  for (const u of sampleUnmatched) {
+    console.log(`[pdfTextExtractor] UNMATCHED: code="${u.product_code}" price=${u.detected_price} label="${u.label.substring(0, 80)}"`);
+  }
 
   return deduped;
 }
 
 // Cache for extracted regions per page — versioned to bust on logic changes
-let _extractionVersion = 10; // Bumped: SA price format, scoring-based row detection, auto-catalog error handling
+let _extractionVersion = 11; // Bumped: increased product limit from 500→2000, improved matching & debug logging
 const extractionCache = new Map<
   string,
   ExtractedProductRegion[]

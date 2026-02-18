@@ -122,7 +122,12 @@ export async function autoCatalogFromRegions(
     return true;
   });
 
-  if (unmatched.length === 0) return empty;
+  if (unmatched.length === 0) {
+    console.log(`[autoCatalog] No unmatched regions to process (style: ${isConsumableStyle ? "consumable" : "hvac"}, total regions: ${regions.length}, priced: ${pricedRows.length})`);
+    return empty;
+  }
+
+  console.log(`[autoCatalog] ${unmatched.length} unmatched regions to process (style: ${isConsumableStyle ? "consumable" : "hvac"})`);
 
   // Resolve supplier UUID
   const supplierUuid = await resolveSupplierUuid(supplierText);
@@ -130,6 +135,7 @@ export async function autoCatalogFromRegions(
     console.warn(`[autoCatalog] Could not resolve supplier UUID for "${supplierText}"`);
     return empty;
   }
+  console.log(`[autoCatalog] Resolved supplier UUID: ${supplierUuid} from "${supplierText}"`);
 
   // Extract brand from supplier name
   const brand = supplierText.trim().replace(/\s+$/, "");
@@ -174,7 +180,11 @@ export async function autoCatalogFromRegions(
     candidates.push({ sku: finalSku, description, shortName, price, label: r.label });
   }
 
-  if (candidates.length === 0) return empty;
+  if (candidates.length === 0) {
+    console.log(`[autoCatalog] No candidates after SKU extraction`);
+    return empty;
+  }
+  console.log(`[autoCatalog] ${candidates.length} candidates extracted. First 5:`, candidates.slice(0, 5).map(c => `${c.sku} @ R${c.price}`));
 
   // Check which SKUs already exist for this supplier
   // Check ALL products (including archived) to avoid unique constraint violations
@@ -188,6 +198,10 @@ export async function autoCatalogFromRegions(
 
   // Filter out already-existing products
   const toInsert = candidates.filter(c => !existingCodes.has(c.sku.toLowerCase()));
+  console.log(`[autoCatalog] ${existingCodes.size} existing codes in DB, ${candidates.length - toInsert.length} candidates already exist, ${toInsert.length} new to insert`);
+  if (toInsert.length > 0) {
+    console.log(`[autoCatalog] First 5 to insert:`, toInsert.slice(0, 5).map(c => `${c.sku} @ R${c.price}`));
+  }
   if (toInsert.length === 0) return empty;
 
   // BUG 1 FIX: Always use "Consumables" for consumable-style catalogs
@@ -229,9 +243,11 @@ export async function autoCatalogFromRegions(
       .select("id, product_code, short_name, description, cost_excl_vat, supplier_id, brand");
 
     if (error) {
-      console.error(`[autoCatalog] Upsert batch failed:`, error.message);
+      console.error(`[autoCatalog] Upsert batch failed:`, error.message, error.details, error.hint);
       continue;
     }
+
+    console.log(`[autoCatalog] Batch upsert returned ${inserted?.length ?? 0} rows`);
 
     if (inserted) {
       allNew.push(...inserted);

@@ -118,7 +118,7 @@ const QuoteBuilderTab = () => {
         .or("archived.is.null,archived.eq.false")
         .order("is_pinned", { ascending: false })
         .order("pin_order", { ascending: true, nullsFirst: false })
-        .limit(500);
+        .limit(2000);
 
       if (error) throw error;
       return (data || []).map((p: any) => ({
