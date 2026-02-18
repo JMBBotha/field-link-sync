@@ -490,8 +490,8 @@ const QuoteBuilderTab = () => {
   }, []);
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 sticky top-0 z-10 shadow-sm">
+    <div className="flex flex-col h-[calc(100vh-180px)] overflow-hidden gap-3">
+      <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 z-10 shadow-sm shrink-0">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-muted-foreground">
             Quote Total ({totalItems} items across {baskets.length} zones)
@@ -523,7 +523,7 @@ const QuoteBuilderTab = () => {
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4" style={{ minHeight: 500 }}>
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 flex-1 min-h-0 overflow-hidden">
           <div className="md:col-span-2 flex flex-col max-h-[60vh] min-h-[300px]">
             <ProductPalette
               products={filteredProducts}
@@ -543,7 +543,7 @@ const QuoteBuilderTab = () => {
               onOpenVisualPanel={() => setVisualPanelOpen(true)}
             />
           </div>
-          <div ref={canvasRef} className="md:col-span-3 max-h-[60vh] md:max-h-[calc(100vh-280px)] overflow-y-auto" style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" as any }}>
+          <div ref={canvasRef} className="md:col-span-3 min-h-0 overflow-y-auto" style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" as any }}>
             <BasketCanvas
               baskets={baskets}
               allProducts={products}
@@ -582,7 +582,9 @@ const QuoteBuilderTab = () => {
         />
       </DndContext>
 
-      <QuoteSummaryPanel baskets={baskets} />
+      <div className="shrink-0">
+        <QuoteSummaryPanel baskets={baskets} />
+      </div>
 
       <ACOptionsModal
         open={acModalOpen}
