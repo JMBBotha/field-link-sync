@@ -479,9 +479,12 @@ const AdminQuoteBuilderPage = () => {
     toast({ title: `Added ${newBaskets.length} zones from Area Quote Builder` });
   }, []);
 
+  // PDF search ref – allows wizard to trigger scroll-to-product in the Visual Catalog
+  const pdfSearchRef = useRef<((term: string) => void) | null>(null);
+
   const handleOpenWizardFromPdf = useCallback((item: WizardTriggerItem) => {
     setWizardTriggerItem(item);
-    setVisualPanelOpen(false);
+    // Keep Visual Catalog open – wizard renders on top at z-[60]
     setWizardOpen(true);
   }, []);
 
@@ -600,12 +603,13 @@ const AdminQuoteBuilderPage = () => {
           {activeProduct ? <DragOverlayCard product={activeProduct} /> : null}
         </DragOverlay>
         <FloatingDropZoneStrip baskets={baskets} visible={isDragging && visualPanelOpen} />
-        <VisualCatalogPanel
+      <VisualCatalogPanel
           open={visualPanelOpen} onClose={() => setVisualPanelOpen(false)}
           baskets={baskets} onAddProductToBasket={addProductToBasket}
           onAddBasket={handleAddBasket} onRemoveBasket={handleRemoveBasket}
           products={products} isDragging={isDragging}
           onOpenWizard={handleOpenWizardFromPdf}
+          pdfSearchRef={pdfSearchRef}
         />
       </DndContext>
 
@@ -616,7 +620,8 @@ const AdminQuoteBuilderPage = () => {
       <ACOptionsModal open={acModalOpen} onClose={() => setAcModalOpen(false)} products={products}
         initialProduct={acModalProduct} onConfirm={handleACConfirm} inferredBrand={inferredBrand} inferredType={inferredType} />
       <QuoteBuilderPopup open={wizardOpen} onClose={() => { setWizardOpen(false); setWizardTriggerItem(null); }} products={products}
-        bundles={bundles} onSave={handleWizardSave} triggerItem={wizardTriggerItem} />
+        bundles={bundles} onSave={handleWizardSave} triggerItem={wizardTriggerItem}
+        onPdfSearch={(term) => pdfSearchRef.current?.(term)} />
     </div>
   );
 };

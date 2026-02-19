@@ -40,6 +40,8 @@ interface VisualCatalogPanelProps {
   products: PaletteProduct[];
   isDragging?: boolean;
   onOpenWizard?: (item: WizardTriggerItem) => void;
+  /** Mutable ref that the parent can use to trigger PDF search from outside (e.g. the wizard) */
+  pdfSearchRef?: React.MutableRefObject<((term: string) => void) | null>;
 }
 
 interface PdfPage {
@@ -51,7 +53,7 @@ interface PdfPage {
   pdf_storage_path: string | null;
 }
 
-const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAddBasket, onRemoveBasket, products, isDragging: isDraggingExternal, onOpenWizard }: VisualCatalogPanelProps) => {
+const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAddBasket, onRemoveBasket, products, isDragging: isDraggingExternal, onOpenWizard, pdfSearchRef }: VisualCatalogPanelProps) => {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
@@ -340,6 +342,68 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     }
     return counts;
   }, [baskets]);
+
+  // PDF search: find a product by term and scroll to it
+  const handlePdfSearch = useCallback((term: string) => {
+    if (!term.trim()) return;
+    const lowerTerm = term.toLowerCase();
+    // Search products for a match
+    const match = products.find(p => {
+      const blob = [p.product_code, p.short_name, p.brand, p.description].filter(Boolean).join(" ").toLowerCase();
+      return blob.includes(lowerTerm);
+    });
+    if (!match) {
+      toast({ title: "No match found in PDF", description: `Could not find "${term}" on any page`, duration: 3000 });
+      return;
+    }
+    // Find which page has this product by checking overlay regions in the query cache
+    const allExtractKeys = queryClient.getQueriesData<any[]>({ queryKey: ["visual-panel-live-extract"] });
+    let targetPageIndex: number | null = null;
+    let targetYPct: number | null = null;
+    for (const [key, regions] of allExtractKeys) {
+      if (!Array.isArray(regions)) continue;
+      const pageId = (key as any[])[1] as string;
+      const pageIdx = pages.findIndex(p => p.id === pageId);
+      if (pageIdx === -1) continue;
+      for (const r of regions) {
+        if (r.product?.id === match.id || (r.product_code && r.product_code === match.product_code)) {
+          targetPageIndex = pageIdx;
+          targetYPct = r.y_pct;
+          break;
+        }
+      }
+      if (targetPageIndex !== null) break;
+    }
+    if (targetPageIndex !== null) {
+      const el = pageRefs.current.get(targetPageIndex);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        // If we have a y_pct, scroll a bit further down within the page
+        if (targetYPct != null && scrollContainerRef.current) {
+          setTimeout(() => {
+            const container = scrollContainerRef.current;
+            if (container) {
+              const pageTop = el.offsetTop;
+              const offset = (targetYPct! / 100) * el.offsetHeight;
+              container.scrollTo({ top: pageTop + offset - 100, behavior: "smooth" });
+            }
+          }, 400);
+        }
+      }
+    } else {
+      toast({ title: "Product found but not visible", description: `"${match.product_code}" is in the catalog but not on a currently loaded PDF page`, duration: 3000 });
+    }
+  }, [products, pages, queryClient]);
+
+  // Register the search callback with the parent via ref
+  useEffect(() => {
+    if (pdfSearchRef) {
+      pdfSearchRef.current = open ? handlePdfSearch : null;
+    }
+    return () => {
+      if (pdfSearchRef) pdfSearchRef.current = null;
+    };
+  }, [pdfSearchRef, open, handlePdfSearch]);
 
   // Get all pages for current file (for PdfLinkButton)
   const currentFilePages = useMemo(() => {
