@@ -18,6 +18,7 @@ import ClientProposalView from "./components/client/ClientProposalView";
 // Admin layout + pages
 import AdminLayout from "./components/admin/AdminLayout";
 import { AdminHomePage, AdminMapPage, AdminQuotesPage, AdminProposalsPage, AdminInvoicesPage, AdminImportPage } from "./pages/admin";
+import AdminQuoteBuilderPage from "./pages/admin/AdminQuoteBuilderPage";
 import AdminCatalogPage from "./pages/admin/AdminCatalogPage";
 import AdminDispatchPage from "./pages/admin/AdminDispatchPage";
 import AdminMaintenancePage from "./pages/admin/AdminMaintenancePage";
@@ -97,6 +98,9 @@ const App = () => (
                 <Route path="billing" element={<AdminBillingPage />} />
                 <Route path="suppliers" element={<AdminSuppliersPage />} />
               </Route>
+
+              {/* Full-page Quote Builder (outside AdminLayout for full-bleed) */}
+              <Route path="/admin/quote-builder" element={<AdminQuoteBuilderPage />} />
 
               {/* Redirects from old standalone routes */}
               <Route path="/invoices" element={<Navigate to="/admin/invoices" replace />} />
