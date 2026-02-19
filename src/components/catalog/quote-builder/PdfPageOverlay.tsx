@@ -1,4 +1,4 @@
-import { useState, memo, useCallback, useMemo, useRef } from "react";
+import { useState, memo, useCallback, useMemo } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -92,6 +92,9 @@ const DraggableRegion = memo(({
   onRowStripClick,
   isAddedToQuote,
   iconLeftPct,
+  onHover,
+  onHoverMove,
+  onHoverLeave,
 }: {
   region: OverlayRegion;
   baskets: Basket[];
@@ -104,49 +107,13 @@ const DraggableRegion = memo(({
   onRowStripClick?: (region: OverlayRegion) => void;
   isAddedToQuote?: boolean;
   iconLeftPct: string;
+  onHover: (region: OverlayRegion) => void;
+  onHoverMove: (e: React.MouseEvent) => void;
+  onHoverLeave: () => void;
 }) => {
   const product = region.product;
   const isMatched = !!product;
   const isFavorite = product?.is_pinned === true;
-
-  const [showTooltip, setShowTooltip] = useState(false);
-  const [tipPos, setTipPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-  const stripRef = useRef<HTMLDivElement>(null);
-  const tipRef = useRef<HTMLDivElement>(null);
-
-  const computeTooltipPos = useCallback(() => {
-    const strip = stripRef.current;
-    const tip = tipRef.current;
-    if (!strip || !tip) return;
-    const rect = strip.getBoundingClientRect();
-    const tipW = tip.offsetWidth || 280;
-    const tipH = tip.offsetHeight || 80;
-    // Horizontal: prefer left of row, fall back to right
-    let left: number;
-    if (rect.left >= tipW + 12) {
-      left = rect.left - tipW - 8;
-    } else {
-      left = rect.right + 8;
-    }
-    // Clamp horizontal
-    left = Math.max(4, Math.min(left, window.innerWidth - tipW - 4));
-    // Vertical: align top of row, flip if overflows bottom
-    let top = rect.top;
-    if (top + tipH > window.innerHeight - 4) {
-      top = rect.bottom - tipH;
-    }
-    top = Math.max(4, top);
-    setTipPos({ top, left });
-  }, []);
-
-  const handleMouseEnter = useCallback(() => {
-    setShowTooltip(true);
-    requestAnimationFrame(() => computeTooltipPos());
-  }, [computeTooltipPos]);
-
-  const handleMouseLeave = useCallback(() => {
-    setShowTooltip(false);
-  }, []);
 
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `pdf-overlay-${region.id}`,
@@ -214,11 +181,11 @@ const DraggableRegion = memo(({
         margin: 0,
         padding: 0,
       }}
-      ref={stripRef}
       onClick={handleStripClick}
       onContextMenu={handleContextMenu}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={() => onHover(region)}
+      onMouseMove={onHoverMove}
+      onMouseLeave={onHoverLeave}
     >
       {/* Full-width transparent hit area with hover highlight */}
       <div className="absolute inset-0 hover:bg-primary/5 rounded transition-colors duration-150" />
@@ -291,60 +258,6 @@ const DraggableRegion = memo(({
           </button>
         )}
       </div>
-
-      {/* Fixed-position hover tooltip */}
-      {showTooltip && (
-        <div
-          ref={tipRef}
-          className="fixed pointer-events-none bg-popover border rounded-lg shadow-xl px-3 py-2 text-[10px] whitespace-nowrap max-w-[280px]"
-          style={{ top: tipPos.top, left: tipPos.left, zIndex: 9999 }}
-        >
-          {isMatched && product ? (
-            <div className="space-y-0.5">
-              <p className="font-semibold text-foreground text-[11px] truncate">
-                {product.short_name || product.product_code}
-              </p>
-              <p className="font-mono text-primary/80">{product.product_code}</p>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-foreground">
-                  R{price.toLocaleString("en-ZA")}
-                </span>
-                {product.sold_in_length && product.price_per_metre && (
-                  <span className="text-orange-600 font-medium">
-                    R{product.price_per_metre.toFixed(2)}/m
-                  </span>
-                )}
-              </div>
-              {product.brand && (
-                <p className="text-muted-foreground">{product.brand}</p>
-              )}
-              {inQuoteQty > 0 && (
-                <p className="text-blue-600 font-medium">In quote: ×{inQuoteQty}</p>
-              )}
-              {isFavorite && (
-                <p className="text-yellow-600 font-medium text-[9px]">★ Favorite</p>
-              )}
-              {isAddedToQuote && (
-                <p className="text-green-600 font-medium text-[9px]">✓ Added to quote</p>
-              )}
-              <p className="text-muted-foreground/60 text-[9px] mt-0.5">
-                Click row to add · Drag to zone
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-0.5">
-              <p className="font-semibold text-muted-foreground text-[11px]">Not in catalog</p>
-              <p className="font-mono text-muted-foreground/80 truncate max-w-[250px]">{region.label}</p>
-              {region.detected_price !== null && region.detected_price !== undefined && (
-                <p className="text-foreground font-medium">R{region.detected_price.toLocaleString("en-ZA")}</p>
-              )}
-              <p className="text-muted-foreground/60 text-[9px] mt-0.5">
-                Click row to add manually
-              </p>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 });
@@ -404,6 +317,8 @@ const PdfPageOverlay = ({
   supplierName,
   onOpenWizard,
 }: PdfPageOverlayProps) => {
+  const [hoveredRegion, setHoveredRegion] = useState<OverlayRegion | null>(null);
+  const [tipPos, setTipPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const [localAddedIds, setLocalAddedIds] = useState<Set<string>>(new Set());
   const [, forceUpdate] = useState(0);
   const queryClient = useQueryClient();
@@ -491,7 +406,41 @@ const PdfPageOverlay = ({
   // Dynamically compute icon column position from region geometry
   const iconLeftPct = useMemo(() => computeIconLeftPct(positionedRegions), [positionedRegions]);
 
+  const handleHover = useCallback((region: OverlayRegion) => {
+    setHoveredRegion(region);
+  }, []);
+
+  const handleHoverMove = useCallback((e: React.MouseEvent) => {
+    const mx = e.clientX;
+    const my = e.clientY;
+    const tipW = 280;
+    const tipH = 120;
+    let left = mx + 16;
+    let top = my - 8;
+    if (left + tipW > window.innerWidth - 8) {
+      left = mx - tipW - 16;
+    }
+    if (top + tipH > window.innerHeight - 8) {
+      top = window.innerHeight - tipH - 8;
+    }
+    if (top < 8) top = 8;
+    setTipPos({ top, left });
+  }, []);
+
+  const handleHoverLeave = useCallback(() => {
+    setHoveredRegion(null);
+  }, []);
+
   if (positionedRegions.length === 0) return null;
+
+  const hoveredProduct = hoveredRegion?.product;
+  const hoveredIsMatched = !!hoveredProduct;
+  const hoveredPrice = hoveredProduct?.selling_price || hoveredProduct?.cost_incl_vat || 0;
+  const hoveredInQuoteQty = hoveredProduct ? (basketProductCounts[hoveredProduct.id] || 0) : 0;
+  const hoveredIsFavorite = hoveredProduct?.is_pinned === true;
+  const hoveredIsAdded = hoveredProduct
+    ? localAddedIds.has(hoveredProduct.id) || addedQuoteItemIds.has(hoveredProduct.id)
+    : false;
 
   return (
     <>
@@ -517,6 +466,9 @@ const PdfPageOverlay = ({
               : false
           }
           iconLeftPct={iconLeftPct}
+          onHover={handleHover}
+          onHoverMove={handleHoverMove}
+          onHoverLeave={handleHoverLeave}
         />
       ))}
 
@@ -531,6 +483,58 @@ const PdfPageOverlay = ({
         />
       ))}
 
+      {/* Single shared tooltip rendered outside all rows */}
+      {hoveredRegion && (
+        <div
+          className="fixed pointer-events-none bg-popover border rounded-lg shadow-xl px-3 py-2 text-[10px] whitespace-nowrap max-w-[280px]"
+          style={{ top: tipPos.top, left: tipPos.left, zIndex: 9999 }}
+        >
+          {hoveredIsMatched && hoveredProduct ? (
+            <div className="space-y-0.5">
+              <p className="font-semibold text-foreground text-[11px] truncate">
+                {hoveredProduct.short_name || hoveredProduct.product_code}
+              </p>
+              <p className="font-mono text-primary/80">{hoveredProduct.product_code}</p>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-foreground">
+                  R{hoveredPrice.toLocaleString("en-ZA")}
+                </span>
+                {hoveredProduct.sold_in_length && hoveredProduct.price_per_metre && (
+                  <span className="text-orange-600 font-medium">
+                    R{hoveredProduct.price_per_metre.toFixed(2)}/m
+                  </span>
+                )}
+              </div>
+              {hoveredProduct.brand && (
+                <p className="text-muted-foreground">{hoveredProduct.brand}</p>
+              )}
+              {hoveredInQuoteQty > 0 && (
+                <p className="text-blue-600 font-medium">In quote: ×{hoveredInQuoteQty}</p>
+              )}
+              {hoveredIsFavorite && (
+                <p className="text-yellow-600 font-medium text-[9px]">★ Favorite</p>
+              )}
+              {hoveredIsAdded && (
+                <p className="text-green-600 font-medium text-[9px]">✓ Added to quote</p>
+              )}
+              <p className="text-muted-foreground/60 text-[9px] mt-0.5">
+                Click row to add · Drag to zone
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-0.5">
+              <p className="font-semibold text-muted-foreground text-[11px]">Not in catalog</p>
+              <p className="font-mono text-muted-foreground/80 truncate max-w-[250px]">{hoveredRegion.label}</p>
+              {hoveredRegion.detected_price !== null && hoveredRegion.detected_price !== undefined && (
+                <p className="text-foreground font-medium">R{hoveredRegion.detected_price.toLocaleString("en-ZA")}</p>
+              )}
+              <p className="text-muted-foreground/60 text-[9px] mt-0.5">
+                Click row to add manually
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </>
   );
 };
