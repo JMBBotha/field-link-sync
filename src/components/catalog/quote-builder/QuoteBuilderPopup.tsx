@@ -120,13 +120,13 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
     const props = { areas, onAreasChange: setAreas };
     switch (currentStep) {
       case 0: return <AreaDefinitionStep {...props} />;
-      case 1: return <ACSelectionStep {...props} products={products} />;
+      case 1: return <ACSelectionStep {...props} products={products} onPdfSearch={onPdfSearch} />;
       case 2: return <MaterialsStep {...props} bundles={bundles} products={products} />;
       case 3: return <TimeAllocationStep {...props} />;
       case 4: return <ReviewStep {...props} />;
       default: return null;
     }
-  }, [currentStep, areas, products, bundles]);
+  }, [currentStep, areas, products, bundles, onPdfSearch]);
 
   const grandTotal = useMemo(() => areas.reduce((s, a) => s + computeAreaSubtotal(a), 0), [areas]);
 

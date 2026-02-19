@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Search, Plus, Star, Info, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ interface Props {
   areas: QuoteArea[];
   onAreasChange: (areas: QuoteArea[]) => void;
   products: PaletteProduct[];
+  onPdfSearch?: (term: string) => void;
 }
 
 function PinnedStar({ pinned }: { pinned: boolean }) {
@@ -80,8 +81,9 @@ function areaSummary(area: QuoteArea): string {
   return parts.length === 1 ? parts[0] : `${parts[0]} +${parts.length - 1} more`;
 }
 
-export default function ACSelectionStep({ areas, onAreasChange, products }: Props) {
+export default function ACSelectionStep({ areas, onAreasChange, products, onPdfSearch }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [openArea, setOpenArea] = useState<string>(areas.length > 0 ? areas[0].id : "");
   // Track which slot index is being edited per area
   const [editingSlot, setEditingSlot] = useState<Record<string, number>>(() => {
@@ -183,7 +185,17 @@ export default function ACSelectionStep({ areas, onAreasChange, products }: Prop
         <Input
           placeholder="Search AC units..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => {
+            const val = e.target.value;
+            setSearchQuery(val);
+            // Debounced PDF background scroll
+            if (onPdfSearch) {
+              if (debounceRef.current) clearTimeout(debounceRef.current);
+              debounceRef.current = setTimeout(() => {
+                if (val.trim().length >= 3) onPdfSearch(val.trim());
+              }, 300);
+            }
+          }}
           className="pl-8 h-9 text-sm"
         />
       </div>
