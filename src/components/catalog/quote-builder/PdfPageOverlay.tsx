@@ -10,8 +10,30 @@ import type { QuoteItemData } from "./QuoteItemPopup";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
 const DISMISSED_KEY = "dismissedPdfRegions";
-/** Fixed left% for ALL icons — sits inside QTY column, after price text */
-const ICON_LEFT_PCT = "91%";
+
+/**
+ * Dynamically compute icon column position from region data.
+ * Uses the rightmost edge (x_pct + w_pct) of all regions on this page,
+ * then adds a small gap. Clamps between 85-96% to stay inside the page.
+ * Falls back to 91% if no valid region geometry exists.
+ */
+function computeIconLeftPct(regions: OverlayRegion[]): string {
+  let maxRight = 0;
+  let hasValidGeometry = false;
+  for (const r of regions) {
+    if (r.x_pct != null && r.w_pct != null && r.w_pct > 0) {
+      const right = r.x_pct + r.w_pct;
+      if (right > maxRight) {
+        maxRight = right;
+        hasValidGeometry = true;
+      }
+    }
+  }
+  if (!hasValidGeometry || maxRight < 10) return "91%";
+  // Add ~1% padding after the rightmost content edge, clamp to 85-96%
+  const iconPct = Math.min(96, Math.max(85, maxRight + 1));
+  return `${iconPct.toFixed(1)}%`;
+}
 
 function getDismissedIds(): Set<string> {
   try {
@@ -67,6 +89,7 @@ const DraggableRegion = memo(({
   onRemoveRegion,
   onRowStripClick,
   isAddedToQuote,
+  iconLeftPct,
 }: {
   region: OverlayRegion;
   baskets: Basket[];
@@ -78,6 +101,7 @@ const DraggableRegion = memo(({
   onRemoveRegion?: (region: OverlayRegion) => void;
   onRowStripClick?: (region: OverlayRegion) => void;
   isAddedToQuote?: boolean;
+  iconLeftPct: string;
 }) => {
   const product = region.product;
   const isMatched = !!product;
@@ -163,7 +187,7 @@ const DraggableRegion = memo(({
       {/* Icon positioned in QTY column at fixed left% */}
       <div
         className="absolute top-1/2 -translate-y-1/2 opacity-80 group-hover:opacity-100 transition-opacity z-10 flex flex-row items-center"
-        style={{ left: ICON_LEFT_PCT }}
+        style={{ left: iconLeftPct }}
       >
         {isMatched ? (
           isFavorite ? (
@@ -232,7 +256,7 @@ const DraggableRegion = memo(({
       {/* Hover tooltip */}
       <div
         className="absolute bottom-full mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50"
-        style={{ left: ICON_LEFT_PCT }}
+        style={{ left: iconLeftPct }}
       >
         <div className="bg-popover border rounded-lg shadow-xl px-3 py-2 text-[10px] whitespace-nowrap max-w-[280px]">
           {isMatched && product ? (
@@ -292,10 +316,12 @@ const GhostAddRow = memo(({
   yPct,
   hPct,
   onClick,
+  iconLeftPct,
 }: {
   yPct: number;
   hPct: number;
   onClick: () => void;
+  iconLeftPct: string;
 }) => (
   <div
     className="absolute cursor-pointer group"
@@ -315,7 +341,7 @@ const GhostAddRow = memo(({
     {/* Ghost + icon — only visible on hover */}
     <div
       className="absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity z-10"
-      style={{ left: ICON_LEFT_PCT }}
+      style={{ left: iconLeftPct }}
     >
       <div className="h-4 w-4 rounded-full flex items-center justify-center bg-muted-foreground/20 hover:bg-muted-foreground/40 transition-colors">
         <Plus className="h-2.5 w-2.5 text-muted-foreground" />
@@ -485,6 +511,9 @@ const PdfPageOverlay = ({
     return gaps;
   }, [positionedRegions]);
 
+  // Dynamically compute icon column position from region geometry
+  const iconLeftPct = useMemo(() => computeIconLeftPct(positionedRegions), [positionedRegions]);
+
   if (positionedRegions.length === 0) return null;
 
   return (
@@ -510,6 +539,7 @@ const PdfPageOverlay = ({
               ? localAddedIds.has(region.product.id) || addedQuoteItemIds.has(region.product.id)
               : false
           }
+          iconLeftPct={iconLeftPct}
         />
       ))}
 
@@ -520,6 +550,7 @@ const PdfPageOverlay = ({
           yPct={gap.yPct}
           hPct={gap.hPct}
           onClick={() => handleManualRowClick(gap.yPct)}
+          iconLeftPct={iconLeftPct}
         />
       ))}
 
