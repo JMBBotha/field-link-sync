@@ -180,20 +180,21 @@ const DraggableRegion = memo(({
         isDragging ? "opacity-40 ring-2 ring-primary" : ""
       }`}
       style={{
-        right: "150px",
+        left: "0%",
         top: `${region.y_pct}%`,
-        width: "20px",
+        width: "96%",
         height: `${region.h_pct}%`,
         touchAction: "none",
-        minHeight: "14px",
+        minHeight: "18px",
         margin: 0,
         padding: 0,
       }}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
     >
-      {/* Icon badges */}
-      <div className="absolute top-1/2 -translate-y-1/2 left-0 opacity-80 group-hover:opacity-100 transition-opacity z-10 flex flex-row items-center">
+      {/* Full-width transparent hit area + icon positioned in QTY column */}
+      <div className="absolute inset-0 hover:bg-primary/5 rounded transition-colors duration-150" />
+      <div className="absolute top-1/2 -translate-y-1/2 opacity-80 group-hover:opacity-100 transition-opacity z-10 flex flex-row items-center" style={{ left: "90%" }}>
         {isMatched ? (
           isFavorite ? (
             <button
@@ -247,7 +248,7 @@ const DraggableRegion = memo(({
       </div>
 
       {/* Hover tooltip */}
-      <div className="absolute left-0 bottom-full mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+      <div className="absolute bottom-full mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50" style={{ left: "90%" }}>
         <div className="bg-popover border rounded-lg shadow-xl px-3 py-2 text-[10px] whitespace-nowrap max-w-[280px]">
           {isMatched && product ? (
             <div className="space-y-0.5">
