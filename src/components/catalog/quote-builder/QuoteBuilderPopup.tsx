@@ -136,7 +136,7 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
   return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
       {/* Semi-transparent backdrop – shows PDF behind */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={(e) => { e.stopPropagation(); onClose(); }} />
 
       {/* Dialog content */}
       <div className="relative z-10 bg-background border rounded-lg shadow-2xl max-w-3xl w-[95vw] max-h-[90vh] flex flex-col">
