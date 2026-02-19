@@ -124,9 +124,9 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     queryKey: ["visual-panel-suppliers"],
     enabled: open,
     queryFn: async () => {
-      const { data } = await (supabase.from("supplier_pdf_pages") as any).select("supplier_id").order("supplier_id");
+      const { data } = await (supabase.from("supplier_pdf_pages") as any).select("supplier_id").neq("supplier_id", "").order("supplier_id");
       if (!data) return [];
-      return [...new Set((data as any[]).map((d) => d.supplier_id))] as string[];
+      return [...new Set((data as any[]).map((d) => d.supplier_id))].filter((s: string) => s && s.trim() !== '') as string[];
     },
     staleTime: 60000,
   });
