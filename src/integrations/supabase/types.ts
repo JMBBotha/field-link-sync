@@ -2070,6 +2070,69 @@ export type Database = {
           },
         ]
       }
+      quote_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          item_name: string
+          item_number: string | null
+          notes: string | null
+          product_id: string | null
+          quantity: number
+          quote_id: string | null
+          source: string
+          supplier: string | null
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          item_name: string
+          item_number?: string | null
+          notes?: string | null
+          product_id?: string | null
+          quantity?: number
+          quote_id?: string | null
+          source?: string
+          supplier?: string | null
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          item_name?: string
+          item_number?: string | null
+          notes?: string | null
+          product_id?: string | null
+          quantity?: number
+          quote_id?: string | null
+          source?: string
+          supplier?: string | null
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_line_items: {
         Row: {
           created_at: string
