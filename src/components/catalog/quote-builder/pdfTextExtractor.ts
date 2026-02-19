@@ -381,16 +381,21 @@ export function matchTextRowsToProducts(
   if (priceItems.length === 0) return [];
 
   // STEP 2: Group price items into rows by Y-coordinate
+  // Use a tighter threshold for row grouping (half of yThreshold) to avoid merging adjacent rows
+  const rowGroupThreshold = Math.max(avgHeight * 0.8, 5);
   const sortedPrices = [...priceItems].sort((a, b) => a.y - b.y);
   const priceRows: { items: ExtractedTextItem[] }[] = [];
   let curGroup: ExtractedTextItem[] = [sortedPrices[0]];
+  let groupStartY = sortedPrices[0].y;
 
   for (let i = 1; i < sortedPrices.length; i++) {
-    if (Math.abs(sortedPrices[i].y - curGroup[curGroup.length - 1].y) <= yThreshold) {
+    // Compare against the GROUP START Y, not the last item (prevents cascading merges)
+    if (Math.abs(sortedPrices[i].y - groupStartY) <= rowGroupThreshold) {
       curGroup.push(sortedPrices[i]);
     } else {
       priceRows.push({ items: curGroup.sort((a, b) => a.x - b.x) });
       curGroup = [sortedPrices[i]];
+      groupStartY = sortedPrices[i].y;
     }
   }
   priceRows.push({ items: curGroup.sort((a, b) => a.x - b.x) });
@@ -400,17 +405,28 @@ export function matchTextRowsToProducts(
 
   // STEP 3: For each price row, gather context and build a region
   const regions: ExtractedProductRegion[] = [];
+  let skippedCount = { noPrice: 0, ghost: 0, outOfBounds: 0 };
 
   for (const pRow of priceRows) {
     const rightmost = pRow.items[pRow.items.length - 1];
-    // Try explicit R-prefixed price first, then raw numeric parse for virtual-merged items
+    // Try explicit R-prefixed price first, then raw numeric parse for column-based items
     let detectedPrice = detectPrice(rightmost.text);
     if (detectedPrice === null) {
-      const raw = rightmost.text.trim().replace(/\s/g, "").replace(/,(?=\d{1,2}$)/, ".");
+      // Column-based prices are bare numbers without R prefix
+      let raw = rightmost.text.trim().replace(/\s/g, "");
+      // Handle SA comma-as-decimal format: "172,79" → "172.79"
+      if (/,\d{1,2}$/.test(raw) && !/\.\d/.test(raw)) {
+        raw = raw.replace(/,(?=\d{1,2}$)/, ".");
+      } else {
+        raw = raw.replace(/,/g, "");
+      }
       const val = parseFloat(raw);
-      if (!isNaN(val) && val >= 50) detectedPrice = val;
+      if (!isNaN(val) && val >= 1) detectedPrice = val;
     }
-    if (detectedPrice === null || detectedPrice < 1) continue;
+    if (detectedPrice === null || detectedPrice < 1) {
+      skippedCount.noPrice++;
+      continue;
+    }
 
     const rowAvgY = pRow.items.reduce((s, i) => s + i.y, 0) / pRow.items.length;
 
@@ -431,7 +447,7 @@ export function matchTextRowsToProducts(
     const allContext = [...aboveItems, ...contextItems];
     const hasModel = allContext.some((i) => modelRegex.test(i.text.trim()));
 
-    if (y_pct < 3 && !hasModel) continue;
+    if (y_pct < 3 && !hasModel) { skippedCount.ghost++; continue; }
 
     // Build match text from all context
     const matchText = allContext.map((it) => it.text).join(" ").toLowerCase();
@@ -478,7 +494,7 @@ export function matchTextRowsToProducts(
 
     const anchorHeight = rightmost.height;
     const h_pct = Math.max((anchorHeight / pageHeight) * 100, 1.5);
-    if (y_pct > 100 || h_pct > 5) continue;
+    if (y_pct > 100 || h_pct > 5) { skippedCount.outOfBounds++; continue; }
 
     regions.push({
       product: matched,
@@ -494,6 +510,8 @@ export function matchTextRowsToProducts(
     });
   }
 
+  console.log(`[pdfExtract] Row processing: ${priceRows.length} price rows → ${regions.length} regions. Skipped: noPrice=${skippedCount.noPrice}, ghost=${skippedCount.ghost}, outOfBounds=${skippedCount.outOfBounds}`);
+
   // Align all icons to a single X column
   if (regions.length > 0) {
     const maxX = Math.max(...regions.map((r) => r.x_pct));
@@ -504,7 +522,7 @@ export function matchTextRowsToProducts(
 }
 
 // Cache for extracted regions per page
-let _extractionVersion = 30; // v30: relaxed thresholds (x>40%, minPrice>=1) + page 3 debug
+let _extractionVersion = 32; // v32: fixed cascading row merge bug + tighter row grouping threshold
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 
 /**
