@@ -112,21 +112,20 @@ function buildProductLookup(products: PaletteProduct[]) {
  * Only returns prices — rejects model codes like R32, R410A.
  */
 function detectPrice(text: string): number | null {
-  // Try decimal prices first (e.g. R1,738.26, R260.74, R12,15)
-  const decimalMatch = text.match(/R\s*([\d\s,]+[.,]\d{1,2})\b/);
-  if (decimalMatch) {
-    let raw = decimalMatch[1].trim();
-    if (/,\d{1,2}$/.test(raw) && !/\.\d/.test(raw)) {
-      raw = raw.replace(/\s/g, "").replace(/,(?=\d{1,2}$)/, ".");
-    } else {
-      raw = raw.replace(/[,\s]/g, "");
+  // Try decimal prices first (e.g. R1,738.26, R260.74, R12,15, R4 399,00)
+  const decimalMatch = text.match(/R\s*([\d\s,]+[.,]\d{1,2})(?:\s|$|[^A-Za-z0-9])/);
+  if (!decimalMatch) {
+    // Also try without trailing boundary (end of string)
+    const decimalMatch2 = text.match(/R\s*([\d\s,]+[.,]\d{1,2})$/);
+    if (decimalMatch2) {
+      return parseRawPrice(decimalMatch2[1]);
     }
-    const val = parseFloat(raw);
-    if (!isNaN(val) && val >= 1) return val;
+  } else {
+    return parseRawPrice(decimalMatch[1]);
   }
 
   // Whole number prices >= 50, NOT followed by a letter (rejects R32W, R410A)
-  const wholeMatch = text.match(/R\s*(\d{2,}(?:\s\d{3})*)(?![A-Za-z])/);
+  const wholeMatch = text.match(/R\s*(\d[\d\s]*)(?![A-Za-z])/);
   if (wholeMatch) {
     const raw = wholeMatch[1].replace(/\s/g, "");
     const val = parseFloat(raw);
@@ -136,15 +135,89 @@ function detectPrice(text: string): number | null {
   return null;
 }
 
+function parseRawPrice(captured: string): number | null {
+  let raw = captured.trim();
+  // SA format: comma as decimal (R4 399,00) — no dot present
+  if (/,\d{1,2}$/.test(raw) && !/\.\d/.test(raw)) {
+    raw = raw.replace(/\s/g, "").replace(/,(?=\d{1,2}$)/, ".");
+  } else {
+    // International format: dot decimal, comma/space thousands
+    raw = raw.replace(/[,\s]/g, "");
+  }
+  const val = parseFloat(raw);
+  if (!isNaN(val) && val >= 1) return val;
+  return null;
+}
+
 /** Check if a text item contains an R-prefixed price */
 function isPriceItem(text: string): boolean {
   return detectPrice(text) !== null;
 }
 
 /**
+ * Merge adjacent text items where "R" or "R<digits>" is followed by a numeric
+ * continuation on the same Y-line. This handles PDFs that split prices like
+ * "R4" + "399,00" or "R" + "4 399,00" into separate text items.
+ */
+function mergeAdjacentPriceFragments(
+  items: ExtractedTextItem[],
+  yThreshold: number
+): ExtractedTextItem[] {
+  const merged: ExtractedTextItem[] = [];
+  const used = new Set<number>();
+
+  for (let i = 0; i < items.length; i++) {
+    if (used.has(i)) continue;
+    const item = items[i];
+    const trimmed = item.text.trim();
+
+    // Check if this item starts with R and could be a price fragment
+    // e.g. "R", "R4", "R16" but NOT "R410A", "R32W"
+    if (/^R\d*$/i.test(trimmed) && !isPriceItem(item.text)) {
+      // Look for a numeric continuation on the same Y-line, to the right
+      let bestJ = -1;
+      let bestDist = Infinity;
+      for (let j = 0; j < items.length; j++) {
+        if (j === i || used.has(j)) continue;
+        if (Math.abs(items[j].y - item.y) > yThreshold) continue;
+        // Must be to the right and close
+        const dist = items[j].x - (item.x + item.width);
+        if (dist >= -2 && dist < bestDist) {
+          // Must look like the numeric part of a price
+          const jText = items[j].text.trim();
+          if (/^[\d\s,.][\d\s,.]+$/.test(jText)) {
+            bestJ = j;
+            bestDist = dist;
+          }
+        }
+      }
+      if (bestJ >= 0 && bestDist < item.width * 2) {
+        const combined = item.text.trim() + " " + items[bestJ].text.trim();
+        if (isPriceItem(combined)) {
+          merged.push({
+            text: combined,
+            x: item.x,
+            y: item.y,
+            width: (items[bestJ].x + items[bestJ].width) - item.x,
+            height: Math.max(item.height, items[bestJ].height),
+          });
+          used.add(i);
+          used.add(bestJ);
+          continue;
+        }
+      }
+    }
+
+    merged.push(item);
+  }
+
+  return merged;
+}
+
+/**
  * PRICE-FIRST: Match extracted text against products database.
  *
- * 1. Find ALL price items
+ * 1. Find ALL price items (including merged R+number fragments)
  * 2. Group prices into rows by Y proximity
  * 3. For each price row, gather all text on the same Y-line
  * 4. Match against product DB
@@ -160,15 +233,33 @@ export function matchTextRowsToProducts(
 
   const { byCode, byName, byDescription } = buildProductLookup(products);
 
+  // ── STEP 0: Estimate Y threshold for merging fragments ──
+  const sortedAll = [...items].sort((a, b) => a.y - b.y);
+  const allGaps: number[] = [];
+  for (let i = 1; i < sortedAll.length; i++) {
+    const g = sortedAll[i].y - sortedAll[i - 1].y;
+    if (g > 0.5) allGaps.push(g);
+  }
+  allGaps.sort((a, b) => a - b);
+  const earlyThreshold = allGaps.length > 0 ? Math.max(4, allGaps[Math.floor(allGaps.length / 4)] * 0.8) : 6;
+
+  // ── STEP 0b: Merge R + number fragments ──
+  const mergedItems = mergeAdjacentPriceFragments(items, earlyThreshold);
+
   // ── STEP 1: Find all price items ──
   const priceItems: ExtractedTextItem[] = [];
-  for (const item of items) {
+  for (const item of mergedItems) {
     if (isPriceItem(item.text)) {
       priceItems.push(item);
     }
   }
 
-  if (priceItems.length === 0) return [];
+  if (priceItems.length === 0) {
+    console.log(`[pdfTextExtractor] v17: No price items found in ${items.length} text items`);
+    return [];
+  }
+
+  console.log(`[pdfTextExtractor] v17: Found ${priceItems.length} price items out of ${mergedItems.length} text items (${items.length} raw), ${products.length} products`);
 
   console.log(`[pdfTextExtractor] Found ${priceItems.length} price items out of ${items.length} text items, ${products.length} products`);
 
@@ -199,7 +290,7 @@ export function matchTextRowsToProducts(
   }
   if (curRow.length > 0) priceRows.push(curRow);
 
-  console.log(`[pdfTextExtractor] Grouped into ${priceRows.length} price rows (threshold=${yThreshold.toFixed(1)})`);
+  console.log(`[pdfTextExtractor] v17: Grouped into ${priceRows.length} price rows (threshold=${yThreshold.toFixed(1)})`);
 
   // ── STEP 3: For each price row, gather all text on same Y-line and build region ──
   const regions: ExtractedProductRegion[] = [];
@@ -326,13 +417,13 @@ export function matchTextRowsToProducts(
   }
 
   const matchedCount = deduped.filter(r => r.matched).length;
-  console.log(`[pdfTextExtractor] Results: ${deduped.length} regions (${matchedCount} matched, ${deduped.length - matchedCount} unmatched)`);
+  console.log(`[pdfTextExtractor] v17: Results: ${deduped.length} regions (${matchedCount} matched, ${deduped.length - matchedCount} unmatched)`);
 
   return deduped;
 }
 
 // Cache for extracted regions per page
-let _extractionVersion = 16; // v16: price-first approach
+let _extractionVersion = 17; // v17: merge R+number fragments, robust price detection
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 
 /**
