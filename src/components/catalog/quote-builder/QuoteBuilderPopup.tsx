@@ -1,9 +1,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, Check, Wand2 } from "lucide-react";
+import { createPortal } from "react-dom";
+import { ChevronLeft, ChevronRight, Check, Wand2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { PaletteProduct, Basket, BasketItem } from "../QuoteBuilderTab";
 import type { QuoteArea } from "./quoteWizardTypes";
@@ -39,9 +37,11 @@ interface Props {
   onSave: (baskets: Basket[]) => void;
   /** Pre-fill from PDF click */
   triggerItem?: WizardTriggerItem | null;
+  /** Trigger PDF scroll in background Visual Catalog */
+  onPdfSearch?: (term: string) => void;
 }
 
-export default function QuoteBuilderPopup({ open, onClose, products, bundles, onSave, triggerItem }: Props) {
+export default function QuoteBuilderPopup({ open, onClose, products, bundles, onSave, triggerItem, onPdfSearch }: Props) {
   const [currentStep, setCurrentStep] = useState(0);
   const [areas, setAreas] = useState<QuoteArea[]>([]);
 
@@ -130,15 +130,26 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
 
   const grandTotal = useMemo(() => areas.reduce((s, a) => s + computeAreaSubtotal(a), 0), [areas]);
 
-  return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-3xl w-[95vw] max-h-[90vh] flex flex-col p-0 gap-0">
-        <DialogHeader className="px-4 pt-4 pb-2 border-b shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-base">
+  if (!open) return null;
+
+  // Render as a portal overlay at z-[60] to sit above Visual Catalog (z-50)
+  return createPortal(
+    <div className="fixed inset-0 z-[60] flex items-center justify-center">
+      {/* Semi-transparent backdrop – shows PDF behind */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
+
+      {/* Dialog content */}
+      <div className="relative z-10 bg-background border rounded-lg shadow-2xl max-w-3xl w-[95vw] max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b shrink-0">
+          <h2 className="flex items-center gap-2 text-base font-semibold">
             <Wand2 className="h-4 w-4" />
             Area Quote Builder
-          </DialogTitle>
-        </DialogHeader>
+          </h2>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
 
         {/* Stepper */}
         <div className="flex items-center gap-1 px-4 py-3 border-b overflow-x-auto shrink-0">
@@ -192,7 +203,8 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
             )}
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>,
+    document.body
   );
 }
