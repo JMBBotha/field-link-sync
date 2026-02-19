@@ -231,23 +231,153 @@ function mergeAdjacentPriceFragments(
  * 4. Match against product DB
  * 5. Dedup and align icons
  */
-export function matchTextRowsToProducts(
+/**
+ * PRICE-FIRST scan: find individual price text items, group by Y, build rows.
+ * This approach is immune to row-merge issues because it finds prices first.
+ */
+function priceFirstScan(
   items: ExtractedTextItem[],
   pageWidth: number,
   pageHeight: number,
-  products: PaletteProduct[]
+  products: PaletteProduct[],
+  lookup: ReturnType<typeof buildProductLookup>
 ): ExtractedProductRegion[] {
-  if (items.length === 0 || pageHeight === 0) return [];
-
-  // Pre-merge fragmented price items (e.g. "R" + "45,752")
+  const { byCode, byName, byDescription } = lookup;
   const mergedItems = mergeAdjacentPriceFragments(items, 3);
 
-  const { byCode, byName, byDescription } = buildProductLookup(products);
+  // Find ALL text items that contain an R-prefixed price >= 1000
+  const priceItems: { item: ExtractedTextItem; price: number; y_pct: number }[] = [];
+  for (const item of mergedItems) {
+    const p = detectPrice(item.text);
+    if (p !== null && p >= 50) {
+      priceItems.push({ item, price: p, y_pct: (item.y / pageHeight) * 100 });
+    }
+  }
 
-  // ── STEP 1: Group ALL text items into rows by Y-proximity ──
+  if (priceItems.length === 0) return [];
+
+  // Group price items by Y-coordinate with tight 0.15% tolerance
+  priceItems.sort((a, b) => a.y_pct - b.y_pct);
+  const priceRows: typeof priceItems[] = [[priceItems[0]]];
+  for (let i = 1; i < priceItems.length; i++) {
+    const lastGroup = priceRows[priceRows.length - 1];
+    const lastY = lastGroup[lastGroup.length - 1].y_pct;
+    if (priceItems[i].y_pct - lastY < 0.15) {
+      lastGroup.push(priceItems[i]);
+    } else {
+      priceRows.push([priceItems[i]]);
+    }
+  }
+
+  // For each price Y-group, build a product region
+  const regions: ExtractedProductRegion[] = [];
+  const seenPriceY = new Set<string>();
+
+  for (const group of priceRows) {
+    // Use the rightmost price as the detected price
+    const rightmost = group.reduce((best, cur) =>
+      cur.item.x > best.item.x ? cur : best, group[0]);
+    const detectedPrice = rightmost.price;
+    const anchorY = rightmost.y_pct;
+    const anchorHeight = rightmost.item.height;
+
+    // Dedup key: price + Y bucket
+    const dedupKey = `${detectedPrice}@${Math.round(anchorY * 10)}`;
+    if (seenPriceY.has(dedupKey)) continue;
+    seenPriceY.add(dedupKey);
+
+    // Ghost filter: skip prices in top 3% without model code
+    if (anchorY < 3) continue;
+
+    // Gather context: all text items within ±0.5% Y range
+    const yMin = rightmost.item.y - pageHeight * 0.005;
+    const yMax = rightmost.item.y + pageHeight * 0.005;
+    const contextItems = mergedItems
+      .filter(it => it.y >= yMin && it.y <= yMax)
+      .sort((a, b) => a.x - b.x);
+    const rowText = contextItems.map(it => it.text).join(" ");
+
+    if (rowText.trim().length < 3) continue;
+
+    // Expand for model code matching (fat row)
+    const fatYMin = rightmost.item.y - pageHeight * 0.02;
+    const fatYMax = rightmost.item.y + pageHeight * 0.02;
+    const fatItems = items
+      .filter(it => it.y >= fatYMin && it.y <= fatYMax)
+      .sort((a, b) => a.x - b.x);
+    const matchText = fatItems.map(it => it.text).join(" ").toLowerCase();
+
+    // Match against product DB
+    let matched: PaletteProduct | null = null;
+    let matchedCode = "";
+
+    for (const [code, product] of byCode) {
+      if (code.length >= 3 && matchText.includes(code)) {
+        matched = product;
+        matchedCode = product.product_code;
+        break;
+      }
+    }
+    if (!matched) {
+      for (const [name, product] of byName) {
+        if (name.length >= 5 && matchText.includes(name)) {
+          matched = product;
+          matchedCode = product.product_code;
+          break;
+        }
+      }
+    }
+    if (!matched) {
+      for (const [desc, product] of byDescription) {
+        if (desc.length >= 8 && matchText.includes(desc)) {
+          matched = product;
+          matchedCode = product.product_code;
+          break;
+        }
+      }
+    }
+
+    const extractedCode = matchedCode || (() => {
+      const fatText = fatItems.map(it => it.text).join(" ");
+      const codeMatch = fatText.match(/\b([A-Z]{2,}\d+[A-Z0-9-]*)\b/);
+      if (codeMatch) return codeMatch[1];
+      return rowText.trim().substring(0, 80) + `@${detectedPrice}`;
+    })();
+
+    const h_pct = Math.max((anchorHeight / pageHeight) * 100, 1.5);
+    if (anchorY > 100 || h_pct > 5) continue;
+
+    regions.push({
+      product: matched,
+      product_code: extractedCode,
+      label: rowText.trim().substring(0, 200),
+      x_pct: 95,
+      y_pct: Math.max(0, anchorY),
+      w_pct: 4,
+      h_pct: Math.min(100 - anchorY, h_pct),
+      matched: !!matched,
+      has_price: true,
+      detected_price: detectedPrice,
+    });
+  }
+
+  return regions;
+}
+
+/**
+ * LEGACY row-grouping approach (fallback).
+ */
+function rowGroupingScan(
+  items: ExtractedTextItem[],
+  pageWidth: number,
+  pageHeight: number,
+  products: PaletteProduct[],
+  lookup: ReturnType<typeof buildProductLookup>
+): ExtractedProductRegion[] {
+  const { byCode, byName, byDescription } = lookup;
+  const mergedItems = mergeAdjacentPriceFragments(items, 3);
   const sorted = [...mergedItems].sort((a, b) => a.y - b.y);
 
-  // Compute adaptive Y threshold from consecutive Y gaps
   const gaps: number[] = [];
   for (let i = 1; i < sorted.length; i++) {
     const g = sorted[i].y - sorted[i - 1].y;
@@ -255,17 +385,13 @@ export function matchTextRowsToProducts(
   }
   gaps.sort((a, b) => a - b);
   const medianGap = gaps.length > 0 ? gaps[Math.floor(gaps.length / 2)] : 6;
-  // Use tighter threshold: no floor of 4, just 60% of median gap (min 1.5)
   const yThreshold = Math.max(1.5, medianGap * 0.6);
-
-  console.log('[PDF_DEBUG] medianGap:', medianGap.toFixed(2), 'yThreshold:', yThreshold.toFixed(2), 'items:', sorted.length);
 
   const textRows: ExtractedTextItem[][] = [];
   let curRow: ExtractedTextItem[] = [sorted[0]];
   let curRowMaxY = sorted[0].y;
 
   for (let i = 1; i < sorted.length; i++) {
-    // Compare against the MAX Y in current row, not just the first item
     if (sorted[i].y - curRowMaxY > yThreshold) {
       textRows.push(curRow);
       curRow = [];
@@ -277,135 +403,66 @@ export function matchTextRowsToProducts(
   }
   if (curRow.length > 0) textRows.push(curRow);
 
-  console.log('[PDF_DEBUG] Initial rows formed:', textRows.length);
-
-  // ── STEP 1.5: Split merged rows that contain multiple distinct prices ──
-  const splitRows: ExtractedTextItem[][] = [];
-  const subThreshold = Math.max(1, yThreshold / 3);
-
-  for (let ri = 0; ri < textRows.length; ri++) {
-    const row = textRows[ri];
-    const sortedRow = [...row].sort((a, b) => a.x - b.x);
-    const rowText = sortedRow.map(it => it.text).join(" ");
-    const prices = detectAllPrices(rowText);
-    const uniquePrices = [...new Set(prices)];
-
-    if (uniquePrices.length > 1) {
-      // Multiple distinct prices — sub-group by tighter Y-proximity
-      const byY = [...row].sort((a, b) => a.y - b.y);
-      const subRows: ExtractedTextItem[][] = [[byY[0]]];
-      let subY = byY[0].y;
-      for (let k = 1; k < byY.length; k++) {
-        if (byY[k].y - subY > subThreshold) {
-          subRows.push([]);
-          subY = byY[k].y;
-        }
-        subRows[subRows.length - 1].push(byY[k]);
-      }
-      if (subRows.length > 1) {
-        console.log('[PDF_DEBUG] SPLIT row', ri, 'into', subRows.length, 'sub-rows. Prices:', uniquePrices, 'text:', rowText.substring(0, 100));
-        for (const sr of subRows) splitRows.push(sr);
-      } else {
-        console.log('[PDF_DEBUG] Row', ri, 'has', uniquePrices.length, 'prices but could NOT split. Text:', rowText.substring(0, 100));
-        splitRows.push(row);
-      }
-    } else {
-      splitRows.push(row);
-    }
-  }
-
-  console.log('[PDF_DEBUG] After split:', splitRows.length, 'rows');
-
-  // ── STEP 2: Identify price rows, then expand with "fat row" for context ──
   const regions: ExtractedProductRegion[] = [];
   const seenCodes = new Set<string>();
-  let priceRowCount = 0;
-  const fatRowExpansion = yThreshold * 3; // Look 3x wider for model codes
+  const fatRowExpansion = yThreshold * 3;
 
-  for (let index = 0; index < splitRows.length; index++) {
-    const row = splitRows[index];
+  for (const row of textRows) {
     const sortedRow = [...row].sort((a, b) => a.x - b.x);
     const rowText = sortedRow.map(it => it.text).join(" ");
-
-    // Detect price on the FULL concatenated row text
     const detectedPrice = detectPrice(rowText);
-
     if (detectedPrice === null) continue;
 
-    priceRowCount++;
-
-    // Find rightmost item for icon anchor
     const anchor = sortedRow.reduce((best, item) =>
       (item.x + item.width > best.x + best.width) ? item : best, sortedRow[0]);
     const anchorY = anchor.y;
     const anchorHeight = anchor.height;
-
-    // Ghost filter: skip prices in top 3% without model code
     const y_pct = (anchorY / pageHeight) * 100;
-    if (y_pct < 3) {
-      if (!/\b[A-Z]{2,}\d+[A-Z0-9]*\b/i.test(rowText)) continue;
-    }
 
+    if (y_pct < 3 && !/\b[A-Z]{2,}\d+[A-Z0-9]*\b/i.test(rowText)) continue;
     if (rowText.trim().length < 3) continue;
 
-    // ── "FAT ROW": expand Y range to capture model codes on nearby lines ──
     const rowMinY = Math.min(...row.map(it => it.y));
     const rowMaxY = Math.max(...row.map(it => it.y));
     const fatItems = items
       .filter(it => it.y >= rowMinY - fatRowExpansion && it.y <= rowMaxY + fatRowExpansion)
       .sort((a, b) => a.x - b.x);
     const fatRowText = fatItems.map(it => it.text).join(" ");
-    const fatRowTextLower = fatRowText.toLowerCase();
+    const matchText = fatRowText.toLowerCase();
 
-    // Use fat row text for matching, but narrow row text for label
-    const matchText = fatRowTextLower;
-
-    // ── Try matching against product DB ──
     let matched: PaletteProduct | null = null;
     let matchedCode = "";
 
     for (const [code, product] of byCode) {
       if (code.length >= 3 && matchText.includes(code)) {
-        matched = product;
-        matchedCode = product.product_code;
-        break;
+        matched = product; matchedCode = product.product_code; break;
       }
     }
-
     if (!matched) {
       for (const [name, product] of byName) {
         if (name.length >= 5 && matchText.includes(name)) {
-          matched = product;
-          matchedCode = product.product_code;
-          break;
+          matched = product; matchedCode = product.product_code; break;
         }
       }
     }
-
     if (!matched) {
       for (const [desc, product] of byDescription) {
         if (desc.length >= 8 && matchText.includes(desc)) {
-          matched = product;
-          matchedCode = product.product_code;
-          break;
+          matched = product; matchedCode = product.product_code; break;
         }
       }
     }
 
-    // Extract a code for dedup (from fat row text for better coverage)
     const extractedCode = matchedCode || (() => {
       const codeMatch = fatRowText.match(/\b([A-Z]{2,}\d+[A-Z0-9-]*)\b/);
       if (codeMatch) return codeMatch[1];
-      const priceTag = detectedPrice ? `@${detectedPrice}` : "";
-      return rowText.trim().substring(0, 80) + priceTag;
+      return rowText.trim().substring(0, 80) + `@${detectedPrice}`;
     })();
 
-    // Code dedup
     const codeKey = extractedCode.toLowerCase().trim();
     if (codeKey.length >= 3 && codeKey.length < 40 && seenCodes.has(codeKey)) continue;
     if (codeKey.length >= 3 && codeKey.length < 40) seenCodes.add(codeKey);
 
-    // Position
     const h_pct = Math.max((anchorHeight / pageHeight) * 100, 1.5);
     if (y_pct < 0 || y_pct > 100 || h_pct > 5) continue;
 
@@ -426,41 +483,66 @@ export function matchTextRowsToProducts(
     });
   }
 
-  // ── STEP 5: Y-bucket dedup — never merge rows with different prices ──
-  const deduped: ExtractedProductRegion[] = [];
-  for (let i = 0; i < regions.length; i++) {
-    const r = regions[i];
-    const isDuplicate = deduped.some(d =>
-      Math.abs(d.y_pct - r.y_pct) < 0.3 &&
-      d.detected_price === r.detected_price
+  return regions;
+}
+
+/**
+ * HYBRID: Run price-first scan AND legacy row-grouping, merge results.
+ */
+export function matchTextRowsToProducts(
+  items: ExtractedTextItem[],
+  pageWidth: number,
+  pageHeight: number,
+  products: PaletteProduct[]
+): ExtractedProductRegion[] {
+  if (items.length === 0 || pageHeight === 0) return [];
+
+  const lookup = buildProductLookup(products);
+
+  const priceFirstResults = priceFirstScan(items, pageWidth, pageHeight, products, lookup);
+  const rowGroupResults = rowGroupingScan(items, pageWidth, pageHeight, products, lookup);
+
+  // Merge: start with price-first results, add row-group results that don't overlap
+  const merged = [...priceFirstResults];
+  for (const r of rowGroupResults) {
+    const isDuplicate = merged.some(m =>
+      Math.abs(m.y_pct - r.y_pct) < 0.3 && m.detected_price === r.detected_price
     );
-    if (isDuplicate) {
-      // If duplicate position AND same price, keep the matched one
-      const idx = deduped.findIndex(d =>
-        Math.abs(d.y_pct - r.y_pct) < 0.3 && d.detected_price === r.detected_price
+    if (!isDuplicate) {
+      // Also check if same price exists at any Y (avoid duplicate prices from different methods)
+      const samePriceNearby = merged.some(m =>
+        m.detected_price === r.detected_price && Math.abs(m.y_pct - r.y_pct) < 2
       );
-      if (idx >= 0 && r.matched && !deduped[idx].matched) {
-        deduped[idx] = r;
+      if (!samePriceNearby) {
+        merged.push(r);
       }
+    }
+  }
+
+  // Prefer matched over unmatched at same position
+  const deduped: ExtractedProductRegion[] = [];
+  for (const r of merged) {
+    const idx = deduped.findIndex(d =>
+      Math.abs(d.y_pct - r.y_pct) < 0.3 && d.detected_price === r.detected_price
+    );
+    if (idx >= 0) {
+      if (r.matched && !deduped[idx].matched) deduped[idx] = r;
     } else {
       deduped.push(r);
     }
   }
 
-  // ── STEP 6: Align all icons to a single x column ──
+  // Align icons to single x column
   if (deduped.length > 0) {
     const maxX = Math.max(...deduped.map(r => r.x_pct));
-    for (const r of deduped) {
-      r.x_pct = maxX;
-    }
+    for (const r of deduped) r.x_pct = maxX;
   }
-
 
   return deduped;
 }
 
 // Cache for extracted regions per page
-let _extractionVersion = 22; // v22: adaptive threshold, merge fragments, debug logs
+let _extractionVersion = 23; // v23: price-first scan + legacy fallback merge
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 
 /**
