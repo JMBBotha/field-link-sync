@@ -239,13 +239,6 @@ export function matchTextRowsToProducts(
 ): ExtractedProductRegion[] {
   if (items.length === 0 || pageHeight === 0) return [];
 
-  // ── DEBUG: Log individual text items containing key strings ──
-  for (const item of items) {
-    if (item.text.includes('R4') || item.text.includes('MPPA') || item.text.includes('399')) {
-      console.log('[PDF_DEBUG] Text item:', JSON.stringify({text: item.text, x: item.x.toFixed(1), y: item.y.toFixed(1), width: item.width.toFixed(1), height: item.height.toFixed(1)}));
-    }
-  }
-
   const { byCode, byName, byDescription } = buildProductLookup(products);
 
   // ── STEP 1: Group ALL text items into rows by Y-proximity ──
@@ -275,7 +268,7 @@ export function matchTextRowsToProducts(
   }
   if (curRow.length > 0) textRows.push(curRow);
 
-  console.log('[PDF_DEBUG] Total rows formed:', textRows.length, 'Total text items:', items.length, 'yThreshold:', yThreshold.toFixed(2), 'medianGap:', medianGap.toFixed(2));
+  
 
   // ── STEP 2: Identify price rows, then expand with "fat row" for context ──
   const regions: ExtractedProductRegion[] = [];
@@ -290,12 +283,6 @@ export function matchTextRowsToProducts(
 
     // Detect price on the FULL concatenated row text
     const detectedPrice = detectPrice(rowText);
-
-    // ── DEBUG logging ──
-    if (rowText.includes('MPPA') || rowText.includes('4 399') || rowText.includes('4399')) {
-      console.log('[PDF_DEBUG] *** FOUND MPPA ROW ***', 'Row', index, 'text:', rowText, '| detectPrice:', detectedPrice, '| items:', row.length);
-    }
-    console.log('[PDF_DEBUG] Row', index, 'text:', rowText.substring(0, 120), '| price:', detectedPrice, '| items:', row.length);
 
     if (detectedPrice === null) continue;
 
@@ -393,21 +380,24 @@ export function matchTextRowsToProducts(
     });
   }
 
-  console.log(`[pdfTextExtractor] v19: ${textRows.length} text rows, ${priceRowCount} have prices, ${items.length} raw items, ${products.length} products`);
-
-  // ── STEP 5: Y-bucket dedup ──
-  const yBuckets = new Map<number, number>();
+  // ── STEP 5: Y-bucket dedup — never merge rows with different prices ──
   const deduped: ExtractedProductRegion[] = [];
   for (let i = 0; i < regions.length; i++) {
-    const bucket = Math.round(regions[i].y_pct / 0.5) * 0.5;
-    const existing = yBuckets.get(bucket);
-    if (existing !== undefined) {
-      if (regions[i].matched && !deduped[existing].matched) {
-        deduped[existing] = regions[i];
+    const r = regions[i];
+    const isDuplicate = deduped.some(d =>
+      Math.abs(d.y_pct - r.y_pct) < 0.3 &&
+      d.detected_price === r.detected_price
+    );
+    if (isDuplicate) {
+      // If duplicate position AND same price, keep the matched one
+      const idx = deduped.findIndex(d =>
+        Math.abs(d.y_pct - r.y_pct) < 0.3 && d.detected_price === r.detected_price
+      );
+      if (idx >= 0 && r.matched && !deduped[idx].matched) {
+        deduped[idx] = r;
       }
     } else {
-      yBuckets.set(bucket, deduped.length);
-      deduped.push(regions[i]);
+      deduped.push(r);
     }
   }
 
@@ -419,15 +409,12 @@ export function matchTextRowsToProducts(
     }
   }
 
-  const matchedCount = deduped.filter(r => r.matched).length;
-  console.log('[PDF_DEBUG] Total regions:', regions.length, 'after dedup:', deduped.length, 'matched:', matchedCount);
-  console.log(`[pdfTextExtractor] v19: Results: ${deduped.length} regions (${matchedCount} matched, ${deduped.length - matchedCount} unmatched)`);
 
   return deduped;
 }
 
 // Cache for extracted regions per page
-let _extractionVersion = 19; // v19: fat-row expansion + detectAllPrices
+let _extractionVersion = 20; // v20: price-aware dedup, no debug logs
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 
 /**
