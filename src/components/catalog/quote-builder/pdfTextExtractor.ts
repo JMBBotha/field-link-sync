@@ -272,8 +272,32 @@ function mergeAdjacentPriceFragments(
 }
 
 /**
- * PRICE-FIRST approach v25: find ALL price items first, group into rows,
- * then build regions. Every row with a price gets an icon.
+ * Check if a standalone numeric candidate is immediately preceded by a lone "R"
+ * on the same row (virtual merge without modifying text items).
+ */
+function isPrecededByR(
+  candidate: ExtractedTextItem,
+  allItems: ExtractedTextItem[],
+  yThreshold: number
+): boolean {
+  // Find items on same row, to the left of candidate
+  const leftNeighbors = allItems.filter(
+    (it) =>
+      it !== candidate &&
+      Math.abs(it.y - candidate.y) <= yThreshold &&
+      it.x + it.width <= candidate.x + 2 // to the left (small tolerance)
+  );
+  if (leftNeighbors.length === 0) return false;
+  // Sort by x descending to get closest left neighbor
+  leftNeighbors.sort((a, b) => b.x - a.x);
+  const closest = leftNeighbors[0];
+  const gap = candidate.x - (closest.x + closest.width);
+  if (gap > closest.width * 4) return false; // too far
+  return closest.text.trim() === "R";
+}
+
+/**
+ * PRICE-FIRST approach v28: enhanced with virtual R-merge for dense tables.
  */
 export function matchTextRowsToProducts(
   items: ExtractedTextItem[],
@@ -287,13 +311,44 @@ export function matchTextRowsToProducts(
   const { byCode, byName, byDescription } = lookup;
   const mergedItems = mergeAdjacentPriceFragments(items, 3);
 
-  // Adaptive threshold based on average text height
+  // Adaptive Y-threshold from unique Y positions
+  const uniqueYs = [...new Set(mergedItems.map((i) => Math.round(i.y * 10) / 10))].sort((a, b) => a - b);
+  const yDiffs: number[] = [];
+  for (let i = 1; i < uniqueYs.length; i++) {
+    yDiffs.push(uniqueYs[i] - uniqueYs[i - 1]);
+  }
+  const smallDiffs = yDiffs.filter((d) => d > 0 && d < 5);
   const avgHeight =
     mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length || 10;
-  const yThreshold = avgHeight * 1.2;
+  const yThreshold = smallDiffs.length > 0
+    ? Math.max(Math.max(...smallDiffs) * 1.5, avgHeight * 1.2)
+    : Math.max(avgHeight * 1.2, 5);
 
-  // STEP 1: Find ALL text items that contain an R-prefixed price
-  const priceItems = mergedItems.filter((item) => /R\s*\d/.test(item.text) && detectPrice(item.text) !== null);
+  // STEP 1a: Find items with explicit R-prefixed prices
+  const explicitPriceItems = mergedItems.filter(
+    (item) => /R\s*\d/.test(item.text) && detectPrice(item.text) !== null
+  );
+
+  // STEP 1b: Find standalone numeric candidates preceded by lone "R"
+  const standaloneNumeric = mergedItems.filter((item) => {
+    const t = item.text.trim();
+    if (!/^\d[\d\s,.]+$/.test(t)) return false;
+    // Must look like a price (has decimal separator or >= 4 digits)
+    if (!/[,.]/.test(t) && t.replace(/\s/g, "").length < 4) return false;
+    return isPrecededByR(item, mergedItems, yThreshold);
+  });
+
+  // Combine and deduplicate by position
+  const seen = new Set<string>();
+  const priceItems: ExtractedTextItem[] = [];
+  for (const item of [...explicitPriceItems, ...standaloneNumeric]) {
+    const key = `${item.x.toFixed(1)},${item.y.toFixed(1)}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      priceItems.push(item);
+    }
+  }
+
   if (priceItems.length === 0) return [];
 
   // STEP 2: Group price items into rows by Y-coordinate
@@ -319,7 +374,13 @@ export function matchTextRowsToProducts(
 
   for (const pRow of priceRows) {
     const rightmost = pRow.items[pRow.items.length - 1];
-    const detectedPrice = detectPrice(rightmost.text);
+    // Try explicit R-prefixed price first, then raw numeric parse for virtual-merged items
+    let detectedPrice = detectPrice(rightmost.text);
+    if (detectedPrice === null) {
+      const raw = rightmost.text.trim().replace(/\s/g, "").replace(/,(?=\d{1,2}$)/, ".");
+      const val = parseFloat(raw);
+      if (!isNaN(val) && val >= 50) detectedPrice = val;
+    }
     if (detectedPrice === null || detectedPrice < 50) continue;
 
     const rowAvgY = pRow.items.reduce((s, i) => s + i.y, 0) / pRow.items.length;
@@ -414,7 +475,7 @@ export function matchTextRowsToProducts(
 }
 
 // Cache for extracted regions per page
-let _extractionVersion = 27; // v27: adaptive Y-threshold in mergeCurrencyWithPrices
+let _extractionVersion = 28; // v28: virtual R-merge for dense table PDFs
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 
 /**
