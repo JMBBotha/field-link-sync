@@ -239,12 +239,15 @@ export function matchTextRowsToProducts(
 ): ExtractedProductRegion[] {
   if (items.length === 0 || pageHeight === 0) return [];
 
+  // Pre-merge fragmented price items (e.g. "R" + "45,752")
+  const mergedItems = mergeAdjacentPriceFragments(items, 3);
+
   const { byCode, byName, byDescription } = buildProductLookup(products);
 
   // ── STEP 1: Group ALL text items into rows by Y-proximity ──
-  const sorted = [...items].sort((a, b) => a.y - b.y);
+  const sorted = [...mergedItems].sort((a, b) => a.y - b.y);
 
-  // Compute adaptive Y threshold
+  // Compute adaptive Y threshold from consecutive Y gaps
   const gaps: number[] = [];
   for (let i = 1; i < sorted.length; i++) {
     const g = sorted[i].y - sorted[i - 1].y;
@@ -252,27 +255,36 @@ export function matchTextRowsToProducts(
   }
   gaps.sort((a, b) => a - b);
   const medianGap = gaps.length > 0 ? gaps[Math.floor(gaps.length / 2)] : 6;
-  const yThreshold = Math.max(4, medianGap * 0.5);
+  // Use tighter threshold: no floor of 4, just 60% of median gap (min 1.5)
+  const yThreshold = Math.max(1.5, medianGap * 0.6);
+
+  console.log('[PDF_DEBUG] medianGap:', medianGap.toFixed(2), 'yThreshold:', yThreshold.toFixed(2), 'items:', sorted.length);
 
   const textRows: ExtractedTextItem[][] = [];
   let curRow: ExtractedTextItem[] = [sorted[0]];
-  let curY = sorted[0].y;
+  let curRowMaxY = sorted[0].y;
 
   for (let i = 1; i < sorted.length; i++) {
-    if (sorted[i].y - curY > yThreshold) {
+    // Compare against the MAX Y in current row, not just the first item
+    if (sorted[i].y - curRowMaxY > yThreshold) {
       textRows.push(curRow);
       curRow = [];
-      curY = sorted[i].y;
+      curRowMaxY = sorted[i].y;
+    } else {
+      curRowMaxY = Math.max(curRowMaxY, sorted[i].y);
     }
     curRow.push(sorted[i]);
   }
   if (curRow.length > 0) textRows.push(curRow);
 
+  console.log('[PDF_DEBUG] Initial rows formed:', textRows.length);
+
   // ── STEP 1.5: Split merged rows that contain multiple distinct prices ──
   const splitRows: ExtractedTextItem[][] = [];
-  const subThreshold = Math.max(2, yThreshold / 3);
+  const subThreshold = Math.max(1, yThreshold / 3);
 
-  for (const row of textRows) {
+  for (let ri = 0; ri < textRows.length; ri++) {
+    const row = textRows[ri];
     const sortedRow = [...row].sort((a, b) => a.x - b.x);
     const rowText = sortedRow.map(it => it.text).join(" ");
     const prices = detectAllPrices(rowText);
@@ -291,14 +303,18 @@ export function matchTextRowsToProducts(
         subRows[subRows.length - 1].push(byY[k]);
       }
       if (subRows.length > 1) {
+        console.log('[PDF_DEBUG] SPLIT row', ri, 'into', subRows.length, 'sub-rows. Prices:', uniquePrices, 'text:', rowText.substring(0, 100));
         for (const sr of subRows) splitRows.push(sr);
       } else {
+        console.log('[PDF_DEBUG] Row', ri, 'has', uniquePrices.length, 'prices but could NOT split. Text:', rowText.substring(0, 100));
         splitRows.push(row);
       }
     } else {
       splitRows.push(row);
     }
   }
+
+  console.log('[PDF_DEBUG] After split:', splitRows.length, 'rows');
 
   // ── STEP 2: Identify price rows, then expand with "fat row" for context ──
   const regions: ExtractedProductRegion[] = [];
@@ -444,7 +460,7 @@ export function matchTextRowsToProducts(
 }
 
 // Cache for extracted regions per page
-let _extractionVersion = 21; // v21: split merged multi-price rows
+let _extractionVersion = 22; // v22: adaptive threshold, merge fragments, debug logs
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 
 /**
