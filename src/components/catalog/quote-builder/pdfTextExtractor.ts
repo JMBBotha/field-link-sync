@@ -112,27 +112,35 @@ function buildProductLookup(products: PaletteProduct[]) {
  * Only returns prices — rejects model codes like R32, R410A.
  */
 function detectPrice(text: string): number | null {
-  // Try decimal prices first (e.g. R1,738.26, R260.74, R12,15, R4 399,00)
-  const decimalMatch = text.match(/R\s*([\d\s,]+[.,]\d{1,2})(?:\s|$|[^A-Za-z0-9])/);
-  if (!decimalMatch) {
-    // Also try without trailing boundary (end of string)
-    const decimalMatch2 = text.match(/R\s*([\d\s,]+[.,]\d{1,2})$/);
-    if (decimalMatch2) {
-      return parseRawPrice(decimalMatch2[1]);
-    }
-  } else {
-    return parseRawPrice(decimalMatch[1]);
-  }
+  // Find ALL R-prefixed prices and return the last (rightmost) one
+  const prices = detectAllPrices(text);
+  return prices.length > 0 ? prices[prices.length - 1] : null;
+}
 
-  // Whole number prices >= 50, NOT followed by a letter (rejects R32W, R410A)
-  const wholeMatch = text.match(/R\s*(\d[\d\s]*)(?![A-Za-z])/);
-  if (wholeMatch) {
-    const raw = wholeMatch[1].replace(/\s/g, "");
+/** Find ALL R-prefixed prices in a string, returned in order of appearance */
+function detectAllPrices(text: string): number[] {
+  const results: number[] = [];
+  // Global regex: R followed by optional space, digits/spaces/commas, then decimal
+  const re = /R\s*([\d\s,]+[.,]\d{1,2})(?:\s|$|[^A-Za-z0-9]|,)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const val = parseRawPrice(m[1]);
+    if (val !== null) results.push(val);
+  }
+  // Also try end-of-string match
+  const re2 = /R\s*([\d\s,]+[.,]\d{1,2})$/g;
+  while ((m = re2.exec(text)) !== null) {
+    const val = parseRawPrice(m[1]);
+    if (val !== null && !results.includes(val)) results.push(val);
+  }
+  // Whole number prices >= 50
+  const re3 = /R\s*(\d[\d\s]*)(?![A-Za-z])/g;
+  while ((m = re3.exec(text)) !== null) {
+    const raw = m[1].replace(/\s/g, "");
     const val = parseFloat(raw);
-    if (!isNaN(val) && val >= 50) return val;
+    if (!isNaN(val) && val >= 50 && !results.includes(val)) results.push(val);
   }
-
-  return null;
+  return results;
 }
 
 function parseRawPrice(captured: string): number | null {
@@ -269,25 +277,25 @@ export function matchTextRowsToProducts(
 
   console.log('[PDF_DEBUG] Total rows formed:', textRows.length, 'Total text items:', items.length, 'yThreshold:', yThreshold.toFixed(2), 'medianGap:', medianGap.toFixed(2));
 
-  // ── STEP 2: For each row, concatenate text and detect prices ──
+  // ── STEP 2: Identify price rows, then expand with "fat row" for context ──
   const regions: ExtractedProductRegion[] = [];
   const seenCodes = new Set<string>();
   let priceRowCount = 0;
+  const fatRowExpansion = yThreshold * 3; // Look 3x wider for model codes
 
   for (let index = 0; index < textRows.length; index++) {
     const row = textRows[index];
     const sortedRow = [...row].sort((a, b) => a.x - b.x);
     const rowText = sortedRow.map(it => it.text).join(" ");
 
-    // ── DEBUG: Check for MPPA row ──
-    if (rowText.includes('MPPA') || rowText.includes('4 399') || rowText.includes('4399')) {
-      console.log('[PDF_DEBUG] *** FOUND MPPA ROW ***', 'Row', index, 'text:', rowText, '| detectPrice result:', detectPrice(rowText), '| items:', row.length);
-    }
-
     // Detect price on the FULL concatenated row text
     const detectedPrice = detectPrice(rowText);
 
-    console.log('[PDF_DEBUG] Row', index, 'text:', rowText.substring(0, 100), '| detectPrice:', detectedPrice, '| items:', row.length);
+    // ── DEBUG logging ──
+    if (rowText.includes('MPPA') || rowText.includes('4 399') || rowText.includes('4399')) {
+      console.log('[PDF_DEBUG] *** FOUND MPPA ROW ***', 'Row', index, 'text:', rowText, '| detectPrice:', detectedPrice, '| items:', row.length);
+    }
+    console.log('[PDF_DEBUG] Row', index, 'text:', rowText.substring(0, 120), '| price:', detectedPrice, '| items:', row.length);
 
     if (detectedPrice === null) continue;
 
@@ -307,14 +315,24 @@ export function matchTextRowsToProducts(
 
     if (rowText.trim().length < 3) continue;
 
-    const rowTextLower = rowText.toLowerCase();
+    // ── "FAT ROW": expand Y range to capture model codes on nearby lines ──
+    const rowMinY = Math.min(...row.map(it => it.y));
+    const rowMaxY = Math.max(...row.map(it => it.y));
+    const fatItems = items
+      .filter(it => it.y >= rowMinY - fatRowExpansion && it.y <= rowMaxY + fatRowExpansion)
+      .sort((a, b) => a.x - b.x);
+    const fatRowText = fatItems.map(it => it.text).join(" ");
+    const fatRowTextLower = fatRowText.toLowerCase();
+
+    // Use fat row text for matching, but narrow row text for label
+    const matchText = fatRowTextLower;
 
     // ── Try matching against product DB ──
     let matched: PaletteProduct | null = null;
     let matchedCode = "";
 
     for (const [code, product] of byCode) {
-      if (code.length >= 3 && rowTextLower.includes(code)) {
+      if (code.length >= 3 && matchText.includes(code)) {
         matched = product;
         matchedCode = product.product_code;
         break;
@@ -323,7 +341,7 @@ export function matchTextRowsToProducts(
 
     if (!matched) {
       for (const [name, product] of byName) {
-        if (name.length >= 5 && rowTextLower.includes(name)) {
+        if (name.length >= 5 && matchText.includes(name)) {
           matched = product;
           matchedCode = product.product_code;
           break;
@@ -333,7 +351,7 @@ export function matchTextRowsToProducts(
 
     if (!matched) {
       for (const [desc, product] of byDescription) {
-        if (desc.length >= 8 && rowTextLower.includes(desc)) {
+        if (desc.length >= 8 && matchText.includes(desc)) {
           matched = product;
           matchedCode = product.product_code;
           break;
@@ -341,9 +359,9 @@ export function matchTextRowsToProducts(
       }
     }
 
-    // Extract a code for dedup
+    // Extract a code for dedup (from fat row text for better coverage)
     const extractedCode = matchedCode || (() => {
-      const codeMatch = rowText.match(/\b([A-Z]{2,}\d+[A-Z0-9-]*)\b/);
+      const codeMatch = fatRowText.match(/\b([A-Z]{2,}\d+[A-Z0-9-]*)\b/);
       if (codeMatch) return codeMatch[1];
       const priceTag = detectedPrice ? `@${detectedPrice}` : "";
       return rowText.trim().substring(0, 80) + priceTag;
@@ -375,7 +393,7 @@ export function matchTextRowsToProducts(
     });
   }
 
-  console.log(`[pdfTextExtractor] v18: ${textRows.length} text rows, ${priceRowCount} have prices, ${items.length} raw items, ${products.length} products`);
+  console.log(`[pdfTextExtractor] v19: ${textRows.length} text rows, ${priceRowCount} have prices, ${items.length} raw items, ${products.length} products`);
 
   // ── STEP 5: Y-bucket dedup ──
   const yBuckets = new Map<number, number>();
@@ -403,13 +421,13 @@ export function matchTextRowsToProducts(
 
   const matchedCount = deduped.filter(r => r.matched).length;
   console.log('[PDF_DEBUG] Total regions:', regions.length, 'after dedup:', deduped.length, 'matched:', matchedCount);
-  console.log(`[pdfTextExtractor] v18: Results: ${deduped.length} regions (${matchedCount} matched, ${deduped.length - matchedCount} unmatched)`);
+  console.log(`[pdfTextExtractor] v19: Results: ${deduped.length} regions (${matchedCount} matched, ${deduped.length - matchedCount} unmatched)`);
 
   return deduped;
 }
 
 // Cache for extracted regions per page
-let _extractionVersion = 18; // v18: hybrid row-concat + price detection
+let _extractionVersion = 19; // v19: fat-row expansion + detectAllPrices
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 
 /**
