@@ -485,6 +485,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           onRemoveRegion={handleRemoveRegion}
                           scrollContainerRef={scrollContainerRef}
                           onCategoriesDetected={handlePageCategories}
+                          supplierName={currentSupplierName}
                           registerRef={(el) => {
                             if (el) pageRefs.current.set(idx, el);
                             else pageRefs.current.delete(idx);
@@ -578,6 +579,7 @@ interface LazyPdfPageProps {
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   onCategoriesDetected: (pageIndex: number, categories: string[]) => void;
   registerRef: (el: HTMLDivElement | null) => void;
+  supplierName?: string;
 }
 
 const LazyPdfPage = ({
@@ -595,6 +597,7 @@ const LazyPdfPage = ({
   scrollContainerRef,
   onCategoriesDetected,
   registerRef,
+  supplierName,
 }: LazyPdfPageProps) => {
   const queryClient = useQueryClient();
   const divRef = useRef<HTMLDivElement | null>(null);
@@ -811,6 +814,7 @@ const LazyPdfPage = ({
               onQuickAddProduct={onQuickAddProduct}
               onToggleFavorite={onToggleFavorite}
               onRemoveRegion={onRemoveRegion}
+              supplierName={supplierName}
             />
           )}
           {extracting && (
