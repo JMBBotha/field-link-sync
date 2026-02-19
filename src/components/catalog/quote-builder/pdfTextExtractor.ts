@@ -81,6 +81,59 @@ export async function extractTextItemsFromPdfPage(
 }
 
 /**
+ * Merge lone "R" currency symbols with adjacent price digits on the same row.
+ * Handles table-layout PDFs where pdfjs-dist splits "R" and "172,79" into separate items.
+ */
+export function mergeCurrencyWithPrices(items: ExtractedTextItem[]): ExtractedTextItem[] {
+  // Sort by y then x
+  const sorted = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
+  const result: ExtractedTextItem[] = [];
+  const skip = new Set<number>();
+
+  for (let i = 0; i < sorted.length; i++) {
+    if (skip.has(i)) continue;
+    const item = sorted[i];
+
+    if (item.text.trim() === "R") {
+      // Find the next item to the right on the same row
+      let bestJ = -1;
+      for (let j = i + 1; j < sorted.length; j++) {
+        if (Math.abs(sorted[j].y - item.y) > 5) continue; // same row check
+        if (sorted[j].x < item.x + item.width - 2) continue; // must be to the right
+        // Check no other item sits between them horizontally on the same row
+        const gap = sorted[j].x - (item.x + item.width);
+        if (gap > item.width * 4) continue; // too far away
+        const nextText = sorted[j].text.trim();
+        // Must look like price digits: starts with digit, contains digits/spaces/commas/periods
+        if (!/^\d[\d\s,.]*$/.test(nextText)) continue;
+        // Must have comma/period OR be a multi-digit number (avoid "410" in R410 refrigerant)
+        if (!/[,.]/.test(nextText) && nextText.replace(/\s/g, "").length < 4) continue;
+        bestJ = j;
+        break;
+      }
+
+      if (bestJ >= 0) {
+        const next = sorted[bestJ];
+        result.push({
+          text: "R" + next.text,
+          x: item.x,
+          y: item.y,
+          width: (next.x + next.width) - item.x,
+          height: Math.max(item.height, next.height),
+        });
+        skip.add(i);
+        skip.add(bestJ);
+        continue;
+      }
+    }
+
+    result.push(item);
+  }
+
+  return result;
+}
+
+/**
  * Build a lookup map from products for efficient matching.
  */
 function buildProductLookup(products: PaletteProduct[]) {
@@ -353,7 +406,7 @@ export function matchTextRowsToProducts(
 }
 
 // Cache for extracted regions per page
-let _extractionVersion = 25; // v25: true price-first scanning
+let _extractionVersion = 26; // v26: merge lone R + price digits
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 
 /**
@@ -376,7 +429,8 @@ export async function extractAndMatchPage(
       pageNumber
     );
 
-    const regions = matchTextRowsToProducts(items, pageWidth, pageHeight, products);
+    const mergedItems = mergeCurrencyWithPrices(items);
+    const regions = matchTextRowsToProducts(mergedItems, pageWidth, pageHeight, products);
     extractionCache.set(cacheKey, regions);
     return regions;
   } catch (err) {
