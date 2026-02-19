@@ -490,7 +490,7 @@ const QuoteBuilderTab = () => {
   }, []);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-180px)] overflow-hidden gap-3">
+    <div className="flex flex-col h-[calc(100vh-180px)] overflow-auto gap-3">
       <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 z-10 shadow-sm shrink-0">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-muted-foreground">
@@ -523,8 +523,8 @@ const QuoteBuilderTab = () => {
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-      <div className="grid grid-cols-1 grid-rows-[2fr_3fr] md:grid-cols-5 md:grid-rows-1 gap-4 flex-1 min-h-0 overflow-hidden">
-          <div className="md:col-span-2 flex flex-col min-h-0 overflow-hidden">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 min-h-0">
+          <div className="md:col-span-2 flex flex-col min-h-0 h-[50vh] md:h-auto md:max-h-[calc(100vh-280px)]">
             <ProductPalette
               products={filteredProducts}
               isLoading={isLoading}
@@ -543,7 +543,7 @@ const QuoteBuilderTab = () => {
               onOpenVisualPanel={() => setVisualPanelOpen(true)}
             />
           </div>
-          <div ref={canvasRef} className="md:col-span-3 flex flex-col min-h-0 overflow-hidden">
+          <div ref={canvasRef} className="md:col-span-3 flex flex-col min-h-0 h-[50vh] md:h-auto md:max-h-[calc(100vh-280px)]">
             <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" as any }}>
               <BasketCanvas
                 baskets={baskets}
@@ -562,10 +562,11 @@ const QuoteBuilderTab = () => {
                 isCompact={visualPanelOpen}
               />
             </div>
-            <div className="shrink-0 mt-2">
-              <QuoteSummaryPanel baskets={baskets} />
-            </div>
           </div>
+        </div>
+
+        <div className="shrink-0 mt-2">
+          <QuoteSummaryPanel baskets={baskets} />
         </div>
 
         <DragOverlay dropAnimation={null}>
