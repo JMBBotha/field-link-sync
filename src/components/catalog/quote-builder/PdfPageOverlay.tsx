@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { ShoppingCart, Plus, X, Star, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import QuoteItemPopup from "./QuoteItemPopup";
-import type { QuoteItemData } from "./QuoteItemPopup";
+import { categorizePdfItem, categoryToWizardStep } from "./categorizePdfItem";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
+import type { WizardTriggerItem } from "./QuoteBuilderPopup";
 
 const DISMISSED_KEY = "dismissedPdfRegions";
 
@@ -72,6 +72,8 @@ interface PdfPageOverlayProps {
   onToggleFavorite?: (product: PaletteProduct) => void;
   onRemoveRegion?: (region: OverlayRegion) => void;
   supplierName?: string;
+  /** Opens the Area Quote Builder with pre-filled item context */
+  onOpenWizard?: (item: WizardTriggerItem) => void;
 }
 
 /* ─── Added-to-quote tracker (local state, shared across regions) ─── */
@@ -362,10 +364,9 @@ const PdfPageOverlay = ({
   onToggleFavorite,
   onRemoveRegion,
   supplierName,
+  onOpenWizard,
 }: PdfPageOverlayProps) => {
   const [unmatchedPopup, setUnmatchedPopup] = useState<OverlayRegion | null>(null);
-  const [quotePopup, setQuotePopup] = useState<{ region: OverlayRegion; prefill: Partial<QuoteItemData> } | null>(null);
-  const [manualPopup, setManualPopup] = useState<{ yPct: number } | null>(null);
   const [localAddedIds, setLocalAddedIds] = useState<Set<string>>(new Set());
   const [, forceUpdate] = useState(0);
   const queryClient = useQueryClient();
@@ -412,86 +413,28 @@ const PdfPageOverlay = ({
     onRemoveRegion?.(region);
   }, [onRemoveRegion, queryClient]);
 
-  // Row strip click → open quote item popup
+  // Row strip click → open Area Quote Builder with smart categorization
   const handleRowStripClick = useCallback((region: OverlayRegion) => {
+    if (!onOpenWizard) return;
     const product = region.product;
-    if (product) {
-      setQuotePopup({
-        region,
-        prefill: {
-          item_name: product.short_name || product.product_code || region.label,
-          item_number: product.product_code || region.product_code,
-          description: product.description || region.label,
-          unit_price: product.selling_price || product.cost_incl_vat || region.detected_price || 0,
-          quantity: 1,
-          source: "catalog",
-          supplier: supplierName || product.brand || "",
-          product_id: product.id,
-        },
-      });
-    } else {
-      // Unmatched row — open manual popup
-      setQuotePopup({
-        region,
-        prefill: {
-          item_name: region.label.substring(0, 80),
-          item_number: region.product_code,
-          description: region.label,
-          unit_price: region.detected_price || 0,
-          quantity: 1,
-          source: "manual",
-          supplier: supplierName || "",
-        },
-      });
-    }
-  }, [supplierName]);
+    const name = product?.short_name || product?.product_code || region.label.substring(0, 80);
+    const code = product?.product_code || region.product_code || "";
+    const description = product?.description || region.label || "";
+    const price = product?.selling_price || product?.cost_incl_vat || region.detected_price || 0;
 
-  // Manual add from ghost row
-  const handleManualRowClick = useCallback((yPct: number) => {
-    setQuotePopup({
-      region: { id: `manual-${yPct}`, x_pct: 0, y_pct: yPct, w_pct: 96, h_pct: 2, product: null, product_code: "", label: "" },
-      prefill: {
-        item_name: "",
-        item_number: "",
-        description: "",
-        unit_price: 0,
-        quantity: 1,
-        source: "manual",
-        supplier: supplierName || "",
-      },
-    });
-  }, [supplierName]);
+    const category = categorizePdfItem({ name, description, code });
+    const step = categoryToWizardStep(category);
 
-  // Save item to quote_items table
-  const handleAddQuoteItem = useCallback(async (item: QuoteItemData) => {
-    try {
-      const { error } = await (supabase.from("quote_items") as any).insert({
-        item_name: item.item_name,
-        item_number: item.item_number,
-        description: item.description,
-        unit_price: item.unit_price,
-        quantity: item.quantity,
-        notes: item.notes || null,
-        source: item.source,
-        supplier: item.supplier,
-        product_id: item.product_id || null,
-      });
+    onOpenWizard({ name, code, description, price, category, step });
+  }, [onOpenWizard]);
 
-      if (error) throw error;
+  // Manual add from ghost row → open wizard at materials step
+  const handleManualRowClick = useCallback((_yPct: number) => {
+    if (!onOpenWizard) return;
+    onOpenWizard({ name: "", code: "", description: "", price: 0, category: "UNKNOWN", step: 1 });
+  }, [onOpenWizard]);
 
-      // Track as added
-      if (item.product_id) {
-        addedQuoteItemIds.add(item.product_id);
-        setLocalAddedIds(prev => new Set([...prev, item.product_id!]));
-      }
 
-      toast({ title: "Item added to quote", duration: 3000 });
-      setQuotePopup(null);
-    } catch (err: any) {
-      console.error("[PdfOverlay] Failed to save quote item:", err);
-      toast({ title: "Failed to add item", description: err.message, variant: "destructive" });
-    }
-  }, []);
 
   // Generate ghost rows for gaps between positioned regions
   const ghostRows = useMemo(() => {
@@ -599,16 +542,7 @@ const PdfPageOverlay = ({
         </div>
       )}
 
-      {/* Quote Item Popup */}
-      {quotePopup && (
-        <QuoteItemPopup
-          open
-          onClose={() => setQuotePopup(null)}
-          onAdd={handleAddQuoteItem}
-          prefill={quotePopup.prefill}
-          supplierName={supplierName}
-        />
-      )}
+
     </>
   );
 };

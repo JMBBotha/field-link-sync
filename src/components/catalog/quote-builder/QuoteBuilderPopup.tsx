@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, Check, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,7 +7,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { PaletteProduct, Basket, BasketItem } from "../QuoteBuilderTab";
 import type { QuoteArea } from "./quoteWizardTypes";
-import { WIZARD_STEPS, computeAreaSubtotal } from "./quoteWizardTypes";
+import { WIZARD_STEPS, computeAreaSubtotal, createEmptyArea } from "./quoteWizardTypes";
 import AreaDefinitionStep from "./wizard/AreaDefinitionStep";
 import ACSelectionStep from "./wizard/ACSelectionStep";
 import MaterialsStep from "./wizard/MaterialsStep";
@@ -21,17 +21,44 @@ interface PaletteBundle {
   items: any[];
 }
 
+export interface WizardTriggerItem {
+  name: string;
+  code: string;
+  description: string;
+  price: number;
+  category: import("./categorizePdfItem").PdfItemCategory;
+  /** The wizard step to open on */
+  step: number;
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
   products: PaletteProduct[];
   bundles: PaletteBundle[];
   onSave: (baskets: Basket[]) => void;
+  /** Pre-fill from PDF click */
+  triggerItem?: WizardTriggerItem | null;
 }
 
-export default function QuoteBuilderPopup({ open, onClose, products, bundles, onSave }: Props) {
+export default function QuoteBuilderPopup({ open, onClose, products, bundles, onSave, triggerItem }: Props) {
   const [currentStep, setCurrentStep] = useState(0);
   const [areas, setAreas] = useState<QuoteArea[]>([]);
+
+  // When opened with a triggerItem, jump to its step and ensure at least one area exists
+  const lastTriggerId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!open || !triggerItem) return;
+    const triggerId = `${triggerItem.code}-${triggerItem.price}`;
+    if (lastTriggerId.current === triggerId) return;
+    lastTriggerId.current = triggerId;
+
+    // Ensure at least one area
+    if (areas.length === 0) {
+      setAreas([createEmptyArea("Room 1")]);
+    }
+    setCurrentStep(triggerItem.step);
+  }, [open, triggerItem]);
 
   const canNext = useMemo(() => {
     if (currentStep === 0) return areas.length > 0 && areas.every((a) => a.name.trim().length > 0);
@@ -86,6 +113,7 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
     onClose();
     setCurrentStep(0);
     setAreas([]);
+    lastTriggerId.current = null;
   }, [areas, onSave, onClose]);
 
   const stepContent = useMemo(() => {
