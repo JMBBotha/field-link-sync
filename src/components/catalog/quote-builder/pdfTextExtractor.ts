@@ -90,15 +90,23 @@ export function mergeCurrencyWithPrices(items: ExtractedTextItem[]): ExtractedTe
   const result: ExtractedTextItem[] = [];
   const skip = new Set<number>();
 
+  // Adaptive Y-threshold: use average text height, minimum 8px
+  const avgHeight = sorted.length > 0
+    ? sorted.reduce((sum, i) => sum + i.height, 0) / sorted.length
+    : 10;
+  const yThreshold = Math.max(avgHeight * 1.2, 8);
+
   for (let i = 0; i < sorted.length; i++) {
     if (skip.has(i)) continue;
     const item = sorted[i];
 
-    if (item.text.trim() === "R") {
+    // Match lone "R" currency symbol (trim handles trailing whitespace)
+    const trimmed = item.text.trim();
+    if (trimmed === "R" || trimmed === "R ") {
       // Find the next item to the right on the same row
       let bestJ = -1;
       for (let j = i + 1; j < sorted.length; j++) {
-        if (Math.abs(sorted[j].y - item.y) > 5) continue; // same row check
+        if (Math.abs(sorted[j].y - item.y) > yThreshold) continue; // same row check
         if (sorted[j].x < item.x + item.width - 2) continue; // must be to the right
         // Check no other item sits between them horizontally on the same row
         const gap = sorted[j].x - (item.x + item.width);
@@ -406,7 +414,7 @@ export function matchTextRowsToProducts(
 }
 
 // Cache for extracted regions per page
-let _extractionVersion = 26; // v26: merge lone R + price digits
+let _extractionVersion = 27; // v27: adaptive Y-threshold in mergeCurrencyWithPrices
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 
 /**
