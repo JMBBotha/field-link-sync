@@ -268,7 +268,37 @@ export function matchTextRowsToProducts(
   }
   if (curRow.length > 0) textRows.push(curRow);
 
-  
+  // ── STEP 1.5: Split merged rows that contain multiple distinct prices ──
+  const splitRows: ExtractedTextItem[][] = [];
+  const subThreshold = Math.max(2, yThreshold / 3);
+
+  for (const row of textRows) {
+    const sortedRow = [...row].sort((a, b) => a.x - b.x);
+    const rowText = sortedRow.map(it => it.text).join(" ");
+    const prices = detectAllPrices(rowText);
+    const uniquePrices = [...new Set(prices)];
+
+    if (uniquePrices.length > 1) {
+      // Multiple distinct prices — sub-group by tighter Y-proximity
+      const byY = [...row].sort((a, b) => a.y - b.y);
+      const subRows: ExtractedTextItem[][] = [[byY[0]]];
+      let subY = byY[0].y;
+      for (let k = 1; k < byY.length; k++) {
+        if (byY[k].y - subY > subThreshold) {
+          subRows.push([]);
+          subY = byY[k].y;
+        }
+        subRows[subRows.length - 1].push(byY[k]);
+      }
+      if (subRows.length > 1) {
+        for (const sr of subRows) splitRows.push(sr);
+      } else {
+        splitRows.push(row);
+      }
+    } else {
+      splitRows.push(row);
+    }
+  }
 
   // ── STEP 2: Identify price rows, then expand with "fat row" for context ──
   const regions: ExtractedProductRegion[] = [];
@@ -276,8 +306,8 @@ export function matchTextRowsToProducts(
   let priceRowCount = 0;
   const fatRowExpansion = yThreshold * 3; // Look 3x wider for model codes
 
-  for (let index = 0; index < textRows.length; index++) {
-    const row = textRows[index];
+  for (let index = 0; index < splitRows.length; index++) {
+    const row = splitRows[index];
     const sortedRow = [...row].sort((a, b) => a.x - b.x);
     const rowText = sortedRow.map(it => it.text).join(" ");
 
@@ -414,7 +444,7 @@ export function matchTextRowsToProducts(
 }
 
 // Cache for extracted regions per page
-let _extractionVersion = 20; // v20: price-aware dedup, no debug logs
+let _extractionVersion = 21; // v21: split merged multi-price rows
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 
 /**
