@@ -28,6 +28,8 @@ import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
 // Cross-page dedup: tracks seen region keys across all pages to prevent duplicate icons
 const globalSeenRegions = new Map<string, number>(); // key → first pageIndex
+import type { WizardTriggerItem } from "./QuoteBuilderPopup";
+
 interface VisualCatalogPanelProps {
   open: boolean;
   onClose: () => void;
@@ -37,6 +39,7 @@ interface VisualCatalogPanelProps {
   onRemoveBasket?: (id: string) => void;
   products: PaletteProduct[];
   isDragging?: boolean;
+  onOpenWizard?: (item: WizardTriggerItem) => void;
 }
 
 interface PdfPage {
@@ -48,7 +51,7 @@ interface PdfPage {
   pdf_storage_path: string | null;
 }
 
-const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAddBasket, onRemoveBasket, products, isDragging: isDraggingExternal }: VisualCatalogPanelProps) => {
+const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAddBasket, onRemoveBasket, products, isDragging: isDraggingExternal, onOpenWizard }: VisualCatalogPanelProps) => {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
@@ -486,6 +489,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           scrollContainerRef={scrollContainerRef}
                           onCategoriesDetected={handlePageCategories}
                           supplierName={currentSupplierName}
+                          onOpenWizard={onOpenWizard}
                           registerRef={(el) => {
                             if (el) pageRefs.current.set(idx, el);
                             else pageRefs.current.delete(idx);
@@ -580,6 +584,7 @@ interface LazyPdfPageProps {
   onCategoriesDetected: (pageIndex: number, categories: string[]) => void;
   registerRef: (el: HTMLDivElement | null) => void;
   supplierName?: string;
+  onOpenWizard?: (item: WizardTriggerItem) => void;
 }
 
 const LazyPdfPage = ({
@@ -598,6 +603,7 @@ const LazyPdfPage = ({
   onCategoriesDetected,
   registerRef,
   supplierName,
+  onOpenWizard,
 }: LazyPdfPageProps) => {
   const queryClient = useQueryClient();
   const divRef = useRef<HTMLDivElement | null>(null);
@@ -815,6 +821,7 @@ const LazyPdfPage = ({
               onToggleFavorite={onToggleFavorite}
               onRemoveRegion={onRemoveRegion}
               supplierName={supplierName}
+              onOpenWizard={onOpenWizard}
             />
           )}
           {extracting && (

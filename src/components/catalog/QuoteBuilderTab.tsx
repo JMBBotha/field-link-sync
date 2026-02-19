@@ -30,6 +30,7 @@ import { toast } from "@/hooks/use-toast";
 import { useProductUsageStats } from "@/hooks/useProductUsageStats";
 import { allTermsMatchBlob } from "./searchSynonyms";
 import QuoteBuilderPopup from "./quote-builder/QuoteBuilderPopup";
+import type { WizardTriggerItem } from "./quote-builder/QuoteBuilderPopup";
 
 export interface PaletteProduct {
   id: string;
@@ -138,6 +139,7 @@ const QuoteBuilderTab = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [visualPanelOpen, setVisualPanelOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardTriggerItem, setWizardTriggerItem] = useState<WizardTriggerItem | null>(null);
   const queryClient = useQueryClient();
   const { usageMap, trackUsage } = useProductUsageStats();
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -531,6 +533,11 @@ const QuoteBuilderTab = () => {
     toast({ title: `Added ${newBaskets.length} zones from Area Quote Builder` });
   }, []);
 
+  const handleOpenWizardFromPdf = useCallback((item: WizardTriggerItem) => {
+    setWizardTriggerItem(item);
+    setWizardOpen(true);
+  }, []);
+
   return (
     <div className="flex flex-col h-[calc(100vh-140px)] overflow-hidden gap-3 relative pb-14">
       <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 z-10 shadow-sm shrink-0">
@@ -623,6 +630,7 @@ const QuoteBuilderTab = () => {
           onRemoveBasket={handleRemoveBasket}
           products={products}
           isDragging={isDragging}
+          onOpenWizard={handleOpenWizardFromPdf}
         />
       </DndContext>
 
@@ -641,10 +649,11 @@ const QuoteBuilderTab = () => {
 
       <QuoteBuilderPopup
         open={wizardOpen}
-        onClose={() => setWizardOpen(false)}
+        onClose={() => { setWizardOpen(false); setWizardTriggerItem(null); }}
         products={products}
         bundles={bundles}
         onSave={handleWizardSave}
+        triggerItem={wizardTriggerItem}
       />
     </div>
   );
