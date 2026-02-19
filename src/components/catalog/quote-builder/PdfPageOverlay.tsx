@@ -1,4 +1,4 @@
-import { useState, memo, useCallback, useMemo } from "react";
+import { useState, memo, useCallback, useMemo, useRef } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -109,6 +109,45 @@ const DraggableRegion = memo(({
   const isMatched = !!product;
   const isFavorite = product?.is_pinned === true;
 
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [tipPos, setTipPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const stripRef = useRef<HTMLDivElement>(null);
+  const tipRef = useRef<HTMLDivElement>(null);
+
+  const computeTooltipPos = useCallback(() => {
+    const strip = stripRef.current;
+    const tip = tipRef.current;
+    if (!strip || !tip) return;
+    const rect = strip.getBoundingClientRect();
+    const tipW = tip.offsetWidth || 280;
+    const tipH = tip.offsetHeight || 80;
+    // Horizontal: prefer left of row, fall back to right
+    let left: number;
+    if (rect.left >= tipW + 12) {
+      left = rect.left - tipW - 8;
+    } else {
+      left = rect.right + 8;
+    }
+    // Clamp horizontal
+    left = Math.max(4, Math.min(left, window.innerWidth - tipW - 4));
+    // Vertical: align top of row, flip if overflows bottom
+    let top = rect.top;
+    if (top + tipH > window.innerHeight - 4) {
+      top = rect.bottom - tipH;
+    }
+    top = Math.max(4, top);
+    setTipPos({ top, left });
+  }, []);
+
+  const handleMouseEnter = useCallback(() => {
+    setShowTooltip(true);
+    requestAnimationFrame(() => computeTooltipPos());
+  }, [computeTooltipPos]);
+
+  const handleMouseLeave = useCallback(() => {
+    setShowTooltip(false);
+  }, []);
+
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `pdf-overlay-${region.id}`,
     data: { product },
@@ -175,8 +214,11 @@ const DraggableRegion = memo(({
         margin: 0,
         padding: 0,
       }}
+      ref={stripRef}
       onClick={handleStripClick}
       onContextMenu={handleContextMenu}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {/* Full-width transparent hit area with hover highlight */}
       <div className="absolute inset-0 hover:bg-primary/5 rounded transition-colors duration-150" />
@@ -250,12 +292,13 @@ const DraggableRegion = memo(({
         )}
       </div>
 
-      {/* Hover tooltip */}
-      <div
-        className="absolute bottom-full mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50"
-        style={{ left: iconLeftPct }}
-      >
-        <div className="bg-popover border rounded-lg shadow-xl px-3 py-2 text-[10px] whitespace-nowrap max-w-[280px]">
+      {/* Fixed-position hover tooltip */}
+      {showTooltip && (
+        <div
+          ref={tipRef}
+          className="fixed pointer-events-none bg-popover border rounded-lg shadow-xl px-3 py-2 text-[10px] whitespace-nowrap max-w-[280px]"
+          style={{ top: tipPos.top, left: tipPos.left, zIndex: 9999 }}
+        >
           {isMatched && product ? (
             <div className="space-y-0.5">
               <p className="font-semibold text-foreground text-[11px] truncate">
@@ -301,7 +344,7 @@ const DraggableRegion = memo(({
             </div>
           )}
         </div>
-      </div>
+      )}
     </div>
   );
 });
