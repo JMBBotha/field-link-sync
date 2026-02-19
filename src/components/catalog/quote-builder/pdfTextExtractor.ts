@@ -215,11 +215,11 @@ function mergeAdjacentPriceFragments(
 }
 
 /**
- * PRICE-FIRST: Match extracted text against products database.
+ * HYBRID PRICE-FIRST: Match extracted text against products database.
  *
- * 1. Find ALL price items (including merged R+number fragments)
- * 2. Group prices into rows by Y proximity
- * 3. For each price row, gather all text on the same Y-line
+ * 1. Group ALL text items into rows by Y-proximity
+ * 2. For each row, concatenate text and detect R-prefixed prices
+ * 3. If row has a price, create a region
  * 4. Match against product DB
  * 5. Dedup and align icons
  */
@@ -233,98 +233,63 @@ export function matchTextRowsToProducts(
 
   const { byCode, byName, byDescription } = buildProductLookup(products);
 
-  // ── STEP 0: Estimate Y threshold for merging fragments ──
-  const sortedAll = [...items].sort((a, b) => a.y - b.y);
-  const allGaps: number[] = [];
-  for (let i = 1; i < sortedAll.length; i++) {
-    const g = sortedAll[i].y - sortedAll[i - 1].y;
-    if (g > 0.5) allGaps.push(g);
-  }
-  allGaps.sort((a, b) => a - b);
-  const earlyThreshold = allGaps.length > 0 ? Math.max(4, allGaps[Math.floor(allGaps.length / 4)] * 0.8) : 6;
+  // ── STEP 1: Group ALL text items into rows by Y-proximity ──
+  const sorted = [...items].sort((a, b) => a.y - b.y);
 
-  // ── STEP 0b: Merge R + number fragments ──
-  const mergedItems = mergeAdjacentPriceFragments(items, earlyThreshold);
-
-  // ── STEP 1: Find all price items ──
-  const priceItems: ExtractedTextItem[] = [];
-  for (const item of mergedItems) {
-    if (isPriceItem(item.text)) {
-      priceItems.push(item);
-    }
-  }
-
-  if (priceItems.length === 0) {
-    console.log(`[pdfTextExtractor] v17: No price items found in ${items.length} text items`);
-    return [];
-  }
-
-  console.log(`[pdfTextExtractor] v17: Found ${priceItems.length} price items out of ${mergedItems.length} text items (${items.length} raw), ${products.length} products`);
-
-  console.log(`[pdfTextExtractor] Found ${priceItems.length} price items out of ${items.length} text items, ${products.length} products`);
-
-  // ── STEP 2: Group price items into rows by Y proximity ──
-  const sortedPrices = [...priceItems].sort((a, b) => a.y - b.y);
-
-  // Adaptive threshold from price item gaps
+  // Compute adaptive Y threshold
   const gaps: number[] = [];
-  for (let i = 1; i < sortedPrices.length; i++) {
-    const gap = sortedPrices[i].y - sortedPrices[i - 1].y;
-    if (gap > 0.5) gaps.push(gap);
+  for (let i = 1; i < sorted.length; i++) {
+    const g = sorted[i].y - sorted[i - 1].y;
+    if (g > 0.5) gaps.push(g);
   }
   gaps.sort((a, b) => a - b);
   const medianGap = gaps.length > 0 ? gaps[Math.floor(gaps.length / 2)] : 6;
-  const yThreshold = Math.max(6, medianGap * 0.6);
+  const yThreshold = Math.max(4, medianGap * 0.5);
 
-  const priceRows: ExtractedTextItem[][] = [];
-  let curRow: ExtractedTextItem[] = [sortedPrices[0]];
-  let curY = sortedPrices[0].y;
+  const textRows: ExtractedTextItem[][] = [];
+  let curRow: ExtractedTextItem[] = [sorted[0]];
+  let curY = sorted[0].y;
 
-  for (let i = 1; i < sortedPrices.length; i++) {
-    if (sortedPrices[i].y - curY > yThreshold) {
-      priceRows.push(curRow);
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i].y - curY > yThreshold) {
+      textRows.push(curRow);
       curRow = [];
-      curY = sortedPrices[i].y;
+      curY = sorted[i].y;
     }
-    curRow.push(sortedPrices[i]);
+    curRow.push(sorted[i]);
   }
-  if (curRow.length > 0) priceRows.push(curRow);
+  if (curRow.length > 0) textRows.push(curRow);
 
-  console.log(`[pdfTextExtractor] v17: Grouped into ${priceRows.length} price rows (threshold=${yThreshold.toFixed(1)})`);
-
-  // ── STEP 3: For each price row, gather all text on same Y-line and build region ──
+  // ── STEP 2: For each row, concatenate text and detect prices ──
   const regions: ExtractedProductRegion[] = [];
   const seenCodes = new Set<string>();
+  let priceRowCount = 0;
 
-  for (const pRow of priceRows) {
-    // Rightmost price item = icon anchor
-    const anchor = pRow.reduce((best, item) => (item.x > best.x ? item : best), pRow[0]);
+  for (const row of textRows) {
+    const sortedRow = [...row].sort((a, b) => a.x - b.x);
+    const rowText = sortedRow.map(it => it.text).join(" ");
+
+    // Detect price on the FULL concatenated row text
+    const detectedPrice = detectPrice(rowText);
+    if (detectedPrice === null) continue;
+
+    priceRowCount++;
+
+    // Find rightmost item for icon anchor
+    const anchor = sortedRow.reduce((best, item) =>
+      (item.x + item.width > best.x + best.width) ? item : best, sortedRow[0]);
     const anchorY = anchor.y;
     const anchorHeight = anchor.height;
 
-    // Ghost filter: skip prices in top 3% that have no model code nearby
+    // Ghost filter: skip prices in top 3% without model code
     const y_pct = (anchorY / pageHeight) * 100;
     if (y_pct < 3) {
-      // Check if any text on this Y-line has a model code pattern
-      const nearbyText = items
-        .filter(it => Math.abs(it.y - anchorY) <= yThreshold)
-        .map(it => it.text)
-        .join(" ");
-      if (!/\b[A-Z]{2,}\d+[A-Z0-9]*\b/i.test(nearbyText)) continue;
+      if (!/\b[A-Z]{2,}\d+[A-Z0-9]*\b/i.test(rowText)) continue;
     }
-
-    // Find ALL text items on same Y-line
-    const rowItems = items
-      .filter(it => Math.abs(it.y - anchorY) <= yThreshold)
-      .sort((a, b) => a.x - b.x);
-
-    const rowText = rowItems.map(it => it.text).join(" ");
-    const rowTextLower = rowText.toLowerCase();
 
     if (rowText.trim().length < 3) continue;
 
-    // Detect price from anchor
-    const detectedPrice = detectPrice(anchor.text);
+    const rowTextLower = rowText.toLowerCase();
 
     // ── Try matching against product DB ──
     let matched: PaletteProduct | null = null;
@@ -366,12 +331,12 @@ export function matchTextRowsToProducts(
       return rowText.trim().substring(0, 80) + priceTag;
     })();
 
-    // STEP 5a: Code dedup
+    // Code dedup
     const codeKey = extractedCode.toLowerCase().trim();
     if (codeKey.length >= 3 && codeKey.length < 40 && seenCodes.has(codeKey)) continue;
     if (codeKey.length >= 3 && codeKey.length < 40) seenCodes.add(codeKey);
 
-    // STEP 4: Position
+    // Position
     const h_pct = Math.max((anchorHeight / pageHeight) * 100, 1.5);
     if (y_pct < 0 || y_pct > 100 || h_pct > 5) continue;
 
@@ -392,7 +357,9 @@ export function matchTextRowsToProducts(
     });
   }
 
-  // ── STEP 5b: Y-bucket dedup ──
+  console.log(`[pdfTextExtractor] v18: ${textRows.length} text rows, ${priceRowCount} have prices, ${items.length} raw items, ${products.length} products`);
+
+  // ── STEP 5: Y-bucket dedup ──
   const yBuckets = new Map<number, number>();
   const deduped: ExtractedProductRegion[] = [];
   for (let i = 0; i < regions.length; i++) {
@@ -417,13 +384,13 @@ export function matchTextRowsToProducts(
   }
 
   const matchedCount = deduped.filter(r => r.matched).length;
-  console.log(`[pdfTextExtractor] v17: Results: ${deduped.length} regions (${matchedCount} matched, ${deduped.length - matchedCount} unmatched)`);
+  console.log(`[pdfTextExtractor] v18: Results: ${deduped.length} regions (${matchedCount} matched, ${deduped.length - matchedCount} unmatched)`);
 
   return deduped;
 }
 
 // Cache for extracted regions per page
-let _extractionVersion = 17; // v17: merge R+number fragments, robust price detection
+let _extractionVersion = 18; // v18: hybrid row-concat + price detection
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 
 /**
