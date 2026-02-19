@@ -42,6 +42,8 @@ interface VisualCatalogPanelProps {
   onOpenWizard?: (item: WizardTriggerItem) => void;
   /** Mutable ref that the parent can use to trigger PDF search from outside (e.g. the wizard) */
   pdfSearchRef?: React.MutableRefObject<((term: string) => void) | null>;
+  /** When true, suppresses backdrop click and Escape key to prevent closing while wizard is on top */
+  wizardOpen?: boolean;
 }
 
 interface PdfPage {
@@ -53,7 +55,7 @@ interface PdfPage {
   pdf_storage_path: string | null;
 }
 
-const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAddBasket, onRemoveBasket, products, isDragging: isDraggingExternal, onOpenWizard, pdfSearchRef }: VisualCatalogPanelProps) => {
+const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAddBasket, onRemoveBasket, products, isDragging: isDraggingExternal, onOpenWizard, pdfSearchRef, wizardOpen }: VisualCatalogPanelProps) => {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
@@ -110,10 +112,12 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
 
   useEffect(() => {
     if (!open) return;
-    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !wizardOpen) onClose();
+    };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [open, onClose]);
+  }, [open, onClose, wizardOpen]);
 
   // Fetch suppliers
   const { data: supplierOptions = [] } = useQuery({
@@ -418,7 +422,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/70 transition-opacity backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-40 bg-black/70 transition-opacity backdrop-blur-sm" onClick={wizardOpen ? undefined : onClose} />
 
       <div className={`fixed inset-y-0 left-0 z-50 flex bg-background border-r shadow-2xl transition-all duration-300 ease-in-out ${panelWidth}`}>
         {/* Quote Zones sidebar removed for cleaner PDF viewing experience */}

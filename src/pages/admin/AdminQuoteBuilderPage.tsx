@@ -603,13 +603,14 @@ const AdminQuoteBuilderPage = () => {
           {activeProduct ? <DragOverlayCard product={activeProduct} /> : null}
         </DragOverlay>
         <FloatingDropZoneStrip baskets={baskets} visible={isDragging && visualPanelOpen} />
-      <VisualCatalogPanel
+        <VisualCatalogPanel
           open={visualPanelOpen} onClose={() => setVisualPanelOpen(false)}
           baskets={baskets} onAddProductToBasket={addProductToBasket}
           onAddBasket={handleAddBasket} onRemoveBasket={handleRemoveBasket}
           products={products} isDragging={isDragging}
           onOpenWizard={handleOpenWizardFromPdf}
           pdfSearchRef={pdfSearchRef}
+          wizardOpen={wizardOpen}
         />
       </DndContext>
 
