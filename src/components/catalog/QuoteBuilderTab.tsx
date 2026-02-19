@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef } from "react";
-import { Search, Wand2 } from "lucide-react";
+import { Search, Wand2, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -81,6 +81,48 @@ class NoDndPointerSensor extends PointerSensor {
     },
   ];
 }
+
+/* Sticky collapsible summary wrapper */
+const StickyQuoteSummary = ({ baskets }: { baskets: Basket[] }) => {
+  const [collapsed, setCollapsed] = useState(true);
+  const totalItems = baskets.reduce((s, b) => s + b.items.length, 0);
+  const totalCost = baskets.reduce(
+    (sum, b) =>
+      sum +
+      b.items.reduce((s, i) => {
+        if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
+          return s + i.product.price_per_metre * i.length;
+        }
+        return s + (i.product.selling_price || i.product.cost_incl_vat || 0) * i.quantity;
+      }, 0),
+    0
+  );
+
+  if (totalItems === 0) return null;
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-50 md:absolute md:bottom-0 md:left-0 md:right-0">
+      <div className="bg-card border-t shadow-lg rounded-t-lg mx-auto max-w-screen-2xl">
+        {/* Toggle bar - always visible */}
+        <button
+          onClick={() => setCollapsed((c) => !c)}
+          className="w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-accent/50 transition-colors"
+        >
+          <span className="font-semibold text-foreground">
+            Quote Summary · {totalItems} items · R{totalCost.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+          </span>
+          {collapsed ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+        </button>
+        {/* Expandable detail */}
+        {!collapsed && (
+          <div className="px-4 pb-3 max-h-[40vh] overflow-y-auto">
+            <QuoteSummaryPanel baskets={baskets} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const QuoteBuilderTab = () => {
   const [baskets, setBaskets] = useState<Basket[]>([
@@ -490,7 +532,7 @@ const QuoteBuilderTab = () => {
   }, []);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-180px)] overflow-auto gap-3">
+    <div className="flex flex-col h-[calc(100vh-140px)] overflow-hidden gap-3 relative pb-14">
       <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 z-10 shadow-sm shrink-0">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-muted-foreground">
@@ -523,8 +565,8 @@ const QuoteBuilderTab = () => {
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 min-h-0">
-          <div className="md:col-span-2 flex flex-col min-h-0 h-[50vh] md:h-auto md:max-h-[calc(100vh-280px)]">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 flex-1 min-h-0 overflow-hidden">
+          <div className="md:col-span-2 flex flex-col min-h-0 overflow-hidden">
             <ProductPalette
               products={filteredProducts}
               isLoading={isLoading}
@@ -543,7 +585,7 @@ const QuoteBuilderTab = () => {
               onOpenVisualPanel={() => setVisualPanelOpen(true)}
             />
           </div>
-          <div ref={canvasRef} className="md:col-span-3 flex flex-col min-h-0 h-[50vh] md:h-auto md:max-h-[calc(100vh-280px)]">
+          <div ref={canvasRef} className="md:col-span-3 flex flex-col min-h-0 overflow-hidden">
             <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" as any }}>
               <BasketCanvas
                 baskets={baskets}
@@ -565,10 +607,6 @@ const QuoteBuilderTab = () => {
           </div>
         </div>
 
-        <div className="shrink-0 mt-2">
-          <QuoteSummaryPanel baskets={baskets} />
-        </div>
-
         <DragOverlay dropAnimation={null}>
           {activeProduct ? <DragOverlayCard product={activeProduct} /> : null}
         </DragOverlay>
@@ -588,7 +626,8 @@ const QuoteBuilderTab = () => {
         />
       </DndContext>
 
-      {/* QuoteSummaryPanel moved inside canvas column above */}
+      {/* Sticky collapsible quote summary at bottom */}
+      <StickyQuoteSummary baskets={baskets} />
 
       <ACOptionsModal
         open={acModalOpen}
