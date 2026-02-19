@@ -177,7 +177,7 @@ const DraggableRegion = memo(({
         width: "96%",
         height: `${region.h_pct}%`,
         touchAction: "none",
-        minHeight: "18px",
+        minHeight: "14px",
         margin: 0,
         padding: 0,
       }}
@@ -345,13 +345,15 @@ const PdfPageOverlay = ({
   }, [dbDismissedKeys]);
 
   const positionedRegions = useMemo(() =>
-    regions.filter((r) => {
-      if (r.x_pct == null || r.y_pct == null || r.w_pct == null || r.h_pct == null) return false;
-      if (r.w_pct <= 0 && r.h_pct <= 0) return false;
-      const dismissId = `${r.product_code}|${r.label.substring(0, 40)}`;
-      if (dismissedIds.has(dismissId)) return false;
-      return true;
-    }),
+    regions
+      .filter((r) => {
+        if (r.x_pct == null || r.y_pct == null || r.w_pct == null || r.h_pct == null) return false;
+        if (r.w_pct <= 0 && r.h_pct <= 0) return false;
+        const dismissId = `${r.product_code}|${r.label.substring(0, 40)}`;
+        if (dismissedIds.has(dismissId)) return false;
+        return true;
+      })
+      .sort((a, b) => a.y_pct - b.y_pct),
     [regions, dismissedIds]
   );
 
@@ -444,7 +446,7 @@ const PdfPageOverlay = ({
 
   return (
     <>
-      {positionedRegions.map((region) => (
+      {positionedRegions.map((region, idx) => (
         <DraggableRegion
           key={region.id}
           region={region}
