@@ -293,7 +293,11 @@ function isPrecededByR(
   const closest = leftNeighbors[0];
   const gap = candidate.x - (closest.x + closest.width);
   if (gap > closest.width * 4) return false; // too far
-  return closest.text.trim() === "R";
+  const isR = closest.text.trim() === "R";
+  if (isR) {
+    console.log(`[pdfExtract] isPrecededByR: ✓ candidate "${candidate.text.trim()}" at y=${candidate.y.toFixed(1)} preceded by "R" at x=${closest.x.toFixed(1)}, gap=${gap.toFixed(1)}px`);
+  }
+  return isR;
 }
 
 /**
@@ -348,6 +352,8 @@ export function matchTextRowsToProducts(
       priceItems.push(item);
     }
   }
+
+  console.log(`[pdfExtract] matchTextRows: ${mergedItems.length} items after merge, yThreshold=${yThreshold.toFixed(1)}, explicit R-prices=${explicitPriceItems.length}, standalone numeric preceded by R=${standaloneNumeric.length}, combined unique=${priceItems.length}`);
 
   if (priceItems.length === 0) return [];
 
@@ -498,8 +504,21 @@ export async function extractAndMatchPage(
       pageNumber
     );
 
+    console.log(`[pdfExtract] Page ${pageNumber}: ${items.length} raw text items extracted from PDF`);
+
     const mergedItems = mergeCurrencyWithPrices(items);
+    console.log(`[pdfExtract] Page ${pageNumber}: ${mergedItems.length} items after mergeCurrencyWithPrices (${items.length - mergedItems.length} merged)`);
+
+    // Log sample of lone "R" items and standalone numeric items for debugging
+    const loneRItems = mergedItems.filter(i => i.text.trim() === "R");
+    const numericItems = mergedItems.filter(i => /^\d[\d\s,.]+$/.test(i.text.trim()));
+    console.log(`[pdfExtract] Page ${pageNumber}: ${loneRItems.length} lone "R" items, ${numericItems.length} standalone numeric items`);
+    if (loneRItems.length > 0 && loneRItems.length <= 5) {
+      loneRItems.forEach(r => console.log(`[pdfExtract]   R at x=${r.x.toFixed(1)} y=${r.y.toFixed(1)}`));
+    }
+
     const regions = matchTextRowsToProducts(mergedItems, pageWidth, pageHeight, products);
+    console.log(`[pdfExtract] Page ${pageNumber}: ${regions.length} final regions`);
     extractionCache.set(cacheKey, regions);
     return regions;
   } catch (err) {
