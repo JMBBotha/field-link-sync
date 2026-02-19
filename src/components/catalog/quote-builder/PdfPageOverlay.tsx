@@ -117,9 +117,10 @@ const DraggableRegion = memo(({
 
   const price = product?.selling_price || product?.cost_incl_vat || 0;
 
-  // Strip click → opens quote item popup
+  // Strip click → opens Area Quote Builder
   const handleStripClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     if (onRowStripClick) {
       onRowStripClick(region);
     }

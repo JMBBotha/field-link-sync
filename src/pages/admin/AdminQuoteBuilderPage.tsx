@@ -24,6 +24,7 @@ import FloatingDropZoneStrip from "@/components/catalog/quote-builder/FloatingDr
 import ACOptionsModal, { detectACType } from "@/components/catalog/quote-builder/ACOptionsModal";
 import QuoteSummaryPanel from "@/components/catalog/quote-builder/QuoteSummaryPanel";
 import QuoteBuilderPopup from "@/components/catalog/quote-builder/QuoteBuilderPopup";
+import type { WizardTriggerItem } from "@/components/catalog/quote-builder/QuoteBuilderPopup";
 import { toast } from "@/hooks/use-toast";
 import { useProductUsageStats } from "@/hooks/useProductUsageStats";
 import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
@@ -245,6 +246,7 @@ const AdminQuoteBuilderPage = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [visualPanelOpen, setVisualPanelOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardTriggerItem, setWizardTriggerItem] = useState<WizardTriggerItem | null>(null);
   const [summaryCollapsed, setSummaryCollapsed] = useState(false);
 
   // ─── Mobile tab state ───
@@ -477,6 +479,12 @@ const AdminQuoteBuilderPage = () => {
     toast({ title: `Added ${newBaskets.length} zones from Area Quote Builder` });
   }, []);
 
+  const handleOpenWizardFromPdf = useCallback((item: WizardTriggerItem) => {
+    setWizardTriggerItem(item);
+    setVisualPanelOpen(false);
+    setWizardOpen(true);
+  }, []);
+
   // ─── Totals ───
   const totalCost = useMemo(() => baskets.reduce((sum, b) => sum + b.items.reduce((s, i) => {
     if (i.product.sold_in_length && i.product.price_per_metre && i.length) return s + i.product.price_per_metre * i.length;
@@ -597,6 +605,7 @@ const AdminQuoteBuilderPage = () => {
           baskets={baskets} onAddProductToBasket={addProductToBasket}
           onAddBasket={handleAddBasket} onRemoveBasket={handleRemoveBasket}
           products={products} isDragging={isDragging}
+          onOpenWizard={handleOpenWizardFromPdf}
         />
       </DndContext>
 
@@ -606,8 +615,8 @@ const AdminQuoteBuilderPage = () => {
       {/* Modals */}
       <ACOptionsModal open={acModalOpen} onClose={() => setAcModalOpen(false)} products={products}
         initialProduct={acModalProduct} onConfirm={handleACConfirm} inferredBrand={inferredBrand} inferredType={inferredType} />
-      <QuoteBuilderPopup open={wizardOpen} onClose={() => setWizardOpen(false)} products={products}
-        bundles={bundles} onSave={handleWizardSave} />
+      <QuoteBuilderPopup open={wizardOpen} onClose={() => { setWizardOpen(false); setWizardTriggerItem(null); }} products={products}
+        bundles={bundles} onSave={handleWizardSave} triggerItem={wizardTriggerItem} />
     </div>
   );
 };
