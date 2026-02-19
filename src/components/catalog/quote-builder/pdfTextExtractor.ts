@@ -211,8 +211,8 @@ function mergeAdjacentPriceFragments(
 }
 
 /**
- * PRICE-FIRST approach: find prices first, group into rows, then build regions.
- * Uses avgHeight-based adaptive threshold for row grouping.
+ * PRICE-FIRST approach v25: find ALL price items first, group into rows,
+ * then build regions. Every row with a price gets an icon.
  */
 export function matchTextRowsToProducts(
   items: ExtractedTextItem[],
@@ -226,124 +226,65 @@ export function matchTextRowsToProducts(
   const { byCode, byName, byDescription } = lookup;
   const mergedItems = mergeAdjacentPriceFragments(items, 3);
 
-  // Dynamic threshold based on average text item height
+  // Adaptive threshold based on average text height
   const avgHeight =
     mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length || 10;
   const yThreshold = avgHeight * 1.2;
 
-  // Filter price items (>= 50 ZAR)
-  const priceItems = mergedItems.filter(
-    (item) => {
-      const p = detectPrice(item.text);
-      return p !== null && p >= 50;
-    }
-  );
+  // STEP 1: Find ALL text items that contain an R-prefixed price
+  const priceItems = mergedItems.filter((item) => /R\s*\d/.test(item.text) && detectPrice(item.text) !== null);
   if (priceItems.length === 0) return [];
 
-  // Group ALL text items into rows sorted by Y
-  const sortedItems = [...mergedItems].sort((a, b) => a.y - b.y);
-  const allRows: { avgY: number; items: ExtractedTextItem[] }[] = [];
-  let currentItems: ExtractedTextItem[] = [sortedItems[0]];
-  let currentY = sortedItems[0].y;
-
-  for (let i = 1; i < sortedItems.length; i++) {
-    if (Math.abs(sortedItems[i].y - currentY) <= yThreshold) {
-      currentItems.push(sortedItems[i]);
-    } else {
-      const avgY =
-        currentItems.reduce((sum, it) => sum + it.y, 0) / currentItems.length;
-      allRows.push({
-        avgY,
-        items: currentItems.sort((a, b) => a.x - b.x),
-      });
-      currentItems = [sortedItems[i]];
-      currentY = sortedItems[i].y;
-    }
-  }
-  if (currentItems.length > 0) {
-    const avgY =
-      currentItems.reduce((sum, it) => sum + it.y, 0) / currentItems.length;
-    allRows.push({
-      avgY,
-      items: currentItems.sort((a, b) => a.x - b.x),
-    });
-  }
-
-  // Group price items into price rows
+  // STEP 2: Group price items into rows by Y-coordinate
   const sortedPrices = [...priceItems].sort((a, b) => a.y - b.y);
-  const priceRows: { avgY: number; prices: ExtractedTextItem[] }[] = [];
-  let curPrices: ExtractedTextItem[] = [sortedPrices[0]];
-  currentY = sortedPrices[0].y;
+  const priceRows: { items: ExtractedTextItem[] }[] = [];
+  let curGroup: ExtractedTextItem[] = [sortedPrices[0]];
 
   for (let i = 1; i < sortedPrices.length; i++) {
-    if (Math.abs(sortedPrices[i].y - currentY) <= yThreshold) {
-      curPrices.push(sortedPrices[i]);
+    if (Math.abs(sortedPrices[i].y - curGroup[curGroup.length - 1].y) <= yThreshold) {
+      curGroup.push(sortedPrices[i]);
     } else {
-      const avgY =
-        curPrices.reduce((sum, it) => sum + it.y, 0) / curPrices.length;
-      priceRows.push({
-        avgY,
-        prices: curPrices.sort((a, b) => a.x - b.x),
-      });
-      curPrices = [sortedPrices[i]];
-      currentY = sortedPrices[i].y;
+      priceRows.push({ items: curGroup.sort((a, b) => a.x - b.x) });
+      curGroup = [sortedPrices[i]];
     }
   }
-  if (curPrices.length > 0) {
-    const avgY =
-      curPrices.reduce((sum, it) => sum + it.y, 0) / curPrices.length;
-    priceRows.push({
-      avgY,
-      prices: curPrices.sort((a, b) => a.x - b.x),
-    });
-  }
+  priceRows.push({ items: curGroup.sort((a, b) => a.x - b.x) });
 
-  // Model code regex
-  const modelRegex = /^[A-Z0-9\-\/]{6,}$/;
+  // Model code regex - broad enough for Samsung, Daikin, Midea
+  const modelRegex = /^[A-Za-z0-9\-\/]{5,}$/;
 
-  // Process each price row into a product region
+  // STEP 3: For each price row, gather context and build a region
   const regions: ExtractedProductRegion[] = [];
 
   for (const pRow of priceRows) {
-    // Find the corresponding row in allRows
-    const priceIndex = allRows.findIndex(
-      (r) => Math.abs(r.avgY - pRow.avgY) < yThreshold / 2
+    const rightmost = pRow.items[pRow.items.length - 1];
+    const detectedPrice = detectPrice(rightmost.text);
+    if (detectedPrice === null || detectedPrice < 50) continue;
+
+    const rowAvgY = pRow.items.reduce((s, i) => s + i.y, 0) / pRow.items.length;
+
+    // Ghost filter: skip if in top 3% AND no model code nearby
+    const y_pct = (rowAvgY / pageHeight) * 100;
+
+    // Gather ALL text items on the same Y-band for context
+    const contextItems = mergedItems.filter(
+      (it) => Math.abs(it.y - rowAvgY) <= yThreshold
     );
-    if (priceIndex === -1) continue;
 
-    // Collect items starting with the price row
-    let collected: ExtractedTextItem[] = [...allRows[priceIndex].items];
+    // Also gather items slightly above (for multi-line descriptions)
+    const aboveItems = mergedItems.filter(
+      (it) => it.y < rowAvgY - yThreshold && it.y >= rowAvgY - yThreshold * 3 &&
+        !(/R\s*\d/.test(it.text) && detectPrice(it.text) !== null)
+    );
 
-    // Merge upwards (non-price rows that are close)
-    for (let j = priceIndex - 1; j >= 0; j--) {
-      const gap = allRows[j + 1].avgY - allRows[j].avgY;
-      if (gap > yThreshold * 2) break;
-      if (allRows[j].items.some((item) => isPriceItem(item.text))) break;
-      collected = [...allRows[j].items, ...collected];
-    }
+    const allContext = [...aboveItems, ...contextItems];
+    const hasModel = allContext.some((i) => modelRegex.test(i.text.trim()));
 
-    // Merge downwards (non-price rows that are close)
-    for (let j = priceIndex + 1; j < allRows.length; j++) {
-      const gap = allRows[j].avgY - allRows[j - 1].avgY;
-      if (gap > yThreshold * 2) break;
-      if (allRows[j].items.some((item) => isPriceItem(item.text))) break;
-      collected.push(...allRows[j].items);
-    }
-
-    // Ghost filter: skip if in top 3% and no model code
-    const y_pct = (pRow.avgY / pageHeight) * 100;
-    const hasModel = collected.some((i) => modelRegex.test(i.text.trim()));
     if (y_pct < 3 && !hasModel) continue;
 
-    // Get rightmost price as the detected price
-    const rightmost = pRow.prices[pRow.prices.length - 1];
-    const detectedPrice = detectPrice(rightmost.text);
-
-    // Build match text from all collected items
-    const matchText = collected.map((it) => it.text).join(" ").toLowerCase();
-    const rowText = allRows[priceIndex].items
-      .map((it) => it.text)
-      .join(" ");
+    // Build match text from all context
+    const matchText = allContext.map((it) => it.text).join(" ").toLowerCase();
+    const rowText = contextItems.map((it) => it.text).join(" ");
 
     // Match against product DB
     let matched: PaletteProduct | null = null;
@@ -378,8 +319,7 @@ export function matchTextRowsToProducts(
     const extractedCode =
       matchedCode ||
       (() => {
-        const fullText = collected.map((it) => it.text).join(" ");
-        const codeMatch = fullText.match(/\b([A-Z]{2,}\d+[A-Z0-9-]*)\b/);
+        const codeMatch = allContext.map((it) => it.text).join(" ").match(/\b([A-Za-z]{2,}\d+[A-Za-z0-9\-]*)\b/);
         return codeMatch
           ? codeMatch[1]
           : rowText.trim().substring(0, 80) + `@${detectedPrice}`;
@@ -403,7 +343,7 @@ export function matchTextRowsToProducts(
     });
   }
 
-  // Align icons to single x column
+  // Align all icons to a single X column
   if (regions.length > 0) {
     const maxX = Math.max(...regions.map((r) => r.x_pct));
     for (const r of regions) r.x_pct = maxX;
@@ -413,7 +353,7 @@ export function matchTextRowsToProducts(
 }
 
 // Cache for extracted regions per page
-let _extractionVersion = 24; // v24: unified price-first with avgHeight threshold
+let _extractionVersion = 25; // v25: true price-first scanning
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 
 /**
