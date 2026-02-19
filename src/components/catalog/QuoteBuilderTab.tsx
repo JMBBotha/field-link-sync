@@ -523,7 +523,7 @@ const QuoteBuilderTab = () => {
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <div className="grid grid-cols-1 grid-rows-[1fr_1fr] md:grid-cols-5 md:grid-rows-1 gap-4 flex-1 min-h-0 overflow-hidden">
+      <div className="grid grid-cols-1 grid-rows-[3fr_2fr] md:grid-cols-5 md:grid-rows-1 gap-4 flex-1 min-h-0 overflow-hidden">
           <div className="md:col-span-2 flex flex-col min-h-0 overflow-hidden">
             <ProductPalette
               products={filteredProducts}
@@ -543,23 +543,28 @@ const QuoteBuilderTab = () => {
               onOpenVisualPanel={() => setVisualPanelOpen(true)}
             />
           </div>
-          <div ref={canvasRef} className="md:col-span-3 min-h-0 overflow-y-auto" style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" as any }}>
-            <BasketCanvas
-              baskets={baskets}
-              allProducts={products}
-              onAddBasket={handleAddBasket}
-              onRenameBasket={handleRenameBasket}
-              onRemoveBasket={handleRemoveBasket}
-              onRemoveItem={handleRemoveItem}
-              onUpdateQuantity={handleUpdateQuantity}
-              onAddProductToBasket={addProductToBasket}
-              onDuplicateBasket={handleDuplicateBasket}
-              onApplyTemplate={handleApplyTemplate}
-              onClearAll={handleClearAll}
-              onUpdateLength={handleUpdateLength}
-              isDragging={isDragging}
-              isCompact={visualPanelOpen}
-            />
+          <div ref={canvasRef} className="md:col-span-3 flex flex-col min-h-0 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" as any }}>
+              <BasketCanvas
+                baskets={baskets}
+                allProducts={products}
+                onAddBasket={handleAddBasket}
+                onRenameBasket={handleRenameBasket}
+                onRemoveBasket={handleRemoveBasket}
+                onRemoveItem={handleRemoveItem}
+                onUpdateQuantity={handleUpdateQuantity}
+                onAddProductToBasket={addProductToBasket}
+                onDuplicateBasket={handleDuplicateBasket}
+                onApplyTemplate={handleApplyTemplate}
+                onClearAll={handleClearAll}
+                onUpdateLength={handleUpdateLength}
+                isDragging={isDragging}
+                isCompact={visualPanelOpen}
+              />
+            </div>
+            <div className="shrink-0 mt-2">
+              <QuoteSummaryPanel baskets={baskets} />
+            </div>
           </div>
         </div>
 
@@ -582,9 +587,7 @@ const QuoteBuilderTab = () => {
         />
       </DndContext>
 
-      <div className="shrink-0">
-        <QuoteSummaryPanel baskets={baskets} />
-      </div>
+      {/* QuoteSummaryPanel moved inside canvas column above */}
 
       <ACOptionsModal
         open={acModalOpen}
