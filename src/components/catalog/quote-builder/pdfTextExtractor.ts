@@ -231,6 +231,13 @@ export function matchTextRowsToProducts(
 ): ExtractedProductRegion[] {
   if (items.length === 0 || pageHeight === 0) return [];
 
+  // ── DEBUG: Log individual text items containing key strings ──
+  for (const item of items) {
+    if (item.text.includes('R4') || item.text.includes('MPPA') || item.text.includes('399')) {
+      console.log('[PDF_DEBUG] Text item:', JSON.stringify({text: item.text, x: item.x.toFixed(1), y: item.y.toFixed(1), width: item.width.toFixed(1), height: item.height.toFixed(1)}));
+    }
+  }
+
   const { byCode, byName, byDescription } = buildProductLookup(products);
 
   // ── STEP 1: Group ALL text items into rows by Y-proximity ──
@@ -260,17 +267,28 @@ export function matchTextRowsToProducts(
   }
   if (curRow.length > 0) textRows.push(curRow);
 
+  console.log('[PDF_DEBUG] Total rows formed:', textRows.length, 'Total text items:', items.length, 'yThreshold:', yThreshold.toFixed(2), 'medianGap:', medianGap.toFixed(2));
+
   // ── STEP 2: For each row, concatenate text and detect prices ──
   const regions: ExtractedProductRegion[] = [];
   const seenCodes = new Set<string>();
   let priceRowCount = 0;
 
-  for (const row of textRows) {
+  for (let index = 0; index < textRows.length; index++) {
+    const row = textRows[index];
     const sortedRow = [...row].sort((a, b) => a.x - b.x);
     const rowText = sortedRow.map(it => it.text).join(" ");
 
+    // ── DEBUG: Check for MPPA row ──
+    if (rowText.includes('MPPA') || rowText.includes('4 399') || rowText.includes('4399')) {
+      console.log('[PDF_DEBUG] *** FOUND MPPA ROW ***', 'Row', index, 'text:', rowText, '| detectPrice result:', detectPrice(rowText), '| items:', row.length);
+    }
+
     // Detect price on the FULL concatenated row text
     const detectedPrice = detectPrice(rowText);
+
+    console.log('[PDF_DEBUG] Row', index, 'text:', rowText.substring(0, 100), '| detectPrice:', detectedPrice, '| items:', row.length);
+
     if (detectedPrice === null) continue;
 
     priceRowCount++;
@@ -384,6 +402,7 @@ export function matchTextRowsToProducts(
   }
 
   const matchedCount = deduped.filter(r => r.matched).length;
+  console.log('[PDF_DEBUG] Total regions:', regions.length, 'after dedup:', deduped.length, 'matched:', matchedCount);
   console.log(`[pdfTextExtractor] v18: Results: ${deduped.length} regions (${matchedCount} matched, ${deduped.length - matchedCount} unmatched)`);
 
   return deduped;
