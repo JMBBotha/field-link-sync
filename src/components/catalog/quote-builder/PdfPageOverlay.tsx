@@ -112,7 +112,7 @@ const DraggableRegion = memo(({
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `pdf-overlay-${region.id}`,
     data: { product },
-    disabled: !isMatched,
+    disabled: true, // Disable drag — clicks now open Area Quote Builder
   });
 
   const price = product?.selling_price || product?.cost_incl_vat || 0;
@@ -163,11 +163,7 @@ const DraggableRegion = memo(({
 
   return (
     <div
-      ref={isMatched ? setNodeRef : undefined}
-      {...(isMatched ? { ...listeners, ...attributes } : {})}
-      className={`absolute transition-all duration-150 cursor-pointer group ${
-        isDragging ? "opacity-40 ring-2 ring-primary" : ""
-      }`}
+      className="absolute transition-all duration-150 cursor-pointer group"
       style={{
         left: "0%",
         top: `${region.y_pct}%`,
