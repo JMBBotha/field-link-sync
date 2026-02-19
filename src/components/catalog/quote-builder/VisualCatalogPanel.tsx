@@ -227,8 +227,9 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     scrollToPage(next);
   }, [pages.length, visiblePageIndex, scrollToPage]);
 
-  const handleProductClick = useCallback((product: PaletteProduct) => {
-    setPopupProduct(product);
+  // Legacy popup removed — clicks now route to Area Quote Builder via onOpenWizard
+  const handleProductClick = useCallback((_product: PaletteProduct) => {
+    // No-op: onOpenWizard handles this via PdfPageOverlay's row strip click
   }, []);
 
   const handleAddBasket = useCallback(() => {
@@ -551,17 +552,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
         </div>
       </div>
 
-      {/* Enhanced product popup */}
-      {popupProduct && (
-        <EnhancedProductPopup
-          product={popupProduct}
-          baskets={baskets}
-          onAddProductToBasket={onAddProductToBasket}
-          onAddBasket={handleAddBasket}
-          onClose={() => setPopupProduct(null)}
-          basketProductCounts={basketProductCounts}
-        />
-      )}
+      {/* EnhancedProductPopup removed — clicks now open Area Quote Builder */}
     </>
   );
 };
