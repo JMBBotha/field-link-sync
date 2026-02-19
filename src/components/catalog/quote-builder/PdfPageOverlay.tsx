@@ -178,48 +178,42 @@ const DraggableRegion = memo(({
       {...(isMatched ? { ...listeners, ...attributes } : {})}
       className={`absolute transition-all duration-150 cursor-pointer group ${
         isDragging ? "opacity-40 ring-2 ring-primary" : ""
-      } ${
-        isMatched
-          ? inQuoteQty > 0
-            ? "border-2 border-green-400/50 bg-green-500/5 hover:bg-green-500/15 hover:shadow-[0_0_12px_rgba(34,197,94,0.3)]"
-            : "border border-blue-400/40 bg-blue-500/5 hover:border-blue-400/70 hover:bg-blue-500/15 hover:shadow-[0_0_12px_rgba(59,130,246,0.25)]"
-          : "border border-dashed border-orange-400/40 hover:border-orange-400/70 hover:bg-orange-500/10"
       }`}
       style={{
-        left: `${region.x_pct}%`,
+        right: "150px",
         top: `${region.y_pct}%`,
-        width: `${region.w_pct}%`,
+        width: "20px",
         height: `${region.h_pct}%`,
         touchAction: "none",
         minHeight: "14px",
-        minWidth: "16px",
-        marginTop: "3px",
-        marginBottom: "3px",
+        margin: 0,
+        padding: 0,
       }}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
     >
       {/* Icon badges */}
-      <div className="absolute top-1/2 -translate-y-1/2 left-full opacity-70 group-hover:opacity-100 transition-opacity z-10 flex flex-row items-center gap-px" style={{ marginLeft: '16px' }}>
+      <div className="absolute top-1/2 -translate-y-1/2 left-0 opacity-80 group-hover:opacity-100 transition-opacity z-10 flex flex-row items-center">
         {isMatched ? (
           isFavorite ? (
             <button
               onDoubleClick={handleStarDoubleClick}
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
               onContextMenu={handleContextMenu}
-              className="pointer-events-auto h-4 w-4 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer"
-              style={{ background: "rgba(30,30,30,0.8)" }}
+              className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md"
+              style={{ background: "rgba(30,30,30,0.85)" }}
               title="Double-click to remove from favorites · Right-click to hide"
               aria-label="Remove from favorites"
             >
-              <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400" />
+              <Star className="h-3 w-3" style={{ fill: "#FFD700", color: "#FFD700" }} />
             </button>
           ) : inQuoteQty > 0 ? (
             <button
               onDoubleClick={handleStarDoubleClick}
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
               onContextMenu={handleContextMenu}
-              className="pointer-events-auto h-4 w-4 rounded-full bg-green-500 flex items-center justify-center text-[7px] font-bold text-white hover:scale-125 transition-transform cursor-pointer"
+              className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white hover:scale-125 transition-transform cursor-pointer shadow-md"
+              style={{ background: "#22c55e" }}
               title="Double-click to add to favorites · Right-click to hide"
               aria-label={`In quote: ${inQuoteQty}. Double-click to favorite`}
             >
@@ -230,22 +224,24 @@ const DraggableRegion = memo(({
               onDoubleClick={handleStarDoubleClick}
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
               onContextMenu={handleContextMenu}
-              className="pointer-events-auto h-4 w-4 rounded-full bg-blue-500 flex items-center justify-center hover:scale-125 transition-transform cursor-pointer"
+              className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md"
+              style={{ background: "#007BFF" }}
               title="Double-click to add to favorites · Right-click to hide"
               aria-label="Add to favorites"
             >
-              <ShoppingCart className="h-2 w-2 text-white" />
+              <ShoppingCart className="h-2.5 w-2.5 text-white" />
             </button>
           )
         ) : (
           <button
-            className="pointer-events-auto h-4 w-4 rounded-full bg-orange-500 flex items-center justify-center hover:scale-125 transition-all cursor-pointer"
+            className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-all cursor-pointer shadow-md"
+            style={{ background: "#f97316" }}
             onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
             onContextMenu={handleContextMenu}
             title="Right-click to hide"
             aria-label="Unmatched product. Right-click to hide"
           >
-            <ShoppingCart className="h-2 w-2 text-white" />
+            <ShoppingCart className="h-2.5 w-2.5 text-white" />
           </button>
         )}
       </div>

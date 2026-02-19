@@ -350,19 +350,10 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/40 transition-opacity" onClick={onClose} />
+      <div className="fixed inset-0 z-40 bg-black/70 transition-opacity backdrop-blur-sm" onClick={onClose} />
 
       <div className={`fixed inset-y-0 left-0 z-50 flex bg-background border-r shadow-2xl transition-all duration-300 ease-in-out ${panelWidth}`}>
-        {/* LEFT: Compact Zones Sidebar */}
-        {!isDraggingExternal && !isMobile && (
-          <div className="w-[280px] min-w-[240px] shrink-0 border-r flex flex-col">
-            <CompactZonesSidebar
-              baskets={baskets}
-              onAddBasket={handleAddBasket}
-              onRemoveBasket={onRemoveBasket || (() => {})}
-            />
-          </div>
-        )}
+        {/* Quote Zones sidebar removed for cleaner PDF viewing experience */}
 
         {/* RIGHT: PDF Viewer */}
         <div className="flex-1 flex flex-col overflow-hidden">
