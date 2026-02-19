@@ -125,16 +125,14 @@ const DraggableRegion = memo(({
     }
   }, [onRowStripClick, region]);
 
-  // Icon click → existing behavior (product detail or unmatched popup)
+  // Icon click → open Area Quote Builder (same as strip click)
   const handleIconClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (isMatched && product && onProductClick) {
-      onProductClick(product);
-    } else if (!isMatched && onUnmatchedClick) {
-      onUnmatchedClick(region);
+    if (onRowStripClick) {
+      onRowStripClick(region);
     }
-  }, [isMatched, product, onProductClick, onUnmatchedClick, region]);
+  }, [onRowStripClick, region]);
 
   const handleStarDoubleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -366,7 +364,6 @@ const PdfPageOverlay = ({
   supplierName,
   onOpenWizard,
 }: PdfPageOverlayProps) => {
-  const [unmatchedPopup, setUnmatchedPopup] = useState<OverlayRegion | null>(null);
   const [localAddedIds, setLocalAddedIds] = useState<Set<string>>(new Set());
   const [, forceUpdate] = useState(0);
   const queryClient = useQueryClient();
@@ -403,9 +400,6 @@ const PdfPageOverlay = ({
     [regions, dismissedIds]
   );
 
-  const handleUnmatchedClick = useCallback((region: OverlayRegion) => {
-    setUnmatchedPopup(region);
-  }, []);
 
   const handleRemoveRegion = useCallback((region: OverlayRegion) => {
     forceUpdate(n => n + 1);
@@ -473,7 +467,7 @@ const PdfPageOverlay = ({
               : 0
           }
           onProductClick={onProductClick}
-          onUnmatchedClick={handleUnmatchedClick}
+          onUnmatchedClick={handleRowStripClick}
           onToggleFavorite={onToggleFavorite}
           onRemoveRegion={handleRemoveRegion}
           onRowStripClick={handleRowStripClick}
@@ -496,52 +490,6 @@ const PdfPageOverlay = ({
           iconLeftPct={iconLeftPct}
         />
       ))}
-
-      {/* Legacy unmatched popup */}
-      {unmatchedPopup && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30" onClick={() => setUnmatchedPopup(null)}>
-          <div className="bg-popover border rounded-xl shadow-2xl p-4 max-w-xs w-full mx-4" onClick={e => e.stopPropagation()}>
-            <div className="flex items-start justify-between mb-3">
-              <h3 className="text-sm font-semibold text-foreground">Product not in catalog</h3>
-              <button onClick={() => setUnmatchedPopup(null)} className="text-muted-foreground hover:text-foreground">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="space-y-2 text-xs">
-              <div>
-                <span className="text-muted-foreground">Detected text:</span>
-                <p className="font-mono text-foreground mt-0.5 break-all">{unmatchedPopup.label}</p>
-              </div>
-              {unmatchedPopup.product_code && (
-                <div>
-                  <span className="text-muted-foreground">Code:</span>
-                  <span className="ml-1 font-mono text-foreground">{unmatchedPopup.product_code}</span>
-                </div>
-              )}
-              {unmatchedPopup.detected_price !== null && unmatchedPopup.detected_price !== undefined && (
-                <div>
-                  <span className="text-muted-foreground">Detected price:</span>
-                  <span className="ml-1 font-bold text-foreground">R{unmatchedPopup.detected_price.toLocaleString("en-ZA")}</span>
-                </div>
-              )}
-            </div>
-            {onQuickAddProduct && (
-              <Button
-                size="sm"
-                className="w-full mt-4 text-xs"
-                onClick={() => {
-                  onQuickAddProduct(unmatchedPopup.label, unmatchedPopup.product_code, unmatchedPopup.detected_price ?? null);
-                  setUnmatchedPopup(null);
-                }}
-              >
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                Add to catalog
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-
 
     </>
   );

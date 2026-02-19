@@ -535,6 +535,7 @@ const QuoteBuilderTab = () => {
 
   const handleOpenWizardFromPdf = useCallback((item: WizardTriggerItem) => {
     setWizardTriggerItem(item);
+    setVisualPanelOpen(false); // Close Visual Catalog
     setWizardOpen(true);
   }, []);
 
