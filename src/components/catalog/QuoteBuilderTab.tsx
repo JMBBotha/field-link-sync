@@ -523,7 +523,7 @@ const QuoteBuilderTab = () => {
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-      <div className="grid grid-cols-1 grid-rows-[3fr_2fr] md:grid-cols-5 md:grid-rows-1 gap-4 flex-1 min-h-0 overflow-hidden">
+      <div className="grid grid-cols-1 grid-rows-[2fr_3fr] md:grid-cols-5 md:grid-rows-1 gap-4 flex-1 min-h-0 overflow-hidden">
           <div className="md:col-span-2 flex flex-col min-h-0 overflow-hidden">
             <ProductPalette
               products={filteredProducts}
