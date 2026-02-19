@@ -195,7 +195,7 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Suppliers</SelectItem>
-            {suppliers.map((s) => (
+            {suppliers.filter((s) => s && s.trim() !== '').map((s) => (
               <SelectItem key={s} value={s}>
                 {s}
               </SelectItem>
