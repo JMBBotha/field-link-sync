@@ -698,10 +698,17 @@ const LazyPdfPage = ({
 
   // No archived product code filtering needed — PdfPageOverlay handles dismissals via dismissed_pdf_regions table
 
-  // Live extraction for this page
+   // Live extraction for this page
+  const queryEnabled = isVisible && hasPdfSource && activeProducts.length > 0;
+  
+  // Debug: log why query might not be enabled
+  useEffect(() => {
+    console.log(`[VisualCatalog] Page ${page.page_number} query conditions: isVisible=${isVisible}, hasPdfSource=${hasPdfSource}, activeProducts=${activeProducts.length}, enabled=${queryEnabled}, pdf_storage_path=${page.pdf_storage_path?.substring(0, 60) || 'null'}`);
+  }, [isVisible, hasPdfSource, activeProducts.length, queryEnabled, page.page_number, page.pdf_storage_path]);
+
   const { data: liveRegions = [], isLoading: extracting } = useQuery({
     queryKey: ["visual-panel-live-extract", page.id, page.pdf_storage_path, activeProducts.length],
-    enabled: isVisible && hasPdfSource && activeProducts.length > 0,
+    enabled: queryEnabled,
     queryFn: async () => {
       if (!page.pdf_storage_path) return [];
       try {

@@ -309,10 +309,9 @@ function findColumnPrices(
     const t = item.text.trim();
     // Must be numeric-ish: digits with optional spaces/commas/periods
     if (!/^\d[\d\s,.]*$/.test(t)) continue;
-    // Must have decimal separator or be >= 3 digits (to avoid row numbers)
+    // Must have at least 2 digits total
     const digits = t.replace(/[\s,.]/g, "");
     if (digits.length < 2) continue;
-    if (!/[,.]/.test(t) && digits.length < 3) continue;
 
     // Parse as price value
     let raw = t.replace(/\s/g, "");
@@ -322,11 +321,11 @@ function findColumnPrices(
       raw = raw.replace(/,/g, "");
     }
     const val = parseFloat(raw);
-    if (isNaN(val) || val < 5) continue;
+    if (isNaN(val) || val < 1) continue;
 
     // Check if in price column or right side of page
     const inColumn = colRange && item.x >= colRange.minX && item.x <= colRange.maxX;
-    const inRightSide = item.x / pageWidth > 0.55;
+    const inRightSide = item.x / pageWidth > 0.40;
 
     if (inColumn || inRightSide) {
       candidates.push(item);
@@ -376,7 +375,8 @@ export function matchTextRowsToProducts(
     }
   }
 
-  console.log(`[pdfExtract] matchTextRows: ${mergedItems.length} items, yThreshold=${yThreshold.toFixed(1)}, explicit R-prices=${explicitPriceItems.length}, column-based prices=${columnPrices.length}, combined unique=${priceItems.length}`);
+  const colRange = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
+  console.log(`[pdfExtract] matchTextRows: ${mergedItems.length} items, yThreshold=${yThreshold.toFixed(1)}, explicit R-prices=${explicitPriceItems.length}, column-based prices=${columnPrices.length}, combined unique=${priceItems.length}, priceColumnRange=${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : 'none (using x>40% fallback)'}, pageWidth=${pageWidth.toFixed(0)}`);
 
   if (priceItems.length === 0) return [];
 
@@ -410,7 +410,7 @@ export function matchTextRowsToProducts(
       const val = parseFloat(raw);
       if (!isNaN(val) && val >= 50) detectedPrice = val;
     }
-    if (detectedPrice === null || detectedPrice < 50) continue;
+    if (detectedPrice === null || detectedPrice < 1) continue;
 
     const rowAvgY = pRow.items.reduce((s, i) => s + i.y, 0) / pRow.items.length;
 
@@ -504,7 +504,7 @@ export function matchTextRowsToProducts(
 }
 
 // Cache for extracted regions per page
-let _extractionVersion = 29; // v29: column-based price detection for dense table PDFs
+let _extractionVersion = 30; // v30: relaxed thresholds (x>40%, minPrice>=1) + page 3 debug
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 
 /**
