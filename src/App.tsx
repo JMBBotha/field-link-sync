@@ -57,6 +57,7 @@ import FBProjectsList from "./components/freshbooks/FBProjectsList";
 import CompanyManagement from "./components/freshbooks/CompanyManagement";
 import FBCreateInvoicePage from "./pages/FBCreateInvoicePage";
 import FBCreateEstimatePage from "./pages/FBCreateEstimatePage";
+import FBQuoteBuilderPage from "./pages/FBQuoteBuilderPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -135,6 +136,9 @@ const App = () => (
                 <Route path="invoices/new" element={<FBCreateInvoicePage />} />
                 <Route path="estimates/new" element={<FBCreateEstimatePage />} />
               </Route>
+
+              {/* Full-page Quote Builder for client portal (outside FBLayout for full-bleed) */}
+              <Route path="/client/:companyId/quote-builder" element={<CompanyProvider><FBQuoteBuilderPage /></CompanyProvider>} />
 
               {/* Redirects from old standalone routes */}
               <Route path="/invoices" element={<Navigate to="/admin/invoices" replace />} />
