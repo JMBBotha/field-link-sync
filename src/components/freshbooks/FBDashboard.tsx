@@ -44,6 +44,15 @@ const FBDashboard = () => {
       const today = new Date().toISOString().split("T")[0];
       const d = (offset: number) => new Date(Date.now() + offset * 86400000).toISOString().split("T")[0];
 
+      // Clean up existing demo data (reverse dependency order)
+      await supabase.from("fb_time_entries").delete().eq("company_id", companyId);
+      await supabase.from("fb_payments").delete().eq("company_id", companyId);
+      await supabase.from("fb_projects").delete().eq("company_id", companyId);
+      await supabase.from("fb_expenses").delete().eq("company_id", companyId);
+      await supabase.from("fb_estimates").delete().eq("company_id", companyId);
+      await supabase.from("fb_invoices").delete().eq("company_id", companyId);
+      await supabase.from("fb_contacts").delete().eq("company_id", companyId);
+
       // 3 contacts
       const { data: contacts, error: conErr } = await supabase.from("fb_contacts").insert([
         { company_id: companyId, name: "Sarah Johnson", email: "sarah@example.com", phone: "011-555-0100", company_name: "Johnson Corp" },
