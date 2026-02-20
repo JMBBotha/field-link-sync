@@ -108,18 +108,18 @@ const FBTimeTracking = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-[hsl(0,0%,29%)]">Time Tracking</h2>
-          <p className="text-sm text-[hsl(0,0%,53%)]">Total: {totalHours.toFixed(1)} hours logged</p>
+          <h2 className="text-2xl font-bold text-foreground">Time Tracking</h2>
+          <p className="text-sm text-muted-foreground">Total: {totalHours.toFixed(1)} hours logged</p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="bg-[hsl(211,100%,43%)] hover:bg-[hsl(211,100%,38%)]"><Plus className="h-4 w-4 mr-2" />Log Time</Button>
+        <Button onClick={() => setShowCreate(true)} className="bg-amber-500 hover:bg-amber-600 text-white"><Plus className="h-4 w-4 mr-2" />Log Time</Button>
       </div>
 
       {/* Live Timer */}
-      <div className="bg-white rounded-lg shadow-sm border border-[hsl(0,0%,90%)] p-4">
+      <div className="bg-card rounded-lg shadow-sm border border-border p-4">
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2">
-            <Timer className="h-5 w-5 text-[hsl(211,100%,43%)]" />
-            <span className="text-2xl font-mono font-bold text-[hsl(0,0%,29%)]">{formatTimer(timerSeconds)}</span>
+            <Timer className="h-5 w-5 text-amber-500" />
+            <span className="text-2xl font-mono font-bold text-foreground">{formatTimer(timerSeconds)}</span>
           </div>
           <Select value={timerProject} onValueChange={setTimerProject}>
             <SelectTrigger className="w-40"><SelectValue placeholder="Project" /></SelectTrigger>
@@ -128,35 +128,35 @@ const FBTimeTracking = () => {
           <Input placeholder="What are you working on?" value={timerNotes} onChange={e => setTimerNotes(e.target.value)} className="flex-1 min-w-[200px]" />
           <div className="flex items-center gap-2">
             <Switch checked={timerBillable} onCheckedChange={setTimerBillable} />
-            <span className="text-sm text-[hsl(0,0%,53%)]">Billable</span>
+            <span className="text-sm text-muted-foreground">Billable</span>
           </div>
           {timerRunning ? (
             <Button variant="destructive" size="sm" onClick={handleStopTimer}><Square className="h-4 w-4 mr-1" />Stop</Button>
           ) : (
-            <Button size="sm" className="bg-[hsl(125,49%,34%)] hover:bg-[hsl(125,49%,28%)]" onClick={() => setTimerRunning(true)}><Play className="h-4 w-4 mr-1" />Start</Button>
+            <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => setTimerRunning(true)}><Play className="h-4 w-4 mr-1" />Start</Button>
           )}
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-[hsl(0,0%,90%)] overflow-hidden">
+      <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b bg-[hsl(0,0%,98%)]">
-            <th className="text-left px-4 py-3 font-medium text-[hsl(0,0%,53%)]">Date</th>
-            <th className="text-left px-4 py-3 font-medium text-[hsl(0,0%,53%)]">Project</th>
-            <th className="text-left px-4 py-3 font-medium text-[hsl(0,0%,53%)]">Duration</th>
-            <th className="text-left px-4 py-3 font-medium text-[hsl(0,0%,53%)]">Billable</th>
-            <th className="text-left px-4 py-3 font-medium text-[hsl(0,0%,53%)]">Notes</th>
+          <thead><tr className="border-b bg-muted/50">
+            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Date</th>
+            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Project</th>
+            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Duration</th>
+            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Billable</th>
+            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Notes</th>
           </tr></thead>
           <tbody>
-            {isLoading ? <tr><td colSpan={5} className="px-4 py-8 text-center text-[hsl(0,0%,53%)]">Loading...</td></tr>
-            : entries.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-[hsl(0,0%,53%)]">No time entries</td></tr>
+            {isLoading ? <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+            : entries.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No time entries</td></tr>
             : entries.map((e: any) => (
-              <tr key={e.id} className="border-b border-[hsl(0,0%,95%)] hover:bg-[hsl(0,0%,98%)]">
+              <tr key={e.id} className="border-b border-border/50 hover:bg-muted/30">
                 <td className="px-4 py-3">{e.date}</td>
                 <td className="px-4 py-3">{e.fb_projects?.name || "—"}</td>
-                <td className="px-4 py-3 flex items-center gap-1"><Clock className="h-3.5 w-3.5 text-[hsl(0,0%,53%)]" />{String(e.duration)}</td>
+                <td className="px-4 py-3 flex items-center gap-1"><Clock className="h-3.5 w-3.5 text-muted-foreground" />{String(e.duration)}</td>
                 <td className="px-4 py-3">{e.billable ? <Badge variant="secondary" className="bg-green-100 text-green-700">Yes</Badge> : <Badge variant="secondary">No</Badge>}</td>
-                <td className="px-4 py-3 text-[hsl(0,0%,53%)] truncate max-w-[200px]">{e.notes || "—"}</td>
+                <td className="px-4 py-3 text-muted-foreground truncate max-w-[200px]">{e.notes || "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -180,7 +180,7 @@ const FBTimeTracking = () => {
             <div><Label>Date</Label><Input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
             <div className="flex items-center gap-3"><Switch checked={form.billable} onCheckedChange={v => setForm(f => ({ ...f, billable: v }))} /><Label>Billable</Label></div>
             <div><Label>Notes</Label><Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
-            <Button onClick={handleManualSave} className="w-full bg-[hsl(211,100%,43%)]">Log Time</Button>
+            <Button onClick={handleManualSave} className="w-full bg-amber-500 hover:bg-amber-600 text-white">Log Time</Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -43,27 +43,27 @@ const FBContactsList = () => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-[hsl(0,0%,29%)]">Clients</h2>
-        <Button onClick={() => setShowCreate(true)} className="bg-[hsl(211,100%,43%)] hover:bg-[hsl(211,100%,38%)]"><Plus className="h-4 w-4 mr-2" />New Client</Button>
+        <h2 className="text-2xl font-bold text-foreground">Clients</h2>
+        <Button onClick={() => setShowCreate(true)} className="bg-amber-500 hover:bg-amber-600 text-white"><Plus className="h-4 w-4 mr-2" />New Client</Button>
       </div>
       <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(0,0%,53%)]" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input placeholder="Search clients..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {isLoading ? <p className="text-[hsl(0,0%,53%)]">Loading...</p>
-        : filtered.length === 0 ? <p className="text-[hsl(0,0%,53%)]">No clients found</p>
+        {isLoading ? <p className="text-muted-foreground">Loading...</p>
+        : filtered.length === 0 ? <p className="text-muted-foreground">No clients found</p>
         : filtered.map((c: any) => (
-          <div key={c.id} className="bg-white rounded-lg shadow-sm border border-[hsl(0,0%,90%)] p-4 hover:shadow-md transition-shadow">
+          <div key={c.id} className="bg-card rounded-lg shadow-sm border border-border p-4 hover:shadow-md transition-shadow">
             <div className="flex items-start gap-3">
-              <div className="h-10 w-10 rounded-full bg-[hsl(211,100%,43%)]/10 flex items-center justify-center shrink-0">
-                <User className="h-5 w-5 text-[hsl(211,100%,43%)]" />
+              <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
+                <User className="h-5 w-5 text-amber-600" />
               </div>
               <div className="min-w-0">
-                <p className="font-semibold text-[hsl(0,0%,29%)] truncate">{c.name}</p>
-                {c.company_name && <p className="text-xs text-[hsl(0,0%,53%)]">{c.company_name}</p>}
-                {c.email && <p className="text-xs text-[hsl(211,100%,43%)] mt-1">{c.email}</p>}
-                {c.phone && <p className="text-xs text-[hsl(0,0%,53%)]">{c.phone}</p>}
+                <p className="font-semibold text-foreground truncate">{c.name}</p>
+                {c.company_name && <p className="text-xs text-muted-foreground">{c.company_name}</p>}
+                {c.email && <p className="text-xs text-amber-600 mt-1">{c.email}</p>}
+                {c.phone && <p className="text-xs text-muted-foreground">{c.phone}</p>}
               </div>
             </div>
           </div>
@@ -79,7 +79,7 @@ const FBContactsList = () => {
               <div><Label>Email</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
               <div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
             </div>
-            <Button onClick={() => createMutation.mutate()} disabled={!form.name} className="w-full bg-[hsl(211,100%,43%)]">Add Client</Button>
+            <Button onClick={() => createMutation.mutate()} disabled={!form.name} className="w-full bg-amber-500 hover:bg-amber-600 text-white">Add Client</Button>
           </div>
         </DialogContent>
       </Dialog>
