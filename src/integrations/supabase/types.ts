@@ -1958,6 +1958,57 @@ export type Database = {
         }
         Relationships: []
       }
+      proposal_items: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          line_total: number
+          proposal_id: string
+          quantity: number
+          rate: number
+          service_id: string | null
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          line_total?: number
+          proposal_id: string
+          quantity?: number
+          rate?: number
+          service_id?: string | null
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          line_total?: number
+          proposal_id?: string
+          quantity?: number
+          rate?: number
+          service_id?: string | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_items_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_items_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       proposal_sections: {
         Row: {
           content: string | null
@@ -2028,6 +2079,100 @@ export type Database = {
           section_type?: string
         }
         Relationships: []
+      }
+      proposals: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          discount_amount: number
+          discount_type: string | null
+          discount_value: number
+          due_date: string | null
+          id: string
+          issue_date: string
+          lead_id: string | null
+          notes: string | null
+          proposal_number: string
+          quote_id: string | null
+          reference: string | null
+          status: string
+          subtotal: number
+          tax_amount: number
+          tax_rate: number
+          terms: string | null
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          discount_amount?: number
+          discount_type?: string | null
+          discount_value?: number
+          due_date?: string | null
+          id?: string
+          issue_date?: string
+          lead_id?: string | null
+          notes?: string | null
+          proposal_number?: string
+          quote_id?: string | null
+          reference?: string | null
+          status?: string
+          subtotal?: number
+          tax_amount?: number
+          tax_rate?: number
+          terms?: string | null
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          discount_amount?: number
+          discount_type?: string | null
+          discount_value?: number
+          due_date?: string | null
+          id?: string
+          issue_date?: string
+          lead_id?: string | null
+          notes?: string | null
+          proposal_number?: string
+          quote_id?: string | null
+          reference?: string | null
+          status?: string
+          subtotal?: number
+          tax_amount?: number
+          tax_rate?: number
+          terms?: string | null
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposals_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quote_attachments: {
         Row: {
@@ -3033,6 +3178,7 @@ export type Database = {
         Args: { months_ahead?: number }
         Returns: number
       }
+      generate_proposal_number: { Args: never; Returns: string }
       generate_quote_number: { Args: never; Returns: string }
       get_agents_within_radius: {
         Args: { lead_lat: number; lead_lng: number; radius_km: number }
