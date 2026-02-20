@@ -61,7 +61,7 @@ const FBProjectsList = () => {
   const { data: expensesList = [] } = useQuery({
     queryKey: ["fb-expenses-for-projects", companyId],
     queryFn: async () => {
-      const { data } = await supabase.from("fb_expenses").select("amount").eq("company_id", companyId!);
+      const { data } = await supabase.from("fb_expenses").select("amount, category").eq("company_id", companyId!);
       return data || [];
     },
     enabled: !!companyId,
@@ -87,13 +87,30 @@ const FBProjectsList = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["fb-projects"] }),
   });
 
+  const parseDuration = (dur: string): number => {
+    const s = String(dur || "");
+    // Handle HH:MM:SS or interval formats
+    const hmsMatch = s.match(/^(\d+):(\d+)(?::(\d+))?$/);
+    if (hmsMatch) return Number(hmsMatch[1]) + Number(hmsMatch[2]) / 60;
+    const hMatch = s.match(/(\d+)\s*h(?:our)?s?/i);
+    const mMatch = s.match(/(\d+)\s*m(?:in)?(?:ute)?s?/i);
+    return (hMatch ? Number(hMatch[1]) : 0) + (mMatch ? Number(mMatch[1]) / 60 : 0);
+  };
+
   const getProjectHours = (projectId: string) => {
-    return timeEntries.filter((t: any) => t.project_id === projectId).reduce((sum: number, t: any) => {
-      const dur = String(t.duration || "");
-      const hMatch = dur.match(/(\d+)\s*hour/);
-      const mMatch = dur.match(/(\d+)\s*min/);
-      return sum + (hMatch ? Number(hMatch[1]) : 0) + (mMatch ? Number(mMatch[1]) / 60 : 0);
-    }, 0);
+    return timeEntries
+      .filter((t: any) => t.project_id === projectId)
+      .reduce((sum: number, t: any) => sum + parseDuration(t.duration), 0);
+  };
+
+  const getProjectBillableHours = (projectId: string) => {
+    return timeEntries
+      .filter((t: any) => t.project_id === projectId && t.billable)
+      .reduce((sum: number, t: any) => sum + parseDuration(t.duration), 0);
+  };
+
+  const getTotalExpenses = () => {
+    return expensesList.reduce((sum: number, e: any) => sum + (Number(e.amount) || 0), 0);
   };
 
   const filtered = projects.filter((p: any) => p.name?.toLowerCase().includes(search.toLowerCase()));
@@ -113,8 +130,11 @@ const FBProjectsList = () => {
         : filtered.length === 0 ? <p className="text-muted-foreground">No projects</p>
         : filtered.map((p: any) => {
           const hours = getProjectHours(p.id);
+          const billableHours = getProjectBillableHours(p.id);
           const budget = Number(p.budget) || 0;
-          const spent = hours * 450;
+          const hourlyRate = 450;
+          const labourSpent = billableHours * hourlyRate;
+          const spent = labourSpent;
           const utilization = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
           const isExpanded = expandedId === p.id;
 
@@ -133,10 +153,10 @@ const FBProjectsList = () => {
                         {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-4 text-sm flex-wrap">
                       {p.fb_contacts?.name && <span className="text-muted-foreground">Client: {p.fb_contacts.name}</span>}
                       <span className="font-medium text-foreground">Budget: {fmt(budget)}</span>
-                      <span className="text-muted-foreground">{hours.toFixed(1)}h logged</span>
+                      <span className="text-muted-foreground">{hours.toFixed(1)}h logged ({billableHours.toFixed(1)}h billable)</span>
                     </div>
                     {budget > 0 && (
                       <div className="mt-3">
@@ -166,13 +186,17 @@ const FBProjectsList = () => {
                       </Select>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                       <div className="bg-muted/50 rounded-lg p-3 text-center">
-                        <p className="text-muted-foreground">Hours</p>
+                        <p className="text-muted-foreground">Total Hours</p>
                         <p className="text-lg font-bold text-foreground">{hours.toFixed(1)}</p>
                       </div>
                       <div className="bg-muted/50 rounded-lg p-3 text-center">
-                        <p className="text-muted-foreground">Cost (est)</p>
+                        <p className="text-muted-foreground">Billable</p>
+                        <p className="text-lg font-bold text-foreground">{billableHours.toFixed(1)}h</p>
+                      </div>
+                      <div className="bg-muted/50 rounded-lg p-3 text-center">
+                        <p className="text-muted-foreground">Spent</p>
                         <p className="text-lg font-bold text-foreground">{fmt(spent)}</p>
                       </div>
                       <div className="bg-muted/50 rounded-lg p-3 text-center">
