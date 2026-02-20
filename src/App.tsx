@@ -55,6 +55,7 @@ import FBPaymentsList from "./components/freshbooks/FBPaymentsList";
 import FBProjectsList from "./components/freshbooks/FBProjectsList";
 import CompanyManagement from "./components/freshbooks/CompanyManagement";
 import FBCreateInvoicePage from "./pages/FBCreateInvoicePage";
+import FBCreateEstimatePage from "./pages/FBCreateEstimatePage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -130,6 +131,7 @@ const App = () => (
                 <Route path="payments" element={<FBPaymentsList />} />
                 <Route path="projects" element={<FBProjectsList />} />
                 <Route path="invoices/new" element={<FBCreateInvoicePage />} />
+                <Route path="estimates/new" element={<FBCreateEstimatePage />} />
               </Route>
 
               {/* Redirects from old standalone routes */}
