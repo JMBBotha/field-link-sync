@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { Plus, X, Loader2, Search, ChevronDown, ChevronUp, Paperclip, Upload } from "lucide-react";
+import { Plus, X, Loader2, Search, ChevronDown, ChevronUp, Paperclip, Upload, FileDown, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,8 @@ import ProductSearchDropdown from "@/components/shared/ProductSearchDropdown";
 import { useQuoteSessionStore } from "@/stores/quoteSessionStore";
 import { useExitGuard } from "@/hooks/useExitGuard";
 import UnsavedQuoteDialog from "@/components/shared/UnsavedQuoteDialog";
+import BeCoolLogo from "@/components/shared/BeCoolLogo";
+import { generateDocumentPdf } from "@/lib/documentPdf";
 
 /* ────────── Types ────────── */
 
@@ -20,6 +22,7 @@ interface LineItem {
   description: string;
   quantity: number;
   rate: number;
+  markup?: number;
   amount: number;
   service_id?: string | null;
 }
@@ -303,10 +306,16 @@ const CreateInvoicePage = ({
       item.description = value as string;
     } else if (field === "quantity") {
       item.quantity = Math.max(0, Number(value) || 0);
-      item.amount = item.quantity * item.rate;
+      const clientRate = item.rate * (1 + (item.markup || 0) / 100);
+      item.amount = item.quantity * clientRate;
     } else if (field === "rate") {
       item.rate = Math.max(0, Number(value) || 0);
-      item.amount = item.quantity * item.rate;
+      const clientRate = item.rate * (1 + (item.markup || 0) / 100);
+      item.amount = item.quantity * clientRate;
+    } else if (field === "markup") {
+      item.markup = Math.max(0, Number(value) || 0);
+      const clientRate = item.rate * (1 + item.markup / 100);
+      item.amount = item.quantity * clientRate;
     }
     items[index] = item;
     setLineItems(items);
@@ -318,13 +327,14 @@ const CreateInvoicePage = ({
       description: opt.name,
       quantity: 1,
       rate: opt.rate,
+      markup: 0,
       amount: opt.rate,
       service_id: opt.source === "template" ? opt.id : null,
     };
     setLineItems(items);
   };
 
-  const addLineItem = () => setLineItems([...lineItems, { description: "", quantity: 1, rate: 0, amount: 0 }]);
+  const addLineItem = () => setLineItems([...lineItems, { description: "", quantity: 1, rate: 0, markup: 0, amount: 0 }]);
   const removeLineItem = (i: number) => {
     if (lineItems.length > 1) setLineItems(lineItems.filter((_, idx) => idx !== i));
   };
@@ -507,12 +517,9 @@ const CreateInvoicePage = ({
         {/* ── HEADER ROW ── */}
         <div className="flex flex-row gap-6 items-start justify-start">
           <div className="shrink-0">
-            {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="max-h-[130px] max-w-[200px] w-auto object-contain" />
-            ) : (
-              <div className="h-[130px] w-[130px] rounded-lg bg-primary/10 flex items-center justify-center text-primary text-3xl font-bold">
-                {companyInitials}
-              </div>
+            <BeCoolLogo />
+            {logoUrl && (
+              <img src={logoUrl} alt="Logo" className="max-h-[100px] max-w-[200px] w-auto object-contain mt-3" />
             )}
           </div>
           <div className="flex flex-col">
@@ -592,17 +599,18 @@ const CreateInvoicePage = ({
 
         {/* ── LINE ITEMS TABLE ── */}
         <div>
-          <div className="grid grid-cols-12 gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2 mb-1">
-            <div className="col-span-6">Description</div>
-            <div className="col-span-2 text-right">Rate</div>
-            <div className="col-span-1 text-right">Qty</div>
-            <div className="col-span-2 text-right">Line Total</div>
-            <div className="col-span-1" />
+          <div className="grid grid-cols-[1fr_80px_50px_60px_80px_30px] gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2 mb-1">
+            <div>Description</div>
+            <div className="text-right">Cost</div>
+            <div className="text-right">Qty</div>
+            <div className="text-right">Markup%</div>
+            <div className="text-right">Total</div>
+            <div />
           </div>
 
           {lineItems.map((item, idx) => (
-            <div key={idx} className="grid grid-cols-12 gap-2 items-center py-1 group relative">
-              <div className="col-span-6 relative">
+            <div key={idx} className="grid grid-cols-[1fr_80px_50px_60px_80px_30px] gap-2 items-center py-1 group relative">
+              <div className="relative">
                 <ProductSearchDropdown
                   value={item.description}
                   allOptions={allOptions}
@@ -610,14 +618,17 @@ const CreateInvoicePage = ({
                   onSelect={(opt) => pickOption(opt, idx)}
                 />
               </div>
-              <div className="col-span-2">
+              <div>
                 <GhostInput type="number" min="0" step="0.01" className="text-right" value={item.rate || ""} onChange={(e) => updateLineItem(idx, "rate", e.target.value)} placeholder="0.00" />
               </div>
-              <div className="col-span-1">
+              <div>
                 <GhostInput type="number" min="0" step="1" className="text-right" value={item.quantity || ""} onChange={(e) => updateLineItem(idx, "quantity", e.target.value)} placeholder="1" />
               </div>
-              <div className="col-span-2 text-right text-sm font-medium py-1.5 px-2">{formatCurrency(item.amount)}</div>
-              <div className="col-span-1 flex justify-center">
+              <div>
+                <GhostInput type="number" min="0" step="1" className="text-right" value={item.markup || ""} onChange={(e) => updateLineItem(idx, "markup", e.target.value)} placeholder="0" />
+              </div>
+              <div className="text-right text-sm font-medium py-1.5 px-2">{formatCurrency(item.amount)}</div>
+              <div className="flex justify-center">
                 <button onClick={() => removeLineItem(idx)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all">
                   <X className="h-4 w-4" />
                 </button>
@@ -730,6 +741,20 @@ const CreateInvoicePage = ({
 
       {/* ── Bottom action bar ── */}
       <div className="sticky bottom-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2">
+        <Button variant="outline" size="sm" onClick={() => generateDocumentPdf({
+          docType: "Invoice", docNumber: invoiceNumber, companyName: companySettings.company_name || "Your Company",
+          companyAddress: companySettings.physical_address || "", vatNumber: companySettings.vat_number || "",
+          customerName, customerAddress, customerEmail, issueDate, dueDate,
+          lineItems: lineItems.filter(i => i.description), subtotal, discountAmount, taxRate, taxAmount, total: grandTotal, notes, terms,
+        })}>
+          <FileDown className="h-4 w-4 mr-1" />PDF
+        </Button>
+        <Button variant="outline" size="sm" onClick={async () => {
+          await saveInvoice("sent");
+          toast({ title: "Email placeholder", description: "Email sending will be connected soon." });
+        }} disabled={loading}>
+          <Send className="h-4 w-4 mr-1" />Send
+        </Button>
         <Button variant="outline" size="sm" onClick={() => saveInvoice("paid")} disabled={loading}>
           Mark Paid
         </Button>
