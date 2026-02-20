@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
+const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
+
 const FBPaymentsList = () => {
   const { companyId } = useCompany();
   const [showCreate, setShowCreate] = useState(false);
@@ -73,27 +75,27 @@ const FBPaymentsList = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-[hsl(0,0%,29%)]">Payments</h2>
-          <p className="text-sm text-[hsl(0,0%,53%)]">Total received: R {totalReceived.toLocaleString()}</p>
+          <h2 className="text-2xl font-bold text-foreground">Payments</h2>
+          <p className="text-sm text-muted-foreground">Total received: {fmt(totalReceived)}</p>
         </div>
         <Button onClick={() => setShowCreate(true)} className="bg-amber-500 hover:bg-amber-600 text-white"><Plus className="h-4 w-4 mr-2" />Record Payment</Button>
       </div>
-      <div className="bg-white rounded-lg shadow-sm border border-[hsl(0,0%,90%)] overflow-hidden">
+      <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b bg-[hsl(0,0%,98%)]">
-            <th className="text-left px-4 py-3 font-medium text-[hsl(0,0%,53%)]">Date</th>
-            <th className="text-left px-4 py-3 font-medium text-[hsl(0,0%,53%)]">Invoice</th>
-            <th className="text-left px-4 py-3 font-medium text-[hsl(0,0%,53%)]">Method</th>
-            <th className="text-left px-4 py-3 font-medium text-[hsl(0,0%,53%)]">Invoice Status</th>
-            <th className="text-right px-4 py-3 font-medium text-[hsl(0,0%,53%)]">Amount</th>
+          <thead><tr className="border-b bg-muted/50">
+            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Date</th>
+            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Invoice</th>
+            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Method</th>
+            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Invoice Status</th>
+            <th className="text-right px-4 py-3 font-medium text-muted-foreground">Amount</th>
           </tr></thead>
           <tbody>
-            {isLoading ? <tr><td colSpan={5} className="px-4 py-8 text-center text-[hsl(0,0%,53%)]">Loading...</td></tr>
-            : payments.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-[hsl(0,0%,53%)]">No payments</td></tr>
+            {isLoading ? <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+            : payments.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No payments</td></tr>
             : payments.map((p: any) => (
-              <tr key={p.id} className="border-b border-[hsl(0,0%,95%)] hover:bg-[hsl(0,0%,98%)]">
+              <tr key={p.id} className="border-b border-border/50 hover:bg-muted/30">
                 <td className="px-4 py-3">{p.date}</td>
-                <td className="px-4 py-3 text-[hsl(211,100%,43%)]">{p.fb_invoices?.invoice_number || "—"}</td>
+                <td className="px-4 py-3 text-amber-600">{p.fb_invoices?.invoice_number || "—"}</td>
                 <td className="px-4 py-3 capitalize">{p.method?.replace("_", " ")}</td>
                 <td className="px-4 py-3">
                   {p.fb_invoices?.status ? (
@@ -102,7 +104,7 @@ const FBPaymentsList = () => {
                     </Badge>
                   ) : "—"}
                 </td>
-                <td className="px-4 py-3 text-right font-medium text-[hsl(125,49%,34%)]">R {Number(p.amount).toLocaleString()}</td>
+                <td className="px-4 py-3 text-right font-medium text-green-600">{fmt(Number(p.amount))}</td>
               </tr>
             ))}
           </tbody>

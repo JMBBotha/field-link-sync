@@ -34,11 +34,7 @@ const FBEstimatesList = () => {
   const { data: estimates = [], isLoading } = useQuery({
     queryKey: ["fb-estimates", companyId],
     queryFn: async () => {
-      console.log(`FBEstimatesList: Fetching for companyId: ${companyId}`);
-      const { data: allData } = await supabase.from("fb_estimates").select("*");
-      console.log("FBEstimatesList: All estimates in table:", allData);
       const { data } = await supabase.from("fb_estimates").select("*, fb_contacts(name)").eq("company_id", companyId!).order("created_at", { ascending: false });
-      console.log("FBEstimatesList: Filtered estimates:", data);
       return data || [];
     },
     enabled: !!companyId,
