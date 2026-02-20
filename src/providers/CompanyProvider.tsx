@@ -44,7 +44,10 @@ export const CompanyProvider = ({ children }: { children: ReactNode }) => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchCompany(); }, [companyId]);
+  useEffect(() => {
+    console.log('Resolved companyId:', companyId);
+    fetchCompany();
+  }, [companyId]);
 
   return (
     <CompanyContext.Provider value={{ company, companyId: companyId || null, loading, refetch: fetchCompany }}>
