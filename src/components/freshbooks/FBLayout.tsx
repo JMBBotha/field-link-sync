@@ -38,14 +38,8 @@ const SidebarNav = ({ companyId, company, onNavClick, onLogout, onBackToAdmin }:
 }) => (
   <>
     {/* Company header */}
-    <div className="p-4 border-b border-primary-foreground/10">
-      <div className="flex items-center gap-3">
-        <img src={logo} alt="Logo" className="h-10" />
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-primary-foreground truncate">{company?.name || "Company"}</p>
-          <p className="text-xs text-primary-foreground/60">Business Portal</p>
-        </div>
-      </div>
+    <div className="p-4 border-b border-primary-foreground/10 flex items-center justify-center">
+      <img src={logo} alt="Logo" className="h-10" />
     </div>
 
     {/* Navigation */}
@@ -170,17 +164,12 @@ const FBLayout = () => {
                   >
                     <Menu className="h-5 w-5" />
                   </Button>
-                  <div
-                    className="flex items-center gap-2 cursor-pointer"
-                    onClick={() => navigate(`/client/${companyId}/dashboard`)}
-                  >
-                    <img src={logo} alt="Logo" className="h-8" />
-                    <span className="hidden sm:inline text-sm font-medium text-primary-foreground/80 ml-1">
-                      {company?.name}
-                    </span>
-                  </div>
+                  <img src={logo} alt="Logo" className="h-8 cursor-pointer" onClick={() => navigate(`/client/${companyId}/dashboard`)} />
                 </>
               )}
+              <span className="text-sm font-medium text-primary-foreground">
+                {company?.name}
+              </span>
             </div>
 
             {/* Right: search, notifications, dark mode */}
