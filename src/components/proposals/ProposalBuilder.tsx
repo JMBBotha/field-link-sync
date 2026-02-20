@@ -17,12 +17,14 @@ interface LineItem {
   service_id?: string | null;
 }
 
-interface ServiceTemplate {
+interface ProductOption {
   id: string;
   name: string;
   description: string | null;
-  default_rate: number;
+  rate: number;
   category: string;
+  isFavorite: boolean;
+  source: "template" | "product";
 }
 
 interface Customer {
@@ -71,6 +73,33 @@ const GhostInput = ({
     )}
   />
 );
+
+/* ────────── Helpers ────────── */
+
+const isAcCategory = (cat: string) => {
+  const l = cat.toLowerCase();
+  return l.includes("ac") || l.includes("air con");
+};
+
+const sortProductOptions = (options: ProductOption[]) => {
+  return [...options].sort((a, b) => {
+    const aStarAc = a.isFavorite && isAcCategory(a.category) ? 0 : 1;
+    const bStarAc = b.isFavorite && isAcCategory(b.category) ? 0 : 1;
+    if (aStarAc !== bStarAc) return aStarAc - bStarAc;
+    const aFav = a.isFavorite ? 0 : 1;
+    const bFav = b.isFavorite ? 0 : 1;
+    if (aFav !== bFav) return aFav - bFav;
+    return a.name.localeCompare(b.name);
+  });
+};
+
+const filterOptions = (options: ProductOption[], query: string) => {
+  if (!query) return options.slice(0, 8);
+  const q = query.toLowerCase();
+  return options.filter(
+    (o) => o.name.toLowerCase().includes(q) || (o.description && o.description.toLowerCase().includes(q))
+  );
+};
 
 /* ────────── Main Component ────────── */
 
@@ -121,8 +150,8 @@ const ProposalBuilder = ({
     : [{ description: "", quantity: 1, rate: 0, amount: 0 }];
 
   const [lineItems, setLineItems] = useState<LineItem[]>(initialItems);
-  const [templates, setTemplates] = useState<ServiceTemplate[]>([]);
-  const [descSuggestions, setDescSuggestions] = useState<ServiceTemplate[]>([]);
+  const [allOptions, setAllOptions] = useState<ProductOption[]>([]);
+  const [descSuggestions, setDescSuggestions] = useState<ProductOption[]>([]);
   const [activeDescIdx, setActiveDescIdx] = useState<number | null>(null);
 
   // Discount
@@ -162,15 +191,19 @@ const ProposalBuilder = ({
         if (data) setProposalNumber(data as string);
       });
     }
-    // Templates
-    supabase
-      .from("service_templates")
-      .select("*")
-      .eq("is_active", true)
-      .order("category")
-      .then(({ data }) => {
-        if (data) setTemplates(data as unknown as ServiceTemplate[]);
-      });
+    // Merged catalog
+    Promise.all([
+      supabase.from("service_templates").select("id, name, description, default_rate, category").eq("is_active", true).order("name"),
+      supabase.from("supplier_products").select("id, short_name, description, cost_price, category, is_pinned").eq("is_active", true).order("is_pinned", { ascending: false }).order("description"),
+    ]).then(([svcRes, prodRes]) => {
+      const svcData = svcRes.data || [];
+      const prodData = prodRes.data || [];
+      const merged: ProductOption[] = [
+        ...svcData.map((s: any) => ({ id: s.id, name: s.name, description: s.description, rate: Number(s.default_rate), category: s.category, isFavorite: false, source: "template" as const })),
+        ...prodData.map((p: any) => ({ id: p.id, name: p.short_name || p.description, description: p.description, rate: Number(p.cost_price), category: p.category, isFavorite: p.is_pinned ?? false, source: "product" as const })),
+      ];
+      setAllOptions(sortProductOptions(merged));
+    });
     // Customers
     supabase
       .from("customers")
@@ -253,7 +286,7 @@ const ProposalBuilder = ({
 
   // Terms from company settings
   useEffect(() => {
-    if (proposalId) return; // don't overwrite loaded terms
+    if (proposalId) return;
     const parts: string[] = [];
     const b = companySettings.banking_details;
     if (b && (b.bank_name || b.account_number)) {
@@ -292,12 +325,12 @@ const ProposalBuilder = ({
     if (field === "description") {
       item.description = value as string;
       const q = (value as string).toLowerCase();
-      if (q.length >= 2) {
-        setDescSuggestions(templates.filter((t) => t.name.toLowerCase().includes(q)));
+      if (q.length >= 1) {
+        setDescSuggestions(filterOptions(allOptions, q));
         setActiveDescIdx(index);
       } else {
-        setDescSuggestions([]);
-        setActiveDescIdx(null);
+        setDescSuggestions(allOptions.slice(0, 8));
+        setActiveDescIdx(index);
       }
     } else if (field === "quantity") {
       item.quantity = Math.max(0, Number(value) || 0);
@@ -310,14 +343,14 @@ const ProposalBuilder = ({
     setLineItems(items);
   };
 
-  const pickTemplate = (t: ServiceTemplate, index: number) => {
+  const pickOption = (opt: ProductOption, index: number) => {
     const items = [...lineItems];
     items[index] = {
-      description: t.name + (t.description ? ` – ${t.description}` : ""),
+      description: opt.name,
       quantity: 1,
-      rate: t.default_rate,
-      amount: t.default_rate,
-      service_id: t.id,
+      rate: opt.rate,
+      amount: opt.rate,
+      service_id: opt.source === "template" ? opt.id : null,
     };
     setLineItems(items);
     setDescSuggestions([]);
@@ -461,6 +494,11 @@ const ProposalBuilder = ({
         .toUpperCase()
     : "CO";
 
+  /* ─── Grouped suggestions for dropdown ─── */
+  const starredAcSuggestions = descSuggestions.filter((s) => s.isFavorite && isAcCategory(s.category));
+  const serviceSuggestions = descSuggestions.filter((s) => s.source === "template");
+  const productSuggestions = descSuggestions.filter((s) => s.source === "product" && !(s.isFavorite && isAcCategory(s.category)));
+
   /* ─── Render ─── */
   return (
     <div className="min-h-screen bg-muted/40">
@@ -495,22 +533,22 @@ const ProposalBuilder = ({
       {/* ── A4 Card ── */}
       <div className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
         {/* ── HEADER ROW ── */}
-        <div className="flex items-start justify-between gap-6">
+        <div className="flex flex-row gap-6 items-start justify-start">
           {/* Logo */}
           <div className="shrink-0">
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="h-16 w-auto object-contain" />
+              <img src={logoUrl} alt="Logo" className="max-h-[130px] max-w-[200px] w-auto object-contain" />
             ) : (
-              <div className="h-16 w-16 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xl font-bold">
+              <div className="h-[130px] w-[130px] rounded-lg bg-primary/10 flex items-center justify-center text-primary text-3xl font-bold">
                 {companyInitials}
               </div>
             )}
           </div>
           {/* Company info */}
-          <div className="text-right text-sm text-muted-foreground leading-relaxed">
-            <p className="font-semibold text-foreground text-base">{companySettings.company_name || "Your Company"}</p>
-            {companySettings.physical_address && <p>{companySettings.physical_address}</p>}
-            {companySettings.vat_number && <p>VAT: {companySettings.vat_number}</p>}
+          <div className="flex flex-col">
+            <p className="font-bold text-lg text-foreground">{companySettings.company_name || "Your Company"}</p>
+            {companySettings.physical_address && <p className="text-sm text-muted-foreground">{companySettings.physical_address}</p>}
+            {companySettings.vat_number && <p className="text-sm text-muted-foreground">VAT: {companySettings.vat_number}</p>}
           </div>
         </div>
 
@@ -601,7 +639,7 @@ const ProposalBuilder = ({
 
         {/* Row 2: Due Date / Reference */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 -mt-4">
-          <div /> {/* empty under Billed To */}
+          <div />
           <div className="space-y-1">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due Date</p>
             <GhostInput type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
@@ -636,17 +674,15 @@ const ProposalBuilder = ({
               key={idx}
               className="grid grid-cols-12 gap-2 items-center py-1 group relative"
             >
-              {/* Description with autocomplete */}
               <div className="col-span-6 relative">
                 <GhostInput
                   placeholder="Item description"
                   value={item.description}
                   onChange={(e) => updateLineItem(idx, "description", e.target.value)}
                   onFocus={() => {
-                    if (item.description.length >= 2) {
-                      setDescSuggestions(templates.filter((t) => t.name.toLowerCase().includes(item.description.toLowerCase())));
-                      setActiveDescIdx(idx);
-                    }
+                    const q = item.description.toLowerCase();
+                    setDescSuggestions(q.length >= 1 ? filterOptions(allOptions, q) : allOptions.slice(0, 8));
+                    setActiveDescIdx(idx);
                   }}
                   onBlur={() => {
                     setTimeout(() => {
@@ -656,22 +692,49 @@ const ProposalBuilder = ({
                   }}
                 />
                 {activeDescIdx === idx && descSuggestions.length > 0 && (
-                  <div className="absolute top-full left-0 z-50 w-72 mt-1 bg-popover border rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                    {descSuggestions.map((t) => (
-                      <button
-                        key={t.id}
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          pickTemplate(t, idx);
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
-                      >
-                        <span className="font-medium">{t.name}</span>
-                        {t.default_rate > 0 && (
-                          <span className="text-xs text-muted-foreground ml-2">R{t.default_rate}</span>
-                        )}
-                      </button>
-                    ))}
+                  <div className="absolute top-full left-0 z-50 w-80 mt-1 bg-popover border rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                    {starredAcSuggestions.length > 0 && (
+                      <>
+                        <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30">★ Starred AC Units</div>
+                        {starredAcSuggestions.map((o) => (
+                          <button key={o.id} onMouseDown={(e) => { e.preventDefault(); pickOption(o, idx); }} className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors">
+                            <div className="flex justify-between items-center">
+                              <span>{o.name} ⭐</span>
+                              <span className="text-xs text-muted-foreground">{o.category}</span>
+                              <span className="text-xs font-medium">R {o.rate.toFixed(2)}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </>
+                    )}
+                    {serviceSuggestions.length > 0 && (
+                      <>
+                        <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30">Services</div>
+                        {serviceSuggestions.map((o) => (
+                          <button key={o.id} onMouseDown={(e) => { e.preventDefault(); pickOption(o, idx); }} className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors">
+                            <div className="flex justify-between items-center">
+                              <span>{o.name}</span>
+                              <span className="text-xs text-muted-foreground">{o.category}</span>
+                              <span className="text-xs font-medium">R {o.rate.toFixed(2)}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </>
+                    )}
+                    {productSuggestions.length > 0 && (
+                      <>
+                        <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30">Products</div>
+                        {productSuggestions.map((o) => (
+                          <button key={o.id} onMouseDown={(e) => { e.preventDefault(); pickOption(o, idx); }} className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors">
+                            <div className="flex justify-between items-center">
+                              <span>{o.name} {o.isFavorite ? "⭐" : ""}</span>
+                              <span className="text-xs text-muted-foreground">{o.category}</span>
+                              <span className="text-xs font-medium">R {o.rate.toFixed(2)}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -701,22 +764,19 @@ const ProposalBuilder = ({
                 {formatCurrency(item.amount)}
               </div>
               <div className="col-span-1 flex justify-center">
-                {lineItems.length > 1 && (
-                  <button
-                    onClick={() => removeLineItem(idx)}
-                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
+                <button
+                  onClick={() => removeLineItem(idx)}
+                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
             </div>
           ))}
 
-          {/* Add a Line */}
           <button
             onClick={addLineItem}
-            className="w-full py-3 mt-1 border border-dashed rounded-lg text-sm text-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-1.5"
+            className="w-full text-left px-2 py-2.5 text-sm text-primary hover:bg-primary/5 rounded mt-1 flex items-center gap-1.5 transition-colors"
           >
             <Plus className="h-4 w-4" /> Add a Line
           </button>
@@ -724,89 +784,79 @@ const ProposalBuilder = ({
 
         <div className="h-px bg-border" />
 
-        {/* ── TOTALS (right-aligned) ── */}
+        {/* ── TOTALS ── */}
         <div className="flex justify-end">
           <div className="w-72 space-y-2">
-            {/* Subtotal */}
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Subtotal</span>
               <span>{formatCurrency(subtotal)}</span>
             </div>
 
-            {/* Discount */}
             {!showDiscount ? (
               <button
                 onClick={() => setShowDiscount(true)}
                 className="text-sm text-primary hover:underline"
               >
-                Add a Discount
+                + Add a Discount
               </button>
             ) : (
-              <div className="flex items-center justify-between text-sm gap-2">
-                <div className="flex items-center gap-1">
-                  <span className="text-muted-foreground">Discount</span>
-                  <select
-                    value={discountType}
-                    onChange={(e) => setDiscountType(e.target.value as "percent" | "fixed")}
-                    className="text-xs border rounded px-1 py-0.5 bg-background"
-                  >
-                    <option value="percent">%</option>
-                    <option value="fixed">R</option>
-                  </select>
-                </div>
-                <div className="flex items-center gap-1">
-                  <input
-                    type="number"
-                    min="0"
-                    value={discountValue || ""}
-                    onChange={(e) => setDiscountValue(Number(e.target.value) || 0)}
-                    className="w-16 text-right text-sm border rounded px-2 py-0.5 bg-background outline-none focus:ring-1 focus:ring-primary/30"
-                  />
-                  <span className="text-muted-foreground">−{formatCurrency(discountAmount)}</span>
-                </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Discount</span>
+                <select
+                  value={discountType}
+                  onChange={(e) => setDiscountType(e.target.value as "percent" | "fixed")}
+                  className="text-xs border rounded px-1.5 py-1 bg-background"
+                >
+                  <option value="percent">%</option>
+                  <option value="fixed">ZAR</option>
+                </select>
+                <GhostInput
+                  type="number"
+                  min="0"
+                  className="w-20 text-right"
+                  value={discountValue || ""}
+                  onChange={(e) => setDiscountValue(Number(e.target.value) || 0)}
+                />
+                <span className="text-sm ml-auto">-{formatCurrency(discountAmount)}</span>
               </div>
             )}
 
-            {/* Tax */}
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Tax ({taxRate}% VAT)</span>
               <span>{formatCurrency(taxAmount)}</span>
             </div>
-
             <div className="h-px bg-border" />
-
-            {/* Total */}
-            <div className="flex justify-between text-lg font-bold">
+            <div className="flex justify-between text-base font-bold p-2 rounded" style={{ backgroundColor: "#0077B610", color: "#0077B6" }}>
               <span>Total (ZAR)</span>
-              <span style={{ color: "#0077B6" }}>{formatCurrency(grandTotal)}</span>
+              <span>{formatCurrency(grandTotal)}</span>
             </div>
           </div>
         </div>
 
         <div className="h-px bg-border" />
 
-        {/* ── LINK TO JOB / QUOTE (collapsible) ── */}
+        {/* ── LINK TO JOB (collapsible) ── */}
         <div>
           <button
+            className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             onClick={() => setShowLinks(!showLinks)}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             {showLinks ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            Link to Job / Quote
+            Link to Job
           </button>
           {showLinks && (
-            <div className="mt-3 space-y-3 pl-1">
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Job / Lead</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Lead / Job</p>
                 <select
                   value={leadId}
                   onChange={(e) => setLeadId(e.target.value)}
-                  className="w-full text-sm border rounded px-3 py-2 bg-background outline-none focus:ring-1 focus:ring-primary/30"
+                  className="w-full border rounded px-2 py-1.5 text-sm bg-background"
                 >
-                  <option value="">None</option>
+                  <option value="">— None —</option>
                   {leads.map((l) => (
                     <option key={l.id} value={l.id}>
-                      {l.customer_name} — {l.service_type}
+                      {l.customer_name} – {l.service_type}
                     </option>
                   ))}
                 </select>
@@ -818,83 +868,71 @@ const ProposalBuilder = ({
         <div className="h-px bg-border" />
 
         {/* ── NOTES ── */}
-        <div className="space-y-1">
+        <div className="space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Notes</p>
           <Textarea
             placeholder="Notes — any relevant information not already covered"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            className="text-sm resize-none border-transparent hover:border-border focus:border-primary bg-transparent"
+            className="min-h-[60px] text-sm border-transparent hover:border-border focus:border-primary"
           />
         </div>
 
         {/* ── TERMS ── */}
-        <div className="space-y-1">
+        <div className="space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Terms</p>
           <Textarea
-            placeholder="Payment terms, banking details, conditions…"
             value={terms}
             onChange={(e) => setTerms(e.target.value)}
-            rows={4}
-            className="text-sm resize-none border-transparent hover:border-border focus:border-primary bg-transparent"
+            className="min-h-[80px] text-sm border-transparent hover:border-border focus:border-primary"
           />
         </div>
 
         {/* ── ATTACHMENTS ── */}
         <div className="space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Attachments</p>
-          <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFileUpload} />
-          <button
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            className="flex items-center gap-2 text-sm text-primary hover:underline disabled:opacity-50"
-          >
-            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            {uploading ? "Uploading…" : "Attach Files"}
-          </button>
-          {attachments.length > 0 && (
-            <div className="space-y-1 mt-1">
-              {attachments.map((a, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Paperclip className="h-3.5 w-3.5" />
-                  <a href={a.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate">
-                    {a.name}
-                  </a>
-                  <button
-                    onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
-                    className="text-destructive hover:text-destructive/80"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {attachments.map((a, i) => (
+              <a
+                key={i}
+                href={a.url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1.5 text-xs text-primary hover:underline bg-primary/5 px-2 py-1 rounded"
+              >
+                <Paperclip className="h-3 w-3" />
+                {a.name}
+              </a>
+            ))}
+          </div>
+          <label className="inline-flex items-center gap-2 text-sm text-primary hover:underline cursor-pointer">
+            <Upload className="h-4 w-4" />
+            {uploading ? "Uploading…" : "Attach File"}
+            <input ref={fileRef} type="file" className="hidden" onChange={handleFileUpload} multiple />
+          </label>
         </div>
       </div>
 
       {/* ── Sticky bottom bar ── */}
-      <div className="sticky bottom-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2 max-w-3xl mx-auto">
-        <Button variant="outline" size="sm" onClick={() => saveProposal("draft")} disabled={loading}>
+      <div className="sticky bottom-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-3">
+        <Button variant="outline" onClick={() => saveProposal("draft")} disabled={loading}>
+          {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
           Save Draft
         </Button>
         <Button
-          size="sm"
-          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+          variant="outline"
           onClick={() => saveProposal("approved")}
           disabled={loading}
+          className="text-green-700 border-green-300 hover:bg-green-50"
         >
           Approve
         </Button>
         <Button
-          size="sm"
-          className="text-white"
           style={{ backgroundColor: "#0077B6" }}
+          className="text-white"
           onClick={() => saveProposal("sent")}
           disabled={loading}
         >
-          {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
           Send Proposal
         </Button>
       </div>
