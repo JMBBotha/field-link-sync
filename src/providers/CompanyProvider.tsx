@@ -35,19 +35,28 @@ export const CompanyProvider = ({ children }: { children: ReactNode }) => {
   const fetchCompany = async () => {
     if (!companyId) { setLoading(false); return; }
     setLoading(true);
+    console.log('Resolved companyId:', companyId);
     const { data } = await supabase
       .from("companies")
       .select("*")
       .eq("id", companyId)
       .maybeSingle();
-    setCompany(data);
+    if (data) {
+      setCompany(data);
+    } else {
+      // Auto-create a test company with this ID
+      console.log('No company found, auto-creating test company for id:', companyId);
+      const { data: newCompany } = await supabase
+        .from("companies")
+        .insert({ id: companyId, name: "Test Company" })
+        .select()
+        .single();
+      if (newCompany) setCompany(newCompany);
+    }
     setLoading(false);
   };
 
-  useEffect(() => {
-    console.log('Resolved companyId:', companyId);
-    fetchCompany();
-  }, [companyId]);
+  useEffect(() => { fetchCompany(); }, [companyId]);
 
   return (
     <CompanyContext.Provider value={{ company, companyId: companyId || null, loading, refetch: fetchCompany }}>
