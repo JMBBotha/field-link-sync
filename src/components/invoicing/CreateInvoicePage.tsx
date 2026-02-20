@@ -1,16 +1,15 @@
-import { useState, useEffect } from "react";
-import { ArrowLeft, Plus, Trash2, Loader2, Search, Package } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Plus, X, Loader2, Search, ChevronDown, ChevronUp, Paperclip, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { notifyInvoiceSent } from "@/lib/notificationService";
-import GuidedProductSelector from "@/components/invoicing/GuidedProductSelector";
-import CatalogPickerDrawer from "@/components/catalog/CatalogPickerDrawer";
+import { cn } from "@/lib/utils";
+
+/* ────────── Types ────────── */
 
 interface LineItem {
   description: string;
@@ -36,6 +35,12 @@ interface Customer {
   address: string | null;
 }
 
+interface Lead {
+  id: string;
+  customer_name: string;
+  service_type: string;
+}
+
 interface CreateInvoicePageProps {
   agentId: string;
   onBack: () => void;
@@ -48,144 +53,254 @@ interface CreateInvoicePageProps {
     customer_id?: string | null;
     service_type?: string;
   } | null;
+  prefillFromProposal?: {
+    id: string;
+    title: string;
+    customer_id: string;
+    items: { description: string; quantity: number; rate: number }[];
+  };
+  prefillFromLead?: {
+    id: string;
+    customer_name: string;
+    customer_phone?: string;
+    customer_address?: string;
+    customer_id?: string | null;
+  };
 }
-
-const paymentMethods = [
-  { value: "cash", label: "Cash" },
-  { value: "card", label: "Card" },
-  { value: "eft", label: "EFT / Bank Transfer" },
-  { value: "other", label: "Other" },
-];
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(amount);
 
-const CreateInvoicePage = ({ agentId, onBack, onSuccess, prefillLead }: CreateInvoicePageProps) => {
-  const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
-  const [templates, setTemplates] = useState<ServiceTemplate[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [customerSearch, setCustomerSearch] = useState("");
-  const [showCustomerSearch, setShowCustomerSearch] = useState(!prefillLead);
+/* ────────── Ghost input (FreshBooks style — borderless until hover/focus) ────────── */
 
-  // Form state
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(prefillLead?.customer_id || null);
-  const [customerName, setCustomerName] = useState(prefillLead?.customer_name || "");
-  const [customerPhone, setCustomerPhone] = useState(prefillLead?.customer_phone || "");
-  const [customerAddress, setCustomerAddress] = useState(prefillLead?.customer_address || "");
+const GhostInput = ({
+  className,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement> & { className?: string }) => (
+  <input
+    {...props}
+    className={cn(
+      "w-full bg-transparent border border-transparent rounded px-2 py-1.5 text-sm outline-none transition-colors",
+      "hover:border-border focus:border-primary focus:ring-1 focus:ring-primary/30",
+      "placeholder:text-muted-foreground/50",
+      className
+    )}
+  />
+);
+
+/* ────────── Main Component ────────── */
+
+const CreateInvoicePage = ({
+  agentId,
+  onBack,
+  onSuccess,
+  prefillLead,
+  prefillFromProposal,
+  prefillFromLead,
+}: CreateInvoicePageProps) => {
+  const { toast } = useToast();
+  const { settings: companySettings } = useCompanySettings();
+
+  const [loading, setLoading] = useState(false);
+  const [invoiceNumber, setInvoiceNumber] = useState<string>("");
+
+  // Customer
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(
+    prefillLead?.customer_id || prefillFromProposal?.customer_id || prefillFromLead?.customer_id || null
+  );
+  const [customerName, setCustomerName] = useState(
+    prefillLead?.customer_name || prefillFromLead?.customer_name || ""
+  );
+  const [customerPhone, setCustomerPhone] = useState(prefillLead?.customer_phone || prefillFromLead?.customer_phone || "");
+  const [customerAddress, setCustomerAddress] = useState(prefillLead?.customer_address || prefillFromLead?.customer_address || "");
   const [customerEmail, setCustomerEmail] = useState("");
-  const [leadId, setLeadId] = useState(prefillLead?.id || "");
-  const [lineItems, setLineItems] = useState<LineItem[]>([
-    { description: prefillLead?.service_type || "", quantity: 1, rate: 0, amount: 0 }
-  ]);
-  const [taxRate] = useState(15);
-  const [paymentMethod, setPaymentMethod] = useState("");
-  const [notes, setNotes] = useState("");
-  const [showGuidedSelector, setShowGuidedSelector] = useState(false);
-  const [showCatalogDrawer, setShowCatalogDrawer] = useState(false);
+  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customers, setCustomers] = useState<Customer[]>([]);
+
+  // Dates
+  const [issueDate, setIssueDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [dueDate, setDueDate] = useState(() => {
     const d = new Date();
-    d.setDate(d.getDate() + 30);
+    d.setDate(d.getDate() + (companySettings.default_payment_terms_days || 30));
     return d.toISOString().split("T")[0];
   });
+  const [reference, setReference] = useState("");
 
+  // Line items
+  const initialItems: LineItem[] = prefillFromProposal?.items?.length
+    ? prefillFromProposal.items.map((i) => ({
+        description: i.description,
+        quantity: i.quantity,
+        rate: i.rate,
+        amount: i.quantity * i.rate,
+      }))
+    : [{ description: prefillLead?.service_type || "", quantity: 1, rate: 0, amount: 0 }];
+
+  const [lineItems, setLineItems] = useState<LineItem[]>(initialItems);
+  const [templates, setTemplates] = useState<ServiceTemplate[]>([]);
+  const [descSuggestions, setDescSuggestions] = useState<ServiceTemplate[]>([]);
+  const [activeDescIdx, setActiveDescIdx] = useState<number | null>(null);
+
+  // Discount
+  const [showDiscount, setShowDiscount] = useState(false);
+  const [discountType, setDiscountType] = useState<"percent" | "fixed">("percent");
+  const [discountValue, setDiscountValue] = useState(0);
+
+  // Tax
+  const [taxRate] = useState(15);
+
+  // Amounts
+  const [amountPaid, setAmountPaid] = useState(0);
+
+  // Links
+  const [leadId, setLeadId] = useState(prefillLead?.id || prefillFromLead?.id || "");
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [showLinks, setShowLinks] = useState(false);
+
+  // Notes / Terms
+  const [notes, setNotes] = useState("");
+  const [terms, setTerms] = useState("");
+
+  // Attachments
+  const [attachments, setAttachments] = useState<{ name: string; url: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  /* ─── Derived ─── */
+  const subtotal = lineItems.reduce((s, i) => s + i.amount, 0);
+  const discountAmount = discountType === "percent" ? subtotal * (discountValue / 100) : discountValue;
+  const taxableAmount = subtotal - discountAmount;
+  const taxAmount = taxableAmount * (taxRate / 100);
+  const grandTotal = taxableAmount + taxAmount;
+  const amountDue = grandTotal - amountPaid;
+
+  /* ─── Fetch data ─── */
   useEffect(() => {
-    fetchTemplates();
-    fetchCustomers();
-    if (prefillLead?.id) {
-      fetchUsedParts(prefillLead.id);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (prefillLead?.customer_id) {
-      fetchCustomerEmail(prefillLead.customer_id);
-    }
-  }, [prefillLead?.customer_id]);
-
-  const fetchTemplates = async () => {
-    const { data } = await supabase
+    // Invoice number
+    supabase.rpc("generate_invoice_number").then(({ data }) => {
+      if (data) setInvoiceNumber(data as string);
+    });
+    // Templates
+    supabase
       .from("service_templates")
       .select("*")
       .eq("is_active", true)
-      .order("category", { ascending: true });
-    if (data) setTemplates(data as unknown as ServiceTemplate[]);
-  };
-
-  const fetchCustomers = async () => {
-    const { data } = await supabase
+      .order("category")
+      .then(({ data }) => {
+        if (data) setTemplates(data as unknown as ServiceTemplate[]);
+      });
+    // Customers
+    supabase
       .from("customers")
       .select("id, name, email, phone, address")
-      .order("name", { ascending: true });
-    if (data) setCustomers(data);
-  };
+      .order("name")
+      .then(({ data }) => {
+        if (data) setCustomers(data);
+      });
+    // Leads
+    supabase
+      .from("leads")
+      .select("id, customer_name, service_type")
+      .order("created_at", { ascending: false })
+      .limit(50)
+      .then(({ data }) => {
+        if (data) setLeads(data);
+      });
+  }, []);
 
-  const fetchCustomerEmail = async (customerId: string) => {
-    const { data } = await supabase
+  // Prefill customer email
+  useEffect(() => {
+    const cid = selectedCustomerId;
+    if (!cid) return;
+    supabase
       .from("customers")
-      .select("email")
-      .eq("id", customerId)
-      .single();
-    if (data?.email) setCustomerEmail(data.email);
-  };
+      .select("email, name, phone, address")
+      .eq("id", cid)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          if (data.email) setCustomerEmail(data.email);
+          if (!customerName && data.name) setCustomerName(data.name);
+          if (!customerPhone && data.phone) setCustomerPhone(data.phone);
+          if (!customerAddress && data.address) setCustomerAddress(data.address || "");
+        }
+      });
+  }, [selectedCustomerId]);
 
-  const fetchUsedParts = async (leadId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("job_used_parts" as any)
-        .select("product_name, product_code, unit_cost, quantity")
-        .eq("lead_id", leadId);
-      if (error) {
-        console.warn("[Invoice] Failed to fetch used parts:", error.message);
-        return;
-      }
-      if (data && data.length > 0) {
-        const partsItems: LineItem[] = (data as any[]).map(p => ({
-          description: `${p.product_name} (${p.product_code})`,
-          quantity: p.quantity,
-          rate: p.unit_cost,
-          amount: p.quantity * p.unit_cost,
-        }));
-        // Prepend used parts to existing line items, removing empty default
-        setLineItems(prev => {
-          const existing = prev.filter(i => i.description && i.amount > 0);
-          return [...partsItems, ...existing].length > 0
-            ? [...partsItems, ...existing]
-            : [{ description: "", quantity: 1, rate: 0, amount: 0 }];
-        });
-        console.log("[Invoice] Auto-added", data.length, "used parts as line items");
-      }
-    } catch (err) {
-      console.error("[Invoice] Error loading used parts:", err);
+  // Fetch used parts for lead
+  useEffect(() => {
+    const lid = prefillLead?.id;
+    if (!lid) return;
+    supabase
+      .from("job_used_parts" as any)
+      .select("product_name, product_code, unit_cost, quantity")
+      .eq("lead_id", lid)
+      .then(({ data }) => {
+        if (data && (data as any[]).length > 0) {
+          const parts: LineItem[] = (data as any[]).map((p: any) => ({
+            description: `${p.product_name} (${p.product_code})`,
+            quantity: p.quantity,
+            rate: p.unit_cost,
+            amount: p.quantity * p.unit_cost,
+          }));
+          setLineItems((prev) => {
+            const existing = prev.filter((i) => i.description && i.amount > 0);
+            const merged = [...parts, ...existing];
+            return merged.length ? merged : [{ description: "", quantity: 1, rate: 0, amount: 0 }];
+          });
+        }
+      });
+  }, [prefillLead?.id]);
+
+  // Terms from company settings
+  useEffect(() => {
+    const parts: string[] = [];
+    const b = companySettings.banking_details;
+    if (b && (b.bank_name || b.account_number)) {
+      parts.push("Banking Details:");
+      if (b.bank_name) parts.push(`Bank: ${b.bank_name}`);
+      if (b.account_number) parts.push(`Account: ${b.account_number}`);
+      if (b.branch_code) parts.push(`Branch: ${b.branch_code}`);
+      if (b.account_type) parts.push(`Type: ${b.account_type}`);
     }
-  };
+    setTerms(parts.join("\n"));
+  }, [companySettings]);
 
-  const selectCustomer = (customer: Customer) => {
-    setSelectedCustomerId(customer.id);
-    setCustomerName(customer.name);
-    setCustomerPhone(customer.phone);
-    setCustomerAddress(customer.address || "");
-    setCustomerEmail(customer.email || "");
-    setShowCustomerSearch(false);
+  /* ─── Logo URL ─── */
+  const logoUrl = useMemo(() => {
+    const path = companySettings.logo_storage_path;
+    if (!path) return null;
+    if (path.startsWith("http")) return path;
+    const { data } = supabase.storage.from("company-assets").getPublicUrl(path);
+    return data?.publicUrl || null;
+  }, [companySettings.logo_storage_path]);
+
+  /* ─── Handlers ─── */
+  const selectCustomer = (c: Customer) => {
+    setSelectedCustomerId(c.id);
+    setCustomerName(c.name);
+    setCustomerPhone(c.phone);
+    setCustomerAddress(c.address || "");
+    setCustomerEmail(c.email || "");
+    setShowCustomerPicker(false);
     setCustomerSearch("");
   };
 
-  const addTemplateItem = (template: ServiceTemplate) => {
-    const newItem: LineItem = {
-      description: template.name + (template.description ? ` - ${template.description}` : ""),
-      quantity: 1,
-      rate: template.default_rate,
-      amount: template.default_rate,
-      service_id: template.id,
-    };
-    setLineItems([...lineItems.filter(i => i.description || i.amount > 0), newItem]);
-  };
-
   const updateLineItem = (index: number, field: keyof LineItem, value: string | number) => {
-    const newItems = [...lineItems];
-    const item = { ...newItems[index] };
+    const items = [...lineItems];
+    const item = { ...items[index] };
     if (field === "description") {
       item.description = value as string;
+      // Search templates for autocomplete
+      const q = (value as string).toLowerCase();
+      if (q.length >= 2) {
+        setDescSuggestions(templates.filter((t) => t.name.toLowerCase().includes(q)));
+        setActiveDescIdx(index);
+      } else {
+        setDescSuggestions([]);
+        setActiveDescIdx(null);
+      }
     } else if (field === "quantity") {
       item.quantity = Math.max(0, Number(value) || 0);
       item.amount = item.quantity * item.rate;
@@ -193,49 +308,79 @@ const CreateInvoicePage = ({ agentId, onBack, onSuccess, prefillLead }: CreateIn
       item.rate = Math.max(0, Number(value) || 0);
       item.amount = item.quantity * item.rate;
     }
-    newItems[index] = item;
-    setLineItems(newItems);
+    items[index] = item;
+    setLineItems(items);
   };
 
-  const addLineItem = () => {
-    setLineItems([...lineItems, { description: "", quantity: 1, rate: 0, amount: 0 }]);
+  const pickTemplate = (t: ServiceTemplate, index: number) => {
+    const items = [...lineItems];
+    items[index] = {
+      description: t.name + (t.description ? ` – ${t.description}` : ""),
+      quantity: 1,
+      rate: t.default_rate,
+      amount: t.default_rate,
+      service_id: t.id,
+    };
+    setLineItems(items);
+    setDescSuggestions([]);
+    setActiveDescIdx(null);
   };
 
-  const removeLineItem = (index: number) => {
-    if (lineItems.length > 1) {
-      setLineItems(lineItems.filter((_, i) => i !== index));
+  const addLineItem = () => setLineItems([...lineItems, { description: "", quantity: 1, rate: 0, amount: 0 }]);
+
+  const removeLineItem = (i: number) => {
+    if (lineItems.length > 1) setLineItems(lineItems.filter((_, idx) => idx !== i));
+  };
+
+  /* ─── File upload ─── */
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const path = `invoices/${Date.now()}_${file.name}`;
+        const { error } = await supabase.storage.from("invoice-attachments").upload(path, file);
+        if (error) throw error;
+        const { data: urlData } = supabase.storage.from("invoice-attachments").getPublicUrl(path);
+        setAttachments((prev) => [...prev, { name: file.name, url: urlData.publicUrl }]);
+      }
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
   };
 
-  const subtotal = lineItems.reduce((sum, item) => sum + item.amount, 0);
-  const taxAmount = subtotal * (taxRate / 100);
-  const grandTotal = subtotal + taxAmount;
-
+  /* ─── Save ─── */
   const saveInvoice = async (status: "draft" | "sent" | "paid") => {
     if (!customerName.trim()) {
       toast({ title: "Error", description: "Please select or enter a client", variant: "destructive" });
       return;
     }
-    if (lineItems.every(item => !item.description || item.amount === 0)) {
+    if (lineItems.every((i) => !i.description || i.amount === 0)) {
       toast({ title: "Error", description: "Add at least one line item", variant: "destructive" });
       return;
     }
 
     setLoading(true);
     try {
-      const { data: invoiceNumber, error: numError } = await supabase.rpc("generate_invoice_number");
-      if (numError) throw numError;
+      let finalNumber = invoiceNumber;
+      if (!finalNumber) {
+        const { data, error } = await supabase.rpc("generate_invoice_number");
+        if (error) throw error;
+        finalNumber = data as string;
+        setInvoiceNumber(finalNumber);
+      }
 
-      // Need a lead_id - if not from a lead, we need to handle this
-      // For standalone invoices, we'll create a minimal lead or use a dummy
       let finalLeadId = leadId;
       if (!finalLeadId) {
-        // Create a completed lead for standalone invoice
         const { data: newLead, error: leadError } = await supabase
           .from("leads")
           .insert({
             customer_name: customerName,
-            customer_phone: customerPhone,
+            customer_phone: customerPhone || "N/A",
             customer_address: customerAddress || "N/A",
             service_type: lineItems[0]?.description || "Invoice",
             status: "completed",
@@ -254,7 +399,7 @@ const CreateInvoicePage = ({ agentId, onBack, onSuccess, prefillLead }: CreateIn
       const { data: insertedInvoice, error } = await supabase
         .from("invoices")
         .insert({
-          invoice_number: invoiceNumber,
+          invoice_number: finalNumber,
           lead_id: finalLeadId,
           agent_id: agentId,
           customer_name: customerName,
@@ -262,16 +407,16 @@ const CreateInvoicePage = ({ agentId, onBack, onSuccess, prefillLead }: CreateIn
           customer_address: customerAddress || null,
           customer_email: customerEmail || null,
           customer_id: selectedCustomerId || null,
-          line_items: lineItems.filter(item => item.description && item.amount > 0),
+          line_items: lineItems.filter((i) => i.description && i.amount > 0),
           subtotal,
           tax_rate: taxRate,
           tax_amount: taxAmount,
           grand_total: grandTotal,
-          payment_method: paymentMethod || null,
+          payment_method: null,
           notes: notes || null,
           status,
           due_date: dueDate || null,
-          issue_date: new Date().toISOString().split("T")[0],
+          issue_date: issueDate,
           paid_date: status === "paid" ? new Date().toISOString().split("T")[0] : null,
         } as any)
         .select("id")
@@ -280,26 +425,24 @@ const CreateInvoicePage = ({ agentId, onBack, onSuccess, prefillLead }: CreateIn
       if (error) throw error;
 
       // Insert normalized invoice_items
-      const validItems = lineItems.filter(item => item.description && item.amount > 0);
+      const validItems = lineItems.filter((i) => i.description && i.amount > 0);
       if (insertedInvoice && validItems.length > 0) {
-        const itemsToInsert = validItems.map(item => ({
-          invoice_id: insertedInvoice.id,
-          service_id: item.service_id || null,
-          description: item.description,
-          quantity: item.quantity,
-          unit_price: item.rate,
-          amount: item.amount,
-        }));
-        const { error: itemsError } = await supabase
-          .from("invoice_items")
-          .insert(itemsToInsert as any);
-        if (itemsError) console.error("Error inserting invoice items:", itemsError);
+        await supabase.from("invoice_items").insert(
+          validItems.map((i) => ({
+            invoice_id: insertedInvoice.id,
+            service_id: i.service_id || null,
+            description: i.description,
+            quantity: i.quantity,
+            unit_price: i.rate,
+            amount: i.amount,
+          })) as any
+        );
       }
 
-      // Send notification if not draft
+      // Notification
       if (selectedCustomerId && status !== "draft" && insertedInvoice) {
         try {
-          await notifyInvoiceSent(selectedCustomerId, insertedInvoice.id, invoiceNumber, formatCurrency(grandTotal));
+          await notifyInvoiceSent(selectedCustomerId, insertedInvoice.id, finalNumber, formatCurrency(grandTotal));
         } catch (e) {
           console.error("[Notification] Error:", e);
         }
@@ -307,7 +450,7 @@ const CreateInvoicePage = ({ agentId, onBack, onSuccess, prefillLead }: CreateIn
 
       toast({
         title: "Invoice Created! 💰",
-        description: `${invoiceNumber} - ${status === "paid" ? "Paid" : status === "sent" ? "Sent" : "Draft"}`,
+        description: `${finalNumber} – ${status === "paid" ? "Paid" : status === "sent" ? "Sent" : "Draft"}`,
       });
       onSuccess();
     } catch (error: any) {
@@ -318,255 +461,481 @@ const CreateInvoicePage = ({ agentId, onBack, onSuccess, prefillLead }: CreateIn
     }
   };
 
-  const filteredCustomers = customers.filter(c =>
-    c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-    c.phone.includes(customerSearch)
+  const filteredCustomers = customers.filter(
+    (c) =>
+      c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+      c.phone.includes(customerSearch) ||
+      (c.email && c.email.toLowerCase().includes(customerSearch.toLowerCase()))
   );
 
+  const companyInitials = companySettings.company_name
+    ? companySettings.company_name
+        .split(" ")
+        .map((w) => w[0])
+        .join("")
+        .substring(0, 2)
+        .toUpperCase()
+    : "CO";
+
+  /* ─── Render ─── */
   return (
-    <div className="max-w-lg mx-auto p-4 space-y-4 pb-32">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onBack}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <h1 className="text-lg font-bold">New Invoice</h1>
+    <div className="min-h-screen bg-muted/40">
+      {/* ── Top bar ── */}
+      <div className="sticky top-0 z-40 bg-background border-b px-4 py-3 flex items-center justify-between">
+        <h1 className="text-lg font-bold text-foreground">New Invoice</h1>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            Cancel
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => saveInvoice("draft")}
+            disabled={loading}
+          >
+            Save Draft
+          </Button>
+          <Button
+            size="sm"
+            className="text-white"
+            style={{ backgroundColor: "#0077B6" }}
+            onClick={() => saveInvoice("sent")}
+            disabled={loading}
+          >
+            {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+            Send To…
+          </Button>
+        </div>
       </div>
 
-      {/* Client Selection */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-4 space-y-3">
-          <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Client</Label>
+      {/* ── A4 Card ── */}
+      <div className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
+        {/* ── HEADER ROW ── */}
+        <div className="flex items-start justify-between gap-6">
+          {/* Logo */}
+          <div className="shrink-0">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="h-16 w-auto object-contain" />
+            ) : (
+              <div className="h-16 w-16 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xl font-bold">
+                {companyInitials}
+              </div>
+            )}
+          </div>
+          {/* Company info */}
+          <div className="text-right text-sm text-muted-foreground leading-relaxed">
+            <p className="font-semibold text-foreground text-base">{companySettings.company_name || "Your Company"}</p>
+            {companySettings.physical_address && <p>{companySettings.physical_address}</p>}
+            {companySettings.vat_number && <p>VAT: {companySettings.vat_number}</p>}
+          </div>
+        </div>
 
-          {showCustomerSearch ? (
-            <div className="space-y-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search clients..."
-                  value={customerSearch}
-                  onChange={(e) => setCustomerSearch(e.target.value)}
-                  className="pl-9 h-10 rounded-xl"
-                />
-              </div>
-              <div className="max-h-40 overflow-y-auto space-y-1">
-                {filteredCustomers.slice(0, 8).map(c => (
-                  <button
-                    key={c.id}
-                    onClick={() => selectCustomer(c)}
-                    className="w-full text-left p-2.5 rounded-lg hover:bg-accent/50 transition-colors"
-                  >
-                    <p className="text-sm font-medium">{c.name}</p>
-                    <p className="text-[11px] text-muted-foreground">{c.phone}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="p-3 rounded-xl bg-accent/30">
-                <p className="font-semibold text-sm">{customerName}</p>
-                <p className="text-xs text-muted-foreground">{customerPhone}</p>
+        <div className="h-px bg-border" />
+
+        {/* ── BILLED TO + DATES ROW ── */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          {/* Col 1 — Billed To */}
+          <div className="col-span-1 space-y-1 relative">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Billed To</p>
+            {customerName && !showCustomerPicker ? (
+              <div>
+                <p className="text-sm font-semibold text-foreground">{customerName}</p>
                 {customerAddress && <p className="text-xs text-muted-foreground">{customerAddress}</p>}
-              </div>
-              {!prefillLead && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs"
-                  onClick={() => setShowCustomerSearch(true)}
-                >
-                  Change client
-                </Button>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Quick Add Service Templates */}
-      {templates.length > 0 && (
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4 space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quick Add Service</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {templates.map(t => (
+                {customerEmail && <p className="text-xs text-muted-foreground">{customerEmail}</p>}
                 <button
-                  key={t.id}
-                  onClick={() => addTemplateItem(t)}
-                  className="px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors"
+                  onClick={() => setShowCustomerPicker(true)}
+                  className="text-[11px] text-primary hover:underline mt-1"
                 >
-                  {t.name} {t.default_rate > 0 && `R${t.default_rate}`}
+                  Change
                 </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Smart Product Selector */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-4 space-y-2">
-          <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Add Item / Product</Label>
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant="outline"
-              className="h-11 rounded-xl text-xs gap-2"
-              onClick={() => setShowGuidedSelector(true)}
-            >
-              <Package className="h-4 w-4" />
-              Guided Selector
-            </Button>
-            <Button
-              variant="outline"
-              className="h-11 rounded-xl text-xs gap-2"
-              onClick={() => setShowCatalogDrawer(true)}
-            >
-              <Search className="h-4 w-4" />
-              Browse Catalog
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <GuidedProductSelector
-        open={showGuidedSelector}
-        onOpenChange={setShowGuidedSelector}
-        onAddItem={(item) => {
-          setLineItems(prev => [...prev.filter(i => i.description || i.amount > 0), item]);
-        }}
-      />
-      <CatalogPickerDrawer
-        open={showCatalogDrawer}
-        onOpenChange={setShowCatalogDrawer}
-        onAddToQuote={(item) => {
-          const newItem: LineItem = {
-            description: item.description,
-            quantity: item.quantity,
-            rate: item.unit_price,
-            amount: item.quantity * item.unit_price,
-          };
-          setLineItems(prev => [...prev.filter(i => i.description || i.amount > 0), newItem]);
-        }}
-      />
-
-      {/* Line Items */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Line Items</Label>
-            <Button variant="outline" size="sm" className="h-7 px-2 text-xs rounded-lg" onClick={addLineItem}>
-              <Plus className="h-3 w-3 mr-1" /> Add
-            </Button>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <input
+                    autoFocus
+                    placeholder="Search clients…"
+                    value={customerSearch}
+                    onChange={(e) => setCustomerSearch(e.target.value)}
+                    className="w-full pl-7 pr-2 py-1.5 text-sm border rounded bg-background outline-none focus:ring-1 focus:ring-primary/30"
+                  />
+                </div>
+                <div className="max-h-40 overflow-y-auto border rounded bg-popover shadow-md">
+                  {filteredCustomers.slice(0, 8).map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => selectCustomer(c)}
+                      className="w-full text-left px-3 py-2 hover:bg-accent text-sm transition-colors"
+                    >
+                      <span className="font-medium">{c.name}</span>
+                      <span className="text-xs text-muted-foreground ml-2">{c.phone}</span>
+                    </button>
+                  ))}
+                  {filteredCustomers.length === 0 && customerSearch && (
+                    <p className="text-xs text-muted-foreground p-3">No clients found</p>
+                  )}
+                </div>
+                <button
+                  className="text-[11px] text-primary hover:underline flex items-center gap-1"
+                  onClick={() => {
+                    setCustomerName(customerSearch || "New Client");
+                    setShowCustomerPicker(false);
+                    setCustomerSearch("");
+                  }}
+                >
+                  <Plus className="h-3 w-3" /> Create a Client
+                </button>
+              </div>
+            )}
           </div>
 
-          {lineItems.map((item, index) => (
-            <div key={index} className="p-3 rounded-xl bg-accent/20 space-y-2">
-              <div className="flex items-start gap-2">
-                <Input
-                  placeholder="Service description"
+          {/* Col 2 — Date of Issue */}
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Date of Issue</p>
+            <GhostInput
+              type="date"
+              value={issueDate}
+              onChange={(e) => setIssueDate(e.target.value)}
+            />
+          </div>
+
+          {/* Col 3 — Invoice Number */}
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tax Invoice Number</p>
+            <p className="text-sm font-medium text-foreground px-2 py-1.5">{invoiceNumber || "Generating…"}</p>
+          </div>
+
+          {/* Col 4 — Amount Due */}
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Amount Due (ZAR)</p>
+            <p className="text-xl font-bold px-2 py-0.5" style={{ color: "#0077B6" }}>
+              {formatCurrency(amountDue)}
+            </p>
+          </div>
+        </div>
+
+        {/* Row 2: Due Date / Reference */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 -mt-4">
+          <div /> {/* empty under Billed To */}
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due Date</p>
+            <GhostInput type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Reference / PO#</p>
+            <GhostInput
+              placeholder="e.g. PO-1234"
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+            />
+          </div>
+          <div />
+        </div>
+
+        <div className="h-px bg-border" />
+
+        {/* ── LINE ITEMS TABLE ── */}
+        <div>
+          {/* Header */}
+          <div className="grid grid-cols-12 gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2 mb-1">
+            <div className="col-span-6">Description</div>
+            <div className="col-span-2 text-right">Rate</div>
+            <div className="col-span-1 text-right">Qty</div>
+            <div className="col-span-2 text-right">Line Total</div>
+            <div className="col-span-1" />
+          </div>
+
+          {/* Rows */}
+          {lineItems.map((item, idx) => (
+            <div
+              key={idx}
+              className="grid grid-cols-12 gap-2 items-center py-1 group relative"
+            >
+              {/* Description with autocomplete */}
+              <div className="col-span-6 relative">
+                <GhostInput
+                  placeholder="Item description"
                   value={item.description}
-                  onChange={(e) => updateLineItem(index, "description", e.target.value)}
-                  className="h-9 text-sm flex-1 rounded-lg"
+                  onChange={(e) => updateLineItem(idx, "description", e.target.value)}
+                  onFocus={() => {
+                    if (item.description.length >= 2) {
+                      setDescSuggestions(templates.filter((t) => t.name.toLowerCase().includes(item.description.toLowerCase())));
+                      setActiveDescIdx(idx);
+                    }
+                  }}
+                  onBlur={() => {
+                    // Delay so click can register
+                    setTimeout(() => {
+                      setDescSuggestions([]);
+                      setActiveDescIdx(null);
+                    }, 200);
+                  }}
                 />
-                {lineItems.length > 1 && (
-                  <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive shrink-0" onClick={() => removeLineItem(index)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                {activeDescIdx === idx && descSuggestions.length > 0 && (
+                  <div className="absolute top-full left-0 z-50 w-72 mt-1 bg-popover border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {descSuggestions.map((t) => (
+                      <button
+                        key={t.id}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          pickTemplate(t, idx);
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                      >
+                        <span className="font-medium">{t.name}</span>
+                        {t.default_rate > 0 && (
+                          <span className="text-xs text-muted-foreground ml-2">R{t.default_rate}</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <Label className="text-[10px] text-muted-foreground">Qty</Label>
-                  <Input type="number" min="0" step="1" value={item.quantity} onChange={(e) => updateLineItem(index, "quantity", e.target.value)} className="h-9 text-sm rounded-lg" />
-                </div>
-                <div>
-                  <Label className="text-[10px] text-muted-foreground">Rate (R)</Label>
-                  <Input type="number" min="0" step="0.01" value={item.rate} onChange={(e) => updateLineItem(index, "rate", e.target.value)} className="h-9 text-sm rounded-lg" />
-                </div>
-                <div>
-                  <Label className="text-[10px] text-muted-foreground">Amount</Label>
-                  <div className="h-9 px-3 flex items-center bg-muted rounded-lg text-sm font-medium">
-                    {formatCurrency(item.amount)}
-                  </div>
-                </div>
+              <div className="col-span-2">
+                <GhostInput
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="text-right"
+                  value={item.rate || ""}
+                  onChange={(e) => updateLineItem(idx, "rate", e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="col-span-1">
+                <GhostInput
+                  type="number"
+                  min="0"
+                  step="1"
+                  className="text-right"
+                  value={item.quantity || ""}
+                  onChange={(e) => updateLineItem(idx, "quantity", e.target.value)}
+                  placeholder="1"
+                />
+              </div>
+              <div className="col-span-2 text-right text-sm font-medium py-1.5 px-2">
+                {formatCurrency(item.amount)}
+              </div>
+              <div className="col-span-1 flex justify-center">
+                {lineItems.length > 1 && (
+                  <button
+                    onClick={() => removeLineItem(idx)}
+                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             </div>
           ))}
-        </CardContent>
-      </Card>
 
-      {/* Due Date & Payment */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-[10px] text-muted-foreground">Due Date</Label>
-              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="h-9 text-sm rounded-lg" />
+          {/* Add a Line */}
+          <button
+            onClick={addLineItem}
+            className="w-full py-3 mt-1 border border-dashed rounded-lg text-sm text-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-1.5"
+          >
+            <Plus className="h-4 w-4" /> Add a Line
+          </button>
+        </div>
+
+        <div className="h-px bg-border" />
+
+        {/* ── TOTALS (right-aligned) ── */}
+        <div className="flex justify-end">
+          <div className="w-72 space-y-2">
+            {/* Subtotal */}
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Subtotal</span>
+              <span>{formatCurrency(subtotal)}</span>
             </div>
-            <div>
-              <Label className="text-[10px] text-muted-foreground">Payment Method</Label>
-              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                <SelectTrigger className="h-9 text-sm rounded-lg">
-                  <SelectValue placeholder="Select..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {paymentMethods.map(m => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+
+            {/* Discount */}
+            {!showDiscount ? (
+              <button
+                onClick={() => setShowDiscount(true)}
+                className="text-sm text-primary hover:underline"
+              >
+                Add a Discount
+              </button>
+            ) : (
+              <div className="flex items-center justify-between text-sm gap-2">
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">Discount</span>
+                  <select
+                    value={discountType}
+                    onChange={(e) => setDiscountType(e.target.value as "percent" | "fixed")}
+                    className="text-xs border rounded px-1 py-0.5 bg-background"
+                  >
+                    <option value="percent">%</option>
+                    <option value="fixed">R</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="0"
+                    value={discountValue || ""}
+                    onChange={(e) => setDiscountValue(Number(e.target.value) || 0)}
+                    className="w-16 text-right text-sm border rounded px-2 py-0.5 bg-background outline-none focus:ring-1 focus:ring-primary/30"
+                  />
+                  <span className="text-muted-foreground">−{formatCurrency(discountAmount)}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Tax */}
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Tax ({taxRate}% VAT)</span>
+              <span>{formatCurrency(taxAmount)}</span>
+            </div>
+
+            <div className="h-px bg-border" />
+
+            {/* Total */}
+            <div className="flex justify-between text-base font-bold">
+              <span>Total</span>
+              <span>{formatCurrency(grandTotal)}</span>
+            </div>
+
+            {/* Amount Paid */}
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-muted-foreground">Amount Paid</span>
+              <GhostInput
+                type="number"
+                min="0"
+                step="0.01"
+                className="w-24 text-right"
+                value={amountPaid || ""}
+                onChange={(e) => setAmountPaid(Number(e.target.value) || 0)}
+                placeholder="0.00"
+              />
+            </div>
+
+            <div className="h-px bg-border" />
+
+            {/* Amount Due */}
+            <div className="flex justify-between text-lg font-bold">
+              <span>Amount Due (ZAR)</span>
+              <span style={{ color: "#0077B6" }}>{formatCurrency(amountDue)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="h-px bg-border" />
+
+        {/* ── LINK TO JOB (collapsible) ── */}
+        <div>
+          <button
+            onClick={() => setShowLinks(!showLinks)}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showLinks ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            Link to Job
+          </button>
+          {showLinks && (
+            <div className="mt-3 space-y-3 pl-1">
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Job / Lead</p>
+                <select
+                  value={leadId}
+                  onChange={(e) => setLeadId(e.target.value)}
+                  className="w-full text-sm border rounded px-3 py-2 bg-background outline-none focus:ring-1 focus:ring-primary/30"
+                >
+                  <option value="">None</option>
+                  {leads.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.customer_name} — {l.service_type}
+                    </option>
                   ))}
-                </SelectContent>
-              </Select>
+                </select>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          )}
+        </div>
 
-      {/* Totals */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-4 space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Subtotal</span>
-            <span>{formatCurrency(subtotal)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">VAT ({taxRate}%)</span>
-            <span>{formatCurrency(taxAmount)}</span>
-          </div>
-          <div className="h-px bg-border my-1" />
-          <div className="flex justify-between text-lg font-bold">
-            <span>Total</span>
-            <span className="text-primary">{formatCurrency(grandTotal)}</span>
-          </div>
-        </CardContent>
-      </Card>
+        <div className="h-px bg-border" />
 
-      {/* Notes */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-4">
-          <Label className="text-[10px] text-muted-foreground">Notes</Label>
-          <Textarea placeholder="Additional notes..." value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="text-sm resize-none rounded-lg mt-1" />
-        </CardContent>
-      </Card>
+        {/* ── NOTES ── */}
+        <div className="space-y-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Notes</p>
+          <Textarea
+            placeholder="Notes — any relevant information not already covered"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+            className="text-sm resize-none border-transparent hover:border-border focus:border-primary bg-transparent"
+          />
+        </div>
 
-      {/* Fixed Action Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-md border-t z-50 max-w-lg mx-auto space-y-2">
+        {/* ── TERMS ── */}
+        <div className="space-y-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Terms</p>
+          <Textarea
+            placeholder="Payment terms, banking details, conditions…"
+            value={terms}
+            onChange={(e) => setTerms(e.target.value)}
+            rows={4}
+            className="text-sm resize-none border-transparent hover:border-border focus:border-primary bg-transparent"
+          />
+        </div>
+
+        {/* ── ATTACHMENTS ── */}
+        <div className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Attachments</p>
+          <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFileUpload} />
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-2 text-sm text-primary hover:underline disabled:opacity-50"
+          >
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            {uploading ? "Uploading…" : "Attach Files"}
+          </button>
+          {attachments.length > 0 && (
+            <div className="space-y-1 mt-1">
+              {attachments.map((a, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Paperclip className="h-3.5 w-3.5" />
+                  <a href={a.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate">
+                    {a.name}
+                  </a>
+                  <button
+                    onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
+                    className="text-destructive hover:text-destructive/80"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Sticky bottom bar ── */}
+      <div className="sticky bottom-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2 max-w-3xl mx-auto">
+        <Button variant="outline" size="sm" onClick={() => saveInvoice("draft")} disabled={loading}>
+          Save Draft
+        </Button>
         <Button
-          className="w-full h-12 rounded-xl font-semibold text-base"
-          style={{ backgroundColor: '#0077B6' }}
+          size="sm"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+          onClick={() => saveInvoice("paid")}
+          disabled={loading}
+        >
+          Mark Paid
+        </Button>
+        <Button
+          size="sm"
+          className="text-white"
+          style={{ backgroundColor: "#0077B6" }}
           onClick={() => saveInvoice("sent")}
           disabled={loading}
         >
-          {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+          {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
           Send Invoice
         </Button>
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="outline" className="h-10 rounded-xl" onClick={() => saveInvoice("draft")} disabled={loading}>
-            Save Draft
-          </Button>
-          <Button className="h-10 rounded-xl bg-green-600 hover:bg-green-700" onClick={() => saveInvoice("paid")} disabled={loading}>
-            Mark Paid
-          </Button>
-        </div>
       </div>
     </div>
   );
