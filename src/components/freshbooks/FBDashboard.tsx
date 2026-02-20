@@ -14,7 +14,7 @@ const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", c
 // BeCoolLogo is rendered in FBLayout sidebar
 
 const StatCard = ({ title, value, icon: Icon, color }: { title: string; value: string; icon: any; color: string }) => (
-  <div className="bg-card rounded-lg shadow-sm border border-border p-6 border-l-4 border-l-blue-500">
+  <div className="bg-card rounded-lg shadow-[2px_3px_6px_rgba(0,0,0,0.1)] border border-border p-6 border-l-4 border-l-blue-500">
     <div className="flex items-center justify-between">
       <div>
         <p className="text-sm font-medium text-muted-foreground">{title}</p>
