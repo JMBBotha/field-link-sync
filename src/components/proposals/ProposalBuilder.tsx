@@ -1,330 +1,903 @@
-import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Plus, X, Loader2, Search, ChevronDown, ChevronUp, Paperclip, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Plus,
-  Trash2,
-  ArrowUp,
-  ArrowDown,
-  Eye,
-  Save,
-  Loader2,
-  ArrowLeft,
-  FileText,
-} from "lucide-react";
-import ProposalPreview from "./ProposalPreview";
-import WhatsAppShareButton from "@/components/WhatsAppShareButton";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { cn } from "@/lib/utils";
 
-const SECTION_TYPES = [
-  { value: "cover", label: "Cover Page", color: "bg-blue-100 text-blue-800" },
-  { value: "summary", label: "Executive Summary", color: "bg-purple-100 text-purple-800" },
-  { value: "assessment", label: "Site Assessment", color: "bg-orange-100 text-orange-800" },
-  { value: "scope", label: "Scope of Work", color: "bg-green-100 text-green-800" },
-  { value: "solution", label: "Solution", color: "bg-cyan-100 text-cyan-800" },
-  { value: "pricing", label: "Pricing", color: "bg-yellow-100 text-yellow-800" },
-  { value: "timeline", label: "Timeline", color: "bg-indigo-100 text-indigo-800" },
-  { value: "terms", label: "Terms & Conditions", color: "bg-red-100 text-red-800" },
-  { value: "warranty", label: "Warranty", color: "bg-emerald-100 text-emerald-800" },
-  { value: "about", label: "About Us", color: "bg-gray-100 text-gray-800" },
-];
+/* ────────── Types ────────── */
 
-interface Section {
-  id?: string;
-  section_type: string;
-  title: string;
-  content: string;
-  sort_order: number;
-  photos: string[];
+interface LineItem {
+  description: string;
+  quantity: number;
+  rate: number;
+  amount: number;
+  service_id?: string | null;
+}
+
+interface ServiceTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  default_rate: number;
+  category: string;
+}
+
+interface Customer {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string;
+  address: string | null;
+}
+
+interface Lead {
+  id: string;
+  customer_name: string;
+  service_type: string;
 }
 
 interface ProposalBuilderProps {
-  quoteId: string;
+  quoteId?: string;
+  proposalId?: string;
   onBack: () => void;
+  onSuccess?: () => void;
+  prefillFromQuote?: {
+    id: string;
+    customer_id?: string | null;
+    customer_name?: string;
+    items?: { description: string; quantity: number; rate: number }[];
+  };
 }
 
-const ProposalBuilder = ({ quoteId, onBack }: ProposalBuilderProps) => {
+const formatCurrency = (amount: number) =>
+  new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(amount);
+
+/* ────────── Ghost input ────────── */
+
+const GhostInput = ({
+  className,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement> & { className?: string }) => (
+  <input
+    {...props}
+    className={cn(
+      "w-full bg-transparent border border-transparent rounded px-2 py-1.5 text-sm outline-none transition-colors",
+      "hover:border-border focus:border-primary focus:ring-1 focus:ring-primary/30",
+      "placeholder:text-muted-foreground/50",
+      className
+    )}
+  />
+);
+
+/* ────────── Main Component ────────── */
+
+const ProposalBuilder = ({
+  quoteId,
+  proposalId,
+  onBack,
+  onSuccess,
+  prefillFromQuote,
+}: ProposalBuilderProps) => {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [sections, setSections] = useState<Section[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const { settings: companySettings } = useCompanySettings();
 
-  // Fetch existing sections
-  const { data: existingSections, isLoading } = useQuery({
-    queryKey: ["proposal-sections", quoteId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("proposal_sections")
-        .select("*")
-        .eq("quote_id", quoteId)
-        .order("sort_order");
-      if (error) throw error;
-      return data;
-    },
+  const [loading, setLoading] = useState(false);
+  const [proposalNumber, setProposalNumber] = useState<string>("");
+  const [existingId, setExistingId] = useState<string | null>(proposalId || null);
+  const isEditing = !!existingId;
+
+  // Customer
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(
+    prefillFromQuote?.customer_id || null
+  );
+  const [customerName, setCustomerName] = useState(prefillFromQuote?.customer_name || "");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customers, setCustomers] = useState<Customer[]>([]);
+
+  // Dates
+  const [issueDate, setIssueDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [dueDate, setDueDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + (companySettings.default_payment_terms_days || 30));
+    return d.toISOString().split("T")[0];
   });
+  const [reference, setReference] = useState("");
 
-  // Fetch templates
-  const { data: templates = [] } = useQuery({
-    queryKey: ["proposal-templates"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("proposal_templates")
-        .select("*")
-        .order("section_type");
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Line items
+  const initialItems: LineItem[] = prefillFromQuote?.items?.length
+    ? prefillFromQuote.items.map((i) => ({
+        description: i.description,
+        quantity: i.quantity,
+        rate: i.rate,
+        amount: i.quantity * i.rate,
+      }))
+    : [{ description: "", quantity: 1, rate: 0, amount: 0 }];
 
-  // Fetch quote info
-  const { data: quote } = useQuery({
-    queryKey: ["quote-detail", quoteId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("quotes")
-        .select("*, customers(name, phone, email, address), quote_line_items(*)")
-        .eq("id", quoteId)
-        .single();
-      if (error) throw error;
-      return data;
-    },
-  });
+  const [lineItems, setLineItems] = useState<LineItem[]>(initialItems);
+  const [templates, setTemplates] = useState<ServiceTemplate[]>([]);
+  const [descSuggestions, setDescSuggestions] = useState<ServiceTemplate[]>([]);
+  const [activeDescIdx, setActiveDescIdx] = useState<number | null>(null);
 
+  // Discount
+  const [showDiscount, setShowDiscount] = useState(false);
+  const [discountType, setDiscountType] = useState<"percent" | "fixed">("percent");
+  const [discountValue, setDiscountValue] = useState(0);
+
+  // Tax
+  const [taxRate] = useState(15);
+
+  // Links
+  const [leadId, setLeadId] = useState("");
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [showLinks, setShowLinks] = useState(false);
+
+  // Notes / Terms
+  const [notes, setNotes] = useState("");
+  const [terms, setTerms] = useState("");
+
+  // Attachments
+  const [attachments, setAttachments] = useState<{ name: string; url: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  /* ─── Derived ─── */
+  const subtotal = lineItems.reduce((s, i) => s + i.amount, 0);
+  const discountAmount = discountType === "percent" ? subtotal * (discountValue / 100) : discountValue;
+  const taxableAmount = subtotal - discountAmount;
+  const taxAmount = taxableAmount * (taxRate / 100);
+  const grandTotal = taxableAmount + taxAmount;
+
+  /* ─── Fetch data ─── */
   useEffect(() => {
-    if (existingSections?.length) {
-      setSections(
-        existingSections.map((s: any) => ({
-          id: s.id,
-          section_type: s.section_type,
-          title: s.title,
-          content: s.content || "",
-          sort_order: s.sort_order,
-          photos: Array.isArray(s.photos) ? s.photos : [],
-        }))
-      );
+    // Proposal number
+    if (!proposalId) {
+      supabase.rpc("generate_proposal_number").then(({ data }) => {
+        if (data) setProposalNumber(data as string);
+      });
     }
-  }, [existingSections]);
+    // Templates
+    supabase
+      .from("service_templates")
+      .select("*")
+      .eq("is_active", true)
+      .order("category")
+      .then(({ data }) => {
+        if (data) setTemplates(data as unknown as ServiceTemplate[]);
+      });
+    // Customers
+    supabase
+      .from("customers")
+      .select("id, name, email, phone, address")
+      .order("name")
+      .then(({ data }) => {
+        if (data) setCustomers(data);
+      });
+    // Leads
+    supabase
+      .from("leads")
+      .select("id, customer_name, service_type")
+      .order("created_at", { ascending: false })
+      .limit(50)
+      .then(({ data }) => {
+        if (data) setLeads(data);
+      });
+  }, [proposalId]);
 
-  const addFromTemplate = (templateId: string) => {
-    const tmpl = templates.find((t: any) => t.id === templateId);
-    if (!tmpl) return;
-    setSections((prev) => [
-      ...prev,
-      {
-        section_type: tmpl.section_type,
-        title: tmpl.default_title,
-        content: tmpl.default_content,
-        sort_order: prev.length,
-        photos: [],
-      },
-    ]);
-  };
+  // Load existing proposal
+  useEffect(() => {
+    if (!proposalId) return;
+    (async () => {
+      const { data: p } = await supabase
+        .from("proposals" as any)
+        .select("*")
+        .eq("id", proposalId)
+        .single();
+      if (!p) return;
+      const proposal = p as any;
+      setProposalNumber(proposal.proposal_number || "");
+      setSelectedCustomerId(proposal.customer_id);
+      setIssueDate(proposal.issue_date || new Date().toISOString().split("T")[0]);
+      setDueDate(proposal.due_date || "");
+      setReference(proposal.reference || "");
+      setDiscountType(proposal.discount_type || "percent");
+      setDiscountValue(proposal.discount_value || 0);
+      setNotes(proposal.notes || "");
+      setTerms(proposal.terms || "");
+      setLeadId(proposal.lead_id || "");
+      if (proposal.discount_value > 0) setShowDiscount(true);
 
-  const addBlankSection = (type: string) => {
-    const typeInfo = SECTION_TYPES.find((t) => t.value === type);
-    setSections((prev) => [
-      ...prev,
-      {
-        section_type: type,
-        title: typeInfo?.label || "New Section",
-        content: "",
-        sort_order: prev.length,
-        photos: [],
-      },
-    ]);
-  };
-
-  const moveSection = (index: number, direction: -1 | 1) => {
-    const newIndex = index + direction;
-    if (newIndex < 0 || newIndex >= sections.length) return;
-    const updated = [...sections];
-    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
-    updated.forEach((s, i) => (s.sort_order = i));
-    setSections(updated);
-  };
-
-  const updateSection = (index: number, field: keyof Section, value: any) => {
-    setSections((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)));
-  };
-
-  const removeSection = (index: number) => {
-    setSections((prev) => prev.filter((_, i) => i !== index).map((s, i) => ({ ...s, sort_order: i })));
-  };
-
-  const saveProposal = async () => {
-    setSaving(true);
-    try {
-      // Delete existing sections and re-insert
-      await supabase.from("proposal_sections").delete().eq("quote_id", quoteId);
-
-      if (sections.length > 0) {
-        const { error } = await supabase.from("proposal_sections").insert(
-          sections.map((s) => ({
-            quote_id: quoteId,
-            section_type: s.section_type,
-            title: s.title,
-            content: s.content,
-            sort_order: s.sort_order,
-            photos: s.photos,
+      const { data: items } = await supabase
+        .from("proposal_items" as any)
+        .select("*")
+        .eq("proposal_id", proposalId)
+        .order("sort_order");
+      if (items && (items as any[]).length > 0) {
+        setLineItems(
+          (items as any[]).map((i: any) => ({
+            description: i.description,
+            quantity: i.quantity,
+            rate: i.rate,
+            amount: i.line_total,
+            service_id: i.service_id,
           }))
         );
-        if (error) throw error;
       }
+    })();
+  }, [proposalId]);
 
-      queryClient.invalidateQueries({ queryKey: ["proposal-sections", quoteId] });
-      toast({ title: "Proposal saved!" });
+  // Prefill customer details
+  useEffect(() => {
+    const cid = selectedCustomerId;
+    if (!cid) return;
+    supabase
+      .from("customers")
+      .select("email, name, phone, address")
+      .eq("id", cid)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          if (data.email) setCustomerEmail(data.email);
+          if (!customerName && data.name) setCustomerName(data.name);
+          if (!customerPhone && data.phone) setCustomerPhone(data.phone);
+          if (!customerAddress && data.address) setCustomerAddress(data.address || "");
+        }
+      });
+  }, [selectedCustomerId]);
+
+  // Terms from company settings
+  useEffect(() => {
+    if (proposalId) return; // don't overwrite loaded terms
+    const parts: string[] = [];
+    const b = companySettings.banking_details;
+    if (b && (b.bank_name || b.account_number)) {
+      parts.push("Banking Details:");
+      if (b.bank_name) parts.push(`Bank: ${b.bank_name}`);
+      if (b.account_number) parts.push(`Account: ${b.account_number}`);
+      if (b.branch_code) parts.push(`Branch: ${b.branch_code}`);
+      if (b.account_type) parts.push(`Type: ${b.account_type}`);
+    }
+    setTerms(parts.join("\n"));
+  }, [companySettings, proposalId]);
+
+  /* ─── Logo URL ─── */
+  const logoUrl = useMemo(() => {
+    const path = companySettings.logo_storage_path;
+    if (!path) return null;
+    if (path.startsWith("http")) return path;
+    const { data } = supabase.storage.from("company-logos").getPublicUrl(path);
+    return data?.publicUrl || null;
+  }, [companySettings.logo_storage_path]);
+
+  /* ─── Handlers ─── */
+  const selectCustomer = (c: Customer) => {
+    setSelectedCustomerId(c.id);
+    setCustomerName(c.name);
+    setCustomerPhone(c.phone);
+    setCustomerAddress(c.address || "");
+    setCustomerEmail(c.email || "");
+    setShowCustomerPicker(false);
+    setCustomerSearch("");
+  };
+
+  const updateLineItem = (index: number, field: keyof LineItem, value: string | number) => {
+    const items = [...lineItems];
+    const item = { ...items[index] };
+    if (field === "description") {
+      item.description = value as string;
+      const q = (value as string).toLowerCase();
+      if (q.length >= 2) {
+        setDescSuggestions(templates.filter((t) => t.name.toLowerCase().includes(q)));
+        setActiveDescIdx(index);
+      } else {
+        setDescSuggestions([]);
+        setActiveDescIdx(null);
+      }
+    } else if (field === "quantity") {
+      item.quantity = Math.max(0, Number(value) || 0);
+      item.amount = item.quantity * item.rate;
+    } else if (field === "rate") {
+      item.rate = Math.max(0, Number(value) || 0);
+      item.amount = item.quantity * item.rate;
+    }
+    items[index] = item;
+    setLineItems(items);
+  };
+
+  const pickTemplate = (t: ServiceTemplate, index: number) => {
+    const items = [...lineItems];
+    items[index] = {
+      description: t.name + (t.description ? ` – ${t.description}` : ""),
+      quantity: 1,
+      rate: t.default_rate,
+      amount: t.default_rate,
+      service_id: t.id,
+    };
+    setLineItems(items);
+    setDescSuggestions([]);
+    setActiveDescIdx(null);
+  };
+
+  const addLineItem = () => setLineItems([...lineItems, { description: "", quantity: 1, rate: 0, amount: 0 }]);
+
+  const removeLineItem = (i: number) => {
+    if (lineItems.length > 1) setLineItems(lineItems.filter((_, idx) => idx !== i));
+  };
+
+  /* ─── File upload ─── */
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const path = `proposals/${Date.now()}_${file.name}`;
+        const { error } = await supabase.storage.from("proposal-attachments").upload(path, file);
+        if (error) throw error;
+        const { data: urlData } = supabase.storage.from("proposal-attachments").getPublicUrl(path);
+        setAttachments((prev) => [...prev, { name: file.name, url: urlData.publicUrl }]);
+      }
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
     } finally {
-      setSaving(false);
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
   };
 
-  const getSectionColor = (type: string) =>
-    SECTION_TYPES.find((t) => t.value === type)?.color || "bg-muted text-muted-foreground";
+  /* ─── Save ─── */
+  const saveProposal = async (status: "draft" | "sent" | "approved") => {
+    if (!customerName.trim()) {
+      toast({ title: "Error", description: "Please select or enter a client", variant: "destructive" });
+      return;
+    }
+    if (lineItems.every((i) => !i.description || i.amount === 0)) {
+      toast({ title: "Error", description: "Add at least one line item", variant: "destructive" });
+      return;
+    }
 
-  if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading proposal...</div>;
+    setLoading(true);
+    try {
+      let finalNumber = proposalNumber;
+      if (!finalNumber) {
+        const { data, error } = await supabase.rpc("generate_proposal_number");
+        if (error) throw error;
+        finalNumber = data as string;
+        setProposalNumber(finalNumber);
+      }
 
+      const payload = {
+        proposal_number: finalNumber,
+        customer_id: selectedCustomerId || null,
+        lead_id: leadId || null,
+        quote_id: quoteId || null,
+        issue_date: issueDate,
+        due_date: dueDate || null,
+        reference: reference || null,
+        subtotal,
+        discount_type: discountType,
+        discount_value: discountValue,
+        discount_amount: discountAmount,
+        tax_rate: taxRate,
+        tax_amount: taxAmount,
+        total: grandTotal,
+        notes: notes || null,
+        terms: terms || null,
+        status,
+      } as any;
+
+      let savedId = existingId;
+
+      if (existingId) {
+        const { error } = await supabase
+          .from("proposals" as any)
+          .update(payload)
+          .eq("id", existingId);
+        if (error) throw error;
+      } else {
+        const { data: auth } = await supabase.auth.getUser();
+        payload.created_by = auth.user?.id || null;
+        const { data: inserted, error } = await supabase
+          .from("proposals" as any)
+          .insert(payload)
+          .select("id")
+          .single();
+        if (error) throw error;
+        savedId = (inserted as any).id;
+        setExistingId(savedId);
+      }
+
+      // Save line items
+      if (savedId) {
+        await supabase.from("proposal_items" as any).delete().eq("proposal_id", savedId);
+        const validItems = lineItems.filter((i) => i.description);
+        if (validItems.length > 0) {
+          await supabase.from("proposal_items" as any).insert(
+            validItems.map((i, idx) => ({
+              proposal_id: savedId,
+              service_id: i.service_id || null,
+              description: i.description,
+              quantity: i.quantity,
+              rate: i.rate,
+              line_total: i.amount,
+              sort_order: idx,
+            }))
+          );
+        }
+      }
+
+      toast({
+        title: "Proposal Saved! 📋",
+        description: `${finalNumber} – ${status === "approved" ? "Approved" : status === "sent" ? "Sent" : "Draft"}`,
+      });
+      onSuccess?.();
+    } catch (error: any) {
+      console.error("Proposal save error:", error);
+      toast({ title: "Error", description: error.message || "Failed to save proposal", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredCustomers = customers.filter(
+    (c) =>
+      c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+      c.phone.includes(customerSearch) ||
+      (c.email && c.email.toLowerCase().includes(customerSearch.toLowerCase()))
+  );
+
+  const companyInitials = companySettings.company_name
+    ? companySettings.company_name
+        .split(" ")
+        .map((w) => w[0])
+        .join("")
+        .substring(0, 2)
+        .toUpperCase()
+    : "CO";
+
+  /* ─── Render ─── */
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4" />
+    <div className="min-h-screen bg-muted/40">
+      {/* ── Top bar ── */}
+      <div className="sticky top-0 z-40 bg-background border-b px-4 py-3 flex items-center justify-between">
+        <h1 className="text-lg font-bold text-foreground">{isEditing ? "Edit Proposal" : "New Proposal"}</h1>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            Cancel
           </Button>
-          <div>
-            <h2 className="text-xl font-bold">Proposal Builder</h2>
-            <p className="text-sm text-muted-foreground">
-              {quote?.quote_number} • {(quote as any)?.customers?.name || "Customer"}
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setPreviewOpen(true)}>
-            <Eye className="h-4 w-4 mr-2" /> Preview
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => saveProposal("draft")}
+            disabled={loading}
+          >
+            Save Draft
           </Button>
-          {quote?.public_token && (
-            <WhatsAppShareButton
-              phone={(quote as any)?.customers?.phone}
-              message={`Hi ${(quote as any)?.customers?.name || "there"}, your proposal is ready for review: ${window.location.origin}/quote/${quote.public_token}`}
-              variant="outline"
-            >
-              Share via WhatsApp
-            </WhatsAppShareButton>
-          )}
-          <Button onClick={saveProposal} disabled={saving}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-            Save
+          <Button
+            size="sm"
+            className="text-white"
+            style={{ backgroundColor: "#0077B6" }}
+            onClick={() => saveProposal("sent")}
+            disabled={loading}
+          >
+            {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+            Send To…
           </Button>
         </div>
       </div>
 
-      {/* Add section controls */}
-      <Card>
-        <CardContent className="py-3 px-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-muted-foreground">Add:</span>
-            <Select onValueChange={addFromTemplate}>
-              <SelectTrigger className="w-52 h-8 text-xs">
-                <SelectValue placeholder="From template..." />
-              </SelectTrigger>
-              <SelectContent>
-                {templates.map((t: any) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select onValueChange={addBlankSection}>
-              <SelectTrigger className="w-44 h-8 text-xs">
-                <SelectValue placeholder="Blank section..." />
-              </SelectTrigger>
-              <SelectContent>
-                {SECTION_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      {/* ── A4 Card ── */}
+      <div className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
+        {/* ── HEADER ROW ── */}
+        <div className="flex items-start justify-between gap-6">
+          {/* Logo */}
+          <div className="shrink-0">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="h-16 w-auto object-contain" />
+            ) : (
+              <div className="h-16 w-16 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xl font-bold">
+                {companyInitials}
+              </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Sections */}
-      {sections.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <FileText className="h-10 w-10 mx-auto mb-2 opacity-50" />
-          <p>No sections yet. Add from a template or create a blank section above.</p>
+          {/* Company info */}
+          <div className="text-right text-sm text-muted-foreground leading-relaxed">
+            <p className="font-semibold text-foreground text-base">{companySettings.company_name || "Your Company"}</p>
+            {companySettings.physical_address && <p>{companySettings.physical_address}</p>}
+            {companySettings.vat_number && <p>VAT: {companySettings.vat_number}</p>}
+          </div>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {sections.map((section, index) => (
-            <Card key={index} className="border-l-4" style={{ borderLeftColor: section.section_type === 'cover' ? '#0077B6' : undefined }}>
-              <CardHeader className="py-2 px-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Badge className={getSectionColor(section.section_type)} variant="outline">
-                      {SECTION_TYPES.find((t) => t.value === section.section_type)?.label}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">#{index + 1}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveSection(index, -1)} disabled={index === 0}>
-                      <ArrowUp className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveSection(index, 1)} disabled={index === sections.length - 1}>
-                      <ArrowDown className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeSection(index)}>
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
-                  </div>
+
+        <div className="h-px bg-border" />
+
+        {/* ── BILLED TO + DATES ROW ── */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          {/* Col 1 — Billed To */}
+          <div className="col-span-1 space-y-1 relative">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Billed To</p>
+            {customerName && !showCustomerPicker ? (
+              <div>
+                <p className="text-sm font-semibold text-foreground">{customerName}</p>
+                {customerAddress && <p className="text-xs text-muted-foreground">{customerAddress}</p>}
+                {customerEmail && <p className="text-xs text-muted-foreground">{customerEmail}</p>}
+                <button
+                  onClick={() => setShowCustomerPicker(true)}
+                  className="text-[11px] text-primary hover:underline mt-1"
+                >
+                  Change
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <input
+                    autoFocus
+                    placeholder="Search clients…"
+                    value={customerSearch}
+                    onChange={(e) => setCustomerSearch(e.target.value)}
+                    className="w-full pl-7 pr-2 py-1.5 text-sm border rounded bg-background outline-none focus:ring-1 focus:ring-primary/30"
+                  />
                 </div>
-              </CardHeader>
-              <CardContent className="px-4 pb-4 space-y-2">
-                <Input
-                  value={section.title}
-                  onChange={(e) => updateSection(index, "title", e.target.value)}
-                  className="font-semibold"
-                  placeholder="Section title"
-                />
-                <Textarea
-                  value={section.content}
-                  onChange={(e) => updateSection(index, "content", e.target.value)}
-                  rows={8}
-                  placeholder="Section content (supports Markdown)"
-                  className="text-sm font-mono"
-                />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+                <div className="max-h-40 overflow-y-auto border rounded bg-popover shadow-md">
+                  {filteredCustomers.slice(0, 8).map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => selectCustomer(c)}
+                      className="w-full text-left px-3 py-2 hover:bg-accent text-sm transition-colors"
+                    >
+                      <span className="font-medium">{c.name}</span>
+                      <span className="text-xs text-muted-foreground ml-2">{c.phone}</span>
+                    </button>
+                  ))}
+                  {filteredCustomers.length === 0 && customerSearch && (
+                    <p className="text-xs text-muted-foreground p-3">No clients found</p>
+                  )}
+                </div>
+                <button
+                  className="text-[11px] text-primary hover:underline flex items-center gap-1"
+                  onClick={() => {
+                    setCustomerName(customerSearch || "New Client");
+                    setShowCustomerPicker(false);
+                    setCustomerSearch("");
+                  }}
+                >
+                  <Plus className="h-3 w-3" /> Create a Client
+                </button>
+              </div>
+            )}
+          </div>
 
-      {/* Preview Modal */}
-      <ProposalPreview
-        open={previewOpen}
-        onOpenChange={setPreviewOpen}
-        sections={sections}
-        quote={quote}
-      />
+          {/* Col 2 — Date of Issue */}
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Date of Issue</p>
+            <GhostInput
+              type="date"
+              value={issueDate}
+              onChange={(e) => setIssueDate(e.target.value)}
+            />
+          </div>
+
+          {/* Col 3 — Proposal Number */}
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Proposal Number</p>
+            <p className="text-sm font-medium text-foreground px-2 py-1.5">{proposalNumber || "Generating…"}</p>
+          </div>
+
+          {/* Col 4 — Estimated Amount */}
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Estimated Amount (ZAR)</p>
+            <p className="text-xl font-bold px-2 py-0.5" style={{ color: "#0077B6" }}>
+              {formatCurrency(grandTotal)}
+            </p>
+          </div>
+        </div>
+
+        {/* Row 2: Due Date / Reference */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 -mt-4">
+          <div /> {/* empty under Billed To */}
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due Date</p>
+            <GhostInput type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Reference / PO#</p>
+            <GhostInput
+              placeholder="e.g. PO-1234"
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+            />
+          </div>
+          <div />
+        </div>
+
+        <div className="h-px bg-border" />
+
+        {/* ── LINE ITEMS TABLE ── */}
+        <div>
+          {/* Header */}
+          <div className="grid grid-cols-12 gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2 mb-1">
+            <div className="col-span-6">Description</div>
+            <div className="col-span-2 text-right">Rate</div>
+            <div className="col-span-1 text-right">Qty</div>
+            <div className="col-span-2 text-right">Line Total</div>
+            <div className="col-span-1" />
+          </div>
+
+          {/* Rows */}
+          {lineItems.map((item, idx) => (
+            <div
+              key={idx}
+              className="grid grid-cols-12 gap-2 items-center py-1 group relative"
+            >
+              {/* Description with autocomplete */}
+              <div className="col-span-6 relative">
+                <GhostInput
+                  placeholder="Item description"
+                  value={item.description}
+                  onChange={(e) => updateLineItem(idx, "description", e.target.value)}
+                  onFocus={() => {
+                    if (item.description.length >= 2) {
+                      setDescSuggestions(templates.filter((t) => t.name.toLowerCase().includes(item.description.toLowerCase())));
+                      setActiveDescIdx(idx);
+                    }
+                  }}
+                  onBlur={() => {
+                    setTimeout(() => {
+                      setDescSuggestions([]);
+                      setActiveDescIdx(null);
+                    }, 200);
+                  }}
+                />
+                {activeDescIdx === idx && descSuggestions.length > 0 && (
+                  <div className="absolute top-full left-0 z-50 w-72 mt-1 bg-popover border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {descSuggestions.map((t) => (
+                      <button
+                        key={t.id}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          pickTemplate(t, idx);
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                      >
+                        <span className="font-medium">{t.name}</span>
+                        {t.default_rate > 0 && (
+                          <span className="text-xs text-muted-foreground ml-2">R{t.default_rate}</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="col-span-2">
+                <GhostInput
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="text-right"
+                  value={item.rate || ""}
+                  onChange={(e) => updateLineItem(idx, "rate", e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="col-span-1">
+                <GhostInput
+                  type="number"
+                  min="0"
+                  step="1"
+                  className="text-right"
+                  value={item.quantity || ""}
+                  onChange={(e) => updateLineItem(idx, "quantity", e.target.value)}
+                  placeholder="1"
+                />
+              </div>
+              <div className="col-span-2 text-right text-sm font-medium py-1.5 px-2">
+                {formatCurrency(item.amount)}
+              </div>
+              <div className="col-span-1 flex justify-center">
+                {lineItems.length > 1 && (
+                  <button
+                    onClick={() => removeLineItem(idx)}
+                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {/* Add a Line */}
+          <button
+            onClick={addLineItem}
+            className="w-full py-3 mt-1 border border-dashed rounded-lg text-sm text-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-1.5"
+          >
+            <Plus className="h-4 w-4" /> Add a Line
+          </button>
+        </div>
+
+        <div className="h-px bg-border" />
+
+        {/* ── TOTALS (right-aligned) ── */}
+        <div className="flex justify-end">
+          <div className="w-72 space-y-2">
+            {/* Subtotal */}
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Subtotal</span>
+              <span>{formatCurrency(subtotal)}</span>
+            </div>
+
+            {/* Discount */}
+            {!showDiscount ? (
+              <button
+                onClick={() => setShowDiscount(true)}
+                className="text-sm text-primary hover:underline"
+              >
+                Add a Discount
+              </button>
+            ) : (
+              <div className="flex items-center justify-between text-sm gap-2">
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">Discount</span>
+                  <select
+                    value={discountType}
+                    onChange={(e) => setDiscountType(e.target.value as "percent" | "fixed")}
+                    className="text-xs border rounded px-1 py-0.5 bg-background"
+                  >
+                    <option value="percent">%</option>
+                    <option value="fixed">R</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="0"
+                    value={discountValue || ""}
+                    onChange={(e) => setDiscountValue(Number(e.target.value) || 0)}
+                    className="w-16 text-right text-sm border rounded px-2 py-0.5 bg-background outline-none focus:ring-1 focus:ring-primary/30"
+                  />
+                  <span className="text-muted-foreground">−{formatCurrency(discountAmount)}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Tax */}
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Tax ({taxRate}% VAT)</span>
+              <span>{formatCurrency(taxAmount)}</span>
+            </div>
+
+            <div className="h-px bg-border" />
+
+            {/* Total */}
+            <div className="flex justify-between text-lg font-bold">
+              <span>Total (ZAR)</span>
+              <span style={{ color: "#0077B6" }}>{formatCurrency(grandTotal)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="h-px bg-border" />
+
+        {/* ── LINK TO JOB / QUOTE (collapsible) ── */}
+        <div>
+          <button
+            onClick={() => setShowLinks(!showLinks)}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showLinks ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            Link to Job / Quote
+          </button>
+          {showLinks && (
+            <div className="mt-3 space-y-3 pl-1">
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Job / Lead</p>
+                <select
+                  value={leadId}
+                  onChange={(e) => setLeadId(e.target.value)}
+                  className="w-full text-sm border rounded px-3 py-2 bg-background outline-none focus:ring-1 focus:ring-primary/30"
+                >
+                  <option value="">None</option>
+                  {leads.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.customer_name} — {l.service_type}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="h-px bg-border" />
+
+        {/* ── NOTES ── */}
+        <div className="space-y-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Notes</p>
+          <Textarea
+            placeholder="Notes — any relevant information not already covered"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+            className="text-sm resize-none border-transparent hover:border-border focus:border-primary bg-transparent"
+          />
+        </div>
+
+        {/* ── TERMS ── */}
+        <div className="space-y-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Terms</p>
+          <Textarea
+            placeholder="Payment terms, banking details, conditions…"
+            value={terms}
+            onChange={(e) => setTerms(e.target.value)}
+            rows={4}
+            className="text-sm resize-none border-transparent hover:border-border focus:border-primary bg-transparent"
+          />
+        </div>
+
+        {/* ── ATTACHMENTS ── */}
+        <div className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Attachments</p>
+          <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFileUpload} />
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-2 text-sm text-primary hover:underline disabled:opacity-50"
+          >
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            {uploading ? "Uploading…" : "Attach Files"}
+          </button>
+          {attachments.length > 0 && (
+            <div className="space-y-1 mt-1">
+              {attachments.map((a, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Paperclip className="h-3.5 w-3.5" />
+                  <a href={a.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate">
+                    {a.name}
+                  </a>
+                  <button
+                    onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
+                    className="text-destructive hover:text-destructive/80"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Sticky bottom bar ── */}
+      <div className="sticky bottom-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2 max-w-3xl mx-auto">
+        <Button variant="outline" size="sm" onClick={() => saveProposal("draft")} disabled={loading}>
+          Save Draft
+        </Button>
+        <Button
+          size="sm"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+          onClick={() => saveProposal("approved")}
+          disabled={loading}
+        >
+          Approve
+        </Button>
+        <Button
+          size="sm"
+          className="text-white"
+          style={{ backgroundColor: "#0077B6" }}
+          onClick={() => saveProposal("sent")}
+          disabled={loading}
+        >
+          {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+          Send Proposal
+        </Button>
+      </div>
     </div>
   );
 };
