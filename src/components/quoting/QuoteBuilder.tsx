@@ -164,11 +164,9 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
   /* ─── Fetch data ─── */
   useEffect(() => {
-    // Quote number
+    // Quote number placeholder – real number generated on save only
     if (!quoteId) {
-      supabase.rpc("generate_quote_number").then(({ data }) => {
-        if (data) setQuoteNumber(data as string);
-      });
+      setQuoteNumber("Q-####");
     }
     // Merged catalog
     Promise.all([
@@ -440,7 +438,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       if (!session) throw new Error("Not authenticated");
 
       let finalNumber = quoteNumber;
-      if (!finalNumber) {
+      if (!finalNumber || finalNumber === "Q-####" || !quoteId) {
         const { data, error } = await supabase.rpc("generate_quote_number");
         if (error) throw error;
         finalNumber = data as string;
