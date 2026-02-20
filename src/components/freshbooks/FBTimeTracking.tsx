@@ -1,22 +1,47 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useCompany } from "@/providers/CompanyProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Clock } from "lucide-react";
+import { Plus, Clock, Play, Square, Timer } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 
 const FBTimeTracking = () => {
   const { companyId } = useCompany();
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ hours: "1", minutes: "0", date: new Date().toISOString().split("T")[0], billable: true, notes: "" });
+  const [form, setForm] = useState({ hours: "1", minutes: "0", date: new Date().toISOString().split("T")[0], billable: true, notes: "", project_id: "" });
   const { toast } = useToast();
   const qc = useQueryClient();
+
+  // Timer state
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [timerProject, setTimerProject] = useState("");
+  const [timerBillable, setTimerBillable] = useState(true);
+  const [timerNotes, setTimerNotes] = useState("");
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (timerRunning) {
+      intervalRef.current = setInterval(() => setTimerSeconds(s => s + 1), 1000);
+    } else if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [timerRunning]);
+
+  const formatTimer = (secs: number) => {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
 
   const { data: entries = [], isLoading } = useQuery({
     queryKey: ["fb-time-entries", companyId],
@@ -27,27 +52,92 @@ const FBTimeTracking = () => {
     enabled: !!companyId,
   });
 
+  const { data: projects = [] } = useQuery({
+    queryKey: ["fb-projects-for-time", companyId],
+    queryFn: async () => {
+      const { data } = await supabase.from("fb_projects").select("id, name").eq("company_id", companyId!).order("name");
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
   const createMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (payload: { hours: string; minutes: string; date: string; billable: boolean; notes: string; project_id: string }) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
-      const durationStr = `${form.hours} hours ${form.minutes} minutes`;
+      const durationStr = `${payload.hours} hours ${payload.minutes} minutes`;
       const { error } = await supabase.from("fb_time_entries").insert({
         company_id: companyId!, user_id: session.user.id, duration: durationStr,
-        date: form.date, billable: form.billable, notes: form.notes || null,
+        date: payload.date, billable: payload.billable, notes: payload.notes || null,
+        project_id: payload.project_id || null,
       });
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["fb-time-entries"] }); setShowCreate(false); toast({ title: "Time entry added" }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["fb-time-entries"] }); toast({ title: "Time entry added" }); },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
+
+  const handleManualSave = () => {
+    createMutation.mutate(form);
+    setShowCreate(false);
+  };
+
+  const handleStopTimer = useCallback(() => {
+    setTimerRunning(false);
+    const totalMinutes = Math.ceil(timerSeconds / 60);
+    const h = Math.floor(totalMinutes / 60).toString();
+    const m = (totalMinutes % 60).toString();
+    createMutation.mutate({
+      hours: h, minutes: m,
+      date: new Date().toISOString().split("T")[0],
+      billable: timerBillable, notes: timerNotes,
+      project_id: timerProject,
+    });
+    setTimerSeconds(0);
+    setTimerNotes("");
+  }, [timerSeconds, timerBillable, timerNotes, timerProject, createMutation]);
+
+  const totalHours = entries.reduce((sum: number, e: any) => {
+    const dur = String(e.duration || "");
+    const hMatch = dur.match(/(\d+)\s*hour/);
+    const mMatch = dur.match(/(\d+)\s*min/);
+    return sum + (hMatch ? Number(hMatch[1]) : 0) + (mMatch ? Number(mMatch[1]) / 60 : 0);
+  }, 0);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-[hsl(0,0%,29%)]">Time Tracking</h2>
+        <div>
+          <h2 className="text-2xl font-bold text-[hsl(0,0%,29%)]">Time Tracking</h2>
+          <p className="text-sm text-[hsl(0,0%,53%)]">Total: {totalHours.toFixed(1)} hours logged</p>
+        </div>
         <Button onClick={() => setShowCreate(true)} className="bg-[hsl(211,100%,43%)] hover:bg-[hsl(211,100%,38%)]"><Plus className="h-4 w-4 mr-2" />Log Time</Button>
       </div>
+
+      {/* Live Timer */}
+      <div className="bg-white rounded-lg shadow-sm border border-[hsl(0,0%,90%)] p-4">
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Timer className="h-5 w-5 text-[hsl(211,100%,43%)]" />
+            <span className="text-2xl font-mono font-bold text-[hsl(0,0%,29%)]">{formatTimer(timerSeconds)}</span>
+          </div>
+          <Select value={timerProject} onValueChange={setTimerProject}>
+            <SelectTrigger className="w-40"><SelectValue placeholder="Project" /></SelectTrigger>
+            <SelectContent>{projects.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+          </Select>
+          <Input placeholder="What are you working on?" value={timerNotes} onChange={e => setTimerNotes(e.target.value)} className="flex-1 min-w-[200px]" />
+          <div className="flex items-center gap-2">
+            <Switch checked={timerBillable} onCheckedChange={setTimerBillable} />
+            <span className="text-sm text-[hsl(0,0%,53%)]">Billable</span>
+          </div>
+          {timerRunning ? (
+            <Button variant="destructive" size="sm" onClick={handleStopTimer}><Square className="h-4 w-4 mr-1" />Stop</Button>
+          ) : (
+            <Button size="sm" className="bg-[hsl(125,49%,34%)] hover:bg-[hsl(125,49%,28%)]" onClick={() => setTimerRunning(true)}><Play className="h-4 w-4 mr-1" />Start</Button>
+          )}
+        </div>
+      </div>
+
       <div className="bg-white rounded-lg shadow-sm border border-[hsl(0,0%,90%)] overflow-hidden">
         <table className="w-full text-sm">
           <thead><tr className="border-b bg-[hsl(0,0%,98%)]">
@@ -64,7 +154,7 @@ const FBTimeTracking = () => {
               <tr key={e.id} className="border-b border-[hsl(0,0%,95%)] hover:bg-[hsl(0,0%,98%)]">
                 <td className="px-4 py-3">{e.date}</td>
                 <td className="px-4 py-3">{e.fb_projects?.name || "—"}</td>
-                <td className="px-4 py-3 flex items-center gap-1"><Clock className="h-3.5 w-3.5 text-[hsl(0,0%,53%)]" />{e.duration}</td>
+                <td className="px-4 py-3 flex items-center gap-1"><Clock className="h-3.5 w-3.5 text-[hsl(0,0%,53%)]" />{String(e.duration)}</td>
                 <td className="px-4 py-3">{e.billable ? <Badge variant="secondary" className="bg-green-100 text-green-700">Yes</Badge> : <Badge variant="secondary">No</Badge>}</td>
                 <td className="px-4 py-3 text-[hsl(0,0%,53%)] truncate max-w-[200px]">{e.notes || "—"}</td>
               </tr>
@@ -72,10 +162,17 @@ const FBTimeTracking = () => {
           </tbody>
         </table>
       </div>
+
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Log Time</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Log Time Manually</DialogTitle></DialogHeader>
           <div className="space-y-4">
+            <div><Label>Project</Label>
+              <Select value={form.project_id} onValueChange={v => setForm(f => ({ ...f, project_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Select project (optional)" /></SelectTrigger>
+                <SelectContent>{projects.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Hours</Label><Input type="number" min="0" value={form.hours} onChange={e => setForm(f => ({ ...f, hours: e.target.value }))} /></div>
               <div><Label>Minutes</Label><Input type="number" min="0" max="59" value={form.minutes} onChange={e => setForm(f => ({ ...f, minutes: e.target.value }))} /></div>
@@ -83,7 +180,7 @@ const FBTimeTracking = () => {
             <div><Label>Date</Label><Input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
             <div className="flex items-center gap-3"><Switch checked={form.billable} onCheckedChange={v => setForm(f => ({ ...f, billable: v }))} /><Label>Billable</Label></div>
             <div><Label>Notes</Label><Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
-            <Button onClick={() => createMutation.mutate()} className="w-full bg-[hsl(211,100%,43%)]">Log Time</Button>
+            <Button onClick={handleManualSave} className="w-full bg-[hsl(211,100%,43%)]">Log Time</Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -4,10 +4,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
 const FBPaymentsList = () => {
@@ -20,7 +21,7 @@ const FBPaymentsList = () => {
   const { data: payments = [], isLoading } = useQuery({
     queryKey: ["fb-payments", companyId],
     queryFn: async () => {
-      const { data } = await supabase.from("fb_payments").select("*, fb_invoices(invoice_number)").eq("company_id", companyId!).order("date", { ascending: false });
+      const { data } = await supabase.from("fb_payments").select("*, fb_invoices(invoice_number, amount, status)").eq("company_id", companyId!).order("date", { ascending: false });
       return data || [];
     },
     enabled: !!companyId,
@@ -29,11 +30,13 @@ const FBPaymentsList = () => {
   const { data: invoices = [] } = useQuery({
     queryKey: ["fb-invoices-for-payment", companyId],
     queryFn: async () => {
-      const { data } = await supabase.from("fb_invoices").select("id, invoice_number").eq("company_id", companyId!).neq("status", "paid");
+      const { data } = await supabase.from("fb_invoices").select("id, invoice_number, amount, status").eq("company_id", companyId!).neq("status", "paid").neq("status", "cancelled");
       return data || [];
     },
     enabled: !!companyId,
   });
+
+  const totalReceived = payments.reduce((s: number, p: any) => s + Number(p.amount), 0);
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -42,15 +45,37 @@ const FBPaymentsList = () => {
         invoice_id: form.invoice_id || null,
       });
       if (error) throw error;
+
+      // Auto-update invoice status if fully paid
+      if (form.invoice_id) {
+        const inv = invoices.find((i: any) => i.id === form.invoice_id);
+        if (inv) {
+          const existingPayments = payments.filter((p: any) => p.invoice_id === form.invoice_id).reduce((s: number, p: any) => s + Number(p.amount), 0);
+          const newTotal = existingPayments + Number(form.amount);
+          if (newTotal >= Number(inv.amount)) {
+            await supabase.from("fb_invoices").update({ status: "paid" }).eq("id", form.invoice_id);
+          } else {
+            await supabase.from("fb_invoices").update({ status: "partial" }).eq("id", form.invoice_id);
+          }
+        }
+      }
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["fb-payments"] }); setShowCreate(false); toast({ title: "Payment recorded" }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fb-payments"] });
+      qc.invalidateQueries({ queryKey: ["fb-invoices"] });
+      setShowCreate(false);
+      toast({ title: "Payment recorded" });
+    },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-[hsl(0,0%,29%)]">Payments</h2>
+        <div>
+          <h2 className="text-2xl font-bold text-[hsl(0,0%,29%)]">Payments</h2>
+          <p className="text-sm text-[hsl(0,0%,53%)]">Total received: R {totalReceived.toLocaleString()}</p>
+        </div>
         <Button onClick={() => setShowCreate(true)} className="bg-[hsl(211,100%,43%)] hover:bg-[hsl(211,100%,38%)]"><Plus className="h-4 w-4 mr-2" />Record Payment</Button>
       </div>
       <div className="bg-white rounded-lg shadow-sm border border-[hsl(0,0%,90%)] overflow-hidden">
@@ -59,16 +84,24 @@ const FBPaymentsList = () => {
             <th className="text-left px-4 py-3 font-medium text-[hsl(0,0%,53%)]">Date</th>
             <th className="text-left px-4 py-3 font-medium text-[hsl(0,0%,53%)]">Invoice</th>
             <th className="text-left px-4 py-3 font-medium text-[hsl(0,0%,53%)]">Method</th>
+            <th className="text-left px-4 py-3 font-medium text-[hsl(0,0%,53%)]">Invoice Status</th>
             <th className="text-right px-4 py-3 font-medium text-[hsl(0,0%,53%)]">Amount</th>
           </tr></thead>
           <tbody>
-            {isLoading ? <tr><td colSpan={4} className="px-4 py-8 text-center text-[hsl(0,0%,53%)]">Loading...</td></tr>
-            : payments.length === 0 ? <tr><td colSpan={4} className="px-4 py-8 text-center text-[hsl(0,0%,53%)]">No payments</td></tr>
+            {isLoading ? <tr><td colSpan={5} className="px-4 py-8 text-center text-[hsl(0,0%,53%)]">Loading...</td></tr>
+            : payments.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-[hsl(0,0%,53%)]">No payments</td></tr>
             : payments.map((p: any) => (
               <tr key={p.id} className="border-b border-[hsl(0,0%,95%)] hover:bg-[hsl(0,0%,98%)]">
                 <td className="px-4 py-3">{p.date}</td>
                 <td className="px-4 py-3 text-[hsl(211,100%,43%)]">{p.fb_invoices?.invoice_number || "—"}</td>
                 <td className="px-4 py-3 capitalize">{p.method?.replace("_", " ")}</td>
+                <td className="px-4 py-3">
+                  {p.fb_invoices?.status ? (
+                    <Badge variant="secondary" className={p.fb_invoices.status === "paid" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}>
+                      {p.fb_invoices.status}
+                    </Badge>
+                  ) : "—"}
+                </td>
                 <td className="px-4 py-3 text-right font-medium text-[hsl(125,49%,34%)]">R {Number(p.amount).toLocaleString()}</td>
               </tr>
             ))}
@@ -82,7 +115,11 @@ const FBPaymentsList = () => {
             <div><Label>Invoice (optional)</Label>
               <Select value={form.invoice_id} onValueChange={v => setForm(f => ({ ...f, invoice_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Select invoice" /></SelectTrigger>
-                <SelectContent>{invoices.map((i: any) => <SelectItem key={i.id} value={i.id}>{i.invoice_number}</SelectItem>)}</SelectContent>
+                <SelectContent>{invoices.map((i: any) => (
+                  <SelectItem key={i.id} value={i.id}>
+                    {i.invoice_number} — R {Number(i.amount).toLocaleString()}
+                  </SelectItem>
+                ))}</SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
