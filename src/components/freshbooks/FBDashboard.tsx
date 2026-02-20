@@ -33,32 +33,53 @@ const FBDashboard = () => {
   const [loadingDemo, setLoadingDemo] = useState(false);
 
   const loadDemoData = async () => {
-    if (!companyId) return;
+    if (!companyId) {
+      toast.error("Company not found, cannot load demo data");
+      console.error("loadDemoData: companyId is", companyId);
+      return;
+    }
+    console.log("loadDemoData: inserting for companyId", companyId);
     setLoadingDemo(true);
     try {
       const today = new Date().toISOString().split("T")[0];
       const dueSoon = new Date(Date.now() + 5 * 86400000).toISOString().split("T")[0];
       const pastDue = new Date(Date.now() - 10 * 86400000).toISOString().split("T")[0];
 
-      await supabase.from("fb_invoices").insert([
+      const { error: invErr } = await supabase.from("fb_invoices").insert([
         { company_id: companyId, invoice_number: "INV-DEMO-001", amount: 1000, status: "draft", due_date: dueSoon },
         { company_id: companyId, invoice_number: "INV-DEMO-002", amount: 2000, status: "sent", due_date: pastDue },
         { company_id: companyId, invoice_number: "INV-DEMO-003", amount: 1500, status: "paid", due_date: today },
       ]);
-      await supabase.from("fb_estimates").insert([
+      if (invErr) console.error("Invoice insert error:", invErr);
+
+      const { error: estErr } = await supabase.from("fb_estimates").insert([
         { company_id: companyId, estimate_number: "EST-DEMO-001", amount: 3000, status: "draft", items: [] },
         { company_id: companyId, estimate_number: "EST-DEMO-002", amount: 4000, status: "sent", items: [] },
       ]);
-      await supabase.from("fb_expenses").insert([
+      if (estErr) console.error("Estimate insert error:", estErr);
+
+      const { error: expErr } = await supabase.from("fb_expenses").insert([
         { company_id: companyId, amount: 500, category: "Travel", date: today },
         { company_id: companyId, amount: 750, category: "Supplies", date: today },
       ]);
+      if (expErr) console.error("Expense insert error:", expErr);
 
+      if (invErr || estErr || expErr) {
+        toast.error("Some inserts failed – check console for RLS errors");
+      } else {
+        toast.success("Demo data loaded successfully!");
+      }
+
+      // Invalidate ALL relevant query keys used by list pages
       queryClient.invalidateQueries({ queryKey: ["fb-invoices-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["fb-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["fb-estimates"] });
       queryClient.invalidateQueries({ queryKey: ["fb-expenses-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["fb-expenses"] });
       queryClient.invalidateQueries({ queryKey: ["fb-payments-stats"] });
-      toast.success("Demo data loaded successfully!");
+      queryClient.invalidateQueries({ queryKey: ["fb-payments"] });
     } catch (err) {
+      console.error("loadDemoData exception:", err);
       toast.error("Failed to load demo data");
     } finally {
       setLoadingDemo(false);
