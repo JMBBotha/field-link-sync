@@ -97,19 +97,31 @@ const FBTimeTracking = () => {
     setTimerNotes("");
   }, [timerSeconds, timerBillable, timerNotes, timerProject, createMutation]);
 
-  const totalHours = entries.reduce((sum: number, e: any) => {
-    const dur = String(e.duration || "");
-    const hMatch = dur.match(/(\d+)\s*hour/);
-    const mMatch = dur.match(/(\d+)\s*min/);
-    return sum + (hMatch ? Number(hMatch[1]) : 0) + (mMatch ? Number(mMatch[1]) / 60 : 0);
-  }, 0);
+  const HOURLY_RATE = 450;
+  const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
+
+  const parseDurationHours = (dur: string) => {
+    const d = String(dur || "");
+    // Handle HH:MM:SS format
+    const hmsMatch = d.match(/^(\d+):(\d+):(\d+)$/);
+    if (hmsMatch) return Number(hmsMatch[1]) + Number(hmsMatch[2]) / 60 + Number(hmsMatch[3]) / 3600;
+    // Handle "X hours Y minutes" format
+    const hMatch = d.match(/(\d+)\s*hour/);
+    const mMatch = d.match(/(\d+)\s*min/);
+    return (hMatch ? Number(hMatch[1]) : 0) + (mMatch ? Number(mMatch[1]) / 60 : 0);
+  };
+
+  const totalHours = entries.reduce((sum: number, e: any) => sum + parseDurationHours(e.duration), 0);
+  const billableAmount = entries.reduce((sum: number, e: any) => e.billable ? sum + parseDurationHours(e.duration) * HOURLY_RATE : sum, 0);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Time Tracking</h2>
-          <p className="text-sm text-muted-foreground">Total: {totalHours.toFixed(1)} hours logged</p>
+          <p className="text-sm text-muted-foreground">
+            Total: {totalHours.toFixed(1)} hours logged · Billable: {fmt(billableAmount)}
+          </p>
         </div>
         <Button onClick={() => setShowCreate(true)} className="bg-amber-500 hover:bg-amber-600 text-white"><Plus className="h-4 w-4 mr-2" />Log Time</Button>
       </div>
