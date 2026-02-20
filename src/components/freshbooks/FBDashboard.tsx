@@ -65,14 +65,15 @@ const FBDashboard = () => {
       const contactIds = contacts?.map(c => c.id) || [];
 
       // 5 invoices
-      const { error: invErr } = await supabase.from("fb_invoices").insert([
+      const { data: invoicesInserted, error: invErr } = await supabase.from("fb_invoices").insert([
         { company_id: companyId, invoice_number: "INV-DEMO-001", amount: 1200, tax: 180, status: "draft", due_date: d(14), contact_id: contactIds[0] || null, items: [{ description: "AC Unit Service", qty: 1, rate: 1200 }] },
         { company_id: companyId, invoice_number: "INV-DEMO-002", amount: 3500, tax: 525, status: "sent", due_date: d(7), contact_id: contactIds[1] || null, items: [{ description: "Split Unit Installation", qty: 1, rate: 3500 }] },
         { company_id: companyId, invoice_number: "INV-DEMO-003", amount: 2200, tax: 330, status: "viewed", due_date: d(-3), contact_id: contactIds[2] || null, items: [{ description: "Duct Cleaning", qty: 2, rate: 1100 }] },
         { company_id: companyId, invoice_number: "INV-DEMO-004", amount: 4800, tax: 720, status: "partial", due_date: d(-10), contact_id: contactIds[0] || null, items: [{ description: "Central AC Repair", qty: 1, rate: 4800 }] },
         { company_id: companyId, invoice_number: "INV-DEMO-005", amount: 1500, tax: 225, status: "paid", due_date: d(-20), contact_id: contactIds[1] || null, items: [{ description: "Refrigerant Refill", qty: 3, rate: 500 }] },
-      ]);
+      ]).select();
       if (invErr) console.error("Invoice insert error:", invErr);
+      const invoiceIds = invoicesInserted?.map(i => i.id) || [];
 
       // 3 estimates
       const { error: estErr } = await supabase.from("fb_estimates").insert([
@@ -98,17 +99,11 @@ const FBDashboard = () => {
       ]).select();
       if (projErr) console.error("Project insert error:", projErr);
 
-      // Get paid invoice for payment linking
-      const { data: paidInvoices } = await supabase.from("fb_invoices")
-        .select("id")
-        .eq("company_id", companyId)
-        .eq("status", "paid")
-        .limit(1);
-
-      // 2 payments
+      // 3 payments linked to invoices
       const { error: payErr } = await supabase.from("fb_payments").insert([
-        { company_id: companyId, amount: 1500, method: "bank_transfer", date: d(-18), invoice_id: paidInvoices?.[0]?.id || null },
-        { company_id: companyId, amount: 2400, method: "eft", date: d(-12), invoice_id: null },
+        { company_id: companyId, amount: 1500, method: "bank_transfer", date: d(-18), invoice_id: invoiceIds[4] || null },
+        { company_id: companyId, amount: 2400, method: "eft", date: d(-12), invoice_id: invoiceIds[3] || null },
+        { company_id: companyId, amount: 800, method: "cash", date: d(-5), invoice_id: null },
       ]);
       if (payErr) console.error("Payment insert error:", payErr);
 
