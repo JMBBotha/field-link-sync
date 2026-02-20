@@ -52,7 +52,7 @@ const FBLayout = () => {
       <aside className="w-60 shrink-0 bg-card border-r border-border flex flex-col">
         {/* Company header */}
         <div className="p-4 border-b border-border">
-          <img src={logoUrl} alt="0800BeCool" className="w-36 h-auto mb-4 object-contain" />
+          <img src={logoUrl} alt="0800BeCool" className="w-36 h-auto mb-4 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
           <div className="flex items-center gap-3">
             {company?.logo_url ? (
               <img src={company.logo_url} alt="" className="h-9 w-9 rounded-lg object-cover" />
