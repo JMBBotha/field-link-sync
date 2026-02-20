@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import BeCoolLogo from "@/components/shared/BeCoolLogo";
+import logo from "@/assets/logo.png";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "dashboard" },
@@ -40,13 +40,7 @@ const SidebarNav = ({ companyId, company, onNavClick, onLogout, onBackToAdmin }:
     {/* Company header */}
     <div className="p-4 border-b border-primary-foreground/10">
       <div className="flex items-center gap-3">
-        {company?.logo_url ? (
-          <img src={company.logo_url} alt="" className="h-9 w-9 rounded-lg object-cover" />
-        ) : (
-          <div className="h-9 w-9 rounded-lg bg-primary-foreground/10 flex items-center justify-center text-primary-foreground font-bold text-sm">
-            {company?.name?.charAt(0) || "C"}
-          </div>
-        )}
+        <img src={logo} alt="Logo" className="h-10" />
         <div className="min-w-0">
           <p className="text-sm font-semibold text-primary-foreground truncate">{company?.name || "Company"}</p>
           <p className="text-xs text-primary-foreground/60">Business Portal</p>
@@ -164,31 +158,29 @@ const FBLayout = () => {
         {/* Top Header Bar */}
         <header className="sticky top-0 z-30 bg-primary text-primary-foreground">
           <div className="flex items-center justify-between h-14 px-4 md:px-6">
-            {/* Left: hamburger (mobile only) + logo/company */}
+            {/* Left: hamburger + logo (mobile only) */}
             <div className="flex items-center gap-3">
               {isMobile && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-primary-foreground hover:bg-primary-foreground/10"
-                  onClick={() => setSidebarOpen(true)}
-                >
-                  <Menu className="h-5 w-5" />
-                </Button>
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-primary-foreground hover:bg-primary-foreground/10"
+                    onClick={() => setSidebarOpen(true)}
+                  >
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                  <div
+                    className="flex items-center gap-2 cursor-pointer"
+                    onClick={() => navigate(`/client/${companyId}/dashboard`)}
+                  >
+                    <img src={logo} alt="Logo" className="h-8" />
+                    <span className="hidden sm:inline text-sm font-medium text-primary-foreground/80 ml-1">
+                      {company?.name}
+                    </span>
+                  </div>
+                </>
               )}
-              <div
-                className="flex items-center gap-2 cursor-pointer"
-                onClick={() => navigate(`/client/${companyId}/dashboard`)}
-              >
-                {company?.logo_url ? (
-                  <img src={company.logo_url} alt="" className="h-8 w-8 rounded-lg object-cover" />
-                ) : (
-                  <BeCoolLogo />
-                )}
-                <span className="hidden sm:inline text-sm font-medium text-primary-foreground/80 ml-1">
-                  {company?.name}
-                </span>
-              </div>
             </div>
 
             {/* Right: search, notifications, dark mode */}
