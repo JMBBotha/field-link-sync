@@ -1,12 +1,32 @@
+import { useState, useMemo } from "react";
 import { useCompany } from "@/providers/CompanyProvider";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
-const COLORS = ["hsl(211,100%,43%)", "hsl(125,49%,34%)", "hsl(45,100%,50%)", "hsl(0,80%,50%)", "hsl(270,60%,50%)"];
+const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
+const COLORS = ["#F59E0B", "#2563eb", "#10B981", "#EF4444", "#8B5CF6"];
+
+type Preset = "month" | "quarter" | "year" | "custom";
+
+const getPresetRange = (preset: Preset): [string, string] => {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  if (preset === "month") return [new Date(y, m, 1).toISOString().split("T")[0], new Date(y, m + 1, 0).toISOString().split("T")[0]];
+  if (preset === "quarter") { const q = Math.floor(m / 3) * 3; return [new Date(y, q, 1).toISOString().split("T")[0], new Date(y, q + 3, 0).toISOString().split("T")[0]]; }
+  return [new Date(y, 0, 1).toISOString().split("T")[0], new Date(y, 11, 31).toISOString().split("T")[0]];
+};
 
 const FBReports = () => {
   const { companyId } = useCompany();
+  const [preset, setPreset] = useState<Preset>("year");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+
+  const [rangeFrom, rangeTo] = preset === "custom" && customFrom && customTo ? [customFrom, customTo] : getPresetRange(preset);
 
   const { data: invoices = [] } = useQuery({
     queryKey: ["fb-reports-invoices", companyId],
@@ -26,15 +46,19 @@ const FBReports = () => {
     enabled: !!companyId,
   });
 
-  // Invoice status breakdown
-  const statusData = ["draft", "sent", "paid", "overdue"].map(s => ({
+  // Filter by date range
+  const filteredInvoices = invoices.filter((i: any) => i.created_at >= rangeFrom && i.created_at <= rangeTo + "T23:59:59");
+  const filteredExpenses = expenses.filter((e: any) => e.date >= rangeFrom && e.date <= rangeTo);
+
+  // Status breakdown
+  const statusData = ["draft", "sent", "paid", "overdue", "partial"].map(s => ({
     name: s.charAt(0).toUpperCase() + s.slice(1),
-    value: invoices.filter((i: any) => i.status === s).length,
+    value: filteredInvoices.filter((i: any) => i.status === s).length,
   })).filter(d => d.value > 0);
 
   // Expense by category
   const categoryMap = new Map<string, number>();
-  expenses.forEach((e: any) => categoryMap.set(e.category, (categoryMap.get(e.category) || 0) + Number(e.amount)));
+  filteredExpenses.forEach((e: any) => categoryMap.set(e.category, (categoryMap.get(e.category) || 0) + Number(e.amount)));
   const expenseData = Array.from(categoryMap.entries()).map(([name, value]) => ({ name, value }));
 
   // Revenue vs Expenses monthly
@@ -46,13 +70,60 @@ const FBReports = () => {
     return { month: d.toLocaleString("default", { month: "short" }), revenue: rev, expenses: exp };
   });
 
+  // P&L
+  const totalRevenue = filteredInvoices.filter((i: any) => i.status === "paid").reduce((s: number, i: any) => s + Number(i.amount), 0);
+  const totalExpenses = filteredExpenses.reduce((s: number, e: any) => s + Number(e.amount), 0);
+  const net = totalRevenue - totalExpenses;
+
+  // Aging report
+  const today = new Date();
+  const overdueInvoices = invoices.filter((i: any) => i.due_date && new Date(i.due_date) < today && !["paid", "cancelled"].includes(i.status));
+  const aging = useMemo(() => {
+    const groups = { "0-30": [] as any[], "31-60": [] as any[], "61+": [] as any[] };
+    overdueInvoices.forEach((inv: any) => {
+      const days = Math.floor((today.getTime() - new Date(inv.due_date).getTime()) / (1000 * 60 * 60 * 24));
+      if (days <= 30) groups["0-30"].push(inv);
+      else if (days <= 60) groups["31-60"].push(inv);
+      else groups["61+"].push(inv);
+    });
+    return groups;
+  }, [overdueInvoices]);
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[hsl(0,0%,29%)]">Reports</h2>
+      <h2 className="text-2xl font-bold text-foreground">Reports</h2>
+
+      {/* Date range filter */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {(["month", "quarter", "year", "custom"] as Preset[]).map(p => (
+          <Button key={p} size="sm" variant={preset === p ? "default" : "outline"}
+            className={preset === p ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}
+            onClick={() => setPreset(p)}>
+            {p === "month" ? "This Month" : p === "quarter" ? "This Quarter" : p === "year" ? "This Year" : "Custom"}
+          </Button>
+        ))}
+        {preset === "custom" && (
+          <div className="flex gap-2">
+            <Input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} className="w-36" />
+            <Input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} className="w-36" />
+          </div>
+        )}
+      </div>
+
+      {/* P&L Card */}
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6 border-l-4 border-l-amber-400">
+        <h3 className="font-semibold text-foreground mb-3">Profit & Loss Summary</h3>
+        <div className="grid grid-cols-3 gap-6 text-center">
+          <div><p className="text-sm text-muted-foreground">Revenue</p><p className="text-xl font-bold text-green-600">{fmt(totalRevenue)}</p></div>
+          <div><p className="text-sm text-muted-foreground">Expenses</p><p className="text-xl font-bold text-red-600">{fmt(totalExpenses)}</p></div>
+          <div><p className="text-sm text-muted-foreground">Net Profit</p><p className={`text-xl font-bold ${net >= 0 ? "text-green-600" : "text-red-600"}`}>{fmt(net)}</p></div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-sm border border-[hsl(0,0%,90%)] p-6">
-          <h3 className="font-semibold text-[hsl(0,0%,29%)] mb-4">Invoice Status Breakdown</h3>
-          {statusData.length === 0 ? <p className="text-[hsl(0,0%,53%)] text-sm">No data</p> : (
+        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+          <h3 className="font-semibold text-foreground mb-4">Invoice Status Breakdown</h3>
+          {statusData.length === 0 ? <p className="text-muted-foreground text-sm">No data</p> : (
             <ResponsiveContainer width="100%" height={250}>
               <PieChart><Pie data={statusData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
                 {statusData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
@@ -60,30 +131,59 @@ const FBReports = () => {
             </ResponsiveContainer>
           )}
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-[hsl(0,0%,90%)] p-6">
-          <h3 className="font-semibold text-[hsl(0,0%,29%)] mb-4">Expenses by Category</h3>
-          {expenseData.length === 0 ? <p className="text-[hsl(0,0%,53%)] text-sm">No data</p> : (
+        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+          <h3 className="font-semibold text-foreground mb-4">Expenses by Category</h3>
+          {expenseData.length === 0 ? <p className="text-muted-foreground text-sm">No data</p> : (
             <ResponsiveContainer width="100%" height={250}>
               <PieChart><Pie data={expenseData} cx="50%" cy="50%" outerRadius={100} dataKey="value" label={({ name }) => name}>
                 {expenseData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Pie><Tooltip /></PieChart>
+              </Pie><Tooltip formatter={(v: number) => fmt(v)} /></PieChart>
             </ResponsiveContainer>
           )}
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-[hsl(0,0%,90%)] p-6 lg:col-span-2">
-          <h3 className="font-semibold text-[hsl(0,0%,29%)] mb-4">Revenue vs Expenses</h3>
+        <div className="bg-card rounded-lg shadow-sm border border-border p-6 lg:col-span-2">
+          <h3 className="font-semibold text-foreground mb-4">Revenue vs Expenses</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={monthlyComparison}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(0,0%,90%)" />
-              <XAxis dataKey="month" tick={{ fill: "hsl(0,0%,53%)", fontSize: 12 }} />
-              <YAxis tick={{ fill: "hsl(0,0%,53%)", fontSize: 12 }} />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="month" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+              <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+              <Tooltip formatter={(v: number) => fmt(v)} />
               <Legend />
-              <Bar dataKey="revenue" fill="hsl(211,100%,43%)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="expenses" fill="hsl(0,80%,50%)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="revenue" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="expenses" fill="#EF4444" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
+      </div>
+
+      {/* Aging Report */}
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <h3 className="font-semibold text-foreground mb-4">Aging Report — Overdue Invoices</h3>
+        {overdueInvoices.length === 0 ? <p className="text-muted-foreground text-sm">No overdue invoices</p> : (
+          <div className="space-y-4">
+            {(["0-30", "31-60", "61+"] as const).map(bucket => (
+              <div key={bucket}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge variant="secondary" className={bucket === "61+" ? "bg-red-100 text-red-700" : bucket === "31-60" ? "bg-amber-100 text-amber-700" : "bg-yellow-100 text-yellow-700"}>
+                    {bucket} days
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">{aging[bucket].length} invoice(s) — {fmt(aging[bucket].reduce((s: number, i: any) => s + Number(i.amount), 0))}</span>
+                </div>
+                {aging[bucket].length > 0 && (
+                  <div className="ml-4 space-y-1">
+                    {aging[bucket].map((inv: any) => (
+                      <div key={inv.id} className="flex justify-between text-sm p-2 rounded bg-muted/50">
+                        <span className="text-foreground">{inv.invoice_number}</span>
+                        <span className="font-medium">{fmt(Number(inv.amount))}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

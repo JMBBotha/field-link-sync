@@ -5,10 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Send, Eye, Edit, ArrowRightLeft, MoreHorizontal } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+
+const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 
 const statusColors: Record<string, string> = {
   draft: "bg-gray-100 text-gray-700",
@@ -21,6 +25,7 @@ const statusColors: Record<string, string> = {
 const FBEstimatesList = () => {
   const { companyId } = useCompany();
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ estimate_number: "", amount: "", tax: "0" });
   const { toast } = useToast();
@@ -46,35 +51,89 @@ const FBEstimatesList = () => {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const filtered = estimates.filter((e: any) => e.estimate_number?.toLowerCase().includes(search.toLowerCase()));
+  const statusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await supabase.from("fb_estimates").update({ status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["fb-estimates"] }); toast({ title: "Status updated" }); },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const convertToInvoice = async (estimate: any) => {
+    const invNum = estimate.estimate_number.replace("EST", "INV");
+    const { error } = await supabase.from("fb_invoices").insert({
+      company_id: companyId!, invoice_number: invNum, amount: Number(estimate.amount),
+      tax: Number(estimate.tax), status: "draft", contact_id: estimate.contact_id,
+    });
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    await supabase.from("fb_estimates").update({ status: "accepted" }).eq("id", estimate.id);
+    qc.invalidateQueries({ queryKey: ["fb-estimates"] });
+    qc.invalidateQueries({ queryKey: ["fb-invoices"] });
+    toast({ title: "Converted to invoice" });
+  };
+
+  const filtered = estimates.filter((e: any) => {
+    const matchesSearch = e.estimate_number?.toLowerCase().includes(search.toLowerCase()) || e.fb_contacts?.name?.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = statusFilter === "all" || e.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-[hsl(0,0%,29%)]">Estimates</h2>
-        <Button onClick={() => setShowCreate(true)} className="bg-[hsl(211,100%,43%)] hover:bg-[hsl(211,100%,38%)]"><Plus className="h-4 w-4 mr-2" />New Estimate</Button>
+        <h2 className="text-2xl font-bold text-foreground">Estimates</h2>
+        <Button onClick={() => setShowCreate(true)} className="bg-amber-500 hover:bg-amber-600 text-white"><Plus className="h-4 w-4 mr-2" />New Estimate</Button>
       </div>
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(0,0%,53%)]" />
-        <Input placeholder="Search estimates..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+      <div className="flex items-center gap-3">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search estimates..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="draft">Draft</SelectItem>
+            <SelectItem value="sent">Sent</SelectItem>
+            <SelectItem value="accepted">Accepted</SelectItem>
+            <SelectItem value="declined">Declined</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
-      <div className="bg-white rounded-lg shadow-sm border border-[hsl(0,0%,90%)] overflow-hidden">
+      <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b bg-[hsl(0,0%,98%)]">
-            <th className="text-left px-4 py-3 font-medium text-[hsl(0,0%,53%)]">Estimate #</th>
-            <th className="text-left px-4 py-3 font-medium text-[hsl(0,0%,53%)]">Client</th>
-            <th className="text-right px-4 py-3 font-medium text-[hsl(0,0%,53%)]">Amount</th>
-            <th className="text-left px-4 py-3 font-medium text-[hsl(0,0%,53%)]">Status</th>
+          <thead><tr className="border-b bg-muted/50">
+            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Estimate #</th>
+            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Client</th>
+            <th className="text-right px-4 py-3 font-medium text-muted-foreground">Amount</th>
+            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
+            <th className="text-right px-4 py-3 font-medium text-muted-foreground">Actions</th>
           </tr></thead>
           <tbody>
-            {isLoading ? <tr><td colSpan={4} className="px-4 py-8 text-center text-[hsl(0,0%,53%)]">Loading...</td></tr>
-            : filtered.length === 0 ? <tr><td colSpan={4} className="px-4 py-8 text-center text-[hsl(0,0%,53%)]">No estimates</td></tr>
+            {isLoading ? <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+            : filtered.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No estimates</td></tr>
             : filtered.map((e: any) => (
-              <tr key={e.id} className="border-b border-[hsl(0,0%,95%)] hover:bg-[hsl(0,0%,98%)]">
-                <td className="px-4 py-3 font-medium text-[hsl(211,100%,43%)]">{e.estimate_number}</td>
+              <tr key={e.id} className="border-b border-border/50 hover:bg-muted/30">
+                <td className="px-4 py-3 font-medium text-amber-600">{e.estimate_number}</td>
                 <td className="px-4 py-3">{e.fb_contacts?.name || "—"}</td>
-                <td className="px-4 py-3 text-right font-medium">R {Number(e.amount).toLocaleString()}</td>
+                <td className="px-4 py-3 text-right font-medium">{fmt(Number(e.amount))}</td>
                 <td className="px-4 py-3"><Badge variant="secondary" className={statusColors[e.status] || ""}>{e.status}</Badge></td>
+                <td className="px-4 py-3 text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild><Button variant="ghost" size="sm"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem><Eye className="h-4 w-4 mr-2" />View</DropdownMenuItem>
+                      <DropdownMenuItem><Edit className="h-4 w-4 mr-2" />Edit</DropdownMenuItem>
+                      {e.status === "draft" && (
+                        <DropdownMenuItem onClick={() => statusMutation.mutate({ id: e.id, status: "sent" })}><Send className="h-4 w-4 mr-2" />Send</DropdownMenuItem>
+                      )}
+                      {!["accepted", "declined"].includes(e.status) && (
+                        <DropdownMenuItem onClick={() => convertToInvoice(e)}><ArrowRightLeft className="h-4 w-4 mr-2" />Convert to Invoice</DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -89,7 +148,7 @@ const FBEstimatesList = () => {
               <div><Label>Amount</Label><Input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} /></div>
               <div><Label>Tax</Label><Input type="number" value={form.tax} onChange={e => setForm(f => ({ ...f, tax: e.target.value }))} /></div>
             </div>
-            <Button onClick={() => createMutation.mutate()} disabled={!form.estimate_number} className="w-full bg-[hsl(211,100%,43%)]">Create Estimate</Button>
+            <Button onClick={() => createMutation.mutate()} disabled={!form.estimate_number} className="w-full bg-amber-500 hover:bg-amber-600 text-white">Create Estimate</Button>
           </div>
         </DialogContent>
       </Dialog>
