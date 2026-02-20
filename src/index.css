@@ -103,6 +103,11 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 204 100% 36%;
+
+    --fb-accent: 38 92% 50%;
+    --fb-accent-hover: 28 90% 44%;
+    --fb-accent-foreground: 0 0% 100%;
+    --fb-accent-tint: 38 92% 50%;
   }
 }
 

@@ -7,6 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import logoUrl from "@/assets/logo.png";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "dashboard" },
@@ -31,8 +32,8 @@ const FBLayout = () => {
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-[hsl(0,0%,96%)]">
-        <div className="w-60 bg-white border-r p-4 space-y-4">
+      <div className="flex h-screen bg-muted/30">
+        <div className="w-60 bg-card border-r p-4 space-y-4">
           <Skeleton className="h-10 w-full" />
           {Array.from({ length: 9 }).map((_, i) => (
             <Skeleton key={i} className="h-8 w-full" />
@@ -46,23 +47,23 @@ const FBLayout = () => {
   }
 
   return (
-    <div className="flex h-screen bg-[hsl(0,0%,96%)]">
+    <div className="flex h-screen bg-muted/30">
       {/* Sidebar */}
-      <aside className="w-60 shrink-0 bg-white border-r border-[hsl(0,0%,90%)] flex flex-col">
+      <aside className="w-60 shrink-0 bg-card border-r border-border flex flex-col">
         {/* Company header */}
-        <div className="p-4 border-b border-[hsl(0,0%,90%)]">
-          <img src="/src/assets/logo.png" alt="0800BeCool" className="h-10 mb-3 object-contain" />
+        <div className="p-4 border-b border-border">
+          <img src={logoUrl} alt="0800BeCool" className="w-36 h-auto mb-4 object-contain" />
           <div className="flex items-center gap-3">
             {company?.logo_url ? (
               <img src={company.logo_url} alt="" className="h-9 w-9 rounded-lg object-cover" />
             ) : (
-              <div className="h-9 w-9 rounded-lg bg-[hsl(211,100%,43%)]/10 flex items-center justify-center text-[hsl(211,100%,43%)] font-bold text-sm">
+              <div className="h-9 w-9 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600 font-bold text-sm">
                 {company?.name?.charAt(0) || "C"}
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-[hsl(0,0%,29%)] truncate">{company?.name || "Company"}</p>
-              <p className="text-xs text-[hsl(0,0%,53%)]">Business</p>
+              <p className="text-sm font-semibold text-foreground truncate">{company?.name || "Company"}</p>
+              <p className="text-xs text-muted-foreground">Business</p>
             </div>
           </div>
         </div>
@@ -74,10 +75,10 @@ const FBLayout = () => {
               key={item.path}
               to={`/client/${companyId}/${item.path}`}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
                   isActive
-                    ? "bg-[hsl(211,100%,43%)]/10 text-[hsl(211,100%,43%)]"
-                    : "text-[hsl(0,0%,29%)] hover:bg-[hsl(0,0%,96%)]"
+                    ? "border-l-4 border-amber-500 text-amber-600 bg-amber-50"
+                    : "text-foreground hover:bg-amber-50 border-l-4 border-transparent"
                 }`
               }
             >
@@ -88,11 +89,11 @@ const FBLayout = () => {
         </nav>
 
         {/* Footer */}
-        <div className="p-3 border-t border-[hsl(0,0%,90%)] space-y-1">
+        <div className="p-3 border-t border-border space-y-1">
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start text-[hsl(0,0%,53%)] hover:text-[hsl(0,0%,29%)]"
+            className="w-full justify-start text-muted-foreground hover:text-foreground"
             onClick={() => navigate("/admin")}
           >
             <ChevronLeft className="h-4 w-4 mr-2" />
@@ -101,7 +102,7 @@ const FBLayout = () => {
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start text-[hsl(0,0%,53%)] hover:text-red-600"
+            className="w-full justify-start text-muted-foreground hover:text-destructive"
             onClick={handleLogout}
           >
             <LogOut className="h-4 w-4 mr-2" />
@@ -113,8 +114,8 @@ const FBLayout = () => {
       {/* Main */}
       <main className="flex-1 overflow-auto">
         {/* Top bar */}
-        <header className="sticky top-0 z-10 h-14 bg-white border-b border-[hsl(0,0%,90%)] flex items-center px-6 justify-between">
-          <h1 className="text-lg font-semibold text-[hsl(0,0%,29%)]">{company?.name}</h1>
+        <header className="sticky top-0 z-10 h-14 bg-card border-b border-border flex items-center px-6 justify-between">
+          <h1 className="text-lg font-semibold text-foreground">{company?.name}</h1>
         </header>
         <div className="p-6">
           <Outlet />
