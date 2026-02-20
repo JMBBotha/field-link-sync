@@ -59,7 +59,7 @@ const FBLayout = () => {
           {company?.logo_url ? (
             <img src={company.logo_url} alt="" className="h-9 w-9 rounded-lg object-cover" />
           ) : (
-            <div className="h-9 w-9 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600 font-bold text-sm">
+            <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-600 font-bold text-sm">
               {company?.name?.charAt(0) || "C"}
             </div>
           )}
@@ -80,8 +80,8 @@ const FBLayout = () => {
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
                 isActive
-                  ? "border-l-4 border-amber-500 text-amber-600 bg-amber-50"
-                  : "text-foreground hover:bg-amber-50 border-l-4 border-transparent"
+                  ? "border-l-4 border-blue-600 text-blue-600 bg-blue-50 dark:bg-blue-950/30"
+                  : "text-foreground hover:bg-blue-50 dark:hover:bg-blue-950/20 border-l-4 border-transparent"
               }`
             }
           >

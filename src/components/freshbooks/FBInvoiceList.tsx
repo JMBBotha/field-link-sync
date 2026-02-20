@@ -19,8 +19,8 @@ const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", c
 const statusColors: Record<string, string> = {
   draft: "bg-gray-100 text-gray-700",
   sent: "bg-blue-100 text-blue-700",
-  viewed: "bg-amber-100 text-amber-700",
-  partial: "bg-yellow-100 text-yellow-700",
+  viewed: "bg-blue-100 text-blue-700",
+  partial: "bg-blue-50 text-blue-600",
   paid: "bg-green-100 text-green-700",
   overdue: "bg-red-100 text-red-700",
   cancelled: "bg-gray-100 text-gray-500",
@@ -199,7 +199,7 @@ const FBInvoiceList = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-foreground">Invoices</h2>
-        <Button onClick={() => setShowCreate(true)} className="bg-amber-500 hover:bg-amber-600 text-white">
+        <Button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
           <Plus className="h-4 w-4 mr-2" />New Invoice
         </Button>
       </div>
@@ -260,7 +260,7 @@ const FBInvoiceList = () => {
               return (
                 <tr key={inv.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => navigate(`../invoices/${inv.id}`)}>
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}><Checkbox checked={selectedIds.has(inv.id)} onCheckedChange={() => toggleSelect(inv.id)} /></td>
-                  <td className="px-4 py-3 font-medium text-amber-600">{inv.invoice_number}</td>
+                  <td className="px-4 py-3 font-medium text-blue-600">{inv.invoice_number}</td>
                   <td className="px-4 py-3 text-foreground">{inv.fb_contacts?.name || "—"}</td>
                   <td className="px-4 py-3 text-right font-medium text-foreground">{fmt(Number(inv.amount))}</td>
                   <td className="px-4 py-3 text-right text-green-600">{paid > 0 ? fmt(paid) : "—"}</td>
@@ -311,7 +311,7 @@ const FBInvoiceList = () => {
               <div><Label>Tax</Label><Input type="number" value={form.tax} onChange={e => setForm(f => ({ ...f, tax: e.target.value }))} /></div>
             </div>
             <div><Label>Due Date</Label><Input type="date" value={form.due_date} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} /></div>
-            <Button onClick={() => createMutation.mutate()} disabled={!form.invoice_number || !form.amount} className="w-full bg-amber-500 hover:bg-amber-600 text-white">Create Invoice</Button>
+            <Button onClick={() => createMutation.mutate()} disabled={!form.invoice_number || !form.amount} className="w-full bg-blue-600 hover:bg-blue-700 text-white">Create Invoice</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -336,7 +336,7 @@ const FBInvoiceList = () => {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={() => paymentMutation.mutate()} disabled={!paymentForm.amount} className="w-full bg-amber-500 hover:bg-amber-600 text-white">Record Payment</Button>
+            <Button onClick={() => paymentMutation.mutate()} disabled={!paymentForm.amount} className="w-full bg-blue-600 hover:bg-blue-700 text-white">Record Payment</Button>
           </div>
         </DialogContent>
       </Dialog>

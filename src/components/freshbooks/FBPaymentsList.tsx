@@ -78,7 +78,7 @@ const FBPaymentsList = () => {
           <h2 className="text-2xl font-bold text-foreground">Payments</h2>
           <p className="text-sm text-muted-foreground">Total received: {fmt(totalReceived)}</p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="bg-amber-500 hover:bg-amber-600 text-white"><Plus className="h-4 w-4 mr-2" />Record Payment</Button>
+        <Button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-700 text-white"><Plus className="h-4 w-4 mr-2" />Record Payment</Button>
       </div>
       <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
         <table className="w-full text-sm">
@@ -95,11 +95,11 @@ const FBPaymentsList = () => {
             : payments.map((p: any) => (
               <tr key={p.id} className="border-b border-border/50 hover:bg-muted/30">
                 <td className="px-4 py-3">{p.date}</td>
-                <td className="px-4 py-3 text-amber-600">{p.fb_invoices?.invoice_number || "—"}</td>
+                <td className="px-4 py-3 text-blue-600">{p.fb_invoices?.invoice_number || "—"}</td>
                 <td className="px-4 py-3 capitalize">{p.method?.replace("_", " ")}</td>
                 <td className="px-4 py-3">
                   {p.fb_invoices?.status ? (
-                    <Badge variant="secondary" className={p.fb_invoices.status === "paid" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}>
+                    <Badge variant="secondary" className={p.fb_invoices.status === "paid" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}>
                       {p.fb_invoices.status}
                     </Badge>
                   ) : "—"}
@@ -139,7 +139,7 @@ const FBPaymentsList = () => {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={() => createMutation.mutate()} disabled={!form.amount} className="w-full bg-amber-500 hover:bg-amber-600 text-white">Record Payment</Button>
+            <Button onClick={() => createMutation.mutate()} disabled={!form.amount} className="w-full bg-blue-600 hover:bg-blue-700 text-white">Record Payment</Button>
           </div>
         </DialogContent>
       </Dialog>

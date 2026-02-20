@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 
 const statusColors: Record<string, string> = {
-  active: "bg-amber-100 text-amber-700",
+  active: "bg-blue-100 text-blue-700",
   completed: "bg-green-100 text-green-700",
   on_hold: "bg-gray-100 text-gray-500",
   archived: "bg-gray-100 text-gray-500",
@@ -119,7 +119,7 @@ const FBProjectsList = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-foreground">Projects</h2>
-        <Button onClick={() => setShowCreate(true)} className="bg-amber-500 hover:bg-amber-600 text-white"><Plus className="h-4 w-4 mr-2" />New Project</Button>
+        <Button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-700 text-white"><Plus className="h-4 w-4 mr-2" />New Project</Button>
       </div>
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -145,7 +145,7 @@ const FBProjectsList = () => {
                   <div className="p-5 cursor-pointer hover:bg-muted/30 transition-colors">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <FolderKanban className="h-5 w-5 text-amber-500" />
+                        <FolderKanban className="h-5 w-5 text-blue-500" />
                         <h3 className="font-semibold text-foreground">{p.name}</h3>
                       </div>
                       <div className="flex items-center gap-2">
@@ -165,7 +165,7 @@ const FBProjectsList = () => {
                           <span>{Math.round(utilization)}%</span>
                         </div>
                         <div className="w-full bg-muted rounded-full h-2">
-                          <div className="bg-amber-500 h-2 rounded-full transition-all" style={{ width: `${utilization}%` }} />
+                          <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${utilization}%` }} />
                         </div>
                       </div>
                     )}
@@ -224,7 +224,7 @@ const FBProjectsList = () => {
               </Select>
             </div>
             <div><Label>Budget (R)</Label><Input type="number" value={form.budget} onChange={e => setForm(f => ({ ...f, budget: e.target.value }))} /></div>
-            <Button onClick={() => createMutation.mutate()} disabled={!form.name} className="w-full bg-amber-500 hover:bg-amber-600 text-white">Create Project</Button>
+            <Button onClick={() => createMutation.mutate()} disabled={!form.name} className="w-full bg-blue-600 hover:bg-blue-700 text-white">Create Project</Button>
           </div>
         </DialogContent>
       </Dialog>
