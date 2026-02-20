@@ -1,73 +1,43 @@
-import { useState, useEffect, useMemo } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import CustomerSearchDropdown from "@/components/CustomerSearchDropdown";
-import ClientInfoPopover from "@/components/ClientInfoPopover";
-import type { UnifiedClient } from "@/hooks/useUnifiedClients";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Plus, X, Loader2, Search, ChevronDown, ChevronUp, Paperclip, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import {
-  Plus,
-  Trash2,
-  Save,
-  Send,
-  Eye,
-  ArrowLeft,
-  Loader2,
-  Printer,
-  BookmarkPlus,
-} from "lucide-react";
-import WhatsAppShareButton from "@/components/WhatsAppShareButton";
-import TemplateSelector from "./TemplateSelector";
-import PhotoUploader from "./PhotoUploader";
-import BrandedQuotePreview from "./BrandedQuotePreview";
-import QuoteAIAssistant from "./QuoteAIAssistant";
-import FlatRatePickerDrawer from "@/components/flatrate/FlatRatePickerDrawer";
-import CatalogPickerDrawer from "@/components/catalog/CatalogPickerDrawer";
-import VisualSectionEditor, { type VisualSection } from "./VisualSectionEditor";
-import TemplateSaveDialog from "./TemplateSaveDialog";
+import { useQueryClient } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
 
-const formatZAR = (n: number) =>
-  new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
+/* ────────── Types ────────── */
 
-interface LineItemForm {
-  service_id?: string;
+interface LineItem {
   description: string;
   quantity: number;
-  unit_price: number;
+  rate: number;
+  amount: number;
+  service_id?: string | null;
 }
 
-interface QuoteForm {
-  customer_id: string;
-  notes: string;
-  valid_until: string;
-  reference_text: string;
-  terms_text: string;
-  discount_type: string;
-  discount_value: number;
-  line_items: LineItemForm[];
+interface ServiceTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  default_rate: number;
+  category: string;
 }
 
-interface Attachment {
-  id?: string;
-  storage_path: string;
-  filename: string;
-  caption: string;
-  url: string;
+interface Customer {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string;
+  address: string | null;
+}
+
+interface Lead {
+  id: string;
+  customer_name: string;
+  service_type: string;
 }
 
 interface QuoteBuilderProps {
@@ -76,80 +46,138 @@ interface QuoteBuilderProps {
   onBack: () => void;
 }
 
-const DEFAULT_TERMS = `1. This quotation is valid for 30 days from the date of issue.
-2. A 50% deposit is required upon acceptance to commence work.
-3. Balance due upon completion of work.
-4. All prices include 15% VAT as per South African law.
-5. Warranty: 12 months on parts, 90 days on labour.
-6. Payment terms: EFT, cash, or card on site.`;
+const formatCurrency = (amount: number) =>
+  new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(amount);
+
+/* ────────── Ghost input (FreshBooks style — borderless until hover/focus) ────────── */
+
+const GhostInput = ({
+  className,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement> & { className?: string }) => (
+  <input
+    {...props}
+    className={cn(
+      "w-full bg-transparent border border-transparent rounded px-2 py-1.5 text-sm outline-none transition-colors",
+      "hover:border-border focus:border-primary focus:ring-1 focus:ring-primary/30",
+      "placeholder:text-muted-foreground/50",
+      className
+    )}
+  />
+);
+
+/* ────────── Main Component ────────── */
 
 const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { settings } = useCompanySettings();
+  const { settings: companySettings } = useCompanySettings();
+
+  const [loading, setLoading] = useState(false);
   const [savedQuoteId, setSavedQuoteId] = useState<string | null>(quoteId || null);
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [flatRateOpen, setFlatRateOpen] = useState(false);
-  const [catalogOpen, setCatalogOpen] = useState(false);
-  const [visualSections, setVisualSections] = useState<VisualSection[]>([]);
-  const [templateSaveOpen, setTemplateSaveOpen] = useState(false);
+  const [quoteNumber, setQuoteNumber] = useState<string>("");
 
-  const defaultValid = new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0];
+  // Customer
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customers, setCustomers] = useState<Customer[]>([]);
 
-  const { register, control, handleSubmit, watch, reset, setValue } = useForm<QuoteForm>({
-    defaultValues: {
-      customer_id: "",
-      notes: "",
-      valid_until: defaultValid,
-      reference_text: "",
-      terms_text: DEFAULT_TERMS,
-      discount_type: "none",
-      discount_value: 0,
-      line_items: [{ description: "", quantity: 1, unit_price: 0 }],
-    },
+  // Dates
+  const [issueDate, setIssueDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [validUntil, setValidUntil] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().split("T")[0];
   });
+  const [reference, setReference] = useState("");
 
-  const { fields, append, remove, replace } = useFieldArray({ control, name: "line_items" });
-  const watchedItems = watch("line_items");
-  const watchedCustomerId = watch("customer_id");
-  const watchedDiscountType = watch("discount_type");
-  const watchedDiscountValue = watch("discount_value");
+  // Line items
+  const [lineItems, setLineItems] = useState<LineItem[]>([
+    { description: "", quantity: 1, rate: 0, amount: 0 },
+  ]);
+  const [templates, setTemplates] = useState<ServiceTemplate[]>([]);
+  const [descSuggestions, setDescSuggestions] = useState<ServiceTemplate[]>([]);
+  const [activeDescIdx, setActiveDescIdx] = useState<number | null>(null);
 
-  // Fetch customers (still needed for selectedCustomer reference)
-  const { data: customers = [] } = useQuery({
-    queryKey: ["customers-list"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("customers").select("id, name, phone, email, address").order("name");
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Discount
+  const [showDiscount, setShowDiscount] = useState(false);
+  const [discountType, setDiscountType] = useState<"percent" | "fixed">("percent");
+  const [discountValue, setDiscountValue] = useState(0);
 
-  // Pre-populate from lead
+  // Tax
+  const [taxRate] = useState(15);
+
+  // Links
+  const [selectedLeadId, setSelectedLeadId] = useState(leadId || "");
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [showLinks, setShowLinks] = useState(false);
+
+  // Notes / Terms
+  const [notes, setNotes] = useState("");
+  const [terms, setTerms] = useState("");
+
+  // Attachments
+  const [attachments, setAttachments] = useState<{ name: string; url: string; path: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  /* ─── Derived ─── */
+  const subtotal = lineItems.reduce((s, i) => s + i.amount, 0);
+  const discountAmount = discountType === "percent" ? subtotal * (discountValue / 100) : discountValue;
+  const taxableAmount = subtotal - discountAmount;
+  const taxAmount = taxableAmount * (taxRate / 100);
+  const total = taxableAmount + taxAmount;
+
+  /* ─── Fetch data ─── */
   useEffect(() => {
-    if (!leadId || quoteId) return;
-    const loadLead = async () => {
-      const { data: lead } = await supabase.from("leads").select("*").eq("id", leadId).single();
-      if (!lead) return;
-      // If lead has a customer_id, set it
-      if (lead.customer_id) {
-        setValue("customer_id", lead.customer_id);
-      }
-    };
-    loadLead();
-  }, [leadId, quoteId]);
-
-  // Fetch HVAC services
-  const { data: services = [] } = useQuery({
-    queryKey: ["hvac-services"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("hvac_services").select("*").eq("is_active", true).order("category, name");
-      if (error) throw error;
-      return data;
-    },
-  });
+    // Quote number
+    if (!quoteId) {
+      supabase.rpc("generate_quote_number").then(({ data }) => {
+        if (data) setQuoteNumber(data as string);
+      });
+    }
+    // Templates
+    supabase
+      .from("hvac_services")
+      .select("*")
+      .eq("is_active", true)
+      .order("category")
+      .then(({ data }) => {
+        if (data) {
+          setTemplates(
+            data.map((s: any) => ({
+              id: s.id,
+              name: s.name,
+              description: null,
+              default_rate: Number(s.default_price),
+              category: s.category,
+            }))
+          );
+        }
+      });
+    // Customers
+    supabase
+      .from("customers")
+      .select("id, name, email, phone, address")
+      .order("name")
+      .then(({ data }) => {
+        if (data) setCustomers(data);
+      });
+    // Leads
+    supabase
+      .from("leads")
+      .select("id, customer_name, service_type")
+      .order("created_at", { ascending: false })
+      .limit(50)
+      .then(({ data }) => {
+        if (data) setLeads(data);
+      });
+  }, [quoteId]);
 
   // Load existing quote
   useEffect(() => {
@@ -158,34 +186,59 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       const { data: quote } = await supabase.from("quotes").select("*").eq("id", quoteId).single();
       if (!quote) return;
       const { data: items } = await supabase.from("quote_line_items").select("*").eq("quote_id", quoteId);
-      const { data: atts } = await supabase.from("quote_attachments").select("*").eq("quote_id", quoteId);
 
-      reset({
-        customer_id: quote.customer_id || "",
-        notes: quote.notes || "",
-        valid_until: quote.valid_until || defaultValid,
-        reference_text: (quote as any).reference_text || "",
-        terms_text: (quote as any).terms_text || DEFAULT_TERMS,
-        discount_type: (quote as any).discount_type || "none",
-        discount_value: Number((quote as any).discount_value) || 0,
-        line_items: items?.length
-          ? items.map((it: any) => ({ service_id: it.service_id, description: it.description, quantity: it.quantity, unit_price: Number(it.unit_price) }))
-          : [{ description: "", quantity: 1, unit_price: 0 }],
-      });
+      setQuoteNumber(quote.quote_number || "");
+      setSelectedCustomerId(quote.customer_id || null);
+      setNotes(quote.notes || "");
+      setValidUntil(quote.valid_until || validUntil);
+      setReference((quote as any).reference_text || "");
+      setTerms((quote as any).terms_text || "");
 
-      // Load visual sections
-      const sections = (quote as any).visual_sections;
-      if (Array.isArray(sections) && sections.length > 0) {
-        setVisualSections(sections);
+      const dt = (quote as any).discount_type;
+      if (dt === "percentage" || dt === "percent") {
+        setDiscountType("percent");
+        setDiscountValue(Number((quote as any).discount_value) || 0);
+        setShowDiscount(true);
+      } else if (dt === "fixed") {
+        setDiscountType("fixed");
+        setDiscountValue(Number((quote as any).discount_value) || 0);
+        setShowDiscount(true);
       }
 
+      if (items?.length) {
+        setLineItems(
+          items.map((it: any) => ({
+            service_id: it.service_id,
+            description: it.description,
+            quantity: it.quantity,
+            rate: Number(it.unit_price),
+            amount: it.quantity * Number(it.unit_price),
+          }))
+        );
+      }
+
+      // Load customer info
+      if (quote.customer_id) {
+        const { data: cust } = await supabase
+          .from("customers")
+          .select("name, email, phone, address")
+          .eq("id", quote.customer_id)
+          .single();
+        if (cust) {
+          setCustomerName(cust.name);
+          setCustomerEmail(cust.email || "");
+          setCustomerPhone(cust.phone);
+          setCustomerAddress(cust.address || "");
+        }
+      }
+
+      // Load attachments
+      const { data: atts } = await supabase.from("quote_attachments").select("*").eq("quote_id", quoteId);
       if (atts?.length) {
         setAttachments(
           atts.map((a: any) => ({
-            id: a.id,
-            storage_path: a.storage_path,
-            filename: a.filename || "",
-            caption: a.caption || "",
+            name: a.filename || a.storage_path,
+            path: a.storage_path,
             url: supabase.storage.from("quote-photos").getPublicUrl(a.storage_path).data.publicUrl,
           }))
         );
@@ -194,60 +247,198 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
     load();
   }, [quoteId]);
 
-  // Calculations
-  const subtotal = useMemo(
-    () => watchedItems.reduce((sum, item) => sum + (item.quantity || 0) * (item.unit_price || 0), 0),
-    [watchedItems]
-  );
+  // Pre-populate from lead
+  useEffect(() => {
+    if (!leadId || quoteId) return;
+    const loadLead = async () => {
+      const { data: lead } = await supabase.from("leads").select("*").eq("id", leadId).single();
+      if (!lead) return;
+      setSelectedLeadId(lead.id);
+      if (lead.customer_id) {
+        setSelectedCustomerId(lead.customer_id);
+        const { data: cust } = await supabase
+          .from("customers")
+          .select("name, email, phone, address")
+          .eq("id", lead.customer_id)
+          .single();
+        if (cust) {
+          setCustomerName(cust.name);
+          setCustomerEmail(cust.email || "");
+          setCustomerPhone(cust.phone);
+          setCustomerAddress(cust.address || "");
+        }
+      } else {
+        setCustomerName(lead.customer_name);
+        setCustomerPhone(lead.customer_phone);
+        setCustomerAddress(lead.customer_address);
+      }
+    };
+    loadLead();
+  }, [leadId, quoteId]);
 
-  const discountAmount = useMemo(() => {
-    if (watchedDiscountType === "percentage") return subtotal * ((watchedDiscountValue || 0) / 100);
-    if (watchedDiscountType === "fixed") return watchedDiscountValue || 0;
-    return 0;
-  }, [subtotal, watchedDiscountType, watchedDiscountValue]);
+  // Prefill customer email when customer changes
+  useEffect(() => {
+    const cid = selectedCustomerId;
+    if (!cid) return;
+    supabase
+      .from("customers")
+      .select("email, name, phone, address")
+      .eq("id", cid)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          if (data.email) setCustomerEmail(data.email);
+          if (!customerName && data.name) setCustomerName(data.name);
+          if (!customerPhone && data.phone) setCustomerPhone(data.phone);
+          if (!customerAddress && data.address) setCustomerAddress(data.address || "");
+        }
+      });
+  }, [selectedCustomerId]);
 
-  const afterDiscount = subtotal - discountAmount;
-  const vatRate = 0.15;
-  const vatAmount = afterDiscount * vatRate;
-  const total = afterDiscount + vatAmount;
+  // Terms from company settings
+  useEffect(() => {
+    if (quoteId) return; // Don't overwrite existing
+    const parts: string[] = [];
+    parts.push("1. This quotation is valid for 30 days from the date of issue.");
+    parts.push("2. A 50% deposit is required upon acceptance.");
+    parts.push("3. Balance due upon completion of work.");
+    parts.push("4. All prices include 15% VAT.");
+    parts.push("5. Warranty: 12 months on parts, 90 days on labour.");
+    const b = companySettings.banking_details;
+    if (b && (b.bank_name || b.account_number)) {
+      parts.push("");
+      parts.push("Banking Details:");
+      if (b.bank_name) parts.push(`Bank: ${b.bank_name}`);
+      if (b.account_number) parts.push(`Account: ${b.account_number}`);
+      if (b.branch_code) parts.push(`Branch: ${b.branch_code}`);
+      if (b.account_type) parts.push(`Type: ${b.account_type}`);
+    }
+    setTerms(parts.join("\n"));
+  }, [companySettings, quoteId]);
 
-  const selectedCustomer = customers.find((c: any) => c.id === watchedCustomerId);
+  /* ─── Logo URL ─── */
+  const logoUrl = useMemo(() => {
+    const path = companySettings.logo_storage_path;
+    if (!path) return null;
+    if (path.startsWith("http")) return path;
+    const { data } = supabase.storage.from("company-logos").getPublicUrl(path);
+    return data?.publicUrl || null;
+  }, [companySettings.logo_storage_path]);
 
-  const addService = (serviceId: string) => {
-    const svc = services.find((s: any) => s.id === serviceId);
-    if (svc) {
-      append({ service_id: svc.id, description: svc.name, quantity: 1, unit_price: Number(svc.default_price) });
+  /* ─── Handlers ─── */
+  const selectCustomer = (c: Customer) => {
+    setSelectedCustomerId(c.id);
+    setCustomerName(c.name);
+    setCustomerPhone(c.phone);
+    setCustomerAddress(c.address || "");
+    setCustomerEmail(c.email || "");
+    setShowCustomerPicker(false);
+    setCustomerSearch("");
+  };
+
+  const updateLineItem = (index: number, field: keyof LineItem, value: string | number) => {
+    const items = [...lineItems];
+    const item = { ...items[index] };
+    if (field === "description") {
+      item.description = value as string;
+      const q = (value as string).toLowerCase();
+      if (q.length >= 2) {
+        setDescSuggestions(templates.filter((t) => t.name.toLowerCase().includes(q)));
+        setActiveDescIdx(index);
+      } else {
+        setDescSuggestions([]);
+        setActiveDescIdx(null);
+      }
+    } else if (field === "quantity") {
+      item.quantity = Math.max(0, Number(value) || 0);
+      item.amount = item.quantity * item.rate;
+    } else if (field === "rate") {
+      item.rate = Math.max(0, Number(value) || 0);
+      item.amount = item.quantity * item.rate;
+    }
+    items[index] = item;
+    setLineItems(items);
+  };
+
+  const pickTemplate = (t: ServiceTemplate, index: number) => {
+    const items = [...lineItems];
+    items[index] = {
+      description: t.name,
+      quantity: 1,
+      rate: t.default_rate,
+      amount: t.default_rate,
+      service_id: t.id,
+    };
+    setLineItems(items);
+    setDescSuggestions([]);
+    setActiveDescIdx(null);
+  };
+
+  const addLineItem = () => setLineItems([...lineItems, { description: "", quantity: 1, rate: 0, amount: 0 }]);
+  const removeLineItem = (i: number) => {
+    if (lineItems.length > 1) setLineItems(lineItems.filter((_, idx) => idx !== i));
+  };
+
+  /* ─── File upload ─── */
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const path = `quotes/${Date.now()}_${file.name}`;
+        const { error } = await supabase.storage.from("quote-photos").upload(path, file);
+        if (error) throw error;
+        const { data: urlData } = supabase.storage.from("quote-photos").getPublicUrl(path);
+        setAttachments((prev) => [...prev, { name: file.name, url: urlData.publicUrl, path }]);
+      }
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
   };
 
-  const handleTemplateSelect = (items: LineItemForm[], sections?: VisualSection[], termsText?: string) => {
-    replace(items);
-    if (sections?.length) setVisualSections(sections);
-    if (termsText) setValue("terms_text", termsText);
-  };
+  /* ─── Save ─── */
+  const saveQuote = async (status: "draft" | "sent" | "accepted") => {
+    if (!customerName.trim() && !selectedCustomerId) {
+      toast({ title: "Error", description: "Please select or enter a client", variant: "destructive" });
+      return;
+    }
+    if (lineItems.every((i) => !i.description || i.amount === 0)) {
+      toast({ title: "Error", description: "Add at least one line item", variant: "destructive" });
+      return;
+    }
 
-  // Save
-  const saveQuote = async (formData: QuoteForm, sendAfterSave = false) => {
-    setSaving(true);
+    setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
+      let finalNumber = quoteNumber;
+      if (!finalNumber) {
+        const { data, error } = await supabase.rpc("generate_quote_number");
+        if (error) throw error;
+        finalNumber = data as string;
+        setQuoteNumber(finalNumber);
+      }
+
       const quotePayload: any = {
-        customer_id: formData.customer_id || null,
+        customer_id: selectedCustomerId || null,
         sales_engineer_id: session.user.id,
         subtotal,
-        vat_rate: vatRate,
-        vat_amount: vatAmount,
+        vat_rate: taxRate / 100,
+        vat_amount: taxAmount,
         total,
-        notes: formData.notes || null,
-        valid_until: formData.valid_until || null,
-        visual_sections: visualSections,
-        terms_text: formData.terms_text || null,
-        discount_type: formData.discount_type || "none",
-        discount_value: formData.discount_value || 0,
-        reference_text: formData.reference_text || null,
-        ...(sendAfterSave ? { status: "sent", sent_at: new Date().toISOString() } : {}),
+        notes: notes || null,
+        valid_until: validUntil || null,
+        terms_text: terms || null,
+        discount_type: showDiscount ? (discountType === "percent" ? "percentage" : "fixed") : "none",
+        discount_value: showDiscount ? discountValue : 0,
+        reference_text: reference || null,
+        lead_id: selectedLeadId || null,
+        ...(status !== "draft" ? { status, sent_at: new Date().toISOString() } : {}),
       };
 
       let qId = savedQuoteId;
@@ -257,350 +448,506 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         if (error) throw error;
         await supabase.from("quote_line_items").delete().eq("quote_id", qId);
       } else {
+        quotePayload.quote_number = finalNumber;
         const { data, error } = await supabase.from("quotes").insert(quotePayload).select("id").single();
         if (error) throw error;
         qId = data.id;
         setSavedQuoteId(qId);
       }
 
-      const lineItems = formData.line_items
-        .filter((item) => item.description.trim())
-        .map((item) => ({
-          quote_id: qId!,
-          service_id: item.service_id || null,
-          description: item.description,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-        }));
-
-      if (lineItems.length) {
-        const { error } = await supabase.from("quote_line_items").insert(lineItems);
+      const validItems = lineItems.filter((item) => item.description.trim());
+      if (validItems.length) {
+        const { error } = await supabase.from("quote_line_items").insert(
+          validItems.map((item) => ({
+            quote_id: qId!,
+            service_id: item.service_id || null,
+            description: item.description,
+            quantity: item.quantity,
+            unit_price: item.rate,
+          }))
+        );
         if (error) throw error;
       }
 
+      // Save attachments references
+      if (qId && attachments.length > 0) {
+        const existingAtts = await supabase.from("quote_attachments").select("storage_path").eq("quote_id", qId);
+        const existingPaths = new Set((existingAtts.data || []).map((a: any) => a.storage_path));
+        const newAtts = attachments.filter((a) => !existingPaths.has(a.path));
+        if (newAtts.length > 0) {
+          await supabase.from("quote_attachments").insert(
+            newAtts.map((a) => ({ quote_id: qId!, storage_path: a.path, filename: a.name }))
+          );
+        }
+      }
+
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
-      toast({ title: sendAfterSave ? "Quote sent!" : "Quote saved!" });
-      if (sendAfterSave) onBack();
+      toast({
+        title: status === "sent" ? "Quote Sent! 📧" : "Quote Saved! ✅",
+        description: `${finalNumber} – ${formatCurrency(total)}`,
+      });
+      if (status === "sent") onBack();
     } catch (err: any) {
+      console.error("Quote save error:", err);
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
-  const previewData = {
-    quote_number: savedQuoteId ? "Loading..." : "New Quote",
-    status: "draft",
-    customer_name: selectedCustomer?.name,
-    customer_address: selectedCustomer?.address,
-    customer_phone: selectedCustomer?.phone,
-    customer_email: selectedCustomer?.email,
-    valid_until: watch("valid_until"),
-    notes: watch("notes"),
-    reference_text: watch("reference_text"),
-    discount_type: watchedDiscountType,
-    discount_value: watchedDiscountValue,
-    subtotal,
-    vat_rate: vatRate,
-    vat_amount: vatAmount,
-    total,
-    line_items: watchedItems,
-    visual_sections: visualSections,
-    terms_text: watch("terms_text"),
-  };
+  const filteredCustomers = customers.filter(
+    (c) =>
+      c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+      c.phone.includes(customerSearch) ||
+      (c.email && c.email.toLowerCase().includes(customerSearch.toLowerCase()))
+  );
 
-  const logoUrl = settings.logo_storage_path
-    ? supabase.storage.from("company-logos").getPublicUrl(settings.logo_storage_path).data.publicUrl
-    : null;
+  const companyInitials = companySettings.company_name
+    ? companySettings.company_name
+        .split(" ")
+        .map((w) => w[0])
+        .join("")
+        .substring(0, 2)
+        .toUpperCase()
+    : "CO";
 
+  /* ─── Render ─── */
   return (
-    <div className="max-w-6xl mx-auto p-4 space-y-4">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={onBack}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <h2 className="text-xl font-bold">{quoteId ? "Edit Quote" : "New Quote"}</h2>
+    <div className="min-h-screen bg-muted/40">
+      {/* ── Top bar ── */}
+      <div className="sticky top-0 z-40 bg-background border-b px-4 py-3 flex items-center justify-between">
+        <h1 className="text-lg font-bold text-foreground">{quoteId ? "Edit Quote" : "New Quote"}</h1>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            Cancel
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => saveQuote("draft")}
+            disabled={loading}
+          >
+            Save Draft
+          </Button>
+          <Button
+            size="sm"
+            className="text-white"
+            style={{ backgroundColor: "#0077B6" }}
+            onClick={() => saveQuote("sent")}
+            disabled={loading}
+          >
+            {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+            Send To…
+          </Button>
+        </div>
       </div>
 
-      {/* Company Header Preview Bar */}
-      <Card className="bg-primary/5 border-primary/20">
-        <CardContent className="py-3 px-4">
-          <div className="flex items-center gap-3">
+      {/* ── A4 Card ── */}
+      <div className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
+        {/* ── HEADER ROW ── */}
+        <div className="flex items-start justify-between gap-6">
+          {/* Logo */}
+          <div className="shrink-0">
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="h-10 object-contain" />
+              <img src={logoUrl} alt="Logo" className="h-16 w-auto object-contain" />
             ) : (
-              <div className="text-sm font-bold text-primary">{settings.company_name || "Your Company"}</div>
+              <div className="h-16 w-16 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xl font-bold">
+                {companyInitials}
+              </div>
             )}
-            <div className="text-xs text-muted-foreground">
-              {settings.vat_number && <span>VAT: {settings.vat_number} • </span>}
-              <span>0800-BE-COOL</span>
-            </div>
           </div>
-        </CardContent>
-      </Card>
+          {/* Company info */}
+          <div className="text-right text-sm text-muted-foreground leading-relaxed">
+            <p className="font-semibold text-foreground text-base">{companySettings.company_name || "Your Company"}</p>
+            {companySettings.physical_address && <p>{companySettings.physical_address}</p>}
+            {companySettings.vat_number && <p>VAT: {companySettings.vat_number}</p>}
+          </div>
+        </div>
 
-      <form onSubmit={handleSubmit((data) => saveQuote(data))} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Left: Main Content */}
-        <div className="lg:col-span-2 space-y-4">
-          {/* Customer, Template & Metadata */}
-          <Card>
-            <CardContent className="pt-4 space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <Label>
-                    Customer <span className="text-destructive">*</span>
-                  </Label>
-                  <ClientInfoPopover customerId={watchedCustomerId || null}>
-                    <div>
-                      <CustomerSearchDropdown
-                        value={watchedCustomerId}
-                        onSelect={(client: UnifiedClient) => setValue("customer_id", client.customer_id || client.id)}
-                        placeholder="Search customers..."
-                      />
-                    </div>
-                  </ClientInfoPopover>
-                </div>
-                <div>
-                  <Label>Template</Label>
-                  <TemplateSelector onSelect={handleTemplateSelect} />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <Label>Valid Until</Label>
-                  <Input type="date" {...register("valid_until")} />
-                </div>
-                <div>
-                  <Label>Reference</Label>
-                  <Input placeholder="Optional reference..." {...register("reference_text")} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="h-px bg-border" />
 
-          {/* Line Items */}
-          <Card>
-            <CardHeader className="py-3 px-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm">Line Items</CardTitle>
-                <Select onValueChange={addService}>
-                  <SelectTrigger className="w-48 h-8 text-xs">
-                    <SelectValue placeholder="Quick add service..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {services.map((s: any) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name} — {formatZAR(Number(s.default_price))}
-                      </SelectItem>
+        {/* ── BILLED TO + DATES ROW ── */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          {/* Col 1 — Billed To */}
+          <div className="col-span-1 space-y-1 relative">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Billed To</p>
+            {customerName && !showCustomerPicker ? (
+              <div>
+                <p className="text-sm font-semibold text-foreground">{customerName}</p>
+                {customerAddress && <p className="text-xs text-muted-foreground">{customerAddress}</p>}
+                {customerEmail && <p className="text-xs text-muted-foreground">{customerEmail}</p>}
+                <button
+                  onClick={() => setShowCustomerPicker(true)}
+                  className="text-[11px] text-primary hover:underline mt-1"
+                >
+                  Change
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <input
+                    autoFocus
+                    placeholder="Search clients…"
+                    value={customerSearch}
+                    onChange={(e) => setCustomerSearch(e.target.value)}
+                    className="w-full pl-7 pr-2 py-1.5 text-sm border rounded bg-background outline-none focus:ring-1 focus:ring-primary/30"
+                  />
+                </div>
+                <div className="max-h-40 overflow-y-auto border rounded bg-popover shadow-md">
+                  {filteredCustomers.slice(0, 8).map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => selectCustomer(c)}
+                      className="w-full text-left px-3 py-2 hover:bg-accent text-sm transition-colors"
+                    >
+                      <span className="font-medium">{c.name}</span>
+                      <span className="text-xs text-muted-foreground ml-2">{c.phone}</span>
+                    </button>
+                  ))}
+                  {filteredCustomers.length === 0 && customerSearch && (
+                    <p className="text-xs text-muted-foreground p-3">No clients found</p>
+                  )}
+                </div>
+                <button
+                  className="text-[11px] text-primary hover:underline flex items-center gap-1"
+                  onClick={() => {
+                    setCustomerName(customerSearch || "New Client");
+                    setShowCustomerPicker(false);
+                    setCustomerSearch("");
+                  }}
+                >
+                  <Plus className="h-3 w-3" /> Create a Client
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Col 2 — Date of Issue */}
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Date of Issue</p>
+            <GhostInput
+              type="date"
+              value={issueDate}
+              onChange={(e) => setIssueDate(e.target.value)}
+            />
+          </div>
+
+          {/* Col 3 — Quote Number */}
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Quote Number</p>
+            <p className="text-sm font-medium text-foreground px-2 py-1.5">{quoteNumber || "Generating…"}</p>
+          </div>
+
+          {/* Col 4 — Quoted Amount */}
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Quoted Amount (ZAR)</p>
+            <p className="text-xl font-bold px-2 py-0.5" style={{ color: "#0077B6" }}>
+              {formatCurrency(total)}
+            </p>
+          </div>
+        </div>
+
+        {/* Row 2: Valid Until / Reference */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 -mt-4">
+          <div /> {/* empty under Billed To */}
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Valid Until</p>
+            <GhostInput type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Reference / PO#</p>
+            <GhostInput
+              placeholder="e.g. PO-1234"
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+            />
+          </div>
+          <div />
+        </div>
+
+        <div className="h-px bg-border" />
+
+        {/* ── LINE ITEMS TABLE ── */}
+        <div>
+          {/* Header */}
+          <div className="grid grid-cols-12 gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2 mb-1">
+            <div className="col-span-6">Description</div>
+            <div className="col-span-2 text-right">Rate</div>
+            <div className="col-span-1 text-right">Qty</div>
+            <div className="col-span-2 text-right">Line Total</div>
+            <div className="col-span-1" />
+          </div>
+
+          {/* Rows */}
+          {lineItems.map((item, idx) => (
+            <div
+              key={idx}
+              className="grid grid-cols-12 gap-2 items-center py-1 group relative"
+            >
+              {/* Description with autocomplete */}
+              <div className="col-span-6 relative">
+                <GhostInput
+                  placeholder="Item description"
+                  value={item.description}
+                  onChange={(e) => updateLineItem(idx, "description", e.target.value)}
+                  onFocus={() => {
+                    if (item.description.length >= 2) {
+                      setDescSuggestions(templates.filter((t) => t.name.toLowerCase().includes(item.description.toLowerCase())));
+                      setActiveDescIdx(idx);
+                    }
+                  }}
+                  onBlur={() => {
+                    setTimeout(() => {
+                      setDescSuggestions([]);
+                      setActiveDescIdx(null);
+                    }, 200);
+                  }}
+                />
+                {activeDescIdx === idx && descSuggestions.length > 0 && (
+                  <div className="absolute top-full left-0 z-50 w-72 mt-1 bg-popover border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {descSuggestions.map((t) => (
+                      <button
+                        key={t.id}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          pickTemplate(t, idx);
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                      >
+                        <span className="font-medium">{t.name}</span>
+                        {t.default_rate > 0 && (
+                          <span className="text-xs text-muted-foreground ml-2">R{t.default_rate}</span>
+                        )}
+                      </button>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <div className="space-y-2">
-                <div className="hidden sm:grid grid-cols-12 gap-2 text-xs font-medium text-muted-foreground px-1">
-                  <div className="col-span-5">Description</div>
-                  <div className="col-span-2 text-center">Qty</div>
-                  <div className="col-span-2 text-right">Rate (ZAR)</div>
-                  <div className="col-span-2 text-right">Total</div>
-                  <div className="col-span-1" />
-                </div>
-
-                {fields.map((field, index) => {
-                  const qty = watchedItems[index]?.quantity || 0;
-                  const price = watchedItems[index]?.unit_price || 0;
-                  return (
-                    <div key={field.id} className="grid grid-cols-12 gap-2 items-center">
-                      <div className="col-span-12 sm:col-span-5">
-                        <Input placeholder="Description" {...register(`line_items.${index}.description`)} className="h-8 text-sm" />
-                      </div>
-                      <div className="col-span-4 sm:col-span-2">
-                        <Input type="number" min={1} {...register(`line_items.${index}.quantity`, { valueAsNumber: true })} className="h-8 text-sm text-center" />
-                      </div>
-                      <div className="col-span-4 sm:col-span-2">
-                        <Input type="number" step="0.01" min={0} {...register(`line_items.${index}.unit_price`, { valueAsNumber: true })} className="h-8 text-sm text-right" />
-                      </div>
-                      <div className="col-span-3 sm:col-span-2 text-right text-sm font-medium pr-1">
-                        {formatZAR(qty * price)}
-                      </div>
-                      <div className="col-span-1">
-                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => fields.length > 1 && remove(index)} disabled={fields.length <= 1}>
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                <div className="flex items-center gap-2 mt-2">
-                  <Button type="button" variant="outline" size="sm" onClick={() => append({ description: "", quantity: 1, unit_price: 0 })}>
-                    <Plus className="h-3.5 w-3.5 mr-1" /> Add Line
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setFlatRateOpen(true)}>
-                    📖 Flat Rate Book
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setCatalogOpen(true)}>
-                    📦 Product Catalog
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Discount */}
-          <Card>
-            <CardContent className="pt-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                <div>
-                  <Label>Discount</Label>
-                  <Select value={watchedDiscountType} onValueChange={(v) => setValue("discount_type", v)}>
-                    <SelectTrigger className="h-8 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No Discount</SelectItem>
-                      <SelectItem value="percentage">Percentage (%)</SelectItem>
-                      <SelectItem value="fixed">Fixed Amount (R)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {watchedDiscountType !== "none" && (
-                  <div>
-                    <Label>{watchedDiscountType === "percentage" ? "Discount %" : "Amount (R)"}</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min={0}
-                      {...register("discount_value", { valueAsNumber: true })}
-                      className="h-8 text-sm"
-                    />
                   </div>
                 )}
-                {discountAmount > 0 && (
-                  <p className="text-sm text-success font-medium">
-                    Saving: {formatZAR(discountAmount)}
-                  </p>
+              </div>
+              <div className="col-span-2">
+                <GhostInput
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="text-right"
+                  value={item.rate || ""}
+                  onChange={(e) => updateLineItem(idx, "rate", e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="col-span-1">
+                <GhostInput
+                  type="number"
+                  min="0"
+                  step="1"
+                  className="text-right"
+                  value={item.quantity || ""}
+                  onChange={(e) => updateLineItem(idx, "quantity", e.target.value)}
+                  placeholder="1"
+                />
+              </div>
+              <div className="col-span-2 text-right text-sm font-medium py-1.5 px-2">
+                {formatCurrency(item.amount)}
+              </div>
+              <div className="col-span-1 flex justify-center">
+                {lineItems.length > 1 && (
+                  <button
+                    onClick={() => removeLineItem(idx)}
+                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          ))}
 
-          {/* AI Assistant */}
-          <QuoteAIAssistant onAddItem={(item) => append({ ...item, service_id: undefined })} />
-
-          {/* Visual Content Sections */}
-          <VisualSectionEditor
-            sections={visualSections}
-            onChange={setVisualSections}
-            quoteId={savedQuoteId}
-          />
-
-          {/* Notes */}
-          <Card>
-            <CardContent className="pt-4">
-              <Label>Notes</Label>
-              <Textarea placeholder="Additional notes for the client..." {...register("notes")} rows={3} />
-            </CardContent>
-          </Card>
-
-          {/* Terms & Conditions */}
-          <Card>
-            <CardContent className="pt-4">
-              <Label>Terms & Conditions</Label>
-              <Textarea
-                {...register("terms_text")}
-                rows={6}
-                className="text-xs font-mono"
-              />
-            </CardContent>
-          </Card>
+          {/* Add a Line */}
+          <button
+            onClick={addLineItem}
+            className="w-full py-3 mt-1 border border-dashed rounded-lg text-sm text-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-1.5"
+          >
+            <Plus className="h-4 w-4" /> Add a Line
+          </button>
         </div>
 
-        {/* Right: Photos + Summary + Actions */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="py-3 px-4">
-              <CardTitle className="text-sm">Photos</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <PhotoUploader quoteId={savedQuoteId} attachments={attachments} onAttachmentsChange={setAttachments} />
-            </CardContent>
-          </Card>
+        <div className="h-px bg-border" />
 
-          <Card className="border-primary/20 bg-primary/5">
-            <CardHeader className="py-3 px-4">
-              <CardTitle className="text-sm">VAT Summary (ZAR)</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>{formatZAR(subtotal)}</span>
-              </div>
-              {discountAmount > 0 && (
-                <div className="flex justify-between text-sm text-success">
-                  <span>Discount</span>
-                  <span>-{formatZAR(discountAmount)}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">VAT (15%)</span>
-                <span>{formatZAR(vatAmount)}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between font-bold">
-                <span>Total</span>
-                <span>{formatZAR(total)}</span>
-              </div>
-            </CardContent>
-          </Card>
+        {/* ── TOTALS (right-aligned) ── */}
+        <div className="flex justify-end">
+          <div className="w-72 space-y-2">
+            {/* Subtotal */}
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Subtotal</span>
+              <span>{formatCurrency(subtotal)}</span>
+            </div>
 
-          {/* Actions */}
-          <div className="flex flex-col gap-2">
-            <Button type="button" variant="outline" onClick={() => setPreviewOpen(true)}>
-              <Eye className="h-4 w-4 mr-2" /> Preview
-            </Button>
-            <Button type="button" variant="outline" onClick={() => window.print()}>
-              <Printer className="h-4 w-4 mr-2" /> Print
-            </Button>
-            <Button type="button" variant="outline" onClick={() => setTemplateSaveOpen(true)}>
-              <BookmarkPlus className="h-4 w-4 mr-2" /> Save as Template
-            </Button>
-            {savedQuoteId && selectedCustomer && (
-              <WhatsAppShareButton
-                phone={selectedCustomer.phone}
-                message={`Hi ${selectedCustomer.name}, your quote for ${formatZAR(total)} is ready.`}
-                variant="outline"
+            {/* Discount */}
+            {!showDiscount ? (
+              <button
+                onClick={() => setShowDiscount(true)}
+                className="text-sm text-primary hover:underline"
               >
-                Send via WhatsApp
-              </WhatsAppShareButton>
+                Add a Discount
+              </button>
+            ) : (
+              <div className="flex items-center justify-between text-sm gap-2">
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">Discount</span>
+                  <select
+                    value={discountType}
+                    onChange={(e) => setDiscountType(e.target.value as "percent" | "fixed")}
+                    className="text-xs border rounded px-1 py-0.5 bg-background"
+                  >
+                    <option value="percent">%</option>
+                    <option value="fixed">R</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="0"
+                    value={discountValue || ""}
+                    onChange={(e) => setDiscountValue(Number(e.target.value) || 0)}
+                    className="w-16 text-right text-sm border rounded px-2 py-0.5 bg-background outline-none focus:ring-1 focus:ring-primary/30"
+                  />
+                  <span className="text-muted-foreground">−{formatCurrency(discountAmount)}</span>
+                </div>
+              </div>
             )}
-            <Button type="submit" disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-              Save Draft
-            </Button>
-            <Button
-              type="button"
-              disabled={saving}
-              className="bg-success hover:bg-success/90 text-primary-foreground"
-              onClick={handleSubmit((data) => saveQuote(data, true))}
-            >
-              <Send className="h-4 w-4 mr-2" /> Save & Send
-            </Button>
+
+            {/* Tax */}
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Tax ({taxRate}% VAT)</span>
+              <span>{formatCurrency(taxAmount)}</span>
+            </div>
+
+            <div className="h-px bg-border" />
+
+            {/* Total */}
+            <div className="flex justify-between text-lg font-bold">
+              <span>Total (ZAR)</span>
+              <span style={{ color: "#0077B6" }}>{formatCurrency(total)}</span>
+            </div>
           </div>
         </div>
-      </form>
 
-      <BrandedQuotePreview open={previewOpen} onOpenChange={setPreviewOpen} quote={previewData} />
-      <FlatRatePickerDrawer open={flatRateOpen} onOpenChange={setFlatRateOpen} onAddToQuote={(item) => append({ ...item, service_id: undefined })} />
-      <CatalogPickerDrawer open={catalogOpen} onOpenChange={setCatalogOpen} onAddToQuote={(item) => append({ ...item, service_id: undefined })} />
-      <TemplateSaveDialog
-        open={templateSaveOpen}
-        onOpenChange={setTemplateSaveOpen}
-        lineItems={watchedItems}
-        sections={visualSections}
-        termsText={watch("terms_text")}
-      />
+        <div className="h-px bg-border" />
+
+        {/* ── LINK TO JOB (collapsible) ── */}
+        <div>
+          <button
+            onClick={() => setShowLinks(!showLinks)}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showLinks ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            Link to Job
+          </button>
+          {showLinks && (
+            <div className="mt-3 space-y-3 pl-1">
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Job / Lead</p>
+                <select
+                  value={selectedLeadId}
+                  onChange={(e) => setSelectedLeadId(e.target.value)}
+                  className="w-full text-sm border rounded px-3 py-2 bg-background outline-none focus:ring-1 focus:ring-primary/30"
+                >
+                  <option value="">None</option>
+                  {leads.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.customer_name} — {l.service_type}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="h-px bg-border" />
+
+        {/* ── NOTES ── */}
+        <div className="space-y-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Notes</p>
+          <Textarea
+            placeholder="Notes — any relevant information not already covered"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+            className="text-sm resize-none border-transparent hover:border-border focus:border-primary bg-transparent"
+          />
+        </div>
+
+        {/* ── TERMS ── */}
+        <div className="space-y-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Terms & Conditions</p>
+          <Textarea
+            placeholder="Payment terms, banking details, conditions…"
+            value={terms}
+            onChange={(e) => setTerms(e.target.value)}
+            rows={6}
+            className="text-sm resize-none border-transparent hover:border-border focus:border-primary bg-transparent font-mono text-xs"
+          />
+        </div>
+
+        {/* ── ATTACHMENTS ── */}
+        <div className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Attachments</p>
+          <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFileUpload} />
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-2 text-sm text-primary hover:underline disabled:opacity-50"
+          >
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            {uploading ? "Uploading…" : "Attach Files"}
+          </button>
+          {attachments.length > 0 && (
+            <div className="space-y-1 mt-1">
+              {attachments.map((a, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Paperclip className="h-3.5 w-3.5" />
+                  <a href={a.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate">
+                    {a.name}
+                  </a>
+                  <button
+                    onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
+                    className="text-destructive hover:text-destructive/80"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Sticky bottom bar ── */}
+      <div className="sticky bottom-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2 max-w-3xl mx-auto">
+        <Button variant="outline" size="sm" onClick={() => saveQuote("draft")} disabled={loading}>
+          Save Draft
+        </Button>
+        <Button
+          size="sm"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+          onClick={() => saveQuote("accepted")}
+          disabled={loading}
+        >
+          Mark Approved
+        </Button>
+        <Button
+          size="sm"
+          className="text-white"
+          style={{ backgroundColor: "#0077B6" }}
+          onClick={() => saveQuote("sent")}
+          disabled={loading}
+        >
+          {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+          Send Quote
+        </Button>
+      </div>
     </div>
   );
 };
