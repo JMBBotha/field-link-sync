@@ -1,0 +1,6 @@
+
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS services TEXT[] DEFAULT '{}';
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS default_rate NUMERIC DEFAULT 450;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS vat_registered BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS vat_number TEXT;
