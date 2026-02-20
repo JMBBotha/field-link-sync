@@ -135,6 +135,7 @@ const FBDashboard = () => {
 
       // Invalidate all query keys
       const keys = [
+        "fb-dashboard-stats",
         "fb-invoices-stats", "fb-invoices", "fb-invoices-for-payment",
         "fb-estimates", "fb-expenses-stats", "fb-expenses",
         "fb-payments-stats", "fb-payments",
@@ -149,39 +150,39 @@ const FBDashboard = () => {
     }
   };
 
-  const { data: invoices = [] } = useQuery({
-    queryKey: ["fb-invoices-stats", companyId],
+  // Dedicated stats queries
+  const { data: stats } = useQuery({
+    queryKey: ["fb-dashboard-stats", companyId],
     queryFn: async () => {
-      const { data } = await supabase.from("fb_invoices").select("id, amount, status, created_at, due_date, invoice_number, contact_id").eq("company_id", companyId!);
-      return data || [];
+      const [invRes, payRes, expRes] = await Promise.all([
+        supabase.from("fb_invoices").select("id, amount, status, due_date, invoice_number, created_at, contact_id").eq("company_id", companyId!),
+        supabase.from("fb_payments").select("id, amount, date, invoice_id, method").eq("company_id", companyId!).order("date", { ascending: false }),
+        supabase.from("fb_expenses").select("id, amount, date, category").eq("company_id", companyId!),
+      ]);
+      const invoices = invRes.data || [];
+      const payments = payRes.data || [];
+      const expenses = expRes.data || [];
+
+      const todayStr = new Date().toISOString().split("T")[0];
+      const outstanding = invoices
+        .filter(i => !["paid", "cancelled"].includes(i.status))
+        .reduce((s, i) => s + Number(i.amount), 0);
+      const revenue = payments.reduce((s, p) => s + Number(p.amount), 0);
+      const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
+      const overdueInvoices = invoices.filter(i => i.due_date && i.due_date < todayStr && !["paid", "cancelled"].includes(i.status));
+
+      return { invoices, payments, expenses, outstanding, revenue, totalExpenses, overdueInvoices, todayStr };
     },
     enabled: !!companyId,
   });
 
-  const { data: expenses = [] } = useQuery({
-    queryKey: ["fb-expenses-stats", companyId],
-    queryFn: async () => {
-      const { data } = await supabase.from("fb_expenses").select("id, amount, date, category").eq("company_id", companyId!);
-      return data || [];
-    },
-    enabled: !!companyId,
-  });
-
-  const { data: payments = [] } = useQuery({
-    queryKey: ["fb-payments-stats", companyId],
-    queryFn: async () => {
-      const { data } = await supabase.from("fb_payments").select("id, amount, date, invoice_id, method").eq("company_id", companyId!).order("date", { ascending: false }).limit(5);
-      return data || [];
-    },
-    enabled: !!companyId,
-  });
-
-  const outstanding = invoices.filter(i => ["sent", "viewed", "overdue", "partial"].includes(i.status)).reduce((s, i) => s + Number(i.amount), 0);
-  const revenue = invoices.filter(i => i.status === "paid").reduce((s, i) => s + Number(i.amount), 0);
-  const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
-
-  const todayStr = new Date().toISOString().split("T")[0];
-  const overdueInvoices = invoices.filter(i => i.due_date && i.due_date < todayStr && !["paid", "cancelled"].includes(i.status));
+  const invoices = stats?.invoices || [];
+  const payments = stats?.payments?.slice(0, 5) || [];
+  const expenses = stats?.expenses || [];
+  const outstanding = stats?.outstanding || 0;
+  const revenue = stats?.revenue || 0;
+  const totalExpenses = stats?.totalExpenses || 0;
+  const overdueInvoices = stats?.overdueInvoices || [];
 
   const upcomingDue = invoices
     .filter(i => i.due_date && !["paid", "cancelled"].includes(i.status))
