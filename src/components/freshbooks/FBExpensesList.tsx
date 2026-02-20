@@ -108,7 +108,7 @@ const FBExpensesList = () => {
       {categoryTotals.size > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
           {Array.from(categoryTotals.entries()).map(([cat, amt]) => (
-            <div key={cat} className="bg-card rounded-lg border border-border p-3 border-l-4 border-l-blue-500">
+            <div key={cat} className="bg-card rounded-lg border border-border p-3 border-l-4 border-l-blue-500 shadow-[2px_3px_6px_rgba(0,0,0,0.1)]">
               <p className="text-xs text-muted-foreground">{cat}</p>
               <p className="text-sm font-bold text-foreground">{fmt(amt)}</p>
             </div>

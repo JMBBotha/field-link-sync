@@ -165,7 +165,7 @@ const FBReports = () => {
       </div>
 
       {/* P&L Card */}
-      <div className="bg-card rounded-lg shadow-sm border border-border p-6 border-l-4 border-l-blue-500">
+      <div className="bg-card rounded-lg shadow-[2px_3px_6px_rgba(0,0,0,0.1)] border border-border p-6 border-l-4 border-l-blue-500">
         <h3 className="font-semibold text-foreground mb-3">Profit & Loss Summary</h3>
         <div className="grid grid-cols-3 gap-6 text-center">
           <div><p className="text-sm text-muted-foreground">Revenue</p><p className="text-xl font-bold text-green-600">{fmt(totalRevenue)}</p></div>
