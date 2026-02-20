@@ -220,7 +220,7 @@ const FBDashboard = () => {
         <Button onClick={() => navigate("../invoices")} className="bg-primary hover:bg-primary/90 text-primary-foreground">
           <Plus className="h-4 w-4 mr-2" />New Invoice
         </Button>
-        <Button onClick={() => navigate("../estimates")} className="bg-amber-500 hover:bg-amber-600 text-amber-950">
+        <Button onClick={() => navigate("../quote-builder")} className="bg-amber-500 hover:bg-amber-600 text-amber-950">
           <Plus className="h-4 w-4 mr-2" />New Estimate
         </Button>
         <Button onClick={() => navigate("../time-tracking")} className="bg-primary hover:bg-primary/90 text-primary-foreground">
