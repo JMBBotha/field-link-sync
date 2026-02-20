@@ -123,6 +123,7 @@ const AdminSidebar = ({
         { path: "/admin/audit", label: "Audit", icon: History },
         { path: "/admin/import", label: "Import", icon: Upload },
         { path: "/admin/settings", label: "Settings", icon: Settings },
+        { path: "/admin/companies", label: "Companies", icon: Building2 },
       ],
     },
   ];
