@@ -1,11 +1,14 @@
 import { useCompany } from "@/providers/CompanyProvider";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { DollarSign, FileText, AlertTriangle, TrendingUp, CreditCard, Plus, Clock, CalendarClock } from "lucide-react";
+import { DollarSign, FileText, AlertTriangle, TrendingUp, CreditCard, Plus, Clock, CalendarClock, Database } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { useState } from "react";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 
@@ -26,6 +29,41 @@ const StatCard = ({ title, value, icon: Icon, color }: { title: string; value: s
 const FBDashboard = () => {
   const { companyId } = useCompany();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [loadingDemo, setLoadingDemo] = useState(false);
+
+  const loadDemoData = async () => {
+    if (!companyId) return;
+    setLoadingDemo(true);
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const dueSoon = new Date(Date.now() + 5 * 86400000).toISOString().split("T")[0];
+      const pastDue = new Date(Date.now() - 10 * 86400000).toISOString().split("T")[0];
+
+      await supabase.from("fb_invoices").insert([
+        { company_id: companyId, invoice_number: "INV-DEMO-001", amount: 1000, status: "draft", due_date: dueSoon },
+        { company_id: companyId, invoice_number: "INV-DEMO-002", amount: 2000, status: "sent", due_date: pastDue },
+        { company_id: companyId, invoice_number: "INV-DEMO-003", amount: 1500, status: "paid", due_date: today },
+      ]);
+      await supabase.from("fb_estimates").insert([
+        { company_id: companyId, estimate_number: "EST-DEMO-001", amount: 3000, status: "draft", items: [] },
+        { company_id: companyId, estimate_number: "EST-DEMO-002", amount: 4000, status: "sent", items: [] },
+      ]);
+      await supabase.from("fb_expenses").insert([
+        { company_id: companyId, amount: 500, category: "Travel", date: today },
+        { company_id: companyId, amount: 750, category: "Supplies", date: today },
+      ]);
+
+      queryClient.invalidateQueries({ queryKey: ["fb-invoices-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["fb-expenses-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["fb-payments-stats"] });
+      toast.success("Demo data loaded successfully!");
+    } catch (err) {
+      toast.error("Failed to load demo data");
+    } finally {
+      setLoadingDemo(false);
+    }
+  };
 
   const { data: invoices = [] } = useQuery({
     queryKey: ["fb-invoices-stats", companyId],
@@ -97,6 +135,9 @@ const FBDashboard = () => {
         </Button>
         <Button onClick={() => navigate("../time-tracking")} className="bg-amber-500 hover:bg-amber-600 text-white">
           <Clock className="h-4 w-4 mr-2" />Log Time
+        </Button>
+        <Button variant="outline" onClick={loadDemoData} disabled={loadingDemo} className="border-amber-500 text-amber-600 hover:bg-amber-50">
+          <Database className="h-4 w-4 mr-2" />{loadingDemo ? "Loading..." : "Load Demo Data"}
         </Button>
       </div>
 
