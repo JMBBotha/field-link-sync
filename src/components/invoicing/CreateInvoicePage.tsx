@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Plus, X, Loader2, Search, ChevronDown, ChevronUp, Paperclip, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { notifyInvoiceSent } from "@/lib/notificationService";
 import { cn } from "@/lib/utils";
+import { useProductOptions, type ProductOption } from "@/hooks/useProductOptions";
+import ProductSearchDropdown from "@/components/shared/ProductSearchDropdown";
+import { useQuoteSessionStore } from "@/stores/quoteSessionStore";
+import { useExitGuard } from "@/hooks/useExitGuard";
+import UnsavedQuoteDialog from "@/components/shared/UnsavedQuoteDialog";
 
 /* ────────── Types ────────── */
 
@@ -17,16 +22,6 @@ interface LineItem {
   rate: number;
   amount: number;
   service_id?: string | null;
-}
-
-interface ProductOption {
-  id: string;
-  name: string;
-  description: string | null;
-  rate: number;
-  category: string;
-  isFavorite: boolean;
-  source: "template" | "product";
 }
 
 interface Customer {
@@ -73,7 +68,7 @@ interface CreateInvoicePageProps {
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(amount);
 
-/* ────────── Ghost input (FreshBooks style — borderless until hover/focus) ────────── */
+/* ────────── Ghost input ────────── */
 
 const GhostInput = ({
   className,
@@ -90,33 +85,6 @@ const GhostInput = ({
   />
 );
 
-/* ────────── Helpers ────────── */
-
-const isAcCategory = (cat: string) => {
-  const l = cat.toLowerCase();
-  return l.includes("ac") || l.includes("air con");
-};
-
-const sortProductOptions = (options: ProductOption[]) => {
-  return [...options].sort((a, b) => {
-    const aStarAc = a.isFavorite && isAcCategory(a.category) ? 0 : 1;
-    const bStarAc = b.isFavorite && isAcCategory(b.category) ? 0 : 1;
-    if (aStarAc !== bStarAc) return aStarAc - bStarAc;
-    const aFav = a.isFavorite ? 0 : 1;
-    const bFav = b.isFavorite ? 0 : 1;
-    if (aFav !== bFav) return aFav - bFav;
-    return a.name.localeCompare(b.name);
-  });
-};
-
-const filterOptions = (options: ProductOption[], query: string) => {
-  if (!query) return options.slice(0, 8);
-  const q = query.toLowerCase();
-  return options.filter(
-    (o) => o.name.toLowerCase().includes(q) || (o.description && o.description.toLowerCase().includes(q))
-  );
-};
-
 /* ────────── Main Component ────────── */
 
 const CreateInvoicePage = ({
@@ -129,6 +97,7 @@ const CreateInvoicePage = ({
 }: CreateInvoicePageProps) => {
   const { toast } = useToast();
   const { settings: companySettings } = useCompanySettings();
+  const allOptions = useProductOptions();
 
   const [loading, setLoading] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState<string>("");
@@ -167,9 +136,6 @@ const CreateInvoicePage = ({
     : [{ description: prefillLead?.service_type || "", quantity: 1, rate: 0, amount: 0 }];
 
   const [lineItems, setLineItems] = useState<LineItem[]>(initialItems);
-  const [allOptions, setAllOptions] = useState<ProductOption[]>([]);
-  const [descSuggestions, setDescSuggestions] = useState<ProductOption[]>([]);
-  const [activeDescIdx, setActiveDescIdx] = useState<number | null>(null);
 
   // Discount
   const [showDiscount, setShowDiscount] = useState(false);
@@ -196,6 +162,32 @@ const CreateInvoicePage = ({
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  /* ─── Zustand store ─── */
+  const { isDirty, setDraft, clearDraft } = useQuoteSessionStore();
+
+  useEffect(() => {
+    if (lineItems.some((i) => i.description || i.amount > 0) || customerName) {
+      setDraft({ clientId: selectedCustomerId, clientName: customerName, lineItems, notes, terms });
+    }
+  }, [lineItems, customerName, notes, terms, reference]);
+
+  /* ─── Exit guard ─── */
+  const handleSaveForLater = useCallback(async () => {
+    await saveInvoice("draft");
+    clearDraft();
+  }, [clearDraft]);
+
+  const handleDiscard = useCallback(() => {
+    clearDraft();
+    onBack();
+  }, [clearDraft, onBack]);
+
+  const exitGuard = useExitGuard({
+    isDirty,
+    onSaveForLater: handleSaveForLater,
+    onDiscard: handleDiscard,
+  });
+
   /* ─── Derived ─── */
   const subtotal = lineItems.reduce((s, i) => s + i.amount, 0);
   const discountAmount = discountType === "percent" ? subtotal * (discountValue / 100) : discountValue;
@@ -206,24 +198,9 @@ const CreateInvoicePage = ({
 
   /* ─── Fetch data ─── */
   useEffect(() => {
-    // Invoice number
     supabase.rpc("generate_invoice_number").then(({ data }) => {
       if (data) setInvoiceNumber(data as string);
     });
-    // Merged catalog: service_templates + supplier_products
-    Promise.all([
-      supabase.from("service_templates").select("id, name, description, default_rate, category").eq("is_active", true).order("name"),
-      supabase.from("supplier_products").select("id, short_name, description, cost_price, category, is_pinned").eq("is_active", true).order("is_pinned", { ascending: false }).order("description"),
-    ]).then(([svcRes, prodRes]) => {
-      const svcData = svcRes.data || [];
-      const prodData = prodRes.data || [];
-      const merged: ProductOption[] = [
-        ...svcData.map((s: any) => ({ id: s.id, name: s.name, description: s.description, rate: Number(s.default_rate), category: s.category, isFavorite: false, source: "template" as const })),
-        ...prodData.map((p: any) => ({ id: p.id, name: p.short_name || p.description, description: p.description, rate: Number(p.cost_price), category: p.category, isFavorite: p.is_pinned ?? false, source: "product" as const })),
-      ];
-      setAllOptions(sortProductOptions(merged));
-    });
-    // Customers
     supabase
       .from("customers")
       .select("id, name, email, phone, address")
@@ -231,7 +208,6 @@ const CreateInvoicePage = ({
       .then(({ data }) => {
         if (data) setCustomers(data);
       });
-    // Leads
     supabase
       .from("leads")
       .select("id, customer_name, service_type")
@@ -325,15 +301,6 @@ const CreateInvoicePage = ({
     const item = { ...items[index] };
     if (field === "description") {
       item.description = value as string;
-      const q = (value as string).toLowerCase();
-      if (q.length >= 1) {
-        setDescSuggestions(filterOptions(allOptions, q));
-        setActiveDescIdx(index);
-      } else {
-        // Empty: show top 8
-        setDescSuggestions(allOptions.slice(0, 8));
-        setActiveDescIdx(index);
-      }
     } else if (field === "quantity") {
       item.quantity = Math.max(0, Number(value) || 0);
       item.amount = item.quantity * item.rate;
@@ -355,12 +322,9 @@ const CreateInvoicePage = ({
       service_id: opt.source === "template" ? opt.id : null,
     };
     setLineItems(items);
-    setDescSuggestions([]);
-    setActiveDescIdx(null);
   };
 
   const addLineItem = () => setLineItems([...lineItems, { description: "", quantity: 1, rate: 0, amount: 0 }]);
-
   const removeLineItem = (i: number) => {
     if (lineItems.length > 1) setLineItems(lineItems.filter((_, idx) => idx !== i));
   };
@@ -481,6 +445,7 @@ const CreateInvoicePage = ({
         }
       }
 
+      clearDraft();
       toast({
         title: "Invoice Created! 💰",
         description: `${finalNumber} – ${status === "paid" ? "Paid" : status === "sent" ? "Sent" : "Draft"}`,
@@ -510,36 +475,27 @@ const CreateInvoicePage = ({
         .toUpperCase()
     : "CO";
 
-  /* ─── Grouped suggestions for dropdown ─── */
-  const starredAcSuggestions = descSuggestions.filter((s) => s.isFavorite && isAcCategory(s.category));
-  const serviceSuggestions = descSuggestions.filter((s) => s.source === "template");
-  const productSuggestions = descSuggestions.filter((s) => s.source === "product" && !(s.isFavorite && isAcCategory(s.category)));
-
   /* ─── Render ─── */
   return (
     <div className="min-h-screen bg-muted/40">
+      <UnsavedQuoteDialog
+        open={exitGuard.showModal}
+        onContinue={exitGuard.confirmContinue}
+        onSaveForLater={exitGuard.confirmSaveForLater}
+        onDiscard={exitGuard.confirmDiscard}
+      />
+
       {/* ── Top bar ── */}
       <div className="sticky top-0 z-40 bg-background border-b px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-bold text-foreground">New Invoice</h1>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={onBack}>
+          <Button variant="ghost" size="sm" onClick={exitGuard.requestExit}>
             Cancel
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => saveInvoice("draft")}
-            disabled={loading}
-          >
+          <Button variant="outline" size="sm" onClick={() => saveInvoice("draft")} disabled={loading}>
             Save Draft
           </Button>
-          <Button
-            size="sm"
-            className="text-white"
-            style={{ backgroundColor: "#0077B6" }}
-            onClick={() => saveInvoice("sent")}
-            disabled={loading}
-          >
+          <Button size="sm" className="text-white" style={{ backgroundColor: "#0077B6" }} onClick={() => saveInvoice("sent")} disabled={loading}>
             {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
             Send To…
           </Button>
@@ -550,7 +506,6 @@ const CreateInvoicePage = ({
       <div className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
         {/* ── HEADER ROW ── */}
         <div className="flex flex-row gap-6 items-start justify-start">
-          {/* Logo */}
           <div className="shrink-0">
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" className="max-h-[130px] max-w-[200px] w-auto object-contain" />
@@ -560,7 +515,6 @@ const CreateInvoicePage = ({
               </div>
             )}
           </div>
-          {/* Company info */}
           <div className="flex flex-col">
             <p className="font-bold text-lg text-foreground">{companySettings.company_name || "Your Company"}</p>
             {companySettings.physical_address && <p className="text-sm text-muted-foreground">{companySettings.physical_address}</p>}
@@ -572,7 +526,6 @@ const CreateInvoicePage = ({
 
         {/* ── BILLED TO + DATES ROW ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {/* Col 1 — Billed To */}
           <div className="col-span-1 space-y-1 relative">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Billed To</p>
             {customerName && !showCustomerPicker ? (
@@ -580,32 +533,17 @@ const CreateInvoicePage = ({
                 <p className="text-sm font-semibold text-foreground">{customerName}</p>
                 {customerAddress && <p className="text-xs text-muted-foreground">{customerAddress}</p>}
                 {customerEmail && <p className="text-xs text-muted-foreground">{customerEmail}</p>}
-                <button
-                  onClick={() => setShowCustomerPicker(true)}
-                  className="text-[11px] text-primary hover:underline mt-1"
-                >
-                  Change
-                </button>
+                <button onClick={() => setShowCustomerPicker(true)} className="text-[11px] text-primary hover:underline mt-1">Change</button>
               </div>
             ) : (
               <div className="space-y-1">
                 <div className="relative">
                   <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <input
-                    autoFocus
-                    placeholder="Search clients…"
-                    value={customerSearch}
-                    onChange={(e) => setCustomerSearch(e.target.value)}
-                    className="w-full pl-7 pr-2 py-1.5 text-sm border rounded bg-background outline-none focus:ring-1 focus:ring-primary/30"
-                  />
+                  <input autoFocus placeholder="Search clients…" value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} className="w-full pl-7 pr-2 py-1.5 text-sm border rounded bg-background outline-none focus:ring-1 focus:ring-primary/30" />
                 </div>
                 <div className="max-h-40 overflow-y-auto border rounded bg-popover shadow-md">
                   {filteredCustomers.slice(0, 8).map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => selectCustomer(c)}
-                      className="w-full text-left px-3 py-2 hover:bg-accent text-sm transition-colors"
-                    >
+                    <button key={c.id} onClick={() => selectCustomer(c)} className="w-full text-left px-3 py-2 hover:bg-accent text-sm transition-colors">
                       <span className="font-medium">{c.name}</span>
                       <span className="text-xs text-muted-foreground ml-2">{c.phone}</span>
                     </button>
@@ -614,59 +552,38 @@ const CreateInvoicePage = ({
                     <p className="text-xs text-muted-foreground p-3">No clients found</p>
                   )}
                 </div>
-                <button
-                  className="text-[11px] text-primary hover:underline flex items-center gap-1"
-                  onClick={() => {
-                    setCustomerName(customerSearch || "New Client");
-                    setShowCustomerPicker(false);
-                    setCustomerSearch("");
-                  }}
-                >
+                <button className="text-[11px] text-primary hover:underline flex items-center gap-1" onClick={() => { setCustomerName(customerSearch || "New Client"); setShowCustomerPicker(false); setCustomerSearch(""); }}>
                   <Plus className="h-3 w-3" /> Create a Client
                 </button>
               </div>
             )}
           </div>
 
-          {/* Col 2 — Date of Issue */}
           <div className="space-y-1">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Date of Issue</p>
-            <GhostInput
-              type="date"
-              value={issueDate}
-              onChange={(e) => setIssueDate(e.target.value)}
-            />
+            <GhostInput type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
           </div>
 
-          {/* Col 3 — Invoice Number */}
           <div className="space-y-1">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tax Invoice Number</p>
             <p className="text-sm font-medium text-foreground px-2 py-1.5">{invoiceNumber || "Generating…"}</p>
           </div>
 
-          {/* Col 4 — Amount Due */}
           <div className="space-y-1">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Amount Due (ZAR)</p>
-            <p className="text-xl font-bold px-2 py-0.5" style={{ color: "#0077B6" }}>
-              {formatCurrency(amountDue)}
-            </p>
+            <p className="text-xl font-bold px-2 py-0.5" style={{ color: "#0077B6" }}>{formatCurrency(amountDue)}</p>
           </div>
         </div>
 
-        {/* Row 2: Due Date / Reference */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 -mt-4">
-          <div /> {/* empty under Billed To */}
+          <div />
           <div className="space-y-1">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due Date</p>
             <GhostInput type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </div>
           <div className="space-y-1">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Reference / PO#</p>
-            <GhostInput
-              placeholder="e.g. PO-1234"
-              value={reference}
-              onChange={(e) => setReference(e.target.value)}
-            />
+            <GhostInput placeholder="e.g. PO-1234" value={reference} onChange={(e) => setReference(e.target.value)} />
           </div>
           <div />
         </div>
@@ -675,7 +592,6 @@ const CreateInvoicePage = ({
 
         {/* ── LINE ITEMS TABLE ── */}
         <div>
-          {/* Header */}
           <div className="grid grid-cols-12 gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2 mb-1">
             <div className="col-span-6">Description</div>
             <div className="col-span-2 text-right">Rate</div>
@@ -684,118 +600,32 @@ const CreateInvoicePage = ({
             <div className="col-span-1" />
           </div>
 
-          {/* Rows */}
           {lineItems.map((item, idx) => (
-            <div
-              key={idx}
-              className="grid grid-cols-12 gap-2 items-center py-1 group relative"
-            >
-              {/* Description with autocomplete */}
+            <div key={idx} className="grid grid-cols-12 gap-2 items-center py-1 group relative">
               <div className="col-span-6 relative">
-                <GhostInput
-                  placeholder="Item description"
+                <ProductSearchDropdown
                   value={item.description}
-                  onChange={(e) => updateLineItem(idx, "description", e.target.value)}
-                  onFocus={() => {
-                    const q = item.description.toLowerCase();
-                    setDescSuggestions(q.length >= 1 ? filterOptions(allOptions, q) : allOptions.slice(0, 8));
-                    setActiveDescIdx(idx);
-                  }}
-                  onBlur={() => {
-                    setTimeout(() => {
-                      setDescSuggestions([]);
-                      setActiveDescIdx(null);
-                    }, 200);
-                  }}
+                  allOptions={allOptions}
+                  onChange={(val) => updateLineItem(idx, "description", val)}
+                  onSelect={(opt) => pickOption(opt, idx)}
                 />
-                {activeDescIdx === idx && descSuggestions.length > 0 && (
-                  <div className="absolute top-full left-0 z-50 w-80 mt-1 bg-popover border rounded-lg shadow-lg max-h-64 overflow-y-auto">
-                    {starredAcSuggestions.length > 0 && (
-                      <>
-                        <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30">★ Starred AC Units</div>
-                        {starredAcSuggestions.map((o) => (
-                          <button key={o.id} onMouseDown={(e) => { e.preventDefault(); pickOption(o, idx); }} className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors">
-                            <div className="flex justify-between items-center">
-                              <span>{o.name} ⭐</span>
-                              <span className="text-xs text-muted-foreground">{o.category}</span>
-                              <span className="text-xs font-medium">R {o.rate.toFixed(2)}</span>
-                            </div>
-                          </button>
-                        ))}
-                      </>
-                    )}
-                    {serviceSuggestions.length > 0 && (
-                      <>
-                        <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30">Services</div>
-                        {serviceSuggestions.map((o) => (
-                          <button key={o.id} onMouseDown={(e) => { e.preventDefault(); pickOption(o, idx); }} className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors">
-                            <div className="flex justify-between items-center">
-                              <span>{o.name}</span>
-                              <span className="text-xs text-muted-foreground">{o.category}</span>
-                              <span className="text-xs font-medium">R {o.rate.toFixed(2)}</span>
-                            </div>
-                          </button>
-                        ))}
-                      </>
-                    )}
-                    {productSuggestions.length > 0 && (
-                      <>
-                        <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30">Products</div>
-                        {productSuggestions.map((o) => (
-                          <button key={o.id} onMouseDown={(e) => { e.preventDefault(); pickOption(o, idx); }} className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors">
-                            <div className="flex justify-between items-center">
-                              <span>{o.name} {o.isFavorite ? "⭐" : ""}</span>
-                              <span className="text-xs text-muted-foreground">{o.category}</span>
-                              <span className="text-xs font-medium">R {o.rate.toFixed(2)}</span>
-                            </div>
-                          </button>
-                        ))}
-                      </>
-                    )}
-                  </div>
-                )}
               </div>
               <div className="col-span-2">
-                <GhostInput
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="text-right"
-                  value={item.rate || ""}
-                  onChange={(e) => updateLineItem(idx, "rate", e.target.value)}
-                  placeholder="0.00"
-                />
+                <GhostInput type="number" min="0" step="0.01" className="text-right" value={item.rate || ""} onChange={(e) => updateLineItem(idx, "rate", e.target.value)} placeholder="0.00" />
               </div>
               <div className="col-span-1">
-                <GhostInput
-                  type="number"
-                  min="0"
-                  step="1"
-                  className="text-right"
-                  value={item.quantity || ""}
-                  onChange={(e) => updateLineItem(idx, "quantity", e.target.value)}
-                  placeholder="1"
-                />
+                <GhostInput type="number" min="0" step="1" className="text-right" value={item.quantity || ""} onChange={(e) => updateLineItem(idx, "quantity", e.target.value)} placeholder="1" />
               </div>
-              <div className="col-span-2 text-right text-sm font-medium py-1.5 px-2">
-                {formatCurrency(item.amount)}
-              </div>
+              <div className="col-span-2 text-right text-sm font-medium py-1.5 px-2">{formatCurrency(item.amount)}</div>
               <div className="col-span-1 flex justify-center">
-                <button
-                  onClick={() => removeLineItem(idx)}
-                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
-                >
+                <button onClick={() => removeLineItem(idx)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all">
                   <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
           ))}
 
-          {/* Add line */}
-          <button
-            onClick={addLineItem}
-            className="w-full text-left px-2 py-2.5 text-sm text-primary hover:bg-primary/5 rounded mt-1 flex items-center gap-1.5 transition-colors"
-          >
+          <button onClick={addLineItem} className="w-full text-left px-2 py-2.5 text-sm text-primary hover:bg-primary/5 rounded mt-1 flex items-center gap-1.5 transition-colors">
             <Plus className="h-4 w-4" /> Add a Line
           </button>
         </div>
@@ -809,36 +639,19 @@ const CreateInvoicePage = ({
               <span className="text-muted-foreground">Subtotal</span>
               <span>{formatCurrency(subtotal)}</span>
             </div>
-
             {!showDiscount ? (
-              <button
-                onClick={() => setShowDiscount(true)}
-                className="text-sm text-primary hover:underline"
-              >
-                + Add a Discount
-              </button>
+              <button onClick={() => setShowDiscount(true)} className="text-sm text-primary hover:underline">+ Add a Discount</button>
             ) : (
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Discount</span>
-                <select
-                  value={discountType}
-                  onChange={(e) => setDiscountType(e.target.value as "percent" | "fixed")}
-                  className="text-xs border rounded px-1.5 py-1 bg-background"
-                >
+                <select value={discountType} onChange={(e) => setDiscountType(e.target.value as "percent" | "fixed")} className="text-xs border rounded px-1.5 py-1 bg-background">
                   <option value="percent">%</option>
                   <option value="fixed">ZAR</option>
                 </select>
-                <GhostInput
-                  type="number"
-                  min="0"
-                  className="w-20 text-right"
-                  value={discountValue || ""}
-                  onChange={(e) => setDiscountValue(Number(e.target.value) || 0)}
-                />
+                <GhostInput type="number" min="0" className="w-20 text-right" value={discountValue || ""} onChange={(e) => setDiscountValue(Number(e.target.value) || 0)} />
                 <span className="text-sm ml-auto">-{formatCurrency(discountAmount)}</span>
               </div>
             )}
-
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Tax ({taxRate}% VAT)</span>
               <span>{formatCurrency(taxAmount)}</span>
@@ -848,18 +661,10 @@ const CreateInvoicePage = ({
               <span>Total</span>
               <span>{formatCurrency(grandTotal)}</span>
             </div>
-
             <div className="flex items-center gap-2 mt-2">
               <span className="text-sm text-muted-foreground">Amount Paid</span>
-              <GhostInput
-                type="number"
-                min="0"
-                className="w-28 text-right"
-                value={amountPaid || ""}
-                onChange={(e) => setAmountPaid(Number(e.target.value) || 0)}
-              />
+              <GhostInput type="number" min="0" className="w-28 text-right" value={amountPaid || ""} onChange={(e) => setAmountPaid(Number(e.target.value) || 0)} />
             </div>
-
             <div className="flex justify-between text-base font-bold mt-1 p-2 rounded" style={{ backgroundColor: "#0077B610", color: "#0077B6" }}>
               <span>Amount Due (ZAR)</span>
               <span>{formatCurrency(amountDue)}</span>
@@ -869,12 +674,9 @@ const CreateInvoicePage = ({
 
         <div className="h-px bg-border" />
 
-        {/* ── LINK TO JOB (collapsible) ── */}
+        {/* ── LINK TO JOB ── */}
         <div>
-          <button
-            className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            onClick={() => setShowLinks(!showLinks)}
-          >
+          <button className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" onClick={() => setShowLinks(!showLinks)}>
             {showLinks ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             Link to Job
           </button>
@@ -882,16 +684,10 @@ const CreateInvoicePage = ({
             <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Lead / Job</p>
-                <select
-                  value={leadId}
-                  onChange={(e) => setLeadId(e.target.value)}
-                  className="w-full border rounded px-2 py-1.5 text-sm bg-background"
-                >
+                <select value={leadId} onChange={(e) => setLeadId(e.target.value)} className="w-full border rounded px-2 py-1.5 text-sm bg-background">
                   <option value="">— None —</option>
                   {leads.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.customer_name} – {l.service_type}
-                    </option>
+                    <option key={l.id} value={l.id}>{l.customer_name} – {l.service_type}</option>
                   ))}
                 </select>
               </div>
@@ -904,69 +700,44 @@ const CreateInvoicePage = ({
         {/* ── NOTES ── */}
         <div className="space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Notes</p>
-          <Textarea
-            placeholder="Notes — any relevant information not already covered"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="min-h-[60px] text-sm border-transparent hover:border-border focus:border-primary"
-          />
+          <Textarea placeholder="Notes — any relevant information not already covered" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[60px] text-sm border-transparent hover:border-border focus:border-primary" />
         </div>
 
         {/* ── TERMS ── */}
         <div className="space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Terms</p>
-          <Textarea
-            value={terms}
-            onChange={(e) => setTerms(e.target.value)}
-            className="min-h-[80px] text-sm border-transparent hover:border-border focus:border-primary"
-          />
+          <Textarea value={terms} onChange={(e) => setTerms(e.target.value)} className="min-h-[80px] text-sm border-transparent hover:border-border focus:border-primary" />
         </div>
 
         {/* ── ATTACHMENTS ── */}
         <div className="space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Attachments</p>
           <div className="flex flex-wrap gap-2">
-            {attachments.map((a, i) => (
-              <a
-                key={i}
-                href={a.url}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1.5 text-xs text-primary hover:underline bg-primary/5 px-2 py-1 rounded"
-              >
-                <Paperclip className="h-3 w-3" />
+            {attachments.map((a, idx) => (
+              <a key={idx} href={a.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 border rounded-md px-3 py-1.5 text-sm hover:bg-muted transition-colors">
+                <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
                 {a.name}
               </a>
             ))}
           </div>
-          <label className="inline-flex items-center gap-2 text-sm text-primary hover:underline cursor-pointer">
+          <label className="inline-flex items-center gap-1.5 text-sm text-primary cursor-pointer hover:underline">
             <Upload className="h-4 w-4" />
-            {uploading ? "Uploading…" : "Attach File"}
-            <input ref={fileRef} type="file" className="hidden" onChange={handleFileUpload} multiple />
+            {uploading ? "Uploading…" : "Upload Files"}
+            <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFileUpload} disabled={uploading} />
           </label>
         </div>
       </div>
 
-      {/* ── Sticky bottom bar ── */}
-      <div className="sticky bottom-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-3">
-        <Button variant="outline" onClick={() => saveInvoice("draft")} disabled={loading}>
-          {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-          Save Draft
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => saveInvoice("paid")}
-          disabled={loading}
-          className="text-green-700 border-green-300 hover:bg-green-50"
-        >
+      {/* ── Bottom action bar ── */}
+      <div className="sticky bottom-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2">
+        <Button variant="outline" size="sm" onClick={() => saveInvoice("paid")} disabled={loading}>
           Mark Paid
         </Button>
-        <Button
-          style={{ backgroundColor: "#0077B6" }}
-          className="text-white"
-          onClick={() => saveInvoice("sent")}
-          disabled={loading}
-        >
+        <Button variant="outline" size="sm" onClick={() => saveInvoice("draft")} disabled={loading}>
+          Save Draft
+        </Button>
+        <Button size="sm" className="text-white" style={{ backgroundColor: "#0077B6" }} onClick={() => saveInvoice("sent")} disabled={loading}>
+          {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
           Send Invoice
         </Button>
       </div>
