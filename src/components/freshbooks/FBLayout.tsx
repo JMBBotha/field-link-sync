@@ -51,6 +51,7 @@ const FBLayout = () => {
       <aside className="w-60 shrink-0 bg-white border-r border-[hsl(0,0%,90%)] flex flex-col">
         {/* Company header */}
         <div className="p-4 border-b border-[hsl(0,0%,90%)]">
+          <img src="/src/assets/logo.png" alt="0800BeCool" className="h-10 mb-3 object-contain" />
           <div className="flex items-center gap-3">
             {company?.logo_url ? (
               <img src={company.logo_url} alt="" className="h-9 w-9 rounded-lg object-cover" />
