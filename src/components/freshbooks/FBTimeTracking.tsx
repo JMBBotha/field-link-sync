@@ -123,7 +123,7 @@ const FBTimeTracking = () => {
             Total: {totalHours.toFixed(1)} hours logged · Billable: {fmt(billableAmount)}
           </p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-700 text-white"><Plus className="h-4 w-4 mr-2" />Log Time</Button>
+        <Button onClick={() => setShowCreate(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground"><Plus className="h-4 w-4 mr-2" />Log Time</Button>
       </div>
 
       {/* Live Timer */}
@@ -145,7 +145,7 @@ const FBTimeTracking = () => {
           {timerRunning ? (
             <Button variant="destructive" size="sm" onClick={handleStopTimer}><Square className="h-4 w-4 mr-1" />Stop</Button>
           ) : (
-            <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => setTimerRunning(true)}><Play className="h-4 w-4 mr-1" />Start</Button>
+            <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground" onClick={() => setTimerRunning(true)}><Play className="h-4 w-4 mr-1" />Start</Button>
           )}
         </div>
       </div>
@@ -192,7 +192,7 @@ const FBTimeTracking = () => {
             <div><Label>Date</Label><Input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
             <div className="flex items-center gap-3"><Switch checked={form.billable} onCheckedChange={v => setForm(f => ({ ...f, billable: v }))} /><Label>Billable</Label></div>
             <div><Label>Notes</Label><Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
-            <Button onClick={handleManualSave} className="w-full bg-blue-600 hover:bg-blue-700 text-white">Log Time</Button>
+            <Button onClick={handleManualSave} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">Log Time</Button>
           </div>
         </DialogContent>
       </Dialog>

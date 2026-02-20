@@ -78,7 +78,7 @@ const FBPaymentsList = () => {
           <h2 className="text-2xl font-bold text-foreground">Payments</h2>
           <p className="text-sm text-muted-foreground">Total received: {fmt(totalReceived)}</p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-700 text-white"><Plus className="h-4 w-4 mr-2" />Record Payment</Button>
+        <Button onClick={() => setShowCreate(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground"><Plus className="h-4 w-4 mr-2" />Record Payment</Button>
       </div>
       <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
         <table className="w-full text-sm">
@@ -139,7 +139,7 @@ const FBPaymentsList = () => {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={() => createMutation.mutate()} disabled={!form.amount} className="w-full bg-blue-600 hover:bg-blue-700 text-white">Record Payment</Button>
+            <Button onClick={() => createMutation.mutate()} disabled={!form.amount} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">Record Payment</Button>
           </div>
         </DialogContent>
       </Dialog>

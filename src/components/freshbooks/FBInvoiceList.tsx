@@ -199,7 +199,7 @@ const FBInvoiceList = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-foreground">Invoices</h2>
-        <Button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
+        <Button onClick={() => setShowCreate(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
           <Plus className="h-4 w-4 mr-2" />New Invoice
         </Button>
       </div>
@@ -311,7 +311,7 @@ const FBInvoiceList = () => {
               <div><Label>Tax</Label><Input type="number" value={form.tax} onChange={e => setForm(f => ({ ...f, tax: e.target.value }))} /></div>
             </div>
             <div><Label>Due Date</Label><Input type="date" value={form.due_date} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} /></div>
-            <Button onClick={() => createMutation.mutate()} disabled={!form.invoice_number || !form.amount} className="w-full bg-blue-600 hover:bg-blue-700 text-white">Create Invoice</Button>
+            <Button onClick={() => createMutation.mutate()} disabled={!form.invoice_number || !form.amount} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">Create Invoice</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -336,7 +336,7 @@ const FBInvoiceList = () => {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={() => paymentMutation.mutate()} disabled={!paymentForm.amount} className="w-full bg-blue-600 hover:bg-blue-700 text-white">Record Payment</Button>
+            <Button onClick={() => paymentMutation.mutate()} disabled={!paymentForm.amount} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">Record Payment</Button>
           </div>
         </DialogContent>
       </Dialog>

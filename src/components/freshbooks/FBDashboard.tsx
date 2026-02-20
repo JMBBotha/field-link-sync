@@ -216,17 +216,17 @@ const FBDashboard = () => {
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-foreground">Dashboard</h2>
 
-      <div className="flex gap-3">
-        <Button onClick={() => navigate("../invoices")} className="bg-blue-600 hover:bg-blue-700 text-white">
+      <div className="flex gap-3 flex-wrap">
+        <Button onClick={() => navigate("../invoices")} className="bg-primary hover:bg-primary/90 text-primary-foreground">
           <Plus className="h-4 w-4 mr-2" />New Invoice
         </Button>
-        <Button onClick={() => navigate("../estimates")} className="bg-blue-600 hover:bg-blue-700 text-white">
+        <Button onClick={() => navigate("../estimates")} className="bg-amber-500 hover:bg-amber-600 text-amber-950">
           <Plus className="h-4 w-4 mr-2" />New Estimate
         </Button>
-        <Button onClick={() => navigate("../time-tracking")} className="bg-blue-600 hover:bg-blue-700 text-white">
+        <Button onClick={() => navigate("../time-tracking")} className="bg-primary hover:bg-primary/90 text-primary-foreground">
           <Clock className="h-4 w-4 mr-2" />Log Time
         </Button>
-        <Button variant="outline" onClick={loadDemoData} disabled={loadingDemo} className="border-blue-500 text-blue-600 hover:bg-blue-50">
+        <Button onClick={loadDemoData} disabled={loadingDemo} className="bg-slate-500 hover:bg-slate-600 text-white">
           <Database className="h-4 w-4 mr-2" />{loadingDemo ? "Loading..." : "Load Demo Data"}
         </Button>
       </div>

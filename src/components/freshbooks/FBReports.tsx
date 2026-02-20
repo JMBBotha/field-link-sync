@@ -145,8 +145,8 @@ const FBReports = () => {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2 flex-wrap">
           {(["month", "quarter", "year", "custom"] as Preset[]).map(p => (
-            <Button key={p} size="sm" variant={preset === p ? "default" : "outline"}
-              className={preset === p ? "bg-blue-600 hover:bg-blue-700 text-white" : ""}
+            <Button key={p} size="sm"
+              className={preset === p ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "bg-slate-500 hover:bg-slate-600 text-white"}
               onClick={() => setPreset(p)}>
               {p === "month" ? "This Month" : p === "quarter" ? "This Quarter" : p === "year" ? "This Year" : "Custom"}
             </Button>
@@ -159,8 +159,8 @@ const FBReports = () => {
           )}
         </div>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={exportCSV}><Download className="h-4 w-4 mr-1" />Export CSV</Button>
-          <Button size="sm" variant="outline" onClick={exportPDF}><FileText className="h-4 w-4 mr-1" />Export PDF</Button>
+          <Button size="sm" className="bg-slate-500 hover:bg-slate-600 text-white" onClick={exportCSV}><Download className="h-4 w-4 mr-1" />Export CSV</Button>
+          <Button size="sm" className="bg-slate-500 hover:bg-slate-600 text-white" onClick={exportPDF}><FileText className="h-4 w-4 mr-1" />Export PDF</Button>
         </div>
       </div>
 
