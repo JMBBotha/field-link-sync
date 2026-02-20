@@ -254,6 +254,7 @@ export type Database = {
           logo_url: string | null
           name: string
           phone: string | null
+          slug: string | null
         }
         Insert: {
           address?: Json | null
@@ -263,6 +264,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           phone?: string | null
+          slug?: string | null
         }
         Update: {
           address?: Json | null
@@ -272,6 +274,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           phone?: string | null
+          slug?: string | null
         }
         Relationships: []
       }

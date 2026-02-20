@@ -27,39 +27,58 @@ const CompanyContext = createContext<CompanyContextValue>({
 
 export const useCompany = () => useContext(CompanyContext);
 
+const isUUID = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+
 export const CompanyProvider = ({ children }: { children: ReactNode }) => {
-  const { companyId } = useParams<{ companyId: string }>();
+  const { companyId: paramId } = useParams<{ companyId: string }>();
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchCompany = async () => {
-    if (!companyId) { setLoading(false); return; }
+    if (!paramId) { setLoading(false); return; }
     setLoading(true);
-    console.log('Resolved companyId:', companyId);
+    console.log('Resolved companyId param:', paramId);
+
+    // Try lookup by UUID or slug
+    const col = isUUID(paramId) ? "id" : "slug";
     const { data } = await supabase
       .from("companies")
       .select("*")
-      .eq("id", companyId)
+      .eq(col, paramId)
       .maybeSingle();
+
     if (data) {
+      console.log('Company found:', data.id, data.name);
       setCompany(data);
     } else {
-      // Auto-create a test company with this ID
-      console.log('No company found, auto-creating test company for id:', companyId);
-      const { data: newCompany } = await supabase
+      // Auto-create a test company
+      console.log('No company found, auto-creating test company for:', paramId);
+      const insertPayload: any = { name: "Test Company" };
+      if (isUUID(paramId)) {
+        insertPayload.id = paramId;
+      } else {
+        insertPayload.slug = paramId;
+      }
+      const { data: newCompany, error } = await supabase
         .from("companies")
-        .insert({ id: companyId, name: "Test Company" })
+        .insert(insertPayload)
         .select()
         .single();
-      if (newCompany) setCompany(newCompany);
+      if (error) console.error('Auto-create company error:', error);
+      if (newCompany) {
+        console.log('Auto-created company:', newCompany.id);
+        setCompany(newCompany);
+      }
     }
     setLoading(false);
   };
 
-  useEffect(() => { fetchCompany(); }, [companyId]);
+  useEffect(() => { fetchCompany(); }, [paramId]);
+
+  const resolvedId = company?.id || (paramId && isUUID(paramId) ? paramId : null);
 
   return (
-    <CompanyContext.Provider value={{ company, companyId: companyId || null, loading, refetch: fetchCompany }}>
+    <CompanyContext.Provider value={{ company, companyId: resolvedId, loading, refetch: fetchCompany }}>
       {children}
     </CompanyContext.Provider>
   );
