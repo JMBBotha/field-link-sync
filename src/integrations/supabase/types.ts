@@ -245,6 +245,75 @@ export type Database = {
           },
         ]
       }
+      companies: {
+        Row: {
+          address: Json | null
+          created_at: string
+          email: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          phone: string | null
+        }
+        Insert: {
+          address?: Json | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          phone?: string | null
+        }
+        Update: {
+          address?: Json | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          phone?: string | null
+        }
+        Relationships: []
+      }
+      company_members: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_members_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_settings: {
         Row: {
           banking_details: Json | null
@@ -583,6 +652,353 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fb_contacts: {
+        Row: {
+          address: Json | null
+          company_id: string
+          company_name: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+        }
+        Insert: {
+          address?: Json | null
+          company_id: string
+          company_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+        }
+        Update: {
+          address?: Json | null
+          company_id?: string
+          company_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_contacts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fb_estimates: {
+        Row: {
+          amount: number
+          company_id: string
+          contact_id: string | null
+          created_at: string
+          due_date: string | null
+          estimate_number: string
+          id: string
+          items: Json
+          notes: string | null
+          status: string
+          tax: number
+        }
+        Insert: {
+          amount?: number
+          company_id: string
+          contact_id?: string | null
+          created_at?: string
+          due_date?: string | null
+          estimate_number: string
+          id?: string
+          items?: Json
+          notes?: string | null
+          status?: string
+          tax?: number
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          contact_id?: string | null
+          created_at?: string
+          due_date?: string | null
+          estimate_number?: string
+          id?: string
+          items?: Json
+          notes?: string | null
+          status?: string
+          tax?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_estimates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fb_estimates_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "fb_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fb_expenses: {
+        Row: {
+          amount: number
+          category: string
+          company_id: string
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+          receipt_url: string | null
+          vendor: string | null
+        }
+        Insert: {
+          amount?: number
+          category?: string
+          company_id: string
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          receipt_url?: string | null
+          vendor?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: string
+          company_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          receipt_url?: string | null
+          vendor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_expenses_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fb_invoices: {
+        Row: {
+          amount: number
+          company_id: string
+          contact_id: string | null
+          created_at: string
+          due_date: string | null
+          id: string
+          invoice_number: string
+          items: Json
+          notes: string | null
+          status: string
+          tax: number
+        }
+        Insert: {
+          amount?: number
+          company_id: string
+          contact_id?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          invoice_number: string
+          items?: Json
+          notes?: string | null
+          status?: string
+          tax?: number
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          contact_id?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          invoice_number?: string
+          items?: Json
+          notes?: string | null
+          status?: string
+          tax?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_invoices_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fb_invoices_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "fb_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fb_payments: {
+        Row: {
+          amount: number
+          company_id: string
+          created_at: string
+          date: string
+          id: string
+          invoice_id: string | null
+          method: string
+        }
+        Insert: {
+          amount?: number
+          company_id: string
+          created_at?: string
+          date?: string
+          id?: string
+          invoice_id?: string | null
+          method?: string
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          invoice_id?: string | null
+          method?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_payments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fb_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "fb_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fb_projects: {
+        Row: {
+          budget: number | null
+          client_id: string | null
+          company_id: string
+          created_at: string
+          id: string
+          name: string
+          status: string
+        }
+        Insert: {
+          budget?: number | null
+          client_id?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          name: string
+          status?: string
+        }
+        Update: {
+          budget?: number | null
+          client_id?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "fb_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fb_projects_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fb_time_entries: {
+        Row: {
+          billable: boolean
+          company_id: string
+          created_at: string
+          date: string
+          duration: unknown
+          id: string
+          notes: string | null
+          project_id: string | null
+          user_id: string
+        }
+        Insert: {
+          billable?: boolean
+          company_id: string
+          created_at?: string
+          date?: string
+          duration?: unknown
+          id?: string
+          notes?: string | null
+          project_id?: string | null
+          user_id: string
+        }
+        Update: {
+          billable?: boolean
+          company_id?: string
+          created_at?: string
+          date?: string
+          duration?: unknown
+          id?: string
+          notes?: string | null
+          project_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_time_entries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fb_time_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "fb_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fb_time_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1902,6 +2318,7 @@ export type Database = {
         Row: {
           availability_status: string | null
           avatar_url: string | null
+          company_id: string | null
           created_at: string | null
           full_name: string
           home_base_lat: number | null
@@ -1921,6 +2338,7 @@ export type Database = {
         Insert: {
           availability_status?: string | null
           avatar_url?: string | null
+          company_id?: string | null
           created_at?: string | null
           full_name: string
           home_base_lat?: number | null
@@ -1940,6 +2358,7 @@ export type Database = {
         Update: {
           availability_status?: string | null
           avatar_url?: string | null
+          company_id?: string | null
           created_at?: string | null
           full_name?: string
           home_base_lat?: number | null
@@ -1956,7 +2375,15 @@ export type Database = {
           trial_ends_at?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       proposal_items: {
         Row: {
@@ -3265,6 +3692,7 @@ export type Database = {
       }
       get_overdue_maintenance_count: { Args: never; Returns: number }
       get_quote_by_public_token: { Args: { p_token: string }; Returns: string }
+      get_user_company_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3275,6 +3703,14 @@ export type Database = {
       increment_product_usage: {
         Args: { p_product_id: string }
         Returns: undefined
+      }
+      is_company_admin: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_company_member: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
       }
       job_profit_loss: {
         Args: { p_lead_id: string }

@@ -41,6 +41,20 @@ import AdminBillingPage from "./pages/admin/AdminBillingPage";
 import AdminInvoiceTemplatesPage from "./pages/admin/AdminInvoiceTemplatesPage";
 import AdminSuppliersPage from "./pages/admin/AdminSuppliersPage";
 
+// FreshBooks multi-tenant
+import { CompanyProvider } from "./providers/CompanyProvider";
+import FBLayout from "./components/freshbooks/FBLayout";
+import FBDashboard from "./components/freshbooks/FBDashboard";
+import FBInvoiceList from "./components/freshbooks/FBInvoiceList";
+import FBEstimatesList from "./components/freshbooks/FBEstimatesList";
+import FBExpensesList from "./components/freshbooks/FBExpensesList";
+import FBTimeTracking from "./components/freshbooks/FBTimeTracking";
+import FBContactsList from "./components/freshbooks/FBContactsList";
+import FBReports from "./components/freshbooks/FBReports";
+import FBPaymentsList from "./components/freshbooks/FBPaymentsList";
+import FBProjectsList from "./components/freshbooks/FBProjectsList";
+import CompanyManagement from "./components/freshbooks/CompanyManagement";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -97,10 +111,24 @@ const App = () => (
                 <Route path="team" element={<AdminTeamPage />} />
                 <Route path="billing" element={<AdminBillingPage />} />
                 <Route path="suppliers" element={<AdminSuppliersPage />} />
+                <Route path="companies" element={<CompanyManagement />} />
               </Route>
 
               {/* Full-page Quote Builder (outside AdminLayout for full-bleed) */}
               <Route path="/admin/quote-builder" element={<AdminQuoteBuilderPage />} />
+
+              {/* FreshBooks multi-tenant client dashboards */}
+              <Route path="/client/:companyId" element={<CompanyProvider><FBLayout /></CompanyProvider>}>
+                <Route path="dashboard" element={<FBDashboard />} />
+                <Route path="invoices" element={<FBInvoiceList />} />
+                <Route path="estimates" element={<FBEstimatesList />} />
+                <Route path="expenses" element={<FBExpensesList />} />
+                <Route path="time-tracking" element={<FBTimeTracking />} />
+                <Route path="clients" element={<FBContactsList />} />
+                <Route path="reports" element={<FBReports />} />
+                <Route path="payments" element={<FBPaymentsList />} />
+                <Route path="projects" element={<FBProjectsList />} />
+              </Route>
 
               {/* Redirects from old standalone routes */}
               <Route path="/invoices" element={<Navigate to="/admin/invoices" replace />} />
