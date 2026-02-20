@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useNavigate } from "react-router-dom";
 import { Plus, Search, Send, CheckCircle, MoreHorizontal, FileDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -27,6 +28,7 @@ const statusColors: Record<string, string> = {
 
 const FBInvoiceList = () => {
   const { companyId } = useCompany();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
@@ -146,6 +148,33 @@ const FBInvoiceList = () => {
     },
   });
 
+  const bulkMarkPaidMutation = useMutation({
+    mutationFn: async () => {
+      const ids = Array.from(selectedIds);
+      const { error } = await supabase.from("fb_invoices").update({ status: "paid" }).in("id", ids);
+      if (error) throw error;
+      // Insert payment records for each
+      const paidInvoices = invoices.filter((i: any) => ids.includes(i.id));
+      for (const inv of paidInvoices) {
+        const alreadyPaid = getPaymentTotal(inv.id);
+        const remaining = Number(inv.amount) - alreadyPaid;
+        if (remaining > 0) {
+          await supabase.from("fb_payments").insert({
+            company_id: companyId!, invoice_id: inv.id,
+            amount: remaining, method: "bulk_payment", date: new Date().toISOString().split("T")[0],
+          });
+        }
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fb-invoices"] });
+      qc.invalidateQueries({ queryKey: ["fb-payments"] });
+      qc.invalidateQueries({ queryKey: ["fb-payments-all"] });
+      setSelectedIds(new Set());
+      toast({ title: `${selectedIds.size} invoices marked as paid` });
+    },
+  });
+
   const filtered = invoices.filter((inv: any) => {
     const matchesSearch = inv.invoice_number?.toLowerCase().includes(search.toLowerCase()) ||
       inv.fb_contacts?.name?.toLowerCase().includes(search.toLowerCase());
@@ -199,6 +228,9 @@ const FBInvoiceList = () => {
             <Button size="sm" variant="outline" onClick={() => toast({ title: "PDF export coming soon" })}>
               <FileDown className="h-4 w-4 mr-1" />Export PDF
             </Button>
+            <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => bulkMarkPaidMutation.mutate()}>
+              <CheckCircle className="h-4 w-4 mr-1" />Mark Paid ({selectedIds.size})
+            </Button>
           </div>
         )}
       </div>
@@ -226,15 +258,15 @@ const FBInvoiceList = () => {
               const paid = getPaymentTotal(inv.id);
               const remaining = Number(inv.amount) - paid;
               return (
-                <tr key={inv.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3"><Checkbox checked={selectedIds.has(inv.id)} onCheckedChange={() => toggleSelect(inv.id)} /></td>
+                <tr key={inv.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => navigate(`../invoices/${inv.id}`)}>
+                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}><Checkbox checked={selectedIds.has(inv.id)} onCheckedChange={() => toggleSelect(inv.id)} /></td>
                   <td className="px-4 py-3 font-medium text-amber-600">{inv.invoice_number}</td>
                   <td className="px-4 py-3 text-foreground">{inv.fb_contacts?.name || "—"}</td>
                   <td className="px-4 py-3 text-right font-medium text-foreground">{fmt(Number(inv.amount))}</td>
                   <td className="px-4 py-3 text-right text-green-600">{paid > 0 ? fmt(paid) : "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{inv.due_date || "—"}</td>
                   <td className="px-4 py-3"><Badge variant="secondary" className={statusColors[inv.status] || ""}>{inv.status}</Badge></td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild><Button variant="ghost" size="sm"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
