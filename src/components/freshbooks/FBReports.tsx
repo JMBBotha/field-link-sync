@@ -74,11 +74,11 @@ const FBReports = () => {
   filteredExpenses.forEach((e: any) => categoryMap.set(e.category, (categoryMap.get(e.category) || 0) + Number(e.amount)));
   const expenseData = Array.from(categoryMap.entries()).map(([name, value]) => ({ name, value }));
 
-  // Revenue vs Expenses monthly
+  // Revenue vs Expenses monthly – revenue from payments, expenses from expenses
   const monthlyComparison = Array.from({ length: 6 }, (_, i) => {
     const d = new Date(); d.setMonth(d.getMonth() - (5 - i));
     const m = d.getMonth(), y = d.getFullYear();
-    const rev = invoices.filter((inv: any) => { const id = new Date(inv.created_at); return id.getMonth() === m && id.getFullYear() === y && inv.status === "paid"; }).reduce((s: number, inv: any) => s + Number(inv.amount), 0);
+    const rev = payments.filter((p: any) => { const pd = new Date(p.date); return pd.getMonth() === m && pd.getFullYear() === y; }).reduce((s: number, p: any) => s + Number(p.amount), 0);
     const exp = expenses.filter((e: any) => { const ed = new Date(e.date); return ed.getMonth() === m && ed.getFullYear() === y; }).reduce((s: number, e: any) => s + Number(e.amount), 0);
     return { month: d.toLocaleString("default", { month: "short" }), revenue: rev, expenses: exp };
   });

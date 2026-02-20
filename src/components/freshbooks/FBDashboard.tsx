@@ -189,15 +189,16 @@ const FBDashboard = () => {
     .sort((a, b) => (a.due_date! > b.due_date! ? 1 : -1))
     .slice(0, 5);
 
+  const allPayments = stats?.payments || [];
   const monthlyData = Array.from({ length: 6 }, (_, i) => {
     const d = new Date();
     d.setMonth(d.getMonth() - (5 - i));
     const month = d.toLocaleString("default", { month: "short" });
-    const monthInvs = invoices.filter(inv => {
-      const invDate = new Date(inv.created_at);
-      return invDate.getMonth() === d.getMonth() && invDate.getFullYear() === d.getFullYear() && inv.status === "paid";
+    const monthRev = allPayments.filter((p: any) => {
+      const pd = new Date(p.date);
+      return pd.getMonth() === d.getMonth() && pd.getFullYear() === d.getFullYear();
     });
-    return { month, revenue: monthInvs.reduce((s, inv) => s + Number(inv.amount), 0) };
+    return { month, revenue: monthRev.reduce((s: number, p: any) => s + Number(p.amount), 0) };
   });
 
   // Recent activity feed: union of invoices, payments, estimates
