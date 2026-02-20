@@ -1,7 +1,7 @@
 import { useCompany } from "@/providers/CompanyProvider";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { DollarSign, FileText, AlertTriangle, TrendingUp, CreditCard, Plus, Clock, CalendarClock, Database } from "lucide-react";
+import { DollarSign, FileText, AlertTriangle, TrendingUp, CreditCard, Plus, Clock, CalendarClock, Database, Receipt, Users } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,18 @@ import { toast } from "sonner";
 import { useState } from "react";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
+
+const BeCoolLogo = () => (
+  <div className="flex items-center gap-2 mb-4">
+    <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+      <span className="text-primary-foreground text-lg">❄</span>
+    </div>
+    <div>
+      <span className="text-xl font-bold text-primary">0800</span>
+      <span className="text-xl font-bold text-amber-500">BeCool</span>
+    </div>
+  </div>
+);
 
 const StatCard = ({ title, value, icon: Icon, color }: { title: string; value: string; icon: any; color: string }) => (
   <div className="bg-card rounded-lg shadow-sm border border-border p-6 border-l-4 border-l-amber-400">
@@ -187,6 +199,18 @@ const FBDashboard = () => {
     return { month, revenue: monthInvs.reduce((s, inv) => s + Number(inv.amount), 0) };
   });
 
+  // Recent activity feed: union of invoices, payments, estimates
+  const recentActivity = [
+    ...invoices.slice(0, 5).map((i: any) => ({ type: "invoice" as const, label: `Invoice ${i.invoice_number}`, detail: `${fmt(Number(i.amount))} — ${i.status}`, date: i.created_at })),
+    ...payments.map((p: any) => ({ type: "payment" as const, label: `Payment received`, detail: `${fmt(Number(p.amount))} via ${p.method?.replace("_", " ")}`, date: p.date })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
+
+  const activityIcon = (type: string) => {
+    if (type === "invoice") return <FileText className="h-4 w-4 text-amber-500" />;
+    if (type === "payment") return <CreditCard className="h-4 w-4 text-green-500" />;
+    return <Receipt className="h-4 w-4 text-muted-foreground" />;
+  };
+
   const isWithin7Days = (dateStr: string) => {
     const diff = (new Date(dateStr).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24);
     return diff >= 0 && diff <= 7;
@@ -194,6 +218,7 @@ const FBDashboard = () => {
 
   return (
     <div className="space-y-6">
+      <BeCoolLogo />
       <h2 className="text-2xl font-bold text-foreground">Dashboard</h2>
 
       <div className="flex gap-3">
@@ -298,6 +323,31 @@ const FBDashboard = () => {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Recent Activity Feed */}
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+          <Clock className="h-5 w-5 text-amber-500" /> Recent Activity
+        </h3>
+        {recentActivity.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No recent activity — load demo data to get started</p>
+        ) : (
+          <div className="space-y-3">
+            {recentActivity.map((item, idx) => (
+              <div key={idx} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
+                <div className="mt-0.5">{activityIcon(item.type)}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">{item.label}</p>
+                  <p className="text-xs text-muted-foreground">{item.detail}</p>
+                </div>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  {new Date(item.date).toLocaleDateString("en-ZA")}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
