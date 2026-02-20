@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { Plus, X, Loader2, Search, ChevronDown, ChevronUp, Paperclip, Upload, FileDown, Send } from "lucide-react";
+import { Plus, X, Loader2, Search, ChevronDown, ChevronUp, Paperclip, Upload, FileDown, Send, ArrowRightLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,6 +44,7 @@ interface ProposalBuilderProps {
   proposalId?: string;
   onBack: () => void;
   onSuccess?: () => void;
+  onConvertedToInvoice?: (invoiceId: string) => void;
   prefillFromQuote?: {
     id: string;
     customer_id?: string | null;
@@ -79,6 +80,7 @@ const ProposalBuilder = ({
   proposalId,
   onBack,
   onSuccess,
+  onConvertedToInvoice,
   prefillFromQuote,
 }: ProposalBuilderProps) => {
   const { toast } = useToast();
@@ -455,6 +457,104 @@ const ProposalBuilder = ({
     }
   };
 
+  /* ─── Convert to Invoice ─── */
+  const convertToInvoice = async () => {
+    // Save first if not saved
+    if (!existingId) {
+      await saveProposal("approved");
+    } else {
+      // Update status to accepted
+      await supabase.from("proposals" as any).update({ status: "accepted" }).eq("id", existingId);
+    }
+
+    const proposalSavedId = existingId;
+    if (!proposalSavedId) {
+      toast({ title: "Error", description: "Please save the estimate first", variant: "destructive" });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Generate invoice number
+      const { data: invNum, error: rpcErr } = await supabase.rpc("generate_invoice_number");
+      if (rpcErr) throw rpcErr;
+
+      // Get agent id
+      const { data: auth } = await supabase.auth.getUser();
+      const agentId = auth.user?.id || "00000000-0000-0000-0000-000000000001";
+
+      // Create a lead for the invoice
+      const { data: newLead, error: leadErr } = await supabase
+        .from("leads")
+        .insert({
+          customer_name: customerName,
+          customer_phone: customerPhone || "N/A",
+          customer_address: customerAddress || "N/A",
+          service_type: lineItems[0]?.description || "Estimate Conversion",
+          status: "completed",
+          assigned_agent_id: agentId,
+          latitude: 0,
+          longitude: 0,
+          completed_at: new Date().toISOString(),
+          customer_id: selectedCustomerId,
+        })
+        .select("id")
+        .single();
+      if (leadErr) throw leadErr;
+
+      // Create invoice
+      const validItems = lineItems.filter((i) => i.description && i.amount > 0);
+      const { data: newInvoice, error: invErr } = await supabase
+        .from("invoices")
+        .insert({
+          invoice_number: invNum as string,
+          lead_id: newLead.id,
+          agent_id: agentId,
+          customer_name: customerName,
+          customer_phone: customerPhone || null,
+          customer_address: customerAddress || null,
+          customer_email: customerEmail || null,
+          customer_id: selectedCustomerId || null,
+          line_items: validItems,
+          subtotal,
+          tax_rate: taxRate,
+          tax_amount: taxAmount,
+          grand_total: grandTotal,
+          notes: notes || null,
+          status: "draft",
+          due_date: dueDate || null,
+          issue_date: issueDate,
+        } as any)
+        .select("id")
+        .single();
+      if (invErr) throw invErr;
+
+      // Copy line items to invoice_items
+      if (newInvoice && validItems.length > 0) {
+        await supabase.from("invoice_items").insert(
+          validItems.map((i) => ({
+            invoice_id: newInvoice.id,
+            service_id: i.service_id || null,
+            description: i.description,
+            quantity: i.quantity,
+            unit_price: i.rate,
+            amount: i.amount,
+          })) as any
+        );
+      }
+
+      clearDraft();
+      toast({ title: "Converted to Invoice! 🎉", description: `Invoice ${invNum} created as Draft` });
+      onConvertedToInvoice?.(newInvoice!.id);
+      if (!onConvertedToInvoice) onSuccess?.();
+    } catch (err: any) {
+      console.error("Convert to invoice error:", err);
+      toast({ title: "Error", description: err.message || "Failed to convert", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredCustomers = customers.filter(
     (c) =>
       c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
@@ -483,7 +583,7 @@ const ProposalBuilder = ({
 
       {/* ── Top bar ── */}
       <div className="sticky top-0 z-40 bg-background border-b px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-bold text-foreground">{isEditing ? "Edit Proposal" : "New Proposal"}</h1>
+        <h1 className="text-lg font-bold text-foreground">{isEditing ? "Edit Estimate" : "New Estimate"}</h1>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={exitGuard.requestExit}>
             Cancel
@@ -491,6 +591,12 @@ const ProposalBuilder = ({
           <Button variant="outline" size="sm" onClick={() => saveProposal("draft")} disabled={loading}>
             Save Draft
           </Button>
+          {isEditing && (
+            <Button variant="outline" size="sm" onClick={convertToInvoice} disabled={loading} className="border-amber-500 text-amber-700 hover:bg-amber-50">
+              <ArrowRightLeft className="h-3.5 w-3.5 mr-1.5" />
+              Convert to Invoice
+            </Button>
+          )}
           <Button size="sm" className="text-white" style={{ backgroundColor: "#0077B6" }} onClick={() => saveProposal("sent")} disabled={loading}>
             {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
             Send To…
