@@ -40,7 +40,11 @@ const FBInvoiceList = () => {
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ["fb-invoices", companyId],
     queryFn: async () => {
+      console.log(`FBInvoiceList: Fetching for companyId: ${companyId}`);
+      const { data: allData } = await supabase.from("fb_invoices").select("*");
+      console.log("FBInvoiceList: All invoices in table:", allData);
       const { data } = await supabase.from("fb_invoices").select("*, fb_contacts(name)").eq("company_id", companyId!).order("created_at", { ascending: false });
+      console.log("FBInvoiceList: Filtered invoices:", data);
       return data || [];
     },
     enabled: !!companyId,

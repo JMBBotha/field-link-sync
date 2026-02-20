@@ -30,7 +30,11 @@ const FBExpensesList = () => {
   const { data: expenses = [], isLoading } = useQuery({
     queryKey: ["fb-expenses", companyId],
     queryFn: async () => {
+      console.log(`FBExpensesList: Fetching for companyId: ${companyId}`);
+      const { data: allData } = await supabase.from("fb_expenses").select("*");
+      console.log("FBExpensesList: All expenses in table:", allData);
       const { data } = await supabase.from("fb_expenses").select("*").eq("company_id", companyId!).order("date", { ascending: false });
+      console.log("FBExpensesList: Filtered expenses:", data);
       return data || [];
     },
     enabled: !!companyId,
