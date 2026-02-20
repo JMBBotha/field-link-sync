@@ -59,7 +59,7 @@ const FBDashboard = () => {
         { company_id: companyId, invoice_number: "INV-DEMO-001", amount: 1200, tax: 180, status: "draft", due_date: d(14), contact_id: contactIds[0] || null, items: [{ description: "AC Unit Service", qty: 1, rate: 1200 }] },
         { company_id: companyId, invoice_number: "INV-DEMO-002", amount: 3500, tax: 525, status: "sent", due_date: d(7), contact_id: contactIds[1] || null, items: [{ description: "Split Unit Installation", qty: 1, rate: 3500 }] },
         { company_id: companyId, invoice_number: "INV-DEMO-003", amount: 2200, tax: 330, status: "viewed", due_date: d(-3), contact_id: contactIds[2] || null, items: [{ description: "Duct Cleaning", qty: 2, rate: 1100 }] },
-        { company_id: companyId, invoice_number: "INV-DEMO-004", amount: 4800, tax: 720, status: "partial", due_date: d(-10), contact_id: contactIds[0] || null, items: [{ description: "Central AC Repair", qty: 1, rate: 4800 }] },
+        { company_id: companyId, invoice_number: "INV-DEMO-004", amount: 4800, tax: 720, status: "overdue", due_date: d(-10), contact_id: contactIds[0] || null, items: [{ description: "Central AC Repair", qty: 1, rate: 4800 }] },
         { company_id: companyId, invoice_number: "INV-DEMO-005", amount: 1500, tax: 225, status: "paid", due_date: d(-20), contact_id: contactIds[1] || null, items: [{ description: "Refrigerant Refill", qty: 3, rate: 500 }] },
       ]).select();
       if (invErr) console.error("Invoice insert error:", invErr);
@@ -85,7 +85,7 @@ const FBDashboard = () => {
       // 2 projects
       const { data: projects, error: projErr } = await supabase.from("fb_projects").insert([
         { company_id: companyId, name: "Office Block AC Install", status: "active", budget: 45000, client_id: contactIds[0] || null },
-        { company_id: companyId, name: "Warehouse Ventilation", status: "on_hold", budget: 28000, client_id: contactIds[2] || null },
+        { company_id: companyId, name: "Warehouse Ventilation", status: "archived", budget: 28000, client_id: contactIds[2] || null },
       ]).select();
       if (projErr) console.error("Project insert error:", projErr);
 
