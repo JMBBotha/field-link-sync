@@ -14,7 +14,7 @@ const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", c
 // BeCoolLogo is rendered in FBLayout sidebar
 
 const StatCard = ({ title, value, icon: Icon, color }: { title: string; value: string; icon: any; color: string }) => (
-  <div className="bg-card rounded-lg shadow-sm border border-border p-6 border-l-4 border-l-amber-400">
+  <div className="bg-card rounded-lg shadow-sm border border-border p-6 border-l-4 border-l-blue-500">
     <div className="flex items-center justify-between">
       <div>
         <p className="text-sm font-medium text-muted-foreground">{title}</p>
@@ -202,7 +202,7 @@ const FBDashboard = () => {
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
 
   const activityIcon = (type: string) => {
-    if (type === "invoice") return <FileText className="h-4 w-4 text-amber-500" />;
+    if (type === "invoice") return <FileText className="h-4 w-4 text-blue-500" />;
     if (type === "payment") return <CreditCard className="h-4 w-4 text-green-500" />;
     return <Receipt className="h-4 w-4 text-muted-foreground" />;
   };
@@ -217,25 +217,25 @@ const FBDashboard = () => {
       <h2 className="text-2xl font-bold text-foreground">Dashboard</h2>
 
       <div className="flex gap-3">
-        <Button onClick={() => navigate("../invoices")} className="bg-amber-500 hover:bg-amber-600 text-white">
+        <Button onClick={() => navigate("../invoices")} className="bg-blue-600 hover:bg-blue-700 text-white">
           <Plus className="h-4 w-4 mr-2" />New Invoice
         </Button>
-        <Button onClick={() => navigate("../estimates")} className="bg-amber-500 hover:bg-amber-600 text-white">
+        <Button onClick={() => navigate("../estimates")} className="bg-blue-600 hover:bg-blue-700 text-white">
           <Plus className="h-4 w-4 mr-2" />New Estimate
         </Button>
-        <Button onClick={() => navigate("../time-tracking")} className="bg-amber-500 hover:bg-amber-600 text-white">
+        <Button onClick={() => navigate("../time-tracking")} className="bg-blue-600 hover:bg-blue-700 text-white">
           <Clock className="h-4 w-4 mr-2" />Log Time
         </Button>
-        <Button variant="outline" onClick={loadDemoData} disabled={loadingDemo} className="border-amber-500 text-amber-600 hover:bg-amber-50">
+        <Button variant="outline" onClick={loadDemoData} disabled={loadingDemo} className="border-blue-500 text-blue-600 hover:bg-blue-50">
           <Database className="h-4 w-4 mr-2" />{loadingDemo ? "Loading..." : "Load Demo Data"}
         </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Outstanding" value={fmt(outstanding)} icon={FileText} color="bg-amber-100 text-amber-600" />
-        <StatCard title="Revenue" value={fmt(revenue)} icon={TrendingUp} color="bg-amber-100 text-amber-600" />
+        <StatCard title="Outstanding" value={fmt(outstanding)} icon={FileText} color="bg-blue-100 text-blue-600" />
+        <StatCard title="Revenue" value={fmt(revenue)} icon={TrendingUp} color="bg-blue-100 text-blue-600" />
         <StatCard title="Overdue" value={String(overdueInvoices.length)} icon={AlertTriangle} color="bg-red-100 text-red-600" />
-        <StatCard title="Expenses" value={fmt(totalExpenses)} icon={DollarSign} color="bg-amber-100 text-amber-600" />
+        <StatCard title="Expenses" value={fmt(totalExpenses)} icon={DollarSign} color="bg-blue-100 text-blue-600" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -247,7 +247,7 @@ const FBDashboard = () => {
               <XAxis dataKey="month" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
               <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
               <Tooltip formatter={(v: number) => fmt(v)} />
-              <Bar dataKey="revenue" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="revenue" fill="#2563EB" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -277,7 +277,7 @@ const FBDashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-card rounded-lg shadow-sm border border-border p-6">
           <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-            <CreditCard className="h-5 w-5 text-amber-500" /> Recent Payments
+            <CreditCard className="h-5 w-5 text-blue-500" /> Recent Payments
           </h3>
           {payments.length === 0 ? (
             <p className="text-sm text-muted-foreground">No recent payments</p>
@@ -298,17 +298,17 @@ const FBDashboard = () => {
 
         <div className="bg-card rounded-lg shadow-sm border border-border p-6">
           <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-            <CalendarClock className="h-5 w-5 text-amber-500" /> Upcoming Due Dates
+            <CalendarClock className="h-5 w-5 text-blue-500" /> Upcoming Due Dates
           </h3>
           {upcomingDue.length === 0 ? (
             <p className="text-sm text-muted-foreground">No upcoming invoices</p>
           ) : (
             <div className="space-y-2">
               {upcomingDue.map((inv: any) => (
-                <div key={inv.id} className={`flex items-center justify-between p-3 rounded-lg border ${isWithin7Days(inv.due_date) ? "bg-amber-50 border-amber-200" : "bg-muted/50 border-transparent"}`}>
+                <div key={inv.id} className={`flex items-center justify-between p-3 rounded-lg border ${isWithin7Days(inv.due_date) ? "bg-blue-50 border-blue-200" : "bg-muted/50 border-transparent"}`}>
                   <div>
                     <p className="text-sm font-medium text-foreground">{inv.invoice_number}</p>
-                    <p className={`text-xs ${isWithin7Days(inv.due_date) ? "text-amber-600 font-medium" : "text-muted-foreground"}`}>
+                    <p className={`text-xs ${isWithin7Days(inv.due_date) ? "text-blue-600 font-medium" : "text-muted-foreground"}`}>
                       Due: {inv.due_date} {isWithin7Days(inv.due_date) && "⚠️"}
                     </p>
                   </div>
@@ -323,7 +323,7 @@ const FBDashboard = () => {
       {/* Recent Activity Feed */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-6">
         <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-          <Clock className="h-5 w-5 text-amber-500" /> Recent Activity
+          <Clock className="h-5 w-5 text-blue-500" /> Recent Activity
         </h3>
         {recentActivity.length === 0 ? (
           <p className="text-sm text-muted-foreground">No recent activity — load demo data to get started</p>

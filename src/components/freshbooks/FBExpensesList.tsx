@@ -86,7 +86,7 @@ const FBExpensesList = () => {
           <h2 className="text-2xl font-bold text-foreground">Expenses</h2>
           <p className="text-sm text-muted-foreground">Total: {fmt(total)}</p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="bg-amber-500 hover:bg-amber-600 text-white"><Plus className="h-4 w-4 mr-2" />New Expense</Button>
+        <Button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-700 text-white"><Plus className="h-4 w-4 mr-2" />New Expense</Button>
       </div>
 
       {/* Category filter pills */}
@@ -96,7 +96,7 @@ const FBExpensesList = () => {
             key={cat}
             onClick={() => setCategoryFilter(cat)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-              categoryFilter === cat ? "bg-amber-500 text-white" : "bg-muted text-muted-foreground hover:bg-amber-50"
+              categoryFilter === cat ? "bg-blue-600 text-white" : "bg-muted text-muted-foreground hover:bg-blue-50"
             }`}
           >
             {cat}
@@ -108,7 +108,7 @@ const FBExpensesList = () => {
       {categoryTotals.size > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
           {Array.from(categoryTotals.entries()).map(([cat, amt]) => (
-            <div key={cat} className="bg-card rounded-lg border border-border p-3 border-l-4 border-l-amber-400">
+            <div key={cat} className="bg-card rounded-lg border border-border p-3 border-l-4 border-l-blue-500">
               <p className="text-xs text-muted-foreground">{cat}</p>
               <p className="text-sm font-bold text-foreground">{fmt(amt)}</p>
             </div>
@@ -141,7 +141,7 @@ const FBExpensesList = () => {
                 <td className="px-4 py-3 text-right font-medium">{fmt(Number(e.amount))}</td>
                 <td className="px-4 py-3">
                   {e.receipt_url ? (
-                    <a href={e.receipt_url} target="_blank" rel="noopener noreferrer" className="text-amber-600 hover:underline inline-flex items-center gap-1">
+                    <a href={e.receipt_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1">
                       <ExternalLink className="h-3.5 w-3.5" />View
                     </a>
                   ) : "—"}
@@ -171,7 +171,7 @@ const FBExpensesList = () => {
             <div>
               <Label>Receipt</Label>
               <div
-                className={`mt-1 border-2 border-dashed rounded-lg p-4 transition-colors cursor-pointer ${dragging ? "border-amber-500 bg-amber-50" : "border-border hover:bg-muted/50"}`}
+                className={`mt-1 border-2 border-dashed rounded-lg p-4 transition-colors cursor-pointer ${dragging ? "border-blue-500 bg-blue-50" : "border-border hover:bg-muted/50"}`}
                 onDragOver={e => { e.preventDefault(); setDragging(true); }}
                 onDragLeave={() => setDragging(false)}
                 onDrop={handleDrop}
@@ -183,7 +183,7 @@ const FBExpensesList = () => {
                 </label>
               </div>
             </div>
-            <Button onClick={() => createMutation.mutate()} disabled={!form.amount || uploading} className="w-full bg-amber-500 hover:bg-amber-600 text-white">
+            <Button onClick={() => createMutation.mutate()} disabled={!form.amount || uploading} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
               {uploading ? "Uploading..." : "Save Expense"}
             </Button>
           </div>

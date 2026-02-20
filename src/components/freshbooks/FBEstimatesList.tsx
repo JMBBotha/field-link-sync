@@ -83,7 +83,7 @@ const FBEstimatesList = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-foreground">Estimates</h2>
-        <Button onClick={() => setShowCreate(true)} className="bg-amber-500 hover:bg-amber-600 text-white"><Plus className="h-4 w-4 mr-2" />New Estimate</Button>
+        <Button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-700 text-white"><Plus className="h-4 w-4 mr-2" />New Estimate</Button>
       </div>
       <div className="flex items-center gap-3">
         <div className="relative max-w-sm flex-1">
@@ -115,7 +115,7 @@ const FBEstimatesList = () => {
             : filtered.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No estimates</td></tr>
             : filtered.map((e: any) => (
               <tr key={e.id} className="border-b border-border/50 hover:bg-muted/30">
-                <td className="px-4 py-3 font-medium text-amber-600">{e.estimate_number}</td>
+                <td className="px-4 py-3 font-medium text-blue-600">{e.estimate_number}</td>
                 <td className="px-4 py-3">{e.fb_contacts?.name || "—"}</td>
                 <td className="px-4 py-3 text-right font-medium">{fmt(Number(e.amount))}</td>
                 <td className="px-4 py-3"><Badge variant="secondary" className={statusColors[e.status] || ""}>{e.status}</Badge></td>
@@ -148,7 +148,7 @@ const FBEstimatesList = () => {
               <div><Label>Amount</Label><Input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} /></div>
               <div><Label>Tax</Label><Input type="number" value={form.tax} onChange={e => setForm(f => ({ ...f, tax: e.target.value }))} /></div>
             </div>
-            <Button onClick={() => createMutation.mutate()} disabled={!form.estimate_number} className="w-full bg-amber-500 hover:bg-amber-600 text-white">Create Estimate</Button>
+            <Button onClick={() => createMutation.mutate()} disabled={!form.estimate_number} className="w-full bg-blue-600 hover:bg-blue-700 text-white">Create Estimate</Button>
           </div>
         </DialogContent>
       </Dialog>

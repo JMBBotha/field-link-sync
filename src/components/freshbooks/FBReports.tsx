@@ -11,7 +11,7 @@ import { toast } from "@/hooks/use-toast";
 import Papa from "papaparse";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
-const COLORS = ["#F59E0B", "#2563eb", "#10B981", "#EF4444", "#8B5CF6"];
+const COLORS = ["#2563EB", "#3B82F6", "#10B981", "#EF4444", "#8B5CF6"];
 
 type Preset = "month" | "quarter" | "year" | "custom";
 
@@ -125,7 +125,7 @@ const FBReports = () => {
   const exportPDF = () => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
-    printWindow.document.write(`<html><head><title>Report ${rangeFrom} to ${rangeTo}</title><style>body{font-family:sans-serif;padding:2rem}table{width:100%;border-collapse:collapse;margin:1rem 0}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#F59E0B;color:#fff}h1,h2{color:#333}.summary{display:flex;gap:2rem;margin:1rem 0}.summary div{flex:1;text-align:center;padding:1rem;border:1px solid #eee;border-radius:8px}</style></head><body>`);
+    printWindow.document.write(`<html><head><title>Report ${rangeFrom} to ${rangeTo}</title><style>body{font-family:sans-serif;padding:2rem}table{width:100%;border-collapse:collapse;margin:1rem 0}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#2563EB;color:#fff}h1,h2{color:#333}.summary{display:flex;gap:2rem;margin:1rem 0}.summary div{flex:1;text-align:center;padding:1rem;border:1px solid #eee;border-radius:8px}</style></head><body>`);
     printWindow.document.write(`<h1>Financial Report</h1><p>${rangeFrom} — ${rangeTo}</p>`);
     printWindow.document.write(`<div class="summary"><div><h3>Revenue</h3><p>${fmt(totalRevenue)}</p></div><div><h3>Expenses</h3><p>${fmt(totalExpenses)}</p></div><div><h3>Net Profit</h3><p>${fmt(net)}</p></div></div>`);
     printWindow.document.write(`<h2>Invoice Status</h2><table><tr><th>Status</th><th>Count</th></tr>${statusData.map(s => `<tr><td>${s.name}</td><td>${s.value}</td></tr>`).join("")}</table>`);
@@ -146,7 +146,7 @@ const FBReports = () => {
         <div className="flex items-center gap-2 flex-wrap">
           {(["month", "quarter", "year", "custom"] as Preset[]).map(p => (
             <Button key={p} size="sm" variant={preset === p ? "default" : "outline"}
-              className={preset === p ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}
+              className={preset === p ? "bg-blue-600 hover:bg-blue-700 text-white" : ""}
               onClick={() => setPreset(p)}>
               {p === "month" ? "This Month" : p === "quarter" ? "This Quarter" : p === "year" ? "This Year" : "Custom"}
             </Button>
@@ -165,7 +165,7 @@ const FBReports = () => {
       </div>
 
       {/* P&L Card */}
-      <div className="bg-card rounded-lg shadow-sm border border-border p-6 border-l-4 border-l-amber-400">
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6 border-l-4 border-l-blue-500">
         <h3 className="font-semibold text-foreground mb-3">Profit & Loss Summary</h3>
         <div className="grid grid-cols-3 gap-6 text-center">
           <div><p className="text-sm text-muted-foreground">Revenue</p><p className="text-xl font-bold text-green-600">{fmt(totalRevenue)}</p></div>
@@ -204,7 +204,7 @@ const FBReports = () => {
               <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
               <Tooltip formatter={(v: number) => fmt(v)} />
               <Legend />
-              <Bar dataKey="revenue" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="revenue" fill="#2563EB" radius={[4, 4, 0, 0]} />
               <Bar dataKey="expenses" fill="#EF4444" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -219,7 +219,7 @@ const FBReports = () => {
             {(["0-30", "31-60", "61-90", "90+"] as const).map(bucket => (
               <div key={bucket}>
                 <div className="flex items-center gap-2 mb-2">
-                  <Badge variant="secondary" className={bucket === "90+" ? "bg-red-100 text-red-700" : bucket === "61-90" ? "bg-red-50 text-red-600" : bucket === "31-60" ? "bg-amber-100 text-amber-700" : "bg-yellow-100 text-yellow-700"}>
+                  <Badge variant="secondary" className={bucket === "90+" ? "bg-red-100 text-red-700" : bucket === "61-90" ? "bg-red-50 text-red-600" : bucket === "31-60" ? "bg-blue-100 text-blue-700" : "bg-blue-50 text-blue-600"}>
                     {bucket} days
                   </Badge>
                   <span className="text-sm text-muted-foreground">{aging[bucket].length} invoice(s) — {fmt(aging[bucket].reduce((s: number, i: any) => s + Number(i.amount), 0))}</span>

@@ -44,7 +44,7 @@ const FBContactsList = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-foreground">Clients</h2>
-        <Button onClick={() => setShowCreate(true)} className="bg-amber-500 hover:bg-amber-600 text-white"><Plus className="h-4 w-4 mr-2" />New Client</Button>
+        <Button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-700 text-white"><Plus className="h-4 w-4 mr-2" />New Client</Button>
       </div>
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -56,13 +56,13 @@ const FBContactsList = () => {
         : filtered.map((c: any) => (
           <div key={c.id} className="bg-card rounded-lg shadow-sm border border-border p-4 hover:shadow-md transition-shadow">
             <div className="flex items-start gap-3">
-              <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
-                <User className="h-5 w-5 text-amber-600" />
+              <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
+                <User className="h-5 w-5 text-blue-600" />
               </div>
               <div className="min-w-0">
                 <p className="font-semibold text-foreground truncate">{c.name}</p>
                 {c.company_name && <p className="text-xs text-muted-foreground">{c.company_name}</p>}
-                {c.email && <p className="text-xs text-amber-600 mt-1">{c.email}</p>}
+                {c.email && <p className="text-xs text-blue-600 mt-1">{c.email}</p>}
                 {c.phone && <p className="text-xs text-muted-foreground">{c.phone}</p>}
               </div>
             </div>
@@ -79,7 +79,7 @@ const FBContactsList = () => {
               <div><Label>Email</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
               <div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
             </div>
-            <Button onClick={() => createMutation.mutate()} disabled={!form.name} className="w-full bg-amber-500 hover:bg-amber-600 text-white">Add Client</Button>
+            <Button onClick={() => createMutation.mutate()} disabled={!form.name} className="w-full bg-blue-600 hover:bg-blue-700 text-white">Add Client</Button>
           </div>
         </DialogContent>
       </Dialog>
