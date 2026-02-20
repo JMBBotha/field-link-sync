@@ -231,11 +231,12 @@ const FBDashboard = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard title="Outstanding" value={fmt(outstanding)} icon={FileText} color="bg-blue-100 text-blue-600" />
         <StatCard title="Revenue" value={fmt(revenue)} icon={TrendingUp} color="bg-blue-100 text-blue-600" />
         <StatCard title="Overdue" value={String(overdueInvoices.length)} icon={AlertTriangle} color="bg-red-100 text-red-600" />
         <StatCard title="Expenses" value={fmt(totalExpenses)} icon={DollarSign} color="bg-blue-100 text-blue-600" />
+        <StatCard title="Revenue Today" value={fmt(allPayments.filter((p: any) => p.date === stats?.todayStr).reduce((s: number, p: any) => s + Number(p.amount), 0))} icon={CreditCard} color="bg-blue-100 text-blue-600" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

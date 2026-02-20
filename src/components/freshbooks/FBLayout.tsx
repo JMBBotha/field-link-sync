@@ -5,12 +5,15 @@ import { useTheme } from "@/hooks/useTheme";
 import {
   LayoutDashboard, FileText, FileBarChart, Receipt,
   Clock, Users, BarChart3, CreditCard, FolderKanban,
-  LogOut, ChevronLeft, Menu, X, Search, Bell, Moon, Sun
+  LogOut, ChevronLeft, Menu, Search, Bell, Moon, Sun
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle,
+} from "@/components/ui/sheet";
 import BeCoolLogo from "@/components/shared/BeCoolLogo";
 
 const navItems = [
@@ -38,13 +41,9 @@ const FBLayout = () => {
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-muted/30">
-        <div className="hidden md:block w-60 bg-card border-r p-4 space-y-4">
-          <Skeleton className="h-10 w-full" />
-          {Array.from({ length: 9 }).map((_, i) => (
-            <Skeleton key={i} className="h-8 w-full" />
-          ))}
-        </div>
+      <div className="flex flex-col h-screen bg-muted/30">
+        <div className="h-14 bg-primary" />
+        <div className="h-1 bg-[#F59E0B]" />
         <div className="flex-1 p-8">
           <Skeleton className="h-64 w-full" />
         </div>
@@ -54,7 +53,7 @@ const FBLayout = () => {
 
   return (
     <div className="flex flex-col h-screen bg-muted/30">
-      {/* Top Header Bar */}
+      {/* Top Header Bar - full width */}
       <header className="sticky top-0 z-30 bg-primary text-primary-foreground">
         <div className="flex items-center justify-between h-14 px-4 md:px-6">
           {/* Left: hamburger + logo/company */}
@@ -62,7 +61,7 @@ const FBLayout = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden text-primary-foreground hover:bg-primary/80"
+              className="text-primary-foreground hover:bg-primary/80"
               onClick={() => setSidebarOpen(true)}
             >
               <Menu className="h-5 w-5" />
@@ -71,8 +70,12 @@ const FBLayout = () => {
               className="flex items-center gap-2 cursor-pointer"
               onClick={() => navigate(`/client/${companyId}/dashboard`)}
             >
-              <BeCoolLogo />
-              <span className="hidden sm:inline text-sm font-medium text-primary-foreground/80 ml-2">
+              {company?.logo_url ? (
+                <img src={company.logo_url} alt="" className="h-8 w-8 rounded-lg object-cover" />
+              ) : (
+                <BeCoolLogo />
+              )}
+              <span className="hidden sm:inline text-sm font-medium text-primary-foreground/80 ml-1">
                 {company?.name}
               </span>
             </div>
@@ -104,39 +107,16 @@ const FBLayout = () => {
             </Button>
           </div>
         </div>
-        {/* Blue accent line */}
-        <div className="h-1 bg-accent" />
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Mobile overlay */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 z-40 bg-black/50 md:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
+      {/* Gold accent line */}
+      <div className="h-[3px] bg-[#F59E0B] shrink-0" />
 
-        {/* Sidebar */}
-        <aside
-          className={`
-            fixed inset-y-0 left-0 z-50 w-60 bg-card border-r border-border flex flex-col
-            transform transition-transform duration-200 ease-in-out
-            md:relative md:translate-x-0 md:shrink-0 md:top-0
-            ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
-          `}
-        >
-          {/* Mobile close button */}
-          <div className="md:hidden flex items-center justify-between p-3 border-b border-border">
-            <BeCoolLogo />
-            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-
-          {/* Company header (desktop) */}
-          <div className="hidden md:block p-4 border-b border-border">
-            <div className="flex items-center gap-3">
+      {/* Sheet sidebar - hidden by default */}
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SheetContent side="left" className="w-72 p-0" hideCloseButton>
+          <SheetHeader className="p-4 border-b border-border">
+            <SheetTitle className="flex items-center gap-3">
               {company?.logo_url ? (
                 <img src={company.logo_url} alt="" className="h-9 w-9 rounded-lg object-cover" />
               ) : (
@@ -146,10 +126,10 @@ const FBLayout = () => {
               )}
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-foreground truncate">{company?.name || "Company"}</p>
-                <p className="text-xs text-muted-foreground">Business</p>
+                <p className="text-xs text-muted-foreground">Business Portal</p>
               </div>
-            </div>
-          </div>
+            </SheetTitle>
+          </SheetHeader>
 
           {/* Navigation */}
           <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
@@ -193,15 +173,15 @@ const FBLayout = () => {
               Sign Out
             </Button>
           </div>
-        </aside>
+        </SheetContent>
+      </Sheet>
 
-        {/* Main content */}
-        <main className="flex-1 overflow-auto min-w-0">
-          <div className="p-4 md:p-6">
-            <Outlet />
-          </div>
-        </main>
-      </div>
+      {/* Main content - full width */}
+      <main className="flex-1 overflow-auto min-w-0">
+        <div className="p-4 md:p-6">
+          <Outlet />
+        </div>
+      </main>
     </div>
   );
 };
