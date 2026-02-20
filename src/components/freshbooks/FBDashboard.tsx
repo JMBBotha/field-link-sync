@@ -11,17 +11,7 @@ import { useState } from "react";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 
-const BeCoolLogo = () => (
-  <div className="flex items-center gap-2 mb-4">
-    <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-      <span className="text-primary-foreground text-lg">❄</span>
-    </div>
-    <div>
-      <span className="text-xl font-bold text-primary">0800</span>
-      <span className="text-xl font-bold text-amber-500">BeCool</span>
-    </div>
-  </div>
-);
+// BeCoolLogo is rendered in FBLayout sidebar
 
 const StatCard = ({ title, value, icon: Icon, color }: { title: string; value: string; icon: any; color: string }) => (
   <div className="bg-card rounded-lg shadow-sm border border-border p-6 border-l-4 border-l-amber-400">
@@ -215,7 +205,6 @@ const FBDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <BeCoolLogo />
       <h2 className="text-2xl font-bold text-foreground">Dashboard</h2>
 
       <div className="flex gap-3">
