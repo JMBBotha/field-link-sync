@@ -44,7 +44,7 @@ const FBContactsList = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-foreground">Clients</h2>
-        <Button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-700 text-white"><Plus className="h-4 w-4 mr-2" />New Client</Button>
+        <Button onClick={() => setShowCreate(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground"><Plus className="h-4 w-4 mr-2" />New Client</Button>
       </div>
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -79,7 +79,7 @@ const FBContactsList = () => {
               <div><Label>Email</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
               <div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
             </div>
-            <Button onClick={() => createMutation.mutate()} disabled={!form.name} className="w-full bg-blue-600 hover:bg-blue-700 text-white">Add Client</Button>
+            <Button onClick={() => createMutation.mutate()} disabled={!form.name} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">Add Client</Button>
           </div>
         </DialogContent>
       </Dialog>

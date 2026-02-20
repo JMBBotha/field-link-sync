@@ -86,7 +86,7 @@ const FBExpensesList = () => {
           <h2 className="text-2xl font-bold text-foreground">Expenses</h2>
           <p className="text-sm text-muted-foreground">Total: {fmt(total)}</p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-700 text-white"><Plus className="h-4 w-4 mr-2" />New Expense</Button>
+        <Button onClick={() => setShowCreate(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground"><Plus className="h-4 w-4 mr-2" />New Expense</Button>
       </div>
 
       {/* Category filter pills */}
@@ -96,7 +96,7 @@ const FBExpensesList = () => {
             key={cat}
             onClick={() => setCategoryFilter(cat)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-              categoryFilter === cat ? "bg-blue-600 text-white" : "bg-muted text-muted-foreground hover:bg-blue-50"
+              categoryFilter === cat ? "bg-primary text-primary-foreground" : "bg-slate-500 text-white hover:bg-slate-600"
             }`}
           >
             {cat}
@@ -183,7 +183,7 @@ const FBExpensesList = () => {
                 </label>
               </div>
             </div>
-            <Button onClick={() => createMutation.mutate()} disabled={!form.amount || uploading} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+            <Button onClick={() => createMutation.mutate()} disabled={!form.amount || uploading} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
               {uploading ? "Uploading..." : "Save Expense"}
             </Button>
           </div>
