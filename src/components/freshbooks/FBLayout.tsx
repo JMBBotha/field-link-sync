@@ -7,7 +7,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import logoUrl from "@/assets/logo.png";
+const BeCoolLogo = () => (
+  <div className="flex items-center gap-2 mb-2">
+    <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+      <span className="text-primary-foreground text-lg">❄</span>
+    </div>
+    <div>
+      <span className="text-xl font-bold text-primary">0800</span>
+      <span className="text-xl font-bold text-amber-500">BeCool</span>
+    </div>
+  </div>
+);
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "dashboard" },
@@ -52,7 +62,7 @@ const FBLayout = () => {
       <aside className="w-60 shrink-0 bg-card border-r border-border flex flex-col">
         {/* Company header */}
         <div className="p-4 border-b border-border">
-          <img src={logoUrl} alt="0800BeCool" className="w-36 h-auto mb-4 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+          <BeCoolLogo />
           <div className="flex items-center gap-3">
             {company?.logo_url ? (
               <img src={company.logo_url} alt="" className="h-9 w-9 rounded-lg object-cover" />
