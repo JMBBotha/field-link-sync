@@ -121,7 +121,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
   if (collapsed) return null;
 
   return (
-    <div className="flex flex-col h-full bg-card border-l border-border/60">
+    <div className="flex flex-col h-full border-l border-white/20">
       <div className="px-4 py-3 border-b border-border/60">
         <h3 className="text-sm font-semibold tracking-tight text-foreground">Quote Summary</h3>
       </div>
@@ -497,7 +497,7 @@ const AdminQuoteBuilderPage = () => {
 
   /* ═══ RENDER ═══ */
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "linear-gradient(135deg, #1e6bb8 0%, #d0d0d0 100%)", backgroundAttachment: "fixed" }}>
       {/* ─── HEADER ─── */}
       <header className="shrink-0 h-14 flex items-center justify-between px-4 bg-card border-b border-border/60 shadow-sm">
         <div className="flex items-center gap-3">
@@ -548,7 +548,7 @@ const AdminQuoteBuilderPage = () => {
         <div className="flex-1 flex min-h-0 overflow-hidden">
 
           {/* LEFT: Product Palette */}
-          <div className={`${isMobile ? (mobileTab === "palette" ? "flex" : "hidden") : "flex"} flex-col w-full md:w-80 lg:w-96 shrink-0 border-r border-border/60 bg-card min-h-0 overflow-hidden`}>
+          <div className={`${isMobile ? (mobileTab === "palette" ? "flex" : "hidden") : "flex"} flex-col w-full md:w-80 lg:w-96 shrink-0 border-r border-white/20 min-h-0 overflow-hidden`}>
             <ProductPalette
               products={filteredProducts}
               isLoading={isLoading}
@@ -570,7 +570,7 @@ const AdminQuoteBuilderPage = () => {
 
           {/* CENTER: Quote Canvas */}
           <div ref={canvasRef}
-            className={`${isMobile ? (mobileTab === "canvas" ? "flex" : "hidden") : "flex"} flex-col flex-1 min-h-0 min-w-0 overflow-hidden bg-muted/20`}>
+            className={`${isMobile ? (mobileTab === "canvas" ? "flex" : "hidden") : "flex"} flex-col flex-1 min-h-0 min-w-0 overflow-hidden`}>
             <div className="flex-1 min-h-0 overflow-y-auto p-4" style={{ scrollBehavior: "smooth" }}>
               <BasketCanvas
                 baskets={baskets}
