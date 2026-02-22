@@ -1,14 +1,8 @@
 import { useState, useMemo, useCallback } from "react";
-import { Search, Check, ChevronDown, ChevronUp, Star, Info, X, Pencil } from "lucide-react";
+import { Search, Check, Star, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import {
-  Popover, PopoverContent, PopoverTrigger,
-} from "@/components/ui/popover";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
 import type { PaletteProduct } from "../../QuoteBuilderTab";
 import type { QuoteArea, AreaACUnit } from "../quoteWizardTypes";
 import { detectBTU, getBracketSize } from "../quoteWizardTypes";
@@ -30,108 +24,7 @@ function PinnedStar({ pinned }: { pinned: boolean }) {
   ) : null;
 }
 
-/* ─── Product Info Popover (Bug 2 fix) ─── */
-function ProductInfoPopover({ product }: { product: PaletteProduct }) {
-  const btu = detectBTU(product);
-  const costPrice = product.cost_excl_vat || 0;
-  const sellingPrice = product.selling_price || 0;
-  const currentMarkup = costPrice > 0 ? ((sellingPrice - costPrice) / costPrice) * 100 : 0;
-
-  const [markup, setMarkup] = useState(Math.round(currentMarkup * 100) / 100);
-  const [saving, setSaving] = useState(false);
-
-  const handleSaveMarkup = async () => {
-    if (costPrice <= 0) return;
-    setSaving(true);
-    const newSelling = costPrice * (1 + markup / 100);
-    const { error } = await supabase
-      .from("supplier_products")
-      .update({ selling_price: Math.round(newSelling * 100) / 100 })
-      .eq("id", product.id);
-    setSaving(false);
-    if (error) {
-      toast.error("Failed to update markup");
-    } else {
-      toast.success("Markup updated");
-      // Update local product object for immediate feedback
-      product.selling_price = Math.round(newSelling * 100) / 100;
-    }
-  };
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="h-5 w-5 rounded-full flex items-center justify-center hover:bg-accent shrink-0"
-          onClick={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <Info className="h-3 w-3 text-muted-foreground" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-80 text-xs space-y-2"
-        side="right"
-        align="start"
-        onClick={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        <p className="font-semibold text-sm">{product.short_name || product.product_code}</p>
-        <Separator />
-        <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
-          <span className="text-muted-foreground">Model</span>
-          <span className="font-medium">{product.product_code}</span>
-          <span className="text-muted-foreground">Brand</span>
-          <span>{product.brand}</span>
-          <span className="text-muted-foreground">BTU Rating</span>
-          <span>{btu.toLocaleString()}</span>
-          {product.pipe_size && (<>
-            <span className="text-muted-foreground">Pipe Sizes</span>
-            <span>{product.pipe_size}</span>
-          </>)}
-          <span className="text-muted-foreground">Description</span>
-          <span className="break-words">{product.description || "—"}</span>
-          <span className="text-muted-foreground">Supplier</span>
-          <span>{product.supplier_name || "—"}</span>
-        </div>
-        <Separator />
-        <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
-          <span className="text-muted-foreground">Cost Price</span>
-          <span>{formatZAR(costPrice)}</span>
-          <span className="text-muted-foreground">Selling Price</span>
-          <span className="font-medium">{formatZAR(sellingPrice)}</span>
-        </div>
-        <Separator />
-        <div className="space-y-1.5">
-          <Label className="text-xs">Markup %</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              value={markup}
-              onChange={(e) => setMarkup(parseFloat(e.target.value) || 0)}
-              className="h-7 text-xs w-20"
-              step={1}
-              min={0}
-            />
-            <span className="text-muted-foreground text-xs">
-              → {formatZAR(costPrice * (1 + markup / 100))}
-            </span>
-            <button
-              className="ml-auto text-xs px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-              onClick={handleSaveMarkup}
-              disabled={saving || costPrice <= 0}
-            >
-              {saving ? "..." : "Save"}
-            </button>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-/* ─── Per-area search dropdown ─── */
+/* ─── Per-area search dropdown (Bug 1: fully independent per area) ─── */
 function AreaUnitSelector({
   area,
   acProducts,
@@ -189,7 +82,7 @@ function AreaUnitSelector({
           <span className="text-xs font-medium shrink-0">
             {formatZAR(selectedUnit.product.selling_price || selectedUnit.product.cost_incl_vat || 0)}
           </span>
-          <ProductInfoPopover product={selectedUnit.product} />
+          <ProductInfoDialog product={selectedUnit.product} />
           <button
             className="h-5 w-5 rounded flex items-center justify-center hover:bg-destructive/20 shrink-0"
             onClick={() => onRemove(area.id, 0)}
@@ -225,30 +118,34 @@ function AreaUnitSelector({
               const btu = detectBTU(p);
               const isSelected = selectedUnit?.product.id === p.id;
               return (
-                <button
+                <div
                   key={p.id}
-                  type="button"
                   className={`w-full flex items-center gap-2 rounded px-2 py-1.5 text-xs hover:bg-accent transition-colors text-left ${isSelected ? "bg-accent ring-1 ring-primary" : ""}`}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    onSelect(area.id, p);
-                    setDropdownOpen(false);
-                    setQuery("");
-                  }}
                 >
-                  {isSelected && <Check className="h-3 w-3 text-green-600 shrink-0" />}
-                  <PinnedStar pinned={!!(p as any).is_pinned} />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{p.product_code}</div>
-                    <div className="text-muted-foreground truncate">
-                      {p.short_name || p.product_code} · {btu.toLocaleString()} BTU{p.pipe_size ? ` · ${p.pipe_size}` : ""}
+                  <button
+                    type="button"
+                    className="flex-1 flex items-center gap-2 min-w-0 text-left"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      onSelect(area.id, p);
+                      setDropdownOpen(false);
+                      setQuery("");
+                    }}
+                  >
+                    {isSelected && <Check className="h-3 w-3 text-green-600 shrink-0" />}
+                    <PinnedStar pinned={!!(p as any).is_pinned} />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{p.product_code}</div>
+                      <div className="text-muted-foreground truncate">
+                        {p.short_name || p.product_code} · {btu.toLocaleString()} BTU{p.pipe_size ? ` · ${p.pipe_size}` : ""}
+                      </div>
                     </div>
-                  </div>
-                  <span className="font-medium shrink-0">
-                    {formatZAR(p.selling_price || p.cost_incl_vat || 0)}
-                  </span>
-                  <ProductInfoPopover product={p} />
-                </button>
+                    <span className="font-medium shrink-0">
+                      {formatZAR(p.selling_price || p.cost_incl_vat || 0)}
+                    </span>
+                  </button>
+                  <ProductInfoDialog product={p} />
+                </div>
               );
             })
           )}
@@ -278,7 +175,6 @@ export default function ACSelectionStep({ areas, onAreasChange, products, onPdfS
     onAreasChange(
       areas.map((a) => {
         if (a.id !== areaId) return a;
-        // Replace the unit for this area (single unit per area)
         return { ...a, acUnits: [newUnit] };
       })
     );
