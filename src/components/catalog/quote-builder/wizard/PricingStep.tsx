@@ -1,14 +1,14 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
-import { RotateCcw, FileDown, Loader2, Mail, Check, TrendingUp } from "lucide-react";
+import { RotateCcw, FileDown, Loader2, Mail, Check, TrendingUp, ChevronDown, ChevronRight, Package, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import QuantityControl from "../QuantityControl";
 import { supabase } from "@/integrations/supabase/client";
 import { pdf } from "@react-pdf/renderer";
@@ -43,11 +43,171 @@ function getMarkupColor(markup: number): string {
 /* Lazy-load heavy PDF components */
 const PDFDownloadButton = lazy(() => import("./PDFDownloadButton"));
 
+/* ── Bundle Sub-Items for a single area ── */
+function AreaSubItems({ area }: { area: QuoteArea }) {
+  const items: { name: string; qty: number; unitPrice: number; lineTotal: number; mode: string }[] = [];
+
+  for (const mat of area.materials) {
+    const isLen = mat.pricingMode === "length";
+    const unitPrice = isLen ? mat.costPerMeter : (mat.product.selling_price || mat.product.cost_incl_vat || 0);
+    const qty = isLen ? mat.adjustedLength : mat.unitQuantity;
+    const lineTotal = isLen ? mat.totalCost : unitPrice * mat.unitQuantity;
+    items.push({ name: mat.product.short_name || mat.product.product_code, qty, unitPrice, lineTotal, mode: isLen ? "/m" : "ea" });
+  }
+  for (const cons of (area.consumables ?? [])) {
+    const price = cons.product.selling_price || cons.product.cost_incl_vat || 0;
+    items.push({ name: cons.product.short_name || cons.product.product_code, qty: cons.quantity, unitPrice: price, lineTotal: price * cons.quantity, mode: "ea" });
+  }
+  for (const br of area.brackets) {
+    items.push({ name: `Bracket ${br.size}`, qty: br.quantity, unitPrice: br.price, lineTotal: br.price * br.quantity, mode: "ea" });
+  }
+
+  if (items.length === 0) return <p className="text-[10px] text-muted-foreground pl-6 py-1">No sub-items</p>;
+
+  return (
+    <div className="pl-6 pr-4 py-1 space-y-0.5">
+      {items.map((item, i) => (
+        <div key={i} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 text-[10px] text-muted-foreground items-center">
+          <span className="truncate">{item.name}</span>
+          <span className="text-center tabular-nums">{item.qty}{item.mode === "/m" ? "m" : ` ${item.mode}`}</span>
+          <span className="text-right tabular-nums">{formatCurrency(item.unitPrice)}{item.mode === "/m" ? "/m" : ""}</span>
+          <span className="text-right tabular-nums font-medium">{formatCurrency(item.lineTotal)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── Edit Bundle Dialog ── */
+function EditBundleDialog({
+  area,
+  open,
+  onOpenChange,
+  onSave,
+}: {
+  area: QuoteArea;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSave: (area: QuoteArea) => void;
+}) {
+  const [editArea, setEditArea] = useState<QuoteArea>(area);
+
+  // Reset state when dialog opens
+  const handleOpenChange = useCallback((o: boolean) => {
+    if (o) setEditArea(area);
+    onOpenChange(o);
+  }, [area, onOpenChange]);
+
+  const updateMaterialQty = (matId: string, qty: number) => {
+    setEditArea(prev => ({
+      ...prev,
+      materials: prev.materials.map(m => m.id === matId
+        ? m.pricingMode === "length"
+          ? { ...m, adjustedLength: qty, totalCost: qty * m.costPerMeter }
+          : { ...m, unitQuantity: qty }
+        : m
+      ),
+    }));
+  };
+
+  const updateConsumableQty = (consId: string, qty: number) => {
+    setEditArea(prev => ({
+      ...prev,
+      consumables: prev.consumables.map(c => c.id === consId ? { ...c, quantity: qty } : c),
+    }));
+  };
+
+  const updateBracketQty = (bracketId: string, qty: number) => {
+    setEditArea(prev => ({
+      ...prev,
+      brackets: prev.brackets.map(b => b.id === bracketId ? { ...b, quantity: qty } : b),
+    }));
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-sm">Edit Bundle — {area.name}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          {editArea.materials.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Materials</Label>
+              {editArea.materials.map(m => (
+                <div key={m.id} className="flex items-center justify-between gap-2">
+                  <span className="text-xs truncate flex-1">{m.product.short_name || m.product.product_code}</span>
+                  <QuantityControl
+                    value={m.pricingMode === "length" ? m.adjustedLength : m.unitQuantity}
+                    onChange={(v) => updateMaterialQty(m.id, v)}
+                    min={1}
+                    max={m.pricingMode === "length" ? 100 : 50}
+                    step={m.pricingMode === "length" ? 0.5 : 1}
+                    showSlider={false}
+                    suffix={m.pricingMode === "length" ? "m" : undefined}
+                    size="sm"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+          {(editArea.consumables?.length ?? 0) > 0 && (
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Consumables</Label>
+              {editArea.consumables.map(c => (
+                <div key={c.id} className="flex items-center justify-between gap-2">
+                  <span className="text-xs truncate flex-1">{c.product.short_name || c.product.product_code}</span>
+                  <QuantityControl
+                    value={c.quantity}
+                    onChange={(v) => updateConsumableQty(c.id, v)}
+                    min={1}
+                    max={50}
+                    showSlider={false}
+                    size="sm"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+          {editArea.brackets.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Brackets</Label>
+              {editArea.brackets.map(b => (
+                <div key={b.id} className="flex items-center justify-between gap-2">
+                  <span className="text-xs truncate flex-1">Bracket {b.size}</span>
+                  <QuantityControl
+                    value={b.quantity}
+                    onChange={(v) => updateBracketQty(b.id, v)}
+                    min={1}
+                    max={20}
+                    showSlider={false}
+                    size="sm"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <DialogFooter className="gap-2">
+          <DialogClose asChild>
+            <Button variant="outline" size="sm">Cancel</Button>
+          </DialogClose>
+          <Button size="sm" onClick={() => { onSave(editArea); onOpenChange(false); }}>
+            Save Changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function PricingStep({ areas, onAreasChange }: Props) {
   const [globalMarkup, setGlobalMarkup] = useState(30);
   const [pdfReady, setPdfReady] = useState(false);
   const [sending, setSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [editingAreaId, setEditingAreaId] = useState<string | null>(null);
   const [areaPricing, setAreaPricing] = useState<Record<string, AreaPricing>>(() => {
     const init: Record<string, AreaPricing> = {};
     for (const a of areas) {
@@ -76,7 +236,25 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
     });
   }, [globalMarkup]);
 
+  const toggleRowExpanded = useCallback((areaId: string) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(areaId)) next.delete(areaId);
+      else next.add(areaId);
+      return next;
+    });
+  }, []);
+
+  const handleBundleSave = useCallback((updatedArea: QuoteArea) => {
+    onAreasChange(areas.map(a => a.id === updatedArea.id ? updatedArea : a));
+    setPdfReady(false);
+  }, [areas, onAreasChange]);
+
   const allHaveUnits = areas.every((a) => a.acUnits.length > 0);
+
+  const hasSubItems = useCallback((area: QuoteArea) => {
+    return area.materials.length > 0 || (area.consumables?.length ?? 0) > 0 || area.brackets.length > 0;
+  }, []);
 
   // Compute totals
   const lineItems = useMemo(() => {
@@ -146,6 +324,8 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
     };
   }, [pdfReady, allHaveUnits, lineItems, subtotal, vatAmount, total]);
 
+  const editingArea = editingAreaId ? areas.find(a => a.id === editingAreaId) : null;
+
   return (
     <div className="space-y-4 overflow-x-auto">
       {/* Global markup */}
@@ -198,73 +378,122 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
             const unit = area.acUnits[0];
             const pricing = getPricing(area.id);
             const isOdd = idx % 2 === 1;
+            const hasSubs = hasSubItems(area);
+            const isExpanded = expandedRows.has(area.id);
+            const isBundle = !!area.appliedBundleId;
 
             return (
-              <div
-                key={area.id}
-                className={`grid grid-cols-[1fr_auto_auto_auto_auto] sm:grid-cols-[1.5fr_1fr_1fr_1fr_1fr] gap-2 px-4 py-3 items-center border-b last:border-0 transition-colors ${isOdd ? "bg-muted/30" : "bg-background"}`}
-              >
-                {/* Area name + badge */}
-                <div className="min-w-0">
-                  <span className="text-sm font-medium truncate block">{area.name}</span>
-                  {unit ? (
-                    <Badge variant="outline" className="text-[9px] mt-0.5">
-                      {unit.product.product_code} · {unit.btu.toLocaleString()} BTU
-                    </Badge>
-                  ) : (
-                    <Badge variant="destructive" className="text-[9px] mt-0.5">No unit</Badge>
-                  )}
+              <div key={area.id}>
+                <div
+                  className={`grid grid-cols-[1fr_auto_auto_auto_auto] sm:grid-cols-[1.5fr_1fr_1fr_1fr_1fr] gap-2 px-4 py-3 items-center border-b transition-colors ${
+                    isBundle ? "bg-blue-50/50 dark:bg-blue-950/20" : isOdd ? "bg-muted/30" : "bg-background"
+                  }`}
+                >
+                  {/* Area name + badge + expand toggle */}
+                  <div className="min-w-0 flex items-start gap-1.5">
+                    {hasSubs && (
+                      <button
+                        onClick={() => toggleRowExpanded(area.id)}
+                        className="mt-0.5 shrink-0 p-0.5 rounded hover:bg-accent transition-colors"
+                        aria-label={isExpanded ? "Collapse sub-items" : "Expand sub-items"}
+                      >
+                        {isExpanded
+                          ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                          : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                        }
+                      </button>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-medium truncate">{area.name}</span>
+                        {isBundle && (
+                          <Badge variant="outline" className="text-[9px] bg-blue-100/50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 shrink-0">
+                            <Package className="h-2.5 w-2.5 mr-0.5" /> Bundle
+                          </Badge>
+                        )}
+                      </div>
+                      {unit ? (
+                        <Badge variant="outline" className="text-[9px] mt-0.5">
+                          {unit.product.product_code} · {unit.btu.toLocaleString()} BTU
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive" className="text-[9px] mt-0.5">No unit</Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Qty — with slider for larger view */}
+                  <div className="flex justify-center">
+                    {unit ? (
+                      <QuantityControl
+                        value={pricing.quantity}
+                        onChange={(v) => { updateAreaPricing(area.id, { quantity: v }); setPdfReady(false); }}
+                        min={1}
+                        max={20}
+                        showSlider={false}
+                        size="sm"
+                      />
+                    ) : <span className="text-xs text-muted-foreground">—</span>}
+                  </div>
+
+                  {/* Cost */}
+                  <div className="text-right">
+                    <span className="text-xs text-muted-foreground">{unit ? formatCurrency(costPrice) : "—"}</span>
+                  </div>
+
+                  {/* Markup */}
+                  <div className="flex justify-center">
+                    {unit ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Input
+                            type="number"
+                            value={pricing.markupPercent}
+                            onChange={(e) => { updateAreaPricing(area.id, { markupPercent: parseFloat(e.target.value) || 0 }); setPdfReady(false); }}
+                            className="h-7 text-xs w-16 text-center"
+                            min={0}
+                            step={5}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs max-w-[200px]">
+                          Higher markup = higher profit but may reduce acceptance rate
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : <span className="text-xs text-muted-foreground">—</span>}
+                  </div>
+
+                  {/* Line total + edit button */}
+                  <div className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <div>
+                        <span className="text-xs font-semibold">{unit ? formatCurrency(lineTotal) : "—"}</span>
+                        {unit && (
+                          <span className="block text-[9px] text-muted-foreground">
+                            {formatCurrency(sellingPrice)} × {quantity}
+                          </span>
+                        )}
+                      </div>
+                      {hasSubs && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 shrink-0"
+                          onClick={() => setEditingAreaId(area.id)}
+                          aria-label="Edit bundle quantities"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                {/* Qty */}
-                <div className="flex justify-center">
-                  {unit ? (
-                    <QuantityControl
-                      value={pricing.quantity}
-                      onChange={(v) => { updateAreaPricing(area.id, { quantity: v }); setPdfReady(false); }}
-                      min={1}
-                      max={20}
-                      showSlider={false}
-                      sliderTooltip="Adjust unit quantity"
-                    />
-                  ) : <span className="text-xs text-muted-foreground">—</span>}
-                </div>
-
-                {/* Cost */}
-                <div className="text-right">
-                  <span className="text-xs text-muted-foreground">{unit ? formatCurrency(costPrice) : "—"}</span>
-                </div>
-
-                {/* Markup */}
-                <div className="flex justify-center">
-                  {unit ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Input
-                          type="number"
-                          value={pricing.markupPercent}
-                          onChange={(e) => { updateAreaPricing(area.id, { markupPercent: parseFloat(e.target.value) || 0 }); setPdfReady(false); }}
-                          className="h-7 text-xs w-16 text-center"
-                          min={0}
-                          step={5}
-                        />
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="text-xs max-w-[200px]">
-                        Higher markup = higher profit but may reduce acceptance rate
-                      </TooltipContent>
-                    </Tooltip>
-                  ) : <span className="text-xs text-muted-foreground">—</span>}
-                </div>
-
-                {/* Line total */}
-                <div className="text-right">
-                  <span className="text-xs font-semibold">{unit ? formatCurrency(lineTotal) : "—"}</span>
-                  {unit && (
-                    <span className="block text-[9px] text-muted-foreground">
-                      {formatCurrency(sellingPrice)} × {quantity}
-                    </span>
-                  )}
-                </div>
+                {/* Collapsible sub-items */}
+                {isExpanded && hasSubs && (
+                  <div className={`border-b ${isBundle ? "bg-blue-50/30 dark:bg-blue-950/10" : "bg-muted/10"}`}>
+                    <AreaSubItems area={area} />
+                  </div>
+                )}
               </div>
             );
           })}
@@ -396,6 +625,16 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
         <p className="text-xs text-destructive text-center">
           Some areas have no AC unit selected. Go back to Step 2 to assign units.
         </p>
+      )}
+
+      {/* Edit Bundle Dialog */}
+      {editingArea && (
+        <EditBundleDialog
+          area={editingArea}
+          open={!!editingAreaId}
+          onOpenChange={(o) => { if (!o) setEditingAreaId(null); }}
+          onSave={handleBundleSave}
+        />
       )}
     </div>
   );
