@@ -17,14 +17,13 @@ import { useToast } from "@/hooks/use-toast";
 const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 
 const statusColors: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-700",
-  sent: "bg-blue-100 text-blue-700",
-  viewed: "bg-blue-100 text-blue-700",
-  partial: "bg-blue-50 text-blue-600",
-  paid: "bg-green-100 text-green-700",
-  overdue: "bg-red-100 text-red-700",
-  cancelled: "bg-gray-100 text-gray-500",
-  archived: "bg-yellow-100 text-yellow-700",
+  Draft: "bg-gray-100 text-gray-700",
+  Sent: "bg-blue-100 text-blue-700",
+  Viewed: "bg-blue-100 text-blue-700",
+  Partial: "bg-blue-50 text-blue-600",
+  Paid: "bg-green-100 text-green-700",
+  Overdue: "bg-red-100 text-red-700",
+  Archived: "bg-yellow-100 text-yellow-700",
 };
 
 const FBInvoiceList = () => {
@@ -36,14 +35,14 @@ const FBInvoiceList = () => {
   const [showPayment, setShowPayment] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [paymentForm, setPaymentForm] = useState({ amount: "", method: "bank_transfer", date: new Date().toISOString().split("T")[0] });
-  const [form, setForm] = useState({ invoice_number: "", amount: "", tax: "0", status: "draft", due_date: "", contact_id: "", recurrence_interval: "none", recurrence_end_date: "" });
+  const [form, setForm] = useState({ invoice_number: "", amount: "", tax: "0", status: "Draft", due_date: "", contact_id: "", recurrence_interval: "none", recurrence_end_date: "" });
   const { toast } = useToast();
   const qc = useQueryClient();
 
   const { data: invoices = [], isLoading } = useQuery({
-    queryKey: ["fb-invoices", companyId],
+    queryKey: ["company-invoices", companyId],
     queryFn: async () => {
-      const { data } = await supabase.from("fb_invoices").select("*, fb_contacts(name)").eq("company_id", companyId!).order("created_at", { ascending: false });
+      const { data } = await supabase.from("company_invoices" as any).select("*, fb_contacts(name)").eq("company_id", companyId!).order("created_at", { ascending: false });
       return data || [];
     },
     enabled: !!companyId,
@@ -61,7 +60,7 @@ const FBInvoiceList = () => {
   const { data: allPayments = [] } = useQuery({
     queryKey: ["fb-payments-all", companyId],
     queryFn: async () => {
-      const { data } = await supabase.from("fb_payments").select("invoice_id, amount").eq("company_id", companyId!);
+      const { data } = await supabase.from("fb_payments").select("company_invoice_id, amount").eq("company_id", companyId!);
       return data || [];
     },
     enabled: !!companyId,
@@ -71,11 +70,11 @@ const FBInvoiceList = () => {
   useEffect(() => {
     if (!invoices.length) return;
     const today = new Date().toISOString().split("T")[0];
-    const toOverdue = invoices.filter((i: any) => i.due_date && i.due_date < today && !["paid", "cancelled", "overdue", "archived"].includes(i.status));
+    const toOverdue = invoices.filter((i: any) => i.due_date && i.due_date < today && !["Paid", "Archived", "Overdue"].includes(i.status));
     if (toOverdue.length > 0) {
       const ids = toOverdue.map((i: any) => i.id);
-      supabase.from("fb_invoices").update({ status: "overdue" }).in("id", ids).then(() => {
-        if (ids.length > 0) qc.invalidateQueries({ queryKey: ["fb-invoices"] });
+      supabase.from("company_invoices" as any).update({ status: "Overdue" }).in("id", ids).then(() => {
+        if (ids.length > 0) qc.invalidateQueries({ queryKey: ["company-invoices"] });
       });
     }
   }, [invoices, qc]);
@@ -99,12 +98,13 @@ const FBInvoiceList = () => {
         const nextDue = new Date(lastCreated.getTime() + intervalDays * 86400000);
         if (nextDue.toISOString().split("T")[0] <= today) {
           const newNum = inv.invoice_number + "-R";
-          const { data: existing } = await supabase.from("fb_invoices")
+          const { data: existing } = await supabase.from("company_invoices" as any)
             .select("id").eq("company_id", companyId).like("invoice_number", `${newNum}%`).limit(1);
           if (!existing?.length) {
-            await supabase.from("fb_invoices").insert({
+            await supabase.from("company_invoices" as any).insert({
               company_id: companyId, invoice_number: `${newNum}${today.replace(/-/g, "")}`,
-              amount: inv.amount, tax: inv.tax, status: "draft",
+              total_amount: inv.total_amount, subtotal: inv.subtotal, vat_amount: inv.vat_amount,
+              tax: inv.tax, status: "Draft",
               due_date: nextDue.toISOString().split("T")[0],
               contact_id: inv.contact_id, items: inv.items,
               recurrence: inv.recurrence,
@@ -112,31 +112,34 @@ const FBInvoiceList = () => {
           }
         }
       }
-      qc.invalidateQueries({ queryKey: ["fb-invoices"] });
+      qc.invalidateQueries({ queryKey: ["company-invoices"] });
     };
 
     if (recurring.length > 0) generateRecurring();
   }, [invoices, companyId, qc]);
 
-  const getPaymentTotal = (invoiceId: string) => allPayments.filter((p: any) => p.invoice_id === invoiceId).reduce((s: number, p: any) => s + Number(p.amount), 0);
+  const getPaymentTotal = (invoiceId: string) => allPayments.filter((p: any) => p.company_invoice_id === invoiceId).reduce((s: number, p: any) => s + Number(p.amount), 0);
 
   const createMutation = useMutation({
     mutationFn: async () => {
       const recurrence = form.recurrence_interval !== "none"
         ? { interval: form.recurrence_interval, end_date: form.recurrence_end_date || null }
         : null;
-      const { error } = await supabase.from("fb_invoices").insert({
+      const amount = Number(form.amount);
+      const tax = Number(form.tax);
+      const { error } = await supabase.from("company_invoices" as any).insert({
         company_id: companyId!, invoice_number: form.invoice_number,
-        amount: Number(form.amount), tax: Number(form.tax), status: form.status,
+        subtotal: amount, vat_amount: tax, total_amount: amount + tax, tax,
+        status: form.status,
         due_date: form.due_date || null, contact_id: form.contact_id || null,
         recurrence,
       });
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["fb-invoices"] });
+      qc.invalidateQueries({ queryKey: ["company-invoices"] });
       setShowCreate(false);
-      setForm({ invoice_number: "", amount: "", tax: "0", status: "draft", due_date: "", contact_id: "", recurrence_interval: "none", recurrence_end_date: "" });
+      setForm({ invoice_number: "", amount: "", tax: "0", status: "Draft", due_date: "", contact_id: "", recurrence_interval: "none", recurrence_end_date: "" });
       toast({ title: "Invoice created" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -144,10 +147,10 @@ const FBInvoiceList = () => {
 
   const statusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("fb_invoices").update({ status }).eq("id", id);
+      const { error } = await supabase.from("company_invoices" as any).update({ status }).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["fb-invoices"] }); toast({ title: "Status updated" }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["company-invoices"] }); toast({ title: "Status updated" }); },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
@@ -155,20 +158,20 @@ const FBInvoiceList = () => {
     mutationFn: async () => {
       if (!showPayment) return;
       const { error } = await supabase.from("fb_payments").insert({
-        company_id: companyId!, invoice_id: showPayment,
+        company_id: companyId!, company_invoice_id: showPayment,
         amount: Number(paymentForm.amount), method: paymentForm.method, date: paymentForm.date,
-      });
+      } as any);
       if (error) throw error;
       const inv = invoices.find((i: any) => i.id === showPayment);
       const totalPaid = getPaymentTotal(showPayment) + Number(paymentForm.amount);
-      if (inv && totalPaid >= Number(inv.amount)) {
-        await supabase.from("fb_invoices").update({ status: "paid" }).eq("id", showPayment);
+      if (inv && totalPaid >= Number(inv.total_amount)) {
+        await supabase.from("company_invoices" as any).update({ status: "Paid", amount_paid: totalPaid }).eq("id", showPayment);
       } else {
-        await supabase.from("fb_invoices").update({ status: "partial" }).eq("id", showPayment);
+        await supabase.from("company_invoices" as any).update({ status: "Partial", amount_paid: totalPaid }).eq("id", showPayment);
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["fb-invoices"] });
+      qc.invalidateQueries({ queryKey: ["company-invoices"] });
       qc.invalidateQueries({ queryKey: ["fb-payments"] });
       qc.invalidateQueries({ queryKey: ["fb-payments-all"] });
       setShowPayment(null);
@@ -180,31 +183,31 @@ const FBInvoiceList = () => {
 
   const bulkSendMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("fb_invoices").update({ status: "sent" }).in("id", Array.from(selectedIds));
+      const { error } = await supabase.from("company_invoices" as any).update({ status: "Sent" }).in("id", Array.from(selectedIds));
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["fb-invoices"] }); const c = selectedIds.size; setSelectedIds(new Set()); toast({ title: `${c} invoices marked as sent` }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["company-invoices"] }); const c = selectedIds.size; setSelectedIds(new Set()); toast({ title: `${c} invoices marked as sent` }); },
   });
 
   const bulkMarkPaidMutation = useMutation({
     mutationFn: async () => {
       const ids = Array.from(selectedIds);
-      const { error } = await supabase.from("fb_invoices").update({ status: "paid" }).in("id", ids);
+      const { error } = await supabase.from("company_invoices" as any).update({ status: "Paid" }).in("id", ids);
       if (error) throw error;
       const paidInvoices = invoices.filter((i: any) => ids.includes(i.id));
       for (const inv of paidInvoices) {
         const alreadyPaid = getPaymentTotal(inv.id);
-        const remaining = Number(inv.amount) - alreadyPaid;
+        const remaining = Number(inv.total_amount) - alreadyPaid;
         if (remaining > 0) {
           await supabase.from("fb_payments").insert({
-            company_id: companyId!, invoice_id: inv.id,
+            company_id: companyId!, company_invoice_id: inv.id,
             amount: remaining, method: "bulk_payment", date: new Date().toISOString().split("T")[0],
-          });
+          } as any);
         }
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["fb-invoices"] });
+      qc.invalidateQueries({ queryKey: ["company-invoices"] });
       qc.invalidateQueries({ queryKey: ["fb-payments"] });
       qc.invalidateQueries({ queryKey: ["fb-payments-all"] });
       const c = selectedIds.size; setSelectedIds(new Set());
@@ -214,18 +217,18 @@ const FBInvoiceList = () => {
 
   const bulkArchiveMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("fb_invoices").update({ status: "archived" }).in("id", Array.from(selectedIds));
+      const { error } = await supabase.from("company_invoices" as any).update({ status: "Archived" }).in("id", Array.from(selectedIds));
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["fb-invoices"] }); const c = selectedIds.size; setSelectedIds(new Set()); toast({ title: `${c} invoices archived` }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["company-invoices"] }); const c = selectedIds.size; setSelectedIds(new Set()); toast({ title: `${c} invoices archived` }); },
   });
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("fb_invoices").delete().in("id", Array.from(selectedIds));
+      const { error } = await supabase.from("company_invoices" as any).delete().in("id", Array.from(selectedIds));
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["fb-invoices"] }); const c = selectedIds.size; setSelectedIds(new Set()); toast({ title: `${c} invoices deleted` }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["company-invoices"] }); const c = selectedIds.size; setSelectedIds(new Set()); toast({ title: `${c} invoices deleted` }); },
   });
 
   const filtered = invoices.filter((inv: any) => {
@@ -262,12 +265,12 @@ const FBInvoiceList = () => {
           <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="sent">Sent</SelectItem>
-            <SelectItem value="paid">Paid</SelectItem>
-            <SelectItem value="partial">Partial</SelectItem>
-            <SelectItem value="overdue">Overdue</SelectItem>
-            <SelectItem value="archived">Archived</SelectItem>
+            <SelectItem value="Draft">Draft</SelectItem>
+            <SelectItem value="Sent">Sent</SelectItem>
+            <SelectItem value="Paid">Paid</SelectItem>
+            <SelectItem value="Partial">Partial</SelectItem>
+            <SelectItem value="Overdue">Overdue</SelectItem>
+            <SelectItem value="Archived">Archived</SelectItem>
           </SelectContent>
         </Select>
         {selectedIds.size > 0 && (
@@ -312,7 +315,7 @@ const FBInvoiceList = () => {
               <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">No invoices found</td></tr>
             ) : filtered.map((inv: any) => {
               const paid = getPaymentTotal(inv.id);
-              const remaining = Number(inv.amount) - paid;
+              const remaining = Number(inv.total_amount) - paid;
               const rec = inv.recurrence as any;
               return (
                 <tr key={inv.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => navigate(`../invoices/${inv.id}`)}>
@@ -324,7 +327,7 @@ const FBInvoiceList = () => {
                     )}
                   </td>
                   <td className="px-4 py-3 text-foreground">{inv.fb_contacts?.name || "—"}</td>
-                  <td className="px-4 py-3 text-right font-medium text-foreground">{fmt(Number(inv.amount))}</td>
+                  <td className="px-4 py-3 text-right font-medium text-foreground">{fmt(Number(inv.total_amount))}</td>
                   <td className="px-4 py-3 text-right text-green-600">{paid > 0 ? fmt(paid) : "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{inv.due_date || "—"}</td>
                   <td className="px-4 py-3"><Badge variant="secondary" className={statusColors[inv.status] || ""}>{inv.status}</Badge></td>
@@ -332,22 +335,19 @@ const FBInvoiceList = () => {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild><Button variant="ghost" size="sm"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {inv.status === "draft" && (
-                          <DropdownMenuItem onClick={() => statusMutation.mutate({ id: inv.id, status: "sent" })}><Send className="h-4 w-4 mr-2" />Mark as Sent</DropdownMenuItem>
+                        {inv.status === "Draft" && (
+                          <DropdownMenuItem onClick={() => statusMutation.mutate({ id: inv.id, status: "Sent" })}><Send className="h-4 w-4 mr-2" />Mark as Sent</DropdownMenuItem>
                         )}
-                        {!["paid", "cancelled", "archived"].includes(inv.status) && (
+                        {!["Paid", "Archived"].includes(inv.status) && (
                           <>
                             <DropdownMenuItem onClick={() => { setShowPayment(inv.id); setPaymentForm(f => ({ ...f, amount: remaining.toString() })); }}>
                               <CheckCircle className="h-4 w-4 mr-2" />Record Payment
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => statusMutation.mutate({ id: inv.id, status: "paid" })}>Mark as Paid</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => statusMutation.mutate({ id: inv.id, status: "Paid" })}>Mark as Paid</DropdownMenuItem>
                           </>
                         )}
-                        {inv.status !== "archived" && (
-                          <DropdownMenuItem onClick={() => statusMutation.mutate({ id: inv.id, status: "archived" })}><Archive className="h-4 w-4 mr-2" />Archive</DropdownMenuItem>
-                        )}
-                        {inv.status !== "cancelled" && (
-                          <DropdownMenuItem onClick={() => statusMutation.mutate({ id: inv.id, status: "cancelled" })} className="text-destructive">Cancel Invoice</DropdownMenuItem>
+                        {inv.status !== "Archived" && (
+                          <DropdownMenuItem onClick={() => statusMutation.mutate({ id: inv.id, status: "Archived" })}><Archive className="h-4 w-4 mr-2" />Archive</DropdownMenuItem>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>

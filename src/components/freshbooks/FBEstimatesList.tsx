@@ -81,14 +81,18 @@ const FBEstimatesList = () => {
 
   const convertToInvoice = async (estimate: any) => {
     const invNum = estimate.estimate_number.replace("EST", "INV");
-    const { error } = await supabase.from("fb_invoices").insert({
-      company_id: companyId!, invoice_number: invNum, amount: Number(estimate.amount),
-      tax: Number(estimate.tax), status: "draft", contact_id: estimate.contact_id,
+    const amount = Number(estimate.amount);
+    const tax = Number(estimate.tax);
+    const { error } = await supabase.from("company_invoices" as any).insert({
+      company_id: companyId!, invoice_number: invNum,
+      subtotal: amount, vat_amount: tax, total_amount: amount + tax, tax,
+      status: "Draft", contact_id: estimate.contact_id,
+      items: estimate.items,
     });
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     await supabase.from("fb_estimates").update({ status: "accepted" }).eq("id", estimate.id);
     qc.invalidateQueries({ queryKey: ["fb-estimates"] });
-    qc.invalidateQueries({ queryKey: ["fb-invoices"] });
+    qc.invalidateQueries({ queryKey: ["company-invoices"] });
     toast({ title: "Converted to invoice" });
   };
 

@@ -50,7 +50,7 @@ const FBDashboard = () => {
       await supabase.from("fb_projects").delete().eq("company_id", companyId);
       await supabase.from("fb_expenses").delete().eq("company_id", companyId);
       await supabase.from("fb_estimates").delete().eq("company_id", companyId);
-      await supabase.from("fb_invoices").delete().eq("company_id", companyId);
+      await supabase.from("company_invoices" as any).delete().eq("company_id", companyId);
       await supabase.from("fb_contacts").delete().eq("company_id", companyId);
 
       // 3 contacts
@@ -63,13 +63,13 @@ const FBDashboard = () => {
 
       const contactIds = contacts?.map(c => c.id) || [];
 
-      // 5 invoices
-      const { data: invoicesInserted, error: invErr } = await supabase.from("fb_invoices").insert([
-        { company_id: companyId, invoice_number: "INV-DEMO-001", amount: 1200, tax: 180, status: "draft", due_date: d(14), contact_id: contactIds[0] || null, items: [{ description: "AC Unit Service", qty: 1, rate: 1200 }] },
-        { company_id: companyId, invoice_number: "INV-DEMO-002", amount: 3500, tax: 525, status: "sent", due_date: d(7), contact_id: contactIds[1] || null, items: [{ description: "Split Unit Installation", qty: 1, rate: 3500 }] },
-        { company_id: companyId, invoice_number: "INV-DEMO-003", amount: 2200, tax: 330, status: "viewed", due_date: d(-3), contact_id: contactIds[2] || null, items: [{ description: "Duct Cleaning", qty: 2, rate: 1100 }] },
-        { company_id: companyId, invoice_number: "INV-DEMO-004", amount: 4800, tax: 720, status: "overdue", due_date: d(-10), contact_id: contactIds[0] || null, items: [{ description: "Central AC Repair", qty: 1, rate: 4800 }] },
-        { company_id: companyId, invoice_number: "INV-DEMO-005", amount: 1500, tax: 225, status: "paid", due_date: d(-20), contact_id: contactIds[1] || null, items: [{ description: "Refrigerant Refill", qty: 3, rate: 500 }] },
+      // 5 invoices (company_invoices)
+      const { data: invoicesInserted, error: invErr } = await supabase.from("company_invoices" as any).insert([
+        { company_id: companyId, invoice_number: "INV-DEMO-001", subtotal: 1200, vat_amount: 180, total_amount: 1380, tax: 180, status: "Draft", due_date: d(14), contact_id: contactIds[0] || null, items: [{ description: "AC Unit Service", qty: 1, rate: 1200 }] },
+        { company_id: companyId, invoice_number: "INV-DEMO-002", subtotal: 3500, vat_amount: 525, total_amount: 4025, tax: 525, status: "Sent", due_date: d(7), contact_id: contactIds[1] || null, items: [{ description: "Split Unit Installation", qty: 1, rate: 3500 }] },
+        { company_id: companyId, invoice_number: "INV-DEMO-003", subtotal: 2200, vat_amount: 330, total_amount: 2530, tax: 330, status: "Viewed", due_date: d(-3), contact_id: contactIds[2] || null, items: [{ description: "Duct Cleaning", qty: 2, rate: 1100 }] },
+        { company_id: companyId, invoice_number: "INV-DEMO-004", subtotal: 4800, vat_amount: 720, total_amount: 5520, tax: 720, status: "Overdue", due_date: d(-10), contact_id: contactIds[0] || null, items: [{ description: "Central AC Repair", qty: 1, rate: 4800 }] },
+        { company_id: companyId, invoice_number: "INV-DEMO-005", subtotal: 1500, vat_amount: 225, total_amount: 1725, tax: 225, status: "Paid", due_date: d(-20), contact_id: contactIds[1] || null, items: [{ description: "Refrigerant Refill", qty: 3, rate: 500 }] },
       ]).select();
       if (invErr) console.error("Invoice insert error:", invErr);
       const invoiceIds = invoicesInserted?.map(i => i.id) || [];
@@ -130,7 +130,7 @@ const FBDashboard = () => {
       // Invalidate all query keys
       const keys = [
         "fb-dashboard-stats",
-        "fb-invoices-stats", "fb-invoices", "fb-invoices-for-payment",
+        "company-invoices", "fb-invoices-for-payment",
         "fb-estimates", "fb-expenses-stats", "fb-expenses",
         "fb-payments-stats", "fb-payments",
         "fb-contacts", "fb-projects", "fb-time-entries",
@@ -149,8 +149,8 @@ const FBDashboard = () => {
     queryKey: ["fb-dashboard-stats", companyId],
     queryFn: async () => {
       const [invRes, payRes, expRes] = await Promise.all([
-        supabase.from("fb_invoices").select("id, amount, status, due_date, invoice_number, created_at, contact_id").eq("company_id", companyId!),
-        supabase.from("fb_payments").select("id, amount, date, invoice_id, method").eq("company_id", companyId!).order("date", { ascending: false }),
+        supabase.from("company_invoices" as any).select("id, total_amount, status, due_date, invoice_number, created_at, contact_id").eq("company_id", companyId!),
+        supabase.from("fb_payments").select("id, amount, date, company_invoice_id, method").eq("company_id", companyId!).order("date", { ascending: false }),
         supabase.from("fb_expenses").select("id, amount, date, category").eq("company_id", companyId!),
       ]);
       const invoices = invRes.data || [];
@@ -159,11 +159,11 @@ const FBDashboard = () => {
 
       const todayStr = new Date().toISOString().split("T")[0];
       const outstanding = invoices
-        .filter(i => !["paid", "cancelled"].includes(i.status))
-        .reduce((s, i) => s + Number(i.amount), 0);
+        .filter(i => !["Paid", "Archived"].includes(i.status))
+        .reduce((s, i) => s + Number(i.total_amount), 0);
       const revenue = payments.reduce((s, p) => s + Number(p.amount), 0);
       const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
-      const overdueInvoices = invoices.filter(i => i.due_date && i.due_date < todayStr && !["paid", "cancelled"].includes(i.status));
+      const overdueInvoices = invoices.filter(i => i.due_date && i.due_date < todayStr && !["Paid", "Archived"].includes(i.status));
 
       return { invoices, payments, expenses, outstanding, revenue, totalExpenses, overdueInvoices, todayStr };
     },
@@ -179,7 +179,7 @@ const FBDashboard = () => {
   const overdueInvoices = stats?.overdueInvoices || [];
 
   const upcomingDue = invoices
-    .filter(i => i.due_date && !["paid", "cancelled"].includes(i.status))
+    .filter(i => i.due_date && !["Paid", "Archived"].includes(i.status))
     .sort((a, b) => (a.due_date! > b.due_date! ? 1 : -1))
     .slice(0, 5);
 
@@ -197,7 +197,7 @@ const FBDashboard = () => {
 
   // Recent activity feed: union of invoices, payments, estimates
   const recentActivity = [
-    ...invoices.slice(0, 5).map((i: any) => ({ type: "invoice" as const, label: `Invoice ${i.invoice_number}`, detail: `${fmt(Number(i.amount))} — ${i.status}`, date: i.created_at })),
+    ...invoices.slice(0, 5).map((i: any) => ({ type: "invoice" as const, label: `Invoice ${i.invoice_number}`, detail: `${fmt(Number(i.total_amount))} — ${i.status}`, date: i.created_at })),
     ...payments.map((p: any) => ({ type: "payment" as const, label: `Payment received`, detail: `${fmt(Number(p.amount))} via ${p.method?.replace("_", " ")}`, date: p.date })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
 
@@ -267,7 +267,7 @@ const FBDashboard = () => {
                     <p className="text-sm font-medium text-foreground">{inv.invoice_number}</p>
                     <p className="text-xs text-red-600">Due: {inv.due_date}</p>
                   </div>
-                  <span className="text-sm font-bold text-red-700">{fmt(Number(inv.amount))}</span>
+                  <span className="text-sm font-bold text-red-700">{fmt(Number(inv.total_amount))}</span>
                 </div>
               ))}
             </div>
@@ -313,7 +313,7 @@ const FBDashboard = () => {
                       Due: {inv.due_date} {isWithin7Days(inv.due_date) && "⚠️"}
                     </p>
                   </div>
-                  <span className="text-sm font-bold text-foreground">{fmt(Number(inv.amount))}</span>
+                  <span className="text-sm font-bold text-foreground">{fmt(Number(inv.total_amount))}</span>
                 </div>
               ))}
             </div>

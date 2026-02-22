@@ -284,6 +284,101 @@ export type Database = {
         }
         Relationships: []
       }
+      company_invoices: {
+        Row: {
+          amount_paid: number
+          company_id: string
+          contact_id: string | null
+          created_at: string | null
+          customer_id: string | null
+          due_date: string | null
+          id: string
+          invoice_number: string
+          items: Json | null
+          notes: string | null
+          quote_id: string | null
+          quote_number: string | null
+          recurrence: Json | null
+          status: string
+          subtotal: number
+          tax: number
+          total_amount: number
+          updated_at: string | null
+          vat_amount: number
+        }
+        Insert: {
+          amount_paid?: number
+          company_id: string
+          contact_id?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_number: string
+          items?: Json | null
+          notes?: string | null
+          quote_id?: string | null
+          quote_number?: string | null
+          recurrence?: Json | null
+          status?: string
+          subtotal?: number
+          tax?: number
+          total_amount?: number
+          updated_at?: string | null
+          vat_amount?: number
+        }
+        Update: {
+          amount_paid?: number
+          company_id?: string
+          contact_id?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_number?: string
+          items?: Json | null
+          notes?: string | null
+          quote_id?: string | null
+          quote_number?: string | null
+          recurrence?: Json | null
+          status?: string
+          subtotal?: number
+          tax?: number
+          total_amount?: number
+          updated_at?: string | null
+          vat_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_invoices_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_invoices_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "fb_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_invoices_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_members: {
         Row: {
           company_id: string
@@ -901,6 +996,7 @@ export type Database = {
         Row: {
           amount: number
           company_id: string
+          company_invoice_id: string | null
           created_at: string
           date: string
           id: string
@@ -910,6 +1006,7 @@ export type Database = {
         Insert: {
           amount?: number
           company_id: string
+          company_invoice_id?: string | null
           created_at?: string
           date?: string
           id?: string
@@ -919,6 +1016,7 @@ export type Database = {
         Update: {
           amount?: number
           company_id?: string
+          company_invoice_id?: string | null
           created_at?: string
           date?: string
           id?: string
@@ -931,6 +1029,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fb_payments_company_invoice_id_fkey"
+            columns: ["company_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "company_invoices"
             referencedColumns: ["id"]
           },
           {

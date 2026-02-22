@@ -32,9 +32,9 @@ const FBReports = () => {
   const [rangeFrom, rangeTo] = preset === "custom" && customFrom && customTo ? [customFrom, customTo] : getPresetRange(preset);
 
   const { data: invoices = [] } = useQuery({
-    queryKey: ["fb-reports-invoices", companyId],
+    queryKey: ["company-invoices-reports", companyId],
     queryFn: async () => {
-      const { data } = await supabase.from("fb_invoices").select("*").eq("company_id", companyId!);
+      const { data } = await supabase.from("company_invoices" as any).select("*").eq("company_id", companyId!);
       return data || [];
     },
     enabled: !!companyId,
@@ -64,8 +64,8 @@ const FBReports = () => {
   const filteredExpenses = expenses.filter((e: any) => e.date >= rangeFrom && e.date <= rangeTo);
 
   // Status breakdown
-  const statusData = ["draft", "sent", "paid", "overdue", "partial"].map(s => ({
-    name: s.charAt(0).toUpperCase() + s.slice(1),
+  const statusData = ["Draft", "Sent", "Paid", "Overdue", "Partial"].map(s => ({
+    name: s,
     value: filteredInvoices.filter((i: any) => i.status === s).length,
   })).filter(d => d.value > 0);
 
@@ -90,7 +90,7 @@ const FBReports = () => {
 
   // Aging report
   const today = new Date();
-  const overdueInvoices = invoices.filter((i: any) => i.due_date && new Date(i.due_date) < today && !["paid", "cancelled"].includes(i.status));
+  const overdueInvoices = invoices.filter((i: any) => i.due_date && new Date(i.due_date) < today && !["Paid", "Archived"].includes(i.status));
   const aging = useMemo(() => {
     const groups = { "0-30": [] as any[], "31-60": [] as any[], "61-90": [] as any[], "90+": [] as any[] };
     overdueInvoices.forEach((inv: any) => {
@@ -111,7 +111,7 @@ const FBReports = () => {
       ...statusData.map(s => ({ section: "Invoice Status", item: s.name, amount: s.value })),
       ...expenseData.map(e => ({ section: "Expense Category", item: e.name, amount: e.value })),
       ...(["0-30", "31-60", "61-90", "90+"] as const).map(b => ({
-        section: "Aging", item: `${b} days`, amount: aging[b].reduce((s: number, i: any) => s + Number(i.amount), 0),
+        section: "Aging", item: `${b} days`, amount: aging[b].reduce((s: number, i: any) => s + Number(i.total_amount), 0),
       })),
     ];
     const csv = Papa.unparse(rows);
@@ -222,14 +222,14 @@ const FBReports = () => {
                   <Badge variant="secondary" className={bucket === "90+" ? "bg-red-100 text-red-700" : bucket === "61-90" ? "bg-red-50 text-red-600" : bucket === "31-60" ? "bg-blue-100 text-blue-700" : "bg-blue-50 text-blue-600"}>
                     {bucket} days
                   </Badge>
-                  <span className="text-sm text-muted-foreground">{aging[bucket].length} invoice(s) — {fmt(aging[bucket].reduce((s: number, i: any) => s + Number(i.amount), 0))}</span>
+                  <span className="text-sm text-muted-foreground">{aging[bucket].length} invoice(s) — {fmt(aging[bucket].reduce((s: number, i: any) => s + Number(i.total_amount), 0))}</span>
                 </div>
                 {aging[bucket].length > 0 && (
                   <div className="ml-4 space-y-1">
                     {aging[bucket].map((inv: any) => (
                       <div key={inv.id} className="flex justify-between text-sm p-2 rounded bg-muted/50">
                         <span className="text-foreground">{inv.invoice_number}</span>
-                        <span className="font-medium">{fmt(Number(inv.amount))}</span>
+                        <span className="font-medium">{fmt(Number(inv.total_amount))}</span>
                       </div>
                     ))}
                   </div>
