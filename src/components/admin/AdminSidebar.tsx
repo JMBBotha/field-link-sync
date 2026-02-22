@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { FilePlus2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -100,6 +101,7 @@ const AdminSidebar = ({
         { path: "/admin/invoices", label: "Invoices", icon: Receipt },
         { path: "/admin/invoices/templates", label: "Invoice Templates", icon: FileText },
         { path: "/admin/agreements", label: "Agreements", icon: FileCheck },
+        { path: "/admin/manual-quote", label: "Manual Quote", icon: FilePlus2 },
       ],
     },
     {
