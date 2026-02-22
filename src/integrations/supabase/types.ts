@@ -4091,6 +4091,7 @@ export type Database = {
           }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      update_overdue_invoices: { Args: never; Returns: undefined }
       validate_customer_token: { Args: { p_token: string }; Returns: string }
     }
     Enums: {
