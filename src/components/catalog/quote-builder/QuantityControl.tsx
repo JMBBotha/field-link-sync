@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { hapticTap } from "@/lib/haptics";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface QuantityControlProps {
   value: number;
@@ -37,10 +39,10 @@ const QuantityControl = memo(function QuantityControl({
   showValueLabel = false,
   className = "",
 }: QuantityControlProps) {
-  const btnSize = size === "sm" ? "h-6 w-6" : "h-7 w-7";
+  const btnSize = size === "sm" ? "h-8 w-8 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 sm:h-6 sm:w-6" : "h-9 w-9 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 sm:h-7 sm:w-7";
   const iconSize = size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5";
   const inputWidth = size === "sm" ? "w-14" : "w-20";
-  const inputHeight = size === "sm" ? "h-7 text-xs" : "h-8 text-sm";
+  const inputHeight = size === "sm" ? "h-9 text-xs min-h-[44px] sm:min-h-0 sm:h-7" : "h-10 text-sm min-h-[44px] sm:min-h-0 sm:h-8";
 
   const clamp = (v: number) => Math.max(min, Math.min(max, v));
 
@@ -52,7 +54,7 @@ const QuantityControl = memo(function QuantityControl({
           variant="outline"
           size="icon"
           className={btnSize}
-          onClick={() => onChange(clamp(value - step))}
+          onClick={() => { onChange(clamp(value - step)); hapticTap("light"); }}
           disabled={value <= min}
           aria-label="Decrease"
         >
@@ -74,7 +76,7 @@ const QuantityControl = memo(function QuantityControl({
           variant="outline"
           size="icon"
           className={btnSize}
-          onClick={() => onChange(clamp(value + step))}
+          onClick={() => { onChange(clamp(value + step)); hapticTap("light"); }}
           disabled={value >= max}
           aria-label="Increase"
         >
