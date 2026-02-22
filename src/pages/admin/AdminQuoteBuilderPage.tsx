@@ -548,7 +548,7 @@ const AdminQuoteBuilderPage = () => {
         <div className="flex-1 flex min-h-0 overflow-hidden">
 
           {/* LEFT: Product Palette */}
-          <div className={`${isMobile ? (mobileTab === "palette" ? "flex" : "hidden") : "flex"} flex-col w-full md:w-80 lg:w-96 shrink-0 border-r border-white/20 min-h-0 overflow-hidden`}>
+          <div className={`${isMobile ? (mobileTab === "palette" ? "flex" : "hidden") : "flex"} flex-col w-full md:w-80 lg:w-96 shrink-0 border-r border-white/20 min-h-0 overflow-hidden p-0.5`}>
             <ProductPalette
               products={filteredProducts}
               isLoading={isLoading}
