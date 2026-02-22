@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { Search, Wand2, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -133,6 +133,11 @@ const QuoteBuilderTab = () => {
   ]);
   const [activeProduct, setActiveProduct] = useState<PaletteProduct | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [acModalOpen, setAcModalOpen] = useState(false);
   const [acModalProduct, setAcModalProduct] = useState<PaletteProduct | null>(null);
@@ -278,28 +283,26 @@ const QuoteBuilderTab = () => {
     let result = products;
 
     // Only filter by category when NOT searching
-    if (!searchQuery.trim() && categoryFilter !== "all" && categoryFilter !== "favorites") {
+    if (!debouncedSearch.trim() && categoryFilter !== "all" && categoryFilter !== "favorites") {
       result = result.filter((p) =>
         p.product_category === categoryFilter ||
         (p.category || "").toLowerCase().includes(categoryFilter.toLowerCase())
       );
     }
 
-    if (searchQuery.trim()) {
-      const terms = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
+    if (debouncedSearch.trim()) {
+      const terms = debouncedSearch.toLowerCase().split(/\s+/).filter(Boolean);
       result = result.filter((p) => {
         const blob = [
           p.product_code, p.short_name, p.brand,
           p.description, p.category, p.product_category, p.supplier_name,
         ].filter(Boolean).join(" ").toLowerCase();
-        // ALL terms must match somewhere in the combined blob (with synonym expansion)
         return allTermsMatchBlob(terms, blob);
       });
-      console.log(`[Search] query="${searchQuery}" terms=[${terms.join(",")}] results=${result.length}`);
     }
 
     return result;
-  }, [products, categoryFilter, searchQuery]);
+  }, [products, categoryFilter, debouncedSearch]);
 
   const sensors = useSensors(
     useSensor(NoDndPointerSensor, { activationConstraint: { distance: 8 } }),
@@ -387,7 +390,7 @@ const QuoteBuilderTab = () => {
     setActiveProduct(null);
     setIsDragging(false);
     const { active, over } = event;
-    console.log('[DnD] onDragEnd', { activeId: active.id, overId: over?.id });
+    
     if (!over) return;
 
     const overId = String(over.id);

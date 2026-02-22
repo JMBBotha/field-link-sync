@@ -541,7 +541,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
             // Prevent toggling to per-meter if product should be forced per-unit
             const correctMode = determinePricingMode(m.product);
             if (correctMode === "per-unit") {
-              console.warn(`[PricingMode] Cannot toggle "${m.product.short_name || m.product.product_code}" to per-meter — forced per-unit`);
+              
               return m;
             }
             const newMode = m.pricingMode === "length" ? "unit" as const : "length" as const;
