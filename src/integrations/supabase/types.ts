@@ -857,6 +857,7 @@ export type Database = {
           invoice_number: string
           items: Json
           notes: string | null
+          recurrence: Json | null
           status: string
           tax: number
         }
@@ -870,6 +871,7 @@ export type Database = {
           invoice_number: string
           items?: Json
           notes?: string | null
+          recurrence?: Json | null
           status?: string
           tax?: number
         }
@@ -883,6 +885,7 @@ export type Database = {
           invoice_number?: string
           items?: Json
           notes?: string | null
+          recurrence?: Json | null
           status?: string
           tax?: number
         }

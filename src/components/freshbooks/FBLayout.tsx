@@ -6,7 +6,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import {
   LayoutDashboard, FileText, FileBarChart, Receipt,
   Clock, Users, BarChart3, CreditCard, FolderKanban,
-  LogOut, ChevronLeft, Menu, Search, Bell, Moon, Sun
+  LogOut, ChevronLeft, Menu, Search, Bell, Moon, Sun, ScrollText, Eye
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,8 @@ const navItems = [
   { label: "Reports", icon: BarChart3, path: "reports" },
   { label: "Payments", icon: CreditCard, path: "payments" },
   { label: "Projects", icon: FolderKanban, path: "projects" },
+  { label: "Client Portal", icon: Eye, path: "portal" },
+  { label: "Audit Log", icon: ScrollText, path: "audit" },
 ];
 
 const SidebarNav = ({ companyId, company, onNavClick, onLogout, onBackToAdmin }: {
