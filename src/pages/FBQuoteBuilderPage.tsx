@@ -486,7 +486,7 @@ const FBQuoteBuilderPage = () => {
 
   /* ═══ RENDER ═══ */
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "linear-gradient(135deg, #1e6bb8 0%, #d0d0d0 100%)", backgroundAttachment: "fixed" }}>
       {/* ─── CLIENT PORTAL HEADER ─── */}
       <header className="shrink-0 h-14 flex items-center justify-between px-4 bg-primary text-primary-foreground shadow-sm">
         <div className="flex items-center gap-3">
