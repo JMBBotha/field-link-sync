@@ -704,8 +704,42 @@ export type Database = {
         }
         Relationships: []
       }
+      email_events: {
+        Row: {
+          created_at: string | null
+          email_id: string
+          event_data: Json | null
+          event_type: string
+          id: string
+          processed: boolean | null
+          quote_number: string | null
+          recipient_email: string
+        }
+        Insert: {
+          created_at?: string | null
+          email_id: string
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          processed?: boolean | null
+          quote_number?: string | null
+          recipient_email: string
+        }
+        Update: {
+          created_at?: string | null
+          email_id?: string
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          processed?: boolean | null
+          quote_number?: string | null
+          recipient_email?: string
+        }
+        Relationships: []
+      }
       email_preferences: {
         Row: {
+          bounce_or_complaint: boolean | null
           created_at: string | null
           email: string
           id: string
@@ -715,6 +749,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          bounce_or_complaint?: boolean | null
           created_at?: string | null
           email: string
           id?: string
@@ -724,6 +759,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          bounce_or_complaint?: boolean | null
           created_at?: string | null
           email?: string
           id?: string
