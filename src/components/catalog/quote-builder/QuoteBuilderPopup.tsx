@@ -4,6 +4,8 @@ import { ChevronLeft, ChevronRight, Check, Wand2, X, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { hapticTap } from "@/lib/haptics";
+import { useBackButtonGuard } from "@/hooks/useBackButtonGuard";
 import type { PaletteProduct, Basket, BasketItem } from "../QuoteBuilderTab";
 import type { QuoteArea } from "./quoteWizardTypes";
 import { WIZARD_STEPS, computeAreaSubtotal, createEmptyArea } from "./quoteWizardTypes";
@@ -77,6 +79,17 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
   const [currentStep, setCurrentStep] = useState(0);
   const [areas, setAreas] = useState<QuoteArea[]>([]);
 
+  // Capacitor: prevent hardware back button from leaving wizard
+  const handleHardwareBack = useCallback(() => {
+    if (currentStep > 0) {
+      setCurrentStep((s) => s - 1);
+      hapticTap("light");
+    } else {
+      onClose();
+    }
+  }, [currentStep, onClose]);
+  useBackButtonGuard(open, handleHardwareBack);
+
   // When opened with a triggerItem, jump to its step and ensure at least one area exists
   const lastTriggerId = useRef<string | null>(null);
   useEffect(() => {
@@ -105,6 +118,7 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
 
   const handleSaveDraft = useCallback(() => {
     saveDraftToStorage(areas, currentStep);
+    hapticTap("medium");
     toast.success("Draft saved");
   }, [areas, currentStep]);
 
@@ -115,11 +129,17 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
   }, [currentStep, areas]);
 
   const goNext = useCallback(() => {
-    if (currentStep < WIZARD_STEPS.length - 1 && canNext) setCurrentStep((s) => s + 1);
+    if (currentStep < WIZARD_STEPS.length - 1 && canNext) {
+      setCurrentStep((s) => s + 1);
+      hapticTap("medium");
+    }
   }, [currentStep, canNext]);
 
   const goBack = useCallback(() => {
-    if (currentStep > 0) setCurrentStep((s) => s - 1);
+    if (currentStep > 0) {
+      setCurrentStep((s) => s - 1);
+      hapticTap("light");
+    }
   }, [currentStep]);
 
   const handleSave = useCallback(() => {
