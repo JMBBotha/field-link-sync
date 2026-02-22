@@ -499,28 +499,28 @@ const AdminQuoteBuilderPage = () => {
   return (
     <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "linear-gradient(135deg, #1e6bb8 0%, #d0d0d0 100%)", backgroundAttachment: "fixed" }}>
       {/* ─── HEADER ─── */}
-      <header className="shrink-0 h-14 flex items-center justify-between px-4 bg-card border-b border-border/60 shadow-sm">
+      <header className="shrink-0 h-14 flex items-center justify-between px-4 shadow-sm" style={{ backgroundColor: "#0077B6" }}>
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/admin/quotes")}
-            className="h-9 w-9 rounded-xl hover:bg-muted transition-all duration-150">
+            className="h-9 w-9 rounded-xl text-white hover:bg-white/10 transition-all duration-150">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <img src={logo} alt="Logo" className="h-7" />
-          <div className="hidden sm:block h-6 w-px bg-border/60" />
-          <h1 className="hidden sm:block text-lg font-semibold tracking-tight text-foreground">Quote Builder</h1>
+          <div className="hidden sm:block h-6 w-px bg-white/20" />
+          <h1 className="hidden sm:block text-lg font-semibold tracking-tight text-white">Quote Builder</h1>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden md:flex items-center gap-1.5 rounded-xl bg-muted/50 px-3 py-1.5">
-            <span className="text-xs text-muted-foreground">{totalItems} items · {baskets.length} zones</span>
-            <span className="text-sm font-bold text-foreground ml-1">
+          <div className="hidden md:flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5">
+            <span className="text-xs text-white/70">{totalItems} items · {baskets.length} zones</span>
+            <span className="text-sm font-bold text-white ml-1">
               R{totalCost.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
             </span>
           </div>
-          <Button variant="outline" size="sm" className="gap-1.5 rounded-xl h-9 text-xs hidden sm:flex" onClick={() => setWizardOpen(true)}>
+          <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl h-9 text-xs hidden sm:flex text-white hover:bg-white/10" onClick={() => setWizardOpen(true)}>
             <Wand2 className="h-3.5 w-3.5" /> Area Quote
           </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hidden md:flex"
+          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hidden md:flex text-white hover:bg-white/10"
             onClick={() => setSummaryCollapsed((c) => !c)}
             title={summaryCollapsed ? "Show summary" : "Hide summary"}>
             {summaryCollapsed ? <PanelRightOpen className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />}
