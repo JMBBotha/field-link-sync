@@ -16,6 +16,7 @@ import type { PaletteProduct } from "../../QuoteBuilderTab";
 import type { QuoteArea, AreaMaterial, AreaBracket, AreaConsumable } from "../quoteWizardTypes";
 import { getBracketSize } from "../quoteWizardTypes";
 import { isWiredRemote, forcePerUnitPricing } from "../daikinRemoteUtils";
+import { determinePricingMode, auditPricingMode, toAreaPricingMode } from "../pricingModeUtils";
 import { termMatchesBlob } from "../../searchSynonyms";
 
 /* ── Helper: check if a product is an AC unit (should be excluded from materials) ── */
@@ -133,8 +134,14 @@ function materialsFromBundle(bundle: Bundle): AreaMaterial[] {
     if (!item.product || item.is_optional) continue;
     // Force per-unit pricing for wired remotes regardless of bundle config
     const product = isWiredRemote(item.product) ? forcePerUnitPricing(item.product) : item.product;
-    const ppm = product.price_per_metre;
-    const isLengthItem = item.is_length_item && typeof ppm === "number" && ppm > 0;
+    
+    // Determine correct pricing mode based on product category
+    const mode = determinePricingMode(product);
+    const isLengthItem = mode === "per-meter" && typeof product.price_per_metre === "number" && product.price_per_metre > 0;
+    
+    // Audit for dev warnings
+    auditPricingMode(product, isLengthItem ? "length" : "unit");
+
     if (isLengthItem) {
       const len = item.length_metres || product.unit_length || 3;
       materials.push({
@@ -142,8 +149,8 @@ function materialsFromBundle(bundle: Bundle): AreaMaterial[] {
         product,
         defaultLength: len,
         adjustedLength: len,
-        costPerMeter: ppm!,
-        totalCost: len * ppm!,
+        costPerMeter: product.price_per_metre!,
+        totalCost: len * product.price_per_metre!,
         pricingMode: "length",
         unitQuantity: 1,
       });
@@ -530,6 +537,12 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
           ...a,
           materials: a.materials.map((m) => {
             if (m.id !== matId) return m;
+            // Prevent toggling to per-meter if product should be forced per-unit
+            const correctMode = determinePricingMode(m.product);
+            if (correctMode === "per-unit") {
+              console.warn(`[PricingMode] Cannot toggle "${m.product.short_name || m.product.product_code}" to per-meter — forced per-unit`);
+              return m;
+            }
             const newMode = m.pricingMode === "length" ? "unit" as const : "length" as const;
             if (newMode === "unit") {
               return { ...m, pricingMode: newMode, unitQuantity: m.unitQuantity || 1 };
@@ -593,9 +606,16 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
   const addMaterialFromPicker = useCallback((areaId: string, product: PaletteProduct) => {
     // Force per-unit pricing for wired remotes (Daikin BRC073, BRCW901A08, etc.)
     const safeProduct = isWiredRemote(product) ? forcePerUnitPricing(product) : product;
+    
+    // Determine correct pricing mode based on category
+    const mode = determinePricingMode(safeProduct);
     const ppm = safeProduct.price_per_metre;
-    const isLengthItem = safeProduct.sold_in_length && typeof ppm === "number" && ppm > 0;
+    const isLengthItem = mode === "per-meter" && typeof ppm === "number" && ppm > 0;
     const len = safeProduct.unit_length || 3;
+    
+    // Audit for dev warnings
+    auditPricingMode(safeProduct, isLengthItem ? "length" : "unit");
+    
     onAreasChange(
       areas.map((a) => {
         if (a.id !== areaId) return a;
@@ -736,7 +756,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                       {/* Materials (length items) */}
                       {area.materials.map((mat) => {
                         const isLength = mat.pricingMode === "length";
-                        const canToggle = mat.product.sold_in_length && typeof mat.product.price_per_metre === "number" && mat.product.price_per_metre > 0;
+                        const canToggle = determinePricingMode(mat.product) === "per-meter" && typeof mat.product.price_per_metre === "number" && mat.product.price_per_metre > 0;
                         const unitPrice = mat.product.selling_price || mat.product.cost_incl_vat || 0;
                         const lineTotal = isLength ? mat.totalCost : unitPrice * mat.unitQuantity;
 
