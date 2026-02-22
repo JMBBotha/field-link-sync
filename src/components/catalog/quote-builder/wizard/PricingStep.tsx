@@ -1,11 +1,12 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
-import { RotateCcw, FileDown, Loader2, Mail, Check } from "lucide-react";
+import { RotateCcw, FileDown, Loader2, Mail, Check, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import QuantityControl from "../QuantityControl";
@@ -30,6 +31,13 @@ interface AreaPricing {
   areaId: string;
   quantity: number;
   markupPercent: number;
+}
+
+/** Returns a color class based on markup percentage */
+function getMarkupColor(markup: number): string {
+  if (markup <= 20) return "bg-green-500";
+  if (markup <= 35) return "bg-amber-400";
+  return "bg-red-500";
 }
 
 /* Lazy-load heavy PDF components */
@@ -83,9 +91,13 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
     });
   }, [areas, areaPricing, globalMarkup]);
 
-  const subtotal = lineItems.reduce((s, l) => s + l.lineTotal, 0);
-  const vatAmount = subtotal * VAT_RATE;
-  const total = subtotal + vatAmount;
+  const subtotal = useMemo(() => lineItems.reduce((s, l) => s + l.lineTotal, 0), [lineItems]);
+  const vatAmount = useMemo(() => subtotal * VAT_RATE, [subtotal]);
+  const total = useMemo(() => subtotal + vatAmount, [subtotal, vatAmount]);
+  const avgMarkup = useMemo(() => {
+    const withUnits = lineItems.filter((l) => l.markup > 0);
+    return withUnits.length > 0 ? withUnits.reduce((s, l) => s + l.markup, 0) / withUnits.length : 0;
+  }, [lineItems]);
 
   // Build PDF data
   const quoteData: QuotePDFData | null = useMemo(() => {
@@ -101,44 +113,24 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
       clientName: "",
       clientEmail: "",
       items: lineItems.map((li) => {
-        // Build sub-items from materials + consumables
         const subItems: QuotePDFSubItem[] = [];
         for (const mat of li.area.materials) {
           const isLen = mat.pricingMode === "length";
           const unitPrice = isLen ? mat.costPerMeter : (mat.product.selling_price || mat.product.cost_incl_vat || 0);
           const qty = isLen ? mat.adjustedLength : mat.unitQuantity;
           const lineTotal = isLen ? mat.totalCost : unitPrice * mat.unitQuantity;
-          subItems.push({
-            name: mat.product.short_name || mat.product.product_code,
-            quantity: qty,
-            unitPrice,
-            lineTotal,
-            pricingMode: isLen ? "per-meter" : "per-unit",
-          });
+          subItems.push({ name: mat.product.short_name || mat.product.product_code, quantity: qty, unitPrice, lineTotal, pricingMode: isLen ? "per-meter" : "per-unit" });
         }
         for (const cons of (li.area.consumables ?? [])) {
           const price = cons.product.selling_price || cons.product.cost_incl_vat || 0;
-          subItems.push({
-            name: cons.product.short_name || cons.product.product_code,
-            quantity: cons.quantity,
-            unitPrice: price,
-            lineTotal: price * cons.quantity,
-            pricingMode: "per-unit",
-          });
+          subItems.push({ name: cons.product.short_name || cons.product.product_code, quantity: cons.quantity, unitPrice: price, lineTotal: price * cons.quantity, pricingMode: "per-unit" });
         }
         for (const br of li.area.brackets) {
-          subItems.push({
-            name: `Bracket ${br.size}`,
-            quantity: br.quantity,
-            unitPrice: br.price,
-            lineTotal: br.price * br.quantity,
-            pricingMode: "per-unit",
-          });
+          subItems.push({ name: `Bracket ${br.size}`, quantity: br.quantity, unitPrice: br.price, lineTotal: br.price * br.quantity, pricingMode: "per-unit" });
         }
         return {
           areaName: li.area.name,
           unitName: li.area.acUnits[0]?.product.name || li.area.acUnits[0]?.product.short_name || li.area.acUnits[0]?.product.product_code || "—",
-          btu: li.area.acUnits[0]?.btu || (li.area.acUnits[0]?.product as any)?.kw ? Math.round(((li.area.acUnits[0]?.product as any)?.kw || 0) * 3412) : 0,
           btu: li.area.acUnits[0]?.btu || 0,
           quantity: li.quantity,
           unitPrice: li.sellingPrice,
@@ -155,9 +147,9 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
   }, [pdfReady, allHaveUnits, lineItems, subtotal, vatAmount, total]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 overflow-x-auto">
       {/* Global markup */}
-      <Card>
+      <Card className="shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center justify-between">
             Global Markup
@@ -172,7 +164,9 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
               <TooltipTrigger asChild>
                 <Label className="text-xs text-muted-foreground whitespace-nowrap cursor-help">Default Markup %</Label>
               </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">Set profit margin for all areas</TooltipContent>
+              <TooltipContent side="top" className="text-xs max-w-[220px]">
+                Set the default profit margin applied to all areas. Higher markup increases profit but may reduce client acceptance.
+              </TooltipContent>
             </Tooltip>
             <Input
               type="number"
@@ -186,84 +180,100 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
         </CardContent>
       </Card>
 
-      {/* Per-area pricing */}
-      <div className="space-y-2">
-        {lineItems.map(({ area, costPrice, quantity, markup, sellingPrice, lineTotal }) => {
-          const unit = area.acUnits[0];
-          const pricing = getPricing(area.id);
+      {/* Sticky pricing table header */}
+      <div className="rounded-lg border shadow-sm overflow-hidden">
+        <div className="sticky top-0 z-10 bg-background shadow-sm border-b">
+          <div className="grid grid-cols-[1fr_auto_auto_auto_auto] sm:grid-cols-[1.5fr_1fr_1fr_1fr_1fr] gap-2 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[500px]">
+            <span>Area</span>
+            <span className="text-center">Qty</span>
+            <span className="text-right">Cost</span>
+            <span className="text-center">Markup</span>
+            <span className="text-right">Line Total</span>
+          </div>
+        </div>
 
-          return (
-            <Card key={area.id}>
-              <CardContent className="py-3 px-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{area.name}</span>
+        {/* Per-area pricing rows with zebra striping */}
+        <div className="min-w-[500px]">
+          {lineItems.map(({ area, costPrice, quantity, markup, sellingPrice, lineTotal }, idx) => {
+            const unit = area.acUnits[0];
+            const pricing = getPricing(area.id);
+            const isOdd = idx % 2 === 1;
+
+            return (
+              <div
+                key={area.id}
+                className={`grid grid-cols-[1fr_auto_auto_auto_auto] sm:grid-cols-[1.5fr_1fr_1fr_1fr_1fr] gap-2 px-4 py-3 items-center border-b last:border-0 transition-colors ${isOdd ? "bg-muted/30" : "bg-background"}`}
+              >
+                {/* Area name + badge */}
+                <div className="min-w-0">
+                  <span className="text-sm font-medium truncate block">{area.name}</span>
                   {unit ? (
-                    <Badge variant="outline" className="text-[10px]">
+                    <Badge variant="outline" className="text-[9px] mt-0.5">
                       {unit.product.product_code} · {unit.btu.toLocaleString()} BTU
                     </Badge>
                   ) : (
-                    <Badge variant="destructive" className="text-[10px]">No unit selected</Badge>
+                    <Badge variant="destructive" className="text-[9px] mt-0.5">No unit</Badge>
                   )}
                 </div>
 
-                {unit && (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Qty</Label>
-                      <QuantityControl
-                        value={pricing.quantity}
-                        onChange={(v) => { updateAreaPricing(area.id, { quantity: v }); setPdfReady(false); }}
-                        min={1}
-                        max={20}
-                        sliderTooltip="Adjust unit quantity"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Cost Price</Label>
-                      <div className="h-7 flex items-center text-xs text-muted-foreground">
-                        {formatCurrency(costPrice)}
-                      </div>
-                    </div>
-                    <div>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Label className="text-[10px] text-muted-foreground cursor-help">Markup %</Label>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="text-xs">Adjust profit margin</TooltipContent>
-                      </Tooltip>
-                      <Input
-                        type="number"
-                        value={pricing.markupPercent}
-                        onChange={(e) => { updateAreaPricing(area.id, { markupPercent: parseFloat(e.target.value) || 0 }); setPdfReady(false); }}
-                        className="h-7 text-xs"
-                        min={0}
-                        step={5}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Selling Price</Label>
-                      <div className="h-7 flex items-center text-xs font-medium">
-                        {formatCurrency(sellingPrice)}
-                      </div>
-                    </div>
-                  </div>
-                )}
+                {/* Qty */}
+                <div className="flex justify-center">
+                  {unit ? (
+                    <QuantityControl
+                      value={pricing.quantity}
+                      onChange={(v) => { updateAreaPricing(area.id, { quantity: v }); setPdfReady(false); }}
+                      min={1}
+                      max={20}
+                      showSlider={false}
+                      sliderTooltip="Adjust unit quantity"
+                    />
+                  ) : <span className="text-xs text-muted-foreground">—</span>}
+                </div>
 
-                {unit && (
-                  <div className="flex justify-end text-xs">
-                    <span className="text-muted-foreground mr-2">Line Total:</span>
-                    <span className="font-semibold">{formatCurrency(lineTotal)}</span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+                {/* Cost */}
+                <div className="text-right">
+                  <span className="text-xs text-muted-foreground">{unit ? formatCurrency(costPrice) : "—"}</span>
+                </div>
+
+                {/* Markup */}
+                <div className="flex justify-center">
+                  {unit ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Input
+                          type="number"
+                          value={pricing.markupPercent}
+                          onChange={(e) => { updateAreaPricing(area.id, { markupPercent: parseFloat(e.target.value) || 0 }); setPdfReady(false); }}
+                          className="h-7 text-xs w-16 text-center"
+                          min={0}
+                          step={5}
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs max-w-[200px]">
+                        Higher markup = higher profit but may reduce acceptance rate
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : <span className="text-xs text-muted-foreground">—</span>}
+                </div>
+
+                {/* Line total */}
+                <div className="text-right">
+                  <span className="text-xs font-semibold">{unit ? formatCurrency(lineTotal) : "—"}</span>
+                  {unit && (
+                    <span className="block text-[9px] text-muted-foreground">
+                      {formatCurrency(sellingPrice)} × {quantity}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Summary */}
-      <Card>
-        <CardContent className="py-3 px-4 space-y-2">
+      {/* Summary Card */}
+      <Card className="shadow-md border-primary/10">
+        <CardContent className="py-4 px-4 space-y-3">
           <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">Subtotal (excl. VAT)</span>
             <span className="font-medium">{formatCurrency(subtotal)}</span>
@@ -273,9 +283,35 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
             <span>{formatCurrency(vatAmount)}</span>
           </div>
           <Separator />
-          <div className="flex justify-between text-sm font-bold">
+
+          {/* Grand total - highlighted */}
+          <div className="flex justify-between items-center text-lg font-bold rounded-lg bg-primary/5 px-3 py-2 -mx-1 text-primary">
             <span>Total Incl. VAT</span>
             <span>{formatCurrency(total)}</span>
+          </div>
+
+          {/* Markup impact bar */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <TrendingUp className="h-3 w-3" />
+                Avg. Markup: {avgMarkup.toFixed(0)}%
+              </span>
+              <span>
+                {avgMarkup <= 20 ? "Conservative" : avgMarkup <= 35 ? "Standard" : "Aggressive"}
+              </span>
+            </div>
+            <div className="relative h-2 rounded-full bg-muted overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${getMarkupColor(avgMarkup)}`}
+                style={{ width: `${Math.min(100, (avgMarkup / 50) * 100)}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-[9px] text-muted-foreground">
+              <span>0%</span>
+              <span>25%</span>
+              <span>50%+</span>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -307,7 +343,6 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
                 if (!quoteData) return;
                 setSending(true);
                 try {
-                  // Generate PDF blob and convert to base64
                   const blob = await pdf(<QuotePDFDocument data={quoteData} />).toBlob();
                   const arrayBuffer = await blob.arrayBuffer();
                   const bytes = new Uint8Array(arrayBuffer);
@@ -334,7 +369,6 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
                   setEmailSent(true);
                   toast.success(`Quote sent to ${quoteData.clientEmail}!`);
                 } catch (err: any) {
-                  
                   toast.error(err?.message || "Failed to send quote email");
                 } finally {
                   setSending(false);
