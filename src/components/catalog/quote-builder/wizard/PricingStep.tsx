@@ -1,5 +1,5 @@
-import { useState, useMemo, useCallback } from "react";
-import { RotateCcw } from "lucide-react";
+import { useState, useMemo, useCallback, lazy, Suspense } from "react";
+import { RotateCcw, FileDown, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import type { QuoteArea } from "../quoteWizardTypes";
+import type { QuotePDFData } from "@/components/QuotePDFDocument";
 
 interface Props {
   areas: QuoteArea[];
@@ -25,8 +26,12 @@ interface AreaPricing {
   markupPercent: number;
 }
 
+/* Lazy-load heavy PDF components */
+const PDFDownloadButton = lazy(() => import("./PDFDownloadButton"));
+
 export default function PricingStep({ areas, onAreasChange }: Props) {
   const [globalMarkup, setGlobalMarkup] = useState(30);
+  const [pdfReady, setPdfReady] = useState(false);
   const [areaPricing, setAreaPricing] = useState<Record<string, AreaPricing>>(() => {
     const init: Record<string, AreaPricing> = {};
     for (const a of areas) {
@@ -74,6 +79,35 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
   const vatAmount = subtotal * VAT_RATE;
   const total = subtotal + vatAmount;
 
+  // Build PDF data
+  const quoteData: QuotePDFData | null = useMemo(() => {
+    if (!pdfReady || !allHaveUnits) return null;
+    const now = new Date();
+    const validUntil = new Date(now);
+    validUntil.setDate(validUntil.getDate() + 30);
+
+    return {
+      quoteNumber: `AQ-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
+      date: now.toLocaleDateString("en-ZA"),
+      validUntil: validUntil.toLocaleDateString("en-ZA"),
+      clientName: "",
+      clientEmail: "",
+      items: lineItems.map((li) => ({
+        areaName: li.area.name,
+        unitName: li.area.acUnits[0]?.product.short_name || li.area.acUnits[0]?.product.product_code || "—",
+        btu: li.area.acUnits[0]?.btu || 0,
+        quantity: li.quantity,
+        unitPrice: li.sellingPrice,
+        markupPercent: li.markup,
+        lineTotal: li.lineTotal,
+      })),
+      subtotal,
+      vatRate: VAT_RATE,
+      vatAmount,
+      total,
+    };
+  }, [pdfReady, allHaveUnits, lineItems, subtotal, vatAmount, total]);
+
   return (
     <div className="space-y-4">
       {/* Global markup */}
@@ -92,7 +126,7 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
             <Input
               type="number"
               value={globalMarkup}
-              onChange={(e) => setGlobalMarkup(parseFloat(e.target.value) || 0)}
+              onChange={(e) => { setGlobalMarkup(parseFloat(e.target.value) || 0); setPdfReady(false); }}
               className="h-8 w-24 text-sm"
               min={0}
               step={5}
@@ -128,7 +162,7 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
                       <Input
                         type="number"
                         value={pricing.quantity}
-                        onChange={(e) => updateAreaPricing(area.id, { quantity: Math.max(1, parseInt(e.target.value) || 1) })}
+                        onChange={(e) => { updateAreaPricing(area.id, { quantity: Math.max(1, parseInt(e.target.value) || 1) }); setPdfReady(false); }}
                         className="h-7 text-xs"
                         min={1}
                       />
@@ -144,7 +178,7 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
                       <Input
                         type="number"
                         value={pricing.markupPercent}
-                        onChange={(e) => updateAreaPricing(area.id, { markupPercent: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) => { updateAreaPricing(area.id, { markupPercent: parseFloat(e.target.value) || 0 }); setPdfReady(false); }}
                         className="h-7 text-xs"
                         min={0}
                         step={5}
@@ -189,6 +223,28 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Generate Quote / Download PDF */}
+      <div className="space-y-2">
+        {!pdfReady ? (
+          <Button
+            className="w-full"
+            onClick={() => setPdfReady(true)}
+            disabled={!allHaveUnits}
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            Generate Quote
+          </Button>
+        ) : quoteData ? (
+          <Suspense fallback={
+            <Button className="w-full" disabled>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Preparing PDF…
+            </Button>
+          }>
+            <PDFDownloadButton data={quoteData} />
+          </Suspense>
+        ) : null}
+      </div>
 
       {!allHaveUnits && (
         <p className="text-xs text-destructive text-center">
