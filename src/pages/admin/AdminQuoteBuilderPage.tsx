@@ -505,7 +505,7 @@ const AdminQuoteBuilderPage = () => {
             className="h-9 w-9 rounded-xl text-white hover:bg-white/10 transition-all duration-150">
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <img src={logo} alt="Logo" className="h-9" />
+          <img src={logo} alt="Logo" style={{ height: "41px" }} />
           <div className="hidden sm:block h-6 w-px bg-white/20" />
           <h1 className="hidden sm:block text-lg font-semibold tracking-tight text-white">Quote Builder</h1>
         </div>
