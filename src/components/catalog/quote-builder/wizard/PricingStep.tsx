@@ -360,11 +360,12 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
         </CardContent>
       </Card>
 
-      {/* Sticky pricing table header */}
-      <div className="rounded-lg border shadow-sm overflow-hidden">
+      {/* Pricing table with horizontal scroll */}
+      <div className="rounded-lg border shadow-sm overflow-x-auto -webkit-overflow-scrolling-touch">
+        {/* Header */}
         <div className="sticky top-0 z-10 bg-background shadow-sm border-b">
-          <div className="grid grid-cols-[1fr_auto_auto_auto_auto] sm:grid-cols-[1.5fr_1fr_1fr_1fr_1fr] gap-2 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[500px]">
-            <span>Area</span>
+          <div className="grid grid-cols-[minmax(140px,1.5fr)_100px_90px_80px_120px] gap-2 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[560px]">
+            <span className="sticky left-0 bg-background z-[1]">Area</span>
             <span className="text-center">Qty</span>
             <span className="text-right">Cost</span>
             <span className="text-center">Markup</span>
@@ -372,8 +373,8 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
           </div>
         </div>
 
-        {/* Per-area pricing rows with zebra striping */}
-        <div className="min-w-[500px]">
+        {/* Rows */}
+        <div className="min-w-[560px]">
           {lineItems.map(({ area, costPrice, quantity, markup, sellingPrice, lineTotal }, idx) => {
             const unit = area.acUnits[0];
             const pricing = getPricing(area.id);
@@ -385,16 +386,16 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
             return (
               <div key={area.id}>
                 <div
-                  className={`grid grid-cols-[1fr_auto_auto_auto_auto] sm:grid-cols-[1.5fr_1fr_1fr_1fr_1fr] gap-2 px-4 py-3 items-center border-b transition-colors ${
+                  className={`grid grid-cols-[minmax(140px,1.5fr)_100px_90px_80px_120px] gap-2 px-4 py-3 items-center border-b transition-colors min-h-[52px] ${
                     isBundle ? "bg-blue-50/50 dark:bg-blue-950/20" : isOdd ? "bg-muted/30" : "bg-background"
                   }`}
                 >
-                  {/* Area name + badge + expand toggle */}
-                  <div className="min-w-0 flex items-start gap-1.5">
+                  {/* Area name — sticky on mobile */}
+                  <div className="min-w-0 flex items-start gap-1.5 sticky left-0 z-[1] bg-inherit">
                     {hasSubs && (
                       <button
                         onClick={() => toggleRowExpanded(area.id)}
-                        className="mt-0.5 shrink-0 p-0.5 rounded hover:bg-accent transition-colors"
+                        className="mt-0.5 shrink-0 p-1.5 rounded hover:bg-accent transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center sm:min-h-0 sm:min-w-0 sm:p-0.5"
                         aria-label={isExpanded ? "Collapse sub-items" : "Expand sub-items"}
                       >
                         {isExpanded
@@ -422,7 +423,7 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
                     </div>
                   </div>
 
-                  {/* Qty — with slider for larger view */}
+                  {/* Qty */}
                   <div className="flex justify-center">
                     {unit ? (
                       <QuantityControl
@@ -450,7 +451,7 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
                             type="number"
                             value={pricing.markupPercent}
                             onChange={(e) => { updateAreaPricing(area.id, { markupPercent: parseFloat(e.target.value) || 0 }); setPdfReady(false); }}
-                            className="h-7 text-xs w-16 text-center"
+                            className="h-8 text-xs w-16 text-center min-h-[44px] sm:min-h-0 sm:h-7"
                             min={0}
                             step={5}
                           />
@@ -462,7 +463,7 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
                     ) : <span className="text-xs text-muted-foreground">—</span>}
                   </div>
 
-                  {/* Line total + edit button */}
+                  {/* Line total + edit */}
                   <div className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       <div>
@@ -477,7 +478,7 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 shrink-0"
+                          className="h-8 w-8 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 sm:h-6 sm:w-6 shrink-0"
                           onClick={() => setEditingAreaId(area.id)}
                           aria-label="Edit bundle quantities"
                         >

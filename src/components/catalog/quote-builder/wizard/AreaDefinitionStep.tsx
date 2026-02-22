@@ -120,11 +120,11 @@ export default function AreaDefinitionStep({ areas, onAreasChange }: Props) {
           const count = areas.filter((a) => a.name.startsWith(p.label)).length;
           const name = count > 0 ? `${p.label} ${count + 1}` : p.label;
           return (
-            <Button
+             <Button
               key={p.label}
               variant="outline"
               size="sm"
-              className="gap-1.5"
+              className="gap-1.5 min-h-[44px] sm:min-h-0"
               onClick={() => addArea(name)}
             >
               <p.icon className="h-3.5 w-3.5" />
@@ -141,17 +141,23 @@ export default function AreaDefinitionStep({ areas, onAreasChange }: Props) {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && addArea(newName)}
-          className="h-9 text-sm"
+          className="h-11 sm:h-9 text-sm"
         />
-        <Button size="sm" onClick={() => addArea(newName)} disabled={!newName.trim()}>
+        <Button size="sm" className="min-h-[44px] sm:min-h-0" onClick={() => addArea(newName)} disabled={!newName.trim()}>
           <Plus className="h-4 w-4 mr-1" /> Add
         </Button>
       </div>
 
       {/* Area list */}
       {areas.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground text-sm">
-          No areas defined yet. Use the presets above or type a custom name.
+        <div className="rounded-lg border border-dashed p-10 text-center space-y-3">
+          <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+            <Home className="h-7 w-7 text-muted-foreground/60" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">No areas yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Add a room to start building your quote — use the presets above or type a custom name.</p>
+          </div>
         </div>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
