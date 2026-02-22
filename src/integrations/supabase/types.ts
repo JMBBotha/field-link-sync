@@ -3331,6 +3331,7 @@ export type Database = {
           pin_order: number
           pipe_size: string | null
           price_per_metre: number | null
+          pricing_mode: string
           product_category: string
           product_code: string
           product_type: string
@@ -3377,6 +3378,7 @@ export type Database = {
           pin_order?: number
           pipe_size?: string | null
           price_per_metre?: number | null
+          pricing_mode?: string
           product_category?: string
           product_code: string
           product_type?: string
@@ -3423,6 +3425,7 @@ export type Database = {
           pin_order?: number
           pipe_size?: string | null
           price_per_metre?: number | null
+          pricing_mode?: string
           product_category?: string
           product_code?: string
           product_type?: string
