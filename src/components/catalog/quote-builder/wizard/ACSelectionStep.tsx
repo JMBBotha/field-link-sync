@@ -1,11 +1,13 @@
 import { useState, useMemo, useCallback } from "react";
-import { Search, Check, Star, X } from "lucide-react";
+import { Search, Check, Star, X, Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
 import type { PaletteProduct } from "../../QuoteBuilderTab";
-import type { QuoteArea, AreaACUnit } from "../quoteWizardTypes";
+import type { QuoteArea, AreaACUnit, AreaConsumable } from "../quoteWizardTypes";
 import { detectBTU, getBracketSize } from "../quoteWizardTypes";
+import { findDaikinRemote, forcePerUnitPricing, isWiredRemote } from "../daikinRemoteUtils";
+import { toast } from "sonner";
 
 interface Props {
   areas: QuoteArea[];
@@ -172,13 +174,34 @@ export default function ACSelectionStep({ areas, onAreasChange, products, onPdfS
   const handleSelect = useCallback((areaId: string, product: PaletteProduct) => {
     const btu = detectBTU(product);
     const newUnit: AreaACUnit = { id: crypto.randomUUID(), product, btu, quantity: 1 };
+
+    // Auto-suggest Daikin wired remote
+    let suggestedConsumable: AreaConsumable | undefined;
+    const brand = (product.brand || "").toLowerCase();
+    if (brand === "daikin") {
+      const remote = findDaikinRemote(btu, products);
+      if (remote) {
+        const safeRemote = forcePerUnitPricing(remote);
+        suggestedConsumable = { id: crypto.randomUUID(), product: safeRemote, quantity: 1 };
+        toast.success(`Auto-added ${safeRemote.short_name || safeRemote.product_code} for ${product.short_name || product.product_code}`);
+      }
+    }
+
     onAreasChange(
       areas.map((a) => {
         if (a.id !== areaId) return a;
-        return { ...a, acUnits: [newUnit] };
+        const updated = { ...a, acUnits: [newUnit] };
+        if (suggestedConsumable) {
+          // Remove any existing wired remotes before adding the new suggestion
+          const existingConsumables = (a.consumables || []).filter(
+            (c) => !isWiredRemote(c.product)
+          );
+          updated.consumables = [...existingConsumables, suggestedConsumable];
+        }
+        return updated;
       })
     );
-  }, [areas, onAreasChange]);
+  }, [areas, onAreasChange, products]);
 
   const handleRemove = useCallback((areaId: string, idx: number) => {
     onAreasChange(
@@ -193,6 +216,10 @@ export default function ACSelectionStep({ areas, onAreasChange, products, onPdfS
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
         Select an AC unit for each area. Each area has its own search bar — selections are independent.
+        <span className="block text-xs mt-1 text-muted-foreground/70">
+          <Zap className="inline h-3 w-3 mr-0.5" />
+          Daikin units auto-suggest the correct wired remote (BRC073 / BRCW901A08).
+        </span>
       </p>
 
       <div className="space-y-3">
