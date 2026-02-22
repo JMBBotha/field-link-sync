@@ -25,16 +25,16 @@ const FBPaymentsList = () => {
   const { data: payments = [], isLoading } = useQuery({
     queryKey: ["fb-payments", companyId],
     queryFn: async () => {
-      const { data } = await supabase.from("fb_payments").select("*, fb_invoices(invoice_number, amount, status)").eq("company_id", companyId!).order("date", { ascending: false });
+      const { data } = await supabase.from("fb_payments").select("*, company_invoices:company_invoice_id(invoice_number, total_amount, status)").eq("company_id", companyId!).order("date", { ascending: false });
       return data || [];
     },
     enabled: !!companyId,
   });
 
   const { data: invoices = [] } = useQuery({
-    queryKey: ["fb-invoices-for-payment", companyId],
+    queryKey: ["company-invoices-for-payment", companyId],
     queryFn: async () => {
-      const { data } = await supabase.from("fb_invoices").select("id, invoice_number, amount, status").eq("company_id", companyId!).neq("status", "paid").neq("status", "cancelled");
+      const { data } = await supabase.from("company_invoices" as any).select("id, invoice_number, total_amount, status").eq("company_id", companyId!).neq("status", "Paid").neq("status", "Archived");
       return data || [];
     },
     enabled: !!companyId,
@@ -46,26 +46,26 @@ const FBPaymentsList = () => {
     mutationFn: async () => {
       const { error } = await supabase.from("fb_payments").insert({
         company_id: companyId!, amount: Number(form.amount), method: form.method, date: form.date,
-        invoice_id: form.invoice_id || null,
-      });
+        company_invoice_id: form.invoice_id || null,
+      } as any);
       if (error) throw error;
 
       if (form.invoice_id) {
         const inv = invoices.find((i: any) => i.id === form.invoice_id);
         if (inv) {
-          const existingPayments = payments.filter((p: any) => p.invoice_id === form.invoice_id).reduce((s: number, p: any) => s + Number(p.amount), 0);
+          const existingPayments = payments.filter((p: any) => p.company_invoice_id === form.invoice_id).reduce((s: number, p: any) => s + Number(p.amount), 0);
           const newTotal = existingPayments + Number(form.amount);
-          if (newTotal >= Number(inv.amount)) {
-            await supabase.from("fb_invoices").update({ status: "paid" }).eq("id", form.invoice_id);
+          if (newTotal >= Number(inv.total_amount)) {
+            await supabase.from("company_invoices" as any).update({ status: "Paid", amount_paid: newTotal }).eq("id", form.invoice_id);
           } else {
-            await supabase.from("fb_invoices").update({ status: "partial" }).eq("id", form.invoice_id);
+            await supabase.from("company_invoices" as any).update({ status: "Partial", amount_paid: newTotal }).eq("id", form.invoice_id);
           }
         }
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["fb-payments"] });
-      qc.invalidateQueries({ queryKey: ["fb-invoices"] });
+      qc.invalidateQueries({ queryKey: ["company-invoices"] });
       setShowCreate(false);
       toast({ title: "Payment recorded" });
     },
@@ -127,12 +127,12 @@ const FBPaymentsList = () => {
               <tr key={p.id} className="border-b border-border/50 hover:bg-muted/30">
                 <td className="px-4 py-3"><Checkbox checked={selectedIds.has(p.id)} onCheckedChange={() => toggleSelect(p.id)} /></td>
                 <td className="px-4 py-3">{p.date}</td>
-                <td className="px-4 py-3 text-blue-600">{p.fb_invoices?.invoice_number || "—"}</td>
+                <td className="px-4 py-3 text-blue-600">{p.company_invoices?.invoice_number || "—"}</td>
                 <td className="px-4 py-3 capitalize">{p.method?.replace("_", " ")}</td>
                 <td className="px-4 py-3">
-                  {p.fb_invoices?.status ? (
-                    <Badge variant="secondary" className={p.fb_invoices.status === "paid" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}>
-                      {p.fb_invoices.status}
+                  {p.company_invoices?.status ? (
+                    <Badge variant="secondary" className={p.company_invoices.status === "Paid" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}>
+                      {p.company_invoices.status}
                     </Badge>
                   ) : "—"}
                 </td>
@@ -150,8 +150,8 @@ const FBPaymentsList = () => {
               <Select value={form.invoice_id} onValueChange={v => setForm(f => ({ ...f, invoice_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Select invoice" /></SelectTrigger>
                 <SelectContent>{invoices.map((i: any) => (
-                  <SelectItem key={i.id} value={i.id}>
-                    {i.invoice_number} — R {Number(i.amount).toLocaleString()}
+                   <SelectItem key={i.id} value={i.id}>
+                    {i.invoice_number} — R {Number(i.total_amount).toLocaleString()}
                   </SelectItem>
                 ))}</SelectContent>
               </Select>

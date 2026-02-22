@@ -11,9 +11,9 @@ const FBClientPortal = () => {
   const { companyId } = useCompany();
 
   const { data: invoices = [] } = useQuery({
-    queryKey: ["fb-portal-invoices", companyId],
+    queryKey: ["company-portal-invoices", companyId],
     queryFn: async () => {
-      const { data } = await supabase.from("fb_invoices").select("*, fb_contacts(name)").eq("company_id", companyId!).neq("status", "archived").order("created_at", { ascending: false });
+      const { data } = await supabase.from("company_invoices" as any).select("*, fb_contacts(name)").eq("company_id", companyId!).neq("status", "Archived").order("created_at", { ascending: false });
       return data || [];
     },
     enabled: !!companyId,
@@ -31,7 +31,7 @@ const FBClientPortal = () => {
   const { data: payments = [] } = useQuery({
     queryKey: ["fb-portal-payments", companyId],
     queryFn: async () => {
-      const { data } = await supabase.from("fb_payments").select("*, fb_invoices(invoice_number)").eq("company_id", companyId!).order("date", { ascending: false });
+      const { data } = await supabase.from("fb_payments").select("*, company_invoices:company_invoice_id(invoice_number)").eq("company_id", companyId!).order("date", { ascending: false });
       return data || [];
     },
     enabled: !!companyId,
@@ -72,7 +72,7 @@ const FBClientPortal = () => {
                   <tr key={inv.id} className="border-b border-border/50 hover:bg-muted/30">
                     <td className="px-4 py-3 font-medium text-blue-600">{inv.invoice_number}</td>
                     <td className="px-4 py-3">{inv.fb_contacts?.name || "—"}</td>
-                    <td className="px-4 py-3 text-right font-medium">{fmt(Number(inv.amount))}</td>
+                    <td className="px-4 py-3 text-right font-medium">{fmt(Number(inv.total_amount))}</td>
                     <td className="px-4 py-3 text-muted-foreground">{inv.due_date || "—"}</td>
                     <td className="px-4 py-3">{statusBadge(inv.status)}</td>
                   </tr>
@@ -120,7 +120,7 @@ const FBClientPortal = () => {
                 : payments.map((p: any) => (
                   <tr key={p.id} className="border-b border-border/50 hover:bg-muted/30">
                     <td className="px-4 py-3">{p.date}</td>
-                    <td className="px-4 py-3 text-blue-600">{p.fb_invoices?.invoice_number || "—"}</td>
+                    <td className="px-4 py-3 text-blue-600">{p.company_invoices?.invoice_number || "—"}</td>
                     <td className="px-4 py-3 capitalize">{p.method?.replace("_", " ")}</td>
                     <td className="px-4 py-3 text-right font-medium text-green-600">{fmt(Number(p.amount))}</td>
                   </tr>
