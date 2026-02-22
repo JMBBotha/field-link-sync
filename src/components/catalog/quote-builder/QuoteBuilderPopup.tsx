@@ -1,8 +1,9 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, ChevronRight, Check, Wand2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, Wand2, X, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import type { PaletteProduct, Basket, BasketItem } from "../QuoteBuilderTab";
 import type { QuoteArea } from "./quoteWizardTypes";
 import { WIZARD_STEPS, computeAreaSubtotal, createEmptyArea } from "./quoteWizardTypes";
@@ -42,6 +43,36 @@ interface Props {
   onPdfSearch?: (term: string) => void;
 }
 
+const DRAFT_STORAGE_KEY = "quote-builder-draft";
+
+function saveDraftToStorage(areas: QuoteArea[], step: number) {
+  try {
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ areas, step, savedAt: Date.now() }));
+  } catch {
+    // localStorage full or unavailable
+  }
+}
+
+function loadDraftFromStorage(): { areas: QuoteArea[]; step: number } | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.areas?.length > 0) return parsed;
+  } catch {
+    // corrupted
+  }
+  return null;
+}
+
+function clearDraftStorage() {
+  try {
+    localStorage.removeItem(DRAFT_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 export default function QuoteBuilderPopup({ open, onClose, products, bundles, onSave, triggerItem, onPdfSearch }: Props) {
   const [currentStep, setCurrentStep] = useState(0);
   const [areas, setAreas] = useState<QuoteArea[]>([]);
@@ -61,6 +92,22 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
     setCurrentStep(triggerItem.step);
   }, [open, triggerItem]);
 
+  // Load draft on open (only if no triggerItem and no existing areas)
+  useEffect(() => {
+    if (!open || triggerItem || areas.length > 0) return;
+    const draft = loadDraftFromStorage();
+    if (draft) {
+      setAreas(draft.areas);
+      setCurrentStep(draft.step);
+      toast.info("Draft restored from last session");
+    }
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSaveDraft = useCallback(() => {
+    saveDraftToStorage(areas, currentStep);
+    toast.success("Draft saved");
+  }, [areas, currentStep]);
+
   const canNext = useMemo(() => {
     if (currentStep === 0) return areas.length > 0 && areas.every((a) => a.name.trim().length > 0);
     if (currentStep === 1) return areas.every((a) => a.acUnits.length > 0);
@@ -79,7 +126,6 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
     // Convert areas to baskets
     const baskets: Basket[] = [];
     for (const area of areas) {
-      // AC basket
       const acItems: BasketItem[] = area.acUnits.map((u) => ({
         instanceId: `${u.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         product: u.product,
@@ -89,7 +135,6 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
         baskets.push({ id: `basket-${Date.now()}-${area.id}-ac`, name: `${area.name} AC`, items: acItems });
       }
 
-      // Materials basket (handles both length and unit priced)
       const matItems: BasketItem[] = area.materials.map((m) => ({
         instanceId: `${m.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         product: m.product,
@@ -100,7 +145,6 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
         baskets.push({ id: `basket-${Date.now()}-${area.id}-mat`, name: `${area.name} Piping`, items: matItems });
       }
 
-      // Consumables basket
       const consItems: BasketItem[] = area.consumables.map((c) => ({
         instanceId: `${c.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         product: c.product,
@@ -111,10 +155,12 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
       }
     }
     onSave(baskets);
+    clearDraftStorage();
     onClose();
     setCurrentStep(0);
     setAreas([]);
     lastTriggerId.current = null;
+    toast.success("Quote areas added successfully");
   }, [areas, onSave, onClose]);
 
   const stepContent = useMemo(() => {
@@ -133,13 +179,12 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
 
   if (!open) return null;
 
-  // Render as a portal overlay at z-[60] to sit above Visual Catalog (z-50)
   return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
-      {/* Semi-transparent backdrop – shows PDF behind */}
+      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={(e) => { e.stopPropagation(); onClose(); }} />
 
-      {/* Dialog content */}
+      {/* Dialog */}
       <div className="relative z-10 bg-background border rounded-lg shadow-2xl max-w-3xl w-[95vw] max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b shrink-0">
@@ -152,13 +197,13 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
           </Button>
         </div>
 
-        {/* Stepper */}
-        <div className="flex items-center gap-1 px-4 py-3 border-b overflow-x-auto shrink-0">
+        {/* Stepper — compact on mobile, full on desktop */}
+        <div className="flex items-center gap-1 px-4 py-2 border-b overflow-x-auto shrink-0">
           {WIZARD_STEPS.map((step, i) => (
             <button
               key={i}
               className={cn(
-                "flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors whitespace-nowrap",
+                "flex items-center gap-1.5 px-2 py-1.5 rounded text-xs transition-colors whitespace-nowrap min-h-[36px] sm:min-h-[28px]",
                 i === currentStep && "bg-primary text-primary-foreground font-medium",
                 i < currentStep && "text-primary cursor-pointer hover:bg-accent",
                 i > currentStep && "text-muted-foreground"
@@ -174,7 +219,8 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
               )}>
                 {i < currentStep ? <Check className="h-3 w-3" /> : i + 1}
               </span>
-              <span className="hidden sm:inline">{step.label}</span>
+              {/* Show label only for current step on mobile, all on desktop */}
+              <span className={cn("hidden sm:inline", i === currentStep && "inline")}>{step.label}</span>
             </button>
           ))}
         </div>
@@ -186,19 +232,26 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
 
         {/* Footer */}
         <div className="flex items-center justify-between px-4 py-3 border-t shrink-0 bg-muted/30">
-          <div className="text-xs text-muted-foreground">
-            {areas.length > 0 && `${areas.length} area${areas.length !== 1 ? "s" : ""} · R ${grandTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`}
+          <div className="flex items-center gap-2">
+            <div className="text-xs text-muted-foreground hidden sm:block">
+              {areas.length > 0 && `${areas.length} area${areas.length !== 1 ? "s" : ""} · R ${grandTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`}
+            </div>
+            {areas.length > 0 && (
+              <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={handleSaveDraft}>
+                <Save className="h-3 w-3" /> Save Draft
+              </Button>
+            )}
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={goBack} disabled={currentStep === 0}>
+            <Button variant="outline" size="sm" className="min-h-[44px] sm:min-h-0" onClick={goBack} disabled={currentStep === 0}>
               <ChevronLeft className="h-4 w-4 mr-1" /> Back
             </Button>
             {currentStep === WIZARD_STEPS.length - 1 ? (
-              <Button size="sm" onClick={handleSave} disabled={areas.length === 0}>
+              <Button size="sm" className="min-h-[44px] sm:min-h-0" onClick={handleSave} disabled={areas.length === 0}>
                 Add to Quote
               </Button>
             ) : (
-              <Button size="sm" onClick={goNext} disabled={!canNext}>
+              <Button size="sm" className="min-h-[44px] sm:min-h-0" onClick={goNext} disabled={!canNext}>
                 Next <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             )}
