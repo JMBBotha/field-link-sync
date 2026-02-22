@@ -2780,6 +2780,8 @@ export type Database = {
       }
       proposals: {
         Row: {
+          areas: Json | null
+          company_id: string | null
           created_at: string
           created_by: string | null
           customer_id: string | null
@@ -2794,15 +2796,19 @@ export type Database = {
           proposal_number: string
           quote_id: string | null
           reference: string | null
+          source: string | null
           status: string
           subtotal: number
           tax_amount: number
           tax_rate: number
           terms: string | null
           total: number
+          total_amount: number | null
           updated_at: string
         }
         Insert: {
+          areas?: Json | null
+          company_id?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
@@ -2817,15 +2823,19 @@ export type Database = {
           proposal_number?: string
           quote_id?: string | null
           reference?: string | null
+          source?: string | null
           status?: string
           subtotal?: number
           tax_amount?: number
           tax_rate?: number
           terms?: string | null
           total?: number
+          total_amount?: number | null
           updated_at?: string
         }
         Update: {
+          areas?: Json | null
+          company_id?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
@@ -2840,15 +2850,31 @@ export type Database = {
           proposal_number?: string
           quote_id?: string | null
           reference?: string | null
+          source?: string | null
           status?: string
           subtotal?: number
           tax_amount?: number
           tax_rate?: number
           terms?: string | null
           total?: number
+          total_amount?: number | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "proposals_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
           {
             foreignKeyName: "proposals_customer_id_fkey"
             columns: ["customer_id"]
