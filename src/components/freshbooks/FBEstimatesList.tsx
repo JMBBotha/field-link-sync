@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Send, Eye, Edit, ArrowRightLeft, MoreHorizontal, Archive, Trash2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, Search, Send, Eye, Edit, ArrowRightLeft, MoreHorizontal, Archive, Trash2, CheckCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +32,7 @@ const FBEstimatesList = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({ estimate_number: "", amount: "", tax: "0" });
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -94,6 +96,42 @@ const FBEstimatesList = () => {
     qc.invalidateQueries({ queryKey: ["fb-estimates"] });
     qc.invalidateQueries({ queryKey: ["company-invoices"] });
     toast({ title: "Converted to invoice" });
+  };
+
+  const acceptQuote = async (estimate: any) => {
+    try {
+      // Update estimate status to accepted
+      const { error: updateErr } = await supabase.from("fb_estimates").update({ status: "accepted" }).eq("id", estimate.id);
+      if (updateErr) throw updateErr;
+
+      // Create a linked invoice copy
+      const invNum = estimate.estimate_number.replace("EST", "INV");
+      const amount = Number(estimate.amount);
+      const tax = Number(estimate.tax);
+      const { data: invoiceData, error: invErr } = await (supabase.from("company_invoices") as any).insert({
+        company_id: companyId!,
+        invoice_number: invNum,
+        subtotal: amount,
+        vat_amount: tax,
+        total_amount: amount + tax,
+        tax,
+        status: "Draft",
+        contact_id: estimate.contact_id,
+        items: estimate.items,
+      }).select("id, invoice_number").single();
+      if (invErr) throw invErr;
+
+      qc.invalidateQueries({ queryKey: ["fb-estimates"] });
+      qc.invalidateQueries({ queryKey: ["company-invoices"] });
+      toast({
+        title: "Quote accepted – invoice created",
+        description: `Invoice ${invoiceData?.invoice_number || invNum} has been created as a draft.`,
+      });
+    } catch (err: any) {
+      toast({ title: "Error accepting quote", description: err.message, variant: "destructive" });
+    } finally {
+      setAcceptingId(null);
+    }
   };
 
   const filtered = estimates.filter((e: any) => {
@@ -167,11 +205,16 @@ const FBEstimatesList = () => {
                 <td className="px-4 py-3 text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="sm"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end">
                       <DropdownMenuItem><Eye className="h-4 w-4 mr-2" />View</DropdownMenuItem>
                       <DropdownMenuItem><Edit className="h-4 w-4 mr-2" />Edit</DropdownMenuItem>
                       {e.status === "draft" && (
                         <DropdownMenuItem onClick={() => statusMutation.mutate({ id: e.id, status: "sent" })}><Send className="h-4 w-4 mr-2" />Send</DropdownMenuItem>
+                      )}
+                      {e.status === "sent" && (
+                        <DropdownMenuItem onClick={() => setAcceptingId(e.id)}>
+                          <CheckCircle className="h-4 w-4 mr-2" />Accept Quote
+                        </DropdownMenuItem>
                       )}
                       {!["accepted", "declined", "archived"].includes(e.status) && (
                         <DropdownMenuItem onClick={() => convertToInvoice(e)}><ArrowRightLeft className="h-4 w-4 mr-2" />Convert to Invoice</DropdownMenuItem>
@@ -200,6 +243,26 @@ const FBEstimatesList = () => {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Accept Quote Confirmation */}
+      <AlertDialog open={!!acceptingId} onOpenChange={(o) => { if (!o) setAcceptingId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Accept this quote?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will mark the estimate as accepted and automatically create a draft invoice with the same items and totals.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              const estimate = estimates.find((e: any) => e.id === acceptingId);
+              if (estimate) acceptQuote(estimate);
+            }}>
+              Accept & Create Invoice
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
