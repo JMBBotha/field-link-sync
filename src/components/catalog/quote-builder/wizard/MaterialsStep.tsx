@@ -568,6 +568,20 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
     );
   }, [areas, onAreasChange]);
 
+  const setMaterialUnitQty = useCallback((areaId: string, matId: string, qty: number) => {
+    onAreasChange(
+      areas.map((a) => {
+        if (a.id !== areaId) return a;
+        return {
+          ...a,
+          materials: a.materials.map((m) =>
+            m.id === matId ? { ...m, unitQuantity: Math.max(1, qty) } : m
+          ),
+        };
+      })
+    );
+  }, [areas, onAreasChange]);
+
   const removeMaterial = useCallback((areaId: string, matId: string) => {
     onAreasChange(areas.map((a) => a.id !== areaId ? a : { ...a, materials: a.materials.filter((m) => m.id !== matId) }));
   }, [areas, onAreasChange]);
@@ -577,6 +591,15 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
       areas.map((a) => {
         if (a.id !== areaId) return a;
         return { ...a, brackets: a.brackets.map((b) => b.id === bracketId ? { ...b, quantity: Math.max(1, b.quantity + delta) } : b) };
+      })
+    );
+  }, [areas, onAreasChange]);
+
+  const setBracketQty = useCallback((areaId: string, bracketId: string, qty: number) => {
+    onAreasChange(
+      areas.map((a) => {
+        if (a.id !== areaId) return a;
+        return { ...a, brackets: a.brackets.map((b) => b.id === bracketId ? { ...b, quantity: Math.max(1, qty) } : b) };
       })
     );
   }, [areas, onAreasChange]);
@@ -652,6 +675,15 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
       areas.map((a) => {
         if (a.id !== areaId) return a;
         return { ...a, consumables: (a.consumables ?? []).map((c) => c.id === consId ? { ...c, quantity: Math.max(1, c.quantity + delta) } : c) };
+      })
+    );
+  }, [areas, onAreasChange]);
+
+  const setConsumableQty = useCallback((areaId: string, consId: string, qty: number) => {
+    onAreasChange(
+      areas.map((a) => {
+        if (a.id !== areaId) return a;
+        return { ...a, consumables: (a.consumables ?? []).map((c) => c.id === consId ? { ...c, quantity: Math.max(1, qty) } : c) };
       })
     );
   }, [areas, onAreasChange]);
@@ -825,13 +857,27 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                                   <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateMaterialUnitQty(area.id, mat.id, -1)} aria-label="Decrease quantity">
                                     <Minus className="h-3 w-3" />
                                   </Button>
-                                  <span className="w-6 text-center text-xs font-medium">{mat.unitQuantity}</span>
+                                  <Input
+                                    type="number"
+                                    min={1}
+                                    max={50}
+                                    value={mat.unitQuantity}
+                                    onChange={(e) => setMaterialUnitQty(area.id, mat.id, parseInt(e.target.value) || 1)}
+                                    className="h-7 w-14 text-xs text-center"
+                                  />
                                   <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateMaterialUnitQty(area.id, mat.id, 1)} aria-label="Increase quantity">
                                     <Plus className="h-3 w-3" />
                                   </Button>
                                 </div>
-                                <span className="flex-1" />
-                                <span className="text-xs font-medium w-20 text-right">
+                                <Slider
+                                  value={[mat.unitQuantity]}
+                                  onValueChange={([v]) => setMaterialUnitQty(area.id, mat.id, v)}
+                                  min={1}
+                                  max={50}
+                                  step={1}
+                                  className="flex-1 min-w-[80px]"
+                                />
+                                <span className="text-xs font-medium w-20 text-right shrink-0">
                                   R {lineTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
                                 </span>
                               </div>
@@ -857,28 +903,46 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                             </Button>
                           </div>
                           {area.brackets.map((bracket) => (
-                            <div key={bracket.id} className="flex items-center gap-2 rounded border bg-muted/30 px-2 py-1.5 text-xs">
-                              <Badge variant="outline" className="text-[10px]">{bracket.size}</Badge>
-                              <span className="flex-1">@ R {bracket.price.toFixed(2)} each</span>
-                              <div className="flex items-center gap-1">
+                            <div key={bracket.id} className="space-y-1 rounded border bg-muted/30 px-2 py-1.5 text-xs">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-[10px]">{bracket.size}</Badge>
+                                <span className="text-muted-foreground">@ R {bracket.price.toFixed(2)} each</span>
+                                <span className="flex-1" />
+                                <span className="font-medium w-20 text-right shrink-0">
+                                  R {(bracket.price * bracket.quantity).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+                                </span>
+                                <button
+                                  className="h-5 w-5 rounded flex items-center justify-center hover:bg-destructive/20 shrink-0"
+                                  onClick={() => removeBracket(area.id, bracket.id)}
+                                  aria-label={`Remove ${bracket.size} bracket`}
+                                >
+                                  <Trash2 className="h-3 w-3 text-destructive" />
+                                </button>
+                              </div>
+                              <div className="flex items-center gap-2">
                                 <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateBracketQty(area.id, bracket.id, -1)} aria-label={`Decrease ${bracket.size} bracket quantity`}>
                                   <Minus className="h-3 w-3" />
                                 </Button>
-                                <span className="w-6 text-center font-medium">{bracket.quantity}</span>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  max={20}
+                                  value={bracket.quantity}
+                                  onChange={(e) => setBracketQty(area.id, bracket.id, parseInt(e.target.value) || 1)}
+                                  className="h-7 w-14 text-xs text-center"
+                                />
                                 <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateBracketQty(area.id, bracket.id, 1)} aria-label={`Increase ${bracket.size} bracket quantity`}>
                                   <Plus className="h-3 w-3" />
                                 </Button>
+                                <Slider
+                                  value={[bracket.quantity]}
+                                  onValueChange={([v]) => setBracketQty(area.id, bracket.id, v)}
+                                  min={1}
+                                  max={20}
+                                  step={1}
+                                  className="flex-1 min-w-[60px]"
+                                />
                               </div>
-                              <span className="font-medium w-20 text-right">
-                                R {(bracket.price * bracket.quantity).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
-                              </span>
-                               <button
-                                className="h-5 w-5 rounded flex items-center justify-center hover:bg-destructive/20 shrink-0"
-                                onClick={() => removeBracket(area.id, bracket.id)}
-                                aria-label={`Remove ${bracket.size} bracket`}
-                              >
-                                <Trash2 className="h-3 w-3 text-destructive" />
-                              </button>
                             </div>
                           ))}
                         </div>
@@ -931,33 +995,50 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                       {(area.consumables ?? []).length > 0 ? (
                         <div className="space-y-1.5">
                           {(area.consumables ?? []).map((cons) => (
-                            <div key={cons.id} className="flex items-center gap-2 rounded border bg-muted/30 px-2 py-1.5 text-xs">
-                              <MaterialStar product={cons.product} />
-                               <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                                 <span className="font-medium truncate block">{cons.product.short_name || cons.product.product_code}</span>
-                                 {cons.isSuggested && (
-                                   <Badge variant="outline" className="text-[9px] border-primary/30 text-primary shrink-0">Suggested</Badge>
-                                 )}
+                            <div key={cons.id} className="space-y-1 rounded border bg-muted/30 px-2 py-1.5 text-xs">
+                              <div className="flex items-center gap-2">
+                                <MaterialStar product={cons.product} />
+                                <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                                  <span className="font-medium truncate block">{cons.product.short_name || cons.product.product_code}</span>
+                                  {cons.isSuggested && (
+                                    <Badge variant="outline" className="text-[9px] border-primary/30 text-primary shrink-0">Suggested</Badge>
+                                  )}
+                                </div>
+                                <span className="font-medium w-20 text-right shrink-0">
+                                  R {((cons.product.selling_price || cons.product.cost_incl_vat || 0) * cons.quantity).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+                                </span>
+                                <button
+                                  className="h-5 w-5 rounded flex items-center justify-center hover:bg-destructive/20 shrink-0"
+                                  onClick={() => removeConsumable(area.id, cons.id)}
+                                  aria-label={`Remove consumable ${cons.product.short_name || cons.product.product_code}`}
+                                >
+                                  <Trash2 className="h-3 w-3 text-destructive" />
+                                </button>
                               </div>
-                              <div className="flex items-center gap-1">
-                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateConsumableQty(area.id, cons.id, -1)} aria-label={`Decrease ${cons.product.short_name || cons.product.product_code} quantity`}>
+                              <div className="flex items-center gap-2">
+                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateConsumableQty(area.id, cons.id, -1)} aria-label={`Decrease quantity`}>
                                   <Minus className="h-3 w-3" />
                                 </Button>
-                                <span className="w-6 text-center font-medium">{cons.quantity}</span>
-                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateConsumableQty(area.id, cons.id, 1)} aria-label={`Increase ${cons.product.short_name || cons.product.product_code} quantity`}>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  max={50}
+                                  value={cons.quantity}
+                                  onChange={(e) => setConsumableQty(area.id, cons.id, parseInt(e.target.value) || 1)}
+                                  className="h-7 w-14 text-xs text-center"
+                                />
+                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateConsumableQty(area.id, cons.id, 1)} aria-label={`Increase quantity`}>
                                   <Plus className="h-3 w-3" />
                                 </Button>
+                                <Slider
+                                  value={[cons.quantity]}
+                                  onValueChange={([v]) => setConsumableQty(area.id, cons.id, v)}
+                                  min={1}
+                                  max={50}
+                                  step={1}
+                                  className="flex-1 min-w-[60px]"
+                                />
                               </div>
-                              <span className="font-medium w-20 text-right">
-                                R {((cons.product.selling_price || cons.product.cost_incl_vat || 0) * cons.quantity).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
-                              </span>
-                              <button
-                                className="h-5 w-5 rounded flex items-center justify-center hover:bg-destructive/20 shrink-0"
-                                onClick={() => removeConsumable(area.id, cons.id)}
-                                aria-label={`Remove consumable ${cons.product.short_name || cons.product.product_code}`}
-                              >
-                                <Trash2 className="h-3 w-3 text-destructive" />
-                              </button>
                             </div>
                           ))}
                         </div>

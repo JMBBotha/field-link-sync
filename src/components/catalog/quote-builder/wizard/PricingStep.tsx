@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { pdf } from "@react-pdf/renderer";
@@ -165,13 +166,23 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                     <div>
                       <Label className="text-[10px] text-muted-foreground">Qty</Label>
-                      <Input
-                        type="number"
-                        value={pricing.quantity}
-                        onChange={(e) => { updateAreaPricing(area.id, { quantity: Math.max(1, parseInt(e.target.value) || 1) }); setPdfReady(false); }}
-                        className="h-7 text-xs"
-                        min={1}
-                      />
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          value={pricing.quantity}
+                          onChange={(e) => { updateAreaPricing(area.id, { quantity: Math.max(1, parseInt(e.target.value) || 1) }); setPdfReady(false); }}
+                          className="h-7 w-16 text-xs"
+                          min={1}
+                        />
+                        <Slider
+                          value={[pricing.quantity]}
+                          onValueChange={([v]) => { updateAreaPricing(area.id, { quantity: v }); setPdfReady(false); }}
+                          min={1}
+                          max={20}
+                          step={1}
+                          className="flex-1 min-w-[60px]"
+                        />
+                      </div>
                     </div>
                     <div>
                       <Label className="text-[10px] text-muted-foreground">Cost Price</Label>
