@@ -10,7 +10,7 @@ function formatZAR(value: number): string {
   return new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(value);
 }
 
-function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, totalAmount: number): string {
+function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, totalAmount: number, unsubscribeUrl: string): string {
   const formattedTotal = formatZAR(totalAmount);
   const currentYear = new Date().getFullYear();
 
@@ -131,9 +131,19 @@ function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, t
 
   <!-- Legal disclaimer -->
   <tr>
-    <td style="padding:0 32px 24px;">
+    <td style="padding:0 32px 12px;">
       <p style="margin:0;font-size:10px;color:#9ca3af;line-height:1.5;">
         This email and any attachments are confidential and intended solely for the addressee. If you have received this email in error, please notify the sender immediately and delete this email. Prices quoted are in South African Rand (ZAR) and include VAT at 15% where indicated. Terms and conditions apply — see attached quotation for full details. © ${currentYear} 0800-BE-COOL! AC Super Service. All rights reserved.
+      </p>
+    </td>
+  </tr>
+
+  <!-- Unsubscribe -->
+  <tr>
+    <td style="padding:0 32px 24px;">
+      <p style="margin:16px 0 0;font-size:11px;color:#94a3b8;line-height:1.5;">
+        You received this email because you requested a quote or are a valued client of 0800BeCool.
+        <a href="${unsubscribeUrl}" style="color:#64748b;text-decoration:underline;">Unsubscribe from future marketing emails</a>
       </p>
     </td>
   </tr>
@@ -153,7 +163,11 @@ serve(async (req) => {
   }
 
   try {
-    const { to, subject, quoteNumber, clientName, pdfBase64, totalAmount } = await req.json();
+    const { to, subject, quoteNumber, clientName, pdfBase64, totalAmount, unsubscribeToken } = await req.json();
+
+    const token = unsubscribeToken || crypto.randomUUID();
+    const unsubscribeUrl = `https://www.0800becool.co.za/unsubscribe?token=${token}&email=${encodeURIComponent(to || "")}`;
+
 
     if (!to) {
       return new Response(JSON.stringify({ error: "Missing 'to' email address" }), {
@@ -174,7 +188,7 @@ serve(async (req) => {
 
     const emailSubject = subject || `Your 0800BeCool Quote ${quoteNumber || ""}`.trim();
     const date = new Date().toLocaleDateString("en-ZA");
-    const htmlBody = buildHtmlEmail(clientName, quoteNumber, date, totalAmount || 0);
+    const htmlBody = buildHtmlEmail(clientName, quoteNumber, date, totalAmount || 0, unsubscribeUrl);
     const textFallback = `Dear ${clientName || "Valued Customer"},\n\nThank you for choosing 0800-BE-COOL! AC Super Service.\n\nYour quote ${quoteNumber ? `(${quoteNumber}) ` : ""}totalling ${formatZAR(totalAmount || 0)} is attached.\n\nThis quote is valid for 30 days. To accept, reply to this email or call 0800 232 665.\n\nKind regards,\n0800-BE-COOL! Team\ninfo@0800becool.co.za`;
 
     const attachments: Array<{ filename: string; content: string }> = [];

@@ -267,6 +267,7 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
                   }
                   const pdfBase64 = btoa(binary);
 
+                  const unsubscribeToken = crypto.randomUUID();
                   const { error } = await supabase.functions.invoke("send-quote-email", {
                     body: {
                       to: quoteData.clientEmail,
@@ -274,6 +275,7 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
                       quoteNumber: quoteData.quoteNumber,
                       clientName: quoteData.clientName,
                       totalAmount: quoteData.total,
+                      unsubscribeToken,
                       pdfBase64,
                     },
                   });
