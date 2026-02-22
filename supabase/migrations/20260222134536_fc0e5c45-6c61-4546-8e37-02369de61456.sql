@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS idx_company_invoices_recurrence_gin ON public.company_invoices USING GIN (recurrence);
