@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getCategoryIcon, getCategoryBg } from "./ProductPalette";
 import { getProductDisplayName } from "./productDisplayUtils";
+import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
 import ConsumablesSuggestionPanel from "./ConsumablesSuggestionPanel";
 import ZoneTemplateSelector from "./ZoneTemplateSelector";
 import type { Basket, BasketItem, PaletteProduct } from "../QuoteBuilderTab";
@@ -187,8 +188,9 @@ function BasketItemCard({
   if (isCompact) {
     return (
       <div className="flex items-center gap-1 rounded border bg-background px-1 py-0.5 text-[10px]">
-        <div className="min-w-0 flex-1 truncate font-medium">
-          {getProductDisplayName(item.product)}
+        <div className="min-w-0 flex-1 truncate font-medium flex items-center gap-0.5">
+          <span className="truncate">{getProductDisplayName(item.product)}</span>
+          <ProductInfoDialog product={item.product} />
         </div>
         {isLengthItem ? (
           <div className="flex items-center gap-0.5 shrink-0">
@@ -230,8 +232,9 @@ function BasketItemCard({
         {getCategoryIcon(item.product.product_category, "h-3 w-3")}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="font-medium truncate">
-          {getProductDisplayName(item.product)}
+        <p className="font-medium truncate flex items-center gap-1">
+          <span className="truncate">{getProductDisplayName(item.product)}</span>
+          <ProductInfoDialog product={item.product} />
         </p>
         <div className="flex items-center gap-1.5">
           <p className="text-[10px] font-mono font-medium text-primary/80 truncate">
