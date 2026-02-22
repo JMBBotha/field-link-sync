@@ -93,7 +93,7 @@ const AdminLayout = () => {
   const checkAuth = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { navigate("/auth"); return; }
+      if (!session) { navigate("/login"); return; }
       const { data: roles } = await supabase
         .from("user_roles")
         .select("role")
@@ -119,7 +119,7 @@ const AdminLayout = () => {
       }
     } catch (error: any) {
       console.error("Auth check error:", error);
-      navigate("/auth");
+      navigate("/login");
     } finally {
       setLoading(false);
     }
@@ -127,7 +127,7 @@ const AdminLayout = () => {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    navigate("/auth");
+    navigate("/login");
   };
 
   if (loading) {

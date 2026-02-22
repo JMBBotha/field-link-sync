@@ -60,7 +60,7 @@ const Index = () => {
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
             Intelligent lead distribution and real-time tracking for your field operations
           </p>
-          <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8">
+          <Button size="lg" onClick={() => navigate("/login")} className="text-lg px-8">
             Get Started
           </Button>
         </div>

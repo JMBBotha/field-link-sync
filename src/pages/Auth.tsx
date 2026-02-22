@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, MapPin } from "lucide-react";
+import { Loader2, Snowflake } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 const Auth = () => {
   const [loading, setLoading] = useState(false);
@@ -18,16 +19,21 @@ const Auth = () => {
   const { toast } = useToast();
 
   useEffect(() => {
+    const redirectByRole = async (userId: string) => {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+      const hasAdmin = roles?.some(r => ["admin", "dispatcher", "viewer"].includes(r.role));
+      navigate(hasAdmin ? "/admin" : "/field");
+    };
+
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate("/");
-      }
+      if (session) redirectByRole(session.user.id);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        navigate("/");
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) redirectByRole(session.user.id);
     });
 
     return () => subscription.unsubscribe();
@@ -39,10 +45,7 @@ const Auth = () => {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast({ title: "Welcome back!", description: "You've successfully logged in." });
       } else {
@@ -50,16 +53,14 @@ const Auth = () => {
           email,
           password,
           options: {
-            data: {
-              full_name: fullName,
-            },
+            data: { full_name: fullName },
             emailRedirectTo: `${window.location.origin}/`,
           },
         });
         if (error) throw error;
         toast({
           title: "Account created!",
-          description: "You can now log in with your credentials.",
+          description: "Please check your email to verify your account before signing in.",
         });
         setIsLogin(true);
       }
@@ -75,12 +76,19 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center mb-4">
-            <div className="p-3 rounded-full bg-primary/10">
-              <MapPin className="h-8 w-8 text-primary" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
+      <Card className="w-full max-w-md border-0 shadow-2xl">
+        <CardHeader className="space-y-1 pb-6">
+          <div className="flex flex-col items-center gap-3 mb-2">
+            <img src={logo} alt="0800BeCool" className="h-16 w-auto" />
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center">
+                <Snowflake className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div>
+                <span className="text-xl font-black tracking-tight text-foreground">0800</span>
+                <span className="text-xl font-black tracking-tight text-primary">BeCool</span>
+              </div>
             </div>
           </div>
           <CardTitle className="text-2xl text-center">
@@ -127,9 +135,14 @@ const Auth = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button
+              type="submit"
+              className="w-full bg-[hsl(25,95%,53%)] hover:bg-[hsl(25,95%,45%)] text-white font-semibold text-base h-11"
+              disabled={loading}
+            >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isLogin ? "Sign In" : "Sign Up"}
             </Button>
@@ -138,7 +151,7 @@ const Auth = () => {
             {isLogin ? "Don't have an account?" : "Already have an account?"}
             <Button
               variant="link"
-              className="ml-1"
+              className="ml-1 text-primary"
               onClick={() => setIsLogin(!isLogin)}
             >
               {isLogin ? "Sign up" : "Sign in"}
