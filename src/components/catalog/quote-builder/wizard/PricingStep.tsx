@@ -1,11 +1,15 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
-import { RotateCcw, FileDown, Loader2 } from "lucide-react";
+import { RotateCcw, FileDown, Loader2, Mail, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { pdf } from "@react-pdf/renderer";
+import QuotePDFDocument from "@/components/QuotePDFDocument";
 import type { QuoteArea } from "../quoteWizardTypes";
 import type { QuotePDFData } from "@/components/QuotePDFDocument";
 
@@ -32,6 +36,8 @@ const PDFDownloadButton = lazy(() => import("./PDFDownloadButton"));
 export default function PricingStep({ areas, onAreasChange }: Props) {
   const [globalMarkup, setGlobalMarkup] = useState(30);
   const [pdfReady, setPdfReady] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const [areaPricing, setAreaPricing] = useState<Record<string, AreaPricing>>(() => {
     const init: Record<string, AreaPricing> = {};
     for (const a of areas) {
@@ -224,7 +230,7 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
         </CardContent>
       </Card>
 
-      {/* Generate Quote / Download PDF */}
+      {/* Generate Quote / Download PDF / Send Email */}
       <div className="space-y-2">
         {!pdfReady ? (
           <Button
@@ -236,14 +242,67 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
             Generate Quote
           </Button>
         ) : quoteData ? (
-          <Suspense fallback={
-            <Button className="w-full" disabled>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Preparing PDF…
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Suspense fallback={
+              <Button className="flex-1" disabled>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Preparing PDF…
+              </Button>
+            }>
+              <PDFDownloadButton data={quoteData} />
+            </Suspense>
+            <Button
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={sending || emailSent || !allHaveUnits || !quoteData.clientEmail}
+              onClick={async () => {
+                if (!quoteData) return;
+                setSending(true);
+                try {
+                  // Generate PDF blob and convert to base64
+                  const blob = await pdf(<QuotePDFDocument data={quoteData} />).toBlob();
+                  const arrayBuffer = await blob.arrayBuffer();
+                  const bytes = new Uint8Array(arrayBuffer);
+                  let binary = "";
+                  for (let i = 0; i < bytes.length; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                  }
+                  const pdfBase64 = btoa(binary);
+
+                  const { error } = await supabase.functions.invoke("send-quote-email", {
+                    body: {
+                      to: quoteData.clientEmail,
+                      subject: `Your 0800BeCool Quote ${quoteData.quoteNumber}`,
+                      quoteNumber: quoteData.quoteNumber,
+                      clientName: quoteData.clientName,
+                      pdfBase64,
+                    },
+                  });
+
+                  if (error) throw error;
+                  setEmailSent(true);
+                  toast.success(`Quote sent to ${quoteData.clientEmail}!`);
+                } catch (err: any) {
+                  console.error("Send quote email error:", err);
+                  toast.error(err?.message || "Failed to send quote email");
+                } finally {
+                  setSending(false);
+                }
+              }}
+            >
+              {sending ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending…</>
+              ) : emailSent ? (
+                <><Check className="h-4 w-4 mr-2" /> Sent ✓</>
+              ) : (
+                <><Mail className="h-4 w-4 mr-2" /> Send Quote Email</>
+              )}
             </Button>
-          }>
-            <PDFDownloadButton data={quoteData} />
-          </Suspense>
+          </div>
         ) : null}
+        {pdfReady && quoteData && !quoteData.clientEmail && (
+          <p className="text-xs text-muted-foreground text-center">
+            Add a client email to enable email sending.
+          </p>
+        )}
       </div>
 
       {!allHaveUnits && (
