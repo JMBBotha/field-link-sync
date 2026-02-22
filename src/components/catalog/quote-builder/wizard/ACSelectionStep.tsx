@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import { Search, Check, Star, X, Zap, Package } from "lucide-react";
+import { Search, Check, Star, X, Zap, Package, ImageIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
@@ -35,8 +35,23 @@ function formatZAR(value: number) {
 
 function PinnedStar({ pinned }: { pinned: boolean }) {
   return pinned ? (
-    <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-500 shrink-0" />
+    <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500 shrink-0" />
   ) : null;
+}
+
+/** Small product thumbnail */
+function ProductThumb({ product }: { product: PaletteProduct }) {
+  const url = (product as any).image_url;
+  if (!url) return <div className="h-10 w-10 rounded bg-muted flex items-center justify-center shrink-0"><ImageIcon className="h-4 w-4 text-muted-foreground/40" /></div>;
+  return (
+    <img
+      src={url}
+      alt={product.short_name || product.product_code}
+      className="h-10 w-10 rounded object-cover border border-border shrink-0"
+      loading="lazy"
+      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+    />
+  );
 }
 
 /* ─── Helper: find best matching bundle for a given BTU/brand ─── */
@@ -55,7 +70,6 @@ function findSuggestedBundle(btu: number, brand: string, bundles: PaletteBundle[
       if (b.compatible_brands.some((cb) => cb.toLowerCase() === brandLower)) score += 5;
       else continue;
     }
-    // Check name/description for BTU keywords
     const text = [b.name, b.description].filter(Boolean).join(" ").toLowerCase();
     const kw = Math.round(btu / 1000);
     if (text.includes(`${kw}k`) || text.includes(`${kw}kw`)) score += 3;
@@ -65,7 +79,7 @@ function findSuggestedBundle(btu: number, brand: string, bundles: PaletteBundle[
   return best;
 }
 
-/* ─── Per-area search dropdown (Bug 1: fully independent per area) ─── */
+/* ─── Per-area search dropdown ─── */
 function AreaUnitSelector({
   area,
   acProducts,
@@ -104,12 +118,12 @@ function AreaUnitSelector({
   const selectedUnit = area.acUnits[0] || null;
 
   return (
-    <div className="rounded-lg border bg-card p-3 space-y-2">
+    <div className={`rounded-lg border bg-card p-3 space-y-2 shadow-md hover:shadow-lg transition-shadow ${selectedUnit ? "border-l-2 border-l-amber-400" : ""}`}>
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">{area.name}</span>
         {selectedUnit && (
-          <Badge variant="outline" className="text-[10px] gap-1">
-            <Check className="h-3 w-3 text-green-600" />
+          <Badge variant="outline" className="text-[10px] gap-1 border-green-300 text-green-700 dark:text-green-400">
+            <Check className="h-3 w-3" />
             Unit selected
           </Badge>
         )}
@@ -117,7 +131,8 @@ function AreaUnitSelector({
 
       {/* Currently selected unit */}
       {selectedUnit && (
-        <div className="flex items-center gap-2 rounded border border-green-500/30 bg-green-500/5 px-2.5 py-2 text-xs">
+        <div className="flex items-center gap-2.5 rounded-lg border border-green-500/30 bg-green-500/5 px-3 py-2.5 text-xs">
+          <ProductThumb product={selectedUnit.product} />
           <Check className="h-3.5 w-3.5 text-green-600 shrink-0" />
           <PinnedStar pinned={!!(selectedUnit.product as any).is_pinned} />
           <div className="flex-1 min-w-0">
@@ -137,10 +152,10 @@ function AreaUnitSelector({
           </span>
           <ProductInfoDialog product={selectedUnit.product} />
           <button
-            className="h-5 w-5 rounded flex items-center justify-center hover:bg-destructive/20 shrink-0"
+            className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-destructive/20 shrink-0 min-h-[24px] min-w-[24px]"
             onClick={() => onRemove(area.id, 0)}
           >
-            <X className="h-3 w-3 text-destructive" />
+            <X className="h-3.5 w-3.5 text-destructive" />
           </button>
         </div>
       )}
@@ -168,24 +183,28 @@ function AreaUnitSelector({
           }}
           onFocus={() => setDropdownOpen(true)}
           onBlur={() => setTimeout(() => setDropdownOpen(false), 200)}
-          className="pl-7 h-8 text-xs"
+          className="pl-7 h-9 text-xs"
         />
       </div>
 
       {/* Dropdown results */}
       {dropdownOpen && (
-        <div className="max-h-40 overflow-y-auto space-y-0.5 rounded border p-1">
+        <div className="max-h-48 overflow-y-auto space-y-0.5 rounded-lg border p-1 shadow-sm">
           {filtered.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-3">No AC products found</p>
           ) : (
             filtered.map((p) => {
               const btu = detectBTU(p);
               const isSelected = selectedUnit?.product.id === p.id;
+              const thumbUrl = (p as any).image_url;
               return (
                 <div
                   key={p.id}
-                  className={`w-full flex items-center gap-2 rounded px-2 py-1.5 text-xs hover:bg-accent transition-colors text-left ${isSelected ? "bg-accent ring-1 ring-primary" : ""}`}
+                  className={`w-full flex items-center gap-2 rounded-md px-2 py-2 text-xs hover:bg-accent transition-colors text-left min-h-[40px] ${isSelected ? "bg-accent ring-1 ring-primary" : ""}`}
                 >
+                  {thumbUrl && (
+                    <img src={thumbUrl} alt="" className="h-8 w-8 rounded object-cover border border-border shrink-0" loading="lazy" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                  )}
                   <button
                     type="button"
                     className="flex-1 flex items-center gap-2 min-w-0 text-left"
