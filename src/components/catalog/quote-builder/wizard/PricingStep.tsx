@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { pdf } from "@react-pdf/renderer";
 import QuotePDFDocument from "@/components/QuotePDFDocument";
 import type { QuoteArea } from "../quoteWizardTypes";
-import type { QuotePDFData } from "@/components/QuotePDFDocument";
+import type { QuotePDFData, QuotePDFSubItem } from "@/components/QuotePDFDocument";
 
 interface Props {
   areas: QuoteArea[];
@@ -99,15 +99,52 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
       validUntil: validUntil.toLocaleDateString("en-ZA"),
       clientName: "",
       clientEmail: "",
-      items: lineItems.map((li) => ({
-        areaName: li.area.name,
-        unitName: li.area.acUnits[0]?.product.short_name || li.area.acUnits[0]?.product.product_code || "—",
-        btu: li.area.acUnits[0]?.btu || 0,
-        quantity: li.quantity,
-        unitPrice: li.sellingPrice,
-        markupPercent: li.markup,
-        lineTotal: li.lineTotal,
-      })),
+      items: lineItems.map((li) => {
+        // Build sub-items from materials + consumables
+        const subItems: QuotePDFSubItem[] = [];
+        for (const mat of li.area.materials) {
+          const isLen = mat.pricingMode === "length";
+          const unitPrice = isLen ? mat.costPerMeter : (mat.product.selling_price || mat.product.cost_incl_vat || 0);
+          const qty = isLen ? mat.adjustedLength : mat.unitQuantity;
+          const lineTotal = isLen ? mat.totalCost : unitPrice * mat.unitQuantity;
+          subItems.push({
+            name: mat.product.short_name || mat.product.product_code,
+            quantity: qty,
+            unitPrice,
+            lineTotal,
+            pricingMode: isLen ? "per-meter" : "per-unit",
+          });
+        }
+        for (const cons of (li.area.consumables ?? [])) {
+          const price = cons.product.selling_price || cons.product.cost_incl_vat || 0;
+          subItems.push({
+            name: cons.product.short_name || cons.product.product_code,
+            quantity: cons.quantity,
+            unitPrice: price,
+            lineTotal: price * cons.quantity,
+            pricingMode: "per-unit",
+          });
+        }
+        for (const br of li.area.brackets) {
+          subItems.push({
+            name: `Bracket ${br.size}`,
+            quantity: br.quantity,
+            unitPrice: br.price,
+            lineTotal: br.price * br.quantity,
+            pricingMode: "per-unit",
+          });
+        }
+        return {
+          areaName: li.area.name,
+          unitName: li.area.acUnits[0]?.product.short_name || li.area.acUnits[0]?.product.product_code || "—",
+          btu: li.area.acUnits[0]?.btu || 0,
+          quantity: li.quantity,
+          unitPrice: li.sellingPrice,
+          markupPercent: li.markup,
+          lineTotal: li.lineTotal,
+          subItems: subItems.length > 0 ? subItems : undefined,
+        };
+      }),
       subtotal,
       vatRate: VAT_RATE,
       vatAmount,

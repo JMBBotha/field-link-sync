@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { Search, Check, Star, X, Zap } from "lucide-react";
+import { Search, Check, Star, X, Zap, Package } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
@@ -9,10 +9,23 @@ import { detectBTU, getBracketSize } from "../quoteWizardTypes";
 import { findDaikinRemote, forcePerUnitPricing, isWiredRemote } from "../daikinRemoteUtils";
 import { toast } from "sonner";
 
+interface PaletteBundle {
+  id: string;
+  name: string;
+  description: string | null;
+  bundle_type: string | null;
+  min_btu?: number | null;
+  max_btu?: number | null;
+  compatible_brands?: string[] | null;
+  is_favorite?: boolean;
+  items: any[];
+}
+
 interface Props {
   areas: QuoteArea[];
   onAreasChange: (areas: QuoteArea[]) => void;
   products: PaletteProduct[];
+  bundles?: PaletteBundle[];
   onPdfSearch?: (term: string) => void;
 }
 
@@ -26,17 +39,45 @@ function PinnedStar({ pinned }: { pinned: boolean }) {
   ) : null;
 }
 
+/* ─── Helper: find best matching bundle for a given BTU/brand ─── */
+function findSuggestedBundle(btu: number, brand: string, bundles: PaletteBundle[]): PaletteBundle | null {
+  if (bundles.length === 0) return null;
+  const brandLower = brand.toLowerCase();
+  let best: PaletteBundle | null = null;
+  let bestScore = -1;
+  for (const b of bundles) {
+    let score = 0;
+    if (b.min_btu != null && b.max_btu != null) {
+      if (btu >= b.min_btu && btu <= b.max_btu) score += 10;
+      else continue;
+    }
+    if (b.compatible_brands && b.compatible_brands.length > 0) {
+      if (b.compatible_brands.some((cb) => cb.toLowerCase() === brandLower)) score += 5;
+      else continue;
+    }
+    // Check name/description for BTU keywords
+    const text = [b.name, b.description].filter(Boolean).join(" ").toLowerCase();
+    const kw = Math.round(btu / 1000);
+    if (text.includes(`${kw}k`) || text.includes(`${kw}kw`)) score += 3;
+    if (b.is_favorite) score += 2;
+    if (score > bestScore) { bestScore = score; best = b; }
+  }
+  return best;
+}
+
 /* ─── Per-area search dropdown (Bug 1: fully independent per area) ─── */
 function AreaUnitSelector({
   area,
   acProducts,
   onSelect,
   onRemove,
+  suggestedBundle,
 }: {
   area: QuoteArea;
   acProducts: PaletteProduct[];
   onSelect: (areaId: string, product: PaletteProduct) => void;
   onRemove: (areaId: string, idx: number) => void;
+  suggestedBundle?: PaletteBundle | null;
 }) {
   const [query, setQuery] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -91,6 +132,17 @@ function AreaUnitSelector({
           >
             <X className="h-3 w-3 text-destructive" />
           </button>
+        </div>
+      )}
+
+      {/* Suggested bundle badge */}
+      {selectedUnit && suggestedBundle && (
+        <div className="flex items-center gap-2 rounded border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-xs">
+          <Package className="h-3.5 w-3.5 text-primary shrink-0" />
+          <span className="text-muted-foreground">Suggested install kit:</span>
+          <span className="font-medium text-foreground">{suggestedBundle.name}</span>
+          <Badge variant="secondary" className="text-[10px]">{suggestedBundle.items.length} items</Badge>
+          <span className="text-[10px] text-muted-foreground ml-auto">Auto-applied in Step 3</span>
         </div>
       )}
 
@@ -158,7 +210,7 @@ function AreaUnitSelector({
 }
 
 /* ─── Main Step Component ─── */
-export default function ACSelectionStep({ areas, onAreasChange, products, onPdfSearch }: Props) {
+export default function ACSelectionStep({ areas, onAreasChange, products, bundles = [], onPdfSearch }: Props) {
   const acProducts = useMemo(() => {
     let filtered = products.filter(
       (p) => p.product_category === "Air Conditioning" || (p.category || "").toLowerCase().includes("air conditioning")
@@ -170,6 +222,20 @@ export default function ACSelectionStep({ areas, onAreasChange, products, onPdfS
     filtered = filtered.filter((p) => !p.is_material_favorite);
     return filtered;
   }, [products]);
+
+  // Compute suggested bundle per area
+  const areaBundleSuggestions = useMemo(() => {
+    const map: Record<string, PaletteBundle | null> = {};
+    for (const area of areas) {
+      const unit = area.acUnits[0];
+      if (unit) {
+        map[area.id] = findSuggestedBundle(unit.btu, unit.product.brand || "", bundles);
+      } else {
+        map[area.id] = null;
+      }
+    }
+    return map;
+  }, [areas, bundles]);
 
   const handleSelect = useCallback((areaId: string, product: PaletteProduct) => {
     const btu = detectBTU(product);
@@ -247,6 +313,7 @@ export default function ACSelectionStep({ areas, onAreasChange, products, onPdfS
             acProducts={acProducts}
             onSelect={handleSelect}
             onRemove={handleRemove}
+            suggestedBundle={areaBundleSuggestions[area.id]}
           />
         ))}
       </div>
