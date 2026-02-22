@@ -102,15 +102,12 @@ const Onboarding = () => {
         .from("companies")
         .insert({
           name: company.company_name,
-          phone: company.phone,
-          email: company.email,
-          address: { line1: company.address } as any,
+          slug: company.company_name.toLowerCase().replace(/\s+/g, '-'),
           logo_url,
           onboarding_completed: true,
           services: selectedServices,
           default_rate: business.default_rate,
-          vat_registered: business.vat_registered,
-          vat_number: business.vat_registered ? business.vat_number : null,
+          vat_rate: business.vat_registered ? 15 : 0,
         } as any)
         .select("id")
         .single();

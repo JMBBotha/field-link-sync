@@ -5,10 +5,12 @@ import { supabase } from "@/integrations/supabase/client";
 interface Company {
   id: string;
   name: string;
+  slug: string | null;
   logo_url: string | null;
-  address: any;
-  phone: string | null;
-  email: string | null;
+  vat_rate: number | null;
+  default_rate: number | null;
+  services: string[] | null;
+  onboarding_completed: boolean | null;
 }
 
 interface CompanyContextValue {
