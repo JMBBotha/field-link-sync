@@ -1,13 +1,10 @@
-import { serve } from "https://deno.land/std@0.223.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const whatsappToken = Deno.env.get("WHATSAPP_TOKEN")!;
-const whatsappPhoneId = Deno.env.get("WHATSAPP_PHONE_ID")!;
-const verifyToken = Deno.env.get("WHATSAPP_VERIFY_TOKEN") || "becool-whatsapp-verify-2026";
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 const COMPANY_ID = "b8566007-f29c-46a5-97c9-cca365e638c7";
 
@@ -25,6 +22,16 @@ const stateStore: Record<string, QuoteState> = {};
 console.log("WhatsApp Quote Bot initialized");
 
 serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const whatsappToken = Deno.env.get("WHATSAPP_TOKEN") ?? "";
+  const whatsappPhoneId = Deno.env.get("WHATSAPP_PHONE_ID") ?? "";
+  const verifyToken = Deno.env.get("WHATSAPP_VERIFY_TOKEN") || "becool-whatsapp-verify-2026";
+
   // Webhook verification (GET from Meta)
   if (req.method === "GET") {
     const url = new URL(req.url);
@@ -32,23 +39,29 @@ serve(async (req: Request) => {
     const token = url.searchParams.get("hub.verify_token");
     const challenge = url.searchParams.get("hub.challenge");
 
+    console.log("Verification request:", { mode, token, challenge });
+
     if (mode === "subscribe" && token === verifyToken) {
       console.log("Webhook verified successfully");
-      return new Response(challenge, { status: 200 });
+      return new Response(challenge, { status: 200, headers: corsHeaders });
     }
-    return new Response("Verification failed", { status: 403 });
+    return new Response("Verification failed", { status: 403, headers: corsHeaders });
   }
 
   // Incoming WhatsApp messages (POST)
   if (req.method === "POST") {
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     try {
       const body = await req.json();
+      console.log("Incoming webhook:", JSON.stringify(body));
+
       const entry = body.entry?.[0];
       const change = entry?.changes?.[0];
       const message = change?.value?.messages?.[0];
 
       if (!message || message.type !== "text") {
-        return new Response("No text message", { status: 200 });
+        return new Response("No text message", { status: 200, headers: corsHeaders });
       }
 
       const from = message.from;
@@ -134,26 +147,26 @@ serve(async (req: Request) => {
       }
 
       if (reply) {
-        await sendWhatsAppMessage(from, reply);
+        await sendWhatsAppMessage(whatsappPhoneId, whatsappToken, from, reply);
       }
 
-      return new Response("OK", { status: 200 });
+      return new Response("OK", { status: 200, headers: corsHeaders });
     } catch (err) {
       console.error("Error processing message:", err);
-      return new Response("Error", { status: 500 });
+      return new Response("Error", { status: 500, headers: corsHeaders });
     }
   }
 
-  return new Response("Method not allowed", { status: 405 });
+  return new Response("Method not allowed", { status: 405, headers: corsHeaders });
 });
 
-async function sendWhatsAppMessage(to: string, text: string) {
-  const url = `https://graph.facebook.com/v18.0/${whatsappPhoneId}/messages`;
+async function sendWhatsAppMessage(phoneId: string, token: string, to: string, text: string) {
+  const url = `https://graph.facebook.com/v18.0/${phoneId}/messages`;
 
   const res = await fetch(url, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${whatsappToken}`,
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
