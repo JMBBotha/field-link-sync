@@ -122,7 +122,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
   if (collapsed) return null;
 
   return (
-    <div className="flex flex-col h-full bg-card border-l border-border/60">
+    <div className="flex flex-col h-full border-l border-white/20">
       <div className="px-4 py-3 border-b border-border/60">
         <h3 className="text-sm font-semibold tracking-tight text-foreground">Quote Summary</h3>
       </div>
@@ -543,7 +543,7 @@ const FBQuoteBuilderPage = () => {
         <div className="flex-1 flex min-h-0 overflow-hidden">
 
           {/* LEFT: Product Palette */}
-          <div className={`${isMobile ? (mobileTab === "palette" ? "flex" : "hidden") : "flex"} flex-col w-full md:w-80 lg:w-96 shrink-0 border-r border-border/60 bg-card min-h-0 overflow-hidden`}>
+          <div className={`${isMobile ? (mobileTab === "palette" ? "flex" : "hidden") : "flex"} flex-col w-full md:w-80 lg:w-96 shrink-0 border-r border-white/20 min-h-0 overflow-hidden`}>
             <ProductPalette
               products={filteredProducts}
               isLoading={isLoading}
@@ -565,7 +565,7 @@ const FBQuoteBuilderPage = () => {
 
           {/* CENTER: Quote Canvas */}
           <div ref={canvasRef}
-            className={`${isMobile ? (mobileTab === "canvas" ? "flex" : "hidden") : "flex"} flex-col flex-1 min-h-0 min-w-0 overflow-hidden bg-muted/20`}>
+            className={`${isMobile ? (mobileTab === "canvas" ? "flex" : "hidden") : "flex"} flex-col flex-1 min-h-0 min-w-0 overflow-hidden`}>
             <div className="flex-1 min-h-0 overflow-y-auto p-4" style={{ scrollBehavior: "smooth" }}>
               <BasketCanvas
                 baskets={baskets}
