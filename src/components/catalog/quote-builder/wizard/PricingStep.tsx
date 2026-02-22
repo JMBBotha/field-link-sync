@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import QuantityControl from "../QuantityControl";
 import { supabase } from "@/integrations/supabase/client";
 import { pdf } from "@react-pdf/renderer";
 import QuotePDFDocument from "@/components/QuotePDFDocument";
@@ -166,7 +167,12 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
         </CardHeader>
         <CardContent className="pb-3">
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground whitespace-nowrap">Default Markup %</Label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Label className="text-xs text-muted-foreground whitespace-nowrap cursor-help">Default Markup %</Label>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">Set profit margin for all areas</TooltipContent>
+            </Tooltip>
             <Input
               type="number"
               value={globalMarkup}
@@ -203,23 +209,13 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                     <div>
                       <Label className="text-[10px] text-muted-foreground">Qty</Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          value={pricing.quantity}
-                          onChange={(e) => { updateAreaPricing(area.id, { quantity: Math.max(1, parseInt(e.target.value) || 1) }); setPdfReady(false); }}
-                          className="h-7 w-16 text-xs"
-                          min={1}
-                        />
-                        <Slider
-                          value={[pricing.quantity]}
-                          onValueChange={([v]) => { updateAreaPricing(area.id, { quantity: v }); setPdfReady(false); }}
-                          min={1}
-                          max={20}
-                          step={1}
-                          className="flex-1 min-w-[60px]"
-                        />
-                      </div>
+                      <QuantityControl
+                        value={pricing.quantity}
+                        onChange={(v) => { updateAreaPricing(area.id, { quantity: v }); setPdfReady(false); }}
+                        min={1}
+                        max={20}
+                        sliderTooltip="Adjust unit quantity"
+                      />
                     </div>
                     <div>
                       <Label className="text-[10px] text-muted-foreground">Cost Price</Label>
@@ -228,7 +224,12 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
                       </div>
                     </div>
                     <div>
-                      <Label className="text-[10px] text-muted-foreground">Markup %</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Label className="text-[10px] text-muted-foreground cursor-help">Markup %</Label>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs">Adjust profit margin</TooltipContent>
+                      </Tooltip>
                       <Input
                         type="number"
                         value={pricing.markupPercent}
@@ -299,7 +300,7 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
               <PDFDownloadButton data={quoteData} />
             </Suspense>
             <Button
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+              className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
               disabled={sending || emailSent || !allHaveUnits || !quoteData.clientEmail}
               onClick={async () => {
                 if (!quoteData) return;
@@ -332,7 +333,7 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
                   setEmailSent(true);
                   toast.success(`Quote sent to ${quoteData.clientEmail}!`);
                 } catch (err: any) {
-                  console.error("Send quote email error:", err);
+                  
                   toast.error(err?.message || "Failed to send quote email");
                 } finally {
                   setSending(false);
