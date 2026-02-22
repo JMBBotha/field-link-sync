@@ -5,11 +5,11 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const whatsappToken = Deno.env.get("WHATSAPP_TOKEN")!;
 const whatsappPhoneId = Deno.env.get("WHATSAPP_PHONE_ID")!;
+const verifyToken = Deno.env.get("WHATSAPP_VERIFY_TOKEN") || "becool-whatsapp-verify-2026";
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const COMPANY_ID = "b8566007-f29c-46a5-97c9-cca365e638c7";
-const VERIFY_TOKEN = "becool-whatsapp-verify-2026";
 
 interface QuoteState {
   step: number;
@@ -32,7 +32,7 @@ serve(async (req: Request) => {
     const token = url.searchParams.get("hub.verify_token");
     const challenge = url.searchParams.get("hub.challenge");
 
-    if (mode === "subscribe" && token === VERIFY_TOKEN) {
+    if (mode === "subscribe" && token === verifyToken) {
       console.log("Webhook verified successfully");
       return new Response(challenge, { status: 200 });
     }
