@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { Search, Check, Star, X, Zap, Package } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -80,16 +80,26 @@ function AreaUnitSelector({
   suggestedBundle?: PaletteBundle | null;
 }) {
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleQueryChange = useCallback((value: string) => {
+    setQuery(value);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedQuery(value), 300);
+  }, []);
+
+  useEffect(() => () => clearTimeout(debounceRef.current), []);
 
   const filtered = useMemo(() => {
-    if (!query.trim()) return acProducts.slice(0, 20);
-    const terms = query.toLowerCase().split(/\s+/);
+    if (!debouncedQuery.trim()) return acProducts.slice(0, 20);
+    const terms = debouncedQuery.toLowerCase().split(/\s+/);
     return acProducts.filter((p) => {
       const blob = [p.product_code, p.short_name, p.brand, p.description].filter(Boolean).join(" ").toLowerCase();
       return terms.every((t) => blob.includes(t));
     }).slice(0, 30);
-  }, [acProducts, query]);
+  }, [acProducts, debouncedQuery]);
 
   const selectedUnit = area.acUnits[0] || null;
 
@@ -153,7 +163,7 @@ function AreaUnitSelector({
           placeholder="Search AC units for this area..."
           value={query}
           onChange={(e) => {
-            setQuery(e.target.value);
+            handleQueryChange(e.target.value);
             setDropdownOpen(true);
           }}
           onFocus={() => setDropdownOpen(true)}
