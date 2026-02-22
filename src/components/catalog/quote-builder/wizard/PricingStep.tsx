@@ -273,6 +273,7 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
                       subject: `Your 0800BeCool Quote ${quoteData.quoteNumber}`,
                       quoteNumber: quoteData.quoteNumber,
                       clientName: quoteData.clientName,
+                      totalAmount: quoteData.total,
                       pdfBase64,
                     },
                   });
