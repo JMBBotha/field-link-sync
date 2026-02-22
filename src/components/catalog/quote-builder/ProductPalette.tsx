@@ -397,7 +397,7 @@ const ProductPalette = ({
   }, [bundles, searchQuery, categoryFilter]);
 
   return (
-    <div className="flex flex-col rounded-lg border bg-card overflow-hidden h-full min-h-0">
+    <div className="flex flex-col rounded-lg border overflow-hidden h-full min-h-0" style={{ backgroundColor: "#d5d5d5" }}>
       <div className="p-3 border-b space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-foreground">Product Palette</h3>
