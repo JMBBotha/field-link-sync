@@ -15,6 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import type { PaletteProduct } from "../../QuoteBuilderTab";
 import type { QuoteArea, AreaMaterial, AreaBracket, AreaConsumable } from "../quoteWizardTypes";
 import { getBracketSize } from "../quoteWizardTypes";
+import { isWiredRemote, forcePerUnitPricing } from "../daikinRemoteUtils";
 import { termMatchesBlob } from "../../searchSynonyms";
 
 /* ── Helper: check if a product is an AC unit (should be excluded from materials) ── */
@@ -130,13 +131,15 @@ function materialsFromBundle(bundle: Bundle): AreaMaterial[] {
   const materials: AreaMaterial[] = [];
   for (const item of bundle.items) {
     if (!item.product || item.is_optional) continue;
-    const ppm = item.product.price_per_metre;
+    // Force per-unit pricing for wired remotes regardless of bundle config
+    const product = isWiredRemote(item.product) ? forcePerUnitPricing(item.product) : item.product;
+    const ppm = product.price_per_metre;
     const isLengthItem = item.is_length_item && typeof ppm === "number" && ppm > 0;
     if (isLengthItem) {
-      const len = item.length_metres || item.product.unit_length || 3;
+      const len = item.length_metres || product.unit_length || 3;
       materials.push({
         id: crypto.randomUUID(),
-        product: item.product,
+        product,
         defaultLength: len,
         adjustedLength: len,
         costPerMeter: ppm!,
@@ -145,14 +148,13 @@ function materialsFromBundle(bundle: Bundle): AreaMaterial[] {
         unitQuantity: 1,
       });
     } else {
-      // Non-length bundle items get added as unit-priced materials
       materials.push({
         id: crypto.randomUUID(),
-        product: item.product,
+        product,
         defaultLength: 1,
         adjustedLength: 1,
         costPerMeter: 0,
-        totalCost: item.product.selling_price || item.product.cost_incl_vat || 0,
+        totalCost: product.selling_price || product.cost_incl_vat || 0,
         pricingMode: "unit",
         unitQuantity: item.quantity,
       });
@@ -589,9 +591,11 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
   }, [areas, onAreasChange]);
 
   const addMaterialFromPicker = useCallback((areaId: string, product: PaletteProduct) => {
-    const ppm = product.price_per_metre;
-    const isLengthItem = product.sold_in_length && typeof ppm === "number" && ppm > 0;
-    const len = product.unit_length || 3;
+    // Force per-unit pricing for wired remotes (Daikin BRC073, BRCW901A08, etc.)
+    const safeProduct = isWiredRemote(product) ? forcePerUnitPricing(product) : product;
+    const ppm = safeProduct.price_per_metre;
+    const isLengthItem = safeProduct.sold_in_length && typeof ppm === "number" && ppm > 0;
+    const len = safeProduct.unit_length || 3;
     onAreasChange(
       areas.map((a) => {
         if (a.id !== areaId) return a;
@@ -599,11 +603,11 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
           ...a,
           materials: [...a.materials, {
             id: crypto.randomUUID(),
-            product,
+            product: safeProduct,
             defaultLength: isLengthItem ? len : 1,
             adjustedLength: isLengthItem ? len : 1,
             costPerMeter: isLengthItem ? ppm! : 0,
-            totalCost: isLengthItem ? len * ppm! : (product.selling_price || product.cost_incl_vat || 0),
+            totalCost: isLengthItem ? len * ppm! : (safeProduct.selling_price || safeProduct.cost_incl_vat || 0),
             pricingMode: isLengthItem ? "length" as const : "unit" as const,
             unitQuantity: 1,
           }],
