@@ -543,7 +543,7 @@ const FBQuoteBuilderPage = () => {
         <div className="flex-1 flex min-h-0 overflow-hidden">
 
           {/* LEFT: Product Palette */}
-          <div className={`${isMobile ? (mobileTab === "palette" ? "flex" : "hidden") : "flex"} flex-col w-full md:w-80 lg:w-96 shrink-0 border-r border-white/20 min-h-0 overflow-hidden p-0.5`}>
+          <div className={`${isMobile ? (mobileTab === "palette" ? "flex" : "hidden") : "flex"} flex-col w-full md:w-80 lg:w-96 shrink-0 border-r border-white/20 min-h-0 overflow-hidden p-1`}>
             <ProductPalette
               products={filteredProducts}
               isLoading={isLoading}
@@ -565,7 +565,7 @@ const FBQuoteBuilderPage = () => {
 
           {/* CENTER: Quote Canvas */}
           <div ref={canvasRef}
-            className={`${isMobile ? (mobileTab === "canvas" ? "flex" : "hidden") : "flex"} flex-col flex-1 min-h-0 min-w-0 overflow-hidden p-0.5`}>
+            className={`${isMobile ? (mobileTab === "canvas" ? "flex" : "hidden") : "flex"} flex-col flex-1 min-h-0 min-w-0 overflow-hidden p-1`}>
             <div className="flex-1 min-h-0 overflow-y-auto p-4" style={{ scrollBehavior: "smooth" }}>
               <BasketCanvas
                 baskets={baskets}
