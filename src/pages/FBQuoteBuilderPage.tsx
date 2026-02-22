@@ -494,7 +494,7 @@ const FBQuoteBuilderPage = () => {
             className="h-9 w-9 rounded-xl text-primary-foreground hover:bg-primary-foreground/10 transition-all duration-150">
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <img src={logo} alt="Logo" className="h-7" />
+          <img src={logo} alt="Logo" className="h-9" />
           <div className="hidden sm:block h-6 w-px bg-primary-foreground/20" />
           <h1 className="hidden sm:block text-lg font-semibold tracking-tight text-primary-foreground">Quote Builder</h1>
         </div>
