@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo, useCallback, useRef, memo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, memo, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Minus, Trash2, Star, Search, Package, X, RefreshCw, Ruler } from "lucide-react";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
@@ -246,8 +247,26 @@ function MaterialPicker({
   section: "materials" | "consumables";
 }) {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState("all");
+  const [isFiltering, startFilterTransition] = useTransition();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const RESULT_LIMIT = 40;
+
+  // Debounce search input by 300ms
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      startFilterTransition(() => {
+        setDebouncedSearch(value);
+      });
+    }, 300);
+  }, []);
+
+  useEffect(() => {
+    return () => clearTimeout(debounceRef.current);
+  }, []);
 
   const filtered = useMemo(() => {
     let result = products;
@@ -275,7 +294,7 @@ function MaterialPicker({
           default: return true;
         }
       });
-    } else if (!search.trim()) {
+    } else if (!debouncedSearch.trim()) {
       // When no search and "all" category, show installation-relevant categories only (not AC units)
       if (section === "materials") {
         result = result.filter((p) => {
@@ -291,8 +310,8 @@ function MaterialPicker({
     }
 
     // Search with synonym + pipe size alias expansion
-    if (search.trim()) {
-      const terms = search.toLowerCase().split(/\s+/);
+    if (debouncedSearch.trim()) {
+      const terms = debouncedSearch.toLowerCase().split(/\s+/);
       result = result.filter((p) => {
         const blob = [p.product_code, p.short_name, p.brand, p.description].filter(Boolean).join(" ").toLowerCase();
         return terms.every((t) => termMatchesBlob(t, blob));
@@ -307,7 +326,7 @@ function MaterialPicker({
     });
 
     return result.slice(0, RESULT_LIMIT);
-  }, [products, search, category, section]);
+  }, [products, debouncedSearch, category, section]);
 
   const totalBeforeLimit = useMemo(() => {
     let result = products.filter((p) => !isACUnit(p));
@@ -316,15 +335,15 @@ function MaterialPicker({
       return st === "installation_material" || st === "consumables" || st === "both";
     });
     // No strict section filter — matches the filtered logic above
-    if (search.trim()) {
-      const terms = search.toLowerCase().split(/\s+/);
+    if (debouncedSearch.trim()) {
+      const terms = debouncedSearch.toLowerCase().split(/\s+/);
       result = result.filter((p) => {
         const blob = [p.product_code, p.short_name, p.brand, p.description].filter(Boolean).join(" ").toLowerCase();
         return terms.every((t) => termMatchesBlob(t, blob));
       });
     }
     return result.length;
-  }, [products, search, section]);
+  }, [products, debouncedSearch, section]);
 
   return (
     <div className="space-y-2 rounded border bg-muted/20 p-2">
@@ -333,7 +352,7 @@ function MaterialPicker({
         <Input
           placeholder="Search products..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => handleSearchChange(e.target.value)}
           className="pl-7 h-8 text-xs"
         />
       </div>
@@ -349,7 +368,13 @@ function MaterialPicker({
         ))}
       </div>
       <div className="max-h-36 overflow-y-auto space-y-0.5">
-        {filtered.length === 0 ? (
+        {isFiltering ? (
+          <div className="space-y-1.5 py-2">
+            <Skeleton className="h-7 w-full" />
+            <Skeleton className="h-7 w-full" />
+            <Skeleton className="h-7 w-3/4" />
+          </div>
+        ) : filtered.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-3">No products found</p>
         ) : (
           filtered.map((p) => (
@@ -723,6 +748,23 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
     return map;
   }, [bundles]);
 
+  // Memoize per-area totals for performance with many areas/items
+  const areaTotals = useMemo(() => {
+    const map: Record<string, { matTotal: number; bracketTotal: number; consTotal: number; sectionTotal: number }> = {};
+    for (const area of areas) {
+      const matTotal = area.materials.reduce((s, m) => {
+        if (m.pricingMode === "unit") {
+          return s + (m.product.selling_price || m.product.cost_incl_vat || 0) * m.unitQuantity;
+        }
+        return s + m.totalCost;
+      }, 0);
+      const bracketTotal = area.brackets.reduce((s, b) => s + b.price * b.quantity, 0);
+      const consTotal = (area.consumables ?? []).reduce((s, c) => s + (c.product.selling_price || c.product.cost_incl_vat || 0) * c.quantity, 0);
+      map[area.id] = { matTotal, bracketTotal, consTotal, sectionTotal: matTotal + bracketTotal + consTotal };
+    }
+    return map;
+  }, [areas]);
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
@@ -732,16 +774,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
       {/* Fix 5a: Controlled accordion */}
       <Accordion type="multiple" value={expandedAreas} onValueChange={setExpandedAreas} className="space-y-2">
         {areas.map((area) => {
-          const matTotal = area.materials.reduce((s, m) => {
-            if (m.pricingMode === "unit") {
-              return s + (m.product.selling_price || m.product.cost_incl_vat || 0) * m.unitQuantity;
-            }
-            return s + m.totalCost;
-          }, 0);
-          const bracketTotal = area.brackets.reduce((s, b) => s + b.price * b.quantity, 0);
-          // Fix 2d: Defensive consumables access
-          const consTotal = (area.consumables ?? []).reduce((s, c) => s + (c.product.selling_price || c.product.cost_incl_vat || 0) * c.quantity, 0);
-          const sectionTotal = matTotal + bracketTotal + consTotal;
+          const { sectionTotal } = areaTotals[area.id] || { sectionTotal: 0 };
           const pickerState = openPicker[area.id] ?? null;
           // Fix 5b: Show applied bundle name
           const appliedBundleName = area.appliedBundleId ? bundleNameMap[area.appliedBundleId] : null;
