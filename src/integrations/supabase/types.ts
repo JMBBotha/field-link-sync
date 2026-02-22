@@ -3342,6 +3342,7 @@ export type Database = {
           short_name: string | null
           sold_in_length: boolean
           subcategory: string | null
+          suggested_consumables: Json | null
           supplier_discount_percent: number
           supplier_id: string
           unit_length: number | null
@@ -3389,6 +3390,7 @@ export type Database = {
           short_name?: string | null
           sold_in_length?: boolean
           subcategory?: string | null
+          suggested_consumables?: Json | null
           supplier_discount_percent?: number
           supplier_id: string
           unit_length?: number | null
@@ -3436,6 +3438,7 @@ export type Database = {
           short_name?: string | null
           sold_in_length?: boolean
           subcategory?: string | null
+          suggested_consumables?: Json | null
           supplier_discount_percent?: number
           supplier_id?: string
           unit_length?: number | null

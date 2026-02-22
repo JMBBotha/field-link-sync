@@ -43,6 +43,8 @@ export interface AreaConsumable {
   id: string;
   product: PaletteProduct;
   quantity: number;
+  /** Whether this was auto-added from suggested_consumables */
+  isSuggested?: boolean;
 }
 
 export function getBracketSize(btu: number): string {
