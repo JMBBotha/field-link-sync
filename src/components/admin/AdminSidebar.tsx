@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard,
   MapPin,
+  MessageSquare,
   CalendarDays,
   LayoutGrid,
   FileText,
@@ -123,6 +124,7 @@ const AdminSidebar = ({
         { path: "/admin/notifications", label: "Notifications", icon: Bell, badge: pendingRequestsCount },
         { path: "/admin/audit", label: "Audit", icon: History },
         { path: "/admin/import", label: "Import", icon: Upload },
+        { path: "/admin/whatsapp", label: "WhatsApp", icon: MessageSquare },
         { path: "/admin/settings", label: "Settings", icon: Settings },
         { path: "/admin/companies", label: "Companies", icon: Building2 },
       ],

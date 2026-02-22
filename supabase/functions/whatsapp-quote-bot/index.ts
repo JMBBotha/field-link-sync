@@ -179,7 +179,23 @@ async function sendWhatsAppMessage(phoneId: string, token: string, to: string, t
   });
 
   if (!res.ok) {
-    const error = await res.text();
-    console.error("WhatsApp send error:", error);
+    const errorText = await res.text();
+    console.error("WhatsApp send error:", errorText);
+
+    // Parse error for specific handling
+    try {
+      const errorJson = JSON.parse(errorText);
+      const errorCode = errorJson?.error?.code;
+
+      if (errorCode === 133010) {
+        console.error(
+          "ERROR #133010: Phone number not registered. " +
+          "This means the WhatsApp Business Account or phone number has not completed Meta's registration/verification process. " +
+          "Steps to fix: 1) Register a real phone number (not test number) 2) Complete Business Verification in Meta Business Manager 3) Wait for approval (1-5 days)"
+        );
+      }
+    } catch {
+      // Not JSON, already logged raw error
+    }
   }
 }
