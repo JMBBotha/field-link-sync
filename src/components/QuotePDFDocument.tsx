@@ -13,6 +13,14 @@ Font.register({
 });
 
 /* ─── Types ─── */
+export interface QuotePDFSubItem {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  pricingMode?: "per-unit" | "per-meter";
+}
+
 export interface QuotePDFLineItem {
   areaName: string;
   unitName: string;
@@ -21,6 +29,8 @@ export interface QuotePDFLineItem {
   unitPrice: number;
   markupPercent: number;
   lineTotal: number;
+  /** Materials/consumables sub-items for this area */
+  subItems?: QuotePDFSubItem[];
 }
 
 export interface QuotePDFData {
@@ -78,6 +88,10 @@ const s = StyleSheet.create({
   totalsFinal: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6, backgroundColor: BLUE, borderRadius: 4, paddingHorizontal: 8, marginTop: 4 },
   totalsFinalLabel: { fontSize: 10, fontWeight: 700, color: "#ffffff" },
   totalsFinalValue: { fontSize: 10, fontWeight: 700, color: "#ffffff" },
+  /* Sub-items (materials/consumables) */
+  subRow: { flexDirection: "row", backgroundColor: "#fafafa", paddingVertical: 3, paddingHorizontal: 4, paddingLeft: 16 },
+  subText: { fontSize: 7.5, color: GRAY },
+  subTextBold: { fontSize: 7.5, color: DARK, fontWeight: 700 },
   /* Terms */
   termsSection: { marginTop: 24, paddingTop: 12, borderTopWidth: 0.5, borderTopColor: "#d1d5db" },
   termsTitle: { fontSize: 10, fontWeight: 700, marginBottom: 6, color: BLUE },
@@ -148,16 +162,36 @@ export default function QuotePDFDocument({ data }: { data: QuotePDFData }) {
 
         {/* Table rows */}
         {data.items.map((item, i) => (
-          <View key={i} style={s.tableRow}>
-            <View style={s.colDesc}>
-              <Text style={s.tdText}>{item.areaName}</Text>
-              <Text style={s.tdSub}>{item.unitName} · {item.btu.toLocaleString()} BTU</Text>
+          <React.Fragment key={i}>
+            <View style={s.tableRow}>
+              <View style={s.colDesc}>
+                <Text style={s.tdText}>{item.areaName}</Text>
+                <Text style={s.tdSub}>{item.unitName} · {item.btu.toLocaleString()} BTU</Text>
+              </View>
+              <Text style={{ ...s.tdText, ...s.colQty }}>{item.quantity}</Text>
+              <Text style={{ ...s.tdText, ...s.colUnit }}>{formatZAR(item.unitPrice)}</Text>
+              <Text style={{ ...s.tdText, ...s.colMarkup }}>{item.markupPercent}%</Text>
+              <Text style={{ ...s.tdText, ...s.colTotal, fontWeight: 700 }}>{formatZAR(item.lineTotal)}</Text>
             </View>
-            <Text style={{ ...s.tdText, ...s.colQty }}>{item.quantity}</Text>
-            <Text style={{ ...s.tdText, ...s.colUnit }}>{formatZAR(item.unitPrice)}</Text>
-            <Text style={{ ...s.tdText, ...s.colMarkup }}>{item.markupPercent}%</Text>
-            <Text style={{ ...s.tdText, ...s.colTotal, fontWeight: 700 }}>{formatZAR(item.lineTotal)}</Text>
-          </View>
+            {/* Sub-items (materials, consumables from bundle) */}
+            {item.subItems && item.subItems.length > 0 && item.subItems.map((sub, j) => (
+              <View key={`${i}-sub-${j}`} style={s.subRow}>
+                <Text style={{ ...s.subText, flex: 3 }}>
+                  {"  ┗ "}{sub.name}{sub.pricingMode === "per-meter" ? " (per m)" : ""}
+                </Text>
+                <Text style={{ ...s.subText, flex: 0.8, textAlign: "center" as const }}>
+                  {sub.pricingMode === "per-meter" ? `${sub.quantity}m` : `×${sub.quantity}`}
+                </Text>
+                <Text style={{ ...s.subText, flex: 1.2, textAlign: "right" as const }}>
+                  {formatZAR(sub.unitPrice)}
+                </Text>
+                <Text style={{ ...s.subText, flex: 1, textAlign: "center" as const }}>—</Text>
+                <Text style={{ ...s.subTextBold, flex: 1.2, textAlign: "right" as const }}>
+                  {formatZAR(sub.lineTotal)}
+                </Text>
+              </View>
+            ))}
+          </React.Fragment>
         ))}
 
         {/* Totals */}
