@@ -18,6 +18,7 @@ import { getBracketSize } from "../quoteWizardTypes";
 import { isWiredRemote, forcePerUnitPricing } from "../daikinRemoteUtils";
 import { determinePricingMode, auditPricingMode, toAreaPricingMode } from "../pricingModeUtils";
 import { termMatchesBlob } from "../../searchSynonyms";
+import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
 
 /* ── Helper: check if a product is an AC unit (should be excluded from materials) ── */
 function isACUnit(p: PaletteProduct): boolean {
@@ -798,6 +799,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                               <div className="flex items-center gap-1.5 min-w-0">
                                 <MaterialStar product={mat.product} />
                                 <span className="font-medium truncate">{mat.product.short_name || mat.product.product_code}</span>
+                                <ProductInfoDialog product={mat.product} />
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 {isLength && <span className="text-muted-foreground">R {mat.costPerMeter.toFixed(2)}/m</span>}
@@ -998,6 +1000,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                             <div key={cons.id} className="space-y-1 rounded border bg-muted/30 px-2 py-1.5 text-xs">
                               <div className="flex items-center gap-2">
                                 <MaterialStar product={cons.product} />
+                                <ProductInfoDialog product={cons.product} />
                                 <div className="flex-1 min-w-0 flex items-center gap-1.5">
                                   <span className="font-medium truncate block">{cons.product.short_name || cons.product.product_code}</span>
                                   {cons.isSuggested && (
