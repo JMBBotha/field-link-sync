@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.send-quote-reminder]
 verify_jwt = false
+
+[functions.whatsapp-quote-bot]
+verify_jwt = false
