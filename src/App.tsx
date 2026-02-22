@@ -54,6 +54,7 @@ import FBTimeTracking from "./components/freshbooks/FBTimeTracking";
 import FBContactsList from "./components/freshbooks/FBContactsList";
 import FBReports from "./components/freshbooks/FBReports";
 import FBPaymentsList from "./components/freshbooks/FBPaymentsList";
+import FBClientPortal from "./components/freshbooks/FBClientPortal";
 import FBProjectsList from "./components/freshbooks/FBProjectsList";
 import CompanyManagement from "./components/freshbooks/CompanyManagement";
 import FBCreateInvoicePage from "./pages/FBCreateInvoicePage";
@@ -137,6 +138,8 @@ const App = () => (
                 <Route path="projects" element={<FBProjectsList />} />
                 <Route path="invoices/new" element={<FBCreateInvoicePage />} />
                 <Route path="estimates/new" element={<FBCreateEstimatePage />} />
+                <Route path="portal" element={<FBClientPortal />} />
+                <Route path="audit" element={<AuditLogViewer />} />
               </Route>
 
               {/* Full-page Quote Builder for client portal (outside FBLayout for full-bleed) */}
