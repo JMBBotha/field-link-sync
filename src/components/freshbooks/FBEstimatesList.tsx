@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Send, Eye, Edit, ArrowRightLeft, MoreHorizontal, Archive, Trash2, CheckCircle } from "lucide-react";
+import { Plus, Search, Send, Eye, Edit, ArrowRightLeft, MoreHorizontal, Archive, Trash2, CheckCircle, Clock } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -201,7 +201,26 @@ const FBEstimatesList = () => {
                 <td className="px-4 py-3 font-medium text-blue-600">{e.estimate_number}</td>
                 <td className="px-4 py-3">{e.fb_contacts?.name || "—"}</td>
                 <td className="px-4 py-3 text-right font-medium">{fmt(Number(e.amount))}</td>
-                <td className="px-4 py-3"><Badge variant="secondary" className={statusColors[e.status] || ""}>{e.status}</Badge></td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Badge variant="secondary" className={statusColors[e.status] || ""}>{e.status}</Badge>
+                    {e.status === "sent" && e.due_date && (() => {
+                      const daysLeft = Math.ceil((new Date(e.due_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                      if (daysLeft <= 7 && daysLeft >= 0) {
+                        return (
+                          <Badge variant="outline" className={`text-[10px] gap-0.5 ${daysLeft <= 3 ? "border-destructive text-destructive" : "border-amber-500 text-amber-600"}`}>
+                            <Clock className="h-3 w-3" />
+                            {daysLeft <= 0 ? "Expires today" : `${daysLeft}d left`}
+                          </Badge>
+                        );
+                      }
+                      if (daysLeft < 0) {
+                        return <Badge variant="destructive" className="text-[10px]">Expired</Badge>;
+                      }
+                      return null;
+                    })()}
+                  </div>
+                </td>
                 <td className="px-4 py-3 text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="sm"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
