@@ -618,6 +618,36 @@ export type Database = {
         }
         Relationships: []
       }
+      email_preferences: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          unsubscribe_token: string | null
+          unsubscribed: boolean | null
+          unsubscribed_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          unsubscribe_token?: string | null
+          unsubscribed?: boolean | null
+          unsubscribed_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          unsubscribe_token?: string | null
+          unsubscribed?: boolean | null
+          unsubscribed_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       equipment: {
         Row: {
           brand: string | null
