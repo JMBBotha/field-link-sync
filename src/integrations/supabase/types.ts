@@ -247,49 +247,40 @@ export type Database = {
       }
       companies: {
         Row: {
-          address: Json | null
           created_at: string
           default_rate: number | null
-          email: string | null
           id: string
           logo_url: string | null
           name: string
           onboarding_completed: boolean | null
-          phone: string | null
           services: string[] | null
-          slug: string | null
-          vat_number: string | null
-          vat_registered: boolean | null
+          slug: string
+          updated_at: string | null
+          vat_rate: number | null
         }
         Insert: {
-          address?: Json | null
           created_at?: string
           default_rate?: number | null
-          email?: string | null
           id?: string
           logo_url?: string | null
           name: string
           onboarding_completed?: boolean | null
-          phone?: string | null
           services?: string[] | null
-          slug?: string | null
-          vat_number?: string | null
-          vat_registered?: boolean | null
+          slug?: string
+          updated_at?: string | null
+          vat_rate?: number | null
         }
         Update: {
-          address?: Json | null
           created_at?: string
           default_rate?: number | null
-          email?: string | null
           id?: string
           logo_url?: string | null
           name?: string
           onboarding_completed?: boolean | null
-          phone?: string | null
           services?: string[] | null
-          slug?: string | null
-          vat_number?: string | null
-          vat_registered?: boolean | null
+          slug?: string
+          updated_at?: string | null
+          vat_rate?: number | null
         }
         Relationships: []
       }

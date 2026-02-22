@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 const CompanyManagement = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [search, setSearch] = useState("");
-  const [form, setForm] = useState({ name: "", email: "", phone: "" });
+  const [form, setForm] = useState({ name: "", slug: "" });
   const navigate = useNavigate();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -33,7 +33,7 @@ const CompanyManagement = () => {
       // Create company
       const { data: company, error: companyErr } = await supabase
         .from("companies")
-        .insert({ name: form.name, email: form.email || null, phone: form.phone || null })
+        .insert({ name: form.name, slug: form.slug || form.name.toLowerCase().replace(/\s+/g, '-') })
         .select()
         .single();
       if (companyErr) throw companyErr;
@@ -49,14 +49,14 @@ const CompanyManagement = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["all-companies"] });
       setShowCreate(false);
-      setForm({ name: "", email: "", phone: "" });
+      setForm({ name: "", slug: "" });
       toast({ title: "Company created successfully" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const filtered = companies.filter((c: any) =>
-    c.name?.toLowerCase().includes(search.toLowerCase()) || c.email?.toLowerCase().includes(search.toLowerCase())
+    c.name?.toLowerCase().includes(search.toLowerCase()) || c.slug?.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -81,8 +81,7 @@ const CompanyManagement = () => {
           <thead>
             <tr className="border-b bg-muted/30">
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Company</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Email</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Phone</th>
+              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Slug</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Created</th>
               <th className="text-right px-4 py-3 font-medium text-muted-foreground">Action</th>
             </tr>
@@ -102,8 +101,7 @@ const CompanyManagement = () => {
                     <span className="font-medium text-foreground">{c.name}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-muted-foreground">{c.email || "—"}</td>
-                <td className="px-4 py-3 text-muted-foreground">{c.phone || "—"}</td>
+                <td className="px-4 py-3 text-muted-foreground">{c.slug || "—"}</td>
                 <td className="px-4 py-3 text-muted-foreground">{new Date(c.created_at).toLocaleDateString()}</td>
                 <td className="px-4 py-3 text-right">
                   <Button size="sm" variant="outline" onClick={() => navigate(`/client/${c.id}/dashboard`)}>
@@ -121,8 +119,7 @@ const CompanyManagement = () => {
           <DialogHeader><DialogTitle>Onboard New Company</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div><Label>Company Name *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Acme HVAC" /></div>
-            <div><Label>Email</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
-            <div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
+            <div><Label>URL Slug</Label><Input value={form.slug} onChange={e => setForm(f => ({ ...f, slug: e.target.value }))} placeholder="acme-hvac" /></div>
             <Button onClick={() => createMutation.mutate()} disabled={!form.name || createMutation.isPending} className="w-full bg-[hsl(211,100%,43%)]">
               {createMutation.isPending ? "Creating..." : "Create Company"}
             </Button>
