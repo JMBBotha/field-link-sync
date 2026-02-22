@@ -25,6 +25,8 @@ function formatZAR(value: number) {
 
 /** Attempt to extract kW rating from product text */
 function extractKW(product: PaletteProduct): string | null {
+  // Prefer explicit kw column if available
+  if ((product as any).kw) return `${(product as any).kw} kW`;
   const text = [product.short_name, product.description, product.product_code].join(" ");
   const match = text.match(/(\d+(?:\.\d+)?)\s*kw/i);
   return match ? `${match[1]} kW` : null;
@@ -32,6 +34,9 @@ function extractKW(product: PaletteProduct): string | null {
 
 /** Attempt to detect phase from product text */
 function extractPhase(product: PaletteProduct): string {
+  // Prefer explicit phase column if available
+  if ((product as any).phase === "three") return "3 Phase";
+  if ((product as any).phase === "single") return "Single Phase";
   const text = [product.short_name, product.description, product.product_code].join(" ").toLowerCase();
   if (text.includes("3 phase") || text.includes("3-phase") || text.includes("three phase") || text.includes("3ph")) return "3 Phase";
   return "Single Phase";
@@ -103,8 +108,14 @@ export default function ProductInfoDialog({ product, onMarkupSaved }: ProductInf
 
         <div className="space-y-3 text-xs">
           <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+            {(product as any).name && (
+              <>
+                <span className="text-muted-foreground">Name</span>
+                <span>{(product as any).name}</span>
+              </>
+            )}
             <span className="text-muted-foreground">Model</span>
-            <span className="font-mono font-medium">{product.product_code}</span>
+            <span className="font-mono font-medium">{(product as any).model || product.product_code}</span>
             <span className="text-muted-foreground">Brand</span>
             <span>{product.brand || "—"}</span>
             <span className="text-muted-foreground">BTU Rating</span>
@@ -113,6 +124,22 @@ export default function ProductInfoDialog({ product, onMarkupSaved }: ProductInf
               <>
                 <span className="text-muted-foreground">Pipe Sizes</span>
                 <span>{product.pipe_size}</span>
+              </>
+            )}
+            {((product as any).pipe_liquid || (product as any).pipe_gas) && (
+              <>
+                {(product as any).pipe_liquid && (
+                  <>
+                    <span className="text-muted-foreground">Pipe Liquid</span>
+                    <span>{(product as any).pipe_liquid}</span>
+                  </>
+                )}
+                {(product as any).pipe_gas && (
+                  <>
+                    <span className="text-muted-foreground">Pipe Gas</span>
+                    <span>{(product as any).pipe_gas}</span>
+                  </>
+                )}
               </>
             )}
             {kW && (
