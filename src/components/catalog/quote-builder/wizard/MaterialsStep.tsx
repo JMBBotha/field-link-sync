@@ -933,8 +933,11 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                           {(area.consumables ?? []).map((cons) => (
                             <div key={cons.id} className="flex items-center gap-2 rounded border bg-muted/30 px-2 py-1.5 text-xs">
                               <MaterialStar product={cons.product} />
-                              <div className="flex-1 min-w-0">
-                                <span className="font-medium truncate block">{cons.product.short_name || cons.product.product_code}</span>
+                               <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                                 <span className="font-medium truncate block">{cons.product.short_name || cons.product.product_code}</span>
+                                 {cons.isSuggested && (
+                                   <Badge variant="outline" className="text-[9px] border-primary/30 text-primary shrink-0">Suggested</Badge>
+                                 )}
                               </div>
                               <div className="flex items-center gap-1">
                                 <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateConsumableQty(area.id, cons.id, -1)} aria-label={`Decrease ${cons.product.short_name || cons.product.product_code} quantity`}>

@@ -41,6 +41,7 @@ import AdminTeamPage from "./pages/admin/AdminTeamPage";
 import AdminBillingPage from "./pages/admin/AdminBillingPage";
 import AdminInvoiceTemplatesPage from "./pages/admin/AdminInvoiceTemplatesPage";
 import AdminSuppliersPage from "./pages/admin/AdminSuppliersPage";
+import AdminConsumablesPage from "./pages/admin/AdminConsumablesPage";
 
 // FreshBooks multi-tenant
 import { CompanyProvider } from "./providers/CompanyProvider";
@@ -116,6 +117,7 @@ const App = () => (
                 <Route path="team" element={<AdminTeamPage />} />
                 <Route path="billing" element={<AdminBillingPage />} />
                 <Route path="suppliers" element={<AdminSuppliersPage />} />
+                <Route path="consumables" element={<AdminConsumablesPage />} />
                 <Route path="companies" element={<CompanyManagement />} />
               </Route>
 

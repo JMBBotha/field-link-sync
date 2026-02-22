@@ -175,30 +175,47 @@ export default function ACSelectionStep({ areas, onAreasChange, products, onPdfS
     const btu = detectBTU(product);
     const newUnit: AreaACUnit = { id: crypto.randomUUID(), product, btu, quantity: 1 };
 
-    // Auto-suggest Daikin wired remote
-    let suggestedConsumable: AreaConsumable | undefined;
+    // Build suggested consumables from product's suggested_consumables JSON
+    const suggestedConsumables: AreaConsumable[] = [];
+    const rawSuggested = (product as any).suggested_consumables;
+    if (Array.isArray(rawSuggested)) {
+      for (const sc of rawSuggested) {
+        if (!sc.is_default) continue;
+        const consProduct = products.find((p) => p.id === sc.product_id);
+        if (consProduct) {
+          suggestedConsumables.push({
+            id: crypto.randomUUID(),
+            product: consProduct,
+            quantity: sc.qty || 1,
+            isSuggested: true,
+          });
+        }
+      }
+    }
+
+    // Also auto-suggest Daikin wired remote (legacy behavior)
     const brand = (product.brand || "").toLowerCase();
     if (brand === "daikin") {
       const remote = findDaikinRemote(btu, products);
-      if (remote) {
+      if (remote && !suggestedConsumables.some((c) => c.product.id === remote.id)) {
         const safeRemote = forcePerUnitPricing(remote);
-        suggestedConsumable = { id: crypto.randomUUID(), product: safeRemote, quantity: 1 };
-        toast.success(`Auto-added ${safeRemote.short_name || safeRemote.product_code} for ${product.short_name || product.product_code}`);
+        suggestedConsumables.push({ id: crypto.randomUUID(), product: safeRemote, quantity: 1, isSuggested: true });
       }
+    }
+
+    if (suggestedConsumables.length > 0) {
+      const names = suggestedConsumables.map((c) => c.product.short_name || c.product.product_code).join(", ");
+      toast.success(`Auto-added: ${names}`);
     }
 
     onAreasChange(
       areas.map((a) => {
         if (a.id !== areaId) return a;
-        const updated = { ...a, acUnits: [newUnit] };
-        if (suggestedConsumable) {
-          // Remove any existing wired remotes before adding the new suggestion
-          const existingConsumables = (a.consumables || []).filter(
-            (c) => !isWiredRemote(c.product)
-          );
-          updated.consumables = [...existingConsumables, suggestedConsumable];
-        }
-        return updated;
+        // Remove existing suggested consumables and wired remotes before adding new ones
+        const existingConsumables = (a.consumables || []).filter(
+          (c) => !c.isSuggested && !isWiredRemote(c.product)
+        );
+        return { ...a, acUnits: [newUnit], consumables: [...existingConsumables, ...suggestedConsumables] };
       })
     );
   }, [areas, onAreasChange, products]);
