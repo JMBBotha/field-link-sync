@@ -8,6 +8,7 @@ import { Plus, FileText, BarChart3, ClipboardList, AlertTriangle, CheckCircle2, 
 import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
 import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
 import KpiDetailDialog from "@/components/admin/KpiDetailDialog";
+import QuotePerformanceWidget from "@/components/analytics/QuotePerformanceWidget";
 import { format, subDays } from "date-fns";
 import { useState, useMemo } from "react";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
@@ -170,6 +171,9 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         <Button variant="outline" onClick={() => onNavigate("analytics")}><BarChart3 className="mr-2 h-4 w-4" />Analytics</Button>
         <Button variant="outline" onClick={() => onNavigate("reports")}><ClipboardList className="mr-2 h-4 w-4" />Reports</Button>
       </div>
+
+      {/* Quote Performance Widget */}
+      <QuotePerformanceWidget />
 
       {/* Completed Leads */}
       <CompletedLeadsList />
