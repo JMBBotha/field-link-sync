@@ -3422,12 +3422,19 @@ export type Database = {
           is_material_favorite: boolean
           is_pinned: boolean
           is_price_on_request: boolean
+          kw: number | null
           last_quoted_at: string | null
+          markup_percent: number | null
           min_cut_length: number
+          model: string | null
           model_range: string | null
+          name: string | null
           original_cost_excl_vat: number | null
           pdf_page_id: string | null
+          phase: string | null
           pin_order: number
+          pipe_gas: string | null
+          pipe_liquid: string | null
           pipe_size: string | null
           price_per_metre: number | null
           pricing_mode: string
@@ -3470,12 +3477,19 @@ export type Database = {
           is_material_favorite?: boolean
           is_pinned?: boolean
           is_price_on_request?: boolean
+          kw?: number | null
           last_quoted_at?: string | null
+          markup_percent?: number | null
           min_cut_length?: number
+          model?: string | null
           model_range?: string | null
+          name?: string | null
           original_cost_excl_vat?: number | null
           pdf_page_id?: string | null
+          phase?: string | null
           pin_order?: number
+          pipe_gas?: string | null
+          pipe_liquid?: string | null
           pipe_size?: string | null
           price_per_metre?: number | null
           pricing_mode?: string
@@ -3518,12 +3532,19 @@ export type Database = {
           is_material_favorite?: boolean
           is_pinned?: boolean
           is_price_on_request?: boolean
+          kw?: number | null
           last_quoted_at?: string | null
+          markup_percent?: number | null
           min_cut_length?: number
+          model?: string | null
           model_range?: string | null
+          name?: string | null
           original_cost_excl_vat?: number | null
           pdf_page_id?: string | null
+          phase?: string | null
           pin_order?: number
+          pipe_gas?: string | null
+          pipe_liquid?: string | null
           pipe_size?: string | null
           price_per_metre?: number | null
           pricing_mode?: string
