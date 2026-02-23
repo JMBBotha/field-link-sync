@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Package, Ruler, Hash, AlertTriangle, X } from "lucide-react";
+import { Package, Ruler, Hash, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { getProductDisplayName } from "./productDisplayUtils";
 import type { PaletteProduct } from "../QuoteBuilderTab";
 import { getEffectiveUnitPrices } from "../QuoteBuilderTab";
-import { determinePricingMode } from "./pricingModeUtils";
 
 export interface BundleSubItem {
   product: PaletteProduct;
@@ -31,26 +30,22 @@ export function computeBundlePricing(items: BundleSubItem[]): {
   const allPerMeter = nonOptional.every(
     (i) => i.isLengthItem && i.product.price_per_metre && i.product.price_per_metre > 0
   );
-  const allPerUnit = nonOptional.every(
-    (i) => !i.isLengthItem || !i.product.price_per_metre
-  );
 
   if (allPerMeter) {
-    // Sum of all per-meter prices
-    const total = nonOptional.reduce(
-      (sum, i) => sum + (i.product.price_per_metre || 0),
-      0
-    );
+    const total = nonOptional.reduce((sum, i) => {
+      const { unitSell } = getEffectiveUnitPrices(i.product, true);
+      return sum + unitSell;
+    }, 0);
     return { pricingType: "p/meter", unitPrice: total };
   }
 
-  // Mixed or all per-unit: calculate total based on quantities/lengths
+  // Mixed or all per-unit
   const total = nonOptional.reduce((sum, i) => {
-    if (i.isLengthItem && i.product.price_per_metre) {
-      return sum + i.product.price_per_metre * (i.length || 1);
+    const { unitSell } = getEffectiveUnitPrices(i.product, i.isLengthItem);
+    if (i.isLengthItem) {
+      return sum + unitSell * (i.length || 1);
     }
-    const price = i.product.selling_price || i.product.cost_incl_vat || 0;
-    return sum + price * i.quantity;
+    return sum + unitSell * i.quantity;
   }, 0);
 
   return { pricingType: "p/qty", unitPrice: total };
@@ -69,29 +64,21 @@ function PopoverBody({
 }) {
   const nonOptional = items.filter((i) => !i.isOptional);
 
-  // Compute per-item details
   const rows = nonOptional.map((item) => {
-    const isLen = item.isLengthItem && item.product.price_per_metre;
-    const { unitCost, unitSell, isPackItem, packQty } = getEffectiveUnitPrices(item.product);
-    const costPerUnit = isLen
-      ? (item.product.price_per_metre || 0)
-      : unitCost;
-    const sellPerUnit = isLen
-      ? (item.product.price_per_metre || 0)
-      : unitSell;
-    const qtyOrLen = isLen ? (item.length || 1) : item.quantity;
-    const markupAmt = sellPerUnit - costPerUnit;
-    const markupPct = costPerUnit > 0 ? (markupAmt / costPerUnit) * 100 : 0;
+    const { unitCost, unitSell, isPackItem, packQty } = getEffectiveUnitPrices(item.product, item.isLengthItem);
+    const qtyOrLen = item.isLengthItem ? (item.length || 1) : item.quantity;
+    const markupAmt = unitSell - unitCost;
+    const markupPct = unitCost > 0 ? (markupAmt / unitCost) * 100 : 0;
     const hasMarkup = markupAmt > 0.01;
-    const lineTotal = sellPerUnit * qtyOrLen;
-    const lineCost = costPerUnit * qtyOrLen;
+    const lineTotal = unitSell * qtyOrLen;
+    const lineCost = unitCost * qtyOrLen;
     const lineMarkup = markupAmt * qtyOrLen;
 
     return {
       item,
-      isLen,
-      costPerUnit,
-      sellPerUnit,
+      isLen: item.isLengthItem,
+      costPerUnit: unitCost,
+      sellPerUnit: unitSell,
       qtyOrLen,
       markupAmt,
       markupPct,
@@ -124,11 +111,11 @@ function PopoverBody({
           <thead>
             <tr className="border-b text-muted-foreground">
               <th className="text-left py-1 pr-1 font-medium">Item</th>
-              <th className="text-right py-1 px-0.5 font-medium">Cost</th>
+              <th className="text-right py-1 px-0.5 font-medium">Cost p/item</th>
               <th className="text-right py-1 px-0.5 font-medium">Sell</th>
               <th className="text-right py-1 px-0.5 font-medium">M/up</th>
-              <th className="text-right py-1 px-0.5 font-medium">Qty</th>
-              <th className="text-right py-1 pl-0.5 font-medium">Line</th>
+              <th className="text-right py-1 px-0.5 font-medium">Qty/Len</th>
+              <th className="text-right py-1 pl-0.5 font-medium">Line Total</th>
             </tr>
           </thead>
           <tbody>
@@ -220,7 +207,8 @@ export default function BundleItemsPopover({
   side = "right",
 }: BundleItemsPopoverProps) {
   const isMobile = useIsMobile();
-  const { pricingType, unitPrice } = computeBundlePricing(items);
+  const [open, setOpen] = useState(false);
+  const { pricingType } = computeBundlePricing(items);
 
   const body = (
     <PopoverBody
@@ -230,14 +218,13 @@ export default function BundleItemsPopover({
     />
   );
 
-  // Mobile: use Popover (tap to open), Desktop: use HoverCard
   if (isMobile) {
     return (
-      <Popover>
+      <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>{children}</PopoverTrigger>
         <PopoverContent side={side} className="w-[380px] max-w-[95vw] text-xs p-3">
           <div className="flex justify-end mb-1">
-            <Button variant="ghost" size="icon" className="h-5 w-5">
+            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setOpen(false)}>
               <X className="h-3 w-3" />
             </Button>
           </div>
