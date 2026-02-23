@@ -113,15 +113,13 @@ function BundlePaletteCard({
   };
 
   return (
-    <div className={`rounded-lg border bg-card mb-2 ${isDragging ? 'opacity-50' : ''}`}>
+    <div className={`rounded-lg border bg-card mb-2 ${isDragging ? 'opacity-50' : ''}`} onClick={handleCardClick}>
       {/* Draggable header row */}
       <div
         ref={setNodeRef}
         {...attributes}
         {...listeners}
         className="p-2 cursor-grab"
-        onClick={handleCardClick}
-      >
         <div className="flex items-center gap-1 flex-wrap">
           <Package className="h-3 w-3 text-blue-500 shrink-0" />
           <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
