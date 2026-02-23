@@ -23,24 +23,29 @@ export type BundlePricingType = "p/meter" | "p/qty";
 export function computeBundlePricing(items: BundleSubItem[]): {
   pricingType: BundlePricingType;
   unitPrice: number;
+  unitCost: number;
 } {
   const nonOptional = items.filter((i) => !i.isOptional);
-  if (nonOptional.length === 0) return { pricingType: "p/qty", unitPrice: 0 };
+  if (nonOptional.length === 0) return { pricingType: "p/qty", unitPrice: 0, unitCost: 0 };
 
   const allPerMeter = nonOptional.every(
     (i) => i.isLengthItem && i.product.price_per_metre && i.product.price_per_metre > 0
   );
 
   if (allPerMeter) {
-    const total = nonOptional.reduce((sum, i) => {
+    const totalSell = nonOptional.reduce((sum, i) => {
       const { unitSell } = getEffectiveUnitPrices(i.product, true);
       return sum + unitSell;
     }, 0);
-    return { pricingType: "p/meter", unitPrice: total };
+    const totalCost = nonOptional.reduce((sum, i) => {
+      const { unitCost } = getEffectiveUnitPrices(i.product, true);
+      return sum + unitCost;
+    }, 0);
+    return { pricingType: "p/meter", unitPrice: totalSell, unitCost: totalCost };
   }
 
   // Mixed or all per-unit
-  const total = nonOptional.reduce((sum, i) => {
+  const totalSell = nonOptional.reduce((sum, i) => {
     const { unitSell } = getEffectiveUnitPrices(i.product, i.isLengthItem);
     if (i.isLengthItem) {
       return sum + unitSell * (i.length || 1);
@@ -48,7 +53,15 @@ export function computeBundlePricing(items: BundleSubItem[]): {
     return sum + unitSell * i.quantity;
   }, 0);
 
-  return { pricingType: "p/qty", unitPrice: total };
+  const totalCost = nonOptional.reduce((sum, i) => {
+    const { unitCost } = getEffectiveUnitPrices(i.product, i.isLengthItem);
+    if (i.isLengthItem) {
+      return sum + unitCost * (i.length || 1);
+    }
+    return sum + unitCost * i.quantity;
+  }, 0);
+
+  return { pricingType: "p/qty", unitPrice: totalSell, unitCost: totalCost };
 }
 
 const fmt = (v: number) => v.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
