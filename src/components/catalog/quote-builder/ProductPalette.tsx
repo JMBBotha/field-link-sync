@@ -16,12 +16,6 @@ import {
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import { getProductDisplayName } from "./productDisplayUtils";
 import BundleItemsPopover, { computeBundlePricing, type BundleSubItem } from "./BundleItemsPopover";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
-import { getProductDisplayName } from "./productDisplayUtils";
 
 function HighlightText({ text, searchTerm }: { text: string; searchTerm: string }) {
   if (!searchTerm || !text) return <>{text}</>;
