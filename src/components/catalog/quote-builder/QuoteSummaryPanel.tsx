@@ -238,12 +238,6 @@ const QuoteSummaryPanel = ({ baskets }: QuoteSummaryPanelProps) => {
 
       {/* Actions */}
       <div className="flex items-center gap-2 pt-1">
-        <Input
-          placeholder="Quote name..."
-          value={quoteName}
-          onChange={(e) => setQuoteName(e.target.value)}
-          className="h-8 text-xs flex-1"
-        />
         <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={handleExportPDF}>
           <FileDown className="h-3 w-3" /> PDF
         </Button>
