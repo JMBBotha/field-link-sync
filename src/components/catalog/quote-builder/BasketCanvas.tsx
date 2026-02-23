@@ -215,13 +215,12 @@ function BasketItemCard({
     const bundleDisplayPrice = multiplier * bundleUnitPx;
 
     const nameLabel = (
-      <div className="flex items-center gap-1 min-w-0">
+      <div className="flex items-center gap-1 min-w-0 shrink-0">
         <Package className="h-3 w-3 text-blue-500 shrink-0" />
-        <span className="font-medium text-xs truncate">{item.bundleName}</span>
+        <span className="font-medium text-xs truncate max-w-[90px]">{item.bundleName}</span>
         <Badge variant="secondary" className="text-[9px] px-1 py-0 shrink-0">
           {item.bundleItems?.length || 0} items
         </Badge>
-        <span className="text-[10px] text-muted-foreground">R{bundleUnitPx.toFixed(0)}/{isBundleLength ? "m" : "ea"}</span>
       </div>
     );
 
@@ -246,34 +245,22 @@ function BasketItemCard({
     };
 
     return (
-      <div className="flex items-center gap-2 rounded border bg-blue-50 dark:bg-blue-950/30 p-1.5 text-xs">
+      <div className="flex items-center gap-1.5 rounded border bg-blue-50 dark:bg-blue-950/30 p-1.5 text-xs flex-wrap">
         {wrappedName}
-        <Slider
-          value={[multiplier]}
-          onValueChange={([v]) => isBundleLength ? onUpdateLength(v) : onUpdateQuantity(v)}
-          min={sliderMin}
-          max={sliderMax}
-          step={sliderStep}
-          className="flex-1 min-w-[60px] mx-2"
-        />
         <Button variant="outline" size="icon" className="h-5 w-5 shrink-0" onClick={decrement} disabled={multiplier <= sliderMin}>
           <Minus className="h-3 w-3" />
         </Button>
         <Input
-          type="number"
-          min={sliderMin}
-          max={sliderMax}
-          step={sliderStep}
-          value={multiplier}
+          type="number" min={sliderMin} max={sliderMax} step={sliderStep} value={multiplier}
           onChange={handleInputChange}
           className="h-5 w-12 text-[10px] text-center px-0.5 shrink-0"
         />
         <Button variant="outline" size="icon" className="h-5 w-5 shrink-0" onClick={increment} disabled={multiplier >= sliderMax}>
           <Plus className="h-3 w-3" />
         </Button>
-        <span className="text-[9px] text-muted-foreground shrink-0">{isBundleLength ? "m" : "ea"}</span>
+        <span className="text-[9px] text-muted-foreground shrink-0">{isBundleLength ? 'm' : 'ea'}</span>
         <span className="font-semibold text-xs whitespace-nowrap shrink-0 ml-auto">
-          R{bundleDisplayPrice.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
+          R{bundleDisplayPrice.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}
         </span>
         <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0" onClick={onRemove}>
           <Trash2 className="h-3 w-3" />

@@ -91,7 +91,6 @@ function BundlePaletteCard({
     data: { bundle, type: "bundle" },
   });
 
-  // Build sub-items for pricing and popup
   const subItems: BundleSubItem[] = useMemo(() => {
     return bundle.items
       .filter((item) => item.product)
@@ -106,61 +105,53 @@ function BundlePaletteCard({
 
   const { pricingType, unitPrice } = useMemo(() => computeBundlePricing(subItems), [subItems]);
 
-  const totalPrice = useMemo(() => {
-    return subItems
-      .filter((i) => !i.isOptional)
-      .reduce((sum, i) => {
-        if (i.isLengthItem && i.product.price_per_metre) {
-          return sum + i.product.price_per_metre * (i.length || 1);
-        }
-        const price = i.product.selling_price || i.product.cost_incl_vat || 0;
-        return sum + price * i.quantity;
-      }, 0);
-  }, [subItems]);
-
-  const handleCardClick = useCallback(() => {
+  const handleCardClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (baskets && baskets.length > 0 && onAddBundleToBasket) {
       onAddBundleToBasket(baskets[0].id, bundle);
     }
-  }, [baskets, onAddBundleToBasket, bundle]);
+  };
 
   return (
     <div className={`rounded-lg border bg-card mb-2 ${isDragging ? 'opacity-50' : ''}`}>
+      {/* Draggable header row */}
       <div
         ref={setNodeRef}
         {...attributes}
         {...listeners}
-        className="p-2 cursor-grab active:cursor-grabbing"
-        style={{ touchAction: "none" }}
+        className="p-2 cursor-grab"
         onClick={handleCardClick}
       >
         <div className="flex items-center gap-1 flex-wrap">
           <Package className="h-3 w-3 text-blue-500 shrink-0" />
           <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
-            <span className="font-medium text-xs truncate cursor-pointer">{bundle.name}</span>
+            <span className="font-medium text-xs truncate cursor-pointer" onClick={e => e.stopPropagation()}>{bundle.name}</span>
           </BundleItemsPopover>
           <Badge variant="secondary" className="text-[9px] px-1 py-0 shrink-0">
             {subItems.length} items
           </Badge>
-          <Badge className="text-[9px] px-1 py-0 bg-blue-500 text-white shrink-0">
-            {pricingType}
+          <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0 text-blue-600">
+            {pricingType === 'per_metre' ? 'p/meter' : 'p/qty'}
           </Badge>
-          <span className="text-xs font-semibold ml-auto">
-            R{totalPrice.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
+          <span className="text-[10px] text-muted-foreground ml-auto">
+            R{unitPrice.toFixed(0)}/{pricingType === 'per_metre' ? 'm' : 'ea'}
           </span>
         </div>
       </div>
+      {/* Basket add buttons - OUTSIDE draggable listeners */}
       {baskets && baskets.length > 0 && onAddBundleToBasket && (
         <div
-          className="flex flex-wrap gap-1.5 px-2 pb-2 pt-1"
-          onClick={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
+          className="flex flex-wrap gap-1 px-2 pb-2"
+          onPointerDown={e => e.stopPropagation()}
+          onMouseDown={e => e.stopPropagation()}
         >
           {baskets.map((b) => (
-            <button
+            <Button
               key={b.id}
-              type="button"
-              className="text-xs px-3 py-1 rounded-md bg-blue-500 text-white hover:bg-blue-600 font-medium"
+              variant="outline"
+              size="sm"
+              className="text-xs h-6"
+              onPointerDown={e => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
@@ -168,7 +159,7 @@ function BundlePaletteCard({
               }}
             >
               + {b.name}
-            </button>
+            </Button>
           ))}
         </div>
       )}
