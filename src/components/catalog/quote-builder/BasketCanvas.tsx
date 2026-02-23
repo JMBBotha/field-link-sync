@@ -212,82 +212,72 @@ function BasketItemCard({
     const sliderMin = isBundleLength ? 0.5 : 1;
     const sliderMax = 50;
     const sliderStep = isBundleLength ? 0.5 : 1;
+    const bundleDisplayPrice = multiplier * bundleUnitPx;
 
     const nameLabel = (
-      <div className="min-w-0 flex-1">
-        <p className={`font-medium truncate cursor-pointer hover:text-primary transition-colors ${isCompact ? "text-[10px]" : "text-xs"}`}>{item.bundleName}</p>
-        <div className="flex items-center gap-1">
-          <Badge variant="outline" className={`${isCompact ? "text-[7px] px-0.5 py-0 h-3" : "text-[8px] px-1 py-0 h-3.5"}`}>
-            {item.bundleItems?.length || 0} items
-          </Badge>
-          <Badge variant="outline" className={`${isCompact ? "text-[7px] px-0.5 py-0 h-3" : "text-[8px] px-1 py-0 h-3.5"} ${
-            isBundleLength ? "border-orange-400/40 text-orange-600" : "border-blue-400/40 text-blue-600"
-          }`}>
-            R{bundleUnitPx.toFixed(0)}/{isBundleLength ? "m" : "ea"}
-          </Badge>
-        </div>
+      <div className="flex items-center gap-1 min-w-0">
+        <Package className="h-3 w-3 text-blue-500 shrink-0" />
+        <span className="font-medium text-xs truncate">{item.bundleName}</span>
+        <Badge variant="secondary" className="text-[9px] px-1 py-0 shrink-0">
+          {item.bundleItems?.length || 0} items
+        </Badge>
+        <span className="text-[10px] text-muted-foreground">R{bundleUnitPx.toFixed(0)}/{isBundleLength ? "m" : "ea"}</span>
       </div>
     );
 
     const wrappedName = item.bundleItems && item.bundleName ? (
-      <BundleItemsPopover bundleName={item.bundleName} items={item.bundleItems} side="left">
+      <BundleItemsPopover bundleName={item.bundleName} items={item.bundleItems} side="top">
         {nameLabel}
       </BundleItemsPopover>
     ) : nameLabel;
 
+    const decrement = () => isBundleLength
+      ? onUpdateLength(Math.max(sliderMin, multiplier - sliderStep))
+      : onUpdateQuantity(Math.max(sliderMin, multiplier - sliderStep));
+    const increment = () => isBundleLength
+      ? onUpdateLength(Math.min(sliderMax, multiplier + sliderStep))
+      : onUpdateQuantity(Math.min(sliderMax, multiplier + sliderStep));
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const v = parseFloat(e.target.value);
+      if (!isNaN(v)) {
+        const clamped = Math.max(sliderMin, Math.min(sliderMax, v));
+        isBundleLength ? onUpdateLength(clamped) : onUpdateQuantity(clamped);
+      }
+    };
+
     return (
-      <div className={`flex flex-col rounded-md border border-primary/30 bg-primary/5 ${isCompact ? "p-1 gap-0.5" : "p-1.5 gap-1"}`}>
-        {/* Top row: icon, name (hover for details), badges, breakdown, total, delete */}
-        <div className={`flex items-center gap-2 text-xs ${isCompact ? "gap-1" : ""}`}>
-          <div className="shrink-0 rounded p-1 bg-primary/10">
-            <Package className={isCompact ? "h-2.5 w-2.5 text-primary" : "h-3 w-3 text-primary"} />
-          </div>
-          {wrappedName}
-          <span className={`text-muted-foreground whitespace-nowrap shrink-0 ${isCompact ? "text-[8px]" : "text-[10px]"}`}>
-            {isBundleLength ? `${multiplier}m` : `×${multiplier}`} × R{bundleUnitPx.toFixed(0)}
-          </span>
-          <span className={`font-bold text-right shrink-0 ${isCompact ? "text-[10px]" : "text-xs"}`}>
-            = R{displayPrice.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
-          </span>
-          <Button variant="ghost" size="icon" className={`text-destructive/60 hover:text-destructive shrink-0 ${isCompact ? "h-4 w-4" : "h-5 w-5"}`} onClick={onRemove}>
-            <Trash2 className={isCompact ? "h-2 w-2" : "h-2.5 w-2.5"} />
-          </Button>
-        </div>
-        {/* Bottom row: slider + -/input/+ */}
-        <div className={`flex items-center gap-2 ${isCompact ? "px-0.5" : "px-1"}`}>
-          <Slider
-            value={[multiplier]}
-            onValueChange={([v]) => isBundleLength ? onUpdateLength(v) : onUpdateQuantity(v)}
-            min={sliderMin}
-            max={sliderMax}
-            step={sliderStep}
-            className="flex-1 min-w-[60px]"
-          />
-          <div className="flex items-center gap-0.5 shrink-0">
-            <Button variant="outline" size="icon" className={isCompact ? "h-5 w-5" : "h-6 w-6"} onClick={() => isBundleLength ? onUpdateLength(Math.max(sliderMin, multiplier - sliderStep)) : onUpdateQuantity(Math.max(sliderMin, multiplier - sliderStep))} disabled={multiplier <= sliderMin}>
-              <Minus className="h-2.5 w-2.5" />
-            </Button>
-            <Input
-              type="number"
-              min={sliderMin}
-              max={sliderMax}
-              step={sliderStep}
-              value={multiplier}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value);
-                if (!isNaN(v)) {
-                  const clamped = Math.max(sliderMin, Math.min(sliderMax, v));
-                  isBundleLength ? onUpdateLength(clamped) : onUpdateQuantity(clamped);
-                }
-              }}
-              className={isCompact ? "h-5 w-12 text-[10px] text-center px-0.5" : "h-6 w-14 text-xs text-center px-1"}
-            />
-            <Button variant="outline" size="icon" className={isCompact ? "h-5 w-5" : "h-6 w-6"} onClick={() => isBundleLength ? onUpdateLength(Math.min(sliderMax, multiplier + sliderStep)) : onUpdateQuantity(Math.min(sliderMax, multiplier + sliderStep))} disabled={multiplier >= sliderMax}>
-              <Plus className="h-2.5 w-2.5" />
-            </Button>
-            <span className={`text-muted-foreground ${isCompact ? "text-[8px]" : "text-[10px]"}`}>{isBundleLength ? "m" : "qty"}</span>
-          </div>
-        </div>
+      <div className="flex items-center gap-2 rounded border bg-blue-50 dark:bg-blue-950/30 p-1.5 text-xs">
+        {wrappedName}
+        <Slider
+          value={[multiplier]}
+          onValueChange={([v]) => isBundleLength ? onUpdateLength(v) : onUpdateQuantity(v)}
+          min={sliderMin}
+          max={sliderMax}
+          step={sliderStep}
+          className="flex-1 min-w-[60px] mx-2"
+        />
+        <Button variant="outline" size="icon" className="h-5 w-5 shrink-0" onClick={decrement} disabled={multiplier <= sliderMin}>
+          <Minus className="h-3 w-3" />
+        </Button>
+        <Input
+          type="number"
+          min={sliderMin}
+          max={sliderMax}
+          step={sliderStep}
+          value={multiplier}
+          onChange={handleInputChange}
+          className="h-5 w-12 text-[10px] text-center px-0.5 shrink-0"
+        />
+        <Button variant="outline" size="icon" className="h-5 w-5 shrink-0" onClick={increment} disabled={multiplier >= sliderMax}>
+          <Plus className="h-3 w-3" />
+        </Button>
+        <span className="text-[9px] text-muted-foreground shrink-0">{isBundleLength ? "m" : "ea"}</span>
+        <span className="font-semibold text-xs whitespace-nowrap shrink-0 ml-auto">
+          R{bundleDisplayPrice.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
+        </span>
+        <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0" onClick={onRemove}>
+          <Trash2 className="h-3 w-3" />
+        </Button>
       </div>
     );
   }
