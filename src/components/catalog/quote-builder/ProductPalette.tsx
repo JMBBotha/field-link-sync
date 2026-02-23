@@ -1,17 +1,36 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import {
-  Search, Snowflake, Droplets, Zap, BatteryCharging, Wrench, Package,
-  GripVertical, Star, StarOff, Ruler, ChevronDown, ChevronRight, Image,
+  Search,
+  Snowflake,
+  Droplets,
+  Zap,
+  BatteryCharging,
+  Wrench,
+  Package,
+  GripVertical,
+  Star,
+  StarOff,
+  Ruler,
+  ChevronDown,
+  ChevronRight,
+  Image,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import { getProductDisplayName } from "./productDisplayUtils";
@@ -19,9 +38,21 @@ import BundleItemsPopover, { computeBundlePricing, type BundleSubItem } from "./
 
 function HighlightText({ text, searchTerm }: { text: string; searchTerm: string }) {
   if (!searchTerm || !text) return <>{text}</>;
-  const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
   const parts = text.split(regex);
-  return <>{parts.map((part, i) => regex.test(part) ? <span key={i} className="bg-amber-400/40 rounded px-0.5">{part}</span> : part)}</>;
+  return (
+    <>
+      {parts.map((part, i) =>
+        regex.test(part) ? (
+          <span key={i} className="bg-amber-400/40 rounded px-0.5">
+            {part}
+          </span>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
 }
 
 const CATEGORIES = [
@@ -36,23 +67,35 @@ const CATEGORIES = [
 
 export function getCategoryIcon(category: string, size = "h-5 w-5") {
   switch (category) {
-    case "Air Conditioning": return <Snowflake className={`${size} text-primary`} />;
-    case "Water Heaters": return <Droplets className={`${size} text-blue-500`} />;
-    case "Inverters": return <Zap className={`${size} text-amber-500`} />;
-    case "Batteries": return <BatteryCharging className={`${size} text-green-600`} />;
-    case "Consumables": return <Wrench className={`${size} text-orange-500`} />;
-    default: return <Package className={`${size} text-muted-foreground`} />;
+    case "Air Conditioning":
+      return <Snowflake className={`${size} text-primary`} />;
+    case "Water Heaters":
+      return <Droplets className={`${size} text-blue-500`} />;
+    case "Inverters":
+      return <Zap className={`${size} text-amber-500`} />;
+    case "Batteries":
+      return <BatteryCharging className={`${size} text-green-600`} />;
+    case "Consumables":
+      return <Wrench className={`${size} text-orange-500`} />;
+    default:
+      return <Package className={`${size} text-muted-foreground`} />;
   }
 }
 
 export function getCategoryBg(category: string) {
   switch (category) {
-    case "Air Conditioning": return "bg-primary/10";
-    case "Water Heaters": return "bg-blue-500/10";
-    case "Inverters": return "bg-amber-500/10";
-    case "Batteries": return "bg-green-600/10";
-    case "Consumables": return "bg-orange-500/10";
-    default: return "bg-muted";
+    case "Air Conditioning":
+      return "bg-primary/10";
+    case "Water Heaters":
+      return "bg-blue-500/10";
+    case "Inverters":
+      return "bg-amber-500/10";
+    case "Batteries":
+      return "bg-green-600/10";
+    case "Consumables":
+      return "bg-orange-500/10";
+    default:
+      return "bg-muted";
   }
 }
 
@@ -113,28 +156,24 @@ function BundlePaletteCard({
   };
 
   return (
-    <div className={`rounded-lg border bg-card mb-2 ${isDragging ? 'opacity-50' : ''}`}>
+    <div className={`rounded-lg border bg-card mb-2 ${isDragging ? "opacity-50" : ""}`} onClick={handleCardClick}>
       {/* Draggable header row */}
-      <div
-        ref={setNodeRef}
-        {...attributes}
-        {...listeners}
-        className="p-2 cursor-grab"
-        onClick={handleCardClick}
-      >
+      <div ref={setNodeRef} {...attributes} {...listeners} className="p-2 cursor-grab">
         <div className="flex items-center gap-1 flex-wrap">
           <Package className="h-3 w-3 text-blue-500 shrink-0" />
           <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
-            <span className="font-medium text-xs truncate cursor-pointer" onClick={e => e.stopPropagation()}>{bundle.name}</span>
+            <span className="font-medium text-xs truncate cursor-pointer" onClick={(e) => e.stopPropagation()}>
+              {bundle.name}
+            </span>
           </BundleItemsPopover>
           <Badge variant="secondary" className="text-[9px] px-1 py-0 shrink-0">
             {subItems.length} items
           </Badge>
           <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0 text-blue-600">
-            {pricingType === 'per_metre' ? 'p/meter' : 'p/qty'}
+            {pricingType === "per_metre" ? "p/meter" : "p/qty"}
           </Badge>
           <span className="text-[10px] text-muted-foreground ml-auto">
-            R{unitPrice.toFixed(0)}/{pricingType === 'per_metre' ? 'm' : 'ea'}
+            R{unitPrice.toFixed(0)}/{pricingType === "per_metre" ? "m" : "ea"}
           </span>
         </div>
       </div>
@@ -142,8 +181,8 @@ function BundlePaletteCard({
       {baskets && baskets.length > 0 && onAddBundleToBasket && (
         <div
           className="flex flex-wrap gap-1 px-2 pb-2"
-          onPointerDown={e => e.stopPropagation()}
-          onMouseDown={e => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
         >
           {baskets.map((b) => (
             <Button
@@ -151,7 +190,7 @@ function BundlePaletteCard({
               variant="outline"
               size="sm"
               className="text-xs h-6"
-              onPointerDown={e => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
@@ -228,13 +267,18 @@ function DraggableProductCard({
 
   return (
     <>
-      <HoverCard openDelay={400} closeDelay={100} open={isDraggingGlobal ? false : hoverOpen} onOpenChange={setHoverOpen}>
+      <HoverCard
+        openDelay={400}
+        closeDelay={100}
+        open={isDraggingGlobal ? false : hoverOpen}
+        onOpenChange={setHoverOpen}
+      >
         <HoverCardTrigger asChild>
           <div
             ref={setNodeRef}
             {...attributes}
             {...listeners}
-            style={{ touchAction: 'none', pointerEvents: isDraggingGlobal && !isDragging ? 'none' : 'auto' }}
+            style={{ touchAction: "none", pointerEvents: isDraggingGlobal && !isDragging ? "none" : "auto" }}
             className={`group relative flex items-start gap-2.5 rounded-lg border bg-card p-2.5 cursor-grab active:cursor-grabbing transition-all hover:shadow-md hover:border-primary/20 ${
               isDragging ? "opacity-40 shadow-lg scale-95" : ""
             } ${product.is_pinned ? "border-primary/30" : ""} ${
@@ -256,16 +300,19 @@ function DraggableProductCard({
                   {price > 0 ? `R${price.toLocaleString("en-ZA")}` : "POR"}
                 </span>
                 {product.sold_in_length && product.price_per_metre && (
-                  <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 gap-0.5 border-orange-400/40 text-orange-600">
-                    <Ruler className="h-2 w-2" />
-                    R{product.price_per_metre.toFixed(2)}/m
+                  <Badge
+                    variant="outline"
+                    className="text-[8px] px-1 py-0 h-3.5 gap-0.5 border-orange-400/40 text-orange-600"
+                  >
+                    <Ruler className="h-2 w-2" />R{product.price_per_metre.toFixed(2)}/m
                   </Badge>
                 )}
-                {product.supplier_name && product.supplier_name.toLowerCase() !== (product.brand || "").toLowerCase() && (
-                  <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5">
-                    {product.supplier_name}
-                  </Badge>
-                )}
+                {product.supplier_name &&
+                  product.supplier_name.toLowerCase() !== (product.brand || "").toLowerCase() && (
+                    <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5">
+                      {product.supplier_name}
+                    </Badge>
+                  )}
                 {usageCount > 5 && (
                   <Badge variant="secondary" className="text-[8px] px-1 py-0 h-3.5">
                     Used {usageCount}x
@@ -309,9 +356,7 @@ function DraggableProductCard({
         </HoverCardTrigger>
         <HoverCardContent side="right" className="w-64 text-xs space-y-1.5">
           <div className="flex items-center gap-2">
-            <div className={`rounded-md p-1 ${catBg}`}>
-              {getCategoryIcon(product.product_category, "h-3.5 w-3.5")}
-            </div>
+            <div className={`rounded-md p-1 ${catBg}`}>{getCategoryIcon(product.product_category, "h-3.5 w-3.5")}</div>
             <p className="font-semibold">{getProductDisplayName(product)}</p>
           </div>
           <p className="font-mono font-medium text-primary/80">{product.product_code}</p>
@@ -328,7 +373,9 @@ function DraggableProductCard({
             <span className="font-bold">R{(product.selling_price || 0).toLocaleString("en-ZA")}</span>
           </div>
           <p className="text-[10px] text-muted-foreground line-clamp-3">{product.description}</p>
-          <Badge variant="outline" className="text-[10px]">{product.supplier_name}</Badge>
+          <Badge variant="outline" className="text-[10px]">
+            {product.supplier_name}
+          </Badge>
         </HoverCardContent>
       </HoverCard>
 
@@ -389,7 +436,7 @@ const ProductPalette = ({
       const aUsage = usageMap[a.id] || 0;
       const bUsage = usageMap[b.id] || 0;
       if (aUsage !== bUsage) return bUsage - aUsage;
-      return (getProductDisplayName(a)).localeCompare(getProductDisplayName(b));
+      return getProductDisplayName(a).localeCompare(getProductDisplayName(b));
     });
   }, [filteredProducts, favorites, usageMap]);
 
@@ -411,14 +458,20 @@ const ProductPalette = ({
       if (b.name.toLowerCase().includes(q)) return true;
       return b.items.some((item) => {
         if (!item.product) return false;
-        const blob = [item.product.product_code, item.product.short_name, item.product.description].filter(Boolean).join(" ").toLowerCase();
+        const blob = [item.product.product_code, item.product.short_name, item.product.description]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
         return blob.includes(q);
       });
     });
   }, [bundles, searchQuery, categoryFilter]);
 
   return (
-    <div className="flex flex-col rounded-lg border overflow-hidden h-full min-h-0" style={{ backgroundColor: "#d5d5d5" }}>
+    <div
+      className="flex flex-col rounded-lg border overflow-hidden h-full min-h-0"
+      style={{ backgroundColor: "#d5d5d5" }}
+    >
       <div className="p-3 border-b space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-foreground">Product Palette</h3>
@@ -433,7 +486,7 @@ const ProductPalette = ({
           )}
         </div>
 
-        {(
+        {
           <>
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
@@ -467,64 +520,62 @@ const ProductPalette = ({
               })}
             </div>
           </>
-        )}
+        }
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="p-2 space-y-3">
-            {/* Bundles section */}
-            {filteredBundles.length > 0 && (
-              <div>
+          {/* Bundles section */}
+          {filteredBundles.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-1">
+                📦 Bundles ({filteredBundles.length})
+              </p>
+              <div className="space-y-1.5">
+                {filteredBundles.map((bundle) => (
+                  <BundlePaletteCard
+                    key={bundle.id}
+                    bundle={bundle}
+                    searchTerm={searchQuery}
+                    isDraggingGlobal={isDraggingGlobal}
+                    baskets={baskets}
+                    onAddBundleToBasket={onAddBundleToBasket}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {isLoading ? (
+            Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)
+          ) : sortedProducts.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-8">
+              {categoryFilter === "favorites" ? "No favorites yet — star products to add them" : "No products found"}
+            </p>
+          ) : (
+            Object.entries(grouped).map(([category, items]) => (
+              <div key={category}>
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-1">
-                  📦 Bundles ({filteredBundles.length})
+                  {category} ({items.length})
                 </p>
                 <div className="space-y-1.5">
-                  {filteredBundles.map((bundle) => (
-                    <BundlePaletteCard
-                      key={bundle.id}
-                      bundle={bundle}
-                      searchTerm={searchQuery}
+                  {items.map((product) => (
+                    <DraggableProductCard
+                      key={product.id}
+                      product={product}
+                      isFavorite={favorites.has(product.id)}
+                      onToggleFavorite={() => onToggleFavorite(product.id)}
                       isDraggingGlobal={isDraggingGlobal}
-                      baskets={baskets}
-                      onAddBundleToBasket={onAddBundleToBasket}
+                      searchTerm={searchQuery}
+                      usageCount={usageMap[product.id] || 0}
                     />
                   ))}
                 </div>
               </div>
-            )}
-
-            {isLoading ? (
-              Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full rounded-lg" />
-              ))
-            ) : sortedProducts.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-8">
-                {categoryFilter === "favorites" ? "No favorites yet — star products to add them" : "No products found"}
-              </p>
-            ) : (
-              Object.entries(grouped).map(([category, items]) => (
-                <div key={category}>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-1">
-                    {category} ({items.length})
-                  </p>
-                  <div className="space-y-1.5">
-                    {items.map((product) => (
-                      <DraggableProductCard
-                        key={product.id}
-                        product={product}
-                        isFavorite={favorites.has(product.id)}
-                        onToggleFavorite={() => onToggleFavorite(product.id)}
-                        isDraggingGlobal={isDraggingGlobal}
-                        searchTerm={searchQuery}
-                        usageCount={usageMap[product.id] || 0}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+            ))
+          )}
         </div>
+      </div>
     </div>
   );
 };
