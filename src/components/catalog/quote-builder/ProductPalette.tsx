@@ -118,85 +118,62 @@ function BundlePaletteCard({
       }, 0);
   }, [subItems]);
 
-  const draggableContent = (
-    <div
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      style={{ touchAction: "none", pointerEvents: isDraggingGlobal && !isDragging ? "none" : "auto" }}
-      className={`group rounded-lg border bg-card p-2 cursor-grab active:cursor-grabbing transition-all hover:shadow-md hover:border-primary/20 ${
-        isDragging ? "opacity-40 scale-95" : ""
-      } border-primary/20 bg-primary/5`}
-    >
-      <div className="flex items-center gap-2">
-        <Package className="h-4 w-4 text-primary shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold truncate text-foreground">
-            <HighlightText text={bundle.name} searchTerm={searchTerm} />
-          </p>
-          <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-            <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5">
-              {bundle.items.length} items
-            </Badge>
-            <Badge
-              variant="outline"
-              className={`text-[8px] px-1 py-0 h-3.5 ${
-                pricingType === "p/meter"
-                  ? "border-orange-400/40 text-orange-600"
-                  : "border-blue-400/40 text-blue-600"
-              }`}
-            >
-              {pricingType}
-            </Badge>
-          </div>
-        </div>
-        <div className="flex flex-col items-end gap-0.5 shrink-0">
-          <span className="text-xs font-bold text-foreground">
-            R{totalPrice.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
-          </span>
-          <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
-        </div>
-      </div>
-    </div>
-  );
-
   const handleCardClick = useCallback(() => {
     if (baskets && baskets.length > 0 && onAddBundleToBasket) {
       onAddBundleToBasket(baskets[0].id, bundle);
     }
   }, [baskets, onAddBundleToBasket, bundle]);
 
-  return (
-    <div className="rounded-lg border bg-card mb-2">
-      <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
-        <div
-          data-no-dnd="true"
-          onClick={handleCardClick}
-          className="cursor-pointer"
-        >
-          {draggableContent}
+  const draggableContent = (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      className={`rounded-lg border bg-card mb-2 ${isDragging ? 'opacity-50' : ''}`}
+    >
+      <div className="p-2" data-no-dnd="true" onClick={handleCardClick}>
+        <div className="flex items-center gap-1 flex-wrap">
+          <Package className="h-3 w-3 text-blue-500 shrink-0" />
+          <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
+            <span className="font-medium text-xs truncate cursor-pointer">{bundle.name}</span>
+          </BundleItemsPopover>
+          <Badge variant="secondary" className="text-[9px] px-1 py-0 shrink-0">
+            {subItems.length} items
+          </Badge>
+          <Badge className="text-[9px] px-1 py-0 bg-blue-500 text-white shrink-0">
+            {pricingType}
+          </Badge>
+          <span className="text-xs font-semibold ml-auto">
+            R{totalPrice.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
+          </span>
         </div>
-      </BundleItemsPopover>
-      {baskets && baskets.length > 0 && onAddBundleToBasket && (
-        <div className="flex flex-wrap gap-1.5 px-2 pb-2 pt-1">
-          {baskets.map((b) => (
-            <button
-              key={b.id}
-              type="button"
-              className="text-xs px-3 py-1 rounded-md bg-blue-500 text-white hover:bg-blue-600 font-medium"
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                onAddBundleToBasket(b.id, bundle);
-              }}
-            >
-              + {b.name}
-            </button>
-          ))}
-        </div>
-      )}
+        {baskets && baskets.length > 0 && onAddBundleToBasket && (
+          <div
+            className="flex flex-wrap gap-1.5 px-2 pb-2 pt-1"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            {baskets.map((b) => (
+              <button
+                key={b.id}
+                type="button"
+                className="text-xs px-3 py-1 rounded-md bg-blue-500 text-white hover:bg-blue-600 font-medium"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onAddBundleToBasket(b.id, bundle);
+                }}
+              >
+                + {b.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
+
+  return draggableContent;
 }
 
 interface ProductPaletteProps {
