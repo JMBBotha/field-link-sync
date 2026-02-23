@@ -93,6 +93,7 @@ export interface BasketItem {
   }>;
   bundlePricingType?: "p/meter" | "p/qty";
   bundleUnitPrice?: number;
+  bundleUnitCost?: number;
 }
 
 export interface Basket {
@@ -410,7 +411,7 @@ const QuoteBuilderTab = () => {
       });
 
     // Compute pricing
-    const { pricingType, unitPrice } = computeBundlePricing(subItems);
+    const { pricingType, unitPrice, unitCost } = computeBundlePricing(subItems);
 
     // Use the first product as a "representative" for the bundle line
     const firstProduct = subItems.find((i) => !i.isOptional)?.product || subItems[0]?.product;
@@ -425,8 +426,8 @@ const QuoteBuilderTab = () => {
         product_code: `BUNDLE-${bundle.id.slice(0, 6).toUpperCase()}`,
         product_category: firstProduct.product_category,
         selling_price: unitPrice,
-        cost_incl_vat: unitPrice,
-        cost_excl_vat: unitPrice / 1.15,
+        cost_excl_vat: unitCost,
+        cost_incl_vat: unitCost * 1.15,
         sold_in_length: pricingType === "p/meter",
         price_per_metre: pricingType === "p/meter" ? unitPrice : null,
       },
@@ -438,6 +439,7 @@ const QuoteBuilderTab = () => {
       bundleItems: subItems,
       bundlePricingType: pricingType,
       bundleUnitPrice: unitPrice,
+      bundleUnitCost: unitCost,
     };
 
     setBaskets((prev) =>
@@ -509,9 +511,21 @@ const QuoteBuilderTab = () => {
         b.id === basketId
           ? {
               ...b,
-              items: b.items.map((i) =>
-                i.instanceId === instanceId ? { ...i, quantity: qty } : i
-              ),
+              items: b.items.map((i) => {
+                if (i.instanceId !== instanceId) return i;
+                // Scale bundle sub-items proportionally for p/qty bundles
+                if (i.isBundle && i.bundleItems && i.bundlePricingType === "p/qty") {
+                  const oldQty = i.quantity;
+                  const ratio = qty / oldQty;
+                  const scaledBundleItems = i.bundleItems.map((si) => ({
+                    ...si,
+                    quantity: si.isLengthItem ? si.quantity : Math.max(1, Math.round(si.quantity * ratio)),
+                    length: si.isLengthItem ? (si.length || 1) * ratio : si.length,
+                  }));
+                  return { ...i, quantity: qty, bundleItems: scaledBundleItems };
+                }
+                return { ...i, quantity: qty };
+              }),
             }
           : b
       )
@@ -525,9 +539,20 @@ const QuoteBuilderTab = () => {
         b.id === basketId
           ? {
               ...b,
-              items: b.items.map((i) =>
-                i.instanceId === instanceId ? { ...i, length } : i
-              ),
+              items: b.items.map((i) => {
+                if (i.instanceId !== instanceId) return i;
+                // Scale bundle sub-items proportionally for p/meter bundles
+                if (i.isBundle && i.bundleItems && i.bundlePricingType === "p/meter") {
+                  const oldLength = i.length || 1;
+                  const ratio = length / oldLength;
+                  const scaledBundleItems = i.bundleItems.map((si) => ({
+                    ...si,
+                    length: si.isLengthItem ? (si.length || 1) * ratio : si.length,
+                  }));
+                  return { ...i, length, bundleItems: scaledBundleItems };
+                }
+                return { ...i, length };
+              }),
             }
           : b
       )
