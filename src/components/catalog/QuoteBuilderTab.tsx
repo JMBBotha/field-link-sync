@@ -31,6 +31,7 @@ import { useProductUsageStats } from "@/hooks/useProductUsageStats";
 import { allTermsMatchBlob } from "./searchSynonyms";
 import QuoteBuilderPopup from "./quote-builder/QuoteBuilderPopup";
 import type { WizardTriggerItem } from "./quote-builder/QuoteBuilderPopup";
+import { computeBundlePricing } from "./quote-builder/BundleItemsPopover";
 
 export interface PaletteProduct {
   id: string;
@@ -59,6 +60,19 @@ export interface BasketItem {
   product: PaletteProduct;
   quantity: number;
   length?: number;
+  /** If this item represents a collapsed bundle */
+  isBundle?: boolean;
+  bundleId?: string;
+  bundleName?: string;
+  bundleItems?: Array<{
+    product: PaletteProduct;
+    quantity: number;
+    length?: number;
+    isLengthItem: boolean;
+    isOptional?: boolean;
+  }>;
+  bundlePricingType?: "p/meter" | "p/qty";
+  bundleUnitPrice?: number;
 }
 
 export interface Basket {
@@ -91,6 +105,11 @@ const StickyQuoteSummary = ({ baskets }: { baskets: Basket[] }) => {
     (sum, b) =>
       sum +
       b.items.reduce((s, i) => {
+        if (i.isBundle && i.bundleUnitPrice) {
+          return s + (i.bundlePricingType === "p/meter"
+            ? i.bundleUnitPrice * (i.length || 1)
+            : i.bundleUnitPrice * i.quantity);
+        }
         if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
           return s + i.product.price_per_metre * i.length;
         }
@@ -353,23 +372,56 @@ const QuoteBuilderTab = () => {
   }, [trackUsage, scrollToCanvas]);
 
   const addBundleToBasket = useCallback((basketId: string, bundle: PaletteBundle) => {
+    // Build sub-items list for the collapsed bundle
+    const subItems = bundle.items
+      .filter((bItem) => bItem.product)
+      .map((bItem) => {
+        trackUsage(bItem.product!.id);
+        const isLengthItem = bItem.is_length_item && !!bItem.product!.price_per_metre;
+        return {
+          product: bItem.product as PaletteProduct,
+          quantity: bItem.quantity,
+          isLengthItem,
+          isOptional: bItem.is_optional,
+          ...(isLengthItem ? { length: bItem.length_metres || bItem.product!.unit_length || 1 } : {}),
+        };
+      });
+
+    // Compute pricing
+    const { pricingType, unitPrice } = computeBundlePricing(subItems);
+
+    // Use the first product as a "representative" for the bundle line
+    const firstProduct = subItems.find((i) => !i.isOptional)?.product || subItems[0]?.product;
+    if (!firstProduct) return;
+
+    const bundleItem: BasketItem = {
+      instanceId: `bundle-${bundle.id}-${Date.now()}`,
+      product: {
+        ...firstProduct,
+        short_name: bundle.name,
+        description: `Bundle: ${bundle.name} (${subItems.length} items)`,
+        product_code: `BUNDLE-${bundle.id.slice(0, 6).toUpperCase()}`,
+        product_category: firstProduct.product_category,
+        selling_price: unitPrice,
+        cost_incl_vat: unitPrice,
+        cost_excl_vat: unitPrice / 1.15,
+        sold_in_length: pricingType === "p/meter",
+        price_per_metre: pricingType === "p/meter" ? unitPrice : null,
+      },
+      quantity: 1,
+      ...(pricingType === "p/meter" ? { length: 1 } : {}),
+      isBundle: true,
+      bundleId: bundle.id,
+      bundleName: bundle.name,
+      bundleItems: subItems,
+      bundlePricingType: pricingType,
+      bundleUnitPrice: unitPrice,
+    };
+
     setBaskets((prev) =>
       prev.map((basket) => {
         if (basket.id !== basketId) return basket;
-        const newItems: BasketItem[] = [];
-        for (const bItem of bundle.items) {
-          if (!bItem.product) continue;
-          if (bItem.is_optional) continue;
-          trackUsage(bItem.product.id);
-          const isLengthItem = bItem.is_length_item && !!bItem.product.price_per_metre;
-          newItems.push({
-            instanceId: `${bItem.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            product: bItem.product as PaletteProduct,
-            quantity: bItem.quantity,
-            ...(isLengthItem ? { length: bItem.length_metres || bItem.product.unit_length || 1 } : {}),
-          });
-        }
-        return { ...basket, items: [...basket.items, ...newItems] };
+        return { ...basket, items: [...basket.items, bundleItem] };
       })
     );
     scrollToCanvas();
@@ -516,6 +568,11 @@ const QuoteBuilderTab = () => {
       (sum, b) =>
         sum +
         b.items.reduce((s, i) => {
+          if (i.isBundle && i.bundleUnitPrice) {
+            return s + (i.bundlePricingType === "p/meter"
+              ? i.bundleUnitPrice * (i.length || 1)
+              : i.bundleUnitPrice * i.quantity);
+          }
           if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
             return s + i.product.price_per_metre * i.length;
           }

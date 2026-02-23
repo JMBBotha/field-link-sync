@@ -15,6 +15,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import { getProductDisplayName } from "./productDisplayUtils";
+import BundleItemsPopover, { computeBundlePricing, type BundleSubItem } from "./BundleItemsPopover";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
+import { getProductDisplayName } from "./productDisplayUtils";
 
 function HighlightText({ text, searchTerm }: { text: string; searchTerm: string }) {
   if (!searchTerm || !text) return <>{text}</>;
@@ -81,13 +88,39 @@ function BundlePaletteCard({
   searchTerm: string;
   isDraggingGlobal?: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `bundle-${bundle.id}`,
     data: { bundle, type: "bundle" },
   });
 
-  return (
+  // Build sub-items for pricing and popup
+  const subItems: BundleSubItem[] = useMemo(() => {
+    return bundle.items
+      .filter((item) => item.product)
+      .map((item) => ({
+        product: item.product as PaletteProduct,
+        quantity: item.quantity,
+        isLengthItem: item.is_length_item,
+        isOptional: item.is_optional,
+        ...(item.is_length_item ? { length: item.length_metres || 1 } : {}),
+      }));
+  }, [bundle.items]);
+
+  const { pricingType, unitPrice } = useMemo(() => computeBundlePricing(subItems), [subItems]);
+
+  const totalPrice = useMemo(() => {
+    return subItems
+      .filter((i) => !i.isOptional)
+      .reduce((sum, i) => {
+        if (i.isLengthItem && i.product.price_per_metre) {
+          return sum + i.product.price_per_metre * (i.length || 1);
+        }
+        const price = i.product.selling_price || i.product.cost_incl_vat || 0;
+        return sum + price * i.quantity;
+      }, 0);
+  }, [subItems]);
+
+  const cardContent = (
     <div
       ref={setNodeRef}
       {...attributes}
@@ -103,48 +136,36 @@ function BundlePaletteCard({
           <p className="text-xs font-semibold truncate text-foreground">
             <HighlightText text={bundle.name} searchTerm={searchTerm} />
           </p>
-          <div className="flex items-center gap-1 mt-0.5">
+          <div className="flex items-center gap-1 mt-0.5 flex-wrap">
             <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5">
-              {bundle.bundle_type || "Kit"}
-            </Badge>
-            <span className="text-[10px] text-muted-foreground">
               {bundle.items.length} items
-            </span>
+            </Badge>
+            <Badge
+              variant="outline"
+              className={`text-[8px] px-1 py-0 h-3.5 ${
+                pricingType === "p/meter"
+                  ? "border-orange-400/40 text-orange-600"
+                  : "border-blue-400/40 text-blue-600"
+              }`}
+            >
+              {pricingType}
+            </Badge>
           </div>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex flex-col items-end gap-0.5 shrink-0">
+          <span className="text-xs font-bold text-foreground">
+            R{totalPrice.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
+          </span>
           <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
-          <button
-            type="button"
-            className="h-5 w-5 flex items-center justify-center"
-            data-no-dnd="true"
-            onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); e.nativeEvent.stopImmediatePropagation(); }}
-            onMouseDown={(e) => { e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); }}
-            onTouchStart={(e) => { e.stopPropagation(); }}
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              setExpanded(!expanded);
-            }}
-          >
-            {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-          </button>
         </div>
       </div>
-      {expanded && (
-        <div className="mt-1.5 pl-6 space-y-0.5 text-[10px] text-muted-foreground border-t pt-1.5">
-          {bundle.items.map((item) => (
-            <div key={item.id} className="flex justify-between">
-              <span className="truncate">{item.product?.product_code || "?"} — {item.product ? getProductDisplayName(item.product) : "Unknown"}</span>
-              <span className="shrink-0 ml-1">
-                {item.is_length_item ? `${item.length_metres || 0}m` : `×${item.quantity}`}
-                {item.is_optional && " (opt)"}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
+  );
+
+  return (
+    <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
+      {cardContent}
+    </BundleItemsPopover>
   );
 }
 

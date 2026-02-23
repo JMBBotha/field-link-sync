@@ -10,6 +10,7 @@ import { getProductDisplayName } from "./productDisplayUtils";
 import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
 import ConsumablesSuggestionPanel from "./ConsumablesSuggestionPanel";
 import ZoneTemplateSelector from "./ZoneTemplateSelector";
+import BundleItemsPopover from "./BundleItemsPopover";
 import type { Basket, BasketItem, PaletteProduct } from "../QuoteBuilderTab";
 
 interface BasketCanvasProps {
@@ -59,6 +60,12 @@ function DroppableBasket({
   const [editName, setEditName] = useState(basket.name);
 
   const subtotal = basket.items.reduce((s, i) => {
+    if (i.isBundle && i.bundleUnitPrice) {
+      if (i.bundlePricingType === "p/meter") {
+        return s + i.bundleUnitPrice * (i.length || 1);
+      }
+      return s + i.bundleUnitPrice * i.quantity;
+    }
     if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
       return s + i.product.price_per_metre * i.length;
     }
@@ -185,100 +192,151 @@ function BasketItemCard({
     ? (item.product.price_per_metre || 0) * (item.length || 1)
     : (item.product.selling_price || item.product.cost_incl_vat || 0) * item.quantity;
 
-  if (isCompact) {
-    return (
-      <div className="flex items-center gap-1 rounded border bg-background px-1 py-0.5 text-[10px]">
-        <div className="min-w-0 flex-1 truncate font-medium flex items-center gap-0.5">
-          <span className="truncate">{getProductDisplayName(item.product)}</span>
-          <ProductInfoDialog product={item.product} />
-        </div>
-        {isLengthItem ? (
-          <div className="flex items-center gap-0.5 shrink-0">
-            <Input
-              type="number"
-              min={0.1}
-              step={0.5}
-              value={item.length || 1}
-              onChange={(e) => onUpdateLength(parseFloat(e.target.value) || 0.1)}
-              className="h-4 w-10 text-[10px] text-center px-0.5"
-            />
-            <span className="text-[8px] text-muted-foreground">m</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-0 shrink-0">
-            <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => onUpdateQuantity(item.quantity - 1)} disabled={item.quantity <= 1}>
-              <Minus className="h-2 w-2" />
-            </Button>
-            <span className="w-4 text-center font-semibold">{item.quantity}</span>
-            <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => onUpdateQuantity(item.quantity + 1)}>
-              <Plus className="h-2 w-2" />
-            </Button>
-          </div>
-        )}
-        <span className="font-bold w-12 text-right shrink-0">
-          R{price.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
-        </span>
-        <Button variant="ghost" size="icon" className="h-4 w-4 text-destructive/60 hover:text-destructive shrink-0" onClick={onRemove}>
-          <Trash2 className="h-2 w-2" />
-        </Button>
-      </div>
-    );
-  }
+  // Bundle: total = unitPrice × quantity (for p/qty) or unitPrice × length (for p/meter)
+  const displayPrice = item.isBundle
+    ? (item.bundlePricingType === "p/meter"
+      ? (item.bundleUnitPrice || 0) * (item.length || 1)
+      : (item.bundleUnitPrice || 0) * item.quantity)
+    : price;
 
-  const catBg = getCategoryBg(item.product.product_category);
-  return (
-    <div className="flex items-center gap-2 rounded-md border bg-background p-1.5 text-xs">
-      <div className={`shrink-0 rounded p-1 ${catBg}`}>
-        {getCategoryIcon(item.product.product_category, "h-3 w-3")}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="font-medium truncate flex items-center gap-1">
-          <span className="truncate">{getProductDisplayName(item.product)}</span>
-          <ProductInfoDialog product={item.product} />
-        </p>
-        <div className="flex items-center gap-1.5">
-          <p className="text-[10px] font-mono font-medium text-primary/80 truncate">
-            {item.product.product_code}
-          </p>
-          {isLengthItem && (
-            <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 gap-0.5 border-orange-400/40 text-orange-600">
-              <Ruler className="h-2 w-2" />
-              R{(item.product.price_per_metre || 0).toFixed(2)}/m
-            </Badge>
+  const cardContent = (
+    <>
+      {isCompact ? (
+        <div className="flex items-center gap-1 rounded border bg-background px-1 py-0.5 text-[10px]">
+          <div className="min-w-0 flex-1 truncate font-medium flex items-center gap-0.5">
+            {item.isBundle && <Package className="h-2.5 w-2.5 text-primary shrink-0" />}
+            <span className="truncate">{item.isBundle ? item.bundleName : getProductDisplayName(item.product)}</span>
+            {item.isBundle && (
+              <Badge variant="outline" className={`text-[7px] px-0.5 py-0 h-3 shrink-0 ${
+                item.bundlePricingType === "p/meter" ? "border-orange-400/40 text-orange-600" : "border-blue-400/40 text-blue-600"
+              }`}>
+                {item.bundlePricingType}
+              </Badge>
+            )}
+            {!item.isBundle && <ProductInfoDialog product={item.product} />}
+          </div>
+          {isLengthItem || (item.isBundle && item.bundlePricingType === "p/meter") ? (
+            <div className="flex items-center gap-0.5 shrink-0">
+              <Input
+                type="number"
+                min={0.1}
+                step={0.5}
+                value={item.length || 1}
+                onChange={(e) => onUpdateLength(parseFloat(e.target.value) || 0.1)}
+                className="h-4 w-10 text-[10px] text-center px-0.5"
+              />
+              <span className="text-[8px] text-muted-foreground">m</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-0 shrink-0">
+              <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => onUpdateQuantity(item.quantity - 1)} disabled={item.quantity <= 1}>
+                <Minus className="h-2 w-2" />
+              </Button>
+              <span className="w-4 text-center font-semibold">{item.quantity}</span>
+              <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => onUpdateQuantity(item.quantity + 1)}>
+                <Plus className="h-2 w-2" />
+              </Button>
+            </div>
           )}
-        </div>
-      </div>
-      {isLengthItem ? (
-        <div className="flex items-center gap-1 shrink-0">
-          <Input
-            type="number"
-            min={0.1}
-            step={0.5}
-            value={item.length || 1}
-            onChange={(e) => onUpdateLength(parseFloat(e.target.value) || 0.1)}
-            className="h-6 w-14 text-xs text-center px-1"
-          />
-          <span className="text-[10px] text-muted-foreground">m</span>
+          <span className="font-bold w-12 text-right shrink-0">
+            R{displayPrice.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
+          </span>
+          <Button variant="ghost" size="icon" className="h-4 w-4 text-destructive/60 hover:text-destructive shrink-0" onClick={onRemove}>
+            <Trash2 className="h-2 w-2" />
+          </Button>
         </div>
       ) : (
-        <div className="flex items-center gap-0.5 shrink-0">
-          <Button variant="outline" size="icon" className="h-5 w-5" onClick={() => onUpdateQuantity(item.quantity - 1)} disabled={item.quantity <= 1}>
-            <Minus className="h-2.5 w-2.5" />
-          </Button>
-          <span className="w-6 text-center font-semibold text-xs">{item.quantity}</span>
-          <Button variant="outline" size="icon" className="h-5 w-5" onClick={() => onUpdateQuantity(item.quantity + 1)}>
-            <Plus className="h-2.5 w-2.5" />
+        <div className={`flex items-center gap-2 rounded-md border bg-background p-1.5 text-xs ${
+          item.isBundle ? "border-primary/30 bg-primary/5" : ""
+        }`}>
+          <div className={`shrink-0 rounded p-1 ${item.isBundle ? "bg-primary/10" : getCategoryBg(item.product.product_category)}`}>
+            {item.isBundle ? <Package className="h-3 w-3 text-primary" /> : getCategoryIcon(item.product.product_category, "h-3 w-3")}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-medium truncate flex items-center gap-1">
+              <span className="truncate">{item.isBundle ? item.bundleName : getProductDisplayName(item.product)}</span>
+              {!item.isBundle && <ProductInfoDialog product={item.product} />}
+            </p>
+            <div className="flex items-center gap-1.5">
+              {item.isBundle ? (
+                <>
+                  <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5">
+                    {item.bundleItems?.length || 0} items
+                  </Badge>
+                  <Badge
+                    variant="outline"
+                    className={`text-[8px] px-1 py-0 h-3.5 ${
+                      item.bundlePricingType === "p/meter"
+                        ? "border-orange-400/40 text-orange-600"
+                        : "border-blue-400/40 text-blue-600"
+                    }`}
+                  >
+                    {item.bundlePricingType}
+                  </Badge>
+                </>
+              ) : (
+                <>
+                  <p className="text-[10px] font-mono font-medium text-primary/80 truncate">
+                    {item.product.product_code}
+                  </p>
+                  {isLengthItem && (
+                    <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 gap-0.5 border-orange-400/40 text-orange-600">
+                      <Ruler className="h-2 w-2" />
+                      R{(item.product.price_per_metre || 0).toFixed(2)}/m
+                    </Badge>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+          {isLengthItem || (item.isBundle && item.bundlePricingType === "p/meter") ? (
+            <div className="flex items-center gap-1 shrink-0">
+              <Input
+                type="number"
+                min={0.1}
+                step={0.5}
+                value={item.length || 1}
+                onChange={(e) => onUpdateLength(parseFloat(e.target.value) || 0.1)}
+                className="h-6 w-14 text-xs text-center px-1"
+              />
+              <span className="text-[10px] text-muted-foreground">m</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-0.5 shrink-0">
+              <Button variant="outline" size="icon" className="h-5 w-5" onClick={() => onUpdateQuantity(item.quantity - 1)} disabled={item.quantity <= 1}>
+                <Minus className="h-2.5 w-2.5" />
+              </Button>
+              <span className="w-6 text-center font-semibold text-xs">{item.quantity}</span>
+              <Button variant="outline" size="icon" className="h-5 w-5" onClick={() => onUpdateQuantity(item.quantity + 1)}>
+                <Plus className="h-2.5 w-2.5" />
+              </Button>
+            </div>
+          )}
+          <span className="text-xs font-bold w-16 text-right shrink-0">
+            R{displayPrice.toLocaleString("en-ZA")}
+          </span>
+          <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive/60 hover:text-destructive shrink-0" onClick={onRemove}>
+            <Trash2 className="h-2.5 w-2.5" />
           </Button>
         </div>
       )}
-      <span className="text-xs font-bold w-16 text-right shrink-0">
-        R{price.toLocaleString("en-ZA")}
-      </span>
-      <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive/60 hover:text-destructive shrink-0" onClick={onRemove}>
-        <Trash2 className="h-2.5 w-2.5" />
-      </Button>
-    </div>
+    </>
   );
+
+  // Wrap bundle items in a hover popup
+  if (item.isBundle && item.bundleItems && item.bundleName) {
+    return (
+      <BundleItemsPopover
+        bundleName={item.bundleName}
+        items={item.bundleItems}
+        side="left"
+      >
+        {cardContent}
+      </BundleItemsPopover>
+    );
+  }
+
+  return cardContent;
 }
 
 const BasketCanvas = ({
