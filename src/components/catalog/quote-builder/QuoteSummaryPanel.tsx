@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { FileDown, Save, Loader2, CheckCircle } from "lucide-react";
+import { useMemo, useState, useRef } from "react";
+import { FileDown, Save, Loader2, CheckCircle, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import type { Basket } from "../QuoteBuilderTab";
 import { getEffectiveUnitPrices } from "../QuoteBuilderTab";
 import { generateQuoteBuilderPDF } from "@/lib/quoteBuilderPDF";
 import { getProductDisplayName } from "./productDisplayUtils";
+import { useUnifiedClients } from "@/hooks/useUnifiedClients";
 
 interface QuoteSummaryPanelProps {
   baskets: Basket[];
@@ -18,6 +19,25 @@ const QuoteSummaryPanel = ({ baskets }: QuoteSummaryPanelProps) => {
   const [quoteName, setQuoteName] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [clientSearch, setClientSearch] = useState("");
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
+  const clientInputRef = useRef<HTMLInputElement>(null);
+  const { data: clients = [] } = useUnifiedClients();
+
+  const filteredClients = useMemo(() => {
+    if (!clientSearch.trim()) return clients.slice(0, 8);
+    const q = clientSearch.toLowerCase();
+    return clients.filter(c =>
+      c.name.toLowerCase().includes(q) ||
+      c.phone.includes(q) ||
+      (c.email && c.email.toLowerCase().includes(q))
+    ).slice(0, 8);
+  }, [clients, clientSearch]);
+
+  const selectedClient = useMemo(() =>
+    selectedClientId ? clients.find(c => c.id === selectedClientId || c.customer_id === selectedClientId) : null
+  , [clients, selectedClientId]);
 
   const summary = useMemo(() => {
     let totalItems = 0;
@@ -104,6 +124,8 @@ const QuoteSummaryPanel = ({ baskets }: QuoteSummaryPanelProps) => {
         total: summary.grandTotal,
         notes: quoteName,
         visual_sections: zonesData,
+        ...(selectedClientId ? { customer_id: selectedClientId.startsWith("lead-") ? null : selectedClientId } : {}),
+        ...(selectedClient ? { customer_name: selectedClient.name } : {}),
       }).select("id").single();
 
       if (error) throw error;
@@ -157,6 +179,61 @@ const QuoteSummaryPanel = ({ baskets }: QuoteSummaryPanelProps) => {
           <span>Grand Total</span>
           <span>R{summary.grandTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</span>
         </div>
+      </div>
+
+      {/* Client selector */}
+      <div className="relative">
+        <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Client</label>
+        {selectedClient ? (
+          <div className="flex items-center gap-1.5 rounded border bg-muted/50 px-2 py-1.5 text-xs">
+            <Users className="h-3 w-3 text-primary shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="font-medium truncate block">{selectedClient.name}</span>
+              {selectedClient.phone && <span className="text-[10px] text-muted-foreground">{selectedClient.phone}</span>}
+            </div>
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => { setSelectedClientId(null); setClientSearch(""); }}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        ) : (
+          <div className="relative">
+            <Input
+              ref={clientInputRef}
+              placeholder="Search clients..."
+              value={clientSearch}
+              onChange={(e) => { setClientSearch(e.target.value); setShowClientDropdown(true); }}
+              onFocus={() => setShowClientDropdown(true)}
+              onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
+              className="h-8 text-xs pr-7"
+            />
+            <Users className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+            {showClientDropdown && filteredClients.length > 0 && (
+              <div className="absolute z-50 top-full left-0 right-0 mt-1 rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto">
+                {filteredClients.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className="w-full text-left px-2.5 py-1.5 hover:bg-muted/50 transition-colors"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setSelectedClientId(c.customer_id || c.id);
+                      setQuoteName(c.name);
+                      setClientSearch("");
+                      setShowClientDropdown(false);
+                    }}
+                  >
+                    <p className="text-xs font-medium truncate">{c.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{c.phone}{c.email ? ` · ${c.email}` : ""}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Actions */}
