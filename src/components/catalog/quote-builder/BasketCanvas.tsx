@@ -4,6 +4,7 @@ import { Plus, Trash2, Pencil, Check, Minus, Package, ShoppingBag, Copy, Ruler }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getCategoryIcon, getCategoryBg } from "./ProductPalette";
 import { getProductDisplayName } from "./productDisplayUtils";
@@ -206,67 +207,77 @@ function BasketItemCard({
 
   // --- Bundle card: compact single-line like products, details on hover ---
   if (item.isBundle) {
+    const bundleUnitPx = item.bundleUnitPrice || 0;
+    const multiplier = isBundleLength ? (item.length || 1) : item.quantity;
+    const sliderMin = isBundleLength ? 0.5 : 1;
+    const sliderMax = 50;
+    const sliderStep = isBundleLength ? 0.5 : 1;
+
     const bundleCard = (
-      <div className={`flex items-center gap-2 rounded-md border bg-background text-xs ${
-        isCompact ? "px-1 py-0.5 gap-1" : "p-1.5"
-      } border-primary/30 bg-primary/5`}>
-        <div className={`shrink-0 rounded p-1 bg-primary/10`}>
-          <Package className={isCompact ? "h-2.5 w-2.5 text-primary" : "h-3 w-3 text-primary"} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className={`font-medium truncate flex items-center gap-1 ${isCompact ? "text-[10px]" : "text-xs"}`}>
-            <span className="truncate">{item.bundleName}</span>
-          </p>
-          <div className="flex items-center gap-1">
-            <Badge variant="outline" className={`${isCompact ? "text-[7px] px-0.5 py-0 h-3" : "text-[8px] px-1 py-0 h-3.5"}`}>
-              {item.bundleItems?.length || 0} items
-            </Badge>
-            <Badge
-              variant="outline"
-              className={`${isCompact ? "text-[7px] px-0.5 py-0 h-3" : "text-[8px] px-1 py-0 h-3.5"} ${
-                isBundleLength ? "border-orange-400/40 text-orange-600" : "border-blue-400/40 text-blue-600"
-              }`}
-            >
-              R{(item.bundleUnitPrice || 0).toFixed(0)}/{isBundleLength ? "m" : "ea"}
-            </Badge>
+      <div className={`flex flex-col rounded-md border border-primary/30 bg-primary/5 ${isCompact ? "p-1 gap-0.5" : "p-1.5 gap-1"}`}>
+        {/* Top row: icon, name, badges, breakdown, total, delete */}
+        <div className={`flex items-center gap-2 text-xs ${isCompact ? "gap-1" : ""}`}>
+          <div className="shrink-0 rounded p-1 bg-primary/10">
+            <Package className={isCompact ? "h-2.5 w-2.5 text-primary" : "h-3 w-3 text-primary"} />
           </div>
+          <div className="min-w-0 flex-1">
+            <p className={`font-medium truncate ${isCompact ? "text-[10px]" : "text-xs"}`}>{item.bundleName}</p>
+            <div className="flex items-center gap-1">
+              <Badge variant="outline" className={`${isCompact ? "text-[7px] px-0.5 py-0 h-3" : "text-[8px] px-1 py-0 h-3.5"}`}>
+                {item.bundleItems?.length || 0} items
+              </Badge>
+              <Badge variant="outline" className={`${isCompact ? "text-[7px] px-0.5 py-0 h-3" : "text-[8px] px-1 py-0 h-3.5"} ${
+                isBundleLength ? "border-orange-400/40 text-orange-600" : "border-blue-400/40 text-blue-600"
+              }`}>
+                R{bundleUnitPx.toFixed(0)}/{isBundleLength ? "m" : "ea"}
+              </Badge>
+            </div>
+          </div>
+          <span className={`text-muted-foreground whitespace-nowrap shrink-0 ${isCompact ? "text-[8px]" : "text-[10px]"}`}>
+            {isBundleLength ? `${multiplier}m` : `×${multiplier}`} × R{bundleUnitPx.toFixed(0)}
+          </span>
+          <span className={`font-bold text-right shrink-0 ${isCompact ? "text-[10px]" : "text-xs"}`}>
+            = R{displayPrice.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
+          </span>
+          <Button variant="ghost" size="icon" className={`text-destructive/60 hover:text-destructive shrink-0 ${isCompact ? "h-4 w-4" : "h-5 w-5"}`} onClick={onRemove}>
+            <Trash2 className={isCompact ? "h-2 w-2" : "h-2.5 w-2.5"} />
+          </Button>
         </div>
-        {/* Qty / Length control */}
-        {isBundleLength ? (
+        {/* Bottom row: slider + -/input/+ */}
+        <div className={`flex items-center gap-2 ${isCompact ? "px-0.5" : "px-1"}`}>
+          <Slider
+            value={[multiplier]}
+            onValueChange={([v]) => isBundleLength ? onUpdateLength(v) : onUpdateQuantity(v)}
+            min={sliderMin}
+            max={sliderMax}
+            step={sliderStep}
+            className="flex-1 min-w-[60px]"
+          />
           <div className="flex items-center gap-0.5 shrink-0">
-            <Button variant="outline" size="icon" className={isCompact ? "h-4 w-4" : "h-5 w-5"} onClick={() => onUpdateLength(Math.max(0.5, (item.length || 1) - 0.5))} disabled={(item.length || 1) <= 0.5}>
-              <Minus className={isCompact ? "h-2 w-2" : "h-2.5 w-2.5"} />
+            <Button variant="outline" size="icon" className={isCompact ? "h-5 w-5" : "h-6 w-6"} onClick={() => isBundleLength ? onUpdateLength(Math.max(sliderMin, multiplier - sliderStep)) : onUpdateQuantity(Math.max(sliderMin, multiplier - sliderStep))} disabled={multiplier <= sliderMin}>
+              <Minus className="h-2.5 w-2.5" />
             </Button>
             <Input
               type="number"
-              min={0.5}
-              step={0.5}
-              value={item.length || 1}
-              onChange={(e) => onUpdateLength(Math.max(0.5, parseFloat(e.target.value) || 0.5))}
-              className={isCompact ? "h-4 w-10 text-[10px] text-center px-0.5" : "h-6 w-14 text-xs text-center px-1"}
+              min={sliderMin}
+              max={sliderMax}
+              step={sliderStep}
+              value={multiplier}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                if (!isNaN(v)) {
+                  const clamped = Math.max(sliderMin, Math.min(sliderMax, v));
+                  isBundleLength ? onUpdateLength(clamped) : onUpdateQuantity(clamped);
+                }
+              }}
+              className={isCompact ? "h-5 w-12 text-[10px] text-center px-0.5" : "h-6 w-14 text-xs text-center px-1"}
             />
-            <Button variant="outline" size="icon" className={isCompact ? "h-4 w-4" : "h-5 w-5"} onClick={() => onUpdateLength((item.length || 1) + 0.5)}>
-              <Plus className={isCompact ? "h-2 w-2" : "h-2.5 w-2.5"} />
+            <Button variant="outline" size="icon" className={isCompact ? "h-5 w-5" : "h-6 w-6"} onClick={() => isBundleLength ? onUpdateLength(Math.min(sliderMax, multiplier + sliderStep)) : onUpdateQuantity(Math.min(sliderMax, multiplier + sliderStep))} disabled={multiplier >= sliderMax}>
+              <Plus className="h-2.5 w-2.5" />
             </Button>
-            <span className={`text-muted-foreground ${isCompact ? "text-[8px]" : "text-[10px]"}`}>m</span>
+            <span className={`text-muted-foreground ${isCompact ? "text-[8px]" : "text-[10px]"}`}>{isBundleLength ? "m" : "qty"}</span>
           </div>
-        ) : (
-          <div className="flex items-center gap-0.5 shrink-0">
-            <Button variant="outline" size="icon" className={isCompact ? "h-4 w-4" : "h-5 w-5"} onClick={() => onUpdateQuantity(item.quantity - 1)} disabled={item.quantity <= 1}>
-              <Minus className={isCompact ? "h-2 w-2" : "h-2.5 w-2.5"} />
-            </Button>
-            <span className={`text-center font-semibold ${isCompact ? "w-4 text-[10px]" : "w-6 text-xs"}`}>{item.quantity}</span>
-            <Button variant="outline" size="icon" className={isCompact ? "h-4 w-4" : "h-5 w-5"} onClick={() => onUpdateQuantity(item.quantity + 1)}>
-              <Plus className={isCompact ? "h-2 w-2" : "h-2.5 w-2.5"} />
-            </Button>
-          </div>
-        )}
-        <span className={`font-bold text-right shrink-0 ${isCompact ? "w-12 text-[10px]" : "w-16 text-xs"}`}>
-          R{displayPrice.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
-        </span>
-        <Button variant="ghost" size="icon" className={`text-destructive/60 hover:text-destructive shrink-0 ${isCompact ? "h-4 w-4" : "h-5 w-5"}`} onClick={onRemove}>
-          <Trash2 className={isCompact ? "h-2 w-2" : "h-2.5 w-2.5"} />
-        </Button>
+        </div>
       </div>
     );
 
