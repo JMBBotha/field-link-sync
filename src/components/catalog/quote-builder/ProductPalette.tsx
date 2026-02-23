@@ -160,18 +160,30 @@ function BundlePaletteCard({
     </div>
   );
 
+  const handleCardClick = useCallback(() => {
+    if (baskets && baskets.length > 0 && onAddBundleToBasket) {
+      onAddBundleToBasket(baskets[0].id, bundle);
+    }
+  }, [baskets, onAddBundleToBasket, bundle]);
+
   return (
-    <div>
+    <div className="rounded-lg border bg-card mb-2">
       <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
-        {draggableContent}
+        <div
+          data-no-dnd="true"
+          onClick={handleCardClick}
+          className="cursor-pointer"
+        >
+          {draggableContent}
+        </div>
       </BundleItemsPopover>
       {baskets && baskets.length > 0 && onAddBundleToBasket && (
-        <div className="flex flex-wrap gap-1.5 mt-1.5 px-2 pb-2">
+        <div className="flex flex-wrap gap-1.5 px-2 pb-2 pt-1">
           {baskets.map((b) => (
             <button
               key={b.id}
               type="button"
-              className="text-[10px] px-2 py-0.5 rounded bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition-colors"
+              className="text-xs px-3 py-1 rounded-md bg-blue-500 text-white hover:bg-blue-600 font-medium"
               onClick={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
