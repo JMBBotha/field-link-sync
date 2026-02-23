@@ -124,14 +124,16 @@ function BundlePaletteCard({
     }
   }, [baskets, onAddBundleToBasket, bundle]);
 
-  const draggableContent = (
-    <div
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      className={`rounded-lg border bg-card mb-2 ${isDragging ? 'opacity-50' : ''}`}
-    >
-      <div className="p-2" data-no-dnd="true" onClick={handleCardClick}>
+  return (
+    <div className={`rounded-lg border bg-card mb-2 ${isDragging ? 'opacity-50' : ''}`}>
+      <div
+        ref={setNodeRef}
+        {...attributes}
+        {...listeners}
+        className="p-2 cursor-grab active:cursor-grabbing"
+        style={{ touchAction: "none" }}
+        onClick={handleCardClick}
+      >
         <div className="flex items-center gap-1 flex-wrap">
           <Package className="h-3 w-3 text-blue-500 shrink-0" />
           <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
@@ -147,33 +149,31 @@ function BundlePaletteCard({
             R{totalPrice.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
           </span>
         </div>
-        {baskets && baskets.length > 0 && onAddBundleToBasket && (
-          <div
-            className="flex flex-wrap gap-1.5 px-2 pb-2 pt-1"
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            {baskets.map((b) => (
-              <button
-                key={b.id}
-                type="button"
-                className="text-xs px-3 py-1 rounded-md bg-blue-500 text-white hover:bg-blue-600 font-medium"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  onAddBundleToBasket(b.id, bundle);
-                }}
-              >
-                + {b.name}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
+      {baskets && baskets.length > 0 && onAddBundleToBasket && (
+        <div
+          className="flex flex-wrap gap-1.5 px-2 pb-2 pt-1"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          {baskets.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              className="text-xs px-3 py-1 rounded-md bg-blue-500 text-white hover:bg-blue-600 font-medium"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onAddBundleToBasket(b.id, bundle);
+              }}
+            >
+              + {b.name}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
-
-  return draggableContent;
 }
 
 interface ProductPaletteProps {
