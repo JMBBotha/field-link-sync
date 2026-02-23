@@ -28,7 +28,13 @@ const QuoteSummaryPanel = ({ baskets }: QuoteSummaryPanelProps) => {
       let zoneTotal = 0;
       let zoneQty = 0;
       b.items.forEach((i) => {
-        if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
+        if (i.isBundle && i.bundleUnitPrice) {
+          if (i.bundlePricingType === "p/meter") {
+            zoneTotal += i.bundleUnitPrice * (i.length || 1);
+          } else {
+            zoneTotal += i.bundleUnitPrice * i.quantity;
+          }
+        } else if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
           zoneTotal += i.product.price_per_metre * i.length;
         } else {
           const price = i.product.selling_price || i.product.cost_incl_vat || 0;
