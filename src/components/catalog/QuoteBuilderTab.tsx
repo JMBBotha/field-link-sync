@@ -53,6 +53,15 @@ export interface PaletteProduct {
   unit_length: number | null;
   pipe_size: string | null;
   is_material_favorite: boolean;
+  pack_qty: number | null;
+}
+
+/** Returns the effective per-unit prices for a product, accounting for pack_qty */
+export function getEffectiveUnitPrices(product: PaletteProduct) {
+  const pq = product.pack_qty && product.pack_qty > 1 ? product.pack_qty : 1;
+  const cost = (product.cost_excl_vat || product.cost_incl_vat || 0) / pq;
+  const sell = (product.selling_price || product.cost_incl_vat || 0) / pq;
+  return { unitCost: cost, unitSell: sell, packQty: pq, isPackItem: pq > 1 };
 }
 
 export interface BasketItem {
@@ -113,7 +122,8 @@ const StickyQuoteSummary = ({ baskets }: { baskets: Basket[] }) => {
         if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
           return s + i.product.price_per_metre * i.length;
         }
-        return s + (i.product.selling_price || i.product.cost_incl_vat || 0) * i.quantity;
+        const { unitSell } = getEffectiveUnitPrices(i.product);
+        return s + unitSell * i.quantity;
       }, 0),
     0
   );
@@ -182,7 +192,7 @@ const QuoteBuilderTab = () => {
     queryKey: ["quote-builder-products"],
     queryFn: async () => {
       const { data, error } = await (supabase.from("supplier_products") as any)
-        .select("id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, suggested_consumables, suppliers(name, supplier_type)")
+        .select("id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, suggested_consumables, pack_qty, suppliers(name, supplier_type)")
         .or("archived.is.null,archived.eq.false")
         .order("is_pinned", { ascending: false })
         .order("pin_order", { ascending: true, nullsFirst: false })
@@ -199,6 +209,7 @@ const QuoteBuilderTab = () => {
         unit_length: p.unit_length || null,
         pipe_size: p.pipe_size || null,
         is_material_favorite: p.is_material_favorite || false,
+        pack_qty: p.pack_qty || null,
       })) as PaletteProduct[];
     },
     staleTime: 60000,

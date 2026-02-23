@@ -3580,6 +3580,7 @@ export type Database = {
           model_range: string | null
           name: string | null
           original_cost_excl_vat: number | null
+          pack_qty: number | null
           pdf_page_id: string | null
           phase: string | null
           pin_order: number
@@ -3635,6 +3636,7 @@ export type Database = {
           model_range?: string | null
           name?: string | null
           original_cost_excl_vat?: number | null
+          pack_qty?: number | null
           pdf_page_id?: string | null
           phase?: string | null
           pin_order?: number
@@ -3690,6 +3692,7 @@ export type Database = {
           model_range?: string | null
           name?: string | null
           original_cost_excl_vat?: number | null
+          pack_qty?: number | null
           pdf_page_id?: string | null
           phase?: string | null
           pin_order?: number

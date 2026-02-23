@@ -3,8 +3,8 @@ import { useDroppable } from "@dnd-kit/core";
 import { Plus, Trash2, Pencil, Check, Minus, Package, ShoppingBag, Copy, Ruler } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getCategoryIcon, getCategoryBg } from "./ProductPalette";
 import { getProductDisplayName } from "./productDisplayUtils";
 import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
@@ -12,6 +12,7 @@ import ConsumablesSuggestionPanel from "./ConsumablesSuggestionPanel";
 import ZoneTemplateSelector from "./ZoneTemplateSelector";
 import BundleItemsPopover from "./BundleItemsPopover";
 import type { Basket, BasketItem, PaletteProduct } from "../QuoteBuilderTab";
+import { getEffectiveUnitPrices } from "../QuoteBuilderTab";
 
 interface BasketCanvasProps {
   baskets: Basket[];
@@ -69,7 +70,8 @@ function DroppableBasket({
     if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
       return s + i.product.price_per_metre * i.length;
     }
-    return s + (i.product.selling_price || i.product.cost_incl_vat || 0) * i.quantity;
+    const { unitSell } = getEffectiveUnitPrices(i.product);
+    return s + unitSell * i.quantity;
   }, 0);
 
   const totalQty = basket.items.reduce((s, i) => s + i.quantity, 0);
@@ -188,9 +190,10 @@ function BasketItemCard({
   onUpdateLength: (length: number) => void;
 }) {
   const isLengthItem = item.product.sold_in_length && !!item.product.price_per_metre;
+  const { unitSell, isPackItem, packQty } = getEffectiveUnitPrices(item.product);
   const price = isLengthItem
     ? (item.product.price_per_metre || 0) * (item.length || 1)
-    : (item.product.selling_price || item.product.cost_incl_vat || 0) * item.quantity;
+    : unitSell * item.quantity;
 
   // Bundle: total = unitPrice × quantity (for p/qty) or unitPrice × length (for p/meter)
   const displayPrice = item.isBundle
@@ -283,6 +286,11 @@ function BasketItemCard({
                     <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 gap-0.5 border-orange-400/40 text-orange-600">
                       <Ruler className="h-2 w-2" />
                       R{(item.product.price_per_metre || 0).toFixed(2)}/m
+                    </Badge>
+                  )}
+                  {!isLengthItem && isPackItem && (
+                    <Badge variant="outline" className="text-[7px] px-0.5 py-0 h-3 border-muted-foreground/40 text-muted-foreground">
+                      pk/{packQty} · R{unitSell.toFixed(2)}/ea
                     </Badge>
                   )}
                 </>

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Basket } from "../QuoteBuilderTab";
+import { getEffectiveUnitPrices } from "../QuoteBuilderTab";
 import { generateQuoteBuilderPDF } from "@/lib/quoteBuilderPDF";
 import { getProductDisplayName } from "./productDisplayUtils";
 
@@ -37,8 +38,8 @@ const QuoteSummaryPanel = ({ baskets }: QuoteSummaryPanelProps) => {
         } else if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
           zoneTotal += i.product.price_per_metre * i.length;
         } else {
-          const price = i.product.selling_price || i.product.cost_incl_vat || 0;
-          zoneTotal += price * i.quantity;
+          const { unitSell } = getEffectiveUnitPrices(i.product);
+          zoneTotal += unitSell * i.quantity;
         }
         zoneQty += i.quantity;
       });
