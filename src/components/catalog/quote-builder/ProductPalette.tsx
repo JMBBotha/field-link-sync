@@ -77,10 +77,14 @@ function BundlePaletteCard({
   bundle,
   searchTerm,
   isDraggingGlobal,
+  baskets,
+  onAddBundleToBasket,
 }: {
   bundle: PaletteBundle;
   searchTerm: string;
   isDraggingGlobal?: boolean;
+  baskets?: Basket[];
+  onAddBundleToBasket?: (basketId: string, bundle: PaletteBundle) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `bundle-${bundle.id}`,
@@ -114,7 +118,7 @@ function BundlePaletteCard({
       }, 0);
   }, [subItems]);
 
-  const cardContent = (
+  const draggableContent = (
     <div
       ref={setNodeRef}
       {...attributes}
@@ -157,9 +161,25 @@ function BundlePaletteCard({
   );
 
   return (
-    <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
-      {cardContent}
-    </BundleItemsPopover>
+    <div className="space-y-1">
+      <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
+        {draggableContent}
+      </BundleItemsPopover>
+      {baskets && baskets.length > 0 && onAddBundleToBasket && (
+        <div className="flex gap-1 flex-wrap px-1">
+          {baskets.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+              onClick={() => onAddBundleToBasket(b.id, bundle)}
+            >
+              + {b.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -178,6 +198,7 @@ interface ProductPaletteProps {
   bundlesLoading?: boolean;
   baskets?: Basket[];
   onAddProductToBasket?: (basketId: string, product: PaletteProduct) => void;
+  onAddBundleToBasket?: (basketId: string, bundle: PaletteBundle) => void;
   onOpenVisualPanel?: () => void;
 }
 
@@ -365,6 +386,7 @@ const ProductPalette = ({
   bundlesLoading = false,
   baskets = [],
   onAddProductToBasket,
+  onAddBundleToBasket,
   onOpenVisualPanel,
 }: ProductPaletteProps) => {
   const filteredProducts = useMemo(() => {
@@ -479,6 +501,8 @@ const ProductPalette = ({
                       bundle={bundle}
                       searchTerm={searchQuery}
                       isDraggingGlobal={isDraggingGlobal}
+                      baskets={baskets}
+                      onAddBundleToBasket={onAddBundleToBasket}
                     />
                   ))}
                 </div>

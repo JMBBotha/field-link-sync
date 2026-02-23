@@ -661,6 +661,7 @@ const QuoteBuilderTab = () => {
               bundlesLoading={bundlesLoading}
               baskets={baskets}
               onAddProductToBasket={addProductToBasket}
+              onAddBundleToBasket={addBundleToBasket}
               onOpenVisualPanel={() => setVisualPanelOpen(true)}
             />
           </div>
