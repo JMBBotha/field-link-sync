@@ -213,26 +213,36 @@ function BasketItemCard({
     const sliderMax = 50;
     const sliderStep = isBundleLength ? 0.5 : 1;
 
-    const bundleCard = (
+    const nameLabel = (
+      <div className="min-w-0 flex-1">
+        <p className={`font-medium truncate cursor-pointer hover:text-primary transition-colors ${isCompact ? "text-[10px]" : "text-xs"}`}>{item.bundleName}</p>
+        <div className="flex items-center gap-1">
+          <Badge variant="outline" className={`${isCompact ? "text-[7px] px-0.5 py-0 h-3" : "text-[8px] px-1 py-0 h-3.5"}`}>
+            {item.bundleItems?.length || 0} items
+          </Badge>
+          <Badge variant="outline" className={`${isCompact ? "text-[7px] px-0.5 py-0 h-3" : "text-[8px] px-1 py-0 h-3.5"} ${
+            isBundleLength ? "border-orange-400/40 text-orange-600" : "border-blue-400/40 text-blue-600"
+          }`}>
+            R{bundleUnitPx.toFixed(0)}/{isBundleLength ? "m" : "ea"}
+          </Badge>
+        </div>
+      </div>
+    );
+
+    const wrappedName = item.bundleItems && item.bundleName ? (
+      <BundleItemsPopover bundleName={item.bundleName} items={item.bundleItems} side="left">
+        {nameLabel}
+      </BundleItemsPopover>
+    ) : nameLabel;
+
+    return (
       <div className={`flex flex-col rounded-md border border-primary/30 bg-primary/5 ${isCompact ? "p-1 gap-0.5" : "p-1.5 gap-1"}`}>
-        {/* Top row: icon, name, badges, breakdown, total, delete */}
+        {/* Top row: icon, name (hover for details), badges, breakdown, total, delete */}
         <div className={`flex items-center gap-2 text-xs ${isCompact ? "gap-1" : ""}`}>
           <div className="shrink-0 rounded p-1 bg-primary/10">
             <Package className={isCompact ? "h-2.5 w-2.5 text-primary" : "h-3 w-3 text-primary"} />
           </div>
-          <div className="min-w-0 flex-1">
-            <p className={`font-medium truncate ${isCompact ? "text-[10px]" : "text-xs"}`}>{item.bundleName}</p>
-            <div className="flex items-center gap-1">
-              <Badge variant="outline" className={`${isCompact ? "text-[7px] px-0.5 py-0 h-3" : "text-[8px] px-1 py-0 h-3.5"}`}>
-                {item.bundleItems?.length || 0} items
-              </Badge>
-              <Badge variant="outline" className={`${isCompact ? "text-[7px] px-0.5 py-0 h-3" : "text-[8px] px-1 py-0 h-3.5"} ${
-                isBundleLength ? "border-orange-400/40 text-orange-600" : "border-blue-400/40 text-blue-600"
-              }`}>
-                R{bundleUnitPx.toFixed(0)}/{isBundleLength ? "m" : "ea"}
-              </Badge>
-            </div>
-          </div>
+          {wrappedName}
           <span className={`text-muted-foreground whitespace-nowrap shrink-0 ${isCompact ? "text-[8px]" : "text-[10px]"}`}>
             {isBundleLength ? `${multiplier}m` : `×${multiplier}`} × R{bundleUnitPx.toFixed(0)}
           </span>
@@ -280,15 +290,6 @@ function BasketItemCard({
         </div>
       </div>
     );
-
-    if (item.bundleItems && item.bundleName) {
-      return (
-        <BundleItemsPopover bundleName={item.bundleName} items={item.bundleItems} side="left">
-          {bundleCard}
-        </BundleItemsPopover>
-      );
-    }
-    return bundleCard;
   }
 
   // --- Regular product card (unchanged) ---
