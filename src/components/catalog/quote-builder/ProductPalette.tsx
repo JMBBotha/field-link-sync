@@ -161,25 +161,29 @@ function BundlePaletteCard({
   );
 
   return (
-    <div className="space-y-1">
-      <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
+    <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
+      <div>
         {draggableContent}
-      </BundleItemsPopover>
-      {baskets && baskets.length > 0 && onAddBundleToBasket && (
-        <div className="flex gap-1 flex-wrap px-1">
-          {baskets.map((b) => (
-            <button
-              key={b.id}
-              type="button"
-              className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
-              onClick={() => onAddBundleToBasket(b.id, bundle)}
-            >
-              + {b.name}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+        {baskets && baskets.length > 0 && onAddBundleToBasket && (
+          <div className="flex gap-1.5 flex-wrap mt-1.5 px-0.5" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+            {baskets.map((b) => (
+              <button
+                key={b.id}
+                type="button"
+                className="text-xs px-2.5 py-1 rounded-md border border-primary/30 bg-primary/10 text-primary hover:bg-primary/25 transition-colors font-semibold shadow-sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onAddBundleToBasket(b.id, bundle);
+                }}
+              >
+                + {b.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </BundleItemsPopover>
   );
 }
 
