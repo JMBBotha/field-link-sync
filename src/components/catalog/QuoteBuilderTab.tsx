@@ -56,12 +56,23 @@ export interface PaletteProduct {
   pack_qty: number | null;
 }
 
-/** Returns the effective per-unit prices for a product, accounting for pack_qty */
-export function getEffectiveUnitPrices(product: PaletteProduct) {
-  const pq = product.pack_qty && product.pack_qty > 1 ? product.pack_qty : 1;
-  const cost = (product.cost_excl_vat || product.cost_incl_vat || 0) / pq;
-  const sell = (product.selling_price || product.cost_incl_vat || 0) / pq;
-  return { unitCost: cost, unitSell: sell, packQty: pq, isPackItem: pq > 1 };
+/** Returns the effective per-unit prices for a product, accounting for pack_qty and length */
+export function getEffectiveUnitPrices(product: PaletteProduct, isLengthOverride?: boolean) {
+  const isLength = isLengthOverride ?? (product.sold_in_length && !!product.price_per_metre);
+  const pq = product.pack_qty && product.pack_qty > 1 && !isLength ? product.pack_qty : 1;
+
+  let unitSell: number;
+  let unitCost: number;
+
+  if (isLength) {
+    unitSell = product.price_per_metre || (product.selling_price || 0) / (product.unit_length || 1);
+    unitCost = (product.cost_incl_vat || product.cost_excl_vat || 0) / (product.unit_length || 1);
+  } else {
+    unitSell = (product.selling_price || product.cost_incl_vat || 0) / pq;
+    unitCost = (product.cost_excl_vat || product.cost_incl_vat || 0) / pq;
+  }
+
+  return { unitCost, unitSell, isPackItem: pq > 1, packQty: pq };
 }
 
 export interface BasketItem {
