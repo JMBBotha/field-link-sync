@@ -1,0 +1,1 @@
+ALTER TABLE public.supplier_products ADD COLUMN IF NOT EXISTS pack_qty integer DEFAULT NULL;

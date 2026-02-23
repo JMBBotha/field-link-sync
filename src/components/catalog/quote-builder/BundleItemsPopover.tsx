@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { getProductDisplayName } from "./productDisplayUtils";
 import type { PaletteProduct } from "../QuoteBuilderTab";
+import { getEffectiveUnitPrices } from "../QuoteBuilderTab";
 import { determinePricingMode } from "./pricingModeUtils";
 
 export interface BundleSubItem {
@@ -71,12 +72,13 @@ function PopoverBody({
   // Compute per-item details
   const rows = nonOptional.map((item) => {
     const isLen = item.isLengthItem && item.product.price_per_metre;
+    const { unitCost, unitSell, isPackItem, packQty } = getEffectiveUnitPrices(item.product);
     const costPerUnit = isLen
       ? (item.product.price_per_metre || 0)
-      : (item.product.cost_excl_vat || item.product.cost_incl_vat || 0);
+      : unitCost;
     const sellPerUnit = isLen
       ? (item.product.price_per_metre || 0)
-      : (item.product.selling_price || item.product.cost_incl_vat || 0);
+      : unitSell;
     const qtyOrLen = isLen ? (item.length || 1) : item.quantity;
     const markupAmt = sellPerUnit - costPerUnit;
     const markupPct = costPerUnit > 0 ? (markupAmt / costPerUnit) * 100 : 0;
@@ -97,6 +99,8 @@ function PopoverBody({
       lineTotal,
       lineCost,
       lineMarkup,
+      isPackItem,
+      packQty,
     };
   });
 
@@ -130,13 +134,20 @@ function PopoverBody({
           <tbody>
             {rows.map((r, idx) => (
               <tr key={idx} className="border-b border-border/30">
-                <td className="py-1 pr-1 max-w-[100px]">
+                <td className="py-1 pr-1 max-w-[110px]">
                   <span className="truncate block text-foreground leading-tight">
                     {getProductDisplayName(r.item.product)}
                   </span>
-                  <span className="font-mono text-[8px] text-muted-foreground">
-                    {r.item.product.product_code}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className="font-mono text-[8px] text-muted-foreground">
+                      {r.item.product.product_code}
+                    </span>
+                    {r.isPackItem && (
+                      <Badge variant="outline" className="text-[6px] px-0.5 py-0 h-3 border-muted-foreground/40 text-muted-foreground">
+                        pk/{r.packQty}
+                      </Badge>
+                    )}
+                  </div>
                 </td>
                 <td className="text-right py-1 px-0.5 text-muted-foreground whitespace-nowrap">
                   R{fmt(r.costPerUnit)}

@@ -33,6 +33,7 @@ interface ConsumableProduct {
   min_cut_length: number;
   is_price_on_request: boolean;
   pipe_size: string | null;
+  pack_qty: number | null;
 }
 
 interface ConsumablesCatalogTableProps {
@@ -56,7 +57,7 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
     queryFn: async () => {
       const { data, error } = await (supabase
         .from("supplier_products") as any)
-        .select("id, product_code, description, category, cost_price, selling_price, default_markup_percent, sold_in_length, unit_length, unit_length_unit, price_per_metre, min_cut_length, is_price_on_request, pipe_size, archived")
+        .select("id, product_code, description, category, cost_price, selling_price, default_markup_percent, sold_in_length, unit_length, unit_length_unit, price_per_metre, min_cut_length, is_price_on_request, pipe_size, archived, pack_qty")
         .eq("supplier_id", supplierId)
         .or("archived.is.null,archived.eq.false")
         .eq("product_type", "consumable")
@@ -246,7 +247,8 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
                 <SortHeader label="Price/m" colKey="price_per_metre" className="text-right" />
                 <SortHeader label="Markup %" colKey="default_markup_percent" className="text-right" />
                 <SortHeader label="Sell Price" colKey="selling_price" className="text-right" />
-                <th className="p-2 w-8"></th>
+                <th className="p-2 font-medium text-right text-muted-foreground">Pack Qty</th>
+                <th className="p-2 font-medium text-right text-muted-foreground">Unit Price</th>
               </tr>
             </thead>
             <tbody>
@@ -290,6 +292,18 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
                     {product.is_price_on_request
                       ? "—"
                       : formatZAR(product.selling_price || product.cost_price * (1 + product.default_markup_percent / 100))}
+                  </td>
+                  <td className="p-2 text-right whitespace-nowrap">
+                    {product.pack_qty && product.pack_qty > 1 ? (
+                      <Badge variant="outline" className="text-[9px]">pk/{product.pack_qty}</Badge>
+                    ) : "—"}
+                  </td>
+                  <td className="p-2 text-right whitespace-nowrap">
+                    {product.pack_qty && product.pack_qty > 1 ? (
+                      <span className="text-primary font-semibold text-[10px]">
+                        {formatZAR(product.selling_price / product.pack_qty)}/ea
+                      </span>
+                    ) : "—"}
                   </td>
                   <td className="p-2">
                     {product.sold_in_length && product.price_per_metre ? (
