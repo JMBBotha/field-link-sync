@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useDroppable } from "@dnd-kit/core";
-import { Plus, Trash2, Pencil, Check, Minus, Package, ShoppingBag, Copy, Ruler } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, Minus, Package, ShoppingBag, Copy, Ruler, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -192,6 +192,7 @@ function BasketItemCard({
 }) {
   const isLengthItem = item.product.sold_in_length && !!item.product.price_per_metre;
   const { unitSell, isPackItem, packQty } = getEffectiveUnitPrices(item.product);
+  const [bundleExpanded, setBundleExpanded] = useState(false);
   const price = isLengthItem
     ? (item.product.price_per_metre || 0) * (item.length || 1)
     : unitSell * item.quantity;
@@ -205,30 +206,16 @@ function BasketItemCard({
 
   const isBundleLength = item.isBundle && item.bundlePricingType === "p/meter";
 
-  // --- Bundle card: compact single-line like products, details on hover ---
+  // --- Bundle card: collapsed single row with expand toggle ---
   if (item.isBundle) {
     const bundleUnitPx = item.bundleUnitPrice || 0;
+    const isBundleLength = item.bundlePricingType === "p/meter";
     const multiplier = isBundleLength ? (item.length || 1) : item.quantity;
     const sliderMin = isBundleLength ? 0.5 : 1;
     const sliderMax = 50;
     const sliderStep = isBundleLength ? 0.5 : 1;
     const bundleDisplayPrice = multiplier * bundleUnitPx;
-
-    const nameLabel = (
-      <div className="flex items-center gap-1 min-w-0 shrink-0">
-        <Package className="h-3 w-3 text-blue-500 shrink-0" />
-        <span className="font-medium text-xs truncate max-w-[90px]">{item.bundleName}</span>
-        <Badge variant="secondary" className="text-[9px] px-1 py-0 shrink-0">
-          {item.bundleItems?.length || 0} items
-        </Badge>
-      </div>
-    );
-
-    const wrappedName = item.bundleItems && item.bundleName ? (
-      <BundleItemsPopover bundleName={item.bundleName} items={item.bundleItems} side="top">
-        {nameLabel}
-      </BundleItemsPopover>
-    ) : nameLabel;
+    const expanded = bundleExpanded;
 
     const decrement = () => isBundleLength
       ? onUpdateLength(Math.max(sliderMin, multiplier - sliderStep))
@@ -245,26 +232,82 @@ function BasketItemCard({
     };
 
     return (
-      <div className="flex items-center gap-1.5 rounded border bg-blue-50 dark:bg-blue-950/30 p-1.5 text-xs flex-wrap">
-        {wrappedName}
-        <Button variant="outline" size="icon" className="h-5 w-5 shrink-0" onClick={decrement} disabled={multiplier <= sliderMin}>
-          <Minus className="h-3 w-3" />
-        </Button>
-        <Input
-          type="number" min={sliderMin} max={sliderMax} step={sliderStep} value={multiplier}
-          onChange={handleInputChange}
-          className="h-5 w-12 text-[10px] text-center px-0.5 shrink-0"
-        />
-        <Button variant="outline" size="icon" className="h-5 w-5 shrink-0" onClick={increment} disabled={multiplier >= sliderMax}>
-          <Plus className="h-3 w-3" />
-        </Button>
-        <span className="text-[9px] text-muted-foreground shrink-0">{isBundleLength ? 'm' : 'ea'}</span>
-        <span className="font-semibold text-xs whitespace-nowrap shrink-0 ml-auto">
-          R{bundleDisplayPrice.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}
-        </span>
-        <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0" onClick={onRemove}>
-          <Trash2 className="h-3 w-3" />
-        </Button>
+      <div className="rounded border bg-accent/30 dark:bg-accent/10 overflow-hidden">
+        {/* Collapsed header row */}
+        <div className="flex items-center gap-1.5 p-1.5 text-xs">
+          <button
+            className="shrink-0 p-0.5 rounded hover:bg-muted transition-colors"
+            onClick={() => setBundleExpanded(!expanded)}
+            title={expanded ? "Collapse" : "Expand sub-items"}
+          >
+            {expanded
+              ? <ChevronDown className="h-3 w-3 text-muted-foreground" />
+              : <ChevronRight className="h-3 w-3 text-muted-foreground" />
+            }
+          </button>
+
+          <div className="flex items-center gap-1 min-w-0 flex-1">
+            <Package className="h-3 w-3 text-primary shrink-0" />
+            {item.bundleItems && item.bundleName ? (
+              <BundleItemsPopover bundleName={item.bundleName} items={item.bundleItems} side="top">
+                <span className="font-medium truncate max-w-[100px] cursor-pointer hover:underline">{item.bundleName}</span>
+              </BundleItemsPopover>
+            ) : (
+              <span className="font-medium truncate max-w-[100px]">{item.bundleName}</span>
+            )}
+            <Badge variant="secondary" className="text-[9px] px-1 py-0 shrink-0">
+              {item.bundleItems?.length || 0} items
+            </Badge>
+          </div>
+
+          {/* Multiplier control */}
+          <Button variant="outline" size="icon" className="h-5 w-5 shrink-0" onClick={decrement} disabled={multiplier <= sliderMin}>
+            <Minus className="h-3 w-3" />
+          </Button>
+          <Input
+            type="number" min={sliderMin} max={sliderMax} step={sliderStep} value={multiplier}
+            onChange={handleInputChange}
+            className="h-5 w-12 text-[10px] text-center px-0.5 shrink-0"
+          />
+          <Button variant="outline" size="icon" className="h-5 w-5 shrink-0" onClick={increment} disabled={multiplier >= sliderMax}>
+            <Plus className="h-3 w-3" />
+          </Button>
+          <span className="text-[9px] text-muted-foreground shrink-0">{isBundleLength ? 'm' : '×'}</span>
+
+          <span className="font-semibold text-xs whitespace-nowrap shrink-0 ml-auto">
+            R{bundleDisplayPrice.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}
+          </span>
+          <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0 text-destructive/60 hover:text-destructive" onClick={onRemove}>
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+
+        {/* Expanded sub-items (read-only) */}
+        {expanded && item.bundleItems && item.bundleItems.length > 0 && (
+          <div className="border-t border-border/50 bg-muted/30 px-3 py-1.5 space-y-0.5">
+            {item.bundleItems.map((sub, idx) => {
+              const subQty = sub.isLengthItem
+                ? (sub.length || 1) * multiplier
+                : sub.quantity * multiplier;
+              const subPrice = sub.isLengthItem
+                ? (sub.product.price_per_metre || 0) * subQty
+                : (sub.product.selling_price || sub.product.cost_excl_vat || 0) * subQty;
+              return (
+                <div key={idx} className="flex items-center justify-between text-[10px] text-muted-foreground">
+                  <span className="truncate flex-1 min-w-0 pl-4">
+                    {getProductDisplayName(sub.product)}
+                  </span>
+                  <span className="shrink-0 tabular-nums">
+                    {sub.isLengthItem ? `${subQty.toFixed(1)}m` : `×${subQty}`}
+                  </span>
+                  <span className="shrink-0 w-14 text-right tabular-nums">
+                    R{subPrice.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   }
