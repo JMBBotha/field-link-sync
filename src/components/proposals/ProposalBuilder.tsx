@@ -617,10 +617,15 @@ const ProposalBuilder = ({
               </div>
             )}
           </div>
-          <div className="flex flex-col items-end text-right">
+          <div className="flex flex-col items-end text-right gap-2">
             <p className="font-bold text-lg text-foreground">{companySettings.company_name || "Your Company"}</p>
-            {companySettings.physical_address && <p className="text-sm text-muted-foreground">{companySettings.physical_address}</p>}
-            {companySettings.vat_number && <p className="text-sm text-muted-foreground">VAT: {companySettings.vat_number}</p>}
+            <div>
+              {companySettings.physical_address && <p className="text-sm text-muted-foreground">{companySettings.physical_address}</p>}
+              {companySettings.vat_number && <p className="text-sm text-muted-foreground">VAT: {companySettings.vat_number}</p>}
+            </div>
+            <p className="text-xs text-muted-foreground/70 mt-1">
+              Phone: 0800 BE COOL &nbsp;|&nbsp; Email: info@0800becool.co.za &nbsp;|&nbsp; Website: www.0800becool.co.za
+            </p>
           </div>
         </div>
 
