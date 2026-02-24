@@ -609,19 +609,12 @@ const ProposalBuilder = ({
         {/* ── HEADER ROW ── */}
         <div className="flex flex-row items-start justify-between py-3 gap-8">
           {/* Logo – left (branding only) */}
-          <div className="shrink-0 flex flex-col items-start gap-2 max-w-[50%]">
+          <div className="shrink-0 max-w-[50%]">
             {logoUrl ? (
               <img src={logoUrl} alt="Company logo" className="max-h-[165px] w-auto object-contain" />
             ) : (
               <p className="text-2xl font-black tracking-tight text-foreground">{companySettings.company_name || "Your Company"}</p>
             )}
-            <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground/60">
-              <span>0800 BE COOL</span>
-              <span className="text-muted-foreground/30">|</span>
-              <span>info@0800becool.co.za</span>
-              <span className="text-muted-foreground/30">|</span>
-              <span>www.0800becool.co.za</span>
-            </div>
           </div>
           {/* Company details – right */}
           <div className="flex flex-col items-end text-right ml-auto space-y-1">
@@ -632,6 +625,13 @@ const ProposalBuilder = ({
             {companySettings.vat_number && (
               <p className="text-sm font-medium text-muted-foreground">VAT: {companySettings.vat_number}</p>
             )}
+            <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground/60 pt-1">
+              <span>0800 BE COOL</span>
+              <span className="text-muted-foreground/30">|</span>
+              <span>info@0800becool.co.za</span>
+              <span className="text-muted-foreground/30">|</span>
+              <span>www.0800becool.co.za</span>
+            </div>
           </div>
         </div>
 
