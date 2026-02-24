@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -23,7 +22,7 @@ import FallbackProductPanel from "./FallbackProductPanel";
 import PdfLinkButton from "./PdfLinkButton";
 import PdfMagnifier from "./PdfMagnifier";
 import CompactZonesSidebar from "./CompactZonesSidebar";
-import { getProductDisplayName } from "./productDisplayUtils";
+import EnhancedProductPopup from "./EnhancedProductPopup";
 
 import CategoryNavBar, { groupCategory } from "./CategoryNavBar";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
@@ -70,31 +69,10 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const [deleting, setDeleting] = useState(false);
   const [hoveredProduct, setHoveredProduct] = useState<PaletteProduct | null>(null);
   const [hoverEvent, setHoverEvent] = useState<{ clientX: number; clientY: number } | null>(null);
-  const hoverPopupRef = useRef<HTMLDivElement>(null);
-  const [hoverPopupPos, setHoverPopupPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
   const handleHoverProduct = useCallback((product: PaletteProduct | null, mouseEvent: { clientX: number; clientY: number } | null) => {
     setHoveredProduct(product);
     setHoverEvent(mouseEvent);
-    if (!product || !mouseEvent) return;
-    const GAP = 16;
-    const EDGE = 12;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    let pw = 340;
-    let ph = 200;
-    if (hoverPopupRef.current) {
-      const r = hoverPopupRef.current.getBoundingClientRect();
-      if (r.width > 0) pw = r.width;
-      if (r.height > 0) ph = r.height;
-    }
-    let left = mouseEvent.clientX + GAP;
-    let top = mouseEvent.clientY + GAP;
-    if (left + pw > vw - EDGE) left = mouseEvent.clientX - pw - GAP;
-    if (top + ph > vh - EDGE) top = mouseEvent.clientY - ph - GAP;
-    left = Math.max(EDGE, Math.min(left, vw - pw - EDGE));
-    top = Math.max(EDGE, Math.min(top, vh - ph - EDGE));
-    setHoverPopupPos({ top, left });
   }, []);
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const [activeCategory, setActiveCategory] = useState<string | undefined>();
@@ -650,46 +628,15 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
         </div>
       </div>
 
-      {/* Centralized hover popup — portaled to body */}
-      {hoveredProduct && hoverEvent && createPortal(
-        <div
-          ref={hoverPopupRef}
-          className="fixed pointer-events-none z-[9999] bg-popover border rounded-xl shadow-2xl w-[340px] max-w-[90vw] p-4 animate-in fade-in zoom-in-95 duration-150"
-          style={{ top: `${hoverPopupPos.top}px`, left: `${hoverPopupPos.left}px` }}
-        >
-          <div className="space-y-1.5">
-            <p className="text-sm font-semibold text-foreground truncate">
-              {getProductDisplayName(hoveredProduct)}
-            </p>
-            <p className="text-xs font-mono text-primary/80">{hoveredProduct.product_code}</p>
-            <div className="flex items-center gap-2">
-              <span className="text-base font-bold text-foreground">
-                R{(hoveredProduct.selling_price || hoveredProduct.cost_incl_vat || 0).toLocaleString("en-ZA")}
-              </span>
-              {hoveredProduct.sold_in_length && hoveredProduct.price_per_metre && (
-                <span className="text-[10px] text-orange-600 font-medium border border-orange-400/40 rounded px-1">
-                  R{hoveredProduct.price_per_metre.toFixed(2)}/m
-                </span>
-              )}
-            </div>
-            {hoveredProduct.brand && (
-              <p className="text-xs text-muted-foreground">{hoveredProduct.brand}</p>
-            )}
-            {hoveredProduct.description && (
-              <p className="text-[10px] text-muted-foreground/80 line-clamp-2">{hoveredProduct.description}</p>
-            )}
-            {basketProductCounts[hoveredProduct.id] > 0 && (
-              <p className="text-xs font-medium text-primary">
-                In quote: ×{basketProductCounts[hoveredProduct.id]}
-              </p>
-            )}
-            {hoveredProduct.is_pinned && (
-              <p className="text-[10px] font-medium text-yellow-600">★ Favorite</p>
-            )}
-            <p className="text-[9px] text-muted-foreground/50 mt-1">Click row to add to quote</p>
-          </div>
-        </div>,
-        document.body
+      {/* Centralized hover popup via EnhancedProductPopup */}
+      {hoveredProduct && (
+        <EnhancedProductPopup
+          product={hoveredProduct}
+          mouseEvent={hoverEvent}
+          isVisible={!!hoveredProduct}
+          isHoverMode
+          basketProductCounts={basketProductCounts}
+        />
       )}
     </>
   );

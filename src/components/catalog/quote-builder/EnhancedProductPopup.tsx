@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { Plus, Minus, Star, ShoppingBag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,13 +10,17 @@ import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
 interface EnhancedProductPopupProps {
   product: PaletteProduct;
-  baskets: Basket[];
-  onAddProductToBasket: (basketId: string, product: PaletteProduct) => void;
-  onAddBasket: () => void;
-  onClose: () => void;
-  basketProductCounts: Record<string, number>;
+  baskets?: Basket[];
+  onAddProductToBasket?: (basketId: string, product: PaletteProduct) => void;
+  onAddBasket?: () => void;
+  onClose?: () => void;
+  basketProductCounts?: Record<string, number>;
   /** Pass the mouse event that triggered this popup for cursor-relative positioning */
   mouseEvent?: { clientX: number; clientY: number } | null;
+  /** When true, renders as a lightweight pointer-events-none hover card (no backdrop/zones) */
+  isHoverMode?: boolean;
+  /** Controls visibility in hover mode */
+  isVisible?: boolean;
 }
 
 const OFFSET = 14;
@@ -23,12 +28,14 @@ const EDGE_MARGIN = 16;
 
 const EnhancedProductPopup = ({
   product,
-  baskets,
+  baskets = [],
   onAddProductToBasket,
   onAddBasket,
   onClose,
-  basketProductCounts,
+  basketProductCounts = {},
   mouseEvent,
+  isHoverMode = false,
+  isVisible = true,
 }: EnhancedProductPopupProps) => {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const popupRef = useRef<HTMLDivElement>(null);
@@ -40,13 +47,14 @@ const EnhancedProductPopup = ({
   // Position near cursor, clamped to viewport
   useLayoutEffect(() => {
     if (!popupRef.current) return;
+    if (isHoverMode && !isVisible) return;
+
     const rect = popupRef.current.getBoundingClientRect();
-    const pw = rect.width;
-    const ph = rect.height;
+    const pw = rect.width || 340;
+    const ph = rect.height || 200;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
 
-    // Default: center of viewport (fallback when no mouseEvent)
     let cx = vw / 2;
     let cy = vh / 2;
     if (mouseEvent) {
@@ -57,20 +65,13 @@ const EnhancedProductPopup = ({
     let x = cx + OFFSET;
     let y = cy + OFFSET;
 
-    // Flip horizontally if near right edge
-    if (x + pw > vw - EDGE_MARGIN) {
-      x = cx - pw - OFFSET;
-    }
-    // Flip vertically if near bottom edge
-    if (y + ph > vh - EDGE_MARGIN) {
-      y = cy - ph - OFFSET;
-    }
-    // Safety clamp
+    if (x + pw > vw - EDGE_MARGIN) x = cx - pw - OFFSET;
+    if (y + ph > vh - EDGE_MARGIN) y = cy - ph - OFFSET;
     x = Math.max(EDGE_MARGIN, Math.min(x, vw - pw - EDGE_MARGIN));
     y = Math.max(EDGE_MARGIN, Math.min(y, vh - ph - EDGE_MARGIN));
 
     setPos({ top: y, left: x });
-  }, [mouseEvent]);
+  }, [mouseEvent, isHoverMode, isVisible]);
 
   const handleSetQty = useCallback((basketId: string, qty: number) => {
     setQuantities((prev) => ({ ...prev, [basketId]: Math.max(0, qty) }));
@@ -79,14 +80,14 @@ const EnhancedProductPopup = ({
   const handleAddAll = useCallback(() => {
     Object.entries(quantities).forEach(([basketId, qty]) => {
       for (let i = 0; i < qty; i++) {
-        onAddProductToBasket(basketId, product);
+        onAddProductToBasket?.(basketId, product);
       }
     });
-    onClose();
+    onClose?.();
   }, [quantities, onAddProductToBasket, product, onClose]);
 
   const handleQuickAdd = useCallback((basketId: string) => {
-    onAddProductToBasket(basketId, product);
+    onAddProductToBasket?.(basketId, product);
   }, [onAddProductToBasket, product]);
 
   const zoneTotals = useMemo(() => {
@@ -104,6 +105,61 @@ const EnhancedProductPopup = ({
 
   const hasQuantities = Object.values(quantities).some((q) => q > 0);
 
+  // ── Hover mode: lightweight info card, portaled, pointer-events-none ──
+  if (isHoverMode) {
+    if (!isVisible) return null;
+
+    const content = (
+      <div
+        ref={popupRef}
+        className="fixed pointer-events-none z-[9999] bg-popover border rounded-xl shadow-2xl w-[340px] max-w-[90vw] p-4 animate-in fade-in zoom-in-95 duration-150"
+        style={{ top: `${pos.top}px`, left: `${pos.left}px` }}
+      >
+        <div className="space-y-1.5">
+          <div className="flex items-start gap-2">
+            <div className={`shrink-0 rounded-lg p-1.5 ${getCategoryBg(product.product_category)}`}>
+              {getCategoryIcon(product.product_category, "h-4 w-4")}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground truncate">
+                {getProductDisplayName(product)}
+              </p>
+              <p className="text-xs font-mono text-primary/80">{product.product_code}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-base font-bold text-foreground">
+              R{price.toLocaleString("en-ZA")}
+            </span>
+            {product.sold_in_length && product.price_per_metre && (
+              <span className="text-[10px] text-orange-600 font-medium border border-orange-400/40 rounded px-1">
+                R{product.price_per_metre.toFixed(2)}/m
+              </span>
+            )}
+          </div>
+          {product.brand && (
+            <p className="text-xs text-muted-foreground">{product.brand}</p>
+          )}
+          {product.description && (
+            <p className="text-[10px] text-muted-foreground/80 line-clamp-2">{product.description}</p>
+          )}
+          {inQuoteQty > 0 && (
+            <p className="text-xs font-medium text-primary">
+              In quote: ×{inQuoteQty}
+            </p>
+          )}
+          {product.is_pinned && (
+            <p className="text-[10px] font-medium text-yellow-600">★ Favorite</p>
+          )}
+          <p className="text-[9px] text-muted-foreground/50 mt-1">Click row to add to quote</p>
+        </div>
+      </div>
+    );
+
+    return createPortal(content, document.body);
+  }
+
+  // ── Click mode: full interactive popup with backdrop & zones ──
   return (
     <div
       className="fixed inset-0 z-[60]"
@@ -216,7 +272,7 @@ const EnhancedProductPopup = ({
             size="sm"
             className="gap-1 text-xs"
             onClick={() => {
-              onAddBasket();
+              onAddBasket?.();
             }}
           >
             <Plus className="h-3 w-3" />
