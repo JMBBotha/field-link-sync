@@ -571,7 +571,7 @@ const CreateInvoicePage = ({
 
             <div className="space-y-1">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Amount Due (ZAR)</p>
-              <p className="text-xl font-bold px-2 py-0.5" style={{ color: "#0077B6" }}>{formatCurrency(amountDue)}</p>
+              <p className="text-[28px] font-bold px-2 py-0.5" style={{ color: "#0077B6" }}>{formatCurrency(amountDue)}</p>
             </div>
           </div>
 
@@ -589,7 +589,7 @@ const CreateInvoicePage = ({
           </div>
         </div>
 
-        <div className="h-px bg-border" />
+        <div className="h-[2px] w-full" style={{ backgroundColor: "#2c3e6b" }} />
 
         {/* ── LINE ITEMS TABLE ── */}
         <div>
