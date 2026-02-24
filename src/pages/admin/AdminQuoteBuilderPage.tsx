@@ -107,6 +107,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
   };
 
   const handleSave = async () => {
+    if (!selectedClientId) { toast({ title: "Client Required", description: "Please assign a client before saving this quote.", variant: "destructive" }); return; }
     if (!quoteName.trim()) { toast({ title: "Enter a quote name first", variant: "destructive" }); return; }
     setSaving(true);
     try {
@@ -259,7 +260,8 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
             <Button variant="outline" size="sm" className="flex-1 h-9 text-xs gap-1.5 rounded-lg" onClick={handleExportPDF}>
               <FileDown className="h-3.5 w-3.5" /> Export PDF
             </Button>
-            <Button size="sm" className="flex-1 h-9 text-xs gap-1.5 rounded-lg" onClick={handleSave} disabled={saving || !!savedId}>
+            <Button size="sm" className="flex-1 h-9 text-xs gap-1.5 rounded-lg" onClick={handleSave} disabled={saving || !!savedId || !selectedClientId}
+              title={!selectedClientId ? "Assign a client to save this quote" : undefined}>
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedId ? <CheckCircle className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
               {savedId ? "Saved" : "Save Quote"}
             </Button>

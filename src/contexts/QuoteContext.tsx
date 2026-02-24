@@ -22,6 +22,7 @@ interface QuoteContextValue {
   items: QuoteItem[];
   loading: boolean;
   error: string | null;
+  canSave: boolean;
 
   // Quote meta
   updateQuote: (patch: Partial<Pick<QuoteMeta, "customer_id" | "customer_name" | "notes" | "status" | "discount_type" | "discount_value" | "terms_text" | "reference_text">>) => Promise<void>;
@@ -134,16 +135,28 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     return () => { supabase.removeChannel(channel); };
   }, [quoteId]);
 
+  /* ── Derived ── */
+  const canSave = !!meta?.customer_id;
+
   /* ── Quote meta ── */
   const updateQuote = useCallback(async (patch: Partial<Pick<QuoteMeta, "customer_id" | "customer_name" | "notes" | "status" | "discount_type" | "discount_value" | "terms_text" | "reference_text">>) => {
+    const wasNullCustomer = !meta?.customer_id;
     // Optimistic
     setMeta((prev) => prev ? { ...prev, ...patch } : prev);
     const { error } = await supabase.from("quotes").update(patch as any).eq("id", quoteId);
     if (error) {
       toast({ title: "Error updating quote", description: error.message, variant: "destructive" });
       fetchAll(); // revert
+      return;
     }
-  }, [quoteId, fetchAll]);
+    // If customer_id was just set from null, reload to get trigger-assigned quote_number
+    if (wasNullCustomer && patch.customer_id) {
+      const { data: refreshed } = await supabase.from("quotes").select("quote_number").eq("id", quoteId).single();
+      if (refreshed?.quote_number) {
+        setMeta((prev) => prev ? { ...prev, quote_number: refreshed.quote_number } : prev);
+      }
+    }
+  }, [quoteId, fetchAll, meta?.customer_id]);
 
   /* ── Areas ── */
   const addArea = useCallback(async (name: string): Promise<QuoteArea | null> => {
@@ -314,6 +327,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     items,
     loading,
     error,
+    canSave,
     updateQuote,
     addArea,
     updateArea,

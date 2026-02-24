@@ -102,7 +102,9 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono text-sm font-bold">{quote.quote_number}</span>
+                      <span className="font-mono text-sm font-bold">
+                        {quote.quote_number || <span className="text-amber-600 text-xs">No number – draft</span>}
+                      </span>
                       <QuoteStatusBadge status={quote.status} />
                     </div>
                     <p className="text-sm text-muted-foreground truncate">
