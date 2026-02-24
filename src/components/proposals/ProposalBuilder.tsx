@@ -663,7 +663,7 @@ const ProposalBuilder = ({
 
             <div className="space-y-1">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Estimated Amount (ZAR)</p>
-              <p className="text-xl font-bold px-2 py-0.5" style={{ color: "#0077B6" }}>{formatCurrency(grandTotal)}</p>
+              <p className="text-[28px] font-bold px-2 py-0.5" style={{ color: "#0077B6" }}>{formatCurrency(grandTotal)}</p>
             </div>
           </div>
 
@@ -681,7 +681,7 @@ const ProposalBuilder = ({
           </div>
         </div>
 
-        <div className="h-px bg-border" />
+        <div className="h-[2px] w-full" style={{ backgroundColor: "#2c3e6b" }} />
 
         {/* ── LINE ITEMS TABLE ── */}
         <div>

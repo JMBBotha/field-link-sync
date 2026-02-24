@@ -4,14 +4,14 @@ interface DocumentHeaderProps {
   registrationNumber?: string;
   physicalAddress?: string;
   vatNumber?: string;
+  phone?: string;
 }
 
 /**
  * Shared document header for quotes, invoices, and proposals.
  *
- * Layout: Logo left | Right column split into Group 1 (top) and Group 2 (bottom).
- * Group 1 – Company identity anchored to the top-right.
- * Group 2 – Contact details aligned with the bottom of the logo.
+ * Layout: Logo left | Right column with company identity stacked top-aligned.
+ * Matches reference invoice layout exactly.
  */
 const DocumentHeader = ({
   logoUrl,
@@ -19,11 +19,12 @@ const DocumentHeader = ({
   registrationNumber,
   physicalAddress,
   vatNumber,
+  phone,
 }: DocumentHeaderProps) => {
   return (
     <div>
       {/* HEADER ROW */}
-      <div className="flex flex-row items-stretch justify-between gap-6">
+      <div className="flex flex-row items-start justify-between gap-6">
         {/* LEFT: LOGO ONLY */}
         <div className="shrink-0 max-w-[50%] flex items-start">
           {logoUrl ? (
@@ -39,33 +40,28 @@ const DocumentHeader = ({
           )}
         </div>
 
-        {/* RIGHT: FLEX COLUMN MATCHING LOGO HEIGHT */}
-        <div className="flex flex-col items-end text-right justify-between">
-          {/* GROUP 1 – TOP RIGHT (anchored to top) */}
-          <div className="space-y-0">
-            <p className="font-bold text-base text-foreground leading-tight">
-              {companyName || "Your Company"}
+        {/* RIGHT: STACKED IDENTITY – all right-aligned, top-anchored */}
+        <div className="flex flex-col items-end text-right gap-0">
+          {/* Line 1: Registration line (bolder) */}
+          <p className="text-[13px] font-semibold text-foreground leading-snug">
+            CT - {companyName || "Your Company"}
+            {vatNumber ? ` - VAT ${vatNumber}` : ""}
+          </p>
+          {/* Line 2: Phone */}
+          {phone && (
+            <p className="text-[13px] text-foreground/80 leading-snug">{phone}</p>
+          )}
+          {/* Lines 3–6: Address */}
+          <p className="text-[13px] text-foreground/80 leading-snug">6 Aviation Cress</p>
+          <p className="text-[13px] text-foreground/80 leading-snug">Airport City</p>
+          <p className="text-[13px] text-foreground/80 leading-snug">Cape Town</p>
+          <p className="text-[13px] text-foreground/80 leading-snug">7100</p>
+          {/* Line 7: VAT Number */}
+          {vatNumber && (
+            <p className="text-[13px] text-foreground/80 leading-snug">
+              VAT Number {vatNumber}
             </p>
-            <p className="text-sm text-muted-foreground leading-snug">6 Aviation Cress</p>
-            <p className="text-sm text-muted-foreground leading-snug">Airport City</p>
-            <p className="text-sm text-muted-foreground leading-snug">Cape Town</p>
-            <p className="text-sm text-muted-foreground leading-snug">7100</p>
-            {vatNumber && (
-              <p className="text-sm font-medium text-muted-foreground leading-snug">
-                VAT: {vatNumber}
-              </p>
-            )}
-            {registrationNumber && (
-              <p className="text-xs text-muted-foreground leading-snug">
-                Reg No: {registrationNumber}
-              </p>
-            )}
-          </div>
-
-          {/* GROUP 2 – CONTACT LINE (anchored to bottom) */}
-          <div className="text-[11px] text-muted-foreground/60 whitespace-nowrap">
-            0800 BE COOL — info@0800becool.co.za — www.0800becool.co.za
-          </div>
+          )}
         </div>
       </div>
 
