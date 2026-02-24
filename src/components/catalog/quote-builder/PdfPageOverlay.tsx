@@ -320,10 +320,7 @@ const PdfPageOverlay = ({
   onOpenWizard,
   onHoverProduct,
 }: PdfPageOverlayProps) => {
-  const [hoveredRegion, setHoveredRegion] = useState<OverlayRegion | null>(null);
   const hoveredRegionRef = useRef<OverlayRegion | null>(null);
-  const [tipPos, setTipPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-  const tipRef = useRef<HTMLDivElement>(null);
   const [localAddedIds, setLocalAddedIds] = useState<Set<string>>(new Set());
   const [, forceUpdate] = useState(0);
   const queryClient = useQueryClient();
@@ -414,58 +411,23 @@ const PdfPageOverlay = ({
   const iconLeftPct = useMemo(() => computeIconLeftPct(positionedRegions), [positionedRegions]);
 
   const handleHover = useCallback((region: OverlayRegion) => {
-    setHoveredRegion(region);
     hoveredRegionRef.current = region;
   }, []);
 
   const handleHoverMove = useCallback((e: React.MouseEvent) => {
-    const mx = e.clientX;
-    const my = e.clientY;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const GAP = 14;
-    const EDGE = 12;
-
-    let tipW = 280;
-    let tipH = 120;
-    if (tipRef.current) {
-      const r = tipRef.current.getBoundingClientRect();
-      tipW = r.width || tipW;
-      tipH = r.height || tipH;
-    }
-
-    let left = mx + GAP;
-    let top = my + GAP;
-    if (left + tipW > vw - EDGE) left = mx - tipW - GAP;
-    if (top + tipH > vh - EDGE) top = my - tipH - GAP;
-    left = Math.max(EDGE, Math.min(left, vw - tipW - EDGE));
-    top = Math.max(EDGE, Math.min(top, vh - tipH - EDGE));
-
-    setTipPos({ top, left });
-
-    // Lift hover to parent for EnhancedProductPopup
     if (onHoverProduct) {
       const region = hoveredRegionRef.current;
-      onHoverProduct(region?.product || null, { clientX: mx, clientY: my });
+      onHoverProduct(region?.product || null, { clientX: e.clientX, clientY: e.clientY });
     }
   }, [onHoverProduct]);
 
   const handleHoverLeave = useCallback(() => {
-    setHoveredRegion(null);
     hoveredRegionRef.current = null;
     onHoverProduct?.(null, null);
   }, [onHoverProduct]);
 
-  if (positionedRegions.length === 0) return null;
 
-  const hoveredProduct = hoveredRegion?.product;
-  const hoveredIsMatched = !!hoveredProduct;
-  const hoveredPrice = hoveredProduct?.selling_price || hoveredProduct?.cost_incl_vat || 0;
-  const hoveredInQuoteQty = hoveredProduct ? (basketProductCounts[hoveredProduct.id] || 0) : 0;
-  const hoveredIsFavorite = hoveredProduct?.is_pinned === true;
-  const hoveredIsAdded = hoveredProduct
-    ? localAddedIds.has(hoveredProduct.id) || addedQuoteItemIds.has(hoveredProduct.id)
-    : false;
+  if (positionedRegions.length === 0) return null;
 
   return (
     <>
