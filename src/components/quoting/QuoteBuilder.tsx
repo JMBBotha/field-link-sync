@@ -10,8 +10,9 @@ import { cn } from "@/lib/utils";
 import { useProductOptions, type ProductOption } from "@/hooks/useProductOptions";
 import ProductSearchDropdown from "@/components/shared/ProductSearchDropdown";
 import { useQuoteSessionStore } from "@/stores/quoteSessionStore";
-import { useExitGuard } from "@/hooks/useExitGuard";
+import { useUnsavedQuoteGuard } from "@/hooks/useUnsavedQuoteGuard";
 import UnsavedQuoteDialog from "@/components/shared/UnsavedQuoteDialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import BeCoolLogo from "@/components/shared/BeCoolLogo";
 import DocumentHeader from "@/components/shared/DocumentHeader";
 import { generateDocumentPdf } from "@/lib/documentPdf";
@@ -157,22 +158,44 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
     }
   }, [lineItems, customerName, notes, terms, reference, selectedLeadId, discountValue]);
 
+  /* ─── Derived: canSave ─── */
+  const canSave = !!selectedCustomerId;
+
   /* ─── Exit guard ─── */
-  const handleSaveForLater = useCallback(async () => {
+  const handleSaveDraft = useCallback(async () => {
+    if (!canSave) return;
     await saveQuote("draft");
     clearDraft();
     onBack();
-  }, [clearDraft, onBack]);
+  }, [canSave, clearDraft, onBack]);
 
-  const handleDiscard = useCallback(() => {
+  const handleSendQuote = useCallback(async () => {
+    if (!canSave) return;
+    await saveQuote("sent");
+    clearDraft();
+    onBack();
+  }, [canSave, clearDraft, onBack]);
+
+  const handleDeleteQuote = useCallback(async () => {
+    if (savedQuoteId) {
+      await supabase.from("quotes").delete().eq("id", savedQuoteId);
+    }
+    clearDraft();
+    onBack();
+  }, [savedQuoteId, clearDraft, onBack]);
+
+  const handleExit = useCallback(() => {
     clearDraft();
     onBack();
   }, [clearDraft, onBack]);
 
-  const exitGuard = useExitGuard({
+  const exitGuard = useUnsavedQuoteGuard({
     isDirty,
-    onSaveForLater: handleSaveForLater,
-    onDiscard: handleDiscard,
+    canSave,
+    onSaveDraft: handleSaveDraft,
+    onSendQuote: handleSendQuote,
+    onDeleteQuote: handleDeleteQuote,
+    onExit: handleExit,
   });
 
   /* ─── Derived ─── */
@@ -429,8 +452,8 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
   /* ─── Save ─── */
   const saveQuote = async (status: "draft" | "sent" | "accepted") => {
-    if (!customerName.trim() && !selectedCustomerId) {
-      toast({ title: "Error", description: "Please select or enter a client", variant: "destructive" });
+    if (!selectedCustomerId) {
+      toast({ title: "Client Required", description: "Please assign a client before saving this quote.", variant: "destructive" });
       return;
     }
     if (lineItems.every((i) => !i.description || i.amount === 0)) {
@@ -443,12 +466,12 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
+      // Quote number is now auto-assigned by DB trigger when customer_id is set
+      // Only generate manually if updating an existing quote that already has a number
       let finalNumber = quoteNumber;
-      if (!finalNumber || finalNumber === "Q-####" || !quoteId) {
-        const { data, error } = await supabase.rpc("generate_quote_number");
-        if (error) throw error;
-        finalNumber = data as string;
-        setQuoteNumber(finalNumber);
+      if (!finalNumber || finalNumber === "Q-####") {
+        // Will be auto-assigned by trigger, use a temp placeholder for display
+        finalNumber = "Generating...";
       }
 
       const quotePayload: any = {
@@ -475,11 +498,18 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         if (error) throw error;
         await supabase.from("quote_line_items").delete().eq("quote_id", qId);
       } else {
-        quotePayload.quote_number = finalNumber;
-        const { data, error } = await supabase.from("quotes").insert(quotePayload).select("id").single();
+        // Don't set quote_number on insert — trigger auto-assigns it when customer_id is set
+        const { data, error } = await supabase.from("quotes").insert(quotePayload).select("id, quote_number").single();
         if (error) throw error;
         qId = data.id;
         setSavedQuoteId(qId);
+        if (data.quote_number) setQuoteNumber(data.quote_number);
+      }
+
+      // Reload quote to get trigger-assigned quote_number
+      if (qId) {
+        const { data: refreshed } = await supabase.from("quotes").select("quote_number").eq("id", qId).single();
+        if (refreshed?.quote_number) setQuoteNumber(refreshed.quote_number);
       }
 
       const validItems = lineItems.filter((item) => item.description.trim());
@@ -546,8 +576,12 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       <UnsavedQuoteDialog
         open={exitGuard.showModal}
         onContinue={exitGuard.confirmContinue}
-        onSaveForLater={exitGuard.confirmSaveForLater}
-        onDiscard={exitGuard.confirmDiscard}
+        onSaveForLater={exitGuard.confirmSaveDraft}
+        onDiscard={handleExit}
+        onSendQuote={exitGuard.confirmSendQuote}
+        onDeleteQuote={exitGuard.confirmDeleteQuote}
+        canSave={canSave}
+        canSend={canSave && lineItems.some(i => i.description && i.amount > 0)}
       />
 
       {/* ── Top bar ── */}
@@ -557,24 +591,42 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
           <Button variant="ghost" size="sm" onClick={exitGuard.requestExit}>
             Cancel
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => saveQuote("draft")}
-            disabled={loading}
-          >
-            Save Draft
-          </Button>
-          <Button
-            size="sm"
-            className="text-white"
-            style={{ backgroundColor: "#0077B6" }}
-            onClick={() => saveQuote("sent")}
-            disabled={loading}
-          >
-            {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-            Send To…
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => saveQuote("draft")}
+                    disabled={loading || !canSave}
+                  >
+                    Save Draft
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {!canSave && <TooltipContent>Assign a client to save this quote</TooltipContent>}
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    size="sm"
+                    className="text-white"
+                    style={{ backgroundColor: "#0077B6" }}
+                    onClick={() => saveQuote("sent")}
+                    disabled={loading || !canSave}
+                  >
+                    {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                    Send To…
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {!canSave && <TooltipContent>Assign a client to save this quote</TooltipContent>}
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 
@@ -644,7 +696,11 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
             <div className="space-y-1">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Quote Number</p>
-              <p className="text-sm font-medium text-foreground px-2 py-1.5">{quoteNumber || "Generating…"}</p>
+              <p className="text-sm font-medium text-foreground px-2 py-1.5">
+                {!selectedCustomerId
+                  ? <span className="text-amber-600 text-xs">Pending – assign a client</span>
+                  : quoteNumber || "Generating…"}
+              </p>
             </div>
 
             <div className="space-y-1">
@@ -791,26 +847,30 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       </div>
 
       {/* ── Bottom action bar ── */}
-      {/* ── Bottom action bar ── */}
       <div className="sticky bottom-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2">
-        <Button variant="outline" size="sm" onClick={() => generateDocumentPdf({
-          docType: "Quote", docNumber: quoteNumber, companyName: companySettings.company_name || "Your Company",
-          companyAddress: companySettings.physical_address || "", vatNumber: companySettings.vat_number || "",
-          customerName, customerAddress, customerEmail, issueDate, dueDate: validUntil,
-          lineItems: lineItems.filter(i => i.description), subtotal, discountAmount, taxRate, taxAmount, total, notes, terms,
-        })}>
+        <Button variant="outline" size="sm" onClick={() => {
+          if (!canSave) {
+            toast({ title: "No client assigned", description: "Assign a client for the final PDF with quote number.", variant: "destructive" });
+          }
+          generateDocumentPdf({
+            docType: "Quote", docNumber: quoteNumber || "DRAFT", companyName: companySettings.company_name || "Your Company",
+            companyAddress: companySettings.physical_address || "", vatNumber: companySettings.vat_number || "",
+            customerName, customerAddress, customerEmail, issueDate, dueDate: validUntil,
+            lineItems: lineItems.filter(i => i.description), subtotal, discountAmount, taxRate, taxAmount, total, notes, terms,
+          });
+        }}>
           <FileDown className="h-4 w-4 mr-1" />PDF
         </Button>
-        <Button variant="outline" size="sm" onClick={() => toast({ title: "Email placeholder", description: "Email sending will be connected soon." })}>
+        <Button variant="outline" size="sm" onClick={() => toast({ title: "Email placeholder", description: "Email sending will be connected soon." })} disabled={!canSave}>
           <Send className="h-4 w-4 mr-1" />Send
         </Button>
-        <Button variant="outline" size="sm" onClick={() => saveQuote("accepted")} disabled={loading}>
+        <Button variant="outline" size="sm" onClick={() => saveQuote("accepted")} disabled={loading || !canSave}>
           Mark Approved
         </Button>
-        <Button variant="outline" size="sm" onClick={() => saveQuote("draft")} disabled={loading}>
+        <Button variant="outline" size="sm" onClick={() => saveQuote("draft")} disabled={loading || !canSave}>
           Save Draft
         </Button>
-        <Button size="sm" className="text-white" style={{ backgroundColor: "#0077B6" }} onClick={() => saveQuote("sent")} disabled={loading}>
+        <Button size="sm" className="text-white" style={{ backgroundColor: "#0077B6" }} onClick={() => saveQuote("sent")} disabled={loading || !canSave}>
           {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
           Send Quote
         </Button>

@@ -87,7 +87,7 @@ export default function AdminManualQuotePage() {
   const total = items.reduce((s, i) => s + i.qty * i.price, 0);
 
   const handleSave = async (andSend = false) => {
-    if (!customerName.trim()) return toast.error("Customer name is required");
+    if (!customerName.trim()) return toast.error("Please assign a client before saving this quote.");
     if (items.length === 0) return toast.error("Add at least one item");
 
     setSaving(true);

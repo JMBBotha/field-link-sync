@@ -3225,7 +3225,7 @@ export type Database = {
           lead_id: string | null
           notes: string | null
           public_token: string | null
-          quote_number: string
+          quote_number: string | null
           reference_text: string | null
           sales_engineer_id: string
           sent_at: string | null
@@ -3254,7 +3254,7 @@ export type Database = {
           lead_id?: string | null
           notes?: string | null
           public_token?: string | null
-          quote_number?: string
+          quote_number?: string | null
           reference_text?: string | null
           sales_engineer_id: string
           sent_at?: string | null
@@ -3283,7 +3283,7 @@ export type Database = {
           lead_id?: string | null
           notes?: string | null
           public_token?: string | null
-          quote_number?: string
+          quote_number?: string | null
           reference_text?: string | null
           sales_engineer_id?: string
           sent_at?: string | null

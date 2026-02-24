@@ -111,10 +111,11 @@ function QuoteSharedHeader({ onBack }: { onBack: () => void }) {
                       type="button"
                       className="w-full text-left px-2.5 py-1.5 hover:bg-muted/50 transition-colors"
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
+                      onClick={async () => {
                         const cid = c.customer_id || c.id;
-                        updateQuote({
-                          customer_id: cid.startsWith("lead-") ? null : cid,
+                        const finalCid = cid.startsWith("lead-") ? null : cid;
+                        await updateQuote({
+                          customer_id: finalCid,
                           customer_name: c.name,
                         });
                         setClientSearch("");
@@ -143,8 +144,10 @@ function QuoteSharedHeader({ onBack }: { onBack: () => void }) {
           </span>
         </div>
 
-        {meta?.quote_number && (
+        {meta?.quote_number ? (
           <span className="hidden lg:block text-[10px] text-white/50 font-mono">{meta.quote_number}</span>
+        ) : (
+          <span className="hidden lg:block text-[10px] text-amber-300 font-mono">Pending – assign a client</span>
         )}
       </div>
     </header>
