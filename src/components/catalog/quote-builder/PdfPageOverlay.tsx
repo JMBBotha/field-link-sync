@@ -1,4 +1,4 @@
-import { useState, memo, useCallback, useMemo } from "react";
+import { useState, memo, useCallback, useMemo, useRef } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -319,6 +319,7 @@ const PdfPageOverlay = ({
 }: PdfPageOverlayProps) => {
   const [hoveredRegion, setHoveredRegion] = useState<OverlayRegion | null>(null);
   const [tipPos, setTipPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const tipRef = useRef<HTMLDivElement>(null);
   const [localAddedIds, setLocalAddedIds] = useState<Set<string>>(new Set());
   const [, forceUpdate] = useState(0);
   const queryClient = useQueryClient();
@@ -415,17 +416,36 @@ const PdfPageOverlay = ({
   const handleHoverMove = useCallback((e: React.MouseEvent) => {
     const mx = e.clientX;
     const my = e.clientY;
-    const tipW = 280;
-    const tipH = 120;
-    let left = mx + 16;
-    let top = my - 8;
-    if (left + tipW > window.innerWidth - 8) {
-      left = mx - tipW - 16;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const GAP = 14;
+    const EDGE = 12;
+
+    // Measure actual tooltip size (fallback to estimates)
+    let tipW = 280;
+    let tipH = 120;
+    if (tipRef.current) {
+      const r = tipRef.current.getBoundingClientRect();
+      tipW = r.width || tipW;
+      tipH = r.height || tipH;
     }
-    if (top + tipH > window.innerHeight - 8) {
-      top = window.innerHeight - tipH - 8;
+
+    // Default: right & below cursor
+    let left = mx + GAP;
+    let top = my + GAP;
+
+    // Flip horizontally if near right edge
+    if (left + tipW > vw - EDGE) {
+      left = mx - tipW - GAP;
     }
-    if (top < 8) top = 8;
+    // Flip vertically if near bottom edge
+    if (top + tipH > vh - EDGE) {
+      top = my - tipH - GAP;
+    }
+    // Safety clamp to keep fully on-screen
+    left = Math.max(EDGE, Math.min(left, vw - tipW - EDGE));
+    top = Math.max(EDGE, Math.min(top, vh - tipH - EDGE));
+
     setTipPos({ top, left });
   }, []);
 
@@ -488,6 +508,7 @@ const PdfPageOverlay = ({
       {/* Single shared tooltip rendered outside all rows */}
       {hoveredRegion && (
         <div
+          ref={tipRef}
           className="fixed pointer-events-none bg-popover border rounded-lg shadow-xl px-3 py-2 text-[10px] whitespace-nowrap max-w-[280px]"
           style={{ top: tipPos.top, left: tipPos.left, zIndex: 9999 }}
         >
