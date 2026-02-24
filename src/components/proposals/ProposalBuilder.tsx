@@ -682,7 +682,7 @@ const ProposalBuilder = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 -mt-7">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 -mt-10">
           <div />
           <div className="space-y-1">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due Date</p>
