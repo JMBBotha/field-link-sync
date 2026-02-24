@@ -70,7 +70,7 @@ const DocumentHeader = ({
       </div>
 
       {/* DIVIDER */}
-      <div className="mt-[11px] mb-[8px] h-px bg-border w-full" />
+      <div className="mt-[11px] mb-[10px] h-px bg-border w-full" />
     </div>
   );
 };
