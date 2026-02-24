@@ -3,7 +3,7 @@
  * in a shared header with tabs. Each tab renders the real builder component.
  */
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Users, X, Loader2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,14 +12,16 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { QuoteProvider, useQuoteContext } from "@/contexts/QuoteContext";
 import { useUnifiedClients } from "@/hooks/useUnifiedClients";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
 
 // Real builder components
 import QuoteBuilderTab from "@/components/catalog/QuoteBuilderTab";
+import type { PaletteProduct, Basket } from "@/components/catalog/QuoteBuilderTab";
 import VisualCatalogView from "@/components/catalog/quote-builder/VisualCatalogView";
 import QuoteBuilderPopup from "@/components/catalog/quote-builder/QuoteBuilderPopup";
-import type { Basket } from "@/components/catalog/QuoteBuilderTab";
+import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
 
 /* ─── Shared Header with client selector ─── */
 function QuoteSharedHeader({ onBack }: { onBack: () => void }) {
@@ -154,6 +156,130 @@ function UnifiedQuoteBuilderInner() {
   const [activeTab, setActiveTab] = useState("normal");
   const [areaWizardOpen, setAreaWizardOpen] = useState(false);
 
+  // Shared baskets state for cross-tab data
+  const [baskets, setBaskets] = useState<Basket[]>([]);
+
+  // Fetch products for Visual + Area builders
+  const { data: products = [] } = useQuery({
+    queryKey: ["quote-builder-products"],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("supplier_products") as any)
+        .select("id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, suggested_consumables, pack_qty, suppliers(name, supplier_type)")
+        .or("archived.is.null,archived.eq.false")
+        .order("is_pinned", { ascending: false })
+        .order("pin_order", { ascending: true, nullsFirst: false })
+        .limit(2000);
+      if (error) throw error;
+      return (data || []).map((p: any) => ({
+        ...p,
+        product_category: p.product_category || p.category || "",
+        supplier_name: p.suppliers?.name || "",
+        supplier_type: p.suppliers?.supplier_type || "both",
+        price_per_metre: p.price_per_metre || null,
+        sold_in_length: p.sold_in_length || false,
+        unit_length: p.unit_length || null,
+        pipe_size: p.pipe_size || null,
+        is_material_favorite: p.is_material_favorite || false,
+        pack_qty: p.pack_qty || null,
+      })) as PaletteProduct[];
+    },
+    staleTime: 60000,
+  });
+
+  // Fetch bundles for Area builder
+  const { data: bundles = [] } = useQuery<PaletteBundle[]>({
+    queryKey: ["quote-builder-bundles"],
+    queryFn: async () => {
+      const { data: bundleData, error: bErr } = await supabase
+        .from("installation_bundles")
+        .select("id, name, description, bundle_type, min_btu, max_btu, compatible_brands, is_favorite")
+        .eq("is_active", true)
+        .order("name");
+      if (bErr) throw bErr;
+      if (!bundleData || bundleData.length === 0) return [];
+
+      const { data: itemsData, error: iErr } = await (supabase.from("bundle_items") as any)
+        .select("id, bundle_id, supplier_product_id, quantity, length_metres, is_length_item, is_optional, sort_order, supplier_products(id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, suppliers(name))")
+        .order("sort_order");
+      if (iErr) throw iErr;
+
+      const itemsByBundle: Record<string, any[]> = {};
+      (itemsData || []).forEach((item: any) => {
+        if (!itemsByBundle[item.bundle_id]) itemsByBundle[item.bundle_id] = [];
+        const sp = item.supplier_products;
+        itemsByBundle[item.bundle_id].push({
+          id: item.id,
+          supplier_product_id: item.supplier_product_id,
+          quantity: item.quantity,
+          length_metres: item.length_metres,
+          is_length_item: item.is_length_item,
+          is_optional: item.is_optional || false,
+          product: sp ? {
+            ...sp,
+            product_category: sp.product_category || sp.category || "",
+            supplier_name: sp.suppliers?.name || "",
+            price_per_metre: sp.price_per_metre || null,
+            sold_in_length: sp.sold_in_length || false,
+            unit_length: sp.unit_length || null,
+          } : null,
+        });
+      });
+
+      return bundleData.map((b) => ({
+        ...b,
+        items: itemsByBundle[b.id] || [],
+      }));
+    },
+    staleTime: 60000,
+  });
+
+  // Add product to basket handler for Visual tab
+  const addProductToBasket = useCallback((basketId: string, product: PaletteProduct) => {
+    setBaskets((prev) => {
+      // Ensure at least one basket exists
+      let updated = prev.length > 0 ? [...prev] : [{ id: "basket-1", name: "Zone 1", items: [] }];
+      return updated.map((basket) => {
+        if (basket.id !== basketId) return basket;
+        const existing = basket.items.find((i) => i.product.id === product.id);
+        if (existing) {
+          return {
+            ...basket,
+            items: basket.items.map((i) =>
+              i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
+            ),
+          };
+        }
+        return {
+          ...basket,
+          items: [
+            ...basket.items,
+            {
+              instanceId: `${product.id}-${Date.now()}`,
+              product,
+              quantity: 1,
+              ...(product.sold_in_length && product.price_per_metre ? { length: product.unit_length || 1 } : {}),
+            },
+          ],
+        };
+      });
+    });
+  }, []);
+
+  // Handle wizard save — merge new baskets
+  const handleWizardSave = useCallback((newBaskets: Basket[]) => {
+    setBaskets((prev) => [...prev, ...newBaskets]);
+    toast({ title: `Added ${newBaskets.length} zones from Area Quote Builder` });
+    setAreaWizardOpen(false);
+  }, []);
+
+  // Auto-open wizard when switching to Area tab
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    if (tab === "area") {
+      setAreaWizardOpen(true);
+    }
+  }, []);
+
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col"
@@ -166,7 +292,7 @@ function UnifiedQuoteBuilderInner() {
 
       {/* Builder mode tabs */}
       <div className="shrink-0 flex items-center justify-center border-b border-white/20 bg-white/5 backdrop-blur-sm">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full max-w-md">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full max-w-md">
           <TabsList className="w-full bg-white/10 h-9">
             <TabsTrigger value="normal" className="flex-1 text-xs data-[state=active]:bg-white data-[state=active]:text-foreground text-white/70">
               Normal
@@ -174,7 +300,7 @@ function UnifiedQuoteBuilderInner() {
             <TabsTrigger value="visual" className="flex-1 text-xs data-[state=active]:bg-white data-[state=active]:text-foreground text-white/70">
               Visual
             </TabsTrigger>
-            <TabsTrigger value="area" className="flex-1 text-xs data-[state=active]:bg-white data-[state=active]:text-foreground text-white/70" onClick={() => setAreaWizardOpen(true)}>
+            <TabsTrigger value="area" className="flex-1 text-xs data-[state=active]:bg-white data-[state=active]:text-foreground text-white/70">
               Area
             </TabsTrigger>
           </TabsList>
@@ -189,15 +315,18 @@ function UnifiedQuoteBuilderInner() {
           </div>
         )}
         {activeTab === "visual" && (
-          <div className="h-full overflow-y-auto p-4">
-            <VisualCatalogView baskets={[]} onAddProductToBasket={() => {}} />
+          <div className="h-full overflow-y-auto">
+            <VisualCatalogView
+              baskets={baskets}
+              onAddProductToBasket={addProductToBasket}
+            />
           </div>
         )}
         {activeTab === "area" && (
           <div className="h-full flex items-center justify-center text-muted-foreground">
             <div className="text-center space-y-3">
               <p className="text-sm font-medium">Area Quote Builder</p>
-              <p className="text-xs">The Area Quote Builder opens as a wizard overlay.</p>
+              <p className="text-xs">Use the wizard to build a room-by-room quote.</p>
               <Button size="sm" onClick={() => setAreaWizardOpen(true)}>
                 Open Area Wizard
               </Button>
@@ -210,12 +339,9 @@ function UnifiedQuoteBuilderInner() {
       <QuoteBuilderPopup
         open={areaWizardOpen}
         onClose={() => setAreaWizardOpen(false)}
-        products={[]}
-        bundles={[]}
-        onSave={(newBaskets: Basket[]) => {
-          toast({ title: `Added ${newBaskets.length} zones from Area Quote Builder` });
-          setAreaWizardOpen(false);
-        }}
+        products={products}
+        bundles={bundles}
+        onSave={handleWizardSave}
         triggerItem={null}
       />
     </div>
