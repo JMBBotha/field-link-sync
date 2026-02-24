@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import RequireRole from "@/components/RequireRole";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -129,7 +130,7 @@ const App = () => (
               </Route>
 
               {/* Full-page Quote Builder (outside AdminLayout for full-bleed) */}
-              <Route path="/admin/quote-builder" element={<AdminQuoteBuilderPageUnified />} />
+              <Route path="/admin/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminQuoteBuilderPageUnified /></RequireRole>} />
 
               {/* FreshBooks multi-tenant client dashboards */}
               <Route path="/client/:companyId" element={<CompanyProvider><FBLayout /></CompanyProvider>}>
