@@ -610,9 +610,11 @@ const ProposalBuilder = ({
         <div className="flex flex-row items-start justify-between">
           <div className="shrink-0">
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="max-h-[100px] max-w-[200px] w-auto object-contain" />
+              <img src={logoUrl} alt="Logo" className="max-h-[130px] max-w-[260px] w-auto object-contain" />
             ) : (
-              <BeCoolLogo />
+              <div className="scale-125 origin-left">
+                <BeCoolLogo />
+              </div>
             )}
           </div>
           <div className="flex flex-col items-end text-right">
