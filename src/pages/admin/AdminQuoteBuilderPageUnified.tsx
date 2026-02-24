@@ -19,7 +19,8 @@ import logo from "@/assets/logo.png";
 // Real builder components
 import QuoteBuilderTab from "@/components/catalog/QuoteBuilderTab";
 import type { PaletteProduct, Basket } from "@/components/catalog/QuoteBuilderTab";
-import VisualCatalogView from "@/components/catalog/quote-builder/VisualCatalogView";
+import VisualCatalogPanel from "@/components/catalog/quote-builder/VisualCatalogPanel";
+import type { WizardTriggerItem } from "@/components/catalog/quote-builder/QuoteBuilderPopup";
 import QuoteBuilderPopup from "@/components/catalog/quote-builder/QuoteBuilderPopup";
 import QuoteSummaryPanel from "@/components/catalog/quote-builder/QuoteSummaryPanel";
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
@@ -159,9 +160,15 @@ function UnifiedQuoteBuilderInner() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("normal");
   const [areaWizardOpen, setAreaWizardOpen] = useState(false);
+  const pdfSearchRef = useRef<((term: string) => void) | null>(null);
 
   // Shared baskets state for cross-tab data
   const [baskets, setBaskets] = useState<Basket[]>([]);
+
+  // Wizard trigger item from Visual tab
+  const handleOpenWizardFromVisual = useCallback((item: WizardTriggerItem) => {
+    setAreaWizardOpen(true);
+  }, []);
 
   // Fetch products for Visual + Area builders
   const { data: products = [] } = useQuery({
@@ -325,10 +332,17 @@ function UnifiedQuoteBuilderInner() {
         )}
         {activeTab === "visual" && (
           <div className="h-full flex">
-            <div className="flex-1 min-w-0 overflow-y-auto">
-              <VisualCatalogView
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <VisualCatalogPanel
+                open={true}
+                onClose={() => {}}
                 baskets={baskets}
                 onAddProductToBasket={addProductToBasket}
+                products={products}
+                isDragging={false}
+                onOpenWizard={handleOpenWizardFromVisual}
+                pdfSearchRef={pdfSearchRef}
+                wizardOpen={areaWizardOpen}
               />
             </div>
             <div className="w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
