@@ -607,7 +607,8 @@ const ProposalBuilder = ({
       {/* ── A4 Card ── */}
       <div className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
         {/* ── HEADER ROW ── */}
-        <div className="flex flex-row items-start justify-between py-3">
+        <div className="flex flex-row items-start justify-between py-3 gap-6">
+          {/* Logo – left */}
           <div className="shrink-0">
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" className="max-h-[182px] max-w-[363px] w-auto object-contain" />
@@ -617,15 +618,16 @@ const ProposalBuilder = ({
               </div>
             )}
           </div>
-          <div className="flex flex-col items-end text-right space-y-1">
-            <p className="font-bold text-lg text-foreground">{companySettings.company_name || "Your Company"}</p>
+          {/* Company info – right */}
+          <div className="flex flex-col items-end text-right ml-auto space-y-0.5">
+            <p className="font-bold text-lg text-foreground leading-tight">{companySettings.company_name || "Your Company"}</p>
             {companySettings.physical_address && (
               <p className="text-sm text-muted-foreground leading-snug whitespace-pre-line">{companySettings.physical_address}</p>
             )}
             {companySettings.vat_number && (
-              <p className="text-sm font-medium text-muted-foreground">VAT: {companySettings.vat_number}</p>
+              <p className="text-sm font-medium text-muted-foreground mt-0.5">VAT: {companySettings.vat_number}</p>
             )}
-            <div className="flex items-center gap-3 text-xs text-muted-foreground/70 pt-1">
+            <div className="flex items-center gap-3 text-[11px] text-muted-foreground/60 pt-2 border-t border-border/40 mt-2 w-full justify-end">
               <span>0800 BE COOL</span>
               <span className="text-muted-foreground/30">|</span>
               <span>info@0800becool.co.za</span>
