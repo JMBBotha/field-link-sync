@@ -30,19 +30,19 @@ const InvoiceTemplatePreview = ({ config }: Props) => {
     >
       {/* Header */}
       {config.sections.companyDetails && (
-        <div className={`flex mb-6 ${config.logoPosition === "center" ? "flex-col items-center text-center" : config.logoPosition === "right" ? "flex-row-reverse" : "flex-row"} justify-between`}>
-          <div className="flex items-center gap-3">
+        <div className="flex flex-row items-start justify-between mb-6 gap-6">
+          {/* Logo / brand – left */}
+          <div className="shrink-0 max-w-[50%]">
             <div className="h-12 w-12 rounded-lg flex items-center justify-center text-white font-bold text-lg" style={{ backgroundColor: config.primaryColor }}>
               CA
             </div>
-            <div>
-              <p className="font-bold text-sm" style={{ color: config.primaryColor }}>{sampleData.company.name}</p>
-              <p className="text-gray-500 text-[10px]">{sampleData.company.address}</p>
-              <p className="text-gray-500 text-[10px]">{sampleData.company.vat}</p>
-            </div>
           </div>
-          <div className={config.logoPosition === "center" ? "mt-3" : "text-right"}>
-            <p className="font-bold text-lg tracking-wider" style={{ color: config.primaryColor }}>{config.invoiceTitle}</p>
+          {/* Company details – right */}
+          <div className={`flex flex-col items-end text-right space-y-0.5`}>
+            <p className="font-bold text-sm" style={{ color: config.primaryColor }}>{sampleData.company.name}</p>
+            <p className="text-gray-500 text-[10px] whitespace-pre-line leading-relaxed">{sampleData.company.address}</p>
+            <p className="text-gray-500 text-[10px]">{sampleData.company.vat}</p>
+            <p className="font-bold text-lg tracking-wider mt-2" style={{ color: config.primaryColor }}>{config.invoiceTitle}</p>
             <p className="text-gray-500"># {sampleData.invoiceNumber}</p>
           </div>
         </div>
