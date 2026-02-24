@@ -21,9 +21,10 @@ const DocumentHeader = ({
   vatNumber,
 }: DocumentHeaderProps) => {
   return (
-    <>
-      <div className="flex flex-row items-stretch justify-between py-3 gap-8 min-h-[120px]">
-        {/* Logo – left */}
+    <div>
+      {/* HEADER ROW */}
+      <div className="flex flex-row items-stretch justify-between gap-6">
+        {/* LEFT: LOGO ONLY */}
         <div className="shrink-0 max-w-[50%] flex items-start">
           {logoUrl ? (
             <img
@@ -38,9 +39,9 @@ const DocumentHeader = ({
           )}
         </div>
 
-        {/* Right column – stretches full height of header */}
-        <div className="flex flex-col items-end text-right ml-auto justify-between">
-          {/* Group 1 — Company Identity (top-right) */}
+        {/* RIGHT: FLEX COLUMN MATCHING LOGO HEIGHT */}
+        <div className="flex flex-col items-end text-right justify-between">
+          {/* GROUP 1 – TOP RIGHT (anchored to top) */}
           <div className="space-y-0.5">
             <p className="font-bold text-base text-foreground leading-tight">
               {companyName || "Your Company"}
@@ -62,19 +63,16 @@ const DocumentHeader = ({
             )}
           </div>
 
-          {/* Group 2 — Contact Details (bottom-right, aligned with logo bottom) */}
-          <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground/60">
-            <span>0800 BE COOL</span>
-            <span className="text-muted-foreground/30">–</span>
-            <span>info@0800becool.co.za</span>
-            <span className="text-muted-foreground/30">–</span>
-            <span>www.0800becool.co.za</span>
+          {/* GROUP 2 – CONTACT LINE (anchored to bottom) */}
+          <div className="text-[11px] text-muted-foreground/60 whitespace-nowrap">
+            0800 BE COOL — info@0800becool.co.za — www.0800becool.co.za
           </div>
         </div>
       </div>
 
-      <div className="h-px bg-border" />
-    </>
+      {/* DIVIDER */}
+      <div className="mt-[5px] h-px bg-border w-full" />
+    </div>
   );
 };
 
