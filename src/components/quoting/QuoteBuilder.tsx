@@ -600,14 +600,15 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
             {companySettings.vat_number && (
               <p className="text-sm font-medium text-muted-foreground mt-0.5">VAT: {companySettings.vat_number}</p>
             )}
-            <div className="flex items-center gap-3 text-[11px] text-muted-foreground/60 pt-2 border-t border-border/40 mt-2 w-full justify-end">
-              <span>0800 BE COOL</span>
-              <span className="text-muted-foreground/30">|</span>
-              <span>info@0800becool.co.za</span>
-              <span className="text-muted-foreground/30">|</span>
-              <span>www.0800becool.co.za</span>
-            </div>
           </div>
+        </div>
+
+        <div className="flex items-center justify-center gap-3 text-[11px] text-muted-foreground/60">
+          <span>0800 BE COOL</span>
+          <span className="text-muted-foreground/30">|</span>
+          <span>info@0800becool.co.za</span>
+          <span className="text-muted-foreground/30">|</span>
+          <span>www.0800becool.co.za</span>
         </div>
 
         <div className="h-px bg-border" />
