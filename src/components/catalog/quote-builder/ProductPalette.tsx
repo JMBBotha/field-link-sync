@@ -176,14 +176,9 @@ function BundlePaletteCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
               <Package className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-              <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
-                <h4
-                  className="font-medium text-xs leading-tight line-clamp-2 cursor-pointer"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <HighlightText text={bundle.name} searchTerm={searchTerm} />
-                </h4>
-              </BundleItemsPopover>
+              <h4 className="font-medium text-xs leading-tight line-clamp-2">
+                <HighlightText text={bundle.name} searchTerm={searchTerm} />
+              </h4>
             </div>
             {bundle.description && (
               <p className="mt-1 text-[10px] text-muted-foreground line-clamp-2 pl-5">
@@ -206,6 +201,19 @@ function BundlePaletteCard({
             R{unitPrice.toFixed(0)}/{pricingType === "per_metre" ? "m" : "ea"}
           </span>
         </div>
+      </div>
+
+      {/* Bundle info popover - OUTSIDE draggable area */}
+      <div
+        className="px-3 pb-1"
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
+          <button className="text-[10px] text-primary hover:underline cursor-pointer">
+            View items breakdown
+          </button>
+        </BundleItemsPopover>
       </div>
 
       {/* Basket add buttons - OUTSIDE draggable listeners */}
