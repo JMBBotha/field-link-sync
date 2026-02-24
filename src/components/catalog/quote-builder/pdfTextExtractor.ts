@@ -404,17 +404,20 @@ export function matchTextRowsToProducts(
   const modelRegex = /^[A-Za-z0-9\-\/]{5,}$/;
 
   // STEP 3: For each price row, gather context and build a region
+  // IMPROVED MATCHING – TIGHT ROW + POSITION-AWARE + DEDUP
   const regions: ExtractedProductRegion[] = [];
   let skippedCount = { noPrice: 0, ghost: 0, outOfBounds: 0 };
+  const assignedCodes = new Set<string>();
+
+  // Build a flat list of all product codes for candidate scanning
+  const allProductCodes = [...byCode.keys()];
 
   for (const pRow of priceRows) {
     const rightmost = pRow.items[pRow.items.length - 1];
     // Try explicit R-prefixed price first, then raw numeric parse for column-based items
     let detectedPrice = detectPrice(rightmost.text);
     if (detectedPrice === null) {
-      // Column-based prices are bare numbers without R prefix
       let raw = rightmost.text.trim().replace(/\s/g, "");
-      // Handle SA comma-as-decimal format: "172,79" → "172.79"
       if (/,\d{1,2}$/.test(raw) && !/\.\d/.test(raw)) {
         raw = raw.replace(/,(?=\d{1,2}$)/, ".");
       } else {
@@ -433,49 +436,61 @@ export function matchTextRowsToProducts(
     // Ghost filter: skip if in top 3% AND no model code nearby
     const y_pct = (rowAvgY / pageHeight) * 100;
 
-    // Gather ALL text items on the same Y-band for context
+    // TIGHT same-row context ONLY (no aboveItems, no wide band)
+    const tightBand = avgHeight * 0.6;
     const contextItems = mergedItems.filter(
-      (it) => Math.abs(it.y - rowAvgY) <= yThreshold
+      (it) => Math.abs(it.y - rowAvgY) <= tightBand
     );
 
-    // Also gather items slightly above (for multi-line descriptions)
-    const aboveItems = mergedItems.filter(
-      (it) => it.y < rowAvgY - yThreshold && it.y >= rowAvgY - yThreshold * 3 &&
-        !(/R\s*\d/.test(it.text) && detectPrice(it.text) !== null)
-    );
-
-    const allContext = [...aboveItems, ...contextItems];
-    const hasModel = allContext.some((i) => modelRegex.test(i.text.trim()));
-
+    const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
     if (y_pct < 3 && !hasModel) { skippedCount.ghost++; continue; }
 
-    // Build match text from all context
-    const matchText = allContext.map((it) => it.text).join(" ").toLowerCase();
     const rowText = contextItems.map((it) => it.text).join(" ");
+    const matchTextLower = rowText.toLowerCase();
 
-    // Match against product DB
+    // POSITION-AWARE matching: find candidate codes in this row's items, sorted left-to-right
+    const candidates: { code: string; product: PaletteProduct; x: number }[] = [];
+    for (const it of contextItems) {
+      const itLower = it.text.toLowerCase();
+      for (const [code, product] of byCode) {
+        if (code.length >= 3 && itLower.includes(code)) {
+          candidates.push({ code, product, x: it.x });
+        }
+      }
+    }
+    // Sort leftmost first – prefer codes physically left of the price
+    candidates.sort((a, b) => a.x - b.x);
+
     let matched: PaletteProduct | null = null;
     let matchedCode = "";
 
-    for (const [code, product] of byCode) {
-      if (code.length >= 3 && matchText.includes(code)) {
-        matched = product;
-        matchedCode = product.product_code;
+    // Pick leftmost candidate that hasn't been assigned yet (or genuinely appears multiple times)
+    for (const cand of candidates) {
+      const occurrences = contextItems.filter((i) => i.text.toLowerCase().includes(cand.code)).length;
+      if (!assignedCodes.has(cand.code) || occurrences > 1) {
+        matched = cand.product;
+        matchedCode = cand.product.product_code;
+        assignedCodes.add(cand.code);
         break;
       }
     }
+
+    // Fallback: try byName then byDescription (loose, but still row-scoped)
     if (!matched) {
       for (const [name, product] of byName) {
-        if (name.length >= 5 && matchText.includes(name)) {
-          matched = product;
-          matchedCode = product.product_code;
-          break;
+        if (name.length >= 5 && matchTextLower.includes(name)) {
+          if (!assignedCodes.has(name)) {
+            matched = product;
+            matchedCode = product.product_code;
+            assignedCodes.add(name);
+            break;
+          }
         }
       }
     }
     if (!matched) {
       for (const [desc, product] of byDescription) {
-        if (desc.length >= 8 && matchText.includes(desc)) {
+        if (desc.length >= 8 && matchTextLower.includes(desc)) {
           matched = product;
           matchedCode = product.product_code;
           break;
@@ -486,7 +501,7 @@ export function matchTextRowsToProducts(
     const extractedCode =
       matchedCode ||
       (() => {
-        const codeMatch = allContext.map((it) => it.text).join(" ").match(/\b([A-Za-z]{2,}\d+[A-Za-z0-9\-]*)\b/);
+        const codeMatch = contextItems.map((it) => it.text).join(" ").match(/\b([A-Za-z]{2,}\d+[A-Za-z0-9\-]*)\b/);
         return codeMatch
           ? codeMatch[1]
           : rowText.trim().substring(0, 80) + `@${detectedPrice}`;
@@ -522,7 +537,7 @@ export function matchTextRowsToProducts(
 }
 
 // Cache for extracted regions per page
-let _extractionVersion = 32; // v32: fixed cascading row merge bug + tighter row grouping threshold
+let _extractionVersion = 33; // v33: tight row context + position-aware left-preferential matching + dedup
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 
 /**
