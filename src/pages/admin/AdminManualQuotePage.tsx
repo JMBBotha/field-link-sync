@@ -150,7 +150,13 @@ export default function AdminManualQuotePage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div
+      className="min-h-screen p-6 space-y-6"
+      style={{
+        background: "linear-gradient(135deg, #1e6bb8 0%, #d0d0d0 100%)",
+        backgroundAttachment: "fixed",
+      }}
+    >
       <div>
         <h1 className="text-2xl font-bold">Create Manual Quote</h1>
         <p className="text-muted-foreground text-sm">
