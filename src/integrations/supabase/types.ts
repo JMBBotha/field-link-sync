@@ -2898,6 +2898,41 @@ export type Database = {
           },
         ]
       }
+      quote_areas: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          quote_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          quote_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          quote_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_areas_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_attachments: {
         Row: {
           annotation: Json | null
@@ -2941,51 +2976,89 @@ export type Database = {
       }
       quote_items: {
         Row: {
+          area_id: string | null
           created_at: string
           description: string | null
           id: string
+          is_bundle: boolean
           item_name: string
           item_number: string | null
+          item_type: string | null
+          length: number | null
+          metadata: Json
           notes: string | null
+          parent_item_id: string | null
           product_id: string | null
           quantity: number
           quote_id: string | null
+          sort_order: number
           source: string
           supplier: string | null
+          total_price: number | null
           unit_price: number
           updated_at: string
         }
         Insert: {
+          area_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          is_bundle?: boolean
           item_name: string
           item_number?: string | null
+          item_type?: string | null
+          length?: number | null
+          metadata?: Json
           notes?: string | null
+          parent_item_id?: string | null
           product_id?: string | null
           quantity?: number
           quote_id?: string | null
+          sort_order?: number
           source?: string
           supplier?: string | null
+          total_price?: number | null
           unit_price?: number
           updated_at?: string
         }
         Update: {
+          area_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          is_bundle?: boolean
           item_name?: string
           item_number?: string | null
+          item_type?: string | null
+          length?: number | null
+          metadata?: Json
           notes?: string | null
+          parent_item_id?: string | null
           product_id?: string | null
           quantity?: number
           quote_id?: string | null
+          sort_order?: number
           source?: string
           supplier?: string | null
+          total_price?: number | null
           unit_price?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "quote_items_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "quote_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_items_parent_item_id_fkey"
+            columns: ["parent_item_id"]
+            isOneToOne: false
+            referencedRelation: "quote_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "quote_items_product_id_fkey"
             columns: ["product_id"]
@@ -3144,6 +3217,7 @@ export type Database = {
           accepted_signature: Json | null
           created_at: string
           customer_id: string | null
+          customer_name: string | null
           declined_at: string | null
           discount_type: string | null
           discount_value: number | null
@@ -3172,6 +3246,7 @@ export type Database = {
           accepted_signature?: Json | null
           created_at?: string
           customer_id?: string | null
+          customer_name?: string | null
           declined_at?: string | null
           discount_type?: string | null
           discount_value?: number | null
@@ -3200,6 +3275,7 @@ export type Database = {
           accepted_signature?: Json | null
           created_at?: string
           customer_id?: string | null
+          customer_name?: string | null
           declined_at?: string | null
           discount_type?: string | null
           discount_value?: number | null
