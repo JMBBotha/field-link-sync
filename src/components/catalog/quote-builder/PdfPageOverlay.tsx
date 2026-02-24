@@ -508,59 +508,7 @@ const PdfPageOverlay = ({
         />
       ))}
 
-      {/* Single shared tooltip rendered outside all rows */}
-      {hoveredRegion && (
-        <div
-          ref={tipRef}
-          className="fixed pointer-events-none bg-popover border rounded-lg shadow-xl px-3 py-2 text-[10px] whitespace-nowrap max-w-[280px]"
-          style={{ top: tipPos.top, left: tipPos.left, zIndex: 9999 }}
-        >
-          {hoveredIsMatched && hoveredProduct ? (
-            <div className="space-y-0.5">
-              <p className="font-semibold text-foreground text-[11px] truncate">
-                {hoveredProduct.short_name || hoveredProduct.product_code}
-              </p>
-              <p className="font-mono text-primary/80">{hoveredProduct.product_code}</p>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-foreground">
-                  R{hoveredPrice.toLocaleString("en-ZA")}
-                </span>
-                {hoveredProduct.sold_in_length && hoveredProduct.price_per_metre && (
-                  <span className="text-orange-600 font-medium">
-                    R{hoveredProduct.price_per_metre.toFixed(2)}/m
-                  </span>
-                )}
-              </div>
-              {hoveredProduct.brand && (
-                <p className="text-muted-foreground">{hoveredProduct.brand}</p>
-              )}
-              {hoveredInQuoteQty > 0 && (
-                <p className="text-blue-600 font-medium">In quote: ×{hoveredInQuoteQty}</p>
-              )}
-              {hoveredIsFavorite && (
-                <p className="text-yellow-600 font-medium text-[9px]">★ Favorite</p>
-              )}
-              {hoveredIsAdded && (
-                <p className="text-green-600 font-medium text-[9px]">✓ Added to quote</p>
-              )}
-              <p className="text-muted-foreground/60 text-[9px] mt-0.5">
-                Click row to add · Drag to zone
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-0.5">
-              <p className="font-semibold text-muted-foreground text-[11px]">Not in catalog</p>
-              <p className="font-mono text-muted-foreground/80 truncate max-w-[250px]">{hoveredRegion.label}</p>
-              {hoveredRegion.detected_price !== null && hoveredRegion.detected_price !== undefined && (
-                <p className="text-foreground font-medium">R{hoveredRegion.detected_price.toLocaleString("en-ZA")}</p>
-              )}
-              <p className="text-muted-foreground/60 text-[9px] mt-0.5">
-                Click row to add manually
-              </p>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Tooltip removed — centralized hover popup rendered in VisualCatalogPanel */}
     </>
   );
 };
