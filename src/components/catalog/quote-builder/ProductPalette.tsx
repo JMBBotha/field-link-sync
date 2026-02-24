@@ -148,39 +148,70 @@ function BundlePaletteCard({
 
   const { pricingType, unitPrice } = useMemo(() => computeBundlePricing(subItems), [subItems]);
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (baskets && baskets.length > 0 && onAddBundleToBasket) {
-      onAddBundleToBasket(baskets[0].id, bundle);
-    }
-  };
+  const handleCardClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.defaultPrevented) return;
+      if (baskets && baskets.length > 0 && onAddBundleToBasket) {
+        onAddBundleToBasket(baskets[0].id, bundle);
+      }
+    },
+    [baskets, onAddBundleToBasket, bundle],
+  );
 
   return (
-    <div className={`rounded-lg border bg-card mb-2 ${isDragging ? "opacity-50" : ""}`} onClick={handleCardClick}>
-      {/* Draggable header row */}
-      <div ref={setNodeRef} {...attributes} {...listeners} className="p-2 cursor-grab">
-        <div className="flex items-center gap-1 flex-wrap">
-          <Package className="h-3 w-3 text-blue-500 shrink-0" />
-          <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
-            <span className="font-medium text-xs truncate cursor-pointer" onClick={(e) => e.stopPropagation()}>
-              {bundle.name}
-            </span>
-          </BundleItemsPopover>
-          <Badge variant="secondary" className="text-[9px] px-1 py-0 shrink-0">
-            {subItems.length} items
-          </Badge>
-          <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0 text-blue-600">
-            {pricingType === "per_metre" ? "p/meter" : "p/qty"}
-          </Badge>
-          <span className="text-[10px] text-muted-foreground ml-auto">
+    <div
+      className={`group relative rounded-lg border transition-all hover:shadow-md border-border hover:border-primary/50 hover:bg-accent/40 ${
+        isDragging ? "opacity-60 scale-[0.98] shadow-xl z-50" : ""
+      }`}
+      onClick={handleCardClick}
+    >
+      {/* Draggable header */}
+      <div
+        ref={setNodeRef}
+        {...attributes}
+        {...listeners}
+        className={`p-3 cursor-grab active:cursor-grabbing ${isDragging ? "cursor-grabbing" : ""}`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <Package className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+              <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
+                <h4
+                  className="font-medium text-xs leading-tight line-clamp-2 cursor-pointer"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <HighlightText text={bundle.name} searchTerm={searchTerm} />
+                </h4>
+              </BundleItemsPopover>
+            </div>
+            {bundle.description && (
+              <p className="mt-1 text-[10px] text-muted-foreground line-clamp-2 pl-5">
+                {bundle.description}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <Badge variant="secondary" className="text-[9px] px-1 py-0">
+              {subItems.length} items
+            </Badge>
+            <Badge variant="outline" className="text-[9px] px-1 py-0 text-blue-600">
+              {pricingType === "per_metre" ? "p/meter" : "p/qty"}
+            </Badge>
+          </div>
+        </div>
+        <div className="mt-2 flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">Unit price:</span>
+          <span className="font-bold">
             R{unitPrice.toFixed(0)}/{pricingType === "per_metre" ? "m" : "ea"}
           </span>
         </div>
       </div>
+
       {/* Basket add buttons - OUTSIDE draggable listeners */}
       {baskets && baskets.length > 0 && onAddBundleToBasket && (
         <div
-          className="flex flex-wrap gap-1 px-2 pb-2"
+          className="px-3 pb-3 pt-2 border-t bg-muted/40 rounded-b-lg flex flex-wrap gap-1"
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
         >
@@ -189,7 +220,7 @@ function BundlePaletteCard({
               key={b.id}
               variant="outline"
               size="sm"
-              className="text-xs h-6"
+              className="text-xs h-6 flex-1"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
