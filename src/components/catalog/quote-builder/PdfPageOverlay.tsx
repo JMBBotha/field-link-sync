@@ -74,6 +74,8 @@ interface PdfPageOverlayProps {
   supplierName?: string;
   /** Opens the Area Quote Builder with pre-filled item context */
   onOpenWizard?: (item: WizardTriggerItem) => void;
+  /** Lifted hover callbacks — emit hovered product + mouse event to parent */
+  onHoverProduct?: (product: PaletteProduct | null, mouseEvent: { clientX: number; clientY: number } | null) => void;
 }
 
 /* ─── Added-to-quote tracker (local state, shared across regions) ─── */
@@ -316,8 +318,10 @@ const PdfPageOverlay = ({
   onRemoveRegion,
   supplierName,
   onOpenWizard,
+  onHoverProduct,
 }: PdfPageOverlayProps) => {
   const [hoveredRegion, setHoveredRegion] = useState<OverlayRegion | null>(null);
+  const hoveredRegionRef = useRef<OverlayRegion | null>(null);
   const [tipPos, setTipPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const tipRef = useRef<HTMLDivElement>(null);
   const [localAddedIds, setLocalAddedIds] = useState<Set<string>>(new Set());
@@ -411,6 +415,7 @@ const PdfPageOverlay = ({
 
   const handleHover = useCallback((region: OverlayRegion) => {
     setHoveredRegion(region);
+    hoveredRegionRef.current = region;
   }, []);
 
   const handleHoverMove = useCallback((e: React.MouseEvent) => {
@@ -421,7 +426,6 @@ const PdfPageOverlay = ({
     const GAP = 14;
     const EDGE = 12;
 
-    // Measure actual tooltip size (fallback to estimates)
     let tipW = 280;
     let tipH = 120;
     if (tipRef.current) {
@@ -430,28 +434,27 @@ const PdfPageOverlay = ({
       tipH = r.height || tipH;
     }
 
-    // Default: right & below cursor
     let left = mx + GAP;
     let top = my + GAP;
-
-    // Flip horizontally if near right edge
-    if (left + tipW > vw - EDGE) {
-      left = mx - tipW - GAP;
-    }
-    // Flip vertically if near bottom edge
-    if (top + tipH > vh - EDGE) {
-      top = my - tipH - GAP;
-    }
-    // Safety clamp to keep fully on-screen
+    if (left + tipW > vw - EDGE) left = mx - tipW - GAP;
+    if (top + tipH > vh - EDGE) top = my - tipH - GAP;
     left = Math.max(EDGE, Math.min(left, vw - tipW - EDGE));
     top = Math.max(EDGE, Math.min(top, vh - tipH - EDGE));
 
     setTipPos({ top, left });
-  }, []);
+
+    // Lift hover to parent for EnhancedProductPopup
+    if (onHoverProduct) {
+      const region = hoveredRegionRef.current;
+      onHoverProduct(region?.product || null, { clientX: mx, clientY: my });
+    }
+  }, [onHoverProduct]);
 
   const handleHoverLeave = useCallback(() => {
     setHoveredRegion(null);
-  }, []);
+    hoveredRegionRef.current = null;
+    onHoverProduct?.(null, null);
+  }, [onHoverProduct]);
 
   if (positionedRegions.length === 0) return null;
 

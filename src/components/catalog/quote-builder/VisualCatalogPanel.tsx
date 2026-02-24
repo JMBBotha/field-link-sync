@@ -67,6 +67,12 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [popupProduct, setPopupProduct] = useState<PaletteProduct | null>(null);
+  const [hoverMouseEvent, setHoverMouseEvent] = useState<{ clientX: number; clientY: number } | null>(null);
+
+  const handleHoverProduct = useCallback((product: PaletteProduct | null, mouseEvent: { clientX: number; clientY: number } | null) => {
+    setPopupProduct(product);
+    setHoverMouseEvent(mouseEvent);
+  }, []);
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const [activeCategory, setActiveCategory] = useState<string | undefined>();
   const [categoryPageMap, setCategoryPageMap] = useState<Map<string, number>>(new Map());
@@ -559,6 +565,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           onCategoriesDetected={handlePageCategories}
                           supplierName={currentSupplierName}
                           onOpenWizard={onOpenWizard}
+                          onHoverProduct={handleHoverProduct}
                           registerRef={(el) => {
                             if (el) pageRefs.current.set(idx, el);
                             else pageRefs.current.delete(idx);
@@ -620,7 +627,20 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
         </div>
       </div>
 
-      {/* EnhancedProductPopup removed — clicks now open Area Quote Builder */}
+      {/* EnhancedProductPopup — shown on hover over PDF overlay rows (pointer-events-none for hover use) */}
+      {popupProduct && hoverMouseEvent && (
+        <div className="pointer-events-none">
+          <EnhancedProductPopup
+            product={popupProduct}
+            baskets={baskets}
+            onAddProductToBasket={onAddProductToBasket}
+            onAddBasket={handleAddBasket}
+            onClose={() => { setPopupProduct(null); setHoverMouseEvent(null); }}
+            basketProductCounts={basketProductCounts}
+            mouseEvent={hoverMouseEvent}
+          />
+        </div>
+      )}
     </>
   );
 };
@@ -644,6 +664,7 @@ interface LazyPdfPageProps {
   registerRef: (el: HTMLDivElement | null) => void;
   supplierName?: string;
   onOpenWizard?: (item: WizardTriggerItem) => void;
+  onHoverProduct?: (product: PaletteProduct | null, mouseEvent: { clientX: number; clientY: number } | null) => void;
 }
 
 const LazyPdfPage = ({
@@ -663,6 +684,7 @@ const LazyPdfPage = ({
   registerRef,
   supplierName,
   onOpenWizard,
+  onHoverProduct,
 }: LazyPdfPageProps) => {
   const queryClient = useQueryClient();
   const divRef = useRef<HTMLDivElement | null>(null);
@@ -888,6 +910,7 @@ const LazyPdfPage = ({
               onRemoveRegion={onRemoveRegion}
               supplierName={supplierName}
               onOpenWizard={onOpenWizard}
+              onHoverProduct={onHoverProduct}
             />
           )}
           {extracting && (
