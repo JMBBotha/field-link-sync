@@ -20,6 +20,7 @@ import ClientProposalView from "./components/client/ClientProposalView";
 import AdminLayout from "./components/admin/AdminLayout";
 import { AdminHomePage, AdminMapPage, AdminQuotesPage, AdminProposalsPage, AdminInvoicesPage, AdminImportPage } from "./pages/admin";
 import AdminQuoteBuilderPage from "./pages/admin/AdminQuoteBuilderPage";
+import AdminQuoteBuilderPageUnified from "./pages/admin/AdminQuoteBuilderPageUnified";
 import AdminCatalogPage from "./pages/admin/AdminCatalogPage";
 import AdminDispatchPage from "./pages/admin/AdminDispatchPage";
 import AdminMaintenancePage from "./pages/admin/AdminMaintenancePage";
@@ -128,7 +129,9 @@ const App = () => (
               </Route>
 
               {/* Full-page Quote Builder (outside AdminLayout for full-bleed) */}
-              <Route path="/admin/quote-builder" element={<AdminQuoteBuilderPage />} />
+              <Route path="/admin/quote-builder" element={<AdminQuoteBuilderPageUnified />} />
+              {/* Legacy quote builder (direct access) */}
+              <Route path="/admin/quote-builder-legacy" element={<AdminQuoteBuilderPage />} />
 
               {/* FreshBooks multi-tenant client dashboards */}
               <Route path="/client/:companyId" element={<CompanyProvider><FBLayout /></CompanyProvider>}>
