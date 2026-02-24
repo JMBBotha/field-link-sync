@@ -159,62 +159,50 @@ function BundlePaletteCard({
   );
 
   return (
-    <div
-      className={`group relative rounded-lg border transition-all hover:shadow-md border-border hover:border-primary/50 hover:bg-accent/40 ${
-        isDragging ? "opacity-60 scale-[0.98] shadow-xl z-50" : ""
-      }`}
-      onClick={handleCardClick}
-    >
-      {/* Draggable header */}
+    <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
       <div
-        ref={setNodeRef}
-        {...attributes}
-        {...listeners}
-        className={`p-3 cursor-grab active:cursor-grabbing ${isDragging ? "cursor-grabbing" : ""}`}
+        className={`group relative rounded-lg border-2 border-primary/60 transition-all hover:shadow-md hover:border-primary hover:bg-accent/40 ${
+          isDragging ? "opacity-60 scale-[0.98] shadow-xl z-50" : ""
+        }`}
+        onClick={handleCardClick}
       >
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <Package className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-              <h4 className="font-medium text-xs leading-tight line-clamp-2">
-                <HighlightText text={bundle.name} searchTerm={searchTerm} />
-              </h4>
+        {/* Draggable header */}
+        <div
+          ref={setNodeRef}
+          {...attributes}
+          {...listeners}
+          className={`p-3 cursor-grab active:cursor-grabbing ${isDragging ? "cursor-grabbing" : ""}`}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <Package className="h-3.5 w-3.5 text-primary shrink-0" />
+                <h4 className="font-medium text-xs leading-tight line-clamp-2">
+                  <HighlightText text={bundle.name} searchTerm={searchTerm} />
+                </h4>
+              </div>
+              {bundle.description && (
+                <p className="mt-1 text-[10px] text-muted-foreground line-clamp-2 pl-5">
+                  {bundle.description}
+                </p>
+              )}
             </div>
-            {bundle.description && (
-              <p className="mt-1 text-[10px] text-muted-foreground line-clamp-2 pl-5">
-                {bundle.description}
-              </p>
-            )}
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              <Badge variant="secondary" className="text-[9px] px-1 py-0">
+                {subItems.length} items
+              </Badge>
+              <Badge variant="outline" className="text-[9px] px-1 py-0 text-primary">
+                {pricingType === "per_metre" ? "p/meter" : "p/qty"}
+              </Badge>
+            </div>
           </div>
-          <div className="flex flex-col items-end gap-1 shrink-0">
-            <Badge variant="secondary" className="text-[9px] px-1 py-0">
-              {subItems.length} items
-            </Badge>
-            <Badge variant="outline" className="text-[9px] px-1 py-0 text-blue-600">
-              {pricingType === "per_metre" ? "p/meter" : "p/qty"}
-            </Badge>
+          <div className="mt-2 flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Unit price:</span>
+            <span className="font-bold">
+              R{unitPrice.toFixed(0)}/{pricingType === "per_metre" ? "m" : "ea"}
+            </span>
           </div>
         </div>
-        <div className="mt-2 flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">Unit price:</span>
-          <span className="font-bold">
-            R{unitPrice.toFixed(0)}/{pricingType === "per_metre" ? "m" : "ea"}
-          </span>
-        </div>
-      </div>
-
-      {/* Bundle info popover - OUTSIDE draggable area */}
-      <div
-        className="px-3 pb-1"
-        onPointerDown={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
-          <button className="text-[10px] text-primary hover:underline cursor-pointer">
-            View items breakdown
-          </button>
-        </BundleItemsPopover>
-      </div>
 
       {/* Basket add buttons - OUTSIDE draggable listeners */}
       {baskets && baskets.length > 0 && onAddBundleToBasket && (
@@ -241,7 +229,8 @@ function BundlePaletteCard({
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </BundleItemsPopover>
   );
 }
 
