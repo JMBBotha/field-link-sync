@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search, Wand2, ChevronUp, ChevronDown, ArrowLeft, FileDown, Save,
-  Loader2, CheckCircle, PanelRightClose, PanelRightOpen,
+  Loader2, CheckCircle, PanelRightClose, PanelRightOpen, Users, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ import { generateQuoteBuilderPDF } from "@/lib/quoteBuilderPDF";
 import { getProductDisplayName } from "@/components/catalog/quote-builder/productDisplayUtils";
 import type { PaletteProduct, BasketItem, Basket } from "@/components/catalog/QuoteBuilderTab";
 import { computeBundlePricing } from "@/components/catalog/quote-builder/BundleItemsPopover";
+import { useUnifiedClients } from "@/hooks/useUnifiedClients";
 import logo from "@/assets/logo.png";
 
 // Custom sensor to skip data-no-dnd elements
@@ -57,6 +58,25 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
   const [quoteName, setQuoteName] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [clientSearch, setClientSearch] = useState("");
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
+  const clientInputRef = useRef<HTMLInputElement>(null);
+  const { data: clients = [] } = useUnifiedClients();
+
+  const filteredClients = useMemo(() => {
+    if (!clientSearch.trim()) return clients.slice(0, 8);
+    const q = clientSearch.toLowerCase();
+    return clients.filter(c =>
+      c.name.toLowerCase().includes(q) ||
+      c.phone.includes(q) ||
+      (c.email && c.email.toLowerCase().includes(q))
+    ).slice(0, 8);
+  }, [clients, clientSearch]);
+
+  const selectedClient = useMemo(() =>
+    selectedClientId ? clients.find(c => c.id === selectedClientId || c.customer_id === selectedClientId) : null
+  , [clients, selectedClientId]);
 
   const summary = useMemo(() => {
     let totalItems = 0, totalQty = 0, grandTotal = 0;
@@ -110,6 +130,8 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
         subtotal: summary.grandTotal / 1.15, vat_rate: 0.15,
         vat_amount: summary.grandTotal - summary.grandTotal / 1.15,
         total: summary.grandTotal, notes: quoteName, visual_sections: zonesData,
+        ...(selectedClientId ? { customer_id: selectedClientId.startsWith("lead-") ? null : selectedClientId } : {}),
+        ...(selectedClient ? { customer_name: selectedClient.name } : {}),
       }).select("id").single();
       if (error) throw error;
       setSavedId(data.id);
@@ -172,6 +194,61 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
 
         {/* Actions */}
         <div className="space-y-2">
+          {/* Client selector */}
+          <div className="relative">
+            <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Client</label>
+            {selectedClient ? (
+              <div className="flex items-center gap-1.5 rounded-lg border bg-muted/50 px-2.5 py-2 text-xs">
+                <Users className="h-3.5 w-3.5 text-primary shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="font-medium truncate block">{selectedClient.name}</span>
+                  {selectedClient.phone && <span className="text-[10px] text-muted-foreground">{selectedClient.phone}</span>}
+                </div>
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={() => { setSelectedClientId(null); setQuoteName(""); setClientSearch(""); }}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <Input
+                  ref={clientInputRef}
+                  placeholder="Search clients..."
+                  value={clientSearch}
+                  onChange={(e) => { setClientSearch(e.target.value); setShowClientDropdown(true); }}
+                  onFocus={() => setShowClientDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
+                  className="h-9 text-xs rounded-lg pr-7"
+                />
+                <Users className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                {showClientDropdown && filteredClients.length > 0 && (
+                  <div className="absolute z-50 top-full left-0 right-0 mt-1 rounded-lg border bg-popover shadow-lg max-h-48 overflow-y-auto">
+                    {filteredClients.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className="w-full text-left px-2.5 py-1.5 hover:bg-muted/50 transition-colors"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          setSelectedClientId(c.customer_id || c.id);
+                          setQuoteName(c.name);
+                          setClientSearch("");
+                          setShowClientDropdown(false);
+                        }}
+                      >
+                        <p className="text-xs font-medium truncate">{c.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{c.phone}{c.email ? ` · ${c.email}` : ""}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <Input
             placeholder="Quote name..."
             value={quoteName}
