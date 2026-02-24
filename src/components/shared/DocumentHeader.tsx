@@ -42,23 +42,22 @@ const DocumentHeader = ({
         {/* RIGHT: FLEX COLUMN MATCHING LOGO HEIGHT */}
         <div className="flex flex-col items-end text-right justify-between">
           {/* GROUP 1 – TOP RIGHT (anchored to top) */}
-          <div className="space-y-0.5">
+          <div className="space-y-0">
             <p className="font-bold text-base text-foreground leading-tight">
               {companyName || "Your Company"}
             </p>
-            {registrationNumber && (
-              <p className="text-xs text-muted-foreground">
-                Reg No: {registrationNumber}
-              </p>
-            )}
-            {physicalAddress && (
-              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                {physicalAddress}
-              </p>
-            )}
+            <p className="text-sm text-muted-foreground leading-snug">6 Aviation Cress</p>
+            <p className="text-sm text-muted-foreground leading-snug">Airport City</p>
+            <p className="text-sm text-muted-foreground leading-snug">Cape Town</p>
+            <p className="text-sm text-muted-foreground leading-snug">7100</p>
             {vatNumber && (
-              <p className="text-sm font-medium text-muted-foreground">
+              <p className="text-sm font-medium text-muted-foreground leading-snug">
                 VAT: {vatNumber}
+              </p>
+            )}
+            {registrationNumber && (
+              <p className="text-xs text-muted-foreground leading-snug">
+                Reg No: {registrationNumber}
               </p>
             )}
           </div>
