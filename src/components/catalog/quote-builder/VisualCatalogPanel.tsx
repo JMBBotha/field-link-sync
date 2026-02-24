@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -651,8 +652,8 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
         </div>
       </div>
 
-      {/* Hover product card — lightweight tooltip following cursor */}
-      {popupProduct && hoverMouseEvent && (
+      {/* Hover product card — portaled to body to escape overflow:hidden ancestors */}
+      {popupProduct && hoverMouseEvent && createPortal(
         <div
           ref={hoverPopupRef}
           className="fixed pointer-events-none z-[9999] bg-popover border rounded-xl shadow-2xl w-[340px] max-w-[90vw] p-4 animate-in fade-in zoom-in-95 duration-150"
@@ -689,7 +690,8 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
             )}
             <p className="text-[9px] text-muted-foreground/50 mt-1">Click row to add to quote</p>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
