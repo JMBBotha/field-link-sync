@@ -518,7 +518,7 @@ const CreateInvoicePage = ({
         <div className="flex flex-row items-start justify-between py-3">
           <div className="shrink-0">
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="max-h-[165px] max-w-[330px] w-auto object-contain" />
+              <img src={logoUrl} alt="Logo" className="max-h-[182px] max-w-[363px] w-auto object-contain" />
             ) : (
               <div className="scale-125 origin-left">
                 <BeCoolLogo />
