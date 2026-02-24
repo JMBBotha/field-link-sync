@@ -68,15 +68,15 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [hoveredProduct, setHoveredProduct] = useState<PaletteProduct | null>(null);
-  const [hoverEvent, setHoverEvent] = useState<{ clientX: number; clientY: number } | null>(null);
+  const [hoverEvent, setHoverEvent] = useState<MouseEvent | null>(null);
 
   const handleHoverStart = useCallback((product: PaletteProduct | null, e: React.MouseEvent) => {
     setHoveredProduct(product);
-    setHoverEvent({ clientX: e.clientX, clientY: e.clientY });
+    setHoverEvent(e.nativeEvent);
   }, []);
 
   const handleHoverMove = useCallback((e: React.MouseEvent) => {
-    setHoverEvent({ clientX: e.clientX, clientY: e.clientY });
+    setHoverEvent(e.nativeEvent);
   }, []);
 
   const handleHoverEnd = useCallback(() => {
