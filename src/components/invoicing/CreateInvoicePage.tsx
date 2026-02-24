@@ -515,7 +515,7 @@ const CreateInvoicePage = ({
       {/* ── A4 Card ── */}
       <div className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
         {/* ── HEADER ROW ── */}
-        <div className="flex flex-row items-start justify-between">
+        <div className="flex flex-row items-start justify-between py-3">
           <div className="shrink-0">
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" className="max-h-[150px] max-w-[300px] w-auto object-contain" />
@@ -590,7 +590,7 @@ const CreateInvoicePage = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 -mt-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 -mt-7">
           <div />
           <div className="space-y-1">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due Date</p>
