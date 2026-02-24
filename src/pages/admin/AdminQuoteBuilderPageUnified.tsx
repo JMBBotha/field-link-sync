@@ -312,7 +312,7 @@ function UnifiedQuoteBuilderInner() {
       </div>
 
       {/* Tab content */}
-      <div className="flex-1 min-h-0 overflow-hidden bg-background">
+      <div className="flex-1 min-h-0 overflow-hidden">
         {activeTab === "normal" && (
           <div className="h-full flex">
             <div className="flex-1 min-w-0 overflow-y-auto">
