@@ -607,17 +607,15 @@ const ProposalBuilder = ({
       {/* ── A4 Card ── */}
       <div className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
         {/* ── HEADER ROW ── */}
-        <div className="flex flex-row items-start justify-between py-3 gap-6">
-          {/* Logo – left */}
-          <div className="shrink-0 flex flex-col items-start gap-2">
+        <div className="flex flex-row items-start justify-between py-3 gap-8">
+          {/* Logo – left (branding only) */}
+          <div className="shrink-0 flex flex-col items-start gap-2 max-w-[50%]">
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="max-h-[182px] max-w-[363px] w-auto object-contain" />
+              <img src={logoUrl} alt="Company logo" className="max-h-[165px] w-auto object-contain" />
             ) : (
-              <div className="scale-125 origin-left">
-                <BeCoolLogo />
-              </div>
+              <p className="text-2xl font-black tracking-tight text-foreground">{companySettings.company_name || "Your Company"}</p>
             )}
-            <div className="flex items-center gap-3 text-[11px] text-muted-foreground/60">
+            <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground/60">
               <span>0800 BE COOL</span>
               <span className="text-muted-foreground/30">|</span>
               <span>info@0800becool.co.za</span>
@@ -625,14 +623,14 @@ const ProposalBuilder = ({
               <span>www.0800becool.co.za</span>
             </div>
           </div>
-          {/* Company info – right */}
-          <div className="flex flex-col items-end text-right ml-auto space-y-0.5">
-            <p className="font-bold text-lg text-foreground leading-tight">{companySettings.company_name || "Your Company"}</p>
+          {/* Company details – right */}
+          <div className="flex flex-col items-end text-right ml-auto space-y-1">
+            {logoUrl && <p className="font-bold text-base text-foreground leading-tight">{companySettings.company_name || "Your Company"}</p>}
             {companySettings.physical_address && (
-              <p className="text-sm text-muted-foreground leading-snug whitespace-pre-line">{companySettings.physical_address}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{companySettings.physical_address}</p>
             )}
             {companySettings.vat_number && (
-              <p className="text-sm font-medium text-muted-foreground mt-0.5">VAT: {companySettings.vat_number}</p>
+              <p className="text-sm font-medium text-muted-foreground">VAT: {companySettings.vat_number}</p>
             )}
           </div>
         </div>
