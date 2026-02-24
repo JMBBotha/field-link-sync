@@ -1,10 +1,8 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useLayoutEffect } from "react";
 import { Plus, Minus, Star, ShoppingBag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { getCategoryIcon, getCategoryBg } from "./ProductPalette";
 import { getProductDisplayName } from "./productDisplayUtils";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
@@ -16,7 +14,12 @@ interface EnhancedProductPopupProps {
   onAddBasket: () => void;
   onClose: () => void;
   basketProductCounts: Record<string, number>;
+  /** Pass the mouse event that triggered this popup for cursor-relative positioning */
+  mouseEvent?: { clientX: number; clientY: number } | null;
 }
+
+const OFFSET = 14;
+const EDGE_MARGIN = 16;
 
 const EnhancedProductPopup = ({
   product,
@@ -25,11 +28,49 @@ const EnhancedProductPopup = ({
   onAddBasket,
   onClose,
   basketProductCounts,
+  mouseEvent,
 }: EnhancedProductPopupProps) => {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const popupRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
   const price = product.selling_price || product.cost_incl_vat || 0;
   const inQuoteQty = basketProductCounts[product.id] || 0;
+
+  // Position near cursor, clamped to viewport
+  useLayoutEffect(() => {
+    if (!popupRef.current) return;
+    const rect = popupRef.current.getBoundingClientRect();
+    const pw = rect.width;
+    const ph = rect.height;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Default: center of viewport (fallback when no mouseEvent)
+    let cx = vw / 2;
+    let cy = vh / 2;
+    if (mouseEvent) {
+      cx = mouseEvent.clientX;
+      cy = mouseEvent.clientY;
+    }
+
+    let x = cx + OFFSET;
+    let y = cy + OFFSET;
+
+    // Flip horizontally if near right edge
+    if (x + pw > vw - EDGE_MARGIN) {
+      x = cx - pw - OFFSET;
+    }
+    // Flip vertically if near bottom edge
+    if (y + ph > vh - EDGE_MARGIN) {
+      y = cy - ph - OFFSET;
+    }
+    // Safety clamp
+    x = Math.max(EDGE_MARGIN, Math.min(x, vw - pw - EDGE_MARGIN));
+    y = Math.max(EDGE_MARGIN, Math.min(y, vh - ph - EDGE_MARGIN));
+
+    setPos({ top: y, left: x });
+  }, [mouseEvent]);
 
   const handleSetQty = useCallback((basketId: string, qty: number) => {
     setQuantities((prev) => ({ ...prev, [basketId]: Math.max(0, qty) }));
@@ -65,11 +106,13 @@ const EnhancedProductPopup = ({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-[60]"
       onClick={onClose}
     >
       <div
-        className="bg-popover border rounded-xl shadow-2xl w-[420px] max-w-[95vw] max-h-[80vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        ref={popupRef}
+        className="fixed z-[9999] bg-popover border rounded-xl shadow-2xl w-[420px] max-w-[95vw] max-h-[80vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        style={{ top: `${pos.top}px`, left: `${pos.left}px` }}
         onClick={(e) => e.stopPropagation()}
         data-no-dnd="true"
       >
