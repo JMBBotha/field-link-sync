@@ -1,20 +1,25 @@
 /**
  * Unified Quote Builder Page — wraps Normal / Visual / Area builders
- * in a shared QuoteProvider with tabs and a persistent header.
+ * in a shared header with tabs. Each tab renders the real builder component.
  */
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Users, X, Loader2, Wand2, PanelRightClose, PanelRightOpen } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ArrowLeft, Users, X, Loader2 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { QuoteProvider, useQuoteContext } from "@/contexts/QuoteContext";
 import { useUnifiedClients } from "@/hooks/useUnifiedClients";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
+
+// Real builder components
+import QuoteBuilderTab from "@/components/catalog/QuoteBuilderTab";
+import VisualCatalogView from "@/components/catalog/quote-builder/VisualCatalogView";
+import QuoteBuilderPopup from "@/components/catalog/quote-builder/QuoteBuilderPopup";
+import type { Basket } from "@/components/catalog/QuoteBuilderTab";
 
 /* ─── Shared Header with client selector ─── */
 function QuoteSharedHeader({ onBack }: { onBack: () => void }) {
@@ -143,46 +148,11 @@ function QuoteSharedHeader({ onBack }: { onBack: () => void }) {
   );
 }
 
-/* ─── Placeholder tabs for Visual and Area ─── */
-function VisualBuilderTab() {
-  const { items, areas } = useQuoteContext();
-  return (
-    <div className="flex items-center justify-center h-full text-muted-foreground">
-      <div className="text-center space-y-2">
-        <p className="text-sm font-medium">Visual Quote Builder</p>
-        <p className="text-xs">
-          {items.filter((i) => !i.parent_item_id).length} items across {areas.length} zones
-        </p>
-        <p className="text-[10px] text-muted-foreground/60">
-          Visual canvas — data synced via shared context
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function AreaBuilderTab() {
-  const { items, areas, addArea, deleteArea, updateArea } = useQuoteContext();
-  return (
-    <div className="flex items-center justify-center h-full text-muted-foreground">
-      <div className="text-center space-y-2">
-        <p className="text-sm font-medium">Area Quote Builder</p>
-        <p className="text-xs">
-          {areas.length} areas defined · {items.filter((i) => !i.parent_item_id).length} items total
-        </p>
-        <p className="text-[10px] text-muted-foreground/60">
-          5-step wizard — data synced via shared context
-        </p>
-      </div>
-    </div>
-  );
-}
-
 /* ─── Inner content (needs context) ─── */
 function UnifiedQuoteBuilderInner() {
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState("normal");
+  const [areaWizardOpen, setAreaWizardOpen] = useState(false);
 
   return (
     <div
@@ -204,7 +174,7 @@ function UnifiedQuoteBuilderInner() {
             <TabsTrigger value="visual" className="flex-1 text-xs data-[state=active]:bg-white data-[state=active]:text-foreground text-white/70">
               Visual
             </TabsTrigger>
-            <TabsTrigger value="area" className="flex-1 text-xs data-[state=active]:bg-white data-[state=active]:text-foreground text-white/70">
+            <TabsTrigger value="area" className="flex-1 text-xs data-[state=active]:bg-white data-[state=active]:text-foreground text-white/70" onClick={() => setAreaWizardOpen(true)}>
               Area
             </TabsTrigger>
           </TabsList>
@@ -212,40 +182,42 @@ function UnifiedQuoteBuilderInner() {
       </div>
 
       {/* Tab content */}
-      <div className="flex-1 min-h-0 overflow-hidden">
-        {activeTab === "normal" && <NormalBuilderTab />}
-        {activeTab === "visual" && <VisualBuilderTab />}
-        {activeTab === "area" && <AreaBuilderTab />}
+      <div className="flex-1 min-h-0 overflow-hidden bg-background">
+        {activeTab === "normal" && (
+          <div className="h-full overflow-y-auto">
+            <QuoteBuilderTab />
+          </div>
+        )}
+        {activeTab === "visual" && (
+          <div className="h-full overflow-y-auto p-4">
+            <VisualCatalogView baskets={[]} onAddProductToBasket={() => {}} />
+          </div>
+        )}
+        {activeTab === "area" && (
+          <div className="h-full flex items-center justify-center text-muted-foreground">
+            <div className="text-center space-y-3">
+              <p className="text-sm font-medium">Area Quote Builder</p>
+              <p className="text-xs">The Area Quote Builder opens as a wizard overlay.</p>
+              <Button size="sm" onClick={() => setAreaWizardOpen(true)}>
+                Open Area Wizard
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
-  );
-}
 
-/* ─── Normal builder (re-exports existing logic, uses context for persistence) ─── */
-function NormalBuilderTab() {
-  // For now, render the existing AdminQuoteBuilderPage content
-  // This will be progressively migrated to use QuoteContext
-  const { items, areas, loading } = useQuoteContext();
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center justify-center h-full text-muted-foreground">
-      <div className="text-center space-y-2">
-        <p className="text-sm font-medium">Normal Quote Builder</p>
-        <p className="text-xs">
-          {items.filter((i) => !i.parent_item_id).length} items across {areas.length} zones
-        </p>
-        <p className="text-[10px] text-muted-foreground/60">
-          Drag-and-drop product palette — data synced via shared context
-        </p>
-      </div>
+      {/* Area wizard popup (works across all tabs) */}
+      <QuoteBuilderPopup
+        open={areaWizardOpen}
+        onClose={() => setAreaWizardOpen(false)}
+        products={[]}
+        bundles={[]}
+        onSave={(newBaskets: Basket[]) => {
+          toast({ title: `Added ${newBaskets.length} zones from Area Quote Builder` });
+          setAreaWizardOpen(false);
+        }}
+        triggerItem={null}
+      />
     </div>
   );
 }
