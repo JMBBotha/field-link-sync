@@ -71,7 +71,7 @@ const DocumentHeader = ({
       </div>
 
       {/* DIVIDER */}
-      <div className="mt-[61px] h-px bg-border w-full" />
+      <div className="mt-[11px] h-px bg-border w-full" />
     </div>
   );
 };
