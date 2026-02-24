@@ -74,8 +74,10 @@ interface PdfPageOverlayProps {
   supplierName?: string;
   /** Opens the Area Quote Builder with pre-filled item context */
   onOpenWizard?: (item: WizardTriggerItem) => void;
-  /** Lifted hover callbacks — emit hovered product + mouse event to parent */
-  onHoverProduct?: (product: PaletteProduct | null, mouseEvent: { clientX: number; clientY: number } | null) => void;
+  /** Lifted hover callbacks — emit hovered product + mouse events to parent */
+  onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent) => void;
+  onHoverMove?: (e: React.MouseEvent) => void;
+  onHoverEnd?: () => void;
 }
 
 /* ─── Added-to-quote tracker (local state, shared across regions) ─── */
@@ -318,7 +320,9 @@ const PdfPageOverlay = ({
   onRemoveRegion,
   supplierName,
   onOpenWizard,
-  onHoverProduct,
+  onHoverStart,
+  onHoverMove: onHoverMoveProp,
+  onHoverEnd,
 }: PdfPageOverlayProps) => {
   const hoveredRegionRef = useRef<OverlayRegion | null>(null);
   const [localAddedIds, setLocalAddedIds] = useState<Set<string>>(new Set());
@@ -415,16 +419,17 @@ const PdfPageOverlay = ({
   }, []);
 
   const handleHoverMove = useCallback((e: React.MouseEvent) => {
-    if (onHoverProduct) {
-      const region = hoveredRegionRef.current;
-      onHoverProduct(region?.product || null, { clientX: e.clientX, clientY: e.clientY });
+    const region = hoveredRegionRef.current;
+    if (region?.product) {
+      onHoverStart?.(region.product, e);
     }
-  }, [onHoverProduct]);
+    onHoverMoveProp?.(e);
+  }, [onHoverStart, onHoverMoveProp]);
 
   const handleHoverLeave = useCallback(() => {
     hoveredRegionRef.current = null;
-    onHoverProduct?.(null, null);
-  }, [onHoverProduct]);
+    onHoverEnd?.();
+  }, [onHoverEnd]);
 
 
   if (positionedRegions.length === 0) return null;

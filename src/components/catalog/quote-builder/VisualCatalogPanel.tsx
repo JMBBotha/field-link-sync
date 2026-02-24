@@ -70,9 +70,18 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const [hoveredProduct, setHoveredProduct] = useState<PaletteProduct | null>(null);
   const [hoverEvent, setHoverEvent] = useState<{ clientX: number; clientY: number } | null>(null);
 
-  const handleHoverProduct = useCallback((product: PaletteProduct | null, mouseEvent: { clientX: number; clientY: number } | null) => {
+  const handleHoverStart = useCallback((product: PaletteProduct | null, e: React.MouseEvent) => {
     setHoveredProduct(product);
-    setHoverEvent(mouseEvent);
+    setHoverEvent({ clientX: e.clientX, clientY: e.clientY });
+  }, []);
+
+  const handleHoverMove = useCallback((e: React.MouseEvent) => {
+    setHoverEvent({ clientX: e.clientX, clientY: e.clientY });
+  }, []);
+
+  const handleHoverEnd = useCallback(() => {
+    setHoveredProduct(null);
+    setHoverEvent(null);
   }, []);
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const [activeCategory, setActiveCategory] = useState<string | undefined>();
@@ -566,7 +575,9 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           onCategoriesDetected={handlePageCategories}
                           supplierName={currentSupplierName}
                           onOpenWizard={onOpenWizard}
-                          onHoverProduct={handleHoverProduct}
+                          onHoverStart={handleHoverStart}
+                          onHoverMove={handleHoverMove}
+                          onHoverEnd={handleHoverEnd}
                           registerRef={(el) => {
                             if (el) pageRefs.current.set(idx, el);
                             else pageRefs.current.delete(idx);
@@ -661,7 +672,9 @@ interface LazyPdfPageProps {
   registerRef: (el: HTMLDivElement | null) => void;
   supplierName?: string;
   onOpenWizard?: (item: WizardTriggerItem) => void;
-  onHoverProduct?: (product: PaletteProduct | null, mouseEvent: { clientX: number; clientY: number } | null) => void;
+  onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent) => void;
+  onHoverMove?: (e: React.MouseEvent) => void;
+  onHoverEnd?: () => void;
 }
 
 const LazyPdfPage = ({
@@ -681,7 +694,9 @@ const LazyPdfPage = ({
   registerRef,
   supplierName,
   onOpenWizard,
-  onHoverProduct,
+  onHoverStart,
+  onHoverMove,
+  onHoverEnd,
 }: LazyPdfPageProps) => {
   const queryClient = useQueryClient();
   const divRef = useRef<HTMLDivElement | null>(null);
@@ -907,7 +922,9 @@ const LazyPdfPage = ({
               onRemoveRegion={onRemoveRegion}
               supplierName={supplierName}
               onOpenWizard={onOpenWizard}
-              onHoverProduct={onHoverProduct}
+              onHoverStart={onHoverStart}
+              onHoverMove={onHoverMove}
+              onHoverEnd={onHoverEnd}
             />
           )}
           {extracting && (
