@@ -580,7 +580,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       {/* ── A4 Card ── */}
       <div className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
         {/* ── HEADER ROW ── */}
-        <div className="flex flex-row items-start justify-between py-3 gap-8">
+        <div className="flex flex-row items-end justify-between py-3 gap-8">
           {/* Logo – left (branding only) */}
           <div className="shrink-0 max-w-[50%]">
             {logoUrl ? (
@@ -598,11 +598,11 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
             {companySettings.vat_number && (
               <p className="text-sm font-medium text-muted-foreground">VAT: {companySettings.vat_number}</p>
             )}
-            <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground/60 pt-1">
+            <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground/60 pt-1">
               <span>0800 BE COOL</span>
-              <span className="text-muted-foreground/30">|</span>
+              <span className="text-muted-foreground/30">–</span>
               <span>info@0800becool.co.za</span>
-              <span className="text-muted-foreground/30">|</span>
+              <span className="text-muted-foreground/30">–</span>
               <span>www.0800becool.co.za</span>
             </div>
           </div>
