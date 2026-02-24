@@ -313,9 +313,9 @@ function UnifiedQuoteBuilderInner() {
         {activeTab === "normal" && (
           <div className="h-full flex">
             <div className="flex-1 min-w-0 overflow-y-auto">
-              <QuoteBuilderTab />
+              <QuoteBuilderTab onBasketsChange={setBaskets} />
             </div>
-            <div className="hidden lg:block w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
+            <div className="w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
               <QuoteSummaryPanel baskets={baskets} />
             </div>
           </div>
@@ -328,7 +328,7 @@ function UnifiedQuoteBuilderInner() {
                 onAddProductToBasket={addProductToBasket}
               />
             </div>
-            <div className="hidden lg:block w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
+            <div className="w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
               <QuoteSummaryPanel baskets={baskets} />
             </div>
           </div>
@@ -344,7 +344,7 @@ function UnifiedQuoteBuilderInner() {
                 </Button>
               </div>
             </div>
-            <div className="hidden lg:block w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
+            <div className="w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
               <QuoteSummaryPanel baskets={baskets} />
             </div>
           </div>

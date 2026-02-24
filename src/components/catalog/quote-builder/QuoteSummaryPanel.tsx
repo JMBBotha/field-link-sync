@@ -138,7 +138,33 @@ const QuoteSummaryPanel = ({ baskets }: QuoteSummaryPanelProps) => {
     }
   };
 
-  if (summary.totalItems === 0) return null;
+  if (summary.totalItems === 0) {
+    return (
+      <div className="rounded-lg border bg-card p-4 space-y-3">
+        <h4 className="text-sm font-semibold text-foreground">Quote Summary</h4>
+        <div className="flex items-center gap-2 pt-1">
+          <Input
+            placeholder="Quote name..."
+            value={quoteName}
+            onChange={(e) => setQuoteName(e.target.value)}
+            className="h-8 text-xs flex-1"
+          />
+        </div>
+        <p className="text-xs text-muted-foreground text-center py-6">
+          Add products to zones to see summary
+        </p>
+        <div className="flex items-center gap-2 pt-1">
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={handleExportPDF}>
+            <FileDown className="h-3 w-3" /> PDF
+          </Button>
+          <Button size="sm" className="h-8 text-xs gap-1" onClick={handleSave} disabled={saving || !!savedId}>
+            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : savedId ? <CheckCircle className="h-3 w-3" /> : <Save className="h-3 w-3" />}
+            {savedId ? "Saved" : "Save"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-lg border bg-card p-4 space-y-3">

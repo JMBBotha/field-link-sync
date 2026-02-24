@@ -166,12 +166,28 @@ const StickyQuoteSummary = ({ baskets }: { baskets: Basket[] }) => {
   );
 };
 
-const QuoteBuilderTab = () => {
-  const [baskets, setBaskets] = useState<Basket[]>([
+interface QuoteBuilderTabProps {
+  onBasketsChange?: (baskets: Basket[]) => void;
+}
+
+const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
+  const [baskets, setBasketsInternal] = useState<Basket[]>([
     { id: "basket-1", name: "Room 1 AC", items: [] },
     { id: "basket-2", name: "Piping", items: [] },
     { id: "basket-3", name: "Electrical", items: [] },
   ]);
+  const setBaskets: typeof setBasketsInternal = useCallback((action) => {
+    setBasketsInternal((prev) => {
+      const next = typeof action === "function" ? action(prev) : action;
+      onBasketsChange?.(next);
+      return next;
+    });
+  }, [onBasketsChange]);
+  // Notify parent of initial baskets on mount
+  useEffect(() => {
+    onBasketsChange?.(baskets);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [activeProduct, setActiveProduct] = useState<PaletteProduct | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -647,7 +663,7 @@ const QuoteBuilderTab = () => {
   }, []);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] overflow-hidden gap-3 relative pb-14">
+    <div className="flex flex-col h-full overflow-hidden gap-3 relative pb-14 min-w-0">
       <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 z-10 shadow-sm shrink-0">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-muted-foreground">
