@@ -21,6 +21,7 @@ import QuoteBuilderTab from "@/components/catalog/QuoteBuilderTab";
 import type { PaletteProduct, Basket } from "@/components/catalog/QuoteBuilderTab";
 import VisualCatalogView from "@/components/catalog/quote-builder/VisualCatalogView";
 import QuoteBuilderPopup from "@/components/catalog/quote-builder/QuoteBuilderPopup";
+import QuoteSummaryPanel from "@/components/catalog/quote-builder/QuoteSummaryPanel";
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
 
 /* ─── Shared Header with client selector ─── */
@@ -73,7 +74,7 @@ function QuoteSharedHeader({ onBack }: { onBack: () => void }) {
 
       {/* Client selector in header */}
       <div className="flex items-center gap-3">
-        <div className="relative hidden md:block">
+        <div className="relative">
           {selectedClient ? (
             <div className="flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5 text-xs text-white">
               <Users className="h-3.5 w-3.5 shrink-0" />
@@ -310,26 +311,41 @@ function UnifiedQuoteBuilderInner() {
       {/* Tab content */}
       <div className="flex-1 min-h-0 overflow-hidden bg-background">
         {activeTab === "normal" && (
-          <div className="h-full overflow-y-auto">
-            <QuoteBuilderTab />
+          <div className="h-full flex">
+            <div className="flex-1 min-w-0 overflow-y-auto">
+              <QuoteBuilderTab />
+            </div>
+            <div className="hidden lg:block w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
+              <QuoteSummaryPanel baskets={baskets} />
+            </div>
           </div>
         )}
         {activeTab === "visual" && (
-          <div className="h-full overflow-y-auto">
-            <VisualCatalogView
-              baskets={baskets}
-              onAddProductToBasket={addProductToBasket}
-            />
+          <div className="h-full flex">
+            <div className="flex-1 min-w-0 overflow-y-auto">
+              <VisualCatalogView
+                baskets={baskets}
+                onAddProductToBasket={addProductToBasket}
+              />
+            </div>
+            <div className="hidden lg:block w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
+              <QuoteSummaryPanel baskets={baskets} />
+            </div>
           </div>
         )}
         {activeTab === "area" && (
-          <div className="h-full flex items-center justify-center text-muted-foreground">
-            <div className="text-center space-y-3">
-              <p className="text-sm font-medium">Area Quote Builder</p>
-              <p className="text-xs">Use the wizard to build a room-by-room quote.</p>
-              <Button size="sm" onClick={() => setAreaWizardOpen(true)}>
-                Open Area Wizard
-              </Button>
+          <div className="h-full flex">
+            <div className="flex-1 min-w-0 flex items-center justify-center text-muted-foreground">
+              <div className="text-center space-y-3">
+                <p className="text-sm font-medium">Area Quote Builder</p>
+                <p className="text-xs">Use the wizard to build a room-by-room quote.</p>
+                <Button size="sm" onClick={() => setAreaWizardOpen(true)}>
+                  Open Area Wizard
+                </Button>
+              </div>
+            </div>
+            <div className="hidden lg:block w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
+              <QuoteSummaryPanel baskets={baskets} />
             </div>
           </div>
         )}
