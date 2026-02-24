@@ -605,80 +605,82 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         <div className="h-px bg-border" />
 
         {/* ── BILLED TO + DATES ROW ── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div className="col-span-1 space-y-1 relative">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Billed To</p>
-            {customerName && !showCustomerPicker ? (
-              <div>
-                <p className="text-sm font-semibold text-foreground">{customerName}</p>
-                {customerAddress && <p className="text-xs text-muted-foreground">{customerAddress}</p>}
-                {customerEmail && <p className="text-xs text-muted-foreground">{customerEmail}</p>}
-                <button onClick={() => setShowCustomerPicker(true)} className="text-[11px] text-primary hover:underline mt-1">Change</button>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                <div className="relative">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <input
-                    autoFocus
-                    placeholder="Search clients…"
-                    value={customerSearch}
-                    onChange={(e) => setCustomerSearch(e.target.value)}
-                    className="w-full pl-7 pr-2 py-1.5 text-sm border rounded bg-background outline-none focus:ring-1 focus:ring-primary/30"
-                  />
+        <div className="space-y-1">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="col-span-1 space-y-1 relative">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Billed To</p>
+              {customerName && !showCustomerPicker ? (
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{customerName}</p>
+                  {customerAddress && <p className="text-xs text-muted-foreground">{customerAddress}</p>}
+                  {customerEmail && <p className="text-xs text-muted-foreground">{customerEmail}</p>}
+                  <button onClick={() => setShowCustomerPicker(true)} className="text-[11px] text-primary hover:underline mt-1">Change</button>
                 </div>
-                <div className="max-h-40 overflow-y-auto border rounded bg-popover shadow-md">
-                  {filteredCustomers.slice(0, 8).map((c) => (
-                    <button key={c.id} onClick={() => selectCustomer(c)} className="w-full text-left px-3 py-2 hover:bg-accent text-sm transition-colors">
-                      <span className="font-medium">{c.name}</span>
-                      <span className="text-xs text-muted-foreground ml-2">{c.phone}</span>
-                    </button>
-                  ))}
-                  {filteredCustomers.length === 0 && customerSearch && (
-                    <p className="text-xs text-muted-foreground p-3">No clients found</p>
-                  )}
+              ) : (
+                <div className="space-y-1">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <input
+                      autoFocus
+                      placeholder="Search clients…"
+                      value={customerSearch}
+                      onChange={(e) => setCustomerSearch(e.target.value)}
+                      className="w-full pl-7 pr-2 py-1.5 text-sm border rounded bg-background outline-none focus:ring-1 focus:ring-primary/30"
+                    />
+                  </div>
+                  <div className="max-h-40 overflow-y-auto border rounded bg-popover shadow-md">
+                    {filteredCustomers.slice(0, 8).map((c) => (
+                      <button key={c.id} onClick={() => selectCustomer(c)} className="w-full text-left px-3 py-2 hover:bg-accent text-sm transition-colors">
+                        <span className="font-medium">{c.name}</span>
+                        <span className="text-xs text-muted-foreground ml-2">{c.phone}</span>
+                      </button>
+                    ))}
+                    {filteredCustomers.length === 0 && customerSearch && (
+                      <p className="text-xs text-muted-foreground p-3">No clients found</p>
+                    )}
+                  </div>
+                  <button
+                    className="text-[11px] text-primary hover:underline flex items-center gap-1"
+                    onClick={() => {
+                      setCustomerName(customerSearch || "New Client");
+                      setShowCustomerPicker(false);
+                      setCustomerSearch("");
+                    }}
+                  >
+                    <Plus className="h-3 w-3" /> Create a Client
+                  </button>
                 </div>
-                <button
-                  className="text-[11px] text-primary hover:underline flex items-center gap-1"
-                  onClick={() => {
-                    setCustomerName(customerSearch || "New Client");
-                    setShowCustomerPicker(false);
-                    setCustomerSearch("");
-                  }}
-                >
-                  <Plus className="h-3 w-3" /> Create a Client
-                </button>
-              </div>
-            )}
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Date of Issue</p>
+              <GhostInput type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Quote Number</p>
+              <p className="text-sm font-medium text-foreground px-2 py-1.5">{quoteNumber || "Generating…"}</p>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Quoted Amount (ZAR)</p>
+              <p className="text-xl font-bold px-2 py-0.5" style={{ color: "#0077B6" }}>{formatCurrency(total)}</p>
+            </div>
           </div>
 
-          <div className="space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Date of Issue</p>
-            <GhostInput type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div />
+            <div className="space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Valid Until</p>
+              <GhostInput type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Reference / PO#</p>
+              <GhostInput placeholder="e.g. PO-1234" value={reference} onChange={(e) => setReference(e.target.value)} />
+            </div>
+            <div />
           </div>
-
-          <div className="space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Quote Number</p>
-            <p className="text-sm font-medium text-foreground px-2 py-1.5">{quoteNumber || "Generating…"}</p>
-          </div>
-
-          <div className="space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Quoted Amount (ZAR)</p>
-            <p className="text-xl font-bold px-2 py-0.5" style={{ color: "#0077B6" }}>{formatCurrency(total)}</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 -mt-10">
-          <div />
-          <div className="space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Valid Until</p>
-            <GhostInput type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
-          </div>
-          <div className="space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Reference / PO#</p>
-            <GhostInput placeholder="e.g. PO-1234" value={reference} onChange={(e) => setReference(e.target.value)} />
-          </div>
-          <div />
         </div>
 
         <div className="h-px bg-border" />
