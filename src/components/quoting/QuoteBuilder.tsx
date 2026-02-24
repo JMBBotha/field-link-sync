@@ -580,7 +580,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       {/* ── A4 Card ── */}
       <div className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
         {/* ── HEADER ROW ── */}
-        <div className="flex flex-row gap-6 items-start justify-start">
+        <div className="flex flex-row items-start justify-between">
           <div className="shrink-0">
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" className="max-h-[100px] max-w-[200px] w-auto object-contain" />
@@ -588,7 +588,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
               <BeCoolLogo />
             )}
           </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col items-end text-right">
             <p className="font-bold text-lg text-foreground">{companySettings.company_name || "Your Company"}</p>
             {companySettings.physical_address && <p className="text-sm text-muted-foreground">{companySettings.physical_address}</p>}
             {companySettings.vat_number && <p className="text-sm text-muted-foreground">VAT: {companySettings.vat_number}</p>}
