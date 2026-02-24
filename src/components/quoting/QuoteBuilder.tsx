@@ -582,9 +582,10 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         {/* ── HEADER ROW ── */}
         <div className="flex flex-row gap-6 items-start justify-start">
           <div className="shrink-0">
-            <BeCoolLogo />
-            {logoUrl && (
-              <img src={logoUrl} alt="Logo" className="max-h-[100px] max-w-[200px] w-auto object-contain mt-3" />
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="max-h-[100px] max-w-[200px] w-auto object-contain" />
+            ) : (
+              <BeCoolLogo />
             )}
           </div>
           <div className="flex flex-col">
