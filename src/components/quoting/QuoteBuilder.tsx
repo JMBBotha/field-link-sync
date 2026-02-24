@@ -590,15 +590,21 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
               </div>
             )}
           </div>
-          <div className="flex flex-col items-end text-right gap-2">
+          <div className="flex flex-col items-end text-right space-y-1">
             <p className="font-bold text-lg text-foreground">{companySettings.company_name || "Your Company"}</p>
-            <div>
-              {companySettings.physical_address && <p className="text-sm text-muted-foreground">{companySettings.physical_address}</p>}
-              {companySettings.vat_number && <p className="text-sm text-muted-foreground">VAT: {companySettings.vat_number}</p>}
+            {companySettings.physical_address && (
+              <p className="text-sm text-muted-foreground leading-snug whitespace-pre-line">{companySettings.physical_address}</p>
+            )}
+            {companySettings.vat_number && (
+              <p className="text-sm font-medium text-muted-foreground">VAT: {companySettings.vat_number}</p>
+            )}
+            <div className="flex items-center gap-3 text-xs text-muted-foreground/70 pt-1">
+              <span>0800 BE COOL</span>
+              <span className="text-muted-foreground/30">|</span>
+              <span>info@0800becool.co.za</span>
+              <span className="text-muted-foreground/30">|</span>
+              <span>www.0800becool.co.za</span>
             </div>
-            <p className="text-xs text-muted-foreground/70 mt-1">
-              Phone: 0800 BE COOL &nbsp;|&nbsp; Email: info@0800becool.co.za &nbsp;|&nbsp; Website: www.0800becool.co.za
-            </p>
           </div>
         </div>
 
