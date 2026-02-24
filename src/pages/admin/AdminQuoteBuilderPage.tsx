@@ -31,6 +31,7 @@ import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
 import { generateQuoteBuilderPDF } from "@/lib/quoteBuilderPDF";
 import { getProductDisplayName } from "@/components/catalog/quote-builder/productDisplayUtils";
 import type { PaletteProduct, BasketItem, Basket } from "@/components/catalog/QuoteBuilderTab";
+import { computeBundlePricing } from "@/components/catalog/quote-builder/BundleItemsPopover";
 import logo from "@/assets/logo.png";
 
 // Custom sensor to skip data-no-dnd elements
@@ -397,17 +398,56 @@ const AdminQuoteBuilderPage = () => {
   }, [trackUsage, scrollToCanvas]);
 
   const addBundleToBasket = useCallback((basketId: string, bundle: PaletteBundle) => {
-    setBaskets((prev) => prev.map((basket) => {
-      if (basket.id !== basketId) return basket;
-      const newItems: BasketItem[] = [];
-      for (const bItem of bundle.items) {
-        if (!bItem.product || bItem.is_optional) continue;
-        trackUsage(bItem.product.id);
-        const isLengthItem = bItem.is_length_item && !!bItem.product.price_per_metre;
-        newItems.push({ instanceId: `${bItem.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, product: bItem.product as PaletteProduct, quantity: bItem.quantity, ...(isLengthItem ? { length: bItem.length_metres || bItem.product.unit_length || 1 } : {}) });
-      }
-      return { ...basket, items: [...basket.items, ...newItems] };
-    }));
+    const subItems = bundle.items
+      .filter((bItem) => bItem.product)
+      .map((bItem) => {
+        trackUsage(bItem.product!.id);
+        const isLengthItem = bItem.is_length_item && !!bItem.product!.price_per_metre;
+        return {
+          product: bItem.product as PaletteProduct,
+          quantity: bItem.quantity,
+          isLengthItem,
+          isOptional: bItem.is_optional,
+          ...(isLengthItem ? { length: bItem.length_metres || bItem.product!.unit_length || 1 } : {}),
+        };
+      });
+
+    const { pricingType, unitPrice, unitCost } = computeBundlePricing(subItems);
+
+    const firstProduct = subItems.find((i) => !i.isOptional)?.product || subItems[0]?.product;
+    if (!firstProduct) return;
+
+    const bundleItem: BasketItem = {
+      instanceId: `bundle-${bundle.id}-${Date.now()}`,
+      product: {
+        ...firstProduct,
+        short_name: bundle.name,
+        description: `Bundle: ${bundle.name} (${subItems.length} items)`,
+        product_code: `BUNDLE-${bundle.id.slice(0, 6).toUpperCase()}`,
+        product_category: firstProduct.product_category,
+        selling_price: unitPrice,
+        cost_excl_vat: unitCost,
+        cost_incl_vat: unitCost * 1.15,
+        sold_in_length: pricingType === "p/meter",
+        price_per_metre: pricingType === "p/meter" ? unitPrice : null,
+      },
+      quantity: 1,
+      ...(pricingType === "p/meter" ? { length: 1 } : {}),
+      isBundle: true,
+      bundleId: bundle.id,
+      bundleName: bundle.name,
+      bundleItems: subItems,
+      bundlePricingType: pricingType,
+      bundleUnitPrice: unitPrice,
+      bundleUnitCost: unitCost,
+    };
+
+    setBaskets((prev) =>
+      prev.map((basket) => {
+        if (basket.id !== basketId) return basket;
+        return { ...basket, items: [...basket.items, bundleItem] };
+      })
+    );
     scrollToCanvas();
   }, [trackUsage, scrollToCanvas]);
 
