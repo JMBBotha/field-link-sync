@@ -130,8 +130,6 @@ const App = () => (
 
               {/* Full-page Quote Builder (outside AdminLayout for full-bleed) */}
               <Route path="/admin/quote-builder" element={<AdminQuoteBuilderPageUnified />} />
-              {/* Legacy quote builder (direct access) */}
-              <Route path="/admin/quote-builder-legacy" element={<AdminQuoteBuilderPage />} />
 
               {/* FreshBooks multi-tenant client dashboards */}
               <Route path="/client/:companyId" element={<CompanyProvider><FBLayout /></CompanyProvider>}>
