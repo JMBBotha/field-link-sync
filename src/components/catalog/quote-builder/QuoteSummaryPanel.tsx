@@ -140,7 +140,7 @@ const QuoteSummaryPanel = ({ baskets }: QuoteSummaryPanelProps) => {
 
   if (summary.totalItems === 0) {
     return (
-      <div className="rounded-lg border bg-card p-4 space-y-3">
+      <div className="rounded-lg border bg-primary/5 dark:bg-primary/10 p-4 space-y-3">
         <h4 className="text-sm font-semibold text-foreground">Quote Summary</h4>
         <div className="flex items-center gap-2 pt-1">
           <Input
@@ -167,7 +167,7 @@ const QuoteSummaryPanel = ({ baskets }: QuoteSummaryPanelProps) => {
   }
 
   return (
-    <div className="rounded-lg border bg-card p-4 space-y-3">
+    <div className="rounded-lg border bg-primary/5 dark:bg-primary/10 p-4 space-y-3">
       <h4 className="text-sm font-semibold text-foreground">Quote Summary</h4>
 
       {/* Zone breakdown */}
@@ -201,7 +201,7 @@ const QuoteSummaryPanel = ({ baskets }: QuoteSummaryPanelProps) => {
           <span>VAT (15%)</span>
           <span>R{(summary.grandTotal - summary.grandTotal / 1.15).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</span>
         </div>
-        <div className="flex justify-between text-sm font-bold text-foreground border-t pt-1">
+        <div className="flex justify-between items-center text-sm font-bold text-primary rounded-md bg-primary/10 dark:bg-primary/15 px-3 py-1.5 -mx-1">
           <span>Grand Total</span>
           <span>R{summary.grandTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</span>
         </div>
