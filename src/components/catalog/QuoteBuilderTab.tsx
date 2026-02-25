@@ -687,8 +687,8 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 flex-1 min-h-0 overflow-hidden">
-          <div className="md:col-span-2 flex flex-col min-h-0 overflow-hidden">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 flex-1 min-h-0 overflow-hidden px-2">
+          <div className="md:col-span-2 flex flex-col min-h-0 overflow-hidden pl-2">
             <ProductPalette
               products={filteredProducts}
               isLoading={isLoading}
@@ -708,7 +708,7 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
               onOpenVisualPanel={() => setVisualPanelOpen(true)}
             />
           </div>
-          <div ref={canvasRef} className="md:col-span-3 flex flex-col min-h-0 overflow-hidden">
+          <div ref={canvasRef} className="md:col-span-3 flex flex-col min-h-0 overflow-hidden pr-2">
             <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" as any }}>
               <BasketCanvas
                 baskets={baskets}
