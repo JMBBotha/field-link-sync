@@ -208,7 +208,7 @@ function parseRawPrice(captured: string): number | null {
     raw = raw.replace(/[,\s]/g, "");
   }
   const val = parseFloat(raw);
-  if (!isNaN(val) && val >= 1) return val;
+  if (!isNaN(val) && val > 0) return val;
   return null;
 }
 
@@ -426,7 +426,7 @@ export function matchTextRowsToProducts(
       const val = parseFloat(raw);
       if (!isNaN(val) && val >= 1) detectedPrice = val;
     }
-    if (detectedPrice === null || detectedPrice < 1) {
+    if (detectedPrice === null || detectedPrice <= 0) {
       skippedCount.noPrice++;
       continue;
     }
