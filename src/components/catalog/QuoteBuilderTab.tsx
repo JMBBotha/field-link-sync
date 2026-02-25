@@ -663,7 +663,7 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
   }, []);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden gap-3 relative pb-14 min-w-0">
+    <div className="flex flex-col h-full overflow-hidden gap-3 relative pb-2 min-w-0">
       <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 z-10 shadow-sm shrink-0">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-muted-foreground">
