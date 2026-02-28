@@ -140,7 +140,7 @@ const QuoteSummaryPanel = ({ baskets }: QuoteSummaryPanelProps) => {
 
   if (summary.totalItems === 0) {
     return (
-      <div className="rounded-lg border p-4 space-y-3" style={{ background: "linear-gradient(135deg, rgba(30,107,184,0.12) 0%, rgba(180,195,210,0.18) 100%)" }}>
+      <div className="rounded-xl border p-4 space-y-3 m-[3px]" style={{ background: "linear-gradient(135deg, rgba(30,107,184,0.12) 0%, rgba(180,195,210,0.18) 100%)" }}>
         <h4 className="text-sm font-semibold text-foreground">Quote Summary</h4>
         <div className="flex items-center gap-2 pt-1">
           <Input
@@ -167,7 +167,7 @@ const QuoteSummaryPanel = ({ baskets }: QuoteSummaryPanelProps) => {
   }
 
   return (
-    <div className="rounded-lg border p-4 space-y-3" style={{ background: "linear-gradient(135deg, rgba(30,107,184,0.12) 0%, rgba(180,195,210,0.18) 100%)" }}>
+    <div className="rounded-xl border p-4 space-y-3 m-[3px]" style={{ background: "linear-gradient(135deg, rgba(30,107,184,0.12) 0%, rgba(180,195,210,0.18) 100%)" }}>
       <h4 className="text-sm font-semibold text-foreground">Quote Summary</h4>
 
       {/* Zone breakdown */}
