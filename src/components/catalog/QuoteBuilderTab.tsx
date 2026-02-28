@@ -664,7 +664,7 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
 
   return (
     <div className="flex flex-col h-full overflow-hidden gap-3 relative pb-2 min-w-0">
-      <div className="flex flex-col gap-2 border bg-card p-3 z-10 shadow-sm shrink-0 rounded-sm mx-[3px] py-[6px] my-[6px]">
+      <div className="border bg-card p-3 z-10 shadow-sm shrink-0 rounded-sm py-[6px] mx-[4px] my-[8px] flex flex-col gap-[6px]">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-muted-foreground">
             Quote Total ({totalItems} items across {baskets.length} zones)
