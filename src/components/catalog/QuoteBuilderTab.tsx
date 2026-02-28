@@ -705,7 +705,8 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection }: QuoteBuilderTabProps
               baskets={baskets}
               onAddProductToBasket={addProductToBasket}
               onAddBundleToBasket={addBundleToBasket}
-              onOpenVisualPanel={() => setVisualPanelOpen(true)} />
+              onOpenVisualPanel={() => setVisualPanelOpen(true)}
+              pdfSelection={pdfSelection} />
 
           </div>
           <div ref={canvasRef} className="md:col-span-3 flex flex-col min-h-0 overflow-hidden pr-2">

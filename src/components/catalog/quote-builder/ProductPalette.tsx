@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
+import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { useDraggable } from "@dnd-kit/core";
 import {
   Search,
@@ -251,6 +252,7 @@ interface ProductPaletteProps {
   onAddProductToBasket?: (basketId: string, product: PaletteProduct) => void;
   onAddBundleToBasket?: (basketId: string, bundle: PaletteBundle) => void;
   onOpenVisualPanel?: () => void;
+  pdfSelection?: PdfSelectionHandlers;
 }
 
 function DraggableProductCard({
@@ -447,6 +449,7 @@ const ProductPalette = ({
   onAddProductToBasket,
   onAddBundleToBasket,
   onOpenVisualPanel,
+  pdfSelection,
 }: ProductPaletteProps) => {
   const filteredProducts = useMemo(() => {
     if (categoryFilter === "favorites") {
@@ -604,9 +607,55 @@ const ProductPalette = ({
           )}
         </div>
       </div>
+
+      {/* Selected Items from PDF */}
+      {pdfSelection && (
+        <div className="border-t mt-2 pt-2 px-2 pb-2">
+          <div className="flex items-center gap-1.5 mb-2">
+            <h4 className="text-xs font-semibold text-foreground">Selected Items</h4>
+            <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">
+              {pdfSelection.selectedFromPdf.length}
+            </Badge>
+          </div>
+          {pdfSelection.selectedFromPdf.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground italic text-center py-3">
+              Select products from the Visual PDF view
+            </p>
+          ) : (
+            <div className="max-h-64 overflow-y-auto space-y-1.5">
+              {pdfSelection.selectedFromPdf.map((item) => (
+                <div key={item.code} className="bg-muted/50 p-2 rounded-md space-y-1">
+                  <p className="text-[11px] font-medium text-foreground truncate">{item.code}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{item.description}</p>
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={item.unitType}
+                      onChange={(e) => pdfSelection.updateSelectedItem(item.code, { unitType: e.target.value })}
+                      className="h-6 text-[10px] rounded border border-input bg-background px-1"
+                    >
+                      <option value="units">Units</option>
+                      <option value="meters">Meters</option>
+                    </select>
+                    <Input
+                      type="number"
+                      min={0.1}
+                      step={0.1}
+                      value={item.quantity}
+                      onChange={(e) => pdfSelection.updateSelectedItem(item.code, { quantity: Math.max(0.1, Number(e.target.value)) })}
+                      className="h-6 w-16 text-[10px] px-1"
+                    />
+                    <span className="text-[10px] text-muted-foreground">
+                      {item.unitType === "meters" ? "m" : "×"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
-
 export { type PaletteBundle };
 export default ProductPalette;
