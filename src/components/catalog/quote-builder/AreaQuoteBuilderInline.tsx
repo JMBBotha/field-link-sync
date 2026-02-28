@@ -160,11 +160,11 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
   const grandTotal = useMemo(() => areas.reduce((s, a) => s + computeAreaSubtotal(a), 0), [areas]);
 
   return (
-    <div className="h-full flex flex-col bg-background rounded-xl border shadow-sm overflow-hidden">
+    <div className="h-full flex flex-col bg-card rounded-lg shadow overflow-hidden relative">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b shrink-0">
-        <h2 className="flex items-center gap-2 text-base font-semibold">
-          <Wand2 className="h-4 w-4 text-primary" />
+      <div className="flex items-center justify-between px-6 pt-5 pb-3 shrink-0">
+        <h2 className="flex items-center gap-2 text-xl font-bold text-foreground">
+          <Wand2 className="h-5 w-5 text-primary" />
           Build Area Quote
         </h2>
       </div>
