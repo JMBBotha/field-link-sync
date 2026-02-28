@@ -16,6 +16,7 @@ import {
   ChevronDown,
   ChevronRight,
   Image,
+  ExternalLink,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -253,6 +254,7 @@ interface ProductPaletteProps {
   onAddBundleToBasket?: (basketId: string, bundle: PaletteBundle) => void;
   onOpenVisualPanel?: () => void;
   pdfSelection?: PdfSelectionHandlers;
+  onPopOutSelected?: () => void;
 }
 
 function DraggableProductCard({
@@ -450,7 +452,9 @@ const ProductPalette = ({
   onAddBundleToBasket,
   onOpenVisualPanel,
   pdfSelection,
+  onPopOutSelected,
 }: ProductPaletteProps) => {
+  const [selectedCollapsed, setSelectedCollapsed] = useState(false);
   const filteredProducts = useMemo(() => {
     if (categoryFilter === "favorites") {
       return products.filter((p) => favorites.has(p.id));
@@ -608,49 +612,66 @@ const ProductPalette = ({
         </div>
       </div>
 
-      {/* Selected Items from PDF */}
+      {/* Selected Items from PDF — collapsible + pop-out */}
       {pdfSelection && (
         <div className="border-t mt-2 pt-2 px-2 pb-2">
           <div className="flex items-center gap-1.5 mb-2">
-            <h4 className="text-xs font-semibold text-foreground">Selected Items</h4>
+            <button
+              onClick={() => setSelectedCollapsed(!selectedCollapsed)}
+              className="text-xs font-semibold text-foreground hover:text-primary flex items-center gap-1"
+            >
+              <span className={`transition-transform text-[10px] ${selectedCollapsed ? "" : "rotate-90"}`}>▶</span>
+              Selected Items
+            </button>
             <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">
               {pdfSelection.selectedFromPdf.length}
             </Badge>
+            <button
+              onClick={() => onPopOutSelected?.()}
+              className="ml-auto text-muted-foreground hover:text-primary"
+              title="Pop out as floating panel"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </button>
           </div>
-          {pdfSelection.selectedFromPdf.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground italic text-center py-3">
-              Select products from the Visual PDF view
-            </p>
-          ) : (
-            <div className="max-h-64 overflow-y-auto space-y-1.5">
-              {pdfSelection.selectedFromPdf.map((item) => (
-                <div key={item.code} className="bg-muted/50 p-2 rounded-md space-y-1">
-                  <p className="text-[11px] font-medium text-foreground truncate">{item.code}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">{item.description}</p>
-                  <div className="flex items-center gap-1.5">
-                    <select
-                      value={item.unitType}
-                      onChange={(e) => pdfSelection.updateSelectedItem(item.code, { unitType: e.target.value })}
-                      className="h-6 text-[10px] rounded border border-input bg-background px-1"
-                    >
-                      <option value="units">Units</option>
-                      <option value="meters">Meters</option>
-                    </select>
-                    <Input
-                      type="number"
-                      min={0.1}
-                      step={0.1}
-                      value={item.quantity}
-                      onChange={(e) => pdfSelection.updateSelectedItem(item.code, { quantity: Math.max(0.1, Number(e.target.value)) })}
-                      className="h-6 w-16 text-[10px] px-1"
-                    />
-                    <span className="text-[10px] text-muted-foreground">
-                      {item.unitType === "meters" ? "m" : "×"}
-                    </span>
-                  </div>
+          {!selectedCollapsed && (
+            <>
+              {pdfSelection.selectedFromPdf.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground italic text-center py-3">
+                  Select products from the Visual PDF view
+                </p>
+              ) : (
+                <div className="max-h-64 overflow-y-auto space-y-1.5">
+                  {pdfSelection.selectedFromPdf.map((item) => (
+                    <div key={item.code} className="bg-muted/50 p-2 rounded-md space-y-1">
+                      <p className="text-[11px] font-medium text-foreground truncate">{item.code}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{item.description}</p>
+                      <div className="flex items-center gap-1.5">
+                        <select
+                          value={item.unitType}
+                          onChange={(e) => pdfSelection.updateSelectedItem(item.code, { unitType: e.target.value })}
+                          className="h-6 text-[10px] rounded border border-input bg-background px-1"
+                        >
+                          <option value="units">Units</option>
+                          <option value="meters">Meters</option>
+                        </select>
+                        <Input
+                          type="number"
+                          min={0.1}
+                          step={0.1}
+                          value={item.quantity}
+                          onChange={(e) => pdfSelection.updateSelectedItem(item.code, { quantity: Math.max(0.1, Number(e.target.value)) })}
+                          className="h-6 w-16 text-[10px] px-1"
+                        />
+                        <span className="text-[10px] text-muted-foreground">
+                          {item.unitType === "meters" ? "m" : "×"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       )}

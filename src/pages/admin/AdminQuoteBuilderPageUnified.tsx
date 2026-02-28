@@ -26,6 +26,7 @@ import QuoteBuilderPopup from "@/components/catalog/quote-builder/QuoteBuilderPo
 import QuoteSummaryPanel from "@/components/catalog/quote-builder/QuoteSummaryPanel";
 import AreaQuoteBuilderInline from "@/components/catalog/quote-builder/AreaQuoteBuilderInline";
 import AreaQuoteSummary from "@/components/catalog/quote-builder/AreaQuoteSummary";
+import FloatingSelectedItems from "@/components/catalog/quote-builder/FloatingSelectedItems";
 import type { QuoteArea } from "@/components/catalog/quote-builder/quoteWizardTypes";
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
 
@@ -172,6 +173,7 @@ function UnifiedQuoteBuilderInner() {
 
   // Shared PDF product selection state
   const [selectedFromPdf, setSelectedFromPdf] = useState<PdfSelectedProduct[]>([]);
+  const [floatingOpen, setFloatingOpen] = useState(false);
 
   const handleSelectProduct = useCallback((product: Pick<PdfSelectedProduct, "code" | "description" | "price">) => {
     setSelectedFromPdf((prev) => {
@@ -346,7 +348,7 @@ function UnifiedQuoteBuilderInner() {
         {activeTab === "normal" &&
         <div className="h-full flex">
             <div className="flex-1 min-w-0 overflow-y-auto">
-              <QuoteBuilderTab onBasketsChange={setBaskets} pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }} />
+              <QuoteBuilderTab onBasketsChange={setBaskets} pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }} onPopOutSelected={() => setFloatingOpen(true)} />
             </div>
             <div className="w-[320px] shrink-0 border-l overflow-y-auto p-3 mx-[5px] my-[4px] bg-[sidebar-primary-foreground] bg-transparent">
               <QuoteSummaryPanel baskets={baskets} />
@@ -390,6 +392,14 @@ function UnifiedQuoteBuilderInner() {
           </div>
         }
       </div>
+
+      {/* Floating selected items panel */}
+      {floatingOpen && (
+        <FloatingSelectedItems
+          pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
+          onClose={() => setFloatingOpen(false)}
+        />
+      )}
 
       {/* Area wizard popup (works across all tabs) */}
       <QuoteBuilderPopup

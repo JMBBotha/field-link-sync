@@ -170,9 +170,10 @@ const StickyQuoteSummary = ({ baskets }: {baskets: Basket[];}) => {
 interface QuoteBuilderTabProps {
   onBasketsChange?: (baskets: Basket[]) => void;
   pdfSelection?: PdfSelectionHandlers;
+  onPopOutSelected?: () => void;
 }
 
-const QuoteBuilderTab = ({ onBasketsChange, pdfSelection }: QuoteBuilderTabProps = {}) => {
+const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected }: QuoteBuilderTabProps = {}) => {
   const [baskets, setBasketsInternal] = useState<Basket[]>([
   { id: "basket-1", name: "Zone 1", items: [] }]
   );
@@ -706,7 +707,8 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection }: QuoteBuilderTabProps
               onAddProductToBasket={addProductToBasket}
               onAddBundleToBasket={addBundleToBasket}
               onOpenVisualPanel={() => setVisualPanelOpen(true)}
-              pdfSelection={pdfSelection} />
+              pdfSelection={pdfSelection}
+              onPopOutSelected={onPopOutSelected} />
 
           </div>
           <div ref={canvasRef} className="md:col-span-3 flex flex-col min-h-0 overflow-hidden pr-2">
