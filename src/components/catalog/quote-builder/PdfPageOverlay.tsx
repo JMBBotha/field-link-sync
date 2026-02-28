@@ -199,28 +199,33 @@ const DraggableRegion = memo(({
       {/* Full-width transparent hit area with hover highlight */}
       <div className="absolute inset-0 hover:bg-primary/5 rounded transition-colors duration-150" />
 
-      {/* PDF selection checkbox */}
+      {/* PDF selection checkbox — positioned left of the icon column */}
       {pdfSelection && region.product && (
         <div
           className="absolute top-1/2 -translate-y-1/2 z-20 pointer-events-auto"
-          style={{ left: "1%" }}
+          style={{ left: `calc(${iconLeftPct} - 22px)` }}
         >
-          <input
-            type="checkbox"
-            checked={pdfSelection.selectedFromPdf.some((s) => s.code === region.product_code)}
-            onChange={() =>
-              pdfSelection.handleSelectProduct({
-                code: region.product_code,
-                description: region.product?.short_name || region.label,
-                price: String(region.product?.selling_price || region.product?.cost_incl_vat || region.detected_price || 0),
-              })
-            }
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            className="h-3.5 w-3.5 rounded border-input accent-primary cursor-pointer"
-            title="Select for quote"
-          />
+          <div
+            className="flex items-center justify-center rounded"
+            style={{ width: "16px", height: "16px", backgroundColor: "rgba(255,255,255,0.95)", boxShadow: "0 0 2px rgba(0,0,0,0.3)" }}
+          >
+            <input
+              type="checkbox"
+              checked={pdfSelection.selectedFromPdf.some((s) => s.code === region.product_code)}
+              onChange={() =>
+                pdfSelection.handleSelectProduct({
+                  code: region.product_code,
+                  description: region.product?.short_name || region.label,
+                  price: String(region.product?.selling_price || region.product?.cost_incl_vat || region.detected_price || 0),
+                })
+              }
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              className="h-3 w-3 accent-primary cursor-pointer"
+              title="Select for quote"
+            />
+          </div>
         </div>
       )}
 

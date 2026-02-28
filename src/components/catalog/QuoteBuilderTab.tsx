@@ -747,7 +747,8 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection }: QuoteBuilderTabProps
           onRemoveBasket={handleRemoveBasket}
           products={products}
           isDragging={isDragging}
-          onOpenWizard={handleOpenWizardFromPdf} />
+          onOpenWizard={handleOpenWizardFromPdf}
+          pdfSelection={pdfSelection} />
 
       </DndContext>
 
