@@ -66,7 +66,7 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
 
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <img src={logo} alt="Logo" style={{ height: "45px" }} />
+        <img src={logo} alt="Logo" style={{ height: "50px" }} />
         <div className="hidden sm:block h-6 w-px bg-white/20" />
         <h1 className="hidden sm:block text-lg font-semibold tracking-tight text-white">
           Quote Builder
