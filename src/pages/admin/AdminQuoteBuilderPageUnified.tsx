@@ -23,6 +23,7 @@ import VisualCatalogPanel from "@/components/catalog/quote-builder/VisualCatalog
 import type { WizardTriggerItem } from "@/components/catalog/quote-builder/QuoteBuilderPopup";
 import QuoteBuilderPopup from "@/components/catalog/quote-builder/QuoteBuilderPopup";
 import QuoteSummaryPanel from "@/components/catalog/quote-builder/QuoteSummaryPanel";
+import AreaQuoteBuilderInline from "@/components/catalog/quote-builder/AreaQuoteBuilderInline";
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
 
 /* ─── Shared Header with client selector ─── */
@@ -352,14 +353,12 @@ function UnifiedQuoteBuilderInner() {
         }
         {activeTab === "area" &&
         <div className="h-full flex">
-            <div className="flex-1 min-w-0 flex items-center justify-center text-muted-foreground">
-              <div className="text-center space-y-3">
-                <p className="text-sm font-medium">Area Quote Builder</p>
-                <p className="text-xs">Use the wizard to build a room-by-room quote.</p>
-                <Button size="sm" onClick={() => setAreaWizardOpen(true)}>
-                  Open Area Wizard
-                </Button>
-              </div>
+            <div className="flex-1 min-w-0 overflow-hidden p-1">
+              <AreaQuoteBuilderInline
+                products={products}
+                bundles={bundles}
+                onSave={handleWizardSave}
+                onPdfSearch={pdfSearchRef.current || undefined} />
             </div>
             <div className="w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
               <QuoteSummaryPanel baskets={baskets} />
