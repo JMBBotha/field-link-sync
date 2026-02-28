@@ -24,6 +24,8 @@ import type { WizardTriggerItem } from "@/components/catalog/quote-builder/Quote
 import QuoteBuilderPopup from "@/components/catalog/quote-builder/QuoteBuilderPopup";
 import QuoteSummaryPanel from "@/components/catalog/quote-builder/QuoteSummaryPanel";
 import AreaQuoteBuilderInline from "@/components/catalog/quote-builder/AreaQuoteBuilderInline";
+import AreaQuoteSummary from "@/components/catalog/quote-builder/AreaQuoteSummary";
+import type { QuoteArea } from "@/components/catalog/quote-builder/quoteWizardTypes";
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
 
 /* ─── Shared Header with client selector ─── */
@@ -165,6 +167,7 @@ function UnifiedQuoteBuilderInner() {
 
   // Shared baskets state for cross-tab data
   const [baskets, setBaskets] = useState<Basket[]>([]);
+  const [wizardAreas, setWizardAreas] = useState<QuoteArea[]>([]);
 
   // Wizard trigger item from Visual tab
   const handleOpenWizardFromVisual = useCallback((item: WizardTriggerItem) => {
@@ -358,10 +361,11 @@ function UnifiedQuoteBuilderInner() {
                 products={products}
                 bundles={bundles}
                 onSave={handleWizardSave}
-                onPdfSearch={pdfSearchRef.current || undefined} />
+                onPdfSearch={pdfSearchRef.current || undefined}
+                onAreasChange={setWizardAreas} />
             </div>
             <div className="w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
-              <QuoteSummaryPanel baskets={baskets} />
+              <AreaQuoteSummary areas={wizardAreas} />
             </div>
           </div>
         }

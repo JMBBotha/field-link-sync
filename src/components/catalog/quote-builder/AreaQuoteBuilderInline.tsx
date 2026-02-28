@@ -31,6 +31,7 @@ interface Props {
   bundles: PaletteBundle[];
   onSave: (baskets: Basket[]) => void;
   onPdfSearch?: (term: string) => void;
+  onAreasChange?: (areas: QuoteArea[]) => void;
 }
 
 const DRAFT_STORAGE_KEY = "quote-builder-draft";
@@ -55,7 +56,7 @@ function clearDraftStorage() {
   try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch { /* ignore */ }
 }
 
-export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPdfSearch }: Props) {
+export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPdfSearch, onAreasChange }: Props) {
   const [currentStep, setCurrentStep] = useState(0);
   const [areas, setAreas] = useState<QuoteArea[]>(() => {
     const draft = loadDraftFromStorage();
@@ -74,6 +75,11 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
       toast.info("Draft restored from last session");
     }
   }, []);
+
+  // Notify parent of area changes
+  useEffect(() => {
+    onAreasChange?.(areas);
+  }, [areas, onAreasChange]);
 
   const handleSaveDraft = useCallback(() => {
     saveDraftToStorage(areas, currentStep);
