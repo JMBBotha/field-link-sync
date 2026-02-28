@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Users, X, Loader2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -169,6 +170,24 @@ function UnifiedQuoteBuilderInner() {
   const [baskets, setBaskets] = useState<Basket[]>([]);
   const [wizardAreas, setWizardAreas] = useState<QuoteArea[]>([]);
 
+  // Shared PDF product selection state
+  const [selectedFromPdf, setSelectedFromPdf] = useState<PdfSelectedProduct[]>([]);
+
+  const handleSelectProduct = useCallback((product: Pick<PdfSelectedProduct, "code" | "description" | "price">) => {
+    setSelectedFromPdf((prev) => {
+      if (prev.some((p) => p.code === product.code)) {
+        return prev.filter((p) => p.code !== product.code);
+      }
+      return [...prev, { ...product, quantity: 1, unitType: "units" }];
+    });
+  }, []);
+
+  const updateSelectedItem = useCallback((code: string, updates: Partial<Pick<PdfSelectedProduct, "quantity" | "unitType">>) => {
+    setSelectedFromPdf((prev) =>
+      prev.map((item) => (item.code === code ? { ...item, ...updates } : item))
+    );
+  }, []);
+
   // Wizard trigger item from Visual tab
   const handleOpenWizardFromVisual = useCallback((item: WizardTriggerItem) => {
     setAreaWizardOpen(true);
@@ -327,7 +346,7 @@ function UnifiedQuoteBuilderInner() {
         {activeTab === "normal" &&
         <div className="h-full flex">
             <div className="flex-1 min-w-0 overflow-y-auto">
-              <QuoteBuilderTab onBasketsChange={setBaskets} />
+              <QuoteBuilderTab onBasketsChange={setBaskets} pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }} />
             </div>
             <div className="w-[320px] shrink-0 border-l overflow-y-auto p-3 mx-[5px] my-[4px] bg-[sidebar-primary-foreground] bg-transparent">
               <QuoteSummaryPanel baskets={baskets} />
@@ -346,7 +365,8 @@ function UnifiedQuoteBuilderInner() {
               isDragging={false}
               onOpenWizard={handleOpenWizardFromVisual}
               pdfSearchRef={pdfSearchRef}
-              wizardOpen={areaWizardOpen} />
+              wizardOpen={areaWizardOpen}
+              pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }} />
 
             </div>
             <div className="w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">

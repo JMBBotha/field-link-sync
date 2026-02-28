@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,8 @@ interface VisualCatalogPanelProps {
   pdfSearchRef?: React.MutableRefObject<((term: string) => void) | null>;
   /** When true, suppresses backdrop click and Escape key to prevent closing while wizard is on top */
   wizardOpen?: boolean;
+  /** Shared PDF selection state */
+  pdfSelection?: PdfSelectionHandlers;
 }
 
 interface PdfPage {
