@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { categorizePdfItem, categoryToWizardStep } from "./categorizePdfItem";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
+import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 
 const DISMISSED_KEY = "dismissedPdfRegions";
 
@@ -78,6 +79,8 @@ interface PdfPageOverlayProps {
   onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent) => void;
   onHoverMove?: (e: React.MouseEvent) => void;
   onHoverEnd?: () => void;
+  /** Shared PDF selection state */
+  pdfSelection?: PdfSelectionHandlers;
 }
 
 /* ─── Added-to-quote tracker (local state, shared across regions) ─── */
@@ -99,6 +102,7 @@ const DraggableRegion = memo(({
   onHover,
   onHoverMove,
   onHoverLeave,
+  pdfSelection,
 }: {
   region: OverlayRegion;
   baskets: Basket[];
@@ -114,6 +118,7 @@ const DraggableRegion = memo(({
   onHover: (region: OverlayRegion) => void;
   onHoverMove: (e: React.MouseEvent) => void;
   onHoverLeave: () => void;
+  pdfSelection?: PdfSelectionHandlers;
 }) => {
   const product = region.product;
   const isMatched = !!product;
@@ -193,6 +198,31 @@ const DraggableRegion = memo(({
     >
       {/* Full-width transparent hit area with hover highlight */}
       <div className="absolute inset-0 hover:bg-primary/5 rounded transition-colors duration-150" />
+
+      {/* PDF selection checkbox */}
+      {pdfSelection && region.product && (
+        <div
+          className="absolute top-1/2 -translate-y-1/2 z-20 pointer-events-auto"
+          style={{ left: "1%" }}
+        >
+          <input
+            type="checkbox"
+            checked={pdfSelection.selectedFromPdf.some((s) => s.code === region.product_code)}
+            onChange={() =>
+              pdfSelection.handleSelectProduct({
+                code: region.product_code,
+                description: region.product?.short_name || region.label,
+                price: String(region.product?.selling_price || region.product?.cost_incl_vat || region.detected_price || 0),
+              })
+            }
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="h-3.5 w-3.5 rounded border-input accent-primary cursor-pointer"
+            title="Select for quote"
+          />
+        </div>
+      )}
 
       {/* Icon positioned in QTY column at fixed left% */}
       <div
@@ -323,13 +353,13 @@ const PdfPageOverlay = ({
   onHoverStart,
   onHoverMove: onHoverMoveProp,
   onHoverEnd,
+  pdfSelection,
 }: PdfPageOverlayProps) => {
   const hoveredRegionRef = useRef<OverlayRegion | null>(null);
   const [localAddedIds, setLocalAddedIds] = useState<Set<string>>(new Set());
   const [, forceUpdate] = useState(0);
   const queryClient = useQueryClient();
 
-  // Fetch persisted dismissed keys from DB
   const { data: dbDismissedKeys = new Set<string>() } = useQuery({
     queryKey: ["dismissed-pdf-regions"],
     queryFn: async () => {
@@ -461,6 +491,7 @@ const PdfPageOverlay = ({
           onHover={handleHover}
           onHoverMove={handleHoverMove}
           onHoverLeave={handleHoverLeave}
+          pdfSelection={pdfSelection}
         />
       ))}
 

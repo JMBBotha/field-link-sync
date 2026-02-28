@@ -59,7 +59,7 @@ interface PdfPage {
   pdf_storage_path: string | null;
 }
 
-const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAddBasket, onRemoveBasket, products, isDragging: isDraggingExternal, onOpenWizard, pdfSearchRef, wizardOpen }: VisualCatalogPanelProps) => {
+const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAddBasket, onRemoveBasket, products, isDragging: isDraggingExternal, onOpenWizard, pdfSearchRef, wizardOpen, pdfSelection }: VisualCatalogPanelProps) => {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
@@ -928,6 +928,7 @@ const LazyPdfPage = ({
               onHoverStart={onHoverStart}
               onHoverMove={onHoverMove}
               onHoverEnd={onHoverEnd}
+              pdfSelection={pdfSelection}
             />
           )}
           {extracting && (
