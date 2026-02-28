@@ -7,6 +7,9 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Users, X, Loader2 } from "lucide-react";
+import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
+import { useProductUsageStats } from "@/hooks/useProductUsageStats";
+import ProductPalette from "@/components/catalog/quote-builder/ProductPalette";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -170,6 +173,39 @@ function UnifiedQuoteBuilderInner() {
   // Shared baskets state for cross-tab data
   const [baskets, setBaskets] = useState<Basket[]>([]);
   const [wizardAreas, setWizardAreas] = useState<QuoteArea[]>([]);
+
+  // Area tab palette state
+  const [areaSearch, setAreaSearch] = useState("");
+  const [areaDebouncedSearch, setAreaDebouncedSearch] = useState("");
+  const [areaCategoryFilter, setAreaCategoryFilter] = useState("all");
+  const { usageMap: areaUsageMap } = useProductUsageStats();
+  useEffect(() => {
+    const t = setTimeout(() => setAreaDebouncedSearch(areaSearch), 300);
+    return () => clearTimeout(t);
+  }, [areaSearch]);
+
+  const areaFilteredProducts = useMemo(() => {
+    let result = products;
+    if (!areaDebouncedSearch.trim() && areaCategoryFilter !== "all" && areaCategoryFilter !== "favorites") {
+      result = result.filter((p) =>
+        p.product_category === areaCategoryFilter ||
+        (p.category || "").toLowerCase().includes(areaCategoryFilter.toLowerCase())
+      );
+    }
+    if (areaDebouncedSearch.trim()) {
+      const terms = areaDebouncedSearch.toLowerCase().split(/\s+/).filter(Boolean);
+      result = result.filter((p) => {
+        const blob = [p.product_code, p.short_name, p.brand, p.description, p.category, p.product_category, p.supplier_name].filter(Boolean).join(" ").toLowerCase();
+        return allTermsMatchBlob(terms, blob);
+      });
+    }
+    return result;
+  }, [products, areaCategoryFilter, areaDebouncedSearch]);
+
+  const areaFavorites = useMemo(() => new Set(products.filter((p) => p.is_pinned).map((p) => p.id)), [products]);
+
+  // Ref to the inline builder's addProduct method
+  const areaAddProductRef = useRef<((product: PaletteProduct) => void) | null>(null);
 
   // Shared PDF product selection state
   const [selectedFromPdf, setSelectedFromPdf] = useState<PdfSelectedProduct[]>([]);
@@ -378,14 +414,41 @@ function UnifiedQuoteBuilderInner() {
         }
         {activeTab === "area" &&
         <div className="h-full flex">
+            {/* Product Palette - left sidebar */}
+            <div className="w-[280px] shrink-0 flex flex-col min-h-0 overflow-hidden pl-2 py-1">
+              <ProductPalette
+                products={areaFilteredProducts}
+                isLoading={false}
+                searchQuery={areaSearch}
+                onSearchChange={setAreaSearch}
+                categoryFilter={areaCategoryFilter}
+                onCategoryChange={setAreaCategoryFilter}
+                isDragging={false}
+                favorites={areaFavorites}
+                onToggleFavorite={() => {}}
+                usageMap={areaUsageMap}
+                bundles={bundles}
+                baskets={[]}
+                onAddProductToBasket={(_basketId, product) => {
+                  areaAddProductRef.current?.(product);
+                }}
+                pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
+                onPopOutSelected={() => setFloatingOpen(true)}
+              />
+            </div>
+            {/* Area Builder - center */}
             <div className="flex-1 min-w-0 overflow-hidden p-1">
               <AreaQuoteBuilderInline
                 products={products}
                 bundles={bundles}
                 onSave={handleWizardSave}
                 onPdfSearch={pdfSearchRef.current || undefined}
-                onAreasChange={setWizardAreas} />
+                onAreasChange={setWizardAreas}
+                onAddProductRef={areaAddProductRef}
+                pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
+              />
             </div>
+            {/* Summary - right sidebar */}
             <div className="w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
               <AreaQuoteSummary areas={wizardAreas} />
             </div>

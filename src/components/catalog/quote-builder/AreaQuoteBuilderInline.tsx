@@ -5,14 +5,15 @@
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, Check, Wand2, Save } from "lucide-react";
+import type { PdfSelectionHandlers } from "@/types/pdfSelection";
+import { ChevronLeft, ChevronRight, Check, Wand2, Save, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { hapticTap } from "@/lib/haptics";
 import type { PaletteProduct, Basket, BasketItem } from "../QuoteBuilderTab";
-import type { QuoteArea } from "./quoteWizardTypes";
-import { WIZARD_STEPS, computeAreaSubtotal, createEmptyArea } from "./quoteWizardTypes";
+import type { QuoteArea, AreaACUnit, AreaConsumable } from "./quoteWizardTypes";
+import { WIZARD_STEPS, computeAreaSubtotal, createEmptyArea, detectBTU } from "./quoteWizardTypes";
 import AreaDefinitionStep from "./wizard/AreaDefinitionStep";
 import ACSelectionStep from "./wizard/ACSelectionStep";
 import PricingStep from "./wizard/PricingStep";
@@ -32,6 +33,9 @@ interface Props {
   onSave: (baskets: Basket[]) => void;
   onPdfSearch?: (term: string) => void;
   onAreasChange?: (areas: QuoteArea[]) => void;
+  /** Ref that parent can use to push products into the builder */
+  onAddProductRef?: React.MutableRefObject<((product: PaletteProduct) => void) | null>;
+  pdfSelection?: PdfSelectionHandlers;
 }
 
 const DRAFT_STORAGE_KEY = "quote-builder-draft";
@@ -56,7 +60,7 @@ function clearDraftStorage() {
   try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch { /* ignore */ }
 }
 
-export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPdfSearch, onAreasChange }: Props) {
+export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPdfSearch, onAreasChange, onAddProductRef, pdfSelection }: Props) {
   const [currentStep, setCurrentStep] = useState(0);
   const [areas, setAreas] = useState<QuoteArea[]>(() => {
     const draft = loadDraftFromStorage();
@@ -80,6 +84,44 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
   useEffect(() => {
     onAreasChange?.(areas);
   }, [areas, onAreasChange]);
+
+  // External product add: routes product to the first area based on category
+  const handleExternalProductAdd = useCallback((product: PaletteProduct) => {
+    setAreas((prev) => {
+      if (prev.length === 0) return prev;
+      const targetArea = prev[0];
+      const isAC = product.product_category === "Air Conditioning" || (product.category || "").toLowerCase().includes("air conditioning");
+      
+      if (isAC) {
+        // Add as AC unit to first area
+        const btu = detectBTU(product);
+        const newUnit: AreaACUnit = { id: crypto.randomUUID(), product, btu, quantity: 1 };
+        return prev.map((a, i) => i === 0 ? { ...a, acUnits: [newUnit] } : a);
+      } else {
+        // Add as consumable to first area
+        const existing = targetArea.consumables.find((c) => c.product.id === product.id);
+        if (existing) {
+          return prev.map((a, i) => i === 0 ? {
+            ...a,
+            consumables: a.consumables.map((c) => c.product.id === product.id ? { ...c, quantity: c.quantity + 1 } : c)
+          } : a);
+        }
+        const newConsumable: AreaConsumable = { id: crypto.randomUUID(), product, quantity: 1 };
+        return prev.map((a, i) => i === 0 ? { ...a, consumables: [...a.consumables, newConsumable] } : a);
+      }
+    });
+    toast.success(`Added ${product.short_name || product.product_code} to ${areas[0]?.name || "Room 1"}`);
+  }, [areas]);
+
+  // Expose addProduct method to parent via ref
+  useEffect(() => {
+    if (onAddProductRef) {
+      onAddProductRef.current = handleExternalProductAdd;
+    }
+    return () => {
+      if (onAddProductRef) onAddProductRef.current = null;
+    };
+  }, [onAddProductRef, handleExternalProductAdd]);
 
   const handleSaveDraft = useCallback(() => {
     saveDraftToStorage(areas, currentStep);
@@ -161,6 +203,24 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
           <Wand2 className="h-5 w-5 text-primary" />
           Build Area Quote
         </h2>
+        {pdfSelection && pdfSelection.selectedFromPdf.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs"
+            onClick={() => {
+              for (const item of pdfSelection.selectedFromPdf) {
+                // Try to find matching product in catalog
+                const match = products.find((p) => p.product_code === item.code);
+                if (match) handleExternalProductAdd(match);
+              }
+              toast.success(`Imported ${pdfSelection.selectedFromPdf.length} selected items`);
+            }}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Import {pdfSelection.selectedFromPdf.length} Selected
+          </Button>
+        )}
       </div>
 
       {/* Stepper */}
