@@ -302,21 +302,21 @@ function UnifiedQuoteBuilderInner() {
       <QuoteSharedHeader onBack={() => navigate("/admin/quotes")} />
 
       {/* Builder mode tabs */}
-      <div className="shrink-0 flex items-center justify-center border-b border-white/20 bg-white/5 backdrop-blur-sm">
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full max-w-md">
-          <TabsList className="w-full bg-white/10 h-9">
-            <TabsTrigger value="normal" className="flex-1 text-xs data-[state=active]:bg-white data-[state=active]:text-foreground text-white/70">
-              Normal
-            </TabsTrigger>
-            <TabsTrigger value="visual" className="flex-1 text-xs data-[state=active]:bg-white data-[state=active]:text-foreground text-white/70">
-              Visual
-            </TabsTrigger>
-            <TabsTrigger value="area" className="flex-1 text-xs data-[state=active]:bg-white data-[state=active]:text-foreground text-white/70">
-              Area
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
       {/* Tab content */}
       <div className="flex-1 min-h-0 overflow-hidden">
