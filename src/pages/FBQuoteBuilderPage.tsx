@@ -230,9 +230,7 @@ const FBQuoteBuilderPage = () => {
   const { company, companyId } = useCompany();
 
   const [baskets, setBaskets] = useState<Basket[]>([
-    { id: "basket-1", name: "Room 1 AC", items: [] },
-    { id: "basket-2", name: "Piping", items: [] },
-    { id: "basket-3", name: "Electrical", items: [] },
+    { id: "basket-1", name: "Zone 1", items: [] },
   ]);
   const [activeProduct, setActiveProduct] = useState<PaletteProduct | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
