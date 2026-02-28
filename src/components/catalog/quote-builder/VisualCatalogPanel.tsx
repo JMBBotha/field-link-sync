@@ -581,6 +581,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           onHoverStart={handleHoverStart}
                           onHoverMove={handleHoverMove}
                           onHoverEnd={handleHoverEnd}
+                          pdfSelection={pdfSelection}
                           registerRef={(el) => {
                             if (el) pageRefs.current.set(idx, el);
                             else pageRefs.current.delete(idx);
@@ -678,6 +679,7 @@ interface LazyPdfPageProps {
   onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent) => void;
   onHoverMove?: (e: React.MouseEvent) => void;
   onHoverEnd?: () => void;
+  pdfSelection?: PdfSelectionHandlers;
 }
 
 const LazyPdfPage = ({
@@ -700,6 +702,7 @@ const LazyPdfPage = ({
   onHoverStart,
   onHoverMove,
   onHoverEnd,
+  pdfSelection,
 }: LazyPdfPageProps) => {
   const queryClient = useQueryClient();
   const divRef = useRef<HTMLDivElement | null>(null);
