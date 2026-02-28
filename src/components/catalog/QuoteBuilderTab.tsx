@@ -13,8 +13,8 @@ import {
   useSensor,
   useSensors,
   type DragStartEvent,
-  type DragEndEvent,
-} from "@dnd-kit/core";
+  type DragEndEvent } from
+"@dnd-kit/core";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import ProductPalette from "./quote-builder/ProductPalette";
@@ -105,38 +105,38 @@ export interface Basket {
 // Custom shouldHandleEvent to skip data-no-dnd elements
 class NoDndPointerSensor extends PointerSensor {
   static activators = [
-    {
-      eventName: "onPointerDown" as const,
-      handler: ({ nativeEvent }: { nativeEvent: PointerEvent }) => {
-        const target = nativeEvent.target as HTMLElement | null;
-        if (target?.closest?.('[data-no-dnd="true"]')) {
-          return false;
-        }
-        return true;
-      },
-    },
-  ];
+  {
+    eventName: "onPointerDown" as const,
+    handler: ({ nativeEvent }: {nativeEvent: PointerEvent;}) => {
+      const target = nativeEvent.target as HTMLElement | null;
+      if (target?.closest?.('[data-no-dnd="true"]')) {
+        return false;
+      }
+      return true;
+    }
+  }];
+
 }
 
 /* Sticky collapsible summary wrapper */
-const StickyQuoteSummary = ({ baskets }: { baskets: Basket[] }) => {
+const StickyQuoteSummary = ({ baskets }: {baskets: Basket[];}) => {
   const [collapsed, setCollapsed] = useState(true);
   const totalItems = baskets.reduce((s, b) => s + b.items.length, 0);
   const totalCost = baskets.reduce(
     (sum, b) =>
-      sum +
-      b.items.reduce((s, i) => {
-        if (i.isBundle && i.bundleUnitPrice) {
-          return s + (i.bundlePricingType === "p/meter"
-            ? i.bundleUnitPrice * (i.length || 1)
-            : i.bundleUnitPrice * i.quantity);
-        }
-        if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
-          return s + i.product.price_per_metre * i.length;
-        }
-        const { unitSell } = getEffectiveUnitPrices(i.product);
-        return s + unitSell * i.quantity;
-      }, 0),
+    sum +
+    b.items.reduce((s, i) => {
+      if (i.isBundle && i.bundleUnitPrice) {
+        return s + (i.bundlePricingType === "p/meter" ?
+        i.bundleUnitPrice * (i.length || 1) :
+        i.bundleUnitPrice * i.quantity);
+      }
+      if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
+        return s + i.product.price_per_metre * i.length;
+      }
+      const { unitSell } = getEffectiveUnitPrices(i.product);
+      return s + unitSell * i.quantity;
+    }, 0),
     0
   );
 
@@ -148,22 +148,22 @@ const StickyQuoteSummary = ({ baskets }: { baskets: Basket[] }) => {
         {/* Toggle bar - always visible */}
         <button
           onClick={() => setCollapsed((c) => !c)}
-          className="w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-accent/50 transition-colors"
-        >
+          className="w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-accent/50 transition-colors">
+
           <span className="font-semibold text-foreground">
             Quote Summary · {totalItems} items · R{totalCost.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
           </span>
           {collapsed ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
         </button>
         {/* Expandable detail */}
-        {!collapsed && (
-          <div className="px-4 pb-3 max-h-[40vh] overflow-y-auto">
+        {!collapsed &&
+        <div className="px-4 pb-3 max-h-[40vh] overflow-y-auto">
             <QuoteSummaryPanel baskets={baskets} />
           </div>
-        )}
+        }
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 interface QuoteBuilderTabProps {
@@ -172,10 +172,10 @@ interface QuoteBuilderTabProps {
 
 const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
   const [baskets, setBasketsInternal] = useState<Basket[]>([
-    { id: "basket-1", name: "Room 1 AC", items: [] },
-    { id: "basket-2", name: "Piping", items: [] },
-    { id: "basket-3", name: "Electrical", items: [] },
-  ]);
+  { id: "basket-1", name: "Room 1 AC", items: [] },
+  { id: "basket-2", name: "Piping", items: [] },
+  { id: "basket-3", name: "Electrical", items: [] }]
+  );
   const setBaskets: typeof setBasketsInternal = useCallback((action) => {
     setBasketsInternal((prev) => {
       const next = typeof action === "function" ? action(prev) : action;
@@ -219,12 +219,12 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["quote-builder-products"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_products") as any)
-        .select("id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, suggested_consumables, pack_qty, suppliers(name, supplier_type)")
-        .or("archived.is.null,archived.eq.false")
-        .order("is_pinned", { ascending: false })
-        .order("pin_order", { ascending: true, nullsFirst: false })
-        .limit(2000);
+      const { data, error } = await (supabase.from("supplier_products") as any).
+      select("id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, suggested_consumables, pack_qty, suppliers(name, supplier_type)").
+      or("archived.is.null,archived.eq.false").
+      order("is_pinned", { ascending: false }).
+      order("pin_order", { ascending: true, nullsFirst: false }).
+      limit(2000);
 
       if (error) throw error;
       return (data || []).map((p: any) => ({
@@ -237,31 +237,31 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
         unit_length: p.unit_length || null,
         pipe_size: p.pipe_size || null,
         is_material_favorite: p.is_material_favorite || false,
-        pack_qty: p.pack_qty || null,
+        pack_qty: p.pack_qty || null
       })) as PaletteProduct[];
     },
-    staleTime: 60000,
+    staleTime: 60000
   });
 
-  const favorites = useMemo(() => new Set(products.filter(p => p.is_pinned).map(p => p.id)), [products]);
+  const favorites = useMemo(() => new Set(products.filter((p) => p.is_pinned).map((p) => p.id)), [products]);
   const togglePinMutation = useMutation({
     mutationFn: async (productId: string) => {
-      const currentlyPinned = products.find(p => p.id === productId)?.is_pinned ?? false;
+      const currentlyPinned = products.find((p) => p.id === productId)?.is_pinned ?? false;
       const pinOrder = currentlyPinned ? 0 : Math.floor(Date.now() / 1000) % 2000000000;
-      const { error } = await (supabase.from("supplier_products") as any)
-        .update({ is_pinned: !currentlyPinned, pin_order: pinOrder } as any).eq("id", productId);
+      const { error } = await (supabase.from("supplier_products") as any).
+      update({ is_pinned: !currentlyPinned, pin_order: pinOrder } as any).eq("id", productId);
       if (error) throw error;
     },
     onMutate: async (productId) => {
       await queryClient.cancelQueries({ queryKey: ["quote-builder-products"] });
       queryClient.setQueryData<PaletteProduct[]>(["quote-builder-products"], (old) =>
-        old?.map((p) => p.id === productId ? { ...p, is_pinned: !p.is_pinned } : p)
+      old?.map((p) => p.id === productId ? { ...p, is_pinned: !p.is_pinned } : p)
       );
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
       queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] });
-    },
+    }
   });
   const toggleFavorite = useCallback((id: string) => togglePinMutation.mutate(id), [togglePinMutation]);
 
@@ -269,17 +269,17 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
   const { data: bundles = [], isLoading: bundlesLoading } = useQuery<PaletteBundle[]>({
     queryKey: ["quote-builder-bundles"],
     queryFn: async () => {
-      const { data: bundleData, error: bErr } = await supabase
-        .from("installation_bundles")
-        .select("id, name, description, bundle_type, min_btu, max_btu, compatible_brands, is_favorite")
-        .eq("is_active", true)
-        .order("name");
+      const { data: bundleData, error: bErr } = await supabase.
+      from("installation_bundles").
+      select("id, name, description, bundle_type, min_btu, max_btu, compatible_brands, is_favorite").
+      eq("is_active", true).
+      order("name");
       if (bErr) throw bErr;
       if (!bundleData || bundleData.length === 0) return [];
 
-      const { data: itemsData, error: iErr } = await (supabase.from("bundle_items") as any)
-        .select("id, bundle_id, supplier_product_id, quantity, length_metres, is_length_item, is_optional, sort_order, supplier_products(id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, suppliers(name))")
-        .order("sort_order");
+      const { data: itemsData, error: iErr } = await (supabase.from("bundle_items") as any).
+      select("id, bundle_id, supplier_product_id, quantity, length_metres, is_length_item, is_optional, sort_order, supplier_products(id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, suppliers(name))").
+      order("sort_order");
       if (iErr) throw iErr;
 
       const itemsByBundle: Record<string, any[]> = {};
@@ -299,17 +299,17 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
             supplier_name: sp.suppliers?.name || "",
             price_per_metre: sp.price_per_metre || null,
             sold_in_length: sp.sold_in_length || false,
-            unit_length: sp.unit_length || null,
-          } : null,
+            unit_length: sp.unit_length || null
+          } : null
         });
       });
 
       return bundleData.map((b) => ({
         ...b,
-        items: itemsByBundle[b.id] || [],
+        items: itemsByBundle[b.id] || []
       }));
     },
-    staleTime: 60000,
+    staleTime: 60000
   });
 
   // Brand & Type Inference
@@ -343,8 +343,8 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
     // Only filter by category when NOT searching
     if (!debouncedSearch.trim() && categoryFilter !== "all" && categoryFilter !== "favorites") {
       result = result.filter((p) =>
-        p.product_category === categoryFilter ||
-        (p.category || "").toLowerCase().includes(categoryFilter.toLowerCase())
+      p.product_category === categoryFilter ||
+      (p.category || "").toLowerCase().includes(categoryFilter.toLowerCase())
       );
     }
 
@@ -352,9 +352,9 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
       const terms = debouncedSearch.toLowerCase().split(/\s+/).filter(Boolean);
       result = result.filter((p) => {
         const blob = [
-          p.product_code, p.short_name, p.brand,
-          p.description, p.category, p.product_category, p.supplier_name,
-        ].filter(Boolean).join(" ").toLowerCase();
+        p.product_code, p.short_name, p.brand,
+        p.description, p.category, p.product_category, p.supplier_name].
+        filter(Boolean).join(" ").toLowerCase();
         return allTermsMatchBlob(terms, blob);
       });
     }
@@ -373,58 +373,58 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
     trackUsage(product.id);
 
     setBaskets((prev) =>
-      prev.map((basket) => {
-        if (basket.id !== basketId) return basket;
-        const existing = basket.items.find((i) => i.product.id === product.id);
-        if (existing) {
-          if (product.sold_in_length && product.price_per_metre) {
-            return {
-              ...basket,
-              items: basket.items.map((i) =>
-                i.product.id === product.id ? { ...i, length: (i.length || 1) + 1 } : i
-              ),
-            };
-          }
+    prev.map((basket) => {
+      if (basket.id !== basketId) return basket;
+      const existing = basket.items.find((i) => i.product.id === product.id);
+      if (existing) {
+        if (product.sold_in_length && product.price_per_metre) {
           return {
             ...basket,
             items: basket.items.map((i) =>
-              i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
-            ),
+            i.product.id === product.id ? { ...i, length: (i.length || 1) + 1 } : i
+            )
           };
         }
-        const isLengthItem = product.sold_in_length && !!product.price_per_metre;
         return {
           ...basket,
-          items: [
-            ...basket.items,
-            {
-              instanceId: `${product.id}-${Date.now()}`,
-              product,
-              quantity: 1,
-              ...(isLengthItem ? { length: product.unit_length || 1 } : {}),
-            },
-          ],
+          items: basket.items.map((i) =>
+          i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
+          )
         };
-      })
+      }
+      const isLengthItem = product.sold_in_length && !!product.price_per_metre;
+      return {
+        ...basket,
+        items: [
+        ...basket.items,
+        {
+          instanceId: `${product.id}-${Date.now()}`,
+          product,
+          quantity: 1,
+          ...(isLengthItem ? { length: product.unit_length || 1 } : {})
+        }]
+
+      };
+    })
     );
     scrollToCanvas();
   }, [trackUsage, scrollToCanvas]);
 
   const addBundleToBasket = useCallback((basketId: string, bundle: PaletteBundle) => {
     // Build sub-items list for the collapsed bundle
-    const subItems = bundle.items
-      .filter((bItem) => bItem.product)
-      .map((bItem) => {
-        trackUsage(bItem.product!.id);
-        const isLengthItem = bItem.is_length_item && !!bItem.product!.price_per_metre;
-        return {
-          product: bItem.product as PaletteProduct,
-          quantity: bItem.quantity,
-          isLengthItem,
-          isOptional: bItem.is_optional,
-          ...(isLengthItem ? { length: bItem.length_metres || bItem.product!.unit_length || 1 } : {}),
-        };
-      });
+    const subItems = bundle.items.
+    filter((bItem) => bItem.product).
+    map((bItem) => {
+      trackUsage(bItem.product!.id);
+      const isLengthItem = bItem.is_length_item && !!bItem.product!.price_per_metre;
+      return {
+        product: bItem.product as PaletteProduct,
+        quantity: bItem.quantity,
+        isLengthItem,
+        isOptional: bItem.is_optional,
+        ...(isLengthItem ? { length: bItem.length_metres || bItem.product!.unit_length || 1 } : {})
+      };
+    });
 
     // Compute pricing
     const { pricingType, unitPrice, unitCost } = computeBundlePricing(subItems);
@@ -445,7 +445,7 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
         cost_excl_vat: unitCost,
         cost_incl_vat: unitCost * 1.15,
         sold_in_length: pricingType === "p/meter",
-        price_per_metre: pricingType === "p/meter" ? unitPrice : null,
+        price_per_metre: pricingType === "p/meter" ? unitPrice : null
       },
       quantity: 1,
       ...(pricingType === "p/meter" ? { length: 1 } : {}),
@@ -455,14 +455,14 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
       bundleItems: subItems,
       bundlePricingType: pricingType,
       bundleUnitPrice: unitPrice,
-      bundleUnitCost: unitCost,
+      bundleUnitCost: unitCost
     };
 
     setBaskets((prev) =>
-      prev.map((basket) => {
-        if (basket.id !== basketId) return basket;
-        return { ...basket, items: [...basket.items, bundleItem] };
-      })
+    prev.map((basket) => {
+      if (basket.id !== basketId) return basket;
+      return { ...basket, items: [...basket.items, bundleItem] };
+    })
     );
     scrollToCanvas();
   }, [trackUsage, scrollToCanvas]);
@@ -482,7 +482,7 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
     setActiveProduct(null);
     setIsDragging(false);
     const { active, over } = event;
-    
+
     if (!over) return;
 
     const overId = String(over.id);
@@ -512,66 +512,66 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
 
   const handleRemoveItem = useCallback((basketId: string, instanceId: string) => {
     setBaskets((prev) =>
-      prev.map((b) =>
-        b.id === basketId
-          ? { ...b, items: b.items.filter((i) => i.instanceId !== instanceId) }
-          : b
-      )
+    prev.map((b) =>
+    b.id === basketId ?
+    { ...b, items: b.items.filter((i) => i.instanceId !== instanceId) } :
+    b
+    )
     );
   }, []);
 
   const handleUpdateQuantity = useCallback((basketId: string, instanceId: string, qty: number) => {
     if (qty < 1) return;
     setBaskets((prev) =>
-      prev.map((b) =>
-        b.id === basketId
-          ? {
-              ...b,
-              items: b.items.map((i) => {
-                if (i.instanceId !== instanceId) return i;
-                // Scale bundle sub-items proportionally for p/qty bundles
-                if (i.isBundle && i.bundleItems && i.bundlePricingType === "p/qty") {
-                  const oldQty = i.quantity;
-                  const ratio = qty / oldQty;
-                  const scaledBundleItems = i.bundleItems.map((si) => ({
-                    ...si,
-                    quantity: si.isLengthItem ? si.quantity : Math.max(1, Math.round(si.quantity * ratio)),
-                    length: si.isLengthItem ? (si.length || 1) * ratio : si.length,
-                  }));
-                  return { ...i, quantity: qty, bundleItems: scaledBundleItems };
-                }
-                return { ...i, quantity: qty };
-              }),
-            }
-          : b
-      )
+    prev.map((b) =>
+    b.id === basketId ?
+    {
+      ...b,
+      items: b.items.map((i) => {
+        if (i.instanceId !== instanceId) return i;
+        // Scale bundle sub-items proportionally for p/qty bundles
+        if (i.isBundle && i.bundleItems && i.bundlePricingType === "p/qty") {
+          const oldQty = i.quantity;
+          const ratio = qty / oldQty;
+          const scaledBundleItems = i.bundleItems.map((si) => ({
+            ...si,
+            quantity: si.isLengthItem ? si.quantity : Math.max(1, Math.round(si.quantity * ratio)),
+            length: si.isLengthItem ? (si.length || 1) * ratio : si.length
+          }));
+          return { ...i, quantity: qty, bundleItems: scaledBundleItems };
+        }
+        return { ...i, quantity: qty };
+      })
+    } :
+    b
+    )
     );
   }, []);
 
   const handleUpdateLength = useCallback((basketId: string, instanceId: string, length: number) => {
     if (length < 0.1) return;
     setBaskets((prev) =>
-      prev.map((b) =>
-        b.id === basketId
-          ? {
-              ...b,
-              items: b.items.map((i) => {
-                if (i.instanceId !== instanceId) return i;
-                // Scale bundle sub-items proportionally for p/meter bundles
-                if (i.isBundle && i.bundleItems && i.bundlePricingType === "p/meter") {
-                  const oldLength = i.length || 1;
-                  const ratio = length / oldLength;
-                  const scaledBundleItems = i.bundleItems.map((si) => ({
-                    ...si,
-                    length: si.isLengthItem ? (si.length || 1) * ratio : si.length,
-                  }));
-                  return { ...i, length, bundleItems: scaledBundleItems };
-                }
-                return { ...i, length };
-              }),
-            }
-          : b
-      )
+    prev.map((b) =>
+    b.id === basketId ?
+    {
+      ...b,
+      items: b.items.map((i) => {
+        if (i.instanceId !== instanceId) return i;
+        // Scale bundle sub-items proportionally for p/meter bundles
+        if (i.isBundle && i.bundleItems && i.bundlePricingType === "p/meter") {
+          const oldLength = i.length || 1;
+          const ratio = length / oldLength;
+          const scaledBundleItems = i.bundleItems.map((si) => ({
+            ...si,
+            length: si.isLengthItem ? (si.length || 1) * ratio : si.length
+          }));
+          return { ...i, length, bundleItems: scaledBundleItems };
+        }
+        return { ...i, length };
+      })
+    } :
+    b
+    )
     );
   }, []);
 
@@ -582,7 +582,7 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
 
   const handleRenameBasket = useCallback((basketId: string, newName: string) => {
     setBaskets((prev) =>
-      prev.map((b) => (b.id === basketId ? { ...b, name: newName } : b))
+    prev.map((b) => b.id === basketId ? { ...b, name: newName } : b)
     );
   }, []);
 
@@ -600,8 +600,8 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
         name: `${source.name} (copy)`,
         items: source.items.map((i) => ({
           ...i,
-          instanceId: `${i.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        })),
+          instanceId: `${i.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+        }))
       };
       const idx = prev.indexOf(source);
       const next = [...prev];
@@ -614,7 +614,7 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
     const newBaskets = zoneNames.map((name, i) => ({
       id: `basket-${Date.now()}-${i}`,
       name,
-      items: [] as BasketItem[],
+      items: [] as BasketItem[]
     }));
     setBaskets(newBaskets);
   }, []);
@@ -629,18 +629,18 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
   const totalCost = useMemo(() => {
     return baskets.reduce(
       (sum, b) =>
-        sum +
-        b.items.reduce((s, i) => {
-          if (i.isBundle && i.bundleUnitPrice) {
-            return s + (i.bundlePricingType === "p/meter"
-              ? i.bundleUnitPrice * (i.length || 1)
-              : i.bundleUnitPrice * i.quantity);
-          }
-          if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
-            return s + i.product.price_per_metre * i.length;
-          }
-          return s + (i.product.selling_price || i.product.cost_incl_vat || 0) * i.quantity;
-        }, 0),
+      sum +
+      b.items.reduce((s, i) => {
+        if (i.isBundle && i.bundleUnitPrice) {
+          return s + (i.bundlePricingType === "p/meter" ?
+          i.bundleUnitPrice * (i.length || 1) :
+          i.bundleUnitPrice * i.quantity);
+        }
+        if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
+          return s + i.product.price_per_metre * i.length;
+        }
+        return s + (i.product.selling_price || i.product.cost_incl_vat || 0) * i.quantity;
+      }, 0),
       0
     );
   }, [baskets]);
@@ -664,7 +664,7 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
 
   return (
     <div className="flex flex-col h-full overflow-hidden gap-3 relative pb-2 min-w-0">
-      <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 z-10 shadow-sm shrink-0">
+      <div className="flex flex-col gap-2 border bg-card p-3 z-10 shadow-sm shrink-0 rounded-sm mx-[3px] py-[6px] my-[6px]">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-muted-foreground">
             Quote Total ({totalItems} items across {baskets.length} zones)
@@ -685,8 +685,8 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        onDragCancel={handleDragCancel}
-      >
+        onDragCancel={handleDragCancel} className="my-px">
+
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 flex-1 min-h-0 overflow-hidden px-2">
           <div className="md:col-span-2 flex flex-col min-h-0 overflow-hidden pl-2">
             <ProductPalette
@@ -705,8 +705,8 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
               baskets={baskets}
               onAddProductToBasket={addProductToBasket}
               onAddBundleToBasket={addBundleToBasket}
-              onOpenVisualPanel={() => setVisualPanelOpen(true)}
-            />
+              onOpenVisualPanel={() => setVisualPanelOpen(true)} />
+
           </div>
           <div ref={canvasRef} className="md:col-span-3 flex flex-col min-h-0 overflow-hidden pr-2">
             <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" as any }}>
@@ -724,8 +724,8 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
                 onClearAll={handleClearAll}
                 onUpdateLength={handleUpdateLength}
                 isDragging={isDragging}
-                isCompact={visualPanelOpen}
-              />
+                isCompact={visualPanelOpen} />
+
             </div>
           </div>
         </div>
@@ -746,8 +746,8 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
           onRemoveBasket={handleRemoveBasket}
           products={products}
           isDragging={isDragging}
-          onOpenWizard={handleOpenWizardFromPdf}
-        />
+          onOpenWizard={handleOpenWizardFromPdf} />
+
       </DndContext>
 
       {/* Sticky collapsible quote summary at bottom */}
@@ -760,19 +760,19 @@ const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
         initialProduct={acModalProduct}
         onConfirm={handleACConfirm}
         inferredBrand={inferredBrand}
-        inferredType={inferredType}
-      />
+        inferredType={inferredType} />
+
 
       <QuoteBuilderPopup
         open={wizardOpen}
-        onClose={() => { setWizardOpen(false); setWizardTriggerItem(null); }}
+        onClose={() => {setWizardOpen(false);setWizardTriggerItem(null);}}
         products={products}
         bundles={bundles}
         onSave={handleWizardSave}
-        triggerItem={wizardTriggerItem}
-      />
-    </div>
-  );
+        triggerItem={wizardTriggerItem} />
+
+    </div>);
+
 };
 
 export default QuoteBuilderTab;
