@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { Search, Wand2, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -168,9 +169,10 @@ const StickyQuoteSummary = ({ baskets }: {baskets: Basket[];}) => {
 
 interface QuoteBuilderTabProps {
   onBasketsChange?: (baskets: Basket[]) => void;
+  pdfSelection?: PdfSelectionHandlers;
 }
 
-const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
+const QuoteBuilderTab = ({ onBasketsChange, pdfSelection }: QuoteBuilderTabProps = {}) => {
   const [baskets, setBasketsInternal] = useState<Basket[]>([
   { id: "basket-1", name: "Zone 1", items: [] }]
   );
