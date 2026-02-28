@@ -572,7 +572,7 @@ const FBQuoteBuilderPage = () => {
           </button>
           <button onClick={() => setMobileTab("canvas")}
             className={`flex-1 py-2.5 text-xs font-semibold text-center transition-colors duration-150 ${mobileTab === "canvas" ? "text-primary border-b-2 border-primary" : "text-muted-foreground"}`}>
-            Quote Canvas
+            Build Area Quote
           </button>
         </div>
       )}
@@ -603,7 +603,7 @@ const FBQuoteBuilderPage = () => {
             />
           </div>
 
-          {/* CENTER: Quote Canvas */}
+          {/* CENTER: Build Area Quote */}
           <div ref={canvasRef}
             className={`${isMobile ? (mobileTab === "canvas" ? "flex" : "hidden") : "flex"} flex-col flex-1 min-h-0 min-w-0 overflow-hidden p-1`}>
             <div className="flex-1 min-h-0 overflow-y-auto p-4" style={{ scrollBehavior: "smooth" }}>
