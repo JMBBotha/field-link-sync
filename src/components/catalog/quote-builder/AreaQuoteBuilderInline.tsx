@@ -110,32 +110,26 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
   const handleSave = useCallback(() => {
     const baskets: Basket[] = [];
     for (const area of areas) {
-      const acItems: BasketItem[] = area.acUnits.map((u) => ({
-        instanceId: `${u.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        product: u.product,
-        quantity: u.quantity,
-      }));
-      if (acItems.length > 0) {
-        baskets.push({ id: `basket-${Date.now()}-${area.id}-ac`, name: `${area.name} AC`, items: acItems });
-      }
-
-      const matItems: BasketItem[] = area.materials.map((m) => ({
-        instanceId: `${m.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        product: m.product,
-        quantity: m.pricingMode === "unit" ? m.unitQuantity : 1,
-        ...(m.pricingMode === "length" ? { length: m.adjustedLength } : {}),
-      }));
-      if (matItems.length > 0) {
-        baskets.push({ id: `basket-${Date.now()}-${area.id}-mat`, name: `${area.name} Piping`, items: matItems });
-      }
-
-      const consItems: BasketItem[] = area.consumables.map((c) => ({
-        instanceId: `${c.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        product: c.product,
-        quantity: c.quantity,
-      }));
-      if (consItems.length > 0) {
-        baskets.push({ id: `basket-${Date.now()}-${area.id}-cons`, name: `${area.name} Electrical`, items: consItems });
+      const allItems: BasketItem[] = [
+        ...area.acUnits.map((u) => ({
+          instanceId: `${u.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          product: u.product,
+          quantity: u.quantity,
+        })),
+        ...area.materials.map((m) => ({
+          instanceId: `${m.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          product: m.product,
+          quantity: m.pricingMode === "unit" ? m.unitQuantity : 1,
+          ...(m.pricingMode === "length" ? { length: m.adjustedLength } : {}),
+        })),
+        ...area.consumables.map((c) => ({
+          instanceId: `${c.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          product: c.product,
+          quantity: c.quantity,
+        })),
+      ];
+      if (allItems.length > 0) {
+        baskets.push({ id: `basket-${Date.now()}-${area.id}`, name: area.name, items: allItems });
       }
     }
     onSave(baskets);

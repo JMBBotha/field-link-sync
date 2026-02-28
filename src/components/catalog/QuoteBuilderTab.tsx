@@ -172,9 +172,7 @@ interface QuoteBuilderTabProps {
 
 const QuoteBuilderTab = ({ onBasketsChange }: QuoteBuilderTabProps = {}) => {
   const [baskets, setBasketsInternal] = useState<Basket[]>([
-  { id: "basket-1", name: "Room 1 AC", items: [] },
-  { id: "basket-2", name: "Piping", items: [] },
-  { id: "basket-3", name: "Electrical", items: [] }]
+  { id: "basket-1", name: "Zone 1", items: [] }]
   );
   const setBaskets: typeof setBasketsInternal = useCallback((action) => {
     setBasketsInternal((prev) => {
