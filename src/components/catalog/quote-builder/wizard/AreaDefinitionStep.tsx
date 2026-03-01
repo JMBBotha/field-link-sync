@@ -1,7 +1,15 @@
-import { useState } from "react";
-import { Plus, Trash2, Home, Tv, Briefcase, BedDouble, GripVertical } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Plus, Trash2, Home, Tv, Briefcase, BedDouble, GripVertical, Factory, ChevronDown, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor,
   KeyboardSensor, useSensor, useSensors,
@@ -20,12 +28,34 @@ interface Props {
   onAreasChange: (areas: QuoteArea[]) => void;
 }
 
-const PRESETS = [
-  { label: "Bedroom", icon: BedDouble },
-  { label: "Living Room", icon: Tv },
-  { label: "Office", icon: Briefcase },
-  { label: "Kitchen", icon: Home },
-];
+// Category-specific area options
+const CATEGORY_AREAS: Record<string, string[]> = {
+  residential: ["Living Area", "Bedroom", "Kitchen", "Bathroom", "Dining Room", "Garage", "Study", "Patio", "Laundry"],
+  office: ["Reception", "Open Plan", "Server Room", "Boardroom", "Break Room", "Corner Office", "Meeting Room", "Storage"],
+  retail: ["Shop Floor", "Storeroom", "Office", "Fitting Room", "Display Area", "Cashier Area", "Loading Bay"],
+  industrial: ["Factory Floor", "Warehouse", "Control Room", "Loading Dock", "Break Room", "Office", "Cold Storage", "Workshop"],
+};
+
+// Template zone names mapped to categories for detection
+const TEMPLATE_ZONES: Record<string, string[]> = {
+  residential: ["Living Area", "Bedroom 1", "Bedroom 2", "Bedroom 3", "Kitchen"],
+  office: ["Reception", "Open Plan", "Server Room", "Boardroom"],
+  retail: ["Shop Floor", "Storeroom", "Office"],
+  industrial: ["Factory Floor", "Warehouse", "Control Room", "Loading Dock"],
+};
+
+function detectCategory(areas: QuoteArea[]): string | null {
+  if (areas.length === 0) return null;
+  const names = areas.map((a) => a.name.replace(/\s*\d+$/, ""));
+  for (const [cat, zones] of Object.entries(TEMPLATE_ZONES)) {
+    const catBase = zones.map((z) => z.replace(/\s*\d+$/, ""));
+    if (names.some((n) => catBase.includes(n))) return cat;
+  }
+  for (const [cat, options] of Object.entries(CATEGORY_AREAS)) {
+    if (names.some((n) => options.includes(n))) return cat;
+  }
+  return null;
+}
 
 function SortableAreaRow({
   area, index, onRename, onRemove,
@@ -78,7 +108,8 @@ function SortableAreaRow({
 }
 
 export default function AreaDefinitionStep({ areas, onAreasChange }: Props) {
-  const [newName, setNewName] = useState("");
+  const [customMode, setCustomMode] = useState(false);
+  const [customName, setCustomName] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -86,10 +117,27 @@ export default function AreaDefinitionStep({ areas, onAreasChange }: Props) {
     useSensor(KeyboardSensor)
   );
 
+  const detectedCategory = useMemo(() => detectCategory(areas), [areas]);
+
+  // Build dropdown options: category-relevant areas filtered out already-added ones
+  const dropdownOptions = useMemo(() => {
+    const category = detectedCategory || "residential";
+    const options = CATEGORY_AREAS[category] || CATEGORY_AREAS.residential;
+    return options.filter((opt) => {
+      // Allow adding duplicates with incrementing numbers
+      return true;
+    });
+  }, [detectedCategory]);
+
   const addArea = (name: string) => {
     if (!name.trim()) return;
-    onAreasChange([...areas, createEmptyArea(name.trim())]);
-    setNewName("");
+    // Auto-increment if duplicate
+    const baseName = name.trim();
+    const count = areas.filter((a) => a.name === baseName || a.name.startsWith(baseName + " ")).length;
+    const finalName = count > 0 ? `${baseName} ${count + 1}` : baseName;
+    onAreasChange([...areas, createEmptyArea(finalName)]);
+    setCustomName("");
+    setCustomMode(false);
   };
 
   const removeArea = (id: string) => {
@@ -107,6 +155,10 @@ export default function AreaDefinitionStep({ areas, onAreasChange }: Props) {
     const newIndex = areas.findIndex((a) => a.id === over.id);
     onAreasChange(arrayMove(areas, oldIndex, newIndex));
   };
+
+  const categoryLabel = detectedCategory
+    ? detectedCategory.charAt(0).toUpperCase() + detectedCategory.slice(1)
+    : null;
 
   return (
     <div className="space-y-4">
@@ -129,37 +181,71 @@ export default function AreaDefinitionStep({ areas, onAreasChange }: Props) {
             </Button>
           ))
         ) : (
-          PRESETS.map((p) => {
-            const count = areas.filter((a) => a.name.startsWith(p.label)).length;
-            const name = count > 0 ? `${p.label} ${count + 1}` : p.label;
-            return (
-              <Button
-                key={p.label}
-                variant="outline"
-                size="sm"
-                className="gap-1.5 min-h-[44px] sm:min-h-0"
-                onClick={() => addArea(name)}
-              >
-                <p.icon className="h-3.5 w-3.5" />
-                Add {p.label}
-              </Button>
-            );
-          })
+          <p className="text-xs text-muted-foreground italic">Choose a template or add areas below.</p>
         )}
       </div>
 
-      {/* Custom name input */}
+      {/* Add Area dropdown + custom input */}
       <div className="flex gap-2">
-        <Input
-          placeholder="Custom area name..."
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && addArea(newName)}
-          className="h-11 sm:h-9 text-sm"
-        />
-        <Button size="sm" className="min-h-[44px] sm:min-h-0" onClick={() => addArea(newName)} disabled={!newName.trim()}>
-          <Plus className="h-4 w-4 mr-1" /> Add
-        </Button>
+        {customMode ? (
+          <>
+            <Input
+              autoFocus
+              placeholder="Enter custom area name..."
+              value={customName}
+              onChange={(e) => setCustomName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") addArea(customName);
+                if (e.key === "Escape") setCustomMode(false);
+              }}
+              className="h-11 sm:h-9 text-sm flex-1"
+            />
+            <Button size="sm" className="min-h-[44px] sm:min-h-0" onClick={() => addArea(customName)} disabled={!customName.trim()}>
+              <Plus className="h-4 w-4 mr-1" /> Add
+            </Button>
+            <Button variant="ghost" size="sm" className="min-h-[44px] sm:min-h-0 text-xs" onClick={() => setCustomMode(false)}>
+              Cancel
+            </Button>
+          </>
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5 min-h-[44px] sm:min-h-0">
+                <Plus className="h-4 w-4" />
+                Add Area
+                <ChevronDown className="h-3 w-3 ml-0.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              {categoryLabel && (
+                <>
+                  <DropdownMenuLabel className="text-[10px] text-muted-foreground">
+                    {categoryLabel} Areas
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              {dropdownOptions.map((opt) => (
+                <DropdownMenuItem
+                  key={opt}
+                  className="text-xs cursor-pointer gap-2"
+                  onClick={() => addArea(opt)}
+                >
+                  <Home className="h-3 w-3 text-muted-foreground" />
+                  {opt}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-xs cursor-pointer gap-2"
+                onClick={() => setCustomMode(true)}
+              >
+                <Pencil className="h-3 w-3 text-muted-foreground" />
+                Custom...
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {/* Area list */}
@@ -170,7 +256,7 @@ export default function AreaDefinitionStep({ areas, onAreasChange }: Props) {
           </div>
           <div>
             <p className="text-sm font-medium">No areas yet</p>
-            <p className="text-xs text-muted-foreground mt-1">Add a room to start building your quote — use the presets above or type a custom name.</p>
+            <p className="text-xs text-muted-foreground mt-1">Add a room to start building your quote — use a template or the Add Area button above.</p>
           </div>
         </div>
       ) : (
