@@ -275,7 +275,7 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-[5px] min-h-0">
+      <div className="flex-1 overflow-y-auto px-[5px] py-4 min-h-0">
         {stepContent}
       </div>
 

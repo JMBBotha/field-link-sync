@@ -474,7 +474,7 @@ const BasketCanvas = ({
       <div className="flex-1 overflow-y-auto min-h-0" style={{ scrollBehavior: "smooth" as any }}>
         {/* Area builder wizard replaces zone cards */}
         {areaBuilderNode ? (
-          <div className="p-[5px]">
+          <div className="px-[5px] py-2">
             {areaBuilderNode}
           </div>
         ) : (
