@@ -214,12 +214,19 @@ const DraggableRegion = memo(({
               checked={pdfSelection.selectedFromPdf.some((s) => s.code === region.product_code)}
               onChange={() =>
                 {
-                  const sellingPrice = region.product?.selling_price || region.product?.cost_incl_vat || region.detected_price || 0;
-                  const costPrice = region.product?.cost_excl_vat || 0;
+                  const product = region.product;
+                  const sellingPrice = product?.selling_price || product?.cost_incl_vat || region.detected_price || 0;
+                  // Cost = list price excl VAT minus supplier discount (e.g. 20%)
+                  let costPrice = product?.cost_excl_vat || 0;
+                  if (!costPrice && region.detected_price) {
+                    // detected_price is typically RRP incl VAT; derive cost as (price/1.15) * (1 - discount%)
+                    const discount = (product as any)?.supplier_discount_percent || 20;
+                    costPrice = Math.round((region.detected_price / 1.15) * (1 - discount / 100) * 100) / 100;
+                  }
                   const markupPercent = costPrice > 0 ? ((Number(sellingPrice) - costPrice) / costPrice) * 100 : undefined;
                   pdfSelection.handleSelectProduct({
                     code: region.product_code,
-                    description: region.product?.short_name || region.label,
+                    description: product?.short_name || region.label,
                     price: String(sellingPrice),
                     costPrice: costPrice > 0 ? costPrice : undefined,
                     markupPercent,
