@@ -1,12 +1,19 @@
 import { useState, useMemo, useCallback, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Minus, Star, ShoppingBag, X } from "lucide-react";
+import { Plus, Minus, Star, ShoppingBag, X, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getCategoryIcon, getCategoryBg } from "./ProductPalette";
 import { getProductDisplayName } from "./productDisplayUtils";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
+
+function calcMarkup(product: PaletteProduct) {
+  const cost = product.cost_excl_vat || 0;
+  const sell = product.selling_price || 0;
+  if (cost <= 0) return 0;
+  return ((sell - cost) / cost) * 100;
+}
 
 interface EnhancedProductPopupProps {
   product: PaletteProduct;
@@ -137,19 +144,20 @@ const EnhancedProductPopup = ({
               </span>
             )}
           </div>
+          {/* Markup display */}
+          {product.cost_excl_vat > 0 && (
+            <div className="flex items-center gap-2 text-[10px]">
+              <span className="text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{product.cost_excl_vat.toLocaleString("en-ZA")}</span></span>
+              <span className="text-muted-foreground">M/Up: <span className="font-mono font-semibold text-primary">{calcMarkup(product).toFixed(1)}%</span></span>
+            </div>
+          )}
           {product.brand && (
             <p className="text-xs text-muted-foreground">{product.brand}</p>
-          )}
-          {product.description && (
-            <p className="text-[10px] text-muted-foreground/80 line-clamp-2">{product.description}</p>
           )}
           {inQuoteQty > 0 && (
             <p className="text-xs font-medium text-primary">
               In quote: ×{inQuoteQty}
             </p>
-          )}
-          {product.is_pinned && (
-            <p className="text-[10px] font-medium text-yellow-600">★ Favorite</p>
           )}
           <p className="text-[9px] text-muted-foreground/50 mt-1">Click row to add to quote</p>
         </div>
@@ -200,6 +208,51 @@ const EnhancedProductPopup = ({
                 </Badge>
               )}
             </div>
+            {/* Markup row with +/- controls */}
+            {product.cost_excl_vat > 0 && (
+              <div className="flex items-center gap-2 mt-1.5">
+                <span className="text-[10px] text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{product.cost_excl_vat.toLocaleString("en-ZA")}</span></span>
+                <span className="text-[10px] text-muted-foreground">M/Up:</span>
+                <div className="flex items-center gap-0.5">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-5 w-5"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const cost = product.cost_excl_vat;
+                      const curMarkup = calcMarkup(product);
+                      const newMarkup = Math.max(0, curMarkup - 5);
+                      product.selling_price = Math.round(cost * (1 + newMarkup / 100) * 100) / 100;
+                      setQuantities({ ...quantities }); // force re-render
+                    }}
+                  >
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                  <span className="text-[11px] font-mono font-semibold text-primary min-w-[40px] text-center">
+                    {calcMarkup(product).toFixed(1)}%
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-5 w-5"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const cost = product.cost_excl_vat;
+                      const curMarkup = calcMarkup(product);
+                      const newMarkup = curMarkup + 5;
+                      product.selling_price = Math.round(cost * (1 + newMarkup / 100) * 100) / 100;
+                      setQuantities({ ...quantities }); // force re-render
+                    }}
+                  >
+                    <ChevronUp className="h-3 w-3" />
+                  </Button>
+                </div>
+                <span className="text-[10px] font-mono text-foreground ml-auto">
+                  → R{(product.selling_price || 0).toLocaleString("en-ZA")}
+                </span>
+              </div>
+            )}
           </div>
           <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
             <X className="h-4 w-4" />
