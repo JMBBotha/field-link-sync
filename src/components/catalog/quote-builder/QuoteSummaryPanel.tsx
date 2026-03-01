@@ -112,8 +112,7 @@ const QuoteSummaryPanel = ({ baskets, onGenerateQuote }: QuoteSummaryPanelProps)
 
       {/* Generate Quote button */}
       <Button
-        className="w-full h-11 text-sm font-semibold gap-2 rounded-lg text-white"
-        style={{ backgroundColor: "#1a3a5c" }}
+        className="w-full h-11 text-sm font-semibold gap-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-gray-900"
         onClick={onGenerateQuote}
       >
         <FileText className="h-4 w-4" />
