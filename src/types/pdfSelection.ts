@@ -19,5 +19,5 @@ export type PdfSelectionHandlers = {
   selectedFromPdf: PdfSelectionState;
   setSelectedFromPdf: React.Dispatch<React.SetStateAction<PdfSelectionState>>;
   handleSelectProduct: (product: Pick<PdfSelectedProduct, "code" | "description" | "price"> & Partial<Pick<PdfSelectedProduct, "costPrice" | "markupPercent">>) => void;
-  updateSelectedItem: (code: string, updates: Partial<Pick<PdfSelectedProduct, "quantity" | "unitType">>) => void;
+  updateSelectedItem: (code: string, updates: Partial<Pick<PdfSelectedProduct, "quantity" | "unitType" | "costPrice" | "markupPercent" | "price">>) => void;
 };

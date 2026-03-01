@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { X, GripVertical, Minus, Maximize2 } from "lucide-react";
+import { X, GripVertical, Minus, Maximize2, ChevronUp, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 
 interface FloatingSelectedItemsProps {
@@ -80,13 +81,45 @@ const FloatingSelectedItems = ({ pdfSelection, onClose }: FloatingSelectedItemsP
                   </button>
                 </div>
                 <p className="text-[10px] text-muted-foreground truncate">{item.description}</p>
-                {/* Cost & Markup row */}
+                {/* Cost & Markup row with adjustment controls */}
                 {(item.costPrice != null || item.markupPercent != null) && (
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                     {item.costPrice != null && (
                       <span>Cost: <span className="font-mono font-medium text-foreground">R{Number(item.costPrice).toFixed(2)}</span></span>
                     )}
-                    {item.markupPercent != null && (
+                    {item.markupPercent != null && item.costPrice != null && (
+                      <div className="flex items-center gap-0.5">
+                        <span>M/Up:</span>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-4 w-4"
+                          onClick={() => {
+                            const cost = Number(item.costPrice);
+                            const newMarkup = Math.max(0, (item.markupPercent || 0) - 5);
+                            const newPrice = Math.round(cost * (1 + newMarkup / 100) * 100) / 100;
+                            pdfSelection.updateSelectedItem(item.code, { markupPercent: newMarkup, price: String(newPrice) } as any);
+                          }}
+                        >
+                          <ChevronDown className="h-2.5 w-2.5" />
+                        </Button>
+                        <span className="font-mono font-semibold text-primary min-w-[32px] text-center">{Number(item.markupPercent).toFixed(1)}%</span>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-4 w-4"
+                          onClick={() => {
+                            const cost = Number(item.costPrice);
+                            const newMarkup = (item.markupPercent || 0) + 5;
+                            const newPrice = Math.round(cost * (1 + newMarkup / 100) * 100) / 100;
+                            pdfSelection.updateSelectedItem(item.code, { markupPercent: newMarkup, price: String(newPrice) } as any);
+                          }}
+                        >
+                          <ChevronUp className="h-2.5 w-2.5" />
+                        </Button>
+                      </div>
+                    )}
+                    {item.markupPercent != null && item.costPrice == null && (
                       <span>M/Up: <span className="font-mono font-medium text-foreground">{Number(item.markupPercent).toFixed(1)}%</span></span>
                     )}
                   </div>
