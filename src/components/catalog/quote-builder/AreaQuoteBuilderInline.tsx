@@ -6,7 +6,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
-import { ChevronLeft, ChevronRight, Check, Wand2, Save, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, Save, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -196,21 +196,16 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
   const grandTotal = useMemo(() => areas.reduce((s, a) => s + computeAreaSubtotal(a), 0), [areas]);
 
   return (
-    <div className="h-full flex flex-col bg-card rounded-lg shadow overflow-hidden relative">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 pt-5 pb-3 shrink-0">
-        <h2 className="flex items-center gap-2 text-xl font-bold text-foreground">
-          <Wand2 className="h-5 w-5 text-primary" />
-          Build Area Quote
-        </h2>
-        {pdfSelection && pdfSelection.selectedFromPdf.length > 0 && (
+    <div className="flex flex-col bg-card rounded-lg overflow-hidden relative">
+      {/* PDF import button */}
+      {pdfSelection && pdfSelection.selectedFromPdf.length > 0 && (
+        <div className="flex justify-end px-4 pt-3">
           <Button
             variant="outline"
             size="sm"
             className="gap-1.5 text-xs"
             onClick={() => {
               for (const item of pdfSelection.selectedFromPdf) {
-                // Try to find matching product in catalog
                 const match = products.find((p) => p.product_code === item.code);
                 if (match) handleExternalProductAdd(match);
               }
@@ -220,8 +215,8 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
             <Download className="h-3.5 w-3.5" />
             Import {pdfSelection.selectedFromPdf.length} Selected
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Stepper */}
       <div className="flex items-center gap-1 px-4 py-2 border-b overflow-x-auto shrink-0">

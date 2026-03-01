@@ -709,12 +709,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
 
           </div>
           <div ref={canvasRef} className="md:col-span-3 flex flex-col min-h-0 overflow-hidden pr-2">
-            <div className="flex-1 min-h-0 overflow-y-auto space-y-3" style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" as any }}>
-              {areaBuilderNode && (
-                <div className="mx-1 mt-1">
-                  {areaBuilderNode}
-                </div>
-              )}
+            <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" as any }}>
               <BasketCanvas
                 baskets={baskets}
                 allProducts={products}
@@ -729,7 +724,8 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
                 onClearAll={handleClearAll}
                 onUpdateLength={handleUpdateLength}
                 isDragging={isDragging}
-                isCompact={visualPanelOpen} />
+                isCompact={visualPanelOpen}
+                areaBuilderNode={areaBuilderNode} />
             </div>
           </div>
         </div>

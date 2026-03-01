@@ -30,6 +30,8 @@ interface BasketCanvasProps {
   onClearAll: () => void;
   isDragging?: boolean;
   isCompact?: boolean;
+  /** Inline area builder widget rendered in the content area */
+  areaBuilderNode?: React.ReactNode;
 }
 
 function DroppableBasket({
@@ -430,6 +432,7 @@ const BasketCanvas = ({
   onClearAll,
   isDragging,
   isCompact,
+  areaBuilderNode,
 }: BasketCanvasProps) => {
   return (
     <div className="flex flex-col h-full rounded-lg border bg-muted/30 overflow-hidden">
@@ -453,32 +456,39 @@ const BasketCanvas = ({
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0" style={{ scrollBehavior: "smooth" as any }}>
-        <div className={`${isCompact ? "p-1.5 space-y-1.5" : "p-3 space-y-3"}`}>
-          {baskets.length === 0 ? (
-            <div className={`flex flex-col items-center justify-center text-muted-foreground ${isCompact ? "py-6" : "py-12"}`}>
-              <Package className={`mb-2 opacity-30 ${isCompact ? "h-5 w-5" : "h-8 w-8"}`} />
-              <p className={isCompact ? "text-[10px]" : "text-sm"}>No zones yet</p>
-              <p className={isCompact ? "text-[9px]" : "text-xs"}>Click "Add Zone" or use a template</p>
-            </div>
-          ) : (
-            baskets.map((basket) => (
-              <DroppableBasket
-                key={basket.id}
-                basket={basket}
-                allProducts={allProducts}
-                onRename={(name) => onRenameBasket(basket.id, name)}
-                onRemove={() => onRemoveBasket(basket.id)}
-                onDuplicate={() => onDuplicateBasket(basket.id)}
-                onRemoveItem={(instanceId) => onRemoveItem(basket.id, instanceId)}
-                onUpdateQuantity={(instanceId, qty) => onUpdateQuantity(basket.id, instanceId, qty)}
-                onUpdateLength={(instanceId, len) => onUpdateLength(basket.id, instanceId, len)}
-                onAddProduct={(product) => onAddProductToBasket(basket.id, product)}
-                isDragActive={isDragging}
-                isCompact={isCompact}
-              />
-            ))
-          )}
-        </div>
+        {/* Area builder wizard replaces zone cards */}
+        {areaBuilderNode ? (
+          <div className="p-2">
+            {areaBuilderNode}
+          </div>
+        ) : (
+          <div className={`${isCompact ? "p-1.5 space-y-1.5" : "p-3 space-y-3"}`}>
+            {baskets.length === 0 ? (
+              <div className={`flex flex-col items-center justify-center text-muted-foreground ${isCompact ? "py-6" : "py-12"}`}>
+                <Package className={`mb-2 opacity-30 ${isCompact ? "h-5 w-5" : "h-8 w-8"}`} />
+                <p className={isCompact ? "text-[10px]" : "text-sm"}>No zones yet</p>
+                <p className={isCompact ? "text-[9px]" : "text-xs"}>Click "Add Zone" or use a template</p>
+              </div>
+            ) : (
+              baskets.map((basket) => (
+                <DroppableBasket
+                  key={basket.id}
+                  basket={basket}
+                  allProducts={allProducts}
+                  onRename={(name) => onRenameBasket(basket.id, name)}
+                  onRemove={() => onRemoveBasket(basket.id)}
+                  onDuplicate={() => onDuplicateBasket(basket.id)}
+                  onRemoveItem={(instanceId) => onRemoveItem(basket.id, instanceId)}
+                  onUpdateQuantity={(instanceId, qty) => onUpdateQuantity(basket.id, instanceId, qty)}
+                  onUpdateLength={(instanceId, len) => onUpdateLength(basket.id, instanceId, len)}
+                  onAddProduct={(product) => onAddProductToBasket(basket.id, product)}
+                  isDragActive={isDragging}
+                  isCompact={isCompact}
+                />
+              ))
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
