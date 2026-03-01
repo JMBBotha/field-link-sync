@@ -114,24 +114,38 @@ export default function AreaDefinitionStep({ areas, onAreasChange }: Props) {
         Define the areas/rooms for this installation. Each area will get its own AC unit, materials, and consumables. Drag to reorder.
       </p>
 
-      {/* Quick presets */}
+      {/* Area chips when areas exist, otherwise show presets */}
       <div className="flex flex-wrap gap-2">
-        {PRESETS.map((p) => {
-          const count = areas.filter((a) => a.name.startsWith(p.label)).length;
-          const name = count > 0 ? `${p.label} ${count + 1}` : p.label;
-          return (
-             <Button
-              key={p.label}
-              variant="outline"
+        {areas.length > 0 ? (
+          areas.map((area) => (
+            <Button
+              key={area.id}
+              variant="secondary"
               size="sm"
-              className="gap-1.5 min-h-[44px] sm:min-h-0"
-              onClick={() => addArea(name)}
+              className="gap-1.5 min-h-[44px] sm:min-h-0 font-semibold"
             >
-              <p.icon className="h-3.5 w-3.5" />
-              Add {p.label}
+              <Home className="h-3.5 w-3.5" />
+              {area.name}
             </Button>
-          );
-        })}
+          ))
+        ) : (
+          PRESETS.map((p) => {
+            const count = areas.filter((a) => a.name.startsWith(p.label)).length;
+            const name = count > 0 ? `${p.label} ${count + 1}` : p.label;
+            return (
+              <Button
+                key={p.label}
+                variant="outline"
+                size="sm"
+                className="gap-1.5 min-h-[44px] sm:min-h-0"
+                onClick={() => addArea(name)}
+              >
+                <p.icon className="h-3.5 w-3.5" />
+                Add {p.label}
+              </Button>
+            );
+          })
+        )}
       </div>
 
       {/* Custom name input */}
