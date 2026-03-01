@@ -213,11 +213,18 @@ const DraggableRegion = memo(({
               type="checkbox"
               checked={pdfSelection.selectedFromPdf.some((s) => s.code === region.product_code)}
               onChange={() =>
-                pdfSelection.handleSelectProduct({
-                  code: region.product_code,
-                  description: region.product?.short_name || region.label,
-                  price: String(region.product?.selling_price || region.product?.cost_incl_vat || region.detected_price || 0),
-                })
+                {
+                  const sellingPrice = region.product?.selling_price || region.product?.cost_incl_vat || region.detected_price || 0;
+                  const costPrice = region.product?.cost_excl_vat || 0;
+                  const markupPercent = costPrice > 0 ? ((Number(sellingPrice) - costPrice) / costPrice) * 100 : undefined;
+                  pdfSelection.handleSelectProduct({
+                    code: region.product_code,
+                    description: region.product?.short_name || region.label,
+                    price: String(sellingPrice),
+                    costPrice: costPrice > 0 ? costPrice : undefined,
+                    markupPercent,
+                  });
+                }
               }
               onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}

@@ -80,6 +80,17 @@ const FloatingSelectedItems = ({ pdfSelection, onClose }: FloatingSelectedItemsP
                   </button>
                 </div>
                 <p className="text-[10px] text-muted-foreground truncate">{item.description}</p>
+                {/* Cost & Markup row */}
+                {(item.costPrice != null || item.markupPercent != null) && (
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    {item.costPrice != null && (
+                      <span>Cost: <span className="font-mono font-medium text-foreground">R{Number(item.costPrice).toFixed(2)}</span></span>
+                    )}
+                    {item.markupPercent != null && (
+                      <span>M/Up: <span className="font-mono font-medium text-foreground">{Number(item.markupPercent).toFixed(1)}%</span></span>
+                    )}
+                  </div>
+                )}
                 <div className="flex items-center gap-1.5">
                   <select
                     value={item.unitType}
