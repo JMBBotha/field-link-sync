@@ -386,7 +386,7 @@ function DraggableProductCard({
             </div>
           </div>
         </HoverCardTrigger>
-        <HoverCardContent side="right" className="w-64 text-xs space-y-1.5">
+        <HoverCardContent side="right" className="w-72 text-xs space-y-1.5">
           <div className="flex items-center gap-2">
             <div className={`rounded-md p-1 ${catBg}`}>{getCategoryIcon(product.product_category, "h-3.5 w-3.5")}</div>
             <p className="font-semibold">{getProductDisplayName(product)}</p>
@@ -404,6 +404,15 @@ function DraggableProductCard({
             <span>Selling</span>
             <span className="font-bold">R{(product.selling_price || 0).toLocaleString("en-ZA")}</span>
           </div>
+          {/* Markup display */}
+          {product.cost_excl_vat > 0 && (
+            <div className="flex items-center justify-between pt-1 border-t">
+              <span className="text-muted-foreground">Markup</span>
+              <span className="font-mono font-bold text-primary">
+                {(((product.selling_price || 0) - product.cost_excl_vat) / product.cost_excl_vat * 100).toFixed(1)}%
+              </span>
+            </div>
+          )}
           <p className="text-[10px] text-muted-foreground line-clamp-3">{product.description}</p>
           <Badge variant="outline" className="text-[10px]">
             {product.supplier_name}
