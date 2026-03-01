@@ -30,7 +30,7 @@ interface Props {
 
 // Category-specific area options
 const CATEGORY_AREAS: Record<string, string[]> = {
-  residential: ["Living Area", "Bedroom", "Kitchen", "Bathroom", "Dining Room", "Garage", "Study", "Patio", "Laundry"],
+  residential: ["Living Area", "Bedroom", "Kitchen", "Bathroom", "Dining Room", "Garage", "Study", "Patio", "Laundry", "Office"],
   office: ["Reception", "Open Plan", "Server Room", "Boardroom", "Break Room", "Corner Office", "Meeting Room", "Storage"],
   retail: ["Shop Floor", "Storeroom", "Office", "Fitting Room", "Display Area", "Cashier Area", "Loading Bay"],
   industrial: ["Factory Floor", "Warehouse", "Control Room", "Loading Dock", "Break Room", "Office", "Cold Storage", "Workshop"],
@@ -39,7 +39,7 @@ const CATEGORY_AREAS: Record<string, string[]> = {
 // Template zone names mapped to categories for detection
 const TEMPLATE_ZONES: Record<string, string[]> = {
   residential: ["Living Area", "Bedroom 1", "Bedroom 2", "Bedroom 3", "Kitchen"],
-  office: ["Reception", "Open Plan", "Server Room", "Boardroom"],
+  office: ["Reception", "Open Plan", "Server Room", "Boardroom", "Office"],
   retail: ["Shop Floor", "Storeroom", "Office"],
   industrial: ["Factory Floor", "Warehouse", "Control Room", "Loading Dock"],
 };
