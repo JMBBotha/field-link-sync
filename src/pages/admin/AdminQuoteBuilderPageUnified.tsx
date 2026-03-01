@@ -384,9 +384,24 @@ function UnifiedQuoteBuilderInner() {
         {activeTab === "normal" &&
         <div className="h-full flex">
             <div className="flex-1 min-w-0 overflow-y-auto">
-              <QuoteBuilderTab onBasketsChange={setBaskets} pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }} onPopOutSelected={() => setFloatingOpen(true)} />
+              <QuoteBuilderTab
+                onBasketsChange={setBaskets}
+                pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
+                onPopOutSelected={() => setFloatingOpen(true)}
+                areaBuilderNode={
+                  <AreaQuoteBuilderInline
+                    products={products}
+                    bundles={bundles}
+                    onSave={handleWizardSave}
+                    onPdfSearch={pdfSearchRef.current || undefined}
+                    onAreasChange={setWizardAreas}
+                    onAddProductRef={areaAddProductRef}
+                    pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
+                  />
+                }
+              />
             </div>
-            <div className="w-[320px] shrink-0 border-l overflow-y-auto p-3 mx-[5px] my-[4px] bg-[sidebar-primary-foreground] bg-transparent">
+            <div className="w-[320px] shrink-0 border-l overflow-y-auto p-3 mx-[5px] my-[4px] bg-transparent">
               <QuoteSummaryPanel baskets={baskets} />
             </div>
           </div>

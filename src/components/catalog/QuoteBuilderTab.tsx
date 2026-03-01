@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
-import { Search, Wand2, ChevronUp, ChevronDown } from "lucide-react";
+import { Search, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -171,9 +171,11 @@ interface QuoteBuilderTabProps {
   onBasketsChange?: (baskets: Basket[]) => void;
   pdfSelection?: PdfSelectionHandlers;
   onPopOutSelected?: () => void;
+  /** Optional inline widget rendered between header and zone cards */
+  areaBuilderNode?: React.ReactNode;
 }
 
-const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected }: QuoteBuilderTabProps = {}) => {
+const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, areaBuilderNode }: QuoteBuilderTabProps = {}) => {
   const [baskets, setBasketsInternal] = useState<Basket[]>([
   { id: "basket-1", name: "Zone 1", items: [] }]
   );
@@ -670,14 +672,9 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected }: Qu
           <span className="text-sm font-medium text-muted-foreground">
             Quote Total ({totalItems} items across {baskets.length} zones)
           </span>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setWizardOpen(true)}>
-              <Wand2 className="h-3.5 w-3.5" /> Build Area Quote
-            </Button>
-            <span className="text-lg font-bold text-foreground">
-              R {totalCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-          </div>
+          <span className="text-lg font-bold text-foreground">
+            R {totalCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
         </div>
       </div>
 
@@ -712,7 +709,12 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected }: Qu
 
           </div>
           <div ref={canvasRef} className="md:col-span-3 flex flex-col min-h-0 overflow-hidden pr-2">
-            <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" as any }}>
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-3" style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" as any }}>
+              {areaBuilderNode && (
+                <div className="mx-1 mt-1">
+                  {areaBuilderNode}
+                </div>
+              )}
               <BasketCanvas
                 baskets={baskets}
                 allProducts={products}
@@ -728,7 +730,6 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected }: Qu
                 onUpdateLength={handleUpdateLength}
                 isDragging={isDragging}
                 isCompact={visualPanelOpen} />
-
             </div>
           </div>
         </div>
