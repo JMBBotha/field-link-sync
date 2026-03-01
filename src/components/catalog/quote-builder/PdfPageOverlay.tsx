@@ -216,12 +216,13 @@ const DraggableRegion = memo(({
                 {
                   const product = region.product;
                   const sellingPrice = product?.selling_price || product?.cost_incl_vat || region.detected_price || 0;
-                  // Cost = list price excl VAT × (1 - discount%). PDF detected_price IS the list price excl VAT.
+                  // Cost = list price excl VAT × (1 - discount%). PDF detected_price is RRP incl VAT.
                   const discount = (product as any)?.supplier_discount_percent || 20;
                   let costPrice = 0;
                   if (region.detected_price && region.detected_price > 0) {
-                    // Use the PDF price directly — it's already excl VAT for Samsung
-                    costPrice = Math.round(region.detected_price * (1 - discount / 100) * 100) / 100;
+                    // Strip VAT first (÷1.15), then apply discount (e.g. ×0.80 for 20%)
+                    const listExclVat = region.detected_price / 1.15;
+                    costPrice = Math.round(listExclVat * (1 - discount / 100) * 100) / 100;
                   } else {
                     costPrice = product?.cost_excl_vat || 0;
                   }
