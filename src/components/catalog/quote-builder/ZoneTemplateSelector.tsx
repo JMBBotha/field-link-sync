@@ -25,7 +25,7 @@ const ZONE_TEMPLATES: ZoneTemplate[] = [
   {
     label: "Office",
     icon: <Building2 className="h-3.5 w-3.5" />,
-    zones: ["Reception", "Open Plan", "Server Room", "Boardroom"],
+    zones: ["Reception", "Open Plan", "Server Room", "Boardroom", "Office"],
   },
   {
     label: "Retail",
