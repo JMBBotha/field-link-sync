@@ -241,12 +241,12 @@ function UnifiedQuoteBuilderInner() {
   const [selectedFromPdf, setSelectedFromPdf] = useState<PdfSelectedProduct[]>([]);
   const [floatingOpen, setFloatingOpen] = useState(false);
 
-  const handleSelectProduct = useCallback((product: Pick<PdfSelectedProduct, "code" | "description" | "price">) => {
+  const handleSelectProduct = useCallback((product: Pick<PdfSelectedProduct, "code" | "description" | "price"> & Partial<Pick<PdfSelectedProduct, "costPrice" | "markupPercent">>) => {
     setSelectedFromPdf((prev) => {
       if (prev.some((p) => p.code === product.code)) {
         return prev.filter((p) => p.code !== product.code);
       }
-      return [...prev, { ...product, quantity: 1, unitType: "units" }];
+      return [...prev, { ...product, quantity: 1, unitType: "units", costPrice: product.costPrice, markupPercent: product.markupPercent }];
     });
   }, []);
 
