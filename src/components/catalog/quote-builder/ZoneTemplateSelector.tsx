@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LayoutTemplate, Home, Building2, Store, ChevronDown } from "lucide-react";
+import { LayoutTemplate, Home, Building2, Store, ChevronDown, Factory } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -31,6 +31,11 @@ const ZONE_TEMPLATES: ZoneTemplate[] = [
     label: "Retail",
     icon: <Store className="h-3.5 w-3.5" />,
     zones: ["Shop Floor", "Storeroom", "Office"],
+  },
+  {
+    label: "Industrial / Factory",
+    icon: <Factory className="h-3.5 w-3.5" />,
+    zones: ["Factory Floor", "Warehouse", "Control Room", "Loading Dock"],
   },
 ];
 
