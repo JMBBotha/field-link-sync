@@ -32,6 +32,12 @@ interface BasketCanvasProps {
   isCompact?: boolean;
   /** Inline area builder widget rendered in the content area */
   areaBuilderNode?: React.ReactNode;
+  /** Override handlers when area builder is active */
+  areaAddZone?: () => void;
+  areaApplyTemplate?: (zones: string[]) => void;
+  areaClearAll?: () => void;
+  /** Whether the area builder has areas (for showing Clear All) */
+  areaCount?: number;
 }
 
 function DroppableBasket({
@@ -433,7 +439,17 @@ const BasketCanvas = ({
   isDragging,
   isCompact,
   areaBuilderNode,
+  areaAddZone,
+  areaApplyTemplate,
+  areaClearAll,
+  areaCount = 0,
 }: BasketCanvasProps) => {
+  const hasAreaBuilder = !!areaBuilderNode;
+  const effectiveAddZone = hasAreaBuilder && areaAddZone ? areaAddZone : onAddBasket;
+  const effectiveApplyTemplate = hasAreaBuilder && areaApplyTemplate ? areaApplyTemplate : onApplyTemplate;
+  const effectiveClearAll = hasAreaBuilder && areaClearAll ? areaClearAll : onClearAll;
+  const showClearAll = hasAreaBuilder ? areaCount > 0 : baskets.length > 0;
+
   return (
     <div className="flex flex-col h-full rounded-lg border bg-muted/30 overflow-hidden">
       <div className={`flex items-center justify-between border-b shrink-0 ${isCompact ? "px-2 py-1.5" : "p-3"}`}>
@@ -441,14 +457,14 @@ const BasketCanvas = ({
           {isCompact ? "Zones" : "Build Area Quote"}
         </h3>
         <div className="flex items-center gap-1">
-          {baskets.length > 0 && (
-            <Button variant="ghost" size="sm" className={`gap-0.5 text-destructive hover:text-destructive ${isCompact ? "h-6 text-[10px] px-1.5" : "h-7 text-xs"}`} onClick={onClearAll}>
+          {showClearAll && (
+            <Button variant="ghost" size="sm" className={`gap-0.5 text-destructive hover:text-destructive ${isCompact ? "h-6 text-[10px] px-1.5" : "h-7 text-xs"}`} onClick={effectiveClearAll}>
               <Trash2 className={isCompact ? "h-2.5 w-2.5" : "h-3 w-3"} />
               {!isCompact && "Clear All"}
             </Button>
           )}
-          {!isCompact && <ZoneTemplateSelector onApplyTemplate={onApplyTemplate} />}
-          <Button variant="outline" size="sm" className={`gap-0.5 ${isCompact ? "h-6 text-[10px] px-1.5" : "h-7 text-xs"}`} onClick={onAddBasket}>
+          {!isCompact && <ZoneTemplateSelector onApplyTemplate={effectiveApplyTemplate} />}
+          <Button variant="outline" size="sm" className={`gap-0.5 ${isCompact ? "h-6 text-[10px] px-1.5" : "h-7 text-xs"}`} onClick={effectiveAddZone}>
             <Plus className={isCompact ? "h-2.5 w-2.5" : "h-3 w-3"} />
             {isCompact ? "Zone" : "Add Zone"}
           </Button>

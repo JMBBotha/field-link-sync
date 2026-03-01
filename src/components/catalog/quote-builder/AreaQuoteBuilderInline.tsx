@@ -35,6 +35,12 @@ interface Props {
   onAreasChange?: (areas: QuoteArea[]) => void;
   /** Ref that parent can use to push products into the builder */
   onAddProductRef?: React.MutableRefObject<((product: PaletteProduct) => void) | null>;
+  /** Ref that parent can use to add a new area */
+  onAddAreaRef?: React.MutableRefObject<(() => void) | null>;
+  /** Ref that parent can use to apply a template (replaces all areas) */
+  onApplyTemplateRef?: React.MutableRefObject<((zoneNames: string[]) => void) | null>;
+  /** Ref that parent can use to clear all areas */
+  onClearAllRef?: React.MutableRefObject<(() => void) | null>;
   pdfSelection?: PdfSelectionHandlers;
 }
 
@@ -60,7 +66,7 @@ function clearDraftStorage() {
   try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch { /* ignore */ }
 }
 
-export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPdfSearch, onAreasChange, onAddProductRef, pdfSelection }: Props) {
+export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPdfSearch, onAreasChange, onAddProductRef, onAddAreaRef, onApplyTemplateRef, onClearAllRef, pdfSelection }: Props) {
   const [currentStep, setCurrentStep] = useState(0);
   const [areas, setAreas] = useState<QuoteArea[]>(() => {
     const draft = loadDraftFromStorage();
@@ -93,12 +99,10 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
       const isAC = product.product_category === "Air Conditioning" || (product.category || "").toLowerCase().includes("air conditioning");
       
       if (isAC) {
-        // Add as AC unit to first area
         const btu = detectBTU(product);
         const newUnit: AreaACUnit = { id: crypto.randomUUID(), product, btu, quantity: 1 };
         return prev.map((a, i) => i === 0 ? { ...a, acUnits: [newUnit] } : a);
       } else {
-        // Add as consumable to first area
         const existing = targetArea.consumables.find((c) => c.product.id === product.id);
         if (existing) {
           return prev.map((a, i) => i === 0 ? {
@@ -113,15 +117,40 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
     toast.success(`Added ${product.short_name || product.product_code} to ${areas[0]?.name || "Room 1"}`);
   }, [areas]);
 
-  // Expose addProduct method to parent via ref
+  // Add a new area from the header button
+  const handleAddArea = useCallback(() => {
+    const newName = `Room ${areas.length + 1}`;
+    setAreas((prev) => [...prev, createEmptyArea(newName)]);
+    setCurrentStep(0); // Go to Areas step so user can see it
+    toast.success(`Added "${newName}"`);
+  }, [areas.length]);
+
+  // Apply a zone template (replaces all areas)
+  const handleApplyTemplate = useCallback((zoneNames: string[]) => {
+    setAreas(zoneNames.map((name) => createEmptyArea(name)));
+    setCurrentStep(0);
+    toast.success(`Applied template with ${zoneNames.length} areas`);
+  }, []);
+
+  // Clear all areas
+  const handleClearAll = useCallback(() => {
+    setAreas([]);
+    setCurrentStep(0);
+  }, []);
+
+  // Expose methods to parent via refs
   useEffect(() => {
-    if (onAddProductRef) {
-      onAddProductRef.current = handleExternalProductAdd;
-    }
+    if (onAddProductRef) onAddProductRef.current = handleExternalProductAdd;
+    if (onAddAreaRef) onAddAreaRef.current = handleAddArea;
+    if (onApplyTemplateRef) onApplyTemplateRef.current = handleApplyTemplate;
+    if (onClearAllRef) onClearAllRef.current = handleClearAll;
     return () => {
       if (onAddProductRef) onAddProductRef.current = null;
+      if (onAddAreaRef) onAddAreaRef.current = null;
+      if (onApplyTemplateRef) onApplyTemplateRef.current = null;
+      if (onClearAllRef) onClearAllRef.current = null;
     };
-  }, [onAddProductRef, handleExternalProductAdd]);
+  }, [onAddProductRef, onAddAreaRef, onApplyTemplateRef, onClearAllRef, handleExternalProductAdd, handleAddArea, handleApplyTemplate, handleClearAll]);
 
   const handleSaveDraft = useCallback(() => {
     saveDraftToStorage(areas, currentStep);

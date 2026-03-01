@@ -173,9 +173,14 @@ interface QuoteBuilderTabProps {
   onPopOutSelected?: () => void;
   /** Optional inline widget rendered between header and zone cards */
   areaBuilderNode?: React.ReactNode;
+  /** Area builder action refs for header buttons */
+  areaAddZone?: () => void;
+  areaApplyTemplate?: (zones: string[]) => void;
+  areaClearAll?: () => void;
+  areaCount?: number;
 }
 
-const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, areaBuilderNode }: QuoteBuilderTabProps = {}) => {
+const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, areaBuilderNode, areaAddZone, areaApplyTemplate, areaClearAll, areaCount }: QuoteBuilderTabProps = {}) => {
   const [baskets, setBasketsInternal] = useState<Basket[]>([
   { id: "basket-1", name: "Zone 1", items: [] }]
   );
@@ -725,7 +730,11 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
                 onUpdateLength={handleUpdateLength}
                 isDragging={isDragging}
                 isCompact={visualPanelOpen}
-                areaBuilderNode={areaBuilderNode} />
+                areaBuilderNode={areaBuilderNode}
+                areaAddZone={areaAddZone}
+                areaApplyTemplate={areaApplyTemplate}
+                areaClearAll={areaClearAll}
+                areaCount={areaCount} />
             </div>
           </div>
         </div>

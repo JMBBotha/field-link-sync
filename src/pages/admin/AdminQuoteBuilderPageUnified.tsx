@@ -231,8 +231,11 @@ function UnifiedQuoteBuilderInner() {
 
   const areaFavorites = useMemo(() => new Set(products.filter((p) => p.is_pinned).map((p) => p.id)), [products]);
 
-  // Ref to the inline builder's addProduct method
+  // Refs to the inline builder's methods
   const areaAddProductRef = useRef<((product: PaletteProduct) => void) | null>(null);
+  const areaAddZoneRef = useRef<(() => void) | null>(null);
+  const areaApplyTemplateRef = useRef<((zoneNames: string[]) => void) | null>(null);
+  const areaClearAllRef = useRef<(() => void) | null>(null);
 
   // Shared PDF product selection state
   const [selectedFromPdf, setSelectedFromPdf] = useState<PdfSelectedProduct[]>([]);
@@ -396,9 +399,16 @@ function UnifiedQuoteBuilderInner() {
                     onPdfSearch={pdfSearchRef.current || undefined}
                     onAreasChange={setWizardAreas}
                     onAddProductRef={areaAddProductRef}
+                    onAddAreaRef={areaAddZoneRef}
+                    onApplyTemplateRef={areaApplyTemplateRef}
+                    onClearAllRef={areaClearAllRef}
                     pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
                   />
                 }
+                areaAddZone={() => areaAddZoneRef.current?.()}
+                areaApplyTemplate={(zones) => areaApplyTemplateRef.current?.(zones)}
+                areaClearAll={() => areaClearAllRef.current?.()}
+                areaCount={wizardAreas.length}
               />
             </div>
             <div className="w-[320px] shrink-0 border-l overflow-y-auto p-3 mx-[5px] my-[4px] bg-transparent">
