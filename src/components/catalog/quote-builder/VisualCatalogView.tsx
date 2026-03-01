@@ -105,7 +105,7 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
     queryFn: async () => {
       const { data, error } = await (supabase.from("pdf_product_regions") as any)
         .select(
-          "id, pdf_page_id, product_id, product_code, label, supplier_products(id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, suppliers(name))"
+          "id, pdf_page_id, product_id, product_code, label, supplier_products(id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, supplier_discount_percent, suppliers(name))"
         )
         .in("pdf_page_id", pageIds);
       if (error) throw error;
