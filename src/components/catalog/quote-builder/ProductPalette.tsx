@@ -337,11 +337,16 @@ function DraggableProductCard({
                           Used {usageCount}x
                         </Badge>
                       )}
-                      {product.cost_excl_vat > 0 && (
-                        <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 text-primary">
-                          {(((product.selling_price || 0) - product.cost_excl_vat) / product.cost_excl_vat * 100).toFixed(0)}% M/Up
-                        </Badge>
-                      )}
+                      {product.cost_excl_vat > 0 && (() => {
+                        const raw = product.cost_excl_vat || 0;
+                        const disc = product.supplier_discount_percent ?? 0;
+                        const trueCost = disc > 0 ? raw * (1 - disc / 100) : raw;
+                        return (
+                          <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 text-primary">
+                            {(((product.selling_price || 0) - trueCost) / trueCost * 100).toFixed(0)}% M/Up
+                          </Badge>
+                        );
+                      })()}
                     </div>
                   </div>
                   <div className="flex flex-col items-center gap-1 shrink-0">
@@ -384,26 +389,35 @@ function DraggableProductCard({
                   <p className="font-semibold">{getProductDisplayName(product)}</p>
                 </div>
                 <p className="font-mono font-medium text-primary/80">{product.product_code}</p>
-                <div className="flex justify-between">
-                  <span>Cost excl.</span>
-                  <span className="font-medium">R{(product.cost_excl_vat || 0).toLocaleString("en-ZA")}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Cost incl.</span>
-                  <span className="font-medium">R{(product.cost_incl_vat || 0).toLocaleString("en-ZA")}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Selling</span>
-                  <span className="font-bold">R{(product.selling_price || 0).toLocaleString("en-ZA")}</span>
-                </div>
-                {product.cost_excl_vat > 0 && (
-                  <div className="flex items-center justify-between pt-1 border-t">
-                    <span className="text-muted-foreground">Markup</span>
-                    <span className="font-mono font-bold text-primary">
-                      {(((product.selling_price || 0) - product.cost_excl_vat) / product.cost_excl_vat * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                )}
+                {(() => {
+                  const raw = product.cost_excl_vat || 0;
+                  const disc = product.supplier_discount_percent ?? 0;
+                  const trueCost = raw > 0 && disc > 0 ? raw * (1 - disc / 100) : raw;
+                  return (
+                    <>
+                      <div className="flex justify-between">
+                        <span>Cost excl.</span>
+                        <span className="font-medium">R{trueCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Cost incl.</span>
+                        <span className="font-medium">R{(product.cost_incl_vat || 0).toLocaleString("en-ZA")}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Selling</span>
+                        <span className="font-bold">R{(product.selling_price || 0).toLocaleString("en-ZA")}</span>
+                      </div>
+                      {trueCost > 0 && (
+                        <div className="flex items-center justify-between pt-1 border-t">
+                          <span className="text-muted-foreground">Markup</span>
+                          <span className="font-mono font-bold text-primary">
+                            {(((product.selling_price || 0) - trueCost) / trueCost * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
                 <p className="text-[10px] text-muted-foreground line-clamp-3">{product.description}</p>
                 <Badge variant="outline" className="text-[10px]">
                   {product.supplier_name}
