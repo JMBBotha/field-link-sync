@@ -338,9 +338,7 @@ function DraggableProductCard({
                         </Badge>
                       )}
                       {product.cost_excl_vat > 0 && (() => {
-                        const raw = product.cost_excl_vat || 0;
-                        const disc = product.supplier_discount_percent ?? 0;
-                        const trueCost = disc > 0 ? raw * (1 - disc / 100) : raw;
+                        const trueCost = product.cost_excl_vat || 0;
                         return (
                           <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 text-primary">
                             {(((product.selling_price || 0) - trueCost) / trueCost * 100).toFixed(0)}% M/Up
@@ -390,9 +388,7 @@ function DraggableProductCard({
                 </div>
                 <p className="font-mono font-medium text-primary/80">{product.product_code}</p>
                 {(() => {
-                  const raw = product.cost_excl_vat || 0;
-                  const disc = product.supplier_discount_percent ?? 0;
-                  const trueCost = raw > 0 && disc > 0 ? raw * (1 - disc / 100) : raw;
+                  const trueCost = product.cost_excl_vat || 0;
                   return (
                     <>
                       <div className="flex justify-between">

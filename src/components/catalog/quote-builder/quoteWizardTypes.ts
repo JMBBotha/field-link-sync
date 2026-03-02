@@ -80,13 +80,9 @@ export function createEmptyArea(name: string): QuoteArea {
 }
 
 export function computeAreaSubtotal(area: QuoteArea): number {
-  /** Use discounted cost (excl VAT) — matches popup/info card logic */
+  /** cost_excl_vat already has supplier discount baked in — use directly */
   const getCost = (p: any) => {
-    const raw = p?.cost_excl_vat || 0;
-    if (raw > 0) {
-      const disc = p?.supplier_discount_percent ?? 0;
-      return disc > 0 ? raw * (1 - disc / 100) : raw;
-    }
+    if (p?.cost_excl_vat > 0) return p.cost_excl_vat;
     if (p?.cost_incl_vat) return p.cost_incl_vat / 1.15;
     return p?.selling_price || p?.price_per_metre || 0;
   };
