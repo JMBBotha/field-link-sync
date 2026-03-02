@@ -31,16 +31,19 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
     const areaRows = areas
       .filter((a) => a.acUnits.length > 0 || a.materials.length > 0 || a.consumables.length > 0 || a.brackets.length > 0)
       .map((a) => {
+        const getPrice = (p: any) => p?.selling_price || p?.cost_incl_vat || p?.price_per_metre || 0;
+
         const acCost = a.acUnits.reduce(
-          (s, u) => s + (u.product.selling_price || u.product.cost_incl_vat || 0) * u.quantity,
+          (s, u) => s + getPrice(u.product) * u.quantity,
           0
         );
         const acQty = a.acUnits.reduce((s, u) => s + u.quantity, 0);
 
         const matCost = a.materials.reduce((s, m) => {
           if (m.pricingMode === "unit")
-            return s + (m.product.selling_price || m.product.cost_incl_vat || 0) * m.unitQuantity;
-          return s + m.totalCost;
+            return s + getPrice(m.product) * m.unitQuantity;
+          // For length-based: use totalCost if set, otherwise compute from costPerMeter
+          return s + (m.totalCost || (m.costPerMeter || getPrice(m.product)) * m.adjustedLength);
         }, 0);
         const matCount = a.materials.length;
 
@@ -48,7 +51,7 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
         const bracketQty = a.brackets.reduce((s, b) => s + b.quantity, 0);
 
         const consCost = a.consumables.reduce(
-          (s, c) => s + (c.product.selling_price || c.product.cost_incl_vat || 0) * c.quantity,
+          (s, c) => s + getPrice(c.product) * c.quantity,
           0
         );
         const consQty = a.consumables.reduce((s, c) => s + c.quantity, 0);
