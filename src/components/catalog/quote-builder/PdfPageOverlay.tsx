@@ -224,7 +224,8 @@ const DraggableRegion = memo(({
                     const listExclVat = region.detected_price / 1.15;
                     costPrice = Math.round(listExclVat * (1 - discount / 100) * 100) / 100;
                   } else {
-                    costPrice = product?.cost_excl_vat || 0;
+                    const rawExcl = product?.cost_excl_vat || 0;
+                    costPrice = rawExcl > 0 && discount > 0 ? rawExcl * (1 - discount / 100) : rawExcl;
                   }
                   const markupPercent = costPrice > 0 ? ((Number(sellingPrice) - costPrice) / costPrice) * 100 : undefined;
                   pdfSelection.handleSelectProduct({
