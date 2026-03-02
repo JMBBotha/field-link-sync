@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { calculatePricing } from "@/utils/pricing";
 import { Info, X, ImageIcon } from "lucide-react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
@@ -60,7 +61,12 @@ interface ProductInfoDialogProps {
 export default function ProductInfoDialog({ product, onMarkupSaved }: ProductInfoDialogProps) {
   const { isAdmin } = useRole();
   const btu = detectBTU(product);
-  const costPrice = product.cost_excl_vat || 0;
+  const pricing = calculatePricing(
+    product.cost_excl_vat || 0,
+    product.supplier_discount_percent ?? 0,
+    0 // placeholder — we derive actual markup below
+  );
+  const costPrice = pricing.discountedCost;
   const sellingPrice = product.selling_price || 0;
   const currentMarkup = costPrice > 0 ? ((sellingPrice - costPrice) / costPrice) * 100 : 0;
   const kW = extractKW(product);
@@ -73,7 +79,8 @@ export default function ProductInfoDialog({ product, onMarkupSaved }: ProductInf
   const handleSaveMarkup = async () => {
     if (costPrice <= 0) return;
     setSaving(true);
-    const newSelling = Math.round(costPrice * (1 + markup / 100) * 100) / 100;
+    const updated = calculatePricing(product.cost_excl_vat || 0, product.supplier_discount_percent ?? 0, markup);
+    const newSelling = Math.round(updated.sellingPrice * 100) / 100;
     const { error } = await supabase
       .from("supplier_products")
       .update({ selling_price: newSelling })

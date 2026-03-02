@@ -4,6 +4,7 @@
  */
 
 import { useMemo, useState } from "react";
+import { calculatePricing } from "@/utils/pricing";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
@@ -28,9 +29,11 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
   };
 
   const breakdown = useMemo(() => {
-    /** cost_excl_vat already has supplier discount baked in — use directly */
+    /** Use calculatePricing to get discountedCost consistently */
     const getCost = (p: any) => {
-      if (p?.cost_excl_vat > 0) return p.cost_excl_vat;
+      if (p?.cost_excl_vat > 0) {
+        return calculatePricing(p.cost_excl_vat, p?.supplier_discount_percent ?? 0).discountedCost;
+      }
       if (p?.cost_incl_vat) return p.cost_incl_vat / 1.15;
       return p?.selling_price || p?.price_per_metre || 0;
     };

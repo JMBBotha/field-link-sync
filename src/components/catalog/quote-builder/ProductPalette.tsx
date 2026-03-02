@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { calculatePricing } from "@/utils/pricing";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { useDraggable } from "@dnd-kit/core";
 import {
@@ -338,10 +339,14 @@ function DraggableProductCard({
                         </Badge>
                       )}
                       {product.cost_excl_vat > 0 && (() => {
-                        const trueCost = product.cost_excl_vat || 0;
+                        const p = calculatePricing(
+                          product.cost_excl_vat || 0,
+                          product.supplier_discount_percent ?? 0,
+                          ((product.selling_price || 0) / ((product.cost_excl_vat || 1) * (1 - (product.supplier_discount_percent ?? 0) / 100)) - 1) * 100
+                        );
                         return (
                           <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 text-primary">
-                            {(((product.selling_price || 0) - trueCost) / trueCost * 100).toFixed(0)}% M/Up
+                            {p.markupPercent.toFixed(0)}% M/Up
                           </Badge>
                         );
                       })()}
@@ -388,12 +393,16 @@ function DraggableProductCard({
                 </div>
                 <p className="font-mono font-medium text-primary/80">{product.product_code}</p>
                 {(() => {
-                  const trueCost = product.cost_excl_vat || 0;
+                  const p = calculatePricing(
+                    product.cost_excl_vat || 0,
+                    product.supplier_discount_percent ?? 0,
+                    ((product.selling_price || 0) / ((product.cost_excl_vat || 1) * (1 - (product.supplier_discount_percent ?? 0) / 100) || 1) - 1) * 100
+                  );
                   return (
                     <>
                       <div className="flex justify-between">
                         <span>Cost excl.</span>
-                        <span className="font-medium">R{trueCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span className="font-medium">R{p.discountedCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Cost incl.</span>
@@ -403,11 +412,11 @@ function DraggableProductCard({
                         <span>Selling</span>
                         <span className="font-bold">R{(product.selling_price || 0).toLocaleString("en-ZA")}</span>
                       </div>
-                      {trueCost > 0 && (
+                      {p.discountedCost > 0 && (
                         <div className="flex items-center justify-between pt-1 border-t">
                           <span className="text-muted-foreground">Markup</span>
                           <span className="font-mono font-bold text-primary">
-                            {(((product.selling_price || 0) - trueCost) / trueCost * 100).toFixed(1)}%
+                            {p.markupPercent.toFixed(1)}%
                           </span>
                         </div>
                       )}

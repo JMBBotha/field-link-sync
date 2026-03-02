@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { calculatePricing } from "@/utils/pricing";
 import { X, GripVertical, Minus, Maximize2, ChevronUp, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -97,8 +98,8 @@ const FloatingSelectedItems = ({ pdfSelection, onClose }: FloatingSelectedItemsP
                           onClick={() => {
                             const cost = Number(item.costPrice);
                             const newMarkup = Math.max(0, (item.markupPercent || 0) - 5);
-                            const newPrice = Math.round(cost * (1 + newMarkup / 100) * 100) / 100;
-                            pdfSelection.updateSelectedItem(item.code, { markupPercent: newMarkup, price: String(newPrice) } as any);
+                            const result = calculatePricing(cost, 0, newMarkup);
+                            pdfSelection.updateSelectedItem(item.code, { markupPercent: newMarkup, price: String(Math.round(result.sellingPrice * 100) / 100) } as any);
                           }}
                         >
                           <ChevronDown className="h-2.5 w-2.5" />
@@ -111,8 +112,8 @@ const FloatingSelectedItems = ({ pdfSelection, onClose }: FloatingSelectedItemsP
                           onClick={() => {
                             const cost = Number(item.costPrice);
                             const newMarkup = (item.markupPercent || 0) + 5;
-                            const newPrice = Math.round(cost * (1 + newMarkup / 100) * 100) / 100;
-                            pdfSelection.updateSelectedItem(item.code, { markupPercent: newMarkup, price: String(newPrice) } as any);
+                            const result = calculatePricing(cost, 0, newMarkup);
+                            pdfSelection.updateSelectedItem(item.code, { markupPercent: newMarkup, price: String(Math.round(result.sellingPrice * 100) / 100) } as any);
                           }}
                         >
                           <ChevronUp className="h-2.5 w-2.5" />
