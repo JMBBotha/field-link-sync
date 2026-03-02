@@ -20,7 +20,7 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
 
   const breakdown = useMemo(() => {
     const areaRows = areas
-      .filter((a) => a.acUnits.length > 0 || a.materials.length > 0 || a.consumables.length > 0)
+      .filter((a) => a.acUnits.length > 0 || a.materials.length > 0 || a.consumables.length > 0 || a.brackets.length > 0)
       .map((a) => {
         const acCost = a.acUnits.reduce(
           (s, u) => s + (u.product.selling_price || u.product.cost_incl_vat || 0) * u.quantity,

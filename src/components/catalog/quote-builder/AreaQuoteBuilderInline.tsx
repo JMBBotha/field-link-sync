@@ -71,7 +71,7 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
   const [areas, setAreas] = useState<QuoteArea[]>(() => {
     const draft = loadDraftFromStorage();
     if (draft) return draft.areas;
-    return [createEmptyArea("Room 1")];
+    return [createEmptyArea("Additional Items/Services")];
   });
 
   // Load draft step on mount
@@ -114,7 +114,7 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
         return prev.map((a, i) => i === 0 ? { ...a, consumables: [...a.consumables, newConsumable] } : a);
       }
     });
-    toast.success(`Added ${product.short_name || product.product_code} to ${areas[0]?.name || "Room 1"}`);
+    toast.success(`Added ${product.short_name || product.product_code} to ${areas[0]?.name || "Additional Items/Services"}`);
   }, [areas]);
 
   // Add a new area from the header button
@@ -206,7 +206,7 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
     onSave(baskets);
     clearDraftStorage();
     setCurrentStep(0);
-    setAreas([createEmptyArea("Room 1")]);
+    setAreas([createEmptyArea("Additional Items/Services")]);
     toast.success("Quote areas added successfully");
   }, [areas, onSave]);
 
