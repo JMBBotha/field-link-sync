@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { calculatePricing } from "@/utils/pricing";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -81,15 +82,14 @@ const BrandDiscountsSection = () => {
       // Update each product
       for (const p of (products || [])) {
         const origCost = p.original_cost_excl_vat ?? p.cost_excl_vat;
-        const newCost = origCost * (1 - parsedDiscount / 100);
         const markup = p.default_markup_percent || 0;
-        const newSelling = newCost * (1 + markup / 100);
+        const result = calculatePricing(origCost, parsedDiscount, markup);
 
         const { error } = await (supabase.from("supplier_products") as any)
           .update({
             original_cost_excl_vat: origCost,
-            cost_excl_vat: Math.round(newCost * 100) / 100,
-            selling_price: Math.round(newSelling * 100) / 100,
+            cost_excl_vat: Math.round(result.discountedCost * 100) / 100,
+            selling_price: Math.round(result.sellingPrice * 100) / 100,
           })
           .eq("id", p.id);
         if (error) throw error;
@@ -126,11 +126,11 @@ const BrandDiscountsSection = () => {
 
       for (const p of (products || [])) {
         const markup = p.default_markup_percent || 0;
-        const restoredSelling = p.original_cost_excl_vat * (1 + markup / 100);
+        const result = calculatePricing(p.original_cost_excl_vat, 0, markup);
         const { error } = await (supabase.from("supplier_products") as any)
           .update({
             cost_excl_vat: p.original_cost_excl_vat,
-            selling_price: Math.round(restoredSelling * 100) / 100,
+            selling_price: Math.round(result.sellingPrice * 100) / 100,
             original_cost_excl_vat: null,
           })
           .eq("id", p.id);

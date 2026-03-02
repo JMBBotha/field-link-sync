@@ -1,4 +1,5 @@
 import { useState, memo, useCallback, useMemo, useRef } from "react";
+import { calculatePricing } from "@/utils/pricing";
 import { useDraggable } from "@dnd-kit/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -216,10 +217,10 @@ const DraggableRegion = memo(({
                 {
                   const product = region.product;
                   const sellingPrice = product?.selling_price || product?.cost_incl_vat || region.detected_price || 0;
-                  // cost_excl_vat already has supplier discount baked in; detected_price is trade price incl VAT
+                  const disc = (product as any)?.supplier_discount_percent ?? 0;
                   let costPrice = 0;
                   if (product?.cost_excl_vat && product.cost_excl_vat > 0) {
-                    costPrice = product.cost_excl_vat;
+                    costPrice = calculatePricing(product.cost_excl_vat, disc).discountedCost;
                   } else if (region.detected_price && region.detected_price > 0) {
                     costPrice = Math.round((region.detected_price / 1.15) * 100) / 100;
                   }

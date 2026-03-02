@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
+import { calculatePricing } from "@/utils/pricing";
 import { RotateCcw, FileDown, Loader2, Mail, Check, TrendingUp, ChevronDown, ChevronRight, Package, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -262,8 +263,13 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
       const unit = area.acUnits[0];
       if (!unit) return { area, costPrice: 0, quantity: 1, markup: 0, sellingPrice: 0, lineTotal: 0 };
       const pricing = getPricing(area.id);
-      const costPrice = unit.product.cost_excl_vat || (unit.product.cost_incl_vat ? unit.product.cost_incl_vat / 1.15 : 0);
-      const sellingPrice = costPrice * (1 + pricing.markupPercent / 100);
+      const p = calculatePricing(
+        unit.product.cost_excl_vat || (unit.product.cost_incl_vat ? unit.product.cost_incl_vat / 1.15 : 0),
+        (unit.product as any).supplier_discount_percent ?? 0,
+        pricing.markupPercent
+      );
+      const costPrice = p.discountedCost;
+      const sellingPrice = p.sellingPrice;
       const lineTotal = sellingPrice * pricing.quantity;
       return { area, costPrice, quantity: pricing.quantity, markup: pricing.markupPercent, sellingPrice, lineTotal };
     });

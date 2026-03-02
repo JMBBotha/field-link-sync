@@ -6,18 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getCategoryIcon, getCategoryBg } from "./ProductPalette";
 import { getProductDisplayName } from "./productDisplayUtils";
+import { calculatePricing } from "@/utils/pricing";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
-/** Get the true cost — cost_excl_vat already has the supplier discount baked in */
-function getTrueCost(product: PaletteProduct) {
-  return product.cost_excl_vat || 0;
-}
-
-function calcMarkup(product: PaletteProduct) {
-  const cost = getTrueCost(product);
+function getProductPricing(product: PaletteProduct) {
+  const costExcl = product.cost_excl_vat || 0;
+  const disc = product.supplier_discount_percent ?? 0;
   const sell = product.selling_price || 0;
-  if (cost <= 0) return 0;
-  return ((sell - cost) / cost) * 100;
+  const markup = costExcl > 0 && disc > 0
+    ? ((sell / (costExcl * (1 - disc / 100))) - 1) * 100
+    : costExcl > 0
+      ? ((sell - costExcl) / costExcl) * 100
+      : 0;
+  return calculatePricing(costExcl, disc, markup);
 }
 
 interface EnhancedProductPopupProps {
@@ -150,12 +151,15 @@ const EnhancedProductPopup = ({
             )}
           </div>
           {/* Markup display */}
-          {product.cost_excl_vat > 0 && (
-            <div className="flex items-center gap-2 text-[10px]">
-              <span className="text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{getTrueCost(product).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
-              <span className="text-muted-foreground">M/Up: <span className="font-mono font-semibold text-primary">{calcMarkup(product).toFixed(1)}%</span></span>
-            </div>
-          )}
+          {product.cost_excl_vat > 0 && (() => {
+            const p = getProductPricing(product);
+            return (
+              <div className="flex items-center gap-2 text-[10px]">
+                <span className="text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{p.discountedCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
+                <span className="text-muted-foreground">M/Up: <span className="font-mono font-semibold text-primary">{p.markupPercent.toFixed(1)}%</span></span>
+              </div>
+            );
+          })()}
           {product.brand && (
             <p className="text-xs text-muted-foreground">{product.brand}</p>
           )}
@@ -214,9 +218,11 @@ const EnhancedProductPopup = ({
               )}
             </div>
             {/* Markup row with +/- controls */}
-            {product.cost_excl_vat > 0 && (
+            {product.cost_excl_vat > 0 && (() => {
+              const p = getProductPricing(product);
+              return (
               <div className="flex items-center gap-2 mt-1.5">
-                <span className="text-[10px] text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{getTrueCost(product).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
+                <span className="text-[10px] text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{p.discountedCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
                 <span className="text-[10px] text-muted-foreground">M/Up:</span>
                 <div className="flex items-center gap-0.5">
                   <Button
@@ -225,17 +231,16 @@ const EnhancedProductPopup = ({
                     className="h-5 w-5"
                     onClick={(e) => {
                       e.stopPropagation();
-                      const cost = getTrueCost(product);
-                      const curMarkup = calcMarkup(product);
-                      const newMarkup = Math.max(0, curMarkup - 5);
-                      product.selling_price = Math.round(cost * (1 + newMarkup / 100) * 100) / 100;
+                      const newMarkup = Math.max(0, p.markupPercent - 5);
+                      const updated = calculatePricing(product.cost_excl_vat || 0, product.supplier_discount_percent ?? 0, newMarkup);
+                      product.selling_price = Math.round(updated.sellingPrice * 100) / 100;
                       setQuantities({ ...quantities }); // force re-render
                     }}
                   >
                     <ChevronDown className="h-3 w-3" />
                   </Button>
                   <span className="text-[11px] font-mono font-semibold text-primary min-w-[40px] text-center">
-                    {calcMarkup(product).toFixed(1)}%
+                    {p.markupPercent.toFixed(1)}%
                   </span>
                   <Button
                     variant="outline"
@@ -243,10 +248,9 @@ const EnhancedProductPopup = ({
                     className="h-5 w-5"
                     onClick={(e) => {
                       e.stopPropagation();
-                      const cost = getTrueCost(product);
-                      const curMarkup = calcMarkup(product);
-                      const newMarkup = curMarkup + 5;
-                      product.selling_price = Math.round(cost * (1 + newMarkup / 100) * 100) / 100;
+                      const newMarkup = p.markupPercent + 5;
+                      const updated = calculatePricing(product.cost_excl_vat || 0, product.supplier_discount_percent ?? 0, newMarkup);
+                      product.selling_price = Math.round(updated.sellingPrice * 100) / 100;
                       setQuantities({ ...quantities }); // force re-render
                     }}
                   >
@@ -257,7 +261,8 @@ const EnhancedProductPopup = ({
                   → R{(product.selling_price || 0).toLocaleString("en-ZA")}
                 </span>
               </div>
-            )}
+              );
+            })()}
           </div>
           <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
             <X className="h-4 w-4" />
