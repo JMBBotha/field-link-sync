@@ -80,15 +80,16 @@ export function createEmptyArea(name: string): QuoteArea {
 }
 
 export function computeAreaSubtotal(area: QuoteArea): number {
-  const acCost = area.acUnits.reduce((s, u) => s + (u.product.selling_price || u.product.cost_incl_vat || 0) * u.quantity, 0);
+  const getPrice = (p: any) => p?.selling_price || p?.cost_incl_vat || p?.price_per_metre || 0;
+  const acCost = area.acUnits.reduce((s, u) => s + getPrice(u.product) * u.quantity, 0);
   const matCost = area.materials.reduce((s, m) => {
     if (m.pricingMode === "unit") {
-      return s + (m.product.selling_price || m.product.cost_incl_vat || 0) * m.unitQuantity;
+      return s + getPrice(m.product) * m.unitQuantity;
     }
-    return s + m.totalCost;
+    return s + (m.totalCost || (m.costPerMeter || getPrice(m.product)) * m.adjustedLength);
   }, 0);
   const bracketCost = area.brackets.reduce((s, b) => s + b.price * b.quantity, 0);
-  const consCost = area.consumables.reduce((s, c) => s + (c.product.selling_price || c.product.cost_incl_vat || 0) * c.quantity, 0);
+  const consCost = area.consumables.reduce((s, c) => s + getPrice(c.product) * c.quantity, 0);
   return acCost + matCost + bracketCost + consCost;
 }
 
