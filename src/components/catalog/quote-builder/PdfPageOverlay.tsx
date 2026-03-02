@@ -216,16 +216,12 @@ const DraggableRegion = memo(({
                 {
                   const product = region.product;
                   const sellingPrice = product?.selling_price || product?.cost_incl_vat || region.detected_price || 0;
-                  // Cost = list price excl VAT × (1 - discount%). PDF detected_price is RRP incl VAT.
-                  const discount = (product as any)?.supplier_discount_percent || 20;
+                  // cost_excl_vat already has supplier discount baked in; detected_price is trade price incl VAT
                   let costPrice = 0;
-                  if (region.detected_price && region.detected_price > 0) {
-                    // Strip VAT first (÷1.15), then apply discount (e.g. ×0.80 for 20%)
-                    const listExclVat = region.detected_price / 1.15;
-                    costPrice = Math.round(listExclVat * (1 - discount / 100) * 100) / 100;
-                  } else {
-                    const rawExcl = product?.cost_excl_vat || 0;
-                    costPrice = rawExcl > 0 && discount > 0 ? rawExcl * (1 - discount / 100) : rawExcl;
+                  if (product?.cost_excl_vat && product.cost_excl_vat > 0) {
+                    costPrice = product.cost_excl_vat;
+                  } else if (region.detected_price && region.detected_price > 0) {
+                    costPrice = Math.round((region.detected_price / 1.15) * 100) / 100;
                   }
                   const markupPercent = costPrice > 0 ? ((Number(sellingPrice) - costPrice) / costPrice) * 100 : undefined;
                   pdfSelection.handleSelectProduct({
