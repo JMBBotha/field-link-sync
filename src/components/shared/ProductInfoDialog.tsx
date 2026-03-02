@@ -186,7 +186,7 @@ export default function ProductInfoDialog({ product, onMarkupSaved }: ProductInf
                         min={0}
                       />
                       <span className="text-muted-foreground text-xs">
-                        → {formatZAR(costPrice * (1 + markup / 100))}
+                        → {formatZAR(calculatePricing(costPrice, 0, markup).sellingPrice)}
                       </span>
                       <button
                         className="ml-auto text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"

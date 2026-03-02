@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatRand } from "@/utils/formatRand";
+import { splitVatFromTotal } from "@/utils/pricing";
 import type { Basket } from "../QuoteBuilderTab";
 import { getEffectiveUnitPrices } from "../QuoteBuilderTab";
 
@@ -41,8 +42,7 @@ const QuoteSummaryPanel = ({ baskets, onGenerateQuote }: QuoteSummaryPanelProps)
       });
     });
 
-    const subtotal = grandTotal / 1.15;
-    const vat = grandTotal - subtotal;
+    const { subtotal, vat } = splitVatFromTotal(grandTotal);
     const markup = totalCost > 0 ? ((grandTotal - totalCost) / totalCost) * 100 : 0;
 
     return { subtotal, vat, grandTotal, markup };

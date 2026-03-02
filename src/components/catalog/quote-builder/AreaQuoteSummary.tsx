@@ -4,7 +4,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { calculatePricing } from "@/utils/pricing";
+import { calculatePricing, VAT_RATE, exclVatFromIncl } from "@/utils/pricing";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
@@ -34,7 +34,7 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
       if (p?.cost_excl_vat > 0) {
         return calculatePricing(p.cost_excl_vat, p?.supplier_discount_percent ?? 0).discountedCost;
       }
-      if (p?.cost_incl_vat) return p.cost_incl_vat / 1.15;
+      if (p?.cost_incl_vat) return exclVatFromIncl(p.cost_incl_vat);
       return p?.selling_price || p?.price_per_metre || 0;
     };
 
@@ -84,7 +84,7 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
     const totalAreas = areaRows.length;
     const markupAmount = totalCost * (markupPercent / 100);
     const sellPrice = totalCost + markupAmount;
-    const vatAmount = sellPrice * 0.15;
+    const vatAmount = sellPrice * VAT_RATE;
     const grandTotal = sellPrice + vatAmount;
 
     return { areaRows, totalCost, totalItems, totalAreas, markupAmount, sellPrice, vatAmount, grandTotal };

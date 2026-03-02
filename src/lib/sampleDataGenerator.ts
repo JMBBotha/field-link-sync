@@ -189,7 +189,7 @@ export async function generateSampleData(): Promise<SampleDataResult> {
       { description: "Call-out Fee", quantity: 1, unit_price: 450, amount: 450 },
     ];
     const subtotal = lineItems.reduce((s, li) => s + li.amount, 0);
-    const taxAmount = Math.round(subtotal * 0.15 * 100) / 100;
+    const taxAmount = Math.round(subtotal * 0.15 * 100) / 100; // sample data — hardcoded VAT is acceptable here
 
     const { error: invErr } = await supabase.from("invoices").insert({
       lead_id: lead.id,

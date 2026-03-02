@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { inclVatFromExcl } from "@/utils/pricing";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { supabase } from "@/integrations/supabase/client";
@@ -784,7 +785,7 @@ const LazyPdfPage = ({
                 product_category: "Consumables",
                 category: "Consumables",
                 cost_excl_vat: np.cost_excl_vat || 0,
-                cost_incl_vat: Math.round((np.cost_excl_vat || 0) * 1.15 * 100) / 100,
+                cost_incl_vat: Math.round(inclVatFromExcl(np.cost_excl_vat || 0) * 100) / 100,
                 selling_price: 0,
                 description: np.description || "",
                 is_pinned: false,
