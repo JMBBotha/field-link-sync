@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import type { Basket } from "@/components/catalog/QuoteBuilderTab";
+import { splitVatFromTotal } from "@/utils/pricing";
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(amount);
@@ -106,8 +107,7 @@ export const generateQuoteBuilderPDF = (baskets: Basket[], quoteName: string) =>
   doc.line(margin + contentWidth * 0.5, y, pageWidth - margin, y);
   y += 7;
 
-  const subtotal = grandTotal / 1.15;
-  const vat = grandTotal - subtotal;
+  const { subtotal, vat } = splitVatFromTotal(grandTotal);
 
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");

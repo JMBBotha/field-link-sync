@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
+import { splitVatFromTotal, VAT_RATE } from "@/utils/pricing";
 import { useNavigate } from "react-router-dom";
 import {
   Search, Wand2, ChevronUp, ChevronDown, ArrowLeft, FileDown, Save,
@@ -108,8 +109,8 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
       }));
       const { data, error } = await (supabase.from("quotes") as any).insert({
         sales_engineer_id: userId, status: "draft",
-        subtotal: summary.grandTotal / 1.15, vat_rate: 0.15,
-        vat_amount: summary.grandTotal - summary.grandTotal / 1.15,
+        subtotal: splitVatFromTotal(summary.grandTotal).subtotal, vat_rate: VAT_RATE,
+        vat_amount: splitVatFromTotal(summary.grandTotal).vat,
         total: summary.grandTotal, notes: quoteName, visual_sections: zonesData,
       }).select("id").single();
       if (error) throw error;
@@ -152,11 +153,11 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
               </div>
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Subtotal (excl. VAT)</span>
-                <span>R{(summary.grandTotal / 1.15).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</span>
+                <span>R{splitVatFromTotal(summary.grandTotal).subtotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>VAT (15%)</span>
-                <span>R{(summary.grandTotal - summary.grandTotal / 1.15).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</span>
+                <span>R{splitVatFromTotal(summary.grandTotal).vat.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="border-t border-border/60 pt-2 flex justify-between text-sm font-bold text-foreground">
                 <span>Grand Total</span>

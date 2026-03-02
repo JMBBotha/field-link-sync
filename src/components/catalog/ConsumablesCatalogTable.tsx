@@ -291,7 +291,7 @@ const ConsumablesCatalogTable = ({ supplierId }: ConsumablesCatalogTableProps) =
                   <td className="p-2 text-right whitespace-nowrap font-bold text-primary">
                     {product.is_price_on_request
                       ? "—"
-                      : formatZAR(product.selling_price || product.cost_price * (1 + product.default_markup_percent / 100))}
+                      : formatZAR(product.selling_price || product.cost_price * (1 + (product.default_markup_percent || 0) / 100))}
                   </td>
                   <td className="p-2 text-right whitespace-nowrap">
                     {product.pack_qty && product.pack_qty > 1 ? (

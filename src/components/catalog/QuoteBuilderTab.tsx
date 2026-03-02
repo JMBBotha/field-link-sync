@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { inclVatFromExcl } from "@/utils/pricing";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { Search, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -458,7 +459,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         product_category: firstProduct.product_category,
         selling_price: unitPrice,
         cost_excl_vat: unitCost,
-        cost_incl_vat: unitCost * 1.15,
+        cost_incl_vat: inclVatFromExcl(unitCost),
         sold_in_length: pricingType === "p/meter",
         price_per_metre: pricingType === "p/meter" ? unitPrice : null
       },
