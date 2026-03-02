@@ -233,6 +233,7 @@ function UnifiedQuoteBuilderInner() {
 
   // Refs to the inline builder's methods
   const areaAddProductRef = useRef<((product: PaletteProduct) => void) | null>(null);
+  const areaDropProductToAreaRef = useRef<((areaId: string, product: PaletteProduct) => void) | null>(null);
   const areaAddZoneRef = useRef<(() => void) | null>(null);
   const areaApplyTemplateRef = useRef<((zoneNames: string[]) => void) | null>(null);
   const areaClearAllRef = useRef<(() => void) | null>(null);
@@ -399,6 +400,7 @@ function UnifiedQuoteBuilderInner() {
                     onPdfSearch={pdfSearchRef.current || undefined}
                     onAreasChange={setWizardAreas}
                     onAddProductRef={areaAddProductRef}
+                    onDropProductToAreaRef={areaDropProductToAreaRef}
                     onAddAreaRef={areaAddZoneRef}
                     onApplyTemplateRef={areaApplyTemplateRef}
                     onClearAllRef={areaClearAllRef}
@@ -409,6 +411,7 @@ function UnifiedQuoteBuilderInner() {
                 areaApplyTemplate={(zones) => areaApplyTemplateRef.current?.(zones)}
                 areaClearAll={() => areaClearAllRef.current?.()}
                 areaCount={wizardAreas.length}
+                areaDropProductToArea={(areaId, product) => areaDropProductToAreaRef.current?.(areaId, product)}
               />
             </div>
             <div className="w-[320px] shrink-0 border-l overflow-y-auto p-3 mx-[5px] my-[4px] bg-transparent">
