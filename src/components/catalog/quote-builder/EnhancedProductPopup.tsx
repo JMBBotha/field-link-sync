@@ -8,8 +8,17 @@ import { getCategoryIcon, getCategoryBg } from "./ProductPalette";
 import { getProductDisplayName } from "./productDisplayUtils";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
+/** Get the true cost after supplier discount (mirrors PDF overlay logic) */
+function getDiscountedCost(product: PaletteProduct) {
+  const raw = product.cost_excl_vat || 0;
+  if (raw <= 0) return 0;
+  const disc = product.supplier_discount_percent ?? 0;
+  // cost_excl_vat is list-price ex-VAT; apply supplier discount to get true cost
+  return disc > 0 ? raw * (1 - disc / 100) : raw;
+}
+
 function calcMarkup(product: PaletteProduct) {
-  const cost = product.cost_excl_vat || 0;
+  const cost = getDiscountedCost(product);
   const sell = product.selling_price || 0;
   if (cost <= 0) return 0;
   return ((sell - cost) / cost) * 100;
@@ -147,7 +156,7 @@ const EnhancedProductPopup = ({
           {/* Markup display */}
           {product.cost_excl_vat > 0 && (
             <div className="flex items-center gap-2 text-[10px]">
-              <span className="text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{product.cost_excl_vat.toLocaleString("en-ZA")}</span></span>
+              <span className="text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{getDiscountedCost(product).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
               <span className="text-muted-foreground">M/Up: <span className="font-mono font-semibold text-primary">{calcMarkup(product).toFixed(1)}%</span></span>
             </div>
           )}
@@ -211,7 +220,7 @@ const EnhancedProductPopup = ({
             {/* Markup row with +/- controls */}
             {product.cost_excl_vat > 0 && (
               <div className="flex items-center gap-2 mt-1.5">
-                <span className="text-[10px] text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{product.cost_excl_vat.toLocaleString("en-ZA")}</span></span>
+                <span className="text-[10px] text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{getDiscountedCost(product).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
                 <span className="text-[10px] text-muted-foreground">M/Up:</span>
                 <div className="flex items-center gap-0.5">
                   <Button
@@ -220,7 +229,7 @@ const EnhancedProductPopup = ({
                     className="h-5 w-5"
                     onClick={(e) => {
                       e.stopPropagation();
-                      const cost = product.cost_excl_vat;
+                      const cost = getDiscountedCost(product);
                       const curMarkup = calcMarkup(product);
                       const newMarkup = Math.max(0, curMarkup - 5);
                       product.selling_price = Math.round(cost * (1 + newMarkup / 100) * 100) / 100;
@@ -238,7 +247,7 @@ const EnhancedProductPopup = ({
                     className="h-5 w-5"
                     onClick={(e) => {
                       e.stopPropagation();
-                      const cost = product.cost_excl_vat;
+                      const cost = getDiscountedCost(product);
                       const curMarkup = calcMarkup(product);
                       const newMarkup = curMarkup + 5;
                       product.selling_price = Math.round(cost * (1 + newMarkup / 100) * 100) / 100;
