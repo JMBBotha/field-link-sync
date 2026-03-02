@@ -28,22 +28,33 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
   };
 
   const breakdown = useMemo(() => {
+    /** Use discounted cost (excl VAT) as the base — matches popup/info card logic */
+    const getCost = (p: any) => {
+      const raw = p?.cost_excl_vat || 0;
+      if (raw > 0) {
+        const disc = p?.supplier_discount_percent ?? 0;
+        return disc > 0 ? raw * (1 - disc / 100) : raw;
+      }
+      // fallback: strip VAT from cost_incl_vat if available
+      if (p?.cost_incl_vat) return p.cost_incl_vat / 1.15;
+      return p?.selling_price || p?.price_per_metre || 0;
+    };
+
     const areaRows = areas
       .filter((a) => a.acUnits.length > 0 || a.materials.length > 0 || a.consumables.length > 0 || a.brackets.length > 0)
       .map((a) => {
-        const getPrice = (p: any) => p?.selling_price || p?.cost_incl_vat || p?.price_per_metre || 0;
-
         const acCost = a.acUnits.reduce(
-          (s, u) => s + getPrice(u.product) * u.quantity,
+          (s, u) => s + getCost(u.product) * u.quantity,
           0
         );
         const acQty = a.acUnits.reduce((s, u) => s + u.quantity, 0);
 
         const matCost = a.materials.reduce((s, m) => {
           if (m.pricingMode === "unit")
-            return s + getPrice(m.product) * m.unitQuantity;
+            return s + getCost(m.product) * m.unitQuantity;
           // For length-based: use totalCost if set, otherwise compute from costPerMeter
-          return s + (m.totalCost || (m.costPerMeter || getPrice(m.product)) * m.adjustedLength);
+          const perM = m.costPerMeter || getCost(m.product);
+          return s + (m.totalCost || perM * m.adjustedLength);
         }, 0);
         const matCount = a.materials.length;
 
@@ -51,7 +62,7 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
         const bracketQty = a.brackets.reduce((s, b) => s + b.quantity, 0);
 
         const consCost = a.consumables.reduce(
-          (s, c) => s + getPrice(c.product) * c.quantity,
+          (s, c) => s + getCost(c.product) * c.quantity,
           0
         );
         const consQty = a.consumables.reduce((s, c) => s + c.quantity, 0);

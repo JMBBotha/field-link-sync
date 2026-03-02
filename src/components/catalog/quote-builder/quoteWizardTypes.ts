@@ -80,16 +80,26 @@ export function createEmptyArea(name: string): QuoteArea {
 }
 
 export function computeAreaSubtotal(area: QuoteArea): number {
-  const getPrice = (p: any) => p?.selling_price || p?.cost_incl_vat || p?.price_per_metre || 0;
-  const acCost = area.acUnits.reduce((s, u) => s + getPrice(u.product) * u.quantity, 0);
+  /** Use discounted cost (excl VAT) — matches popup/info card logic */
+  const getCost = (p: any) => {
+    const raw = p?.cost_excl_vat || 0;
+    if (raw > 0) {
+      const disc = p?.supplier_discount_percent ?? 0;
+      return disc > 0 ? raw * (1 - disc / 100) : raw;
+    }
+    if (p?.cost_incl_vat) return p.cost_incl_vat / 1.15;
+    return p?.selling_price || p?.price_per_metre || 0;
+  };
+  const acCost = area.acUnits.reduce((s, u) => s + getCost(u.product) * u.quantity, 0);
   const matCost = area.materials.reduce((s, m) => {
     if (m.pricingMode === "unit") {
-      return s + getPrice(m.product) * m.unitQuantity;
+      return s + getCost(m.product) * m.unitQuantity;
     }
-    return s + (m.totalCost || (m.costPerMeter || getPrice(m.product)) * m.adjustedLength);
+    const perM = m.costPerMeter || getCost(m.product);
+    return s + (m.totalCost || perM * m.adjustedLength);
   }, 0);
   const bracketCost = area.brackets.reduce((s, b) => s + b.price * b.quantity, 0);
-  const consCost = area.consumables.reduce((s, c) => s + getPrice(c.product) * c.quantity, 0);
+  const consCost = area.consumables.reduce((s, c) => s + getCost(c.product) * c.quantity, 0);
   return acCost + matCost + bracketCost + consCost;
 }
 
