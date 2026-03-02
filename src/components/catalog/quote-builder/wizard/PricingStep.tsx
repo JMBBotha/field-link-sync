@@ -262,7 +262,9 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
       const unit = area.acUnits[0];
       if (!unit) return { area, costPrice: 0, quantity: 1, markup: 0, sellingPrice: 0, lineTotal: 0 };
       const pricing = getPricing(area.id);
-      const costPrice = unit.product.cost_excl_vat || unit.product.cost_incl_vat || 0;
+      const rawCost = unit.product.cost_excl_vat || unit.product.cost_incl_vat || 0;
+      const disc = (unit.product as any).supplier_discount_percent ?? 0;
+      const costPrice = rawCost > 0 && disc > 0 ? rawCost * (1 - disc / 100) : rawCost;
       const sellingPrice = costPrice * (1 + pricing.markupPercent / 100);
       const lineTotal = sellingPrice * pricing.quantity;
       return { area, costPrice, quantity: pricing.quantity, markup: pricing.markupPercent, sellingPrice, lineTotal };
