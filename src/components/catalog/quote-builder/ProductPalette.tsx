@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { useDraggable } from "@dnd-kit/core";
 import {
@@ -18,12 +18,14 @@ import {
   ChevronUp,
   Image,
   ExternalLink,
+  MapPin,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
@@ -212,6 +214,8 @@ function DraggableProductCard({
   isDraggingGlobal,
   searchTerm,
   usageCount,
+  baskets,
+  onAddProductToBasket,
 }: {
   product: PaletteProduct;
   isFavorite: boolean;
@@ -219,6 +223,8 @@ function DraggableProductCard({
   isDraggingGlobal?: boolean;
   searchTerm: string;
   usageCount: number;
+  baskets?: Basket[];
+  onAddProductToBasket?: (basketId: string, product: PaletteProduct) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `palette-${product.id}`,
@@ -227,10 +233,27 @@ function DraggableProductCard({
 
   const [hoverOpen, setHoverOpen] = useState(false);
   const [confirmUnfav, setConfirmUnfav] = useState(false);
+  const [zonePickerOpen, setZonePickerOpen] = useState(false);
+  const dragStarted = useRef(false);
 
   useEffect(() => {
-    if (isDragging || isDraggingGlobal) setHoverOpen(false);
+    if (isDragging) {
+      dragStarted.current = true;
+      setHoverOpen(false);
+      setZonePickerOpen(false);
+    }
+    if (isDraggingGlobal) {
+      setHoverOpen(false);
+      setZonePickerOpen(false);
+    }
   }, [isDragging, isDraggingGlobal]);
+
+  // On drag end, reset flag after a tick so the click handler can check it
+  useEffect(() => {
+    if (!isDragging && dragStarted.current) {
+      setTimeout(() => { dragStarted.current = false; }, 100);
+    }
+  }, [isDragging]);
 
   const price = product.selling_price || product.cost_incl_vat || 0;
   const catBg = getCategoryBg(product.product_category);
@@ -245,133 +268,176 @@ function DraggableProductCard({
     }
   };
 
+  const handleCardClick = useCallback((e: React.MouseEvent) => {
+    // Don't open zone picker if we just finished dragging or if star/other button was clicked
+    if (dragStarted.current || e.defaultPrevented) return;
+    if (!baskets || baskets.length === 0 || !onAddProductToBasket) return;
+    // If only one zone, add directly
+    if (baskets.length === 1) {
+      onAddProductToBasket(baskets[0].id, product);
+      return;
+    }
+    setZonePickerOpen(true);
+  }, [baskets, onAddProductToBasket, product]);
+
   return (
     <>
-      <HoverCard
-        openDelay={400}
-        closeDelay={100}
-        open={isDraggingGlobal ? false : hoverOpen}
-        onOpenChange={setHoverOpen}
-      >
-        <HoverCardTrigger asChild>
-          <div
-            ref={setNodeRef}
-            {...attributes}
-            {...listeners}
-            style={{ touchAction: "none", pointerEvents: isDraggingGlobal && !isDragging ? "none" : "auto" }}
-            className={`group relative flex items-start gap-2.5 rounded-lg border bg-card p-2.5 cursor-grab active:cursor-grabbing transition-all hover:shadow-md hover:border-primary/20 ${
-              isDragging ? "opacity-40 shadow-lg scale-95" : ""
-            } ${product.is_pinned ? "border-primary/30" : ""} ${
-              isFavorite ? "border-l-2 border-l-yellow-400 bg-yellow-50/50 dark:bg-yellow-950/20" : ""
-            }`}
-          >
-            <div className={`shrink-0 rounded-md p-1.5 ${catBg}`}>
-              {getCategoryIcon(product.product_category, "h-4 w-4")}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold truncate leading-tight text-foreground">
-                <HighlightText text={getProductDisplayName(product)} searchTerm={searchTerm} />
-              </p>
-              <p className="text-[10px] font-mono font-medium truncate mt-0.5 text-primary/80">
-                <HighlightText text={product.product_code} searchTerm={searchTerm} />
-              </p>
-              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                <span className="text-xs font-bold text-foreground">
-                  {price > 0 ? `R${price.toLocaleString("en-ZA")}` : "POR"}
-                </span>
-                {product.sold_in_length && product.price_per_metre && (
-                  <Badge
-                    variant="outline"
-                    className="text-[8px] px-1 py-0 h-3.5 gap-0.5 border-orange-400/40 text-orange-600"
-                  >
-                    <Ruler className="h-2 w-2" />R{product.price_per_metre.toFixed(2)}/m
-                  </Badge>
-                )}
-                {product.supplier_name &&
-                  product.supplier_name.toLowerCase() !== (product.brand || "").toLowerCase() && (
-                    <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5">
-                      {product.supplier_name}
-                    </Badge>
-                  )}
-                {usageCount > 5 && (
-                  <Badge variant="secondary" className="text-[8px] px-1 py-0 h-3.5">
-                    Used {usageCount}x
-                  </Badge>
-                )}
+      <Popover open={zonePickerOpen} onOpenChange={setZonePickerOpen}>
+        <PopoverTrigger asChild>
+          <div>
+            <HoverCard
+              openDelay={400}
+              closeDelay={100}
+              open={isDraggingGlobal || zonePickerOpen ? false : hoverOpen}
+              onOpenChange={setHoverOpen}
+            >
+              <HoverCardTrigger asChild>
+                <div
+                  ref={setNodeRef}
+                  {...attributes}
+                  {...listeners}
+                  onClick={handleCardClick}
+                  style={{ touchAction: "none", pointerEvents: isDraggingGlobal && !isDragging ? "none" : "auto" }}
+                  className={`group relative flex items-start gap-2.5 rounded-lg border bg-card p-2.5 cursor-grab active:cursor-grabbing transition-all hover:shadow-md hover:border-primary/20 ${
+                    isDragging ? "opacity-40 shadow-lg scale-95" : ""
+                  } ${product.is_pinned ? "border-primary/30" : ""} ${
+                    isFavorite ? "border-l-2 border-l-yellow-400 bg-yellow-50/50 dark:bg-yellow-950/20" : ""
+                  }`}
+                >
+                  <div className={`shrink-0 rounded-md p-1.5 ${catBg}`}>
+                    {getCategoryIcon(product.product_category, "h-4 w-4")}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold truncate leading-tight text-foreground">
+                      <HighlightText text={getProductDisplayName(product)} searchTerm={searchTerm} />
+                    </p>
+                    <p className="text-[10px] font-mono font-medium truncate mt-0.5 text-primary/80">
+                      <HighlightText text={product.product_code} searchTerm={searchTerm} />
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <span className="text-xs font-bold text-foreground">
+                        {price > 0 ? `R${price.toLocaleString("en-ZA")}` : "POR"}
+                      </span>
+                      {product.sold_in_length && product.price_per_metre && (
+                        <Badge
+                          variant="outline"
+                          className="text-[8px] px-1 py-0 h-3.5 gap-0.5 border-orange-400/40 text-orange-600"
+                        >
+                          <Ruler className="h-2 w-2" />R{product.price_per_metre.toFixed(2)}/m
+                        </Badge>
+                      )}
+                      {product.supplier_name &&
+                        product.supplier_name.toLowerCase() !== (product.brand || "").toLowerCase() && (
+                          <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5">
+                            {product.supplier_name}
+                          </Badge>
+                        )}
+                      {usageCount > 5 && (
+                        <Badge variant="secondary" className="text-[8px] px-1 py-0 h-3.5">
+                          Used {usageCount}x
+                        </Badge>
+                      )}
+                      {product.cost_excl_vat > 0 && (
+                        <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 text-primary">
+                          {(((product.selling_price || 0) - product.cost_excl_vat) / product.cost_excl_vat * 100).toFixed(0)}% M/Up
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-center gap-1 shrink-0">
+                    <div className="p-0.5 rounded">
+                      <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
+                    </div>
+                    <button
+                      type="button"
+                      data-no-dnd="true"
+                      className={`h-5 w-5 flex items-center justify-center transition-opacity rounded hover:bg-muted ${
+                        isFavorite ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                      }`}
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        e.nativeEvent.stopImmediatePropagation();
+                      }}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        e.nativeEvent.stopImmediatePropagation();
+                      }}
+                      onTouchStart={(e) => {
+                        e.stopPropagation();
+                        (e.nativeEvent as any).stopImmediatePropagation?.();
+                      }}
+                      onClick={handleStarClick}
+                    >
+                      {isFavorite ? (
+                        <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-500" />
+                      ) : (
+                        <StarOff className="h-3 w-3 text-muted-foreground" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </HoverCardTrigger>
+              <HoverCardContent side="right" className="w-72 text-xs space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <div className={`rounded-md p-1 ${catBg}`}>{getCategoryIcon(product.product_category, "h-3.5 w-3.5")}</div>
+                  <p className="font-semibold">{getProductDisplayName(product)}</p>
+                </div>
+                <p className="font-mono font-medium text-primary/80">{product.product_code}</p>
+                <div className="flex justify-between">
+                  <span>Cost excl.</span>
+                  <span className="font-medium">R{(product.cost_excl_vat || 0).toLocaleString("en-ZA")}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Cost incl.</span>
+                  <span className="font-medium">R{(product.cost_incl_vat || 0).toLocaleString("en-ZA")}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Selling</span>
+                  <span className="font-bold">R{(product.selling_price || 0).toLocaleString("en-ZA")}</span>
+                </div>
                 {product.cost_excl_vat > 0 && (
-                  <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 text-primary">
-                    {(((product.selling_price || 0) - product.cost_excl_vat) / product.cost_excl_vat * 100).toFixed(0)}% M/Up
-                  </Badge>
+                  <div className="flex items-center justify-between pt-1 border-t">
+                    <span className="text-muted-foreground">Markup</span>
+                    <span className="font-mono font-bold text-primary">
+                      {(((product.selling_price || 0) - product.cost_excl_vat) / product.cost_excl_vat * 100).toFixed(1)}%
+                    </span>
+                  </div>
                 )}
-              </div>
-            </div>
-            <div className="flex flex-col items-center gap-1 shrink-0">
-              <div className="p-0.5 rounded">
-                <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
-              </div>
-              <button
-                type="button"
-                data-no-dnd="true"
-                className={`h-5 w-5 flex items-center justify-center transition-opacity rounded hover:bg-muted ${
-                  isFavorite ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                }`}
-                onPointerDown={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  e.nativeEvent.stopImmediatePropagation();
+                <p className="text-[10px] text-muted-foreground line-clamp-3">{product.description}</p>
+                <Badge variant="outline" className="text-[10px]">
+                  {product.supplier_name}
+                </Badge>
+              </HoverCardContent>
+            </HoverCard>
+          </div>
+        </PopoverTrigger>
+        <PopoverContent side="right" align="start" className="w-48 p-2" data-no-dnd="true">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+            <MapPin className="h-3 w-3 inline mr-1" />Add to Zone
+          </p>
+          <div className="space-y-1">
+            {(baskets || []).map((basket) => (
+              <Button
+                key={basket.id}
+                variant="outline"
+                size="sm"
+                className="w-full justify-start text-xs h-7 gap-1.5"
+                onClick={() => {
+                  onAddProductToBasket?.(basket.id, product);
+                  setZonePickerOpen(false);
                 }}
-                onMouseDown={(e) => {
-                  e.stopPropagation();
-                  e.nativeEvent.stopImmediatePropagation();
-                }}
-                onTouchStart={(e) => {
-                  e.stopPropagation();
-                  (e.nativeEvent as any).stopImmediatePropagation?.();
-                }}
-                onClick={handleStarClick}
               >
-                {isFavorite ? (
-                  <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-500" />
-                ) : (
-                  <StarOff className="h-3 w-3 text-muted-foreground" />
-                )}
-              </button>
-            </div>
+                <Package className="h-3 w-3 text-primary shrink-0" />
+                <span className="truncate">{basket.name}</span>
+                <Badge variant="secondary" className="text-[8px] px-1 py-0 ml-auto shrink-0">
+                  {basket.items.length}
+                </Badge>
+              </Button>
+            ))}
           </div>
-        </HoverCardTrigger>
-        <HoverCardContent side="right" className="w-72 text-xs space-y-1.5">
-          <div className="flex items-center gap-2">
-            <div className={`rounded-md p-1 ${catBg}`}>{getCategoryIcon(product.product_category, "h-3.5 w-3.5")}</div>
-            <p className="font-semibold">{getProductDisplayName(product)}</p>
-          </div>
-          <p className="font-mono font-medium text-primary/80">{product.product_code}</p>
-          <div className="flex justify-between">
-            <span>Cost excl.</span>
-            <span className="font-medium">R{(product.cost_excl_vat || 0).toLocaleString("en-ZA")}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Cost incl.</span>
-            <span className="font-medium">R{(product.cost_incl_vat || 0).toLocaleString("en-ZA")}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Selling</span>
-            <span className="font-bold">R{(product.selling_price || 0).toLocaleString("en-ZA")}</span>
-          </div>
-          {/* Markup display */}
-          {product.cost_excl_vat > 0 && (
-            <div className="flex items-center justify-between pt-1 border-t">
-              <span className="text-muted-foreground">Markup</span>
-              <span className="font-mono font-bold text-primary">
-                {(((product.selling_price || 0) - product.cost_excl_vat) / product.cost_excl_vat * 100).toFixed(1)}%
-              </span>
-            </div>
-          )}
-          <p className="text-[10px] text-muted-foreground line-clamp-3">{product.description}</p>
-          <Badge variant="outline" className="text-[10px]">
-            {product.supplier_name}
-          </Badge>
-        </HoverCardContent>
-      </HoverCard>
+        </PopoverContent>
+      </Popover>
 
       <AlertDialog open={confirmUnfav} onOpenChange={setConfirmUnfav}>
         <AlertDialogContent>
@@ -579,6 +645,8 @@ const ProductPalette = ({
                       isDraggingGlobal={isDraggingGlobal}
                       searchTerm={searchQuery}
                       usageCount={usageMap[product.id] || 0}
+                      baskets={baskets}
+                      onAddProductToBasket={onAddProductToBasket}
                     />
                   ))}
                 </div>
