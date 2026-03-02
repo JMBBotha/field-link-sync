@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import { Search, Check, Star, X, Zap, Package, ImageIcon, Plus, Trash2, Ruler, Hash } from "lucide-react";
+import { Search, Check, Star, X, Zap, Package, ImageIcon, Plus, Trash2, Ruler, Hash, MousePointerClick } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useDroppable } from "@dnd-kit/core";
 import { Button } from "@/components/ui/button";
 import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
 import QuantityControl from "../QuantityControl";
@@ -241,16 +242,36 @@ function AreaUnitSelector({
 
   const selectedUnit = area.acUnits[0] || null;
 
+  const { setNodeRef, isOver } = useDroppable({
+    id: `wizard-area-${area.id}`,
+    data: { areaId: area.id, type: "wizard-area" },
+  });
+
   return (
-    <div className={`rounded-lg border bg-card p-3 space-y-2 shadow-md hover:shadow-lg transition-shadow ${selectedUnit ? "border-l-2 border-l-amber-400" : ""}`}>
+    <div
+      ref={setNodeRef}
+      className={`rounded-lg border bg-card p-3 space-y-2 shadow-md hover:shadow-lg transition-all ${selectedUnit ? "border-l-2 border-l-amber-400" : ""} ${isOver ? "ring-2 ring-primary border-primary bg-primary/5" : ""}`}
+    >
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">{area.name}</span>
-        {selectedUnit && (
-          <Badge variant="outline" className="text-[10px] gap-1 border-green-300 text-green-700 dark:text-green-400">
-            <Check className="h-3 w-3" />
-            Unit selected
-          </Badge>
-        )}
+        <div className="flex items-center gap-1.5">
+          {isOver && (
+            <Badge variant="default" className="text-[10px] gap-1 animate-pulse">
+              <MousePointerClick className="h-3 w-3" /> Drop here
+            </Badge>
+          )}
+          {!selectedUnit && !isOver && (
+            <Badge variant="outline" className="text-[10px] gap-1 text-muted-foreground">
+              <MousePointerClick className="h-3 w-3" /> Drag AC unit here
+            </Badge>
+          )}
+          {selectedUnit && (
+            <Badge variant="outline" className="text-[10px] gap-1 border-green-300 text-green-700 dark:text-green-400">
+              <Check className="h-3 w-3" />
+              Unit selected
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Currently selected unit */}

@@ -35,6 +35,8 @@ interface Props {
   onAreasChange?: (areas: QuoteArea[]) => void;
   /** Ref that parent can use to push products into the builder */
   onAddProductRef?: React.MutableRefObject<((product: PaletteProduct) => void) | null>;
+  /** Ref that parent can use to drop a product into a specific area by id */
+  onDropProductToAreaRef?: React.MutableRefObject<((areaId: string, product: PaletteProduct) => void) | null>;
   /** Ref that parent can use to add a new area */
   onAddAreaRef?: React.MutableRefObject<(() => void) | null>;
   /** Ref that parent can use to apply a template (replaces all areas) */
@@ -66,7 +68,7 @@ function clearDraftStorage() {
   try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch { /* ignore */ }
 }
 
-export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPdfSearch, onAreasChange, onAddProductRef, onAddAreaRef, onApplyTemplateRef, onClearAllRef, pdfSelection }: Props) {
+export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPdfSearch, onAreasChange, onAddProductRef, onDropProductToAreaRef, onAddAreaRef, onApplyTemplateRef, onClearAllRef, pdfSelection }: Props) {
   const [currentStep, setCurrentStep] = useState(0);
   const [areas, setAreas] = useState<QuoteArea[]>(() => {
     const draft = loadDraftFromStorage();
@@ -117,6 +119,30 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
     toast.success(`Added ${product.short_name || product.product_code} to ${areas[0]?.name || "Additional Items/Services"}`);
   }, [areas]);
 
+  // Drop a product into a specific area by ID (used by DnD from palette)
+  const handleDropProductToArea = useCallback((areaId: string, product: PaletteProduct) => {
+    const isAC = product.product_category === "Air Conditioning" || (product.category || "").toLowerCase().includes("air conditioning");
+    setAreas((prev) => {
+      return prev.map((a) => {
+        if (a.id !== areaId) return a;
+        if (isAC) {
+          const btu = detectBTU(product);
+          const newUnit: AreaACUnit = { id: crypto.randomUUID(), product, btu, quantity: 1 };
+          return { ...a, acUnits: [newUnit] };
+        } else {
+          const existing = a.consumables.find((c) => c.product.id === product.id);
+          if (existing) {
+            return { ...a, consumables: a.consumables.map((c) => c.product.id === product.id ? { ...c, quantity: c.quantity + 1 } : c) };
+          }
+          const newConsumable: AreaConsumable = { id: crypto.randomUUID(), product, quantity: 1 };
+          return { ...a, consumables: [...a.consumables, newConsumable] };
+        }
+      });
+    });
+    const targetArea = areas.find((a) => a.id === areaId);
+    toast.success(`Added ${product.short_name || product.product_code} to ${targetArea?.name || "area"}`);
+  }, [areas]);
+
   // Add a new area from the header button
   const handleAddArea = useCallback(() => {
     const newName = `Room ${areas.length + 1}`;
@@ -141,16 +167,18 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
   // Expose methods to parent via refs
   useEffect(() => {
     if (onAddProductRef) onAddProductRef.current = handleExternalProductAdd;
+    if (onDropProductToAreaRef) onDropProductToAreaRef.current = handleDropProductToArea;
     if (onAddAreaRef) onAddAreaRef.current = handleAddArea;
     if (onApplyTemplateRef) onApplyTemplateRef.current = handleApplyTemplate;
     if (onClearAllRef) onClearAllRef.current = handleClearAll;
     return () => {
       if (onAddProductRef) onAddProductRef.current = null;
+      if (onDropProductToAreaRef) onDropProductToAreaRef.current = null;
       if (onAddAreaRef) onAddAreaRef.current = null;
       if (onApplyTemplateRef) onApplyTemplateRef.current = null;
       if (onClearAllRef) onClearAllRef.current = null;
     };
-  }, [onAddProductRef, onAddAreaRef, onApplyTemplateRef, onClearAllRef, handleExternalProductAdd, handleAddArea, handleApplyTemplate, handleClearAll]);
+  }, [onAddProductRef, onDropProductToAreaRef, onAddAreaRef, onApplyTemplateRef, onClearAllRef, handleExternalProductAdd, handleDropProductToArea, handleAddArea, handleApplyTemplate, handleClearAll]);
 
   const handleSaveDraft = useCallback(() => {
     saveDraftToStorage(areas, currentStep);

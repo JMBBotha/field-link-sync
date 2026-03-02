@@ -181,9 +181,11 @@ interface QuoteBuilderTabProps {
   areaApplyTemplate?: (zones: string[]) => void;
   areaClearAll?: () => void;
   areaCount?: number;
+  /** Ref-based handler to drop a product into a specific wizard area */
+  areaDropProductToArea?: (areaId: string, product: PaletteProduct) => void;
 }
 
-const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, areaBuilderNode, areaAddZone, areaApplyTemplate, areaClearAll, areaCount }: QuoteBuilderTabProps = {}) => {
+const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, areaBuilderNode, areaAddZone, areaApplyTemplate, areaClearAll, areaCount, areaDropProductToArea }: QuoteBuilderTabProps = {}) => {
   const [baskets, setBasketsInternal] = useState<Basket[]>([
   { id: "basket-1", name: "Zone 1", items: [] }]
   );
@@ -497,6 +499,18 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     if (!over) return;
 
     const overId = String(over.id);
+
+    // Check if dropped on a wizard area target
+    if (overId.startsWith("wizard-area-") && areaDropProductToArea) {
+      const areaId = overId.replace("wizard-area-", "");
+      const product = (active.data.current as any)?.product as PaletteProduct | undefined;
+      if (product) {
+        areaDropProductToArea(areaId, product);
+        toast({ title: `Added ${product.short_name || product.product_code} to area` });
+      }
+      return;
+    }
+
     let targetBasket: Basket | null = null;
     for (const basket of baskets) {
       if (basket.id === overId) {
@@ -519,7 +533,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     addProductToBasket(targetBasket.id, product);
     const displayName = product.short_name || product.product_code;
     toast({ title: `Added ${displayName} to ${targetBasket.name}` });
-  }, [baskets, addProductToBasket, addBundleToBasket]);
+  }, [baskets, addProductToBasket, addBundleToBasket, areaDropProductToArea]);
 
   const handleRemoveItem = useCallback((basketId: string, instanceId: string) => {
     setBaskets((prev) =>
