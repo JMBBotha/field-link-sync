@@ -40,7 +40,7 @@ export async function capturePdfPages(
   file: File,
   supplierName: string,
   onProgress?: (current: number, total: number) => void,
-  enhanceImages: boolean = false
+  enhanceImages: boolean = true
 ): Promise<CaptureResult> {
   console.log("[PDF Capture] Loading pdfjs...");
   const pdfjsLib = await loadPdfJs();
@@ -53,7 +53,7 @@ export async function capturePdfPages(
 
   let pagesStored = 0;
   let errors = 0;
-  const SCALE = 1.5;
+  const SCALE = 2.25;
 
   for (let pageNum = 1; pageNum <= numPages; pageNum++) {
     onProgress?.(pageNum, numPages);
@@ -64,7 +64,7 @@ export async function capturePdfPages(
       const canvas = document.createElement("canvas");
       canvas.width = viewport.width;
       canvas.height = viewport.height;
-      const ctx = canvas.getContext("2d")!;
+      const ctx = canvas.getContext("2d", { alpha: false })!;
 
       await page.render({ canvasContext: ctx, viewport }).promise;
 
@@ -73,7 +73,7 @@ export async function capturePdfPages(
         canvas.toBlob(
           (b) => resolve(b!),
           "image/jpeg",
-          0.85
+          0.93
         );
       });
 
@@ -99,7 +99,7 @@ export async function capturePdfPages(
                 "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
                 apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
               },
-              body: JSON.stringify({ imageBase64: base64, width: 2000 }),
+              body: JSON.stringify({ imageBase64: base64, width: 2400 }),
             }
           );
 

@@ -13,29 +13,7 @@ import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 
 const DISMISSED_KEY = "dismissedPdfRegions";
 
-/**
- * Dynamically compute icon column position from region data.
- * Uses the rightmost edge (x_pct + w_pct) of all regions on this page,
- * then adds a small gap. Clamps between 85-96% to stay inside the page.
- * Falls back to 91% if no valid region geometry exists.
- */
-function computeIconLeftPct(regions: OverlayRegion[]): string {
-  let maxRight = 0;
-  let hasValidGeometry = false;
-  for (const r of regions) {
-    if (r.x_pct != null && r.w_pct != null && r.w_pct > 0) {
-      const right = r.x_pct + r.w_pct;
-      if (right > maxRight) {
-        maxRight = right;
-        hasValidGeometry = true;
-      }
-    }
-  }
-  if (!hasValidGeometry || maxRight < 10) return "91%";
-  // Add ~1% padding after the rightmost content edge, clamp to 85-96%
-  const iconPct = Math.min(96, Math.max(85, maxRight + 1));
-  return `${iconPct.toFixed(1)}%`;
-}
+/* computeIconLeftPct removed — icons now use right-side gutter positioning */
 
 function getDismissedIds(): Set<string> {
   try {
@@ -115,7 +93,7 @@ const DraggableRegion = memo(({
   onRemoveRegion?: (region: OverlayRegion) => void;
   onRowStripClick?: (region: OverlayRegion) => void;
   isAddedToQuote?: boolean;
-  iconLeftPct: string;
+  iconLeftPct?: string; // deprecated — kept for type compat but unused
   onHover: (region: OverlayRegion) => void;
   onHoverMove: (e: React.MouseEvent) => void;
   onHoverLeave: () => void;
@@ -184,7 +162,7 @@ const DraggableRegion = memo(({
       style={{
         left: "0%",
         top: `${region.y_pct}%`,
-        width: "96%",
+        width: "100%",
         height: `${region.h_pct}%`,
         touchAction: "none",
         minHeight: "14px",
@@ -204,7 +182,7 @@ const DraggableRegion = memo(({
       {pdfSelection && region.product && (
         <div
           className="absolute top-1/2 -translate-y-1/2 z-20 pointer-events-auto"
-          style={{ left: `calc(${iconLeftPct} - 22px)` }}
+          style={{ right: "36px" }}
         >
           <div
             className="flex items-center justify-center rounded"
@@ -247,7 +225,7 @@ const DraggableRegion = memo(({
       {/* Icon positioned in QTY column at fixed left% */}
       <div
         className="absolute top-1/2 -translate-y-1/2 opacity-80 group-hover:opacity-100 transition-opacity z-10 flex flex-row items-center"
-        style={{ left: iconLeftPct }}
+        style={{ right: "8px" }}
       >
         {isMatched ? (
           isFavorite ? (
@@ -328,14 +306,14 @@ const GhostAddRow = memo(({
   yPct: number;
   hPct: number;
   onClick: () => void;
-  iconLeftPct: string;
+  iconLeftPct?: string;
 }) => (
   <div
     className="absolute cursor-pointer group"
     style={{
       left: "0%",
       top: `${yPct}%`,
-      width: "96%",
+      width: "100%",
       height: `${hPct}%`,
       minHeight: "18px",
       margin: 0,
@@ -348,7 +326,7 @@ const GhostAddRow = memo(({
     {/* Ghost + icon — only visible on hover */}
     <div
       className="absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity z-10"
-      style={{ left: iconLeftPct }}
+      style={{ right: "8px" }}
     >
       <div className="h-4 w-4 rounded-full flex items-center justify-center bg-muted-foreground/20 hover:bg-muted-foreground/40 transition-colors">
         <Plus className="h-2.5 w-2.5 text-muted-foreground" />
@@ -461,8 +439,7 @@ const PdfPageOverlay = ({
     return gaps;
   }, [positionedRegions]);
 
-  // Dynamically compute icon column position from region geometry
-  const iconLeftPct = useMemo(() => computeIconLeftPct(positionedRegions), [positionedRegions]);
+  // Icon positioning now uses right-side gutter (CSS right: 8px) — no computation needed
 
   const handleHover = useCallback((region: OverlayRegion) => {
     hoveredRegionRef.current = region;
@@ -507,7 +484,7 @@ const PdfPageOverlay = ({
               ? localAddedIds.has(region.product.id) || addedQuoteItemIds.has(region.product.id)
               : false
           }
-          iconLeftPct={iconLeftPct}
+          iconLeftPct={undefined}
           onHover={handleHover}
           onHoverMove={handleHoverMove}
           onHoverLeave={handleHoverLeave}
@@ -522,7 +499,7 @@ const PdfPageOverlay = ({
           yPct={gap.yPct}
           hPct={gap.hPct}
           onClick={() => handleManualRowClick(gap.yPct)}
-          iconLeftPct={iconLeftPct}
+          iconLeftPct={undefined}
         />
       ))}
 

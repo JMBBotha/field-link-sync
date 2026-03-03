@@ -44,7 +44,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         url: imageBase64,
-        enhancements: ["denoise", "light"],
+        enhancements: ["denoise", "sharpen", "light"],
         width,
       }),
     });
