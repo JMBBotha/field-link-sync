@@ -161,8 +161,8 @@ export default function ProductInfoDialog({ product, onMarkupSaved }: ProductInf
               {/* Pricing grid */}
               <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 rounded-lg border bg-muted/20 p-3">
                 <InfoRow label="Cost Price" value={formatZAR(costPrice)} />
-                <InfoRow label="Selling Price" value={formatZAR(sellingPrice)} />
-                <InfoRow label="Markup %" value={`${currentMarkup.toFixed(1)}%`} />
+                <InfoRow label="Selling Price" value={formatZAR(pricing.sellingPrice)} />
+                <InfoRow label="Markup %" value={`${pricing.markupPercent.toFixed(1)}%`} />
                 {product.price_per_metre != null && product.price_per_metre > 0 && (
                   <InfoRow label="Price/m" value={formatZAR(product.price_per_metre)} />
                 )}
