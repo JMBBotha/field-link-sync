@@ -60,6 +60,7 @@ export interface PaletteProduct {
   is_material_favorite: boolean;
   pack_qty: number | null;
   supplier_discount_percent: number | null;
+  markup_percent: number | null;
 }
 
 /** Returns the effective per-unit prices for a product, accounting for pack_qty and length */
@@ -235,7 +236,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     queryKey: ["quote-builder-products"],
     queryFn: async () => {
       const { data, error } = await (supabase.from("supplier_products") as any).
-      select("id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, suggested_consumables, pack_qty, supplier_discount_percent, suppliers(name, supplier_type)").
+      select("id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, suggested_consumables, pack_qty, supplier_discount_percent, markup_percent, suppliers(name, supplier_type)").
       or("archived.is.null,archived.eq.false").
       order("is_pinned", { ascending: false }).
       order("pin_order", { ascending: true, nullsFirst: false }).
@@ -253,7 +254,8 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         pipe_size: p.pipe_size || null,
         is_material_favorite: p.is_material_favorite || false,
         pack_qty: p.pack_qty || null,
-        supplier_discount_percent: p.supplier_discount_percent ?? null
+        supplier_discount_percent: p.supplier_discount_percent ?? null,
+        markup_percent: p.markup_percent ?? 20,
       })) as PaletteProduct[];
     },
     staleTime: 60000

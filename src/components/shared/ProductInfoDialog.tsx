@@ -61,37 +61,34 @@ interface ProductInfoDialogProps {
 export default function ProductInfoDialog({ product, onMarkupSaved }: ProductInfoDialogProps) {
   const { isAdmin } = useRole();
   const btu = detectBTU(product);
+  const initialMarkup = (product as any).markup_percent ?? 20;
   const pricing = calculatePricing(
     product.cost_excl_vat || 0,
     product.supplier_discount_percent ?? 0,
-    0 // placeholder — we derive actual markup below
+    initialMarkup
   );
   const costPrice = pricing.discountedCost;
-  const sellingPrice = product.selling_price || 0;
-  const currentMarkup = costPrice > 0 ? ((sellingPrice - costPrice) / costPrice) * 100 : 0;
   const kW = extractKW(product);
   const phase = extractPhase(product);
   const imageUrl = (product as any).image_url;
 
-  const [markup, setMarkup] = useState(Math.round(currentMarkup * 100) / 100);
+  const [markup, setMarkup] = useState(initialMarkup);
   const [saving, setSaving] = useState(false);
 
   const handleSaveMarkup = async () => {
     if (costPrice <= 0) return;
     setSaving(true);
-    const updated = calculatePricing(product.cost_excl_vat || 0, product.supplier_discount_percent ?? 0, markup);
-    const newSelling = Math.round(updated.sellingPrice * 100) / 100;
     const { error } = await supabase
       .from("supplier_products")
-      .update({ selling_price: newSelling })
+      .update({ markup_percent: markup } as any)
       .eq("id", product.id);
     setSaving(false);
     if (error) {
       toast.error("Failed to update markup");
     } else {
       toast.success("Markup updated");
-      product.selling_price = newSelling;
-      onMarkupSaved?.(product.id, newSelling);
+      const updated = calculatePricing(product.cost_excl_vat || 0, product.supplier_discount_percent ?? 0, markup);
+      onMarkupSaved?.(product.id, Math.round(updated.sellingPrice * 100) / 100);
     }
   };
 

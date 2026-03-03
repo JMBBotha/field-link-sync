@@ -1,5 +1,5 @@
 import type { PaletteProduct } from "../QuoteBuilderTab";
-import { calculatePricing } from "@/utils/pricing";
+import { calculatePricing, exclVatFromIncl } from "@/utils/pricing";
 
 export interface QuoteArea {
   id: string;
@@ -86,7 +86,7 @@ export function computeAreaSubtotal(area: QuoteArea): number {
     if (p?.cost_excl_vat > 0) {
       return calculatePricing(p.cost_excl_vat, p?.supplier_discount_percent ?? 0).discountedCost;
     }
-    if (p?.cost_incl_vat) return p.cost_incl_vat / 1.15;
+    if (p?.cost_incl_vat) return exclVatFromIncl(p.cost_incl_vat);
     return p?.selling_price || p?.price_per_metre || 0;
   };
   const acCost = area.acUnits.reduce((s, u) => s + getCost(u.product) * u.quantity, 0);

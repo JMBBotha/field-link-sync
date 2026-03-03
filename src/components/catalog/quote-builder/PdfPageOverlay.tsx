@@ -1,5 +1,5 @@
 import { useState, memo, useCallback, useMemo, useRef } from "react";
-import { calculatePricing } from "@/utils/pricing";
+import { calculatePricing, exclVatFromIncl } from "@/utils/pricing";
 import { useDraggable } from "@dnd-kit/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -222,9 +222,9 @@ const DraggableRegion = memo(({
                   if (product?.cost_excl_vat && product.cost_excl_vat > 0) {
                     costPrice = calculatePricing(product.cost_excl_vat, disc).discountedCost;
                   } else if (region.detected_price && region.detected_price > 0) {
-                    costPrice = Math.round((region.detected_price / 1.15) * 100) / 100;
+                    costPrice = Math.round(exclVatFromIncl(region.detected_price) * 100) / 100;
                   }
-                  const markupPercent = costPrice > 0 ? ((Number(sellingPrice) - costPrice) / costPrice) * 100 : undefined;
+                  const markupPercent = (product as any)?.markup_percent ?? 20;
                   pdfSelection.handleSelectProduct({
                     code: region.product_code,
                     description: product?.short_name || region.label,
