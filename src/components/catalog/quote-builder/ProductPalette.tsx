@@ -342,7 +342,7 @@ function DraggableProductCard({
                         const p = calculatePricing(
                           product.cost_excl_vat || 0,
                           product.supplier_discount_percent ?? 0,
-                          ((product.selling_price || 0) / ((product.cost_excl_vat || 1) * (1 - (product.supplier_discount_percent ?? 0) / 100)) - 1) * 100
+                          product.markup_percent ?? 20
                         );
                         return (
                           <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 text-primary">
@@ -396,7 +396,7 @@ function DraggableProductCard({
                   const p = calculatePricing(
                     product.cost_excl_vat || 0,
                     product.supplier_discount_percent ?? 0,
-                    ((product.selling_price || 0) / ((product.cost_excl_vat || 1) * (1 - (product.supplier_discount_percent ?? 0) / 100) || 1) - 1) * 100
+                    product.markup_percent ?? 20
                   );
                   return (
                     <>
