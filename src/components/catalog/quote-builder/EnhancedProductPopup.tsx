@@ -12,12 +12,7 @@ import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 function getProductPricing(product: PaletteProduct) {
   const costExcl = product.cost_excl_vat || 0;
   const disc = product.supplier_discount_percent ?? 0;
-  const sell = product.selling_price || 0;
-  const markup = costExcl > 0 && disc > 0
-    ? ((sell / (costExcl * (1 - disc / 100))) - 1) * 100
-    : costExcl > 0
-      ? ((sell - costExcl) / costExcl) * 100
-      : 0;
+  const markup = product.markup_percent ?? 20;
   return calculatePricing(costExcl, disc, markup);
 }
 
