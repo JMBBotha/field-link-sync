@@ -46,10 +46,13 @@ const EnhancedProductPopup = ({
   isVisible = true,
 }: EnhancedProductPopupProps) => {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [markupOverride, setMarkupOverride] = useState<number | null>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
-  const price = product.selling_price || product.cost_incl_vat || 0;
+  const effectiveMarkup = markupOverride ?? product.markup_percent ?? 20;
+  const pricing = useMemo(() => getProductPricing({ ...product, markup_percent: effectiveMarkup }), [product, effectiveMarkup]);
+  const price = pricing.sellingPrice || product.cost_incl_vat || 0;
   const inQuoteQty = basketProductCounts[product.id] || 0;
 
   // Position near cursor, clamped to viewport
@@ -226,16 +229,13 @@ const EnhancedProductPopup = ({
                     className="h-5 w-5"
                     onClick={(e) => {
                       e.stopPropagation();
-                      const newMarkup = Math.max(0, p.markupPercent - 5);
-                      const updated = calculatePricing(product.cost_excl_vat || 0, product.supplier_discount_percent ?? 0, newMarkup);
-                      product.selling_price = Math.round(updated.sellingPrice * 100) / 100;
-                      setQuantities({ ...quantities }); // force re-render
+                      setMarkupOverride(Math.max(0, effectiveMarkup - 5));
                     }}
                   >
                     <ChevronDown className="h-3 w-3" />
                   </Button>
                   <span className="text-[11px] font-mono font-semibold text-primary min-w-[40px] text-center">
-                    {p.markupPercent.toFixed(1)}%
+                    {pricing.markupPercent.toFixed(1)}%
                   </span>
                   <Button
                     variant="outline"
@@ -243,17 +243,14 @@ const EnhancedProductPopup = ({
                     className="h-5 w-5"
                     onClick={(e) => {
                       e.stopPropagation();
-                      const newMarkup = p.markupPercent + 5;
-                      const updated = calculatePricing(product.cost_excl_vat || 0, product.supplier_discount_percent ?? 0, newMarkup);
-                      product.selling_price = Math.round(updated.sellingPrice * 100) / 100;
-                      setQuantities({ ...quantities }); // force re-render
+                      setMarkupOverride(effectiveMarkup + 5);
                     }}
                   >
                     <ChevronUp className="h-3 w-3" />
                   </Button>
                 </div>
                 <span className="text-[10px] font-mono text-foreground ml-auto">
-                  → R{(product.selling_price || 0).toLocaleString("en-ZA")}
+                  → R{pricing.sellingPrice.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
               );
