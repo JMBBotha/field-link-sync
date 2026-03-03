@@ -32,23 +32,29 @@ interface PriceConfigPanelProps {
 
 function calculatePrices(rawPrice: number, config: PriceConfig) {
   let price = rawPrice;
-  // Step 1: Remove supplier discount
-  if (config.supplierDiscountPercent > 0) {
-    price = price * (1 - config.supplierDiscountPercent / 100);
-  }
-  // Step 2: Remove VAT if included
+  // Step 1: Remove VAT if included in the PDF price
   if (config.priceIncludesVat) {
     price = price / (1 + config.vatRate / 100);
   }
-  // Step 3: Remove supplier markup if included
+  // Step 2: Remove supplier markup if included
   if (config.priceIncludesMarkup && config.supplierMarkupPercent > 0) {
     price = price / (1 + config.supplierMarkupPercent / 100);
   }
-  const trueCost = price;
-  const costExclVat = trueCost;
-  const costInclVat = trueCost * (1 + config.vatRate / 100);
-  const sellingPrice = trueCost * (1 + config.yourMarkupPercent / 100);
-  return { trueCost, costExclVat, costInclVat, sellingPrice };
+  // This is the BASE list price excl VAT — no discount applied.
+  // Discount is applied only at runtime by calculatePricing() in src/utils/pricing.ts
+  const listPriceExclVat = price;
+
+  // Preview values (for the live preview panel only)
+  const discountedCost = listPriceExclVat * (1 - config.supplierDiscountPercent / 100);
+  const costInclVat = discountedCost * (1 + config.vatRate / 100);
+  const sellingPrice = discountedCost * (1 + config.yourMarkupPercent / 100);
+
+  return {
+    trueCost: discountedCost,        // preview only
+    costExclVat: listPriceExclVat,   // STORED in DB — raw, undiscounted
+    costInclVat,                      // preview only
+    sellingPrice,                     // preview only
+  };
 }
 
 export { calculatePrices };
