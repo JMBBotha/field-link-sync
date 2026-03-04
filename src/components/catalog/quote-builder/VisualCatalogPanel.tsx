@@ -943,7 +943,6 @@ const LazyPdfPage = ({
               pdfSelection={pdfSelection}
               onProductInfoOpen={onProductInfoOpen}
             />
-            />
           )}
           {extracting && (
             <div className="absolute top-2 right-2 z-30 bg-black/50 text-white text-[9px] px-2 py-1 rounded flex items-center gap-1">
