@@ -361,6 +361,7 @@ const PdfPageOverlay = ({
   onHoverMove: onHoverMoveProp,
   onHoverEnd,
   pdfSelection,
+  onProductInfoOpen,
 }: PdfPageOverlayProps) => {
   const hoveredRegionRef = useRef<OverlayRegion | null>(null);
   const [localAddedIds, setLocalAddedIds] = useState<Set<string>>(new Set());
