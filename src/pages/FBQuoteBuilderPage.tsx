@@ -222,13 +222,19 @@ const MobileSummaryDrawer = ({ baskets }: { baskets: Basket[] }) => {
 /* ═══════════════════════════════════════════════════════════════
    CLIENT PORTAL QUOTE BUILDER PAGE
    ═══════════════════════════════════════════════════════════════ */
-const FBQuoteBuilderPage = () => {
+export type QuoteBuilderMode = "admin" | "agent" | "client";
+
+const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const canvasRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { usageMap, trackUsage } = useProductUsageStats();
-  const { company, companyId } = useCompany();
+  // Only use CompanyProvider context when in client mode
+  const companyCtx = mode === "client" ? useCompany() : { company: null, companyId: null };
+  const { company, companyId } = companyCtx;
+
+  const backPath = mode === "agent" ? "/field" : mode === "admin" ? "/admin" : `/client/${companyId}/dashboard`;
 
   const [baskets, setBaskets] = useState<Basket[]>([
     { id: "basket-1", name: "Zone 1", items: [] },
