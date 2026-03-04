@@ -56,9 +56,13 @@ function InfoRow({ label, value, mono }: { label: string; value: string | number
 interface ProductInfoDialogProps {
   product: PaletteProduct;
   onMarkupSaved?: (productId: string, newSellingPrice: number) => void;
+  /** Controlled open state — when provided, Dialog is controlled externally */
+  open?: boolean;
+  /** Callback when controlled Dialog open state changes */
+  onOpenChange?: (open: boolean) => void;
 }
 
-export default function ProductInfoDialog({ product, onMarkupSaved }: ProductInfoDialogProps) {
+export default function ProductInfoDialog({ product, onMarkupSaved, open: controlledOpen, onOpenChange }: ProductInfoDialogProps) {
   const { isAdmin } = useRole();
   const btu = detectBTU(product);
   const initialMarkup = (product as any).markup_percent ?? 20;
