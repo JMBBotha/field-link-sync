@@ -74,6 +74,11 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const [deleting, setDeleting] = useState(false);
   const [hoveredProduct, setHoveredProduct] = useState<PaletteProduct | null>(null);
   const [hoverEvent, setHoverEvent] = useState<MouseEvent | null>(null);
+  const [productInfoProduct, setProductInfoProduct] = useState<PaletteProduct | null>(null);
+
+  const handleProductInfoOpen = useCallback((product: PaletteProduct) => {
+    setProductInfoProduct(product);
+  }, []);
 
   const handleHoverStart = useCallback((product: PaletteProduct | null, e: React.MouseEvent) => {
     setHoveredProduct(product);
