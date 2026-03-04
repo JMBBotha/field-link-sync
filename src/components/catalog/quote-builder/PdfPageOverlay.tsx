@@ -499,6 +499,7 @@ const PdfPageOverlay = ({
           onHoverMove={handleHoverMove}
           onHoverLeave={handleHoverLeave}
           pdfSelection={pdfSelection}
+          onProductInfoOpen={onProductInfoOpen}
         />
       ))}
 
