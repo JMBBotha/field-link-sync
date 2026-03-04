@@ -672,6 +672,7 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
           onOpenWizard={handleOpenWizardFromPdf}
           pdfSearchRef={pdfSearchRef}
           wizardOpen={wizardOpen}
+          pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
         />
       </DndContext>
 
