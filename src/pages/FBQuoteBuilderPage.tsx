@@ -538,7 +538,7 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
       {/* ─── CLIENT PORTAL HEADER ─── */}
       <header className="shrink-0 h-14 flex items-center justify-between px-4 bg-primary text-primary-foreground shadow-sm">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(`/client/${companyId}/dashboard`)}
+          <Button variant="ghost" size="icon" onClick={() => navigate(backPath)}
             className="h-9 w-9 rounded-xl text-primary-foreground hover:bg-primary-foreground/10 transition-all duration-150">
             <ArrowLeft className="h-4 w-4" />
           </Button>
