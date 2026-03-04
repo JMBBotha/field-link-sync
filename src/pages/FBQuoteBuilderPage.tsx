@@ -61,6 +61,24 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
 
+  // PDF selection state for Visual Catalog checkboxes
+  const [selectedFromPdf, setSelectedFromPdf] = useState<PdfSelectedProduct[]>([]);
+
+  const handleSelectProduct = useCallback((product: Pick<PdfSelectedProduct, "code" | "description" | "price"> & Partial<Pick<PdfSelectedProduct, "costPrice" | "markupPercent">>) => {
+    setSelectedFromPdf((prev) => {
+      if (prev.some((p) => p.code === product.code)) {
+        return prev.filter((p) => p.code !== product.code);
+      }
+      return [...prev, { ...product, quantity: 1, unitType: "units", costPrice: product.costPrice, markupPercent: product.markupPercent }];
+    });
+  }, []);
+
+  const updateSelectedItem = useCallback((code: string, updates: Partial<Pick<PdfSelectedProduct, "quantity" | "unitType" | "costPrice" | "markupPercent" | "price">>) => {
+    setSelectedFromPdf((prev) =>
+      prev.map((item) => (item.code === code ? { ...item, ...updates } : item))
+    );
+  }, []);
+
   const summary = useMemo(() => {
     let totalItems = 0, totalQty = 0, grandTotal = 0;
     const zoneBreakdown: { name: string; items: number; qty: number; total: number }[] = [];
