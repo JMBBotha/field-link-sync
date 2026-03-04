@@ -25,6 +25,7 @@ import PdfLinkButton from "./PdfLinkButton";
 import PdfMagnifier from "./PdfMagnifier";
 import CompactZonesSidebar from "./CompactZonesSidebar";
 import EnhancedProductPopup from "./EnhancedProductPopup";
+import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
 
 import CategoryNavBar, { groupCategory } from "./CategoryNavBar";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
@@ -73,6 +74,11 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const [deleting, setDeleting] = useState(false);
   const [hoveredProduct, setHoveredProduct] = useState<PaletteProduct | null>(null);
   const [hoverEvent, setHoverEvent] = useState<MouseEvent | null>(null);
+  const [productInfoProduct, setProductInfoProduct] = useState<PaletteProduct | null>(null);
+
+  const handleProductInfoOpen = useCallback((product: PaletteProduct) => {
+    setProductInfoProduct(product);
+  }, []);
 
   const handleHoverStart = useCallback((product: PaletteProduct | null, e: React.MouseEvent) => {
     setHoveredProduct(product);
@@ -583,6 +589,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           onHoverMove={handleHoverMove}
                           onHoverEnd={handleHoverEnd}
                           pdfSelection={pdfSelection}
+                          onProductInfoOpen={handleProductInfoOpen}
                           registerRef={(el) => {
                             if (el) pageRefs.current.set(idx, el);
                             else pageRefs.current.delete(idx);
@@ -654,6 +661,15 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
           basketProductCounts={basketProductCounts}
         />
       )}
+
+      {/* Controlled ProductInfoDialog triggered by PDF checkbox */}
+      {productInfoProduct && (
+        <ProductInfoDialog
+          product={productInfoProduct}
+          open={!!productInfoProduct}
+          onOpenChange={(open) => { if (!open) setProductInfoProduct(null); }}
+        />
+      )}
     </>
   );
 };
@@ -681,6 +697,7 @@ interface LazyPdfPageProps {
   onHoverMove?: (e: React.MouseEvent) => void;
   onHoverEnd?: () => void;
   pdfSelection?: PdfSelectionHandlers;
+  onProductInfoOpen?: (product: PaletteProduct) => void;
 }
 
 const LazyPdfPage = ({
@@ -704,6 +721,7 @@ const LazyPdfPage = ({
   onHoverMove,
   onHoverEnd,
   pdfSelection,
+  onProductInfoOpen,
 }: LazyPdfPageProps) => {
   const queryClient = useQueryClient();
   const divRef = useRef<HTMLDivElement | null>(null);
@@ -933,6 +951,7 @@ const LazyPdfPage = ({
               onHoverMove={onHoverMove}
               onHoverEnd={onHoverEnd}
               pdfSelection={pdfSelection}
+              onProductInfoOpen={onProductInfoOpen}
             />
           )}
           {extracting && (

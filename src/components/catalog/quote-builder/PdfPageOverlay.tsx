@@ -60,6 +60,8 @@ interface PdfPageOverlayProps {
   onHoverEnd?: () => void;
   /** Shared PDF selection state */
   pdfSelection?: PdfSelectionHandlers;
+  /** Opens ProductInfoDialog for the given product */
+  onProductInfoOpen?: (product: PaletteProduct) => void;
 }
 
 /* ─── Added-to-quote tracker (local state, shared across regions) ─── */
@@ -82,6 +84,7 @@ const DraggableRegion = memo(({
   onHoverMove,
   onHoverLeave,
   pdfSelection,
+  onProductInfoOpen,
 }: {
   region: OverlayRegion;
   baskets: Basket[];
@@ -98,6 +101,7 @@ const DraggableRegion = memo(({
   onHoverMove: (e: React.MouseEvent) => void;
   onHoverLeave: () => void;
   pdfSelection?: PdfSelectionHandlers;
+  onProductInfoOpen?: (product: PaletteProduct) => void;
 }) => {
   const product = region.product;
   const isMatched = !!product;
@@ -194,6 +198,7 @@ const DraggableRegion = memo(({
               onChange={() =>
                 {
                   const product = region.product;
+                  const isCurrentlySelected = pdfSelection.selectedFromPdf.some((s) => s.code === region.product_code);
                   const sellingPrice = product?.selling_price || product?.cost_incl_vat || region.detected_price || 0;
                   const disc = (product as any)?.supplier_discount_percent ?? 0;
                   let costPrice = 0;
@@ -210,6 +215,10 @@ const DraggableRegion = memo(({
                     costPrice: costPrice > 0 ? costPrice : undefined,
                     markupPercent,
                   });
+                  // Open ProductInfoDialog when checking ON (not when unchecking)
+                  if (!isCurrentlySelected && product && onProductInfoOpen) {
+                    onProductInfoOpen(product);
+                  }
                 }
               }
               onClick={(e) => e.stopPropagation()}
@@ -352,6 +361,7 @@ const PdfPageOverlay = ({
   onHoverMove: onHoverMoveProp,
   onHoverEnd,
   pdfSelection,
+  onProductInfoOpen,
 }: PdfPageOverlayProps) => {
   const hoveredRegionRef = useRef<OverlayRegion | null>(null);
   const [localAddedIds, setLocalAddedIds] = useState<Set<string>>(new Set());
@@ -489,6 +499,7 @@ const PdfPageOverlay = ({
           onHoverMove={handleHoverMove}
           onHoverLeave={handleHoverLeave}
           pdfSelection={pdfSelection}
+          onProductInfoOpen={onProductInfoOpen}
         />
       ))}
 
