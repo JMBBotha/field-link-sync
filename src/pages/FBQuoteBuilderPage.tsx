@@ -222,13 +222,19 @@ const MobileSummaryDrawer = ({ baskets }: { baskets: Basket[] }) => {
 /* ═══════════════════════════════════════════════════════════════
    CLIENT PORTAL QUOTE BUILDER PAGE
    ═══════════════════════════════════════════════════════════════ */
-const FBQuoteBuilderPage = () => {
+export type QuoteBuilderMode = "admin" | "agent" | "client";
+
+const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const canvasRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { usageMap, trackUsage } = useProductUsageStats();
-  const { company, companyId } = useCompany();
+  // Only use CompanyProvider context when in client mode
+  const companyCtx = mode === "client" ? useCompany() : { company: null, companyId: null };
+  const { company, companyId } = companyCtx;
+
+  const backPath = mode === "agent" ? "/field" : mode === "admin" ? "/admin" : `/client/${companyId}/dashboard`;
 
   const [baskets, setBaskets] = useState<Basket[]>([
     { id: "basket-1", name: "Zone 1", items: [] },
@@ -532,7 +538,7 @@ const FBQuoteBuilderPage = () => {
       {/* ─── CLIENT PORTAL HEADER ─── */}
       <header className="shrink-0 h-14 flex items-center justify-between px-4 bg-primary text-primary-foreground shadow-sm">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(`/client/${companyId}/dashboard`)}
+          <Button variant="ghost" size="icon" onClick={() => navigate(backPath)}
             className="h-9 w-9 rounded-xl text-primary-foreground hover:bg-primary-foreground/10 transition-all duration-150">
             <ArrowLeft className="h-4 w-4" />
           </Button>
