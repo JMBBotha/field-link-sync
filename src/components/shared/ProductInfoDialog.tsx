@@ -96,19 +96,23 @@ export default function ProductInfoDialog({ product, onMarkupSaved, open: contro
     }
   };
 
+  const isControlled = controlledOpen !== undefined;
+
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <button
-          type="button"
-          className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-accent shrink-0 min-h-[24px] min-w-[24px]"
-          onClick={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <Info className="h-3.5 w-3.5 text-muted-foreground" />
-        </button>
-      </DialogTrigger>
+    <Dialog open={isControlled ? controlledOpen : undefined} onOpenChange={isControlled ? onOpenChange : undefined}>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <button
+            type="button"
+            className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-accent shrink-0 min-h-[24px] min-w-[24px]"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <Info className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+        </DialogTrigger>
+      )}
       <DialogPortal>
         <DialogOverlay className="z-[9999]" />
         <DialogPrimitive.Content
