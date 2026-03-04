@@ -198,6 +198,7 @@ const DraggableRegion = memo(({
               onChange={() =>
                 {
                   const product = region.product;
+                  const isCurrentlySelected = pdfSelection.selectedFromPdf.some((s) => s.code === region.product_code);
                   const sellingPrice = product?.selling_price || product?.cost_incl_vat || region.detected_price || 0;
                   const disc = (product as any)?.supplier_discount_percent ?? 0;
                   let costPrice = 0;
@@ -214,6 +215,10 @@ const DraggableRegion = memo(({
                     costPrice: costPrice > 0 ? costPrice : undefined,
                     markupPercent,
                   });
+                  // Open ProductInfoDialog when checking ON (not when unchecking)
+                  if (!isCurrentlySelected && product && onProductInfoOpen) {
+                    onProductInfoOpen(product);
+                  }
                 }
               }
               onClick={(e) => e.stopPropagation()}
