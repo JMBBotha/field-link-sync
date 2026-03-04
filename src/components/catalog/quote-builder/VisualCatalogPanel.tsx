@@ -687,6 +687,7 @@ interface LazyPdfPageProps {
   onHoverMove?: (e: React.MouseEvent) => void;
   onHoverEnd?: () => void;
   pdfSelection?: PdfSelectionHandlers;
+  onProductInfoOpen?: (product: PaletteProduct) => void;
 }
 
 const LazyPdfPage = ({
