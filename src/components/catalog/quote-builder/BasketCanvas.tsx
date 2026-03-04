@@ -7,7 +7,7 @@ import { SharedBasketItemCard } from "@/components/shared/SharedBasketItems";
 import ConsumablesSuggestionPanel from "./ConsumablesSuggestionPanel";
 import ZoneTemplateSelector from "./ZoneTemplateSelector";
 import type { Basket, PaletteProduct } from "../QuoteBuilderTab";
-import { getEffectiveUnitPrices } from "../QuoteBuilderTab";
+import { calculateBasketSubtotal } from "@/utils/basketCalc";
 
 interface BasketCanvasProps {
   baskets: Basket[];
@@ -60,20 +60,7 @@ function DroppableBasket({
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(basket.name);
 
-  const subtotal = basket.items.reduce((s, i) => {
-    if (i.isBundle && i.bundleUnitPrice) {
-      if (i.bundlePricingType === "p/meter") {
-        return s + i.bundleUnitPrice * (i.length || 1);
-      }
-      return s + i.bundleUnitPrice * i.quantity;
-    }
-    if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
-      return s + i.product.price_per_metre * i.length;
-    }
-    const { unitSell } = getEffectiveUnitPrices(i.product);
-    return s + unitSell * i.quantity;
-  }, 0);
-
+  const subtotal = calculateBasketSubtotal(basket.items);
   const totalQty = basket.items.reduce((s, i) => s + i.quantity, 0);
 
   return (
@@ -134,7 +121,7 @@ function DroppableBasket({
         </div>
       </div>
 
-      {/* Items */}
+      {/* Items — keyed by instanceId (stable) */}
       <div className={`space-y-1 ${isCompact ? "p-1" : "p-2"}`} style={{ minHeight: isCompact ? 60 : 120 }}>
         {basket.items.length === 0 ? (
           <div className={`flex flex-col items-center justify-center rounded-md transition-colors ${isCompact ? "py-3" : "py-6"} ${

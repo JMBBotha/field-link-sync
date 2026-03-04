@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { formatRand } from "@/utils/formatRand";
 import { splitVatFromTotal } from "@/utils/pricing";
 import type { Basket } from "../QuoteBuilderTab";
@@ -54,6 +55,16 @@ const QuoteSummaryPanel = ({ baskets, onGenerateQuote }: QuoteSummaryPanelProps)
   const markupLabel = summary.markup >= 25 && summary.markup <= 50 ? "Standard" : 
                       summary.markup < 25 ? "Low" : "High";
 
+  const markupBadgeVariant = markupLabel === "Standard" ? "default" as const
+    : markupLabel === "Low" ? "destructive" as const
+    : "secondary" as const;
+
+  const markupBadgeClass = markupLabel === "Standard"
+    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800"
+    : markupLabel === "Low"
+      ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800"
+      : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800";
+
   return (
     <div className="space-y-4">
       {/* Subtotal */}
@@ -80,27 +91,27 @@ const QuoteSummaryPanel = ({ baskets, onGenerateQuote }: QuoteSummaryPanelProps)
           <span className="text-muted-foreground">
             Avg. Markup: <span className="font-semibold text-foreground">{summary.markup.toFixed(0)}%</span>
           </span>
-          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
-            markupLabel === "Standard" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
-            markupLabel === "Low" ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" :
-            "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
-          }`}>
+          <Badge variant="outline" className={`text-[10px] font-medium px-1.5 py-0.5 ${markupBadgeClass}`}>
             {markupLabel}
-          </span>
+          </Badge>
         </div>
         <div className="relative h-3 rounded-full bg-muted overflow-hidden">
           <div
             className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
             style={{
               width: `${markupPercent}%`,
-              background: "linear-gradient(90deg, #f59e0b, #eab308, #84cc16)"
+              background: markupLabel === "Low"
+                ? "linear-gradient(90deg, hsl(0 84% 60%), hsl(25 95% 53%))"
+                : markupLabel === "Standard"
+                  ? "linear-gradient(90deg, hsl(142 71% 45%), hsl(84 81% 44%))"
+                  : "linear-gradient(90deg, hsl(45 93% 47%), hsl(38 92% 50%))"
             }}
           />
           {/* Tick marks */}
           <div className="absolute inset-0 flex items-center">
             <div className="absolute left-0 w-px h-full bg-border" />
-            <div className="absolute left-[45.5%] w-px h-full bg-border/50" /> {/* 25% mark at 25/55 */}
-            <div className="absolute left-[90.9%] w-px h-full bg-border/50" /> {/* 50% mark at 50/55 */}
+            <div className="absolute left-[45.5%] w-px h-full bg-border/50" />
+            <div className="absolute left-[90.9%] w-px h-full bg-border/50" />
           </div>
         </div>
         <div className="flex justify-between text-[9px] text-muted-foreground">
