@@ -230,9 +230,8 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
   const canvasRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { usageMap, trackUsage } = useProductUsageStats();
-  // Only use CompanyProvider context when in client mode
-  const companyCtx = mode === "client" ? useCompany() : { company: null, companyId: null };
-  const { company, companyId } = companyCtx;
+  // Always call the hook (Rules of Hooks) — returns safe defaults when no provider
+  const { company, companyId } = useCompany();
 
   const backPath = mode === "agent" ? "/field" : mode === "admin" ? "/admin" : `/client/${companyId}/dashboard`;
 
