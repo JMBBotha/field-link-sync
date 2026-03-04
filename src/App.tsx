@@ -132,6 +132,9 @@ const App = () => (
               {/* Full-page Quote Builder (outside AdminLayout for full-bleed) */}
               <Route path="/admin/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminQuoteBuilderPageUnified /></RequireRole>} />
 
+              {/* Agent Quote Builder — same component, agent mode */}
+              <Route path="/field/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher", "agent"]}><AdminQuoteBuilderPageUnified mode="agent" /></RequireRole>} />
+
               {/* FreshBooks multi-tenant client dashboards */}
               <Route path="/client/:companyId" element={<CompanyProvider><FBLayout /></CompanyProvider>}>
                 <Route path="dashboard" element={<FBDashboard />} />
