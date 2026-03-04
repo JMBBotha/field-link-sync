@@ -550,7 +550,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
         }
       } catch (err: any) {
         toast({ title: "Failed to create quote", description: err.message, variant: "destructive" });
-        if (!cancelled) navigate("/admin/quotes");
+        if (!cancelled) navigate(mode === "agent" ? "/field" : "/admin/quotes");
       }
     })();
 
