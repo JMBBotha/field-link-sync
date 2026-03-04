@@ -527,7 +527,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
         const userId = userData?.user?.id;
         if (!userId) {
           toast({ title: "You must be logged in", variant: "destructive" });
-          navigate("/admin/quotes");
+          navigate(mode === "agent" ? "/field" : "/admin/quotes");
           return;
         }
 
