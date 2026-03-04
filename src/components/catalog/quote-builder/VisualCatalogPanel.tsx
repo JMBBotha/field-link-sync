@@ -25,6 +25,7 @@ import PdfLinkButton from "./PdfLinkButton";
 import PdfMagnifier from "./PdfMagnifier";
 import CompactZonesSidebar from "./CompactZonesSidebar";
 import EnhancedProductPopup from "./EnhancedProductPopup";
+import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
 
 import CategoryNavBar, { groupCategory } from "./CategoryNavBar";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
