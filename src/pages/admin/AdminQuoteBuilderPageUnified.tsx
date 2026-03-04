@@ -33,6 +33,8 @@ import FloatingSelectedItems from "@/components/catalog/quote-builder/FloatingSe
 import type { QuoteArea } from "@/components/catalog/quote-builder/quoteWizardTypes";
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
 
+export type QuoteBuilderMode = "admin" | "agent";
+
 /* ─── Shared Header with client selector ─── */
 function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
   const { meta, updateQuote, areas, items } = useQuoteContext();
