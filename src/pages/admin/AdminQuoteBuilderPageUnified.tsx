@@ -166,7 +166,7 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
 }
 
 /* ─── Inner content (needs context) ─── */
-function UnifiedQuoteBuilderInner() {
+function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode }) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("normal");
   const [areaWizardOpen, setAreaWizardOpen] = useState(false);
