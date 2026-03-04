@@ -510,7 +510,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 }
 
 /* ─── Outer wrapper: creates/loads quote, then mounts provider ─── */
-const AdminQuoteBuilderPageUnified = () => {
+const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderMode }) => {
   const [searchParams] = useSearchParams();
   const [quoteId, setQuoteId] = useState<string | null>(searchParams.get("quoteId"));
   const [creating, setCreating] = useState(!quoteId);
