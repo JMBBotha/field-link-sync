@@ -570,7 +570,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
 
   return (
     <QuoteProvider quoteId={quoteId}>
-      <UnifiedQuoteBuilderInner />
+      <UnifiedQuoteBuilderInner mode={mode} />
     </QuoteProvider>);
 
 };
