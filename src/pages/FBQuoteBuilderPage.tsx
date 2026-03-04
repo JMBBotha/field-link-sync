@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
+import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import { splitVatFromTotal, VAT_RATE } from "@/utils/pricing";
 import { useNavigate } from "react-router-dom";
 import {
@@ -59,6 +60,24 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
   const [quoteName, setQuoteName] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
+
+  // PDF selection state for Visual Catalog checkboxes
+  const [selectedFromPdf, setSelectedFromPdf] = useState<PdfSelectedProduct[]>([]);
+
+  const handleSelectProduct = useCallback((product: Pick<PdfSelectedProduct, "code" | "description" | "price"> & Partial<Pick<PdfSelectedProduct, "costPrice" | "markupPercent">>) => {
+    setSelectedFromPdf((prev) => {
+      if (prev.some((p) => p.code === product.code)) {
+        return prev.filter((p) => p.code !== product.code);
+      }
+      return [...prev, { ...product, quantity: 1, unitType: "units", costPrice: product.costPrice, markupPercent: product.markupPercent }];
+    });
+  }, []);
+
+  const updateSelectedItem = useCallback((code: string, updates: Partial<Pick<PdfSelectedProduct, "quantity" | "unitType" | "costPrice" | "markupPercent" | "price">>) => {
+    setSelectedFromPdf((prev) =>
+      prev.map((item) => (item.code === code ? { ...item, ...updates } : item))
+    );
+  }, []);
 
   const summary = useMemo(() => {
     let totalItems = 0, totalQty = 0, grandTotal = 0;
@@ -653,6 +672,7 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
           onOpenWizard={handleOpenWizardFromPdf}
           pdfSearchRef={pdfSearchRef}
           wizardOpen={wizardOpen}
+          pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
         />
       </DndContext>
 
