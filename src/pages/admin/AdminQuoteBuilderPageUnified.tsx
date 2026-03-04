@@ -33,6 +33,8 @@ import FloatingSelectedItems from "@/components/catalog/quote-builder/FloatingSe
 import type { QuoteArea } from "@/components/catalog/quote-builder/quoteWizardTypes";
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
 
+export type QuoteBuilderMode = "admin" | "agent";
+
 /* ─── Shared Header with client selector ─── */
 function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
   const { meta, updateQuote, areas, items } = useQuoteContext();
@@ -164,7 +166,7 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
 }
 
 /* ─── Inner content (needs context) ─── */
-function UnifiedQuoteBuilderInner() {
+function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode }) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("normal");
   const [areaWizardOpen, setAreaWizardOpen] = useState(false);
@@ -366,7 +368,7 @@ function UnifiedQuoteBuilderInner() {
         backgroundAttachment: "fixed"
       }}>
 
-      <QuoteSharedHeader onBack={() => navigate("/admin/quotes")} />
+      <QuoteSharedHeader onBack={() => navigate(mode === "agent" ? "/field" : "/admin/quotes")} />
 
       {/* Builder mode tabs */}
       
@@ -508,7 +510,7 @@ function UnifiedQuoteBuilderInner() {
 }
 
 /* ─── Outer wrapper: creates/loads quote, then mounts provider ─── */
-const AdminQuoteBuilderPageUnified = () => {
+const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderMode }) => {
   const [searchParams] = useSearchParams();
   const [quoteId, setQuoteId] = useState<string | null>(searchParams.get("quoteId"));
   const [creating, setCreating] = useState(!quoteId);
@@ -525,7 +527,7 @@ const AdminQuoteBuilderPageUnified = () => {
         const userId = userData?.user?.id;
         if (!userId) {
           toast({ title: "You must be logged in", variant: "destructive" });
-          navigate("/admin/quotes");
+          navigate(mode === "agent" ? "/field" : "/admin/quotes");
           return;
         }
 
@@ -548,7 +550,7 @@ const AdminQuoteBuilderPageUnified = () => {
         }
       } catch (err: any) {
         toast({ title: "Failed to create quote", description: err.message, variant: "destructive" });
-        if (!cancelled) navigate("/admin/quotes");
+        if (!cancelled) navigate(mode === "agent" ? "/field" : "/admin/quotes");
       }
     })();
 
@@ -568,7 +570,7 @@ const AdminQuoteBuilderPageUnified = () => {
 
   return (
     <QuoteProvider quoteId={quoteId}>
-      <UnifiedQuoteBuilderInner />
+      <UnifiedQuoteBuilderInner mode={mode} />
     </QuoteProvider>);
 
 };
