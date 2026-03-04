@@ -661,6 +661,15 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
           basketProductCounts={basketProductCounts}
         />
       )}
+
+      {/* Controlled ProductInfoDialog triggered by PDF checkbox */}
+      {productInfoProduct && (
+        <ProductInfoDialog
+          product={productInfoProduct}
+          open={!!productInfoProduct}
+          onOpenChange={(open) => { if (!open) setProductInfoProduct(null); }}
+        />
+      )}
     </>
   );
 };
