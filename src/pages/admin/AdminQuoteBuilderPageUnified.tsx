@@ -368,7 +368,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         backgroundAttachment: "fixed"
       }}>
 
-      <QuoteSharedHeader onBack={() => navigate("/admin/quotes")} />
+      <QuoteSharedHeader onBack={() => navigate(mode === "agent" ? "/field" : "/admin/quotes")} />
 
       {/* Builder mode tabs */}
       
