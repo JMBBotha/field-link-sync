@@ -84,6 +84,7 @@ const DraggableRegion = memo(({
   onHoverMove,
   onHoverLeave,
   pdfSelection,
+  onProductInfoOpen,
 }: {
   region: OverlayRegion;
   baskets: Basket[];
@@ -100,6 +101,7 @@ const DraggableRegion = memo(({
   onHoverMove: (e: React.MouseEvent) => void;
   onHoverLeave: () => void;
   pdfSelection?: PdfSelectionHandlers;
+  onProductInfoOpen?: (product: PaletteProduct) => void;
 }) => {
   const product = region.product;
   const isMatched = !!product;
