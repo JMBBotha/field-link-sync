@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -15,7 +16,13 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Building2, Plus, Search, Users, Package, MoreVertical, Trash2, AlertTriangle } from "lucide-react";
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Building2, Plus, Search, Users, Package, MoreVertical, Trash2,
+  AlertTriangle, ChevronDown, Loader2, ShieldAlert,
+} from "lucide-react";
 import SupplierDetailSheet from "@/components/suppliers/SupplierDetailSheet";
 import SupplierFormDialog from "@/components/suppliers/SupplierFormDialog";
 import FloatingQuoteBuilderButton from "@/components/shared/FloatingQuoteBuilderButton";
@@ -23,7 +30,10 @@ import { useToast } from "@/hooks/use-toast";
 import {
   deleteSupplierCompletely,
   deleteSupplierProductsOnly,
+  deleteAllSuppliersCompletely,
   getSupplierDeleteCounts,
+  getOrphanProductCount,
+  cleanOrphanProducts,
 } from "@/services/supplierDeleteService";
 
 interface SupplierRow {
@@ -53,11 +63,16 @@ const AdminSuppliersPage = () => {
   const [editingSupplierId, setEditingSupplierId] = useState<string | null>(null);
   const [deleteState, setDeleteState] = useState<DeleteState | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [dangerOpen, setDangerOpen] = useState(false);
 
-  // Bulk-delete-all state
+  // Bulk delete state
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkConfirmText, setBulkConfirmText] = useState("");
-  const [bulkProgress, setBulkProgress] = useState<string | null>(null);
+  const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number; name: string } | null>(null);
+
+  // Orphan check
+  const [orphanCount, setOrphanCount] = useState<number | null>(null);
+  const [cleaningOrphans, setCleaningOrphans] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -101,13 +116,8 @@ const AdminSuppliersPage = () => {
 
   const filtered = suppliers.filter((s) => {
     const q = search.toLowerCase();
-    return (
-      !q ||
-      s.name.toLowerCase().includes(q) ||
-      s.company_name?.toLowerCase().includes(q) ||
-      s.trading_name?.toLowerCase().includes(q) ||
-      s.contact_email?.toLowerCase().includes(q)
-    );
+    return !q || s.name.toLowerCase().includes(q) || s.company_name?.toLowerCase().includes(q) ||
+      s.trading_name?.toLowerCase().includes(q) || s.contact_email?.toLowerCase().includes(q);
   });
 
   const handleEdit = (id: string) => { setEditingSupplierId(id); setFormOpen(true); };
@@ -119,17 +129,38 @@ const AdminSuppliersPage = () => {
     queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
     queryClient.invalidateQueries({ queryKey: ["suppliers"] });
     queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
+    queryClient.invalidateQueries({ queryKey: ["consumable-products"] });
+    runOrphanCheck();
   };
 
-  // --- Single supplier delete actions ---
+  // Orphan check after page load
+  const runOrphanCheck = async () => {
+    try {
+      const count = await getOrphanProductCount();
+      setOrphanCount(count);
+    } catch { setOrphanCount(null); }
+  };
+
+  useEffect(() => { runOrphanCheck(); }, []);
+
+  const handleCleanOrphans = async () => {
+    setCleaningOrphans(true);
+    try {
+      const cleaned = await cleanOrphanProducts();
+      toast({ title: `${cleaned} orphan products cleaned up` });
+      setOrphanCount(0);
+      refreshAll();
+    } catch (err: any) {
+      toast({ title: "Cleanup failed", description: err.message, variant: "destructive" });
+    } finally {
+      setCleaningOrphans(false);
+    }
+  };
+
+  // Single supplier delete
   const openDeleteDialog = async (supplier: SupplierRow, mode: DeleteMode) => {
     const counts = await getSupplierDeleteCounts(supplier.id);
-    setDeleteState({
-      supplierId: supplier.id,
-      supplierName: supplier.company_name || supplier.name,
-      mode,
-      counts,
-    });
+    setDeleteState({ supplierId: supplier.id, supplierName: supplier.company_name || supplier.name, mode, counts });
   };
 
   const confirmDelete = async () => {
@@ -138,10 +169,10 @@ const AdminSuppliersPage = () => {
     try {
       if (deleteState.mode === "complete") {
         await deleteSupplierCompletely(deleteState.supplierId);
-        toast({ title: `${deleteState.supplierName} — deleted completely.` });
+        toast({ title: `${deleteState.supplierName} removed completely.` });
       } else {
         await deleteSupplierProductsOnly(deleteState.supplierId);
-        toast({ title: `${deleteState.supplierName} — products cleared. Ready for re-upload.` });
+        toast({ title: `${deleteState.supplierName} cleared — ready for fresh upload.` });
       }
       refreshAll();
     } catch (err: any) {
@@ -152,21 +183,21 @@ const AdminSuppliersPage = () => {
     }
   };
 
-  // --- Bulk delete all suppliers ---
+  // Bulk delete all
   const handleBulkDeleteAll = async () => {
     setBulkOpen(false);
     setBulkConfirmText("");
-    for (let i = 0; i < suppliers.length; i++) {
-      setBulkProgress(`Deleting ${i + 1} of ${suppliers.length} suppliers...`);
-      try {
-        await deleteSupplierCompletely(suppliers[i].id);
-      } catch (err: any) {
-        toast({ title: `Failed on ${suppliers[i].name}`, description: err.message, variant: "destructive" });
-      }
+    try {
+      await deleteAllSuppliersCompletely((current, total, name) => {
+        setBulkProgress({ current, total, name });
+      });
+      setBulkProgress(null);
+      toast({ title: "All suppliers deleted. Database is clean." });
+      refreshAll();
+    } catch (err: any) {
+      setBulkProgress(null);
+      toast({ title: "Bulk delete failed", description: err.message, variant: "destructive" });
     }
-    setBulkProgress(null);
-    toast({ title: `All ${suppliers.length} suppliers deleted.` });
-    refreshAll();
   };
 
   return (
@@ -180,23 +211,79 @@ const AdminSuppliersPage = () => {
           </h2>
           <p className="text-sm text-muted-foreground">{suppliers.length} suppliers</p>
         </div>
-        <div className="flex items-center gap-2">
-          {suppliers.length > 0 && (
-            <Button variant="destructive" size="sm" onClick={() => setBulkOpen(true)}>
-              <AlertTriangle className="h-4 w-4 mr-1" /> Delete ALL Suppliers
-            </Button>
-          )}
-          <Button onClick={handleAdd} size="sm">
-            <Plus className="h-4 w-4 mr-1" /> Add Supplier
-          </Button>
-        </div>
+        <Button onClick={handleAdd} size="sm">
+          <Plus className="h-4 w-4 mr-1" /> Add Supplier
+        </Button>
       </div>
 
-      {/* Bulk progress banner */}
-      {bulkProgress && (
-        <div className="rounded-md bg-destructive/10 border border-destructive/30 px-4 py-3 text-sm font-medium text-destructive">
-          {bulkProgress}
-        </div>
+      {/* Orphan warning */}
+      {orphanCount !== null && orphanCount > 0 && (
+        <Card className="border-yellow-500/50 bg-yellow-500/5">
+          <CardContent className="p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <span className="font-medium text-yellow-700">
+                ⚠️ {orphanCount} orphan product{orphanCount !== 1 ? "s" : ""} found with no supplier
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCleanOrphans}
+              disabled={cleaningOrphans}
+              className="text-xs"
+            >
+              {cleaningOrphans ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Trash2 className="h-3 w-3 mr-1" />}
+              Clean Orphans
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Danger Zone (collapsed) */}
+      {suppliers.length > 0 && (
+        <Collapsible open={dangerOpen} onOpenChange={setDangerOpen}>
+          <Card className="border-destructive/30">
+            <CardContent className="p-0">
+              <CollapsibleTrigger asChild>
+                <button className="w-full flex items-center justify-between p-3 hover:bg-destructive/5 transition-colors rounded-lg">
+                  <span className="text-sm font-medium flex items-center gap-2 text-destructive">
+                    <ShieldAlert className="h-4 w-4" />
+                    ⚠️ Danger Zone
+                  </span>
+                  <ChevronDown className={`h-4 w-4 text-destructive transition-transform ${dangerOpen ? "rotate-180" : ""}`} />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="px-3 pb-3 space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Delete ALL suppliers and their associated products, PDFs, contacts, and documents.
+                    This action is irreversible.
+                  </p>
+
+                  {bulkProgress && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-destructive">
+                        Deleting {bulkProgress.current} of {bulkProgress.total} suppliers...
+                        <span className="text-muted-foreground ml-1">({bulkProgress.name})</span>
+                      </p>
+                      <Progress value={(bulkProgress.current / bulkProgress.total) * 100} className="h-2" />
+                    </div>
+                  )}
+
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setBulkOpen(true)}
+                    disabled={!!bulkProgress}
+                  >
+                    <AlertTriangle className="h-4 w-4 mr-1" /> Delete ALL {suppliers.length} Suppliers
+                  </Button>
+                </div>
+              </CollapsibleContent>
+            </CardContent>
+          </Card>
+        </Collapsible>
       )}
 
       {/* Search */}
@@ -274,16 +361,16 @@ const AdminSuppliersPage = () => {
         </CardContent>
       </Card>
 
-      {/* Single supplier delete confirmation */}
+      {/* Single delete confirmation */}
       <AlertDialog open={!!deleteState} onOpenChange={(o) => !o && setDeleteState(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {deleteState?.mode === "complete" ? "Delete Supplier Completely?" : "Clear Products & PDFs?"}
+              {deleteState?.mode === "complete" ? "💥 Delete Supplier Completely?" : "🗑️ Clear Products & PDFs?"}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <div className="space-y-2">
-                <p className="font-medium text-foreground">{deleteState?.supplierName}</p>
+              <div className="space-y-3">
+                <p className="font-medium text-foreground text-base">{deleteState?.supplierName}</p>
                 <ul className="list-disc list-inside text-sm space-y-1">
                   <li>{deleteState?.counts.products ?? 0} products will be deleted</li>
                   <li>{deleteState?.counts.pdfs ?? 0} PDF catalogs will be removed</li>
@@ -291,9 +378,14 @@ const AdminSuppliersPage = () => {
                     <li>{deleteState?.counts.contacts ?? 0} contacts will be removed</li>
                   )}
                 </ul>
+                {deleteState?.mode === "products" && (
+                  <p className="text-sm text-muted-foreground">
+                    Supplier info will be kept intact — ready for re-upload.
+                  </p>
+                )}
                 {deleteState?.mode === "complete" && (
-                  <p className="text-destructive font-semibold text-sm mt-2">
-                    ⚠️ This also removes all contacts and the supplier record. This cannot be undone.
+                  <p className="text-destructive font-semibold text-sm border border-destructive/30 rounded-md p-2 bg-destructive/5">
+                    ⚠️ This also removes all contacts and the supplier record. If any active quotes reference these products, those line items will be cleared. This cannot be undone.
                   </p>
                 )}
               </div>
@@ -306,7 +398,13 @@ const AdminSuppliersPage = () => {
               onClick={confirmDelete}
               disabled={isDeleting}
             >
-              {isDeleting ? "Deleting..." : "Confirm Delete"}
+              {isDeleting ? (
+                <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Deleting...</>
+              ) : deleteState?.mode === "complete" ? (
+                "Yes, Delete Everything"
+              ) : (
+                "Confirm Delete"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -316,13 +414,21 @@ const AdminSuppliersPage = () => {
       <AlertDialog open={bulkOpen} onOpenChange={(o) => { if (!o) { setBulkOpen(false); setBulkConfirmText(""); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive">Delete ALL {suppliers.length} Suppliers?</AlertDialogTitle>
+            <AlertDialogTitle className="text-destructive flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              Delete ALL {suppliers.length} Suppliers?
+            </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
-                <p>This will permanently delete every supplier, all their products, PDF catalogs, contacts, and dependent records.</p>
+                <p>
+                  This will permanently delete <strong>every supplier</strong>, all their products,
+                  PDF catalogs, contacts, documents, and dependent records.
+                </p>
                 <p className="text-destructive font-semibold">This action cannot be undone.</p>
                 <div>
-                  <p className="text-sm mb-1">Type <span className="font-mono font-bold">DELETE ALL</span> to confirm:</p>
+                  <p className="text-sm mb-1">
+                    Type <span className="font-mono font-bold bg-muted px-1 rounded">DELETE ALL</span> to confirm:
+                  </p>
                   <Input
                     value={bulkConfirmText}
                     onChange={(e) => setBulkConfirmText(e.target.value)}

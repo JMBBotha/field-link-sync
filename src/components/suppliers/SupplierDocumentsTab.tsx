@@ -91,35 +91,9 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
     setDeletingProducts(true);
     try {
       if (mode === "delete") {
-        // Get all product IDs for this supplier
-        const { data: products } = await (supabase.from("supplier_products") as any)
-          .select("id")
-          .eq("supplier_id", supplierId);
-        const productIds = (products || []).map((p: any) => p.id);
-        
-        if (productIds.length > 0) {
-          // Delete dependent rows first (FK constraints)
-          await (supabase.from("pdf_product_regions") as any)
-            .delete()
-            .in("product_id", productIds);
-          await (supabase.from("quote_items") as any)
-            .delete()
-            .in("product_id", productIds);
-          await (supabase.from("bundle_items") as any)
-            .delete()
-            .in("supplier_product_id", productIds);
-          await (supabase.from("inventory_stock") as any)
-            .delete()
-            .in("product_id", productIds);
-          await (supabase.from("job_used_parts") as any)
-            .delete()
-            .in("product_id", productIds);
-          // Now delete the products
-          const { error } = await (supabase.from("supplier_products") as any)
-            .delete()
-            .eq("supplier_id", supplierId);
-          if (error) throw error;
-        }
+        // Use centralized service for clean cascade deletion
+        const { deleteSupplierProductsOnly } = await import("@/services/supplierDeleteService");
+        await deleteSupplierProductsOnly(supplierId);
       } else {
         const { error } = await (supabase.from("supplier_products") as any)
           .update({ archived: true })
@@ -133,7 +107,8 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
       queryClient.invalidateQueries({ queryKey: ["admin-suppliers-list"] });
       queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
       queryClient.invalidateQueries({ queryKey: ["consumable-products"] });
-      toast({ title: mode === "delete" ? "All products permanently deleted" : "All products archived", description: `Products for this supplier have been removed.` });
+      queryClient.invalidateQueries({ queryKey: ["supplier-catalog-pages", supplierId] });
+      toast({ title: mode === "delete" ? "All products permanently deleted" : "All products archived", description: "Products for this supplier have been removed." });
     } catch (err: any) {
       toast({ title: "Failed", description: err.message, variant: "destructive" });
     } finally {
@@ -438,8 +413,54 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
 
   const deleteDoc = documents.find((d) => d.id === deleteId);
 
+  const handleClearAndReupload = async () => {
+    setDeletingProducts(true);
+    try {
+      const { deleteSupplierProductsOnly } = await import("@/services/supplierDeleteService");
+      await deleteSupplierProductsOnly(supplierId);
+      queryClient.invalidateQueries({ queryKey: ["supplier-active-product-count", supplierId] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-catalog-pages", supplierId] });
+      toast({ title: "All products & PDFs cleared", description: "Upload a new price list below." });
+      // Open the file picker for immediate re-upload
+      setTimeout(() => priceListInputRef.current?.click(), 300);
+    } catch (err: any) {
+      toast({ title: "Clear failed", description: err.message, variant: "destructive" });
+    } finally {
+      setDeletingProducts(false);
+    }
+  };
+
   return (
     <div className="space-y-3 mt-2">
+      {/* Clear All & Re-upload */}
+      {(activeProductCount > 0 || catalogPageCount > 0) && (
+        <Card className="border-dashed border-destructive/30 bg-destructive/5">
+          <CardContent className="p-3 flex items-center justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-medium flex items-center gap-1.5">
+                <Trash2 className="h-4 w-4 text-destructive shrink-0" />
+                Clear All Products & Re-upload
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Deletes all {activeProductCount} products and {catalogPageCount} PDF pages, then opens the upload dialog.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={handleClearAndReupload}
+              disabled={deletingProducts}
+              className="text-xs shrink-0"
+            >
+              {deletingProducts ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Trash2 className="h-3 w-3 mr-1" />}
+              Clear & Re-upload
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Price List Upload for Visual Catalog */}
       <Card className="border-dashed border-primary/30 bg-primary/5">
         <CardContent className="p-3">
