@@ -73,6 +73,39 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
   });
   const catalogPageCount = catalogInfo.count;
 
+  // Count active products for this supplier
+  const { data: activeProductCount = 0 } = useQuery({
+    queryKey: ["supplier-active-product-count", supplierId],
+    queryFn: async () => {
+      const { count, error } = await (supabase.from("supplier_products") as any)
+        .select("*", { count: "exact", head: true })
+        .eq("supplier_id", supplierId)
+        .or("archived.is.null,archived.eq.false");
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
+  const deleteAllProducts = async () => {
+    setDeletingProducts(true);
+    try {
+      const { error } = await (supabase.from("supplier_products") as any)
+        .update({ archived: true })
+        .eq("supplier_id", supplierId)
+        .or("archived.is.null,archived.eq.false");
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["supplier-active-product-count", supplierId] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-product-count", supplierId] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-suppliers-list"] });
+      toast({ title: "All products archived", description: `Products for this supplier have been removed.` });
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+    } finally {
+      setDeletingProducts(false);
+      setShowDeleteProducts(false);
+    }
+  };
   const deleteCatalogPages = async () => {
     setDeletingCatalog(true);
     try {
