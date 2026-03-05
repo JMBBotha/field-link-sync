@@ -25,16 +25,24 @@ serve(async (req) => {
       );
     }
 
-    const { imageBase64, width = 2000 } = await req.json();
+    const { imageUrl, imageBase64, width = 2000 } = await req.json();
 
-    if (!imageBase64) {
+    // Determine the URL to send to Deep-Image.ai
+    let deepImageUrl: string;
+    if (imageUrl) {
+      // Preferred: public URL from storage (no base64 in memory)
+      deepImageUrl = imageUrl;
+      console.log(`[enhance-pdf-page] Using public URL (width=${width})`);
+    } else if (imageBase64) {
+      // Fallback: base64 data URI
+      deepImageUrl = `data:image/png;base64,${imageBase64}`;
+      console.log(`[enhance-pdf-page] Using base64 fallback (width=${width})`);
+    } else {
       return new Response(
-        JSON.stringify({ error: "imageBase64 is required" }),
+        JSON.stringify({ error: "imageUrl or imageBase64 is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    console.log(`[enhance-pdf-page] Sending image to Deep-Image.ai (width=${width})`);
 
     const response = await fetch("https://deep-image.ai/rest_api/process_result", {
       method: "POST",
@@ -43,7 +51,7 @@ serve(async (req) => {
         "X-API-KEY": apiKey,
       },
       body: JSON.stringify({
-        url: `data:image/png;base64,${imageBase64}`,
+        url: deepImageUrl,
         width,
         enhancements: ["denoise", "light"],
       }),
@@ -66,7 +74,7 @@ serve(async (req) => {
     if (!result?.result_url && result?.job) {
       const jobId = result.job;
       console.log(`[enhance-pdf-page] Job queued: ${jobId}, polling...`);
-      for (let i = 0; i < 12; i++) {
+      for (let i = 0; i < 8; i++) {
         await new Promise(r => setTimeout(r, 2000));
         const pollResp = await fetch(`https://deep-image.ai/rest_api/result/${jobId}`, {
           headers: { "X-API-KEY": apiKey }
@@ -84,7 +92,7 @@ serve(async (req) => {
     }
 
     if (finalResult?.result_url) {
-      const imgResp = await fetch(result.result_url);
+      const imgResp = await fetch(finalResult.result_url);
       if (!imgResp.ok) {
         return new Response(
           JSON.stringify({ error: "Failed to fetch enhanced image from result URL" }),
