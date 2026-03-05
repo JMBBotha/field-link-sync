@@ -213,8 +213,34 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
   };
 
   const handlePreview = (pdf: PDFUploadRow) => {
-    const url = pdf.file_url || pdf.file_path || pdf.storage_path;
-    if (url) setPreviewUrl(url);
+    const rawPath = pdf.file_url || pdf.file_path || pdf.storage_path || null;
+    if (!rawPath) return;
+
+    // If it's already a full URL (http/https), use directly
+    if (rawPath.startsWith("http")) {
+      setPreviewUrl(rawPath);
+      return;
+    }
+
+    // Try to extract bucket/path from Supabase storage URL patterns
+    const match = rawPath.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)/);
+    if (match) {
+      const { data } = supabase.storage.from(match[1]).getPublicUrl(match[2]);
+      setPreviewUrl(data.publicUrl);
+      return;
+    }
+
+    // Assume it's a path in one of the common buckets - try each
+    for (const bucket of STORAGE_BUCKETS) {
+      const { data } = supabase.storage.from(bucket).getPublicUrl(rawPath);
+      if (data.publicUrl) {
+        setPreviewUrl(data.publicUrl);
+        return;
+      }
+    }
+
+    // Last resort: try as-is
+    setPreviewUrl(rawPath);
   };
 
   return (
