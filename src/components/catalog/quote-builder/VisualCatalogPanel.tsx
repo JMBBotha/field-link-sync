@@ -885,9 +885,9 @@ const LazyPdfPage = ({
     }
     // Generate overlay regions from supplier products matching this page's supplier
     const supplierProducts = activeProducts.filter(p => {
-      const supplierName = (supplierNameMap[page.supplier_id] || page.supplier_id || "").toLowerCase().trim();
+      const pageSupplierName = (supplierName || page.supplier_id || "").toLowerCase().trim();
       const productSupplier = (p.supplier_name || "").toLowerCase().trim();
-      return productSupplier.includes(supplierName) || supplierName.includes(productSupplier);
+      return productSupplier.includes(pageSupplierName) || pageSupplierName.includes(productSupplier);
     });
     if (supplierProducts.length === 0) return [];
     // Distribute products evenly across the page area (5%-95%)
@@ -906,7 +906,7 @@ const LazyPdfPage = ({
       detected_price: p.selling_price || p.cost_incl_vat || null,
       matched: true,
     }));
-  }, [hasPdfSource, liveRegions, storedRegions, activeProducts, page.id, page.supplier_id, supplierNameMap]);
+  }, [hasPdfSource, liveRegions, storedRegions, activeProducts, page.id, page.supplier_id, supplierName]);
 
   const overlayRegions: OverlayRegion[] = useMemo(() => {
     // Prefer live regions, fall back to fallback
