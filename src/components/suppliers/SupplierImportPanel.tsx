@@ -182,7 +182,7 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
         }
       }
 
-      // Step 4: Insert products in batches
+      // Step 4: Insert products in batches (NOTE: selling_price is a GENERATED column — never include it)
       console.log(`[Import] Step 4: Inserting ${products.length} products...`);
       const rows = products.map((p) => ({
         supplier_id: supplierId,
@@ -196,28 +196,48 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
         rrp: p.raw_price,
         cost_incl_vat: p.price_includes_vat ? p.raw_price : parseFloat((p.price_excl_vat * 1.15).toFixed(2)),
         default_markup_percent: p.markup_percent,
-        selling_price: p.calculated_price,
-        sell_price_incl_vat: p.sell_price_incl_vat,
-        vat_amount: p.vat_amount,
-        list_price_raw: p.raw_price,
-        price_includes_vat: p.price_includes_vat,
-        price_excl_vat: p.price_excl_vat,
-        supplier_discount_percent: p.supplier_discount_percent,
-        markup_percent: p.markup_percent,
-        import_confidence: p.confidence,
         brand: supplierName || "",
         is_active: true,
         archived: false,
         ...(pdfUploadId ? { pdf_upload_id: pdfUploadId } : {}),
       }));
 
-      for (let i = 0; i < rows.length; i += 50) {
-        const batch = rows.slice(i, i + 50);
-        const { error } = await (supabase.from("supplier_products") as any).insert(batch);
-        if (error) {
-          console.error(`[Import] Batch ${i / 50 + 1} failed:`, error);
-          throw new Error(`Product insert failed at batch ${i / 50 + 1}: ${error.message}`);
+      let insertSuccess = false;
+      // Try full insert first
+      try {
+        for (let i = 0; i < rows.length; i += 50) {
+          const batch = rows.slice(i, i + 50);
+          const { error } = await (supabase.from("supplier_products") as any).insert(batch);
+          if (error) {
+            console.error(`[Import] Batch ${i / 50 + 1} failed:`, error);
+            throw error;
+          }
         }
+        insertSuccess = true;
+      } catch (fullErr: any) {
+        console.warn("[Import] Full insert failed, trying basic fallback:", fullErr.message);
+        // Fallback: use only guaranteed-safe columns
+        const basicRows = products.map((p) => ({
+          supplier_id: supplierId,
+          product_code: p.model_number || "UNKNOWN",
+          short_name: (p.description || "").substring(0, 80),
+          description: p.description || "",
+          category: p.category || "Uncategorized",
+          brand: supplierName || "",
+          cost_price: p.cost_price || p.price_excl_vat,
+          default_markup_percent: p.markup_percent || 20,
+          is_active: true,
+          archived: false,
+        }));
+        for (let i = 0; i < basicRows.length; i += 50) {
+          const batch = basicRows.slice(i, i + 50);
+          const { error } = await (supabase.from("supplier_products") as any).insert(batch);
+          if (error) {
+            console.error(`[Import] Basic fallback batch ${i / 50 + 1} failed:`, error);
+            throw new Error(`Product insert failed: ${error.message}`);
+          }
+        }
+        insertSuccess = true;
       }
 
       // Step 5: Log audit
