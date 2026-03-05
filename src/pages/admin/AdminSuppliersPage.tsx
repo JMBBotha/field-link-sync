@@ -168,11 +168,17 @@ const AdminSuppliersPage = () => {
     setIsDeleting(true);
     try {
       if (deleteState.mode === "complete") {
-        await deleteSupplierCompletely(deleteState.supplierId);
-        toast({ title: `${deleteState.supplierName} removed completely.` });
+        const result = await deleteSupplierCompletely(deleteState.supplierId);
+        toast({
+          title: `${deleteState.supplierName} removed completely.`,
+          description: `${result.deletedProducts} products, ${result.deletedPdfPages} PDF pages removed from database and storage.`,
+        });
       } else {
-        await deleteSupplierProductsOnly(deleteState.supplierId);
-        toast({ title: `${deleteState.supplierName} cleared — ready for fresh upload.` });
+        const result = await deleteSupplierProductsOnly(deleteState.supplierId);
+        toast({
+          title: `${deleteState.supplierName} cleared — ready for fresh upload.`,
+          description: `${result.deletedProducts} products, ${result.deletedPdfPages} PDF pages removed from database and storage.`,
+        });
       }
       refreshAll();
     } catch (err: any) {
@@ -182,6 +188,8 @@ const AdminSuppliersPage = () => {
       setDeleteState(null);
     }
   };
+
+
 
   // Bulk delete all
   const handleBulkDeleteAll = async () => {
@@ -374,6 +382,7 @@ const AdminSuppliersPage = () => {
                 <ul className="list-disc list-inside text-sm space-y-1">
                   <li>{deleteState?.counts.products ?? 0} products will be deleted</li>
                   <li>{deleteState?.counts.pdfs ?? 0} PDF catalogs will be removed</li>
+                  <li>PDF files will be permanently deleted from storage</li>
                   {deleteState?.mode === "complete" && (
                     <li>{deleteState?.counts.contacts ?? 0} contacts will be removed</li>
                   )}
@@ -385,7 +394,7 @@ const AdminSuppliersPage = () => {
                 )}
                 {deleteState?.mode === "complete" && (
                   <p className="text-destructive font-semibold text-sm border border-destructive/30 rounded-md p-2 bg-destructive/5">
-                    ⚠️ This also removes all contacts and the supplier record. If any active quotes reference these products, those line items will be cleared. This cannot be undone.
+                    ⚠️ This also removes all contacts, the supplier record, and all uploaded PDF files including archived versions from storage. This cannot be undone.
                   </p>
                 )}
               </div>
