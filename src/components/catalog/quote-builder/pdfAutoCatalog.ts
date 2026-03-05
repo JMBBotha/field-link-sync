@@ -234,32 +234,43 @@ export async function autoCatalogFromRegions(
   const batchSize = 50;
 
   for (let i = 0; i < toInsert.length; i += batchSize) {
-    const batch = toInsert.slice(i, i + batchSize).map(c => ({
-      supplier_id: supplierUuid,
-      product_code: c.sku,
-      short_name: c.shortName,
-      description: c.description,
-      cost_price: c.price,
-      cost_excl_vat: c.price,
-      cost_incl_vat: Math.round(c.price * 1.15 * 100) / 100,
-      brand,
-      product_category: productCategory,
-      category: productCategory,
-      is_active: true,
-      archived: false,
-    }));
+    const batch = toInsert.slice(i, i + batchSize).map(c => {
+      // cost_excl_vat = raw list price excl VAT (original reference)
+      const rawExclVat = c.price;
+      // cost_price = discounted buy price (discount already baked in)
+      const costPrice = Math.round(rawExclVat * (1 - brandDiscountPercent / 100) * 100) / 100;
+      // selling_price = cost_price × 1.20 (standard 20% markup baked in)
+      const sellingPrice = Math.round(costPrice * 1.20 * 100) / 100;
+      return {
+        supplier_id: supplierUuid,
+        product_code: c.sku,
+        short_name: c.shortName,
+        description: c.description,
+        cost_excl_vat: rawExclVat,
+        cost_price: costPrice,
+        cost_incl_vat: Math.round(rawExclVat * 1.15 * 100) / 100,
+        selling_price: sellingPrice,
+        supplier_discount_percent: brandDiscountPercent,
+        markup_percent: 20,
+        brand,
+        product_category: productCategory,
+        category: productCategory,
+        is_active: true,
+        archived: false,
+      };
+    });
 
-    // Use upsert with ignoreDuplicates to gracefully handle any remaining conflicts
+    // Use INSERT only — no upsert/merge to prevent stale data carrying over
     const { data: inserted, error } = await (supabase.from("supplier_products") as any)
-      .upsert(batch, { onConflict: "supplier_id,product_code", ignoreDuplicates: true })
+      .insert(batch)
       .select("id, product_code, short_name, description, cost_excl_vat, supplier_id, brand");
 
     if (error) {
-      console.error(`[autoCatalog] Upsert batch failed:`, error.message, error.details, error.hint);
+      console.error(`[autoCatalog] Insert batch failed:`, error.message, error.details, error.hint);
       continue;
     }
 
-    console.log(`[autoCatalog] Batch upsert returned ${inserted?.length ?? 0} rows`);
+    console.log(`[autoCatalog] Batch insert returned ${inserted?.length ?? 0} rows`);
 
     if (inserted) {
       allNew.push(...inserted);

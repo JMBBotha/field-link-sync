@@ -390,30 +390,24 @@ function DraggableProductCard({
                 </div>
                 <p className="font-mono font-medium text-primary/80">{product.product_code}</p>
                 {(() => {
-                  const p = calculatePricing(
-                    product.cost_excl_vat || 0,
-                    product.supplier_discount_percent ?? 0,
-                    product.markup_percent ?? 20
-                  );
+                  const costPrice = product.cost_price ?? product.cost_excl_vat ?? 0;
+                  const sellPrice = product.selling_price ?? 0;
+                  const bakedMarkup = costPrice > 0 ? ((sellPrice / costPrice) - 1) * 100 : 0;
                   return (
                     <>
                       <div className="flex justify-between">
-                        <span>Cost excl.</span>
-                        <span className="font-medium">R{p.discountedCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span>Buy Price (discounted)</span>
+                        <span className="font-medium">R{costPrice.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Cost incl.</span>
-                        <span className="font-medium">R{(product.cost_incl_vat || 0).toLocaleString("en-ZA")}</span>
+                        <span>Selling Price</span>
+                        <span className="font-bold">R{sellPrice.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Selling</span>
-                        <span className="font-bold">R{(product.selling_price || 0).toLocaleString("en-ZA")}</span>
-                      </div>
-                      {p.discountedCost > 0 && (
+                      {costPrice > 0 && (
                         <div className="flex items-center justify-between pt-1 border-t">
                           <span className="text-muted-foreground">Markup</span>
                           <span className="font-mono font-bold text-primary">
-                            {p.markupPercent.toFixed(1)}%
+                            {bakedMarkup.toFixed(1)}%
                           </span>
                         </div>
                       )}

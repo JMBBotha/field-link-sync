@@ -36,6 +36,7 @@ const QuoteSummaryPanel = ({ baskets, onGenerateQuote }: QuoteSummaryPanelProps)
           grandTotal += sell;
           totalCost += unitCost * i.length;
         } else {
+          // selling_price already has discount+markup baked in — just multiply by qty
           const { unitSell, unitCost } = getEffectiveUnitPrices(i.product);
           grandTotal += unitSell * i.quantity;
           totalCost += unitCost * i.quantity;
