@@ -219,9 +219,41 @@ const AdminSuppliersPage = () => {
           </h2>
           <p className="text-sm text-muted-foreground">{suppliers.length} suppliers</p>
         </div>
-        <Button onClick={handleAdd} size="sm">
-          <Plus className="h-4 w-4 mr-1" /> Add Supplier
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={async () => {
+            const { data: allContacts } = await (supabase.from("supplier_contacts") as any)
+              .select("contact_name, department, email, phone, mobile, whatsapp, location_branch, role_title, supplier_id");
+            const { data: allLocations } = await (supabase.from("supplier_locations") as any)
+              .select("supplier_id, location_name, city, phone, email, whatsapp, address");
+            const rows: string[] = ["Supplier,Location,Department,Contact Name,Email,Phone,WhatsApp,Role"];
+            for (const s of suppliers) {
+              const sContacts = (allContacts || []).filter((c: any) => c.supplier_id === s.id);
+              const sLocations = (allLocations || []).filter((l: any) => l.supplier_id === s.id);
+              if (sContacts.length === 0 && sLocations.length === 0) {
+                rows.push(`"${s.name}",,,,,,`);
+              }
+              for (const loc of sLocations) {
+                const locContacts = sContacts.filter((c: any) => c.location_branch === loc.location_name || c.location_branch === loc.city);
+                if (locContacts.length === 0) {
+                  rows.push(`"${s.name}","${loc.location_name}",,"","${loc.email || ""}","${loc.phone || ""}","${loc.whatsapp || ""}",""`);
+                }
+              }
+              for (const c of sContacts) {
+                rows.push(`"${s.name}","${c.location_branch || ""}","${c.department || ""}","${c.contact_name}","${c.email || ""}","${c.phone || c.mobile || ""}","${c.whatsapp || ""}","${c.role_title || ""}"`);
+              }
+            }
+            const blob = new Blob([rows.join("\n")], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a"); a.href = url; a.download = "supplier-contacts.csv"; a.click();
+            URL.revokeObjectURL(url);
+            toast({ title: "Contacts exported" });
+          }}>
+            <Download className="h-4 w-4 mr-1" /> Export Contacts
+          </Button>
+          <Button onClick={handleAdd} size="sm">
+            <Plus className="h-4 w-4 mr-1" /> Add Supplier
+          </Button>
+        </div>
       </div>
 
       {/* Orphan warning */}
