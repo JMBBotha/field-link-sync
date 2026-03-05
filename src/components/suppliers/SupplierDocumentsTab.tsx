@@ -12,6 +12,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import PDFExtractReviewModal from "./PDFExtractReviewModal";
+import SupplierInfoReviewModal from "./SupplierInfoReviewModal";
+import type { ExtractedSupplierInfo } from "@/services/supplierInfoExtractor";
 
 interface SupplierDocument {
   id: string;
