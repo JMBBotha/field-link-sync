@@ -24,6 +24,7 @@ interface SupplierDocument {
 
 interface SupplierDocumentsTabProps {
   supplierId: string;
+  supplierName?: string;
 }
 
 const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
