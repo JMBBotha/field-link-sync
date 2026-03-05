@@ -269,6 +269,7 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
   const [wizardTriggerItem, setWizardTriggerItem] = useState<WizardTriggerItem | null>(null);
   const [summaryCollapsed, setSummaryCollapsed] = useState(false);
   const [mobileTab, setMobileTab] = useState<"palette" | "canvas">("palette");
+  const [floatingPanelOpen, setFloatingPanelOpen] = useState(false);
 
   // PDF selection state (shared with VisualCatalogPanel)
   const [selectedFromPdf, setSelectedFromPdf] = useState<PdfSelectedProduct[]>([]);
