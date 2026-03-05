@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, Upload, GitCompare, Package, Snowflake, Wrench, Layers, Zap, BatteryCharging, Droplets, PenTool, Ruler, Loader2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Search, Upload, GitCompare, Package, Snowflake, Wrench, Layers, Zap, BatteryCharging, Droplets, PenTool, Ruler, Loader2, Trash2 } from "lucide-react";
 import SupplierManager from "@/components/catalog/SupplierManager";
 import BrandDiscountsSection from "@/components/catalog/BrandDiscountsSection";
 import SupplierProductImporter from "@/components/catalog/SupplierProductImporter";
@@ -32,6 +33,8 @@ const AdminCatalogPage = () => {
   const [importKey, setImportKey] = useState(0);
   const [categoryFilter, setCategoryFilter] = useState<ProductCategoryFilter>("all");
   const [scanning, setScanning] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const handleScanLengths = async () => {
@@ -104,6 +107,30 @@ const AdminCatalogPage = () => {
     }
   };
 
+  const handleClearAllProducts = async () => {
+    setClearing(true);
+    try {
+      // Clear all dependent records first
+      await (supabase.from("pdf_product_regions") as any).delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await (supabase.from("quote_items") as any).delete().not("product_id", "is", null);
+      await (supabase.from("job_used_parts") as any).delete().not("product_id", "is", null);
+      await (supabase.from("bundle_items") as any).delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await (supabase.from("inventory_stock") as any).delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      // Delete all products
+      await (supabase.from("supplier_products") as any).delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] });
+      queryClient.invalidateQueries({ queryKey: ["product-category-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
+      toast.success("All products cleared from catalog");
+    } catch (e: any) {
+      toast.error(e.message || "Clear failed");
+    } finally {
+      setClearing(false);
+      setClearConfirmOpen(false);
+    }
+  };
+
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers"],
     queryFn: async () => {
@@ -148,16 +175,28 @@ const AdminCatalogPage = () => {
           <Package className="h-5 w-5 text-primary" />
           <h2 className="text-xl font-bold">Product Catalog</h2>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5"
-          onClick={handleScanLengths}
-          disabled={scanning}
-        >
-          {scanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ruler className="h-3.5 w-3.5" />}
-          {scanning ? "Scanning..." : "Scan & Calculate /m Pricing"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
+            onClick={() => setClearConfirmOpen(true)}
+            disabled={clearing}
+          >
+            {clearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+            {clearing ? "Clearing..." : "Clear All Products"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={handleScanLengths}
+            disabled={scanning}
+          >
+            {scanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ruler className="h-3.5 w-3.5" />}
+            {scanning ? "Scanning..." : "Scan & Calculate /m Pricing"}
+          </Button>
+        </div>
       </div>
 
       {/* Product category filter pills */}
@@ -256,6 +295,26 @@ const AdminCatalogPage = () => {
           <QuoteBuilderTab />
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear All Products?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete ALL products from the catalog, including pinned items, bundle items, and inventory stock records. Supplier records will remain intact for re-import.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleClearAllProducts}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {clearing ? "Clearing..." : "Delete All Products"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
