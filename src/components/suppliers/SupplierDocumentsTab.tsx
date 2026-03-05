@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ interface SupplierDocumentsTabProps {
 const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const priceListInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -434,6 +436,17 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
 
   return (
     <div className="space-y-3 mt-2">
+      {/* Manage PDFs link */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full"
+        onClick={() => navigate(`/admin/pdf-documents?supplier=${supplierId}`)}
+      >
+        <FileText className="h-4 w-4 mr-2" />
+        Manage PDFs →
+      </Button>
+
       {/* Clear All & Re-upload */}
       {(activeProductCount > 0 || catalogPageCount > 0) && (
         <Card className="border-dashed border-destructive/30 bg-destructive/5">
