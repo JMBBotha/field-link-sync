@@ -90,6 +90,19 @@ const ImportPreviewModal = ({
             🤖 AI Import Analysis
           </DialogTitle>
           <DialogDescription className="truncate">{fileName}</DialogDescription>
+          {preview.parseMethod && (
+            <div className={`flex items-center gap-2 text-xs rounded px-3 py-1.5 mt-1 ${
+              preview.parseMethod === "ai"
+                ? "bg-green-500/10 text-green-700 dark:text-green-400"
+                : preview.parseMethod === "csv"
+                ? "bg-blue-500/10 text-blue-700 dark:text-blue-400"
+                : "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400"
+            }`}>
+              {preview.parseMethod === "ai" && "🟢 HIGH QUALITY — Parsed using AI Vision"}
+              {preview.parseMethod === "csv" && "🔵 CSV — Structured data import"}
+              {preview.parseMethod === "regex" && "🟡 STANDARD — Parsed using text extraction"}
+            </div>
+          )}
         </DialogHeader>
 
         <ScrollArea className="flex-1 pr-2 -mr-2">

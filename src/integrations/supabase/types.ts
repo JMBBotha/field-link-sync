@@ -1339,6 +1339,50 @@ export type Database = {
         }
         Relationships: []
       }
+      import_audit_log: {
+        Row: {
+          action: string
+          created_at: string | null
+          file_name: string | null
+          id: string
+          import_settings: Json | null
+          pdfs_deleted: number | null
+          products_deleted: number | null
+          products_imported: number | null
+          supplier_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          file_name?: string | null
+          id?: string
+          import_settings?: Json | null
+          pdfs_deleted?: number | null
+          products_deleted?: number | null
+          products_imported?: number | null
+          supplier_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          file_name?: string | null
+          id?: string
+          import_settings?: Json | null
+          pdfs_deleted?: number | null
+          products_deleted?: number | null
+          products_imported?: number | null
+          supplier_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_audit_log_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       installation_bundles: {
         Row: {
           ac_type: string | null
@@ -2476,6 +2520,65 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "supplier_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdf_uploads: {
+        Row: {
+          created_at: string | null
+          file_name: string
+          file_path: string | null
+          file_url: string | null
+          id: string
+          markup_percent: number | null
+          page_count: number | null
+          price_includes_vat: boolean | null
+          price_list_type: string | null
+          status: string | null
+          storage_path: string | null
+          supplier_id: string
+          trade_discount_percent: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          file_name: string
+          file_path?: string | null
+          file_url?: string | null
+          id?: string
+          markup_percent?: number | null
+          page_count?: number | null
+          price_includes_vat?: boolean | null
+          price_list_type?: string | null
+          status?: string | null
+          storage_path?: string | null
+          supplier_id: string
+          trade_discount_percent?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          file_name?: string
+          file_path?: string | null
+          file_url?: string | null
+          id?: string
+          markup_percent?: number | null
+          page_count?: number | null
+          price_includes_vat?: boolean | null
+          price_list_type?: string | null
+          status?: string | null
+          storage_path?: string | null
+          supplier_id?: string
+          trade_discount_percent?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdf_uploads_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -3715,6 +3818,8 @@ export type Database = {
           description: string
           id: string
           image_url: string | null
+          import_confidence: string | null
+          import_flags: string[] | null
           inverter: boolean | null
           is_active: boolean
           is_material_favorite: boolean
@@ -3722,6 +3827,7 @@ export type Database = {
           is_price_on_request: boolean
           kw: number | null
           last_quoted_at: string | null
+          list_price_raw: number | null
           markup_percent: number | null
           min_cut_length: number
           model: string | null
@@ -3730,11 +3836,14 @@ export type Database = {
           original_cost_excl_vat: number | null
           pack_qty: number | null
           pdf_page_id: string | null
+          pdf_upload_id: string | null
           phase: string | null
           pin_order: number
           pipe_gas: string | null
           pipe_liquid: string | null
           pipe_size: string | null
+          price_excl_vat: number | null
+          price_includes_vat: boolean | null
           price_per_metre: number | null
           pricing_mode: string
           product_category: string
@@ -3743,6 +3852,7 @@ export type Database = {
           quote_usage_count: number
           refrigerant_type: string | null
           rrp: number | null
+          sell_price_incl_vat: number | null
           selling_price: number | null
           short_name: string | null
           sold_in_length: boolean
@@ -3754,6 +3864,7 @@ export type Database = {
           unit_length_unit: string
           unit_type: string | null
           updated_at: string
+          vat_amount: number | null
           vat_rate: number
         }
         Insert: {
@@ -3771,6 +3882,8 @@ export type Database = {
           description: string
           id?: string
           image_url?: string | null
+          import_confidence?: string | null
+          import_flags?: string[] | null
           inverter?: boolean | null
           is_active?: boolean
           is_material_favorite?: boolean
@@ -3778,6 +3891,7 @@ export type Database = {
           is_price_on_request?: boolean
           kw?: number | null
           last_quoted_at?: string | null
+          list_price_raw?: number | null
           markup_percent?: number | null
           min_cut_length?: number
           model?: string | null
@@ -3786,11 +3900,14 @@ export type Database = {
           original_cost_excl_vat?: number | null
           pack_qty?: number | null
           pdf_page_id?: string | null
+          pdf_upload_id?: string | null
           phase?: string | null
           pin_order?: number
           pipe_gas?: string | null
           pipe_liquid?: string | null
           pipe_size?: string | null
+          price_excl_vat?: number | null
+          price_includes_vat?: boolean | null
           price_per_metre?: number | null
           pricing_mode?: string
           product_category?: string
@@ -3799,6 +3916,7 @@ export type Database = {
           quote_usage_count?: number
           refrigerant_type?: string | null
           rrp?: number | null
+          sell_price_incl_vat?: number | null
           selling_price?: number | null
           short_name?: string | null
           sold_in_length?: boolean
@@ -3810,6 +3928,7 @@ export type Database = {
           unit_length_unit?: string
           unit_type?: string | null
           updated_at?: string
+          vat_amount?: number | null
           vat_rate?: number
         }
         Update: {
@@ -3827,6 +3946,8 @@ export type Database = {
           description?: string
           id?: string
           image_url?: string | null
+          import_confidence?: string | null
+          import_flags?: string[] | null
           inverter?: boolean | null
           is_active?: boolean
           is_material_favorite?: boolean
@@ -3834,6 +3955,7 @@ export type Database = {
           is_price_on_request?: boolean
           kw?: number | null
           last_quoted_at?: string | null
+          list_price_raw?: number | null
           markup_percent?: number | null
           min_cut_length?: number
           model?: string | null
@@ -3842,11 +3964,14 @@ export type Database = {
           original_cost_excl_vat?: number | null
           pack_qty?: number | null
           pdf_page_id?: string | null
+          pdf_upload_id?: string | null
           phase?: string | null
           pin_order?: number
           pipe_gas?: string | null
           pipe_liquid?: string | null
           pipe_size?: string | null
+          price_excl_vat?: number | null
+          price_includes_vat?: boolean | null
           price_per_metre?: number | null
           pricing_mode?: string
           product_category?: string
@@ -3855,6 +3980,7 @@ export type Database = {
           quote_usage_count?: number
           refrigerant_type?: string | null
           rrp?: number | null
+          sell_price_incl_vat?: number | null
           selling_price?: number | null
           short_name?: string | null
           sold_in_length?: boolean
@@ -3866,6 +3992,7 @@ export type Database = {
           unit_length_unit?: string
           unit_type?: string | null
           updated_at?: string
+          vat_amount?: number | null
           vat_rate?: number
         }
         Relationships: [
@@ -3874,6 +4001,13 @@ export type Database = {
             columns: ["pdf_page_id"]
             isOneToOne: false
             referencedRelation: "supplier_pdf_pages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_products_pdf_upload_id_fkey"
+            columns: ["pdf_upload_id"]
+            isOneToOne: false
+            referencedRelation: "pdf_uploads"
             referencedColumns: ["id"]
           },
           {
