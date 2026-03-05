@@ -42,6 +42,7 @@ export interface ImportPreview {
   vatConfidence: "high" | "medium" | "low";
   discountConfidence: "high" | "medium" | "low";
   supplierSettings: SupplierPricingSettings;
+  parseMethod?: "ai" | "regex" | "csv";
 }
 
 // ─────────────────────────────────────────
@@ -77,7 +78,7 @@ export async function parseImportFile(
   if (file.name.endsWith(".csv") || file.type === "text/csv") {
     return parseCSVFile(file, settings);
   }
-  return parsePDFFile(file, settings);
+  return parsePDFFile(file, settings, supplierId);
 }
 
 // ─────────────────────────────────────────
@@ -138,27 +139,21 @@ export function calculateImportPrices(
   discountPercent: number,
   markupPercent: number
 ) {
-  // Step 1: Strip VAT if price includes it
   const price_excl_vat = isInclVat
     ? parseFloat((rawPrice / (1 + VAT_RATE)).toFixed(2))
     : rawPrice;
 
-  // Step 2: Apply trade discount ONLY if list_price_with_discount
   const cost_price = priceListType === "list_price_with_discount"
     ? parseFloat((price_excl_vat * (1 - discountPercent / 100)).toFixed(2))
-    : price_excl_vat; // Already IS the cost price
+    : price_excl_vat;
 
-  // Step 3: Apply markup to cost price
   const calculated_price = parseFloat((cost_price * (1 + markupPercent / 100)).toFixed(2));
-
-  // Step 4: VAT on sell price
   const vat_amount = parseFloat((calculated_price * VAT_RATE).toFixed(2));
   const sell_price_incl_vat = parseFloat((calculated_price + vat_amount).toFixed(2));
 
   return { price_excl_vat, cost_price, calculated_price, vat_amount, sell_price_incl_vat };
 }
 
-// Re-calculate all products with new settings
 export function recalculateProducts(
   products: ParsedProduct[],
   priceListType: PriceListType,
@@ -185,6 +180,250 @@ export function recalculateProducts(
 }
 
 // ─────────────────────────────────────────
+// AI-ENHANCED PDF PARSING
+// ─────────────────────────────────────────
+const CHUNK_SIZE = 12000;
+
+async function tryAIParsePDF(
+  file: File,
+  supplierId: string,
+  supplierName: string
+): Promise<{ products: Array<{ model: string; description: string; price: number; category: string }>; success: boolean }> {
+  try {
+    const pdfjsLib = await import("pdfjs-dist");
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+    // Extract text from all pages
+    let allText = "";
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map((item: any) => item.str).join(" ");
+      allText += pageText + "\n";
+    }
+
+    if (allText.trim().length < 50) {
+      console.log("[AI Parse] Insufficient text extracted from PDF");
+      return { products: [], success: false };
+    }
+
+    // Split into chunks for the edge function
+    const chunks: string[] = [];
+    let i = 0;
+    while (i < allText.length) {
+      let end = Math.min(i + CHUNK_SIZE, allText.length);
+      if (end < allText.length) {
+        const lastNewline = allText.lastIndexOf("\n", end);
+        if (lastNewline > i + CHUNK_SIZE * 0.5) end = lastNewline + 1;
+      }
+      chunks.push(allText.substring(i, end));
+      i = end;
+    }
+
+    console.log(`[AI Parse] Sending ${chunks.length} chunks to AI parser`);
+
+    const allProducts: Array<{ model: string; description: string; price: number; category: string }> = [];
+
+    for (let ci = 0; ci < chunks.length; ci++) {
+      const { data, error } = await supabase.functions.invoke("parse-pdf-with-grok", {
+        body: {
+          extracted_text: chunks[ci],
+          supplier_id: supplierId,
+          supplier_name: supplierName,
+          chunk_index: ci,
+          chunk_total: chunks.length,
+        },
+      });
+
+      if (error) {
+        console.warn(`[AI Parse] Chunk ${ci} error:`, error);
+        continue;
+      }
+
+      const products = data?.products || [];
+      for (const p of products) {
+        const costPrice = typeof p.cost_price === "number" ? p.cost_price : 
+          (p.prices ? Object.values(p.prices)[0] as number : 0);
+        if (costPrice > 0) {
+          allProducts.push({
+            model: p.product_code || p.sku || "",
+            description: p.description || p.name || "",
+            price: costPrice,
+            category: p.product_category || p.category || "Air Conditioning",
+          });
+        }
+      }
+    }
+
+    console.log(`[AI Parse] Total products extracted: ${allProducts.length}`);
+    return { products: allProducts, success: allProducts.length > 0 };
+  } catch (err) {
+    console.warn("[AI Parse] Failed:", err);
+    return { products: [], success: false };
+  }
+}
+
+// ─────────────────────────────────────────
+// PDF PARSER (AI-first, regex fallback)
+// ─────────────────────────────────────────
+async function parsePDFFile(file: File, settings: SupplierPricingSettings, supplierId?: string): Promise<ImportPreview> {
+  let parseMethod: "ai" | "regex" = "regex";
+  let rawRows: Array<{ model: string; description: string; price: number; category: string }> = [];
+
+  // Try AI parsing first
+  if (supplierId) {
+    console.log("[Parser] Attempting AI-enhanced parsing...");
+    const aiResult = await tryAIParsePDF(file, supplierId, settings.supplierName);
+    if (aiResult.success && aiResult.products.length > 0) {
+      rawRows = aiResult.products;
+      parseMethod = "ai";
+      console.log(`[Parser] AI parsing succeeded with ${rawRows.length} products`);
+    }
+  }
+
+  // Fallback to regex if AI didn't produce results
+  if (rawRows.length === 0) {
+    console.log("[Parser] Using regex text extraction fallback...");
+    const pdfjsLib = await import("pdfjs-dist");
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+    let allText = "";
+
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map((item: any) => item.str).join(" ");
+      allText += pageText + "\n";
+
+      const pricePattern = /([A-Z0-9][A-Z0-9\-\/]{4,29})\s+([A-Za-z0-9\s\-\/,\.]{10,80}?)\s+R?\s*([\d,]+\.?\d{0,2})/g;
+      let match;
+      while ((match = pricePattern.exec(pageText)) !== null) {
+        const price = parseFloat(match[3].replace(/,/g, ""));
+        if (price > 0 && price < 1_000_000) {
+          rawRows.push({
+            model: match[1].trim(),
+            description: match[2].trim(),
+            price,
+            category: detectCategory(match[2]),
+          });
+        }
+      }
+    }
+  }
+
+  // Extract text for VAT/discount detection
+  let allText = "";
+  try {
+    const pdfjsLib = await import("pdfjs-dist");
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    for (let pageNum = 1; pageNum <= Math.min(pdf.numPages, 3); pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      allText += textContent.items.map((item: any) => item.str).join(" ") + "\n";
+    }
+  } catch (_) {}
+
+  const vatDetection = detectVATInclusion(allText, [allText.substring(0, 500)]);
+  const discountDetection = detectDiscount(allText);
+  const warnings: string[] = [];
+
+  const effectiveInclVat = vatDetection.confidence === "high" ? vatDetection.isIncl : settings.priceIncludesVat;
+  const effectiveDiscount = settings.priceListType === "list_price_with_discount"
+    ? (discountDetection.confidence === "high" ? discountDetection.percent : settings.tradeDiscount)
+    : 0;
+
+  if (vatDetection.confidence === "low") {
+    warnings.push("⚠️ Could not confidently detect VAT inclusion — please verify below");
+  }
+
+  if (parseMethod === "regex") {
+    warnings.push("📝 Parsed using text extraction — results may be less accurate for complex layouts");
+  }
+
+  // Deduplicate by model number
+  const seen = new Set<string>();
+  const uniqueRows = rawRows.filter((r) => {
+    const key = r.model.toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const products: ParsedProduct[] = uniqueRows.map((row) => {
+    const calc = calculateImportPrices(row.price, settings.priceListType, effectiveInclVat, effectiveDiscount, settings.markupPercent);
+    const flags: string[] = [];
+    if (effectiveInclVat) flags.push("price_incl_vat_stripped");
+    if (settings.priceListType === "list_price_with_discount" && effectiveDiscount > 0)
+      flags.push(`discount_${effectiveDiscount}pct_applied`);
+
+    return {
+      model_number: row.model,
+      description: row.description,
+      category: row.category,
+      raw_price: row.price,
+      price_includes_vat: effectiveInclVat,
+      price_list_type: settings.priceListType,
+      supplier_discount_percent: settings.priceListType === "list_price_with_discount" ? effectiveDiscount : 0,
+      markup_percent: settings.markupPercent,
+      confidence: parseMethod === "ai" ? "high" : vatDetection.confidence,
+      flags,
+      ...calc,
+    };
+  });
+
+  return {
+    products,
+    detectedPriceType: effectiveInclVat ? "incl_vat" : "excl_vat",
+    detectedDiscount: effectiveDiscount,
+    suggestedMarkup: settings.markupPercent,
+    totalProducts: products.length,
+    warnings,
+    vatEvidence: vatDetection.evidence,
+    discountEvidence: settings.priceListType === "cost_price" ? "N/A — Cost price supplier" : discountDetection.evidence,
+    vatConfidence: vatDetection.confidence,
+    discountConfidence: settings.priceListType === "cost_price" ? "high" : discountDetection.confidence,
+    supplierSettings: settings,
+    parseMethod,
+  };
+}
+
+function detectCategory(description: string): string {
+  const d = description.toUpperCase();
+  if (/SPLIT|WALL\s*MOUNT|CASSETTE|DUCTED|FLOOR|CEILING/.test(d)) return "Air Conditioning";
+  if (/HEAT\s*PUMP|WATER\s*HEAT|GEYSER/.test(d)) return "Water Heaters";
+  if (/INVERTER|BATTERY|SOLAR/.test(d)) return "Inverters";
+  if (/COPPER|PIPE|FLARE|ELBOW|FITTING|TAPE|CABLE|BRACKET/.test(d)) return "Consumables";
+  if (/REMOTE|CONTROLLER/.test(d)) return "Air Conditioning";
+  return "Air Conditioning";
+}
+
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === "," && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+// ─────────────────────────────────────────
 // CSV PARSER
 // ─────────────────────────────────────────
 async function parseCSVFile(file: File, settings: SupplierPricingSettings): Promise<ImportPreview> {
@@ -196,7 +435,6 @@ async function parseCSVFile(file: File, settings: SupplierPricingSettings): Prom
   const vatDetection = detectVATInclusion(text, headers);
   const discountDetection = detectDiscount(text);
 
-  // Use supplier settings, but let document-detected values override if high confidence
   const effectiveInclVat = vatDetection.confidence === "high" ? vatDetection.isIncl : settings.priceIncludesVat;
   const effectiveDiscount = settings.priceListType === "list_price_with_discount"
     ? (discountDetection.confidence === "high" ? discountDetection.percent : settings.tradeDiscount)
@@ -275,128 +513,8 @@ async function parseCSVFile(file: File, settings: SupplierPricingSettings): Prom
     vatConfidence: vatDetection.confidence,
     discountConfidence: settings.priceListType === "cost_price" ? "high" : discountDetection.confidence,
     supplierSettings: settings,
+    parseMethod: "csv",
   };
-}
-
-// ─────────────────────────────────────────
-// PDF PARSER
-// ─────────────────────────────────────────
-async function parsePDFFile(file: File, settings: SupplierPricingSettings): Promise<ImportPreview> {
-  const pdfjsLib = await import("pdfjs-dist");
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
-  let allText = "";
-  const allRows: Array<{ model: string; description: string; price: number; category: string }> = [];
-
-  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-    const page = await pdf.getPage(pageNum);
-    const textContent = await page.getTextContent();
-    const pageText = textContent.items.map((item: any) => item.str).join(" ");
-    allText += pageText + "\n";
-
-    const pricePattern = /([A-Z0-9][A-Z0-9\-\/]{4,29})\s+([A-Za-z0-9\s\-\/,\.]{10,80}?)\s+R?\s*([\d,]+\.?\d{0,2})/g;
-    let match;
-    while ((match = pricePattern.exec(pageText)) !== null) {
-      const price = parseFloat(match[3].replace(/,/g, ""));
-      if (price > 0 && price < 1_000_000) {
-        allRows.push({
-          model: match[1].trim(),
-          description: match[2].trim(),
-          price,
-          category: detectCategory(match[2]),
-        });
-      }
-    }
-  }
-
-  const vatDetection = detectVATInclusion(allText, [allText.substring(0, 500)]);
-  const discountDetection = detectDiscount(allText);
-  const warnings: string[] = [];
-
-  const effectiveInclVat = vatDetection.confidence === "high" ? vatDetection.isIncl : settings.priceIncludesVat;
-  const effectiveDiscount = settings.priceListType === "list_price_with_discount"
-    ? (discountDetection.confidence === "high" ? discountDetection.percent : settings.tradeDiscount)
-    : 0;
-
-  if (vatDetection.confidence === "low") {
-    warnings.push("⚠️ Could not confidently detect VAT inclusion — please verify below");
-  }
-
-  // Deduplicate by model number
-  const seen = new Set<string>();
-  const uniqueRows = allRows.filter((r) => {
-    if (seen.has(r.model)) return false;
-    seen.add(r.model);
-    return true;
-  });
-
-  const products: ParsedProduct[] = uniqueRows.map((row) => {
-    const calc = calculateImportPrices(row.price, settings.priceListType, effectiveInclVat, effectiveDiscount, settings.markupPercent);
-    const flags: string[] = [];
-    if (effectiveInclVat) flags.push("price_incl_vat_stripped");
-    if (settings.priceListType === "list_price_with_discount" && effectiveDiscount > 0)
-      flags.push(`discount_${effectiveDiscount}pct_applied`);
-
-    return {
-      model_number: row.model,
-      description: row.description,
-      category: row.category,
-      raw_price: row.price,
-      price_includes_vat: effectiveInclVat,
-      price_list_type: settings.priceListType,
-      supplier_discount_percent: settings.priceListType === "list_price_with_discount" ? effectiveDiscount : 0,
-      markup_percent: settings.markupPercent,
-      confidence: vatDetection.confidence,
-      flags,
-      ...calc,
-    };
-  });
-
-  return {
-    products,
-    detectedPriceType: effectiveInclVat ? "incl_vat" : "excl_vat",
-    detectedDiscount: effectiveDiscount,
-    suggestedMarkup: settings.markupPercent,
-    totalProducts: products.length,
-    warnings,
-    vatEvidence: vatDetection.evidence,
-    discountEvidence: settings.priceListType === "cost_price" ? "N/A — Cost price supplier" : discountDetection.evidence,
-    vatConfidence: vatDetection.confidence,
-    discountConfidence: settings.priceListType === "cost_price" ? "high" : discountDetection.confidence,
-    supplierSettings: settings,
-  };
-}
-
-function detectCategory(description: string): string {
-  const d = description.toUpperCase();
-  if (/SPLIT|WALL\s*MOUNT|CASSETTE|DUCTED|FLOOR|CEILING/.test(d)) return "Air Conditioning";
-  if (/HEAT\s*PUMP|WATER\s*HEAT|GEYSER/.test(d)) return "Water Heaters";
-  if (/INVERTER|BATTERY|SOLAR/.test(d)) return "Inverters";
-  if (/COPPER|PIPE|FLARE|ELBOW|FITTING|TAPE|CABLE|BRACKET/.test(d)) return "Consumables";
-  if (/REMOTE|CONTROLLER/.test(d)) return "Air Conditioning";
-  return "Air Conditioning";
-}
-
-function parseCSVLine(line: string): string[] {
-  const result: string[] = [];
-  let current = "";
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    if (char === '"') {
-      inQuotes = !inQuotes;
-    } else if (char === "," && !inQuotes) {
-      result.push(current.trim());
-      current = "";
-    } else {
-      current += char;
-    }
-  }
-  result.push(current.trim());
-  return result;
 }
 
 function emptyPreview(warning: string, settings: SupplierPricingSettings): ImportPreview {
