@@ -27,7 +27,7 @@ interface SupplierDocumentsTabProps {
   supplierName?: string;
 }
 
-const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
+const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTabProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
