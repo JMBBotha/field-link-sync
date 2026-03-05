@@ -284,9 +284,64 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
                 }}
               >
                 {importAnalysing ? (
-                  <div className="flex items-center justify-center gap-2 text-sm text-primary">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Analysing {importFileName}...
+                  <div className="space-y-2 text-left w-full">
+                    <p className="text-sm font-medium text-primary flex items-center gap-1.5">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Processing: {importFileName}
+                    </p>
+                    {importStage && (
+                      <div className="space-y-1.5">
+                        {importStage.stage === "loading_pdf" && (
+                          <p className="text-xs text-muted-foreground">📄 Loading PDF...</p>
+                        )}
+                        {importStage.stage === "rendering_pages" && (
+                          <>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <CheckCircle2 className="h-3 w-3 text-green-500" /> Step 1/4: Rendering pages ({importStage.done}/{importStage.total})
+                            </p>
+                            <Progress value={(importStage.done / importStage.total) * 25} className="h-1.5" />
+                          </>
+                        )}
+                        {importStage.stage === "enhancing_images" && (
+                          <>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <CheckCircle2 className="h-3 w-3 text-green-500" /> Step 1/4: Pages rendered ✓
+                            </p>
+                            <p className="text-xs text-primary flex items-center gap-1">
+                              🔄 Step 2/4: Enhancing with Deep-Image.ai ({importStage.done}/{importStage.total})
+                            </p>
+                            <Progress value={25 + (importStage.done / importStage.total) * 25} className="h-1.5" />
+                          </>
+                        )}
+                        {importStage.stage === "ai_extraction" && (
+                          <>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <CheckCircle2 className="h-3 w-3 text-green-500" /> Pages rendered & enhanced ✓
+                            </p>
+                            <p className="text-xs text-primary flex items-center gap-1">
+                              🤖 Step 3/4: {importStage.detail}
+                            </p>
+                            <Progress value={65} className="h-1.5" />
+                          </>
+                        )}
+                        {importStage.stage === "text_fallback" && (
+                          <>
+                            <p className="text-xs text-muted-foreground">
+                              📝 Step 4/4: {importStage.detail}
+                            </p>
+                            <Progress value={85} className="h-1.5" />
+                          </>
+                        )}
+                        {importStage.stage === "complete" && (
+                          <>
+                            <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                              <CheckCircle2 className="h-3 w-3" /> {importStage.detail}
+                            </p>
+                            <Progress value={100} className="h-1.5" />
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <>
