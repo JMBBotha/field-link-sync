@@ -47,6 +47,7 @@ export interface PaletteProduct {
   category: string;
   cost_excl_vat: number;
   cost_incl_vat: number;
+  cost_price: number;
   selling_price: number;
   description: string;
   is_pinned: boolean;
