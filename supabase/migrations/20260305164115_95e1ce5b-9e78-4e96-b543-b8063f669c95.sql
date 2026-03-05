@@ -1,0 +1,1 @@
+ALTER TABLE supplier_products ADD COLUMN IF NOT EXISTS calculated_price NUMERIC(12,2);
