@@ -96,6 +96,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [purgingOrphans, setPurgingOrphans] = useState(false);
 
   // Fetch all PDFs
   const { data: pdfUploads = [], isLoading } = useQuery({
