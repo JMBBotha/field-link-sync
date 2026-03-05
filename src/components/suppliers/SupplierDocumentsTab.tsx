@@ -441,7 +441,79 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
 
   const deleteDoc = documents.find((d) => d.id === deleteId);
 
-  const handleClearAndReupload = async () => {
+  // ── AI Import Handler ──
+  const handleImportFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const isPdf = file.name.toLowerCase().endsWith(".pdf");
+    const isCsv = file.name.toLowerCase().endsWith(".csv");
+    if (!isPdf && !isCsv) {
+      toast({ title: "Only PDF or CSV files supported", variant: "destructive" });
+      if (importInputRef.current) importInputRef.current.value = "";
+      return;
+    }
+
+    setImportAnalysing(true);
+    setImportFileName(file.name);
+    try {
+      const { parseImportFile } = await import("@/services/productImportParser");
+      const preview = await parseImportFile(file, supplierName || "Supplier", 20);
+      setImportPreview(preview);
+    } catch (err: any) {
+      toast({ title: "Analysis failed", description: err.message, variant: "destructive" });
+    } finally {
+      setImportAnalysing(false);
+      if (importInputRef.current) importInputRef.current.value = "";
+    }
+  }, [supplierName, toast]);
+
+  const handleImportConfirm = useCallback(async (products: ParsedProduct[]) => {
+    setImportConfirming(true);
+    try {
+      // Insert products into supplier_products
+      const rows = products.map((p) => ({
+        supplier_id: supplierId,
+        product_code: p.model_number,
+        short_name: p.description.substring(0, 80),
+        description: p.description,
+        product_category: p.category,
+        cost_excl_vat: p.price_excl_vat,
+        cost_price: p.cost_price,
+        rrp: p.raw_price,
+        cost_incl_vat: p.price_includes_vat ? p.raw_price : parseFloat((p.price_excl_vat * 1.15).toFixed(2)),
+        default_markup_percent: p.markup_percent,
+        selling_price: p.calculated_price,
+        brand: supplierName || "",
+        is_active: true,
+        archived: false,
+      }));
+
+      // Batch insert in chunks of 50
+      for (let i = 0; i < rows.length; i += 50) {
+        const batch = rows.slice(i, i + 50);
+        const { error } = await (supabase.from("supplier_products") as any).insert(batch);
+        if (error) throw error;
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["supplier-active-product-count", supplierId] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
+      queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
+      queryClient.invalidateQueries({ queryKey: ["product-category-counts"] });
+
+      toast({
+        title: `✅ ${products.length} products imported`,
+        description: `${supplierName || "Supplier"} catalog updated.`,
+      });
+      setImportPreview(null);
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err.message, variant: "destructive" });
+    } finally {
+      setImportConfirming(false);
+    }
+  }, [supplierId, supplierName, queryClient, toast]);
+
+
     setDeletingProducts(true);
     try {
       const { deleteSupplierProductsOnly } = await import("@/services/supplierDeleteService");
