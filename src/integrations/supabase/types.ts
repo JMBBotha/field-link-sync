@@ -3511,45 +3511,64 @@ export type Database = {
           contact_name: string
           created_at: string
           department: string | null
+          direct_phone: string | null
           email: string | null
+          extension: string | null
           id: string
           is_primary: boolean
           location_branch: string | null
+          location_id: string | null
           mobile: string | null
           phone: string | null
           role_title: string | null
           supplier_id: string
           updated_at: string
+          whatsapp: string | null
         }
         Insert: {
           contact_name: string
           created_at?: string
           department?: string | null
+          direct_phone?: string | null
           email?: string | null
+          extension?: string | null
           id?: string
           is_primary?: boolean
           location_branch?: string | null
+          location_id?: string | null
           mobile?: string | null
           phone?: string | null
           role_title?: string | null
           supplier_id: string
           updated_at?: string
+          whatsapp?: string | null
         }
         Update: {
           contact_name?: string
           created_at?: string
           department?: string | null
+          direct_phone?: string | null
           email?: string | null
+          extension?: string | null
           id?: string
           is_primary?: boolean
           location_branch?: string | null
+          location_id?: string | null
           mobile?: string | null
           phone?: string | null
           role_title?: string | null
           supplier_id?: string
           updated_at?: string
+          whatsapp?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "supplier_contacts_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_locations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "supplier_contacts_supplier_id_fkey"
             columns: ["supplier_id"]
@@ -3590,6 +3609,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "supplier_documents_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_locations: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          is_head_office: boolean | null
+          location_name: string
+          notes: string | null
+          phone: string | null
+          province: string | null
+          supplier_id: string
+          whatsapp: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          is_head_office?: boolean | null
+          location_name: string
+          notes?: string | null
+          phone?: string | null
+          province?: string | null
+          supplier_id: string
+          whatsapp?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          is_head_office?: boolean | null
+          location_name?: string
+          notes?: string | null
+          phone?: string | null
+          province?: string | null
+          supplier_id?: string
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_locations_supplier_id_fkey"
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
@@ -3822,9 +3894,13 @@ export type Database = {
           created_at: string
           default_price_column: string | null
           default_vat_rate: number
+          head_office_address: string | null
           id: string
           is_active: boolean
           logo_url: string | null
+          main_email: string | null
+          main_phone: string | null
+          main_whatsapp: string | null
           name: string
           notes: string | null
           physical_address: string | null
@@ -3848,9 +3924,13 @@ export type Database = {
           created_at?: string
           default_price_column?: string | null
           default_vat_rate?: number
+          head_office_address?: string | null
           id?: string
           is_active?: boolean
           logo_url?: string | null
+          main_email?: string | null
+          main_phone?: string | null
+          main_whatsapp?: string | null
           name: string
           notes?: string | null
           physical_address?: string | null
@@ -3874,9 +3954,13 @@ export type Database = {
           created_at?: string
           default_price_column?: string | null
           default_vat_rate?: number
+          head_office_address?: string | null
           id?: string
           is_active?: boolean
           logo_url?: string | null
+          main_email?: string | null
+          main_phone?: string | null
+          main_whatsapp?: string | null
           name?: string
           notes?: string | null
           physical_address?: string | null

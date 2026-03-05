@@ -124,7 +124,7 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit }: Supplie
             <SupplierContactsTab supplierId={supplierId} />
           </TabsContent>
           <TabsContent value="documents">
-            <SupplierDocumentsTab supplierId={supplierId} />
+            <SupplierDocumentsTab supplierId={supplierId} supplierName={supplier.company_name || supplier.name} />
           </TabsContent>
         </Tabs>
       </SheetContent>

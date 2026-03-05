@@ -12,6 +12,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import PDFExtractReviewModal from "./PDFExtractReviewModal";
+import SupplierInfoReviewModal from "./SupplierInfoReviewModal";
+import type { ExtractedSupplierInfo } from "@/services/supplierInfoExtractor";
 
 interface SupplierDocument {
   id: string;
@@ -24,9 +26,10 @@ interface SupplierDocument {
 
 interface SupplierDocumentsTabProps {
   supplierId: string;
+  supplierName?: string;
 }
 
-const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
+const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTabProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -44,6 +47,7 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
   const [showDeleteProducts, setShowDeleteProducts] = useState(false);
   const [deletingProducts, setDeletingProducts] = useState(false);
   const [productDeleteMode, setProductDeleteMode] = useState<"archive" | "delete">("archive");
+  const [supplierInfoExtracted, setSupplierInfoExtracted] = useState<ExtractedSupplierInfo | null>(null);
 
   const { data: documents = [], isLoading } = useQuery({
     queryKey: ["supplier-documents", supplierId],
@@ -346,6 +350,19 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
       queryClient.invalidateQueries({ queryKey: ["supplier-catalog-pages", supplierId] });
 
       toast({ title: `Price list uploaded`, description: `${totalPages} pages processed for Visual Catalog.` });
+
+      // Auto-extract supplier contact info from PDF
+      try {
+        const { extractSupplierInfoFromPDF } = await import("@/services/supplierInfoExtractor");
+        const info = await extractSupplierInfoFromPDF(file);
+        const hasInfo = info.allEmails.length > 0 || info.allPhones.length > 0 ||
+          info.vatNumber || info.website || info.departments.length > 0 || info.locations.length > 0;
+        if (hasInfo) {
+          setSupplierInfoExtracted(info);
+        }
+      } catch (extractErr) {
+        console.warn("[PriceList] Contact extraction failed:", extractErr);
+      }
     } catch (err: any) {
       console.error("[PriceList] Processing failed:", err);
       toast({ title: "Price list processing failed", description: err.message, variant: "destructive" });
@@ -634,6 +651,21 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
           onOpenChange={(o) => !o && setExtractedData(null)}
           extractedData={extractedData}
           supplierId={supplierId}
+        />
+      )}
+
+      {supplierInfoExtracted && (
+        <SupplierInfoReviewModal
+          open={!!supplierInfoExtracted}
+          onOpenChange={(o) => !o && setSupplierInfoExtracted(null)}
+          supplierId={supplierId}
+          supplierName={supplierName || "Supplier"}
+          extracted={supplierInfoExtracted}
+          onComplete={() => {
+            queryClient.invalidateQueries({ queryKey: ["supplier-contacts", supplierId] });
+            queryClient.invalidateQueries({ queryKey: ["supplier-detail", supplierId] });
+            queryClient.invalidateQueries({ queryKey: ["supplier-locations", supplierId] });
+          }}
         />
       )}
 
