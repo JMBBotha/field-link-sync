@@ -878,6 +878,18 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* AI Import Preview Modal */}
+      {importPreview && (
+        <ImportPreviewModal
+          open={!!importPreview}
+          onOpenChange={(o) => !o && setImportPreview(null)}
+          preview={importPreview}
+          fileName={importFileName}
+          onConfirm={handleImportConfirm}
+          confirming={importConfirming}
+        />
+      )}
     </div>
   );
 };
