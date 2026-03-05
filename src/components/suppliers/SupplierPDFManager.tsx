@@ -96,6 +96,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [purgingOrphans, setPurgingOrphans] = useState(false);
 
   // Fetch all PDFs
   const { data: pdfUploads = [], isLoading } = useQuery({
@@ -150,10 +151,10 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
   const totalProducts = Object.values(productCounts).reduce((a, b) => a + b, 0);
 
   const handleDeleteClick = async (pdf: PDFUploadRow) => {
-    const { data } = await (supabase.from("supplier_products") as any)
+    const { count } = await (supabase.from("supplier_products") as any)
       .select("id", { count: "exact", head: true })
       .eq("pdf_upload_id", pdf.id);
-    setDeleteProductCount(data?.length ?? productCounts[pdf.id] ?? 0);
+    setDeleteProductCount(count ?? productCounts[pdf.id] ?? 0);
     setDeleteTarget(pdf);
   };
 
@@ -213,8 +214,34 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
   };
 
   const handlePreview = (pdf: PDFUploadRow) => {
-    const url = pdf.file_url || pdf.file_path || pdf.storage_path;
-    if (url) setPreviewUrl(url);
+    const rawPath = pdf.file_url || pdf.file_path || pdf.storage_path || null;
+    if (!rawPath) return;
+
+    // If it's already a full URL (http/https), use directly
+    if (rawPath.startsWith("http")) {
+      setPreviewUrl(rawPath);
+      return;
+    }
+
+    // Try to extract bucket/path from Supabase storage URL patterns
+    const match = rawPath.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)/);
+    if (match) {
+      const { data } = supabase.storage.from(match[1]).getPublicUrl(match[2]);
+      setPreviewUrl(data.publicUrl);
+      return;
+    }
+
+    // Assume it's a path in one of the common buckets - try each
+    for (const bucket of STORAGE_BUCKETS) {
+      const { data } = supabase.storage.from(bucket).getPublicUrl(rawPath);
+      if (data.publicUrl) {
+        setPreviewUrl(data.publicUrl);
+        return;
+      }
+    }
+
+    // Last resort: try as-is
+    setPreviewUrl(rawPath);
   };
 
   return (
@@ -248,6 +275,49 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Purge Orphaned Products */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={async () => {
+            setPurgingOrphans(true);
+            try {
+              // Find products whose pdf_upload_id no longer exists in pdf_uploads
+              const pdfIds = pdfUploads.map(p => p.id);
+              const { data: orphans } = await (supabase.from("supplier_products") as any)
+                .select("id, pdf_upload_id")
+                .not("pdf_upload_id", "is", null);
+              const orphanProducts = (orphans || []).filter((p: any) => !pdfIds.includes(p.pdf_upload_id));
+              if (orphanProducts.length === 0) {
+                toast({ title: "No orphaned products found", description: "All products are linked to existing PDFs." });
+              } else {
+                const orphanIds = orphanProducts.map((p: any) => p.id);
+                for (let i = 0; i < orphanIds.length; i += 500) {
+                  const batch = orphanIds.slice(i, i + 500);
+                  await (supabase.from("quote_items") as any).delete().in("product_id", batch);
+                  await (supabase.from("job_used_parts") as any).delete().in("product_id", batch);
+                  await (supabase.from("inventory_stock") as any).delete().in("product_id", batch);
+                  await (supabase.from("bundle_items") as any).delete().in("supplier_product_id", batch);
+                  await (supabase.from("supplier_products") as any).delete().in("id", batch);
+                }
+                toast({ title: `Purged ${orphanProducts.length} orphaned products`, description: "Products from deleted PDFs have been removed." });
+                queryClient.invalidateQueries({ queryKey: ["pdf-product-counts"] });
+              }
+            } catch (err: any) {
+              toast({ title: "Purge failed", description: err.message, variant: "destructive" });
+            } finally {
+              setPurgingOrphans(false);
+            }
+          }}
+          disabled={purgingOrphans}
+        >
+          {purgingOrphans ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+          Purge Orphaned Products
+        </Button>
+        <span className="text-xs text-muted-foreground">Remove products whose source PDF no longer exists</span>
       </div>
 
       {/* Filters */}

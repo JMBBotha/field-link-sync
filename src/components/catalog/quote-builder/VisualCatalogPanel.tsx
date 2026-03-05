@@ -848,10 +848,72 @@ const LazyPdfPage = ({
     staleTime: 120000,
   });
 
+  // Fetch stored regions from pdf_product_regions as fallback
+  const { data: storedRegions = [] } = useQuery({
+    queryKey: ["pdf-stored-regions", page.id],
+    enabled: isVisible && !hasPdfSource,
+    queryFn: async () => {
+      const { data } = await (supabase.from("pdf_product_regions") as any)
+        .select("id, product_id, product_code, region_x, region_y, region_width, region_height, label")
+        .eq("pdf_page_id", page.id);
+      return data || [];
+    },
+    staleTime: 60000,
+  });
+
+  // Build fallback regions from products matching this supplier when no PDF source and no stored regions
+  const fallbackRegions: OverlayRegion[] = useMemo(() => {
+    if (hasPdfSource && liveRegions.length > 0) return [];
+    if (storedRegions.length > 0) {
+      // Use stored regions from pdf_product_regions table
+      return storedRegions.map((sr: any, idx: number) => {
+        const matchedProduct = activeProducts.find(p => p.id === sr.product_id || p.product_code === sr.product_code) || null;
+        return {
+          id: `stored-${sr.id}`,
+          x_pct: sr.region_x ?? 0,
+          y_pct: sr.region_y ?? (idx * 3),
+          w_pct: sr.region_width ?? 100,
+          h_pct: sr.region_height ?? 2.5,
+          product: matchedProduct as PaletteProduct | null,
+          product_code: sr.product_code || "",
+          label: sr.label || matchedProduct?.short_name || "",
+          has_price: !!matchedProduct?.selling_price,
+          detected_price: matchedProduct?.selling_price || null,
+          matched: !!matchedProduct,
+        };
+      });
+    }
+    // Generate overlay regions from supplier products matching this page's supplier
+    const supplierProducts = activeProducts.filter(p => {
+      const pageSupplierName = (supplierName || page.supplier_id || "").toLowerCase().trim();
+      const productSupplier = (p.supplier_name || "").toLowerCase().trim();
+      return productSupplier.includes(pageSupplierName) || pageSupplierName.includes(productSupplier);
+    });
+    if (supplierProducts.length === 0) return [];
+    // Distribute products evenly across the page area (5%-95%)
+    const usableRange = 90;
+    const rowHeight = Math.min(usableRange / supplierProducts.length, 3);
+    return supplierProducts.map((p, idx) => ({
+      id: `fallback-${page.id}-${idx}`,
+      x_pct: 0,
+      y_pct: 5 + (idx * (usableRange / supplierProducts.length)),
+      w_pct: 100,
+      h_pct: rowHeight,
+      product: p,
+      product_code: p.product_code || "",
+      label: p.short_name || p.description || "",
+      has_price: !!(p.selling_price || p.cost_incl_vat),
+      detected_price: p.selling_price || p.cost_incl_vat || null,
+      matched: true,
+    }));
+  }, [hasPdfSource, liveRegions, storedRegions, activeProducts, page.id, page.supplier_id, supplierName]);
+
   const overlayRegions: OverlayRegion[] = useMemo(() => {
+    // Prefer live regions, fall back to fallback
+    const sourceRegions = liveRegions.length > 0 ? liveRegions : [];
     const result: OverlayRegion[] = [];
-    for (let idx = 0; idx < liveRegions.length; idx++) {
-      const r = liveRegions[idx];
+    for (let idx = 0; idx < sourceRegions.length; idx++) {
+      const r = sourceRegions[idx];
       // Cross-page dedup: skip if this exact item was already seen on an earlier page
       const dedupKey = `${(r.label || "").substring(0, 80)}|${r.detected_price ?? "no-price"}`;
       const firstPage = globalSeenRegions.get(dedupKey);
@@ -869,8 +931,12 @@ const LazyPdfPage = ({
         matched: r.matched,
       });
     }
+    // If no live regions, use fallback
+    if (result.length === 0 && fallbackRegions.length > 0) {
+      return fallbackRegions;
+    }
     return result;
-  }, [liveRegions, page.id, pageIndex]);
+  }, [liveRegions, fallbackRegions, page.id, pageIndex]);
 
   // Report detected categories to parent for category→page mapping
   useEffect(() => {
@@ -934,8 +1000,8 @@ const LazyPdfPage = ({
             loading="lazy"
             draggable={false}
           />
-          {/* Show overlays for ALL regions (matched + unmatched) */}
-          {hasPdfSource && overlayRegions.length > 0 && (
+          {/* Show overlays for ALL regions (matched + unmatched) — works with live extraction or fallback */}
+          {overlayRegions.length > 0 && (
             <PdfPageOverlay
               regions={overlayRegions}
               baskets={baskets}
