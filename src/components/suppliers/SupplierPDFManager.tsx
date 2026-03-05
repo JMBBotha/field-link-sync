@@ -66,10 +66,25 @@ async function deleteSinglePDF(pdf: PDFUploadRow) {
   // 3. Delete PDF region overlays
   await (supabase.from("pdf_product_regions") as any).delete().eq("pdf_upload_id", pdf.id);
 
-  // 4. Delete the pdf_uploads DB record
+  // 4. Delete supplier_pdf_pages linked to this supplier
+  // supplier_pdf_pages uses text supplier_id (name) so we need to match by supplier name
+  const supplierName = pdf.suppliers?.name;
+  if (supplierName) {
+    // Delete pages matching this supplier name (with and without trailing space)
+    await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", supplierName);
+    await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", supplierName + " ");
+    // Also try matching by the pdf filename
+    if (pdf.file_name) {
+      await (supabase.from("supplier_pdf_pages") as any).delete().eq("pdf_filename", pdf.file_name);
+    }
+  }
+  // Also delete by supplier UUID in case some pages use UUID format
+  await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", pdf.supplier_id);
+
+  // 5. Delete the pdf_uploads DB record
   await (supabase.from("pdf_uploads") as any).delete().eq("id", pdf.id);
 
-  // 5. Delete actual file from storage
+  // 6. Delete actual file from storage
   const rawPath = pdf.file_path || pdf.storage_path || pdf.file_url || null;
   if (rawPath) {
     const match = rawPath.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)/);
