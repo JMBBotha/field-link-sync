@@ -449,6 +449,35 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
         </CardContent>
       </Card>
 
+      {/* Orphaned products cleanup */}
+      {activeProductCount > 0 && catalogPageCount === 0 && (
+        <Card className="border-dashed border-destructive/30 bg-destructive/5">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-sm font-medium flex items-center gap-1.5 text-destructive">
+                  <PackageX className="h-4 w-4 shrink-0" />
+                  {activeProductCount} orphaned products
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Products exist without a PDF catalog. Archive them before uploading a new price list.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setShowDeleteProducts(true)}
+                disabled={deletingProducts}
+                className="text-xs shrink-0"
+              >
+                {deletingProducts ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Trash2 className="h-3 w-3 mr-1" />}
+                Archive All
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Regular documents */}
       <div className="flex justify-between items-center">
         <p className="text-sm text-muted-foreground">{documents.length} document{documents.length !== 1 ? "s" : ""}</p>
