@@ -295,6 +295,26 @@ const AdminCatalogPage = () => {
           <QuoteBuilderTab />
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear All Products?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete ALL products from the catalog, including pinned items, bundle items, and inventory stock records. Supplier records will remain intact for re-import.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleClearAllProducts}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {clearing ? "Clearing..." : "Delete All Products"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
