@@ -36,6 +36,7 @@ import type { PaletteProduct, BasketItem, Basket } from "@/components/catalog/Qu
 import { computeBundlePricing } from "@/components/catalog/quote-builder/BundleItemsPopover";
 import { useCompany } from "@/providers/CompanyProvider";
 import logo from "@/assets/logo.png";
+import FloatingSelectedItems from "@/components/catalog/quote-builder/FloatingSelectedItems";
 
 // Custom sensor to skip data-no-dnd elements
 class NoDndPointerSensor extends PointerSensor {
@@ -268,6 +269,7 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
   const [wizardTriggerItem, setWizardTriggerItem] = useState<WizardTriggerItem | null>(null);
   const [summaryCollapsed, setSummaryCollapsed] = useState(false);
   const [mobileTab, setMobileTab] = useState<"palette" | "canvas">("palette");
+  const [floatingPanelOpen, setFloatingPanelOpen] = useState(false);
 
   // PDF selection state (shared with VisualCatalogPanel)
   const [selectedFromPdf, setSelectedFromPdf] = useState<PdfSelectedProduct[]>([]);
@@ -640,6 +642,8 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
               baskets={baskets}
               onAddProductToBasket={addProductToBasket}
               onOpenVisualPanel={() => setVisualPanelOpen(true)}
+              pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
+              onPopOutSelected={() => setFloatingPanelOpen(true)}
             />
           </div>
 
@@ -689,6 +693,14 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
           pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
         />
       </DndContext>
+
+      {/* Floating Selected Items panel */}
+      {floatingPanelOpen && (
+        <FloatingSelectedItems
+          pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
+          onClose={() => setFloatingPanelOpen(false)}
+        />
+      )}
 
       {/* Mobile bottom summary */}
       {isMobile && <MobileSummaryDrawer baskets={baskets} />}
