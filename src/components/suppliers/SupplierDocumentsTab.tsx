@@ -6,14 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileText, Trash2, Loader2, Eye, ImagePlus, PackageX } from "lucide-react";
+import { Upload, FileText, Trash2, Loader2, Eye, ImagePlus, PackageX, FileSpreadsheet, Sparkles } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import PDFExtractReviewModal from "./PDFExtractReviewModal";
 import SupplierInfoReviewModal from "./SupplierInfoReviewModal";
+import ImportPreviewModal from "./ImportPreviewModal";
 import type { ExtractedSupplierInfo } from "@/services/supplierInfoExtractor";
+import type { ImportPreview, ParsedProduct } from "@/services/productImportParser";
 
 interface SupplierDocument {
   id: string;
@@ -35,6 +37,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const priceListInputRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [processingPriceList, setProcessingPriceList] = useState(false);
   const [priceListProgress, setPriceListProgress] = useState("");
@@ -48,6 +51,12 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
   const [deletingProducts, setDeletingProducts] = useState(false);
   const [productDeleteMode, setProductDeleteMode] = useState<"archive" | "delete">("archive");
   const [supplierInfoExtracted, setSupplierInfoExtracted] = useState<ExtractedSupplierInfo | null>(null);
+
+  // AI Import state
+  const [importAnalysing, setImportAnalysing] = useState(false);
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+  const [importFileName, setImportFileName] = useState("");
+  const [importConfirming, setImportConfirming] = useState(false);
 
   const { data: documents = [], isLoading } = useQuery({
     queryKey: ["supplier-documents", supplierId],
