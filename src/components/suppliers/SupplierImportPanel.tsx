@@ -10,8 +10,10 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import ImportPreviewModal from "./ImportPreviewModal";
-import type { ImportPreview, ParsedProduct } from "@/services/productImportParser";
+import type { ImportPreview, ParsedProduct, ImportStage } from "@/services/productImportParser";
 import { cleanImportForSupplier, logImportAction } from "@/services/cleanImportPipeline";
+import { Progress } from "@/components/ui/progress";
+import { CheckCircle2 } from "lucide-react";
 
 interface SupplierImportPanelProps {
   supplierId: string;
