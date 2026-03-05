@@ -513,7 +513,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
     }
   }, [supplierId, supplierName, queryClient, toast]);
 
-
+  const handleClearAndReupload = async () => {
     setDeletingProducts(true);
     try {
       const { deleteSupplierProductsOnly } = await import("@/services/supplierDeleteService");
