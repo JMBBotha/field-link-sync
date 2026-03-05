@@ -39,6 +39,8 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
   const [deletingCatalog, setDeletingCatalog] = useState(false);
   const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
   const [pendingReplaceFile, setPendingReplaceFile] = useState<File | null>(null);
+  const [showDeleteProducts, setShowDeleteProducts] = useState(false);
+  const [deletingProducts, setDeletingProducts] = useState(false);
 
   const { data: documents = [], isLoading } = useQuery({
     queryKey: ["supplier-documents", supplierId],
