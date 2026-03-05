@@ -46,6 +46,7 @@ import AdminSuppliersPage from "./pages/admin/AdminSuppliersPage";
 import AdminConsumablesPage from "./pages/admin/AdminConsumablesPage";
 import AdminWhatsAppPage from "./pages/admin/AdminWhatsAppPage";
 import AdminManualQuotePage from "./pages/admin/AdminManualQuotePage";
+import AdminPDFDocumentsPage from "./pages/admin/AdminPDFDocumentsPage";
 
 // FreshBooks multi-tenant
 import { CompanyProvider } from "./providers/CompanyProvider";
