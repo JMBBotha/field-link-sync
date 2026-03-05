@@ -262,6 +262,26 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
     setPriceListProgress("Loading PDF...");
 
     try {
+      // ── Step 1: Delete ALL existing products for this supplier (cascade) ──
+      setPriceListProgress("Cleaning up old products...");
+      const { data: existingProducts } = await (supabase.from("supplier_products") as any)
+        .select("id")
+        .eq("supplier_id", supplierId);
+      const existingIds = (existingProducts || []).map((p: any) => p.id);
+
+      if (existingIds.length > 0) {
+        // Delete dependent rows first (FK constraints) — order matters
+        await (supabase.from("pdf_product_regions") as any).delete().in("product_id", existingIds);
+        await (supabase.from("bundle_items") as any).delete().in("supplier_product_id", existingIds);
+        await (supabase.from("inventory_stock") as any).delete().in("product_id", existingIds);
+        await (supabase.from("job_used_parts") as any).delete().in("product_id", existingIds);
+        await (supabase.from("quote_items") as any).delete().in("product_id", existingIds);
+        // Now delete all products
+        await (supabase.from("supplier_products") as any).delete().eq("supplier_id", supplierId);
+        console.log(`[processUpload] Deleted ${existingIds.length} old products for supplier ${supplierId}`);
+      }
+
+      // ── Step 2: Process the new PDF ──
       const pdfjsLib = await import("pdfjs-dist");
       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
