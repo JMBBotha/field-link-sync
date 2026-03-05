@@ -61,7 +61,29 @@ serve(async (req) => {
     const result = await response.json();
     console.log("[enhance-pdf-page] Deep-Image response received");
 
-    if (result?.result_url) {
+    // Handle async job polling when API queues the request
+    let finalResult = result;
+    if (!result?.result_url && result?.job) {
+      const jobId = result.job;
+      console.log(`[enhance-pdf-page] Job queued: ${jobId}, polling...`);
+      for (let i = 0; i < 12; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const pollResp = await fetch(`https://deep-image.ai/rest_api/result/${jobId}`, {
+          headers: { "X-API-KEY": apiKey }
+        });
+        const pollResult = await pollResp.json();
+        console.log(`[enhance-pdf-page] Poll ${i + 1}: status=${pollResult.status}`);
+        if (pollResult.status === 'complete' && pollResult.result_url) {
+          finalResult = pollResult;
+          break;
+        }
+        if (pollResult.status === 'error') {
+          throw new Error(`Deep-Image job failed: ${JSON.stringify(pollResult)}`);
+        }
+      }
+    }
+
+    if (finalResult?.result_url) {
       const imgResp = await fetch(result.result_url);
       if (!imgResp.ok) {
         return new Response(
