@@ -694,6 +694,14 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
         />
       </DndContext>
 
+      {/* Floating Selected Items panel */}
+      {floatingPanelOpen && (
+        <FloatingSelectedItems
+          pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
+          onClose={() => setFloatingPanelOpen(false)}
+        />
+      )}
+
       {/* Mobile bottom summary */}
       {isMobile && <MobileSummaryDrawer baskets={baskets} />}
 
