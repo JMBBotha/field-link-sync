@@ -188,18 +188,8 @@ const AdminSuppliersPage = () => {
       setDeleteState(null);
     }
   };
-      } else {
-        await deleteSupplierProductsOnly(deleteState.supplierId);
-        toast({ title: `${deleteState.supplierName} cleared — ready for fresh upload.` });
-      }
-      refreshAll();
-    } catch (err: any) {
-      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
-    } finally {
-      setIsDeleting(false);
-      setDeleteState(null);
-    }
-  };
+
+
 
   // Bulk delete all
   const handleBulkDeleteAll = async () => {
