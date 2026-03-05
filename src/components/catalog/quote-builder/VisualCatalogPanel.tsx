@@ -1000,8 +1000,8 @@ const LazyPdfPage = ({
             loading="lazy"
             draggable={false}
           />
-          {/* Show overlays for ALL regions (matched + unmatched) */}
-          {hasPdfSource && overlayRegions.length > 0 && (
+          {/* Show overlays for ALL regions (matched + unmatched) — works with live extraction or fallback */}
+          {overlayRegions.length > 0 && (
             <PdfPageOverlay
               regions={overlayRegions}
               baskets={baskets}
