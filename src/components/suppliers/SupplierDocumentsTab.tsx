@@ -457,7 +457,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
     setImportFileName(file.name);
     try {
       const { parseImportFile } = await import("@/services/productImportParser");
-      const preview = await parseImportFile(file, supplierName || "Supplier", 20);
+      const preview = await parseImportFile(file, supplierId);
       setImportPreview(preview);
     } catch (err: any) {
       toast({ title: "Analysis failed", description: err.message, variant: "destructive" });
@@ -465,7 +465,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
       setImportAnalysing(false);
       if (importInputRef.current) importInputRef.current.value = "";
     }
-  }, [supplierName, toast]);
+  }, [supplierId, toast]);
 
   const handleImportConfirm = useCallback(async (products: ParsedProduct[]) => {
     setImportConfirming(true);

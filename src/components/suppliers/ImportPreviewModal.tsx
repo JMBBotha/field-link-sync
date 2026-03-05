@@ -12,9 +12,9 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AlertTriangle, CheckCircle2, CircleHelp, Download, Loader2, Search } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CircleHelp, Download, Loader2, Search, Tag, Wallet } from "lucide-react";
 import { formatRand } from "@/utils/formatRand";
-import type { ImportPreview, ParsedProduct } from "@/services/productImportParser";
+import type { ImportPreview, ParsedProduct, PriceListType } from "@/services/productImportParser";
 import { recalculateProducts } from "@/services/productImportParser";
 
 interface ImportPreviewModalProps {
@@ -28,7 +28,7 @@ interface ImportPreviewModalProps {
 
 function ConfidenceBadge({ level }: { level: "high" | "medium" | "low" }) {
   if (level === "high") return <Badge variant="default" className="bg-green-600 text-[10px] gap-1"><CheckCircle2 className="h-3 w-3" />HIGH</Badge>;
-  if (level === "medium") return <Badge variant="secondary" className="text-[10px] gap-1 bg-yellow-500/20 text-yellow-700"><CircleHelp className="h-3 w-3" />MEDIUM</Badge>;
+  if (level === "medium") return <Badge variant="secondary" className="text-[10px] gap-1 bg-yellow-500/20 text-yellow-700 dark:text-yellow-300"><CircleHelp className="h-3 w-3" />MEDIUM</Badge>;
   return <Badge variant="destructive" className="text-[10px] gap-1"><AlertTriangle className="h-3 w-3" />LOW</Badge>;
 }
 
@@ -40,27 +40,28 @@ const ImportPreviewModal = ({
   onConfirm,
   confirming = false,
 }: ImportPreviewModalProps) => {
+  const ss = preview.supplierSettings;
+  const [priceListType, setPriceListType] = useState<PriceListType>(ss.priceListType);
   const [isInclVat, setIsInclVat] = useState(preview.detectedPriceType === "incl_vat");
-  const [discount, setDiscount] = useState(preview.detectedDiscount);
-  const [markup, setMarkup] = useState(preview.suggestedMarkup);
+  const [discount, setDiscount] = useState(ss.priceListType === "list_price_with_discount" ? (preview.detectedDiscount || ss.tradeDiscount) : ss.tradeDiscount);
+  const [markup, setMarkup] = useState(ss.markupPercent);
   const [search, setSearch] = useState("");
 
+  const effectiveDiscount = priceListType === "list_price_with_discount" ? discount : 0;
+
   const products = useMemo(
-    () => recalculateProducts(preview.products, isInclVat, discount, markup),
-    [preview.products, isInclVat, discount, markup]
+    () => recalculateProducts(preview.products, priceListType, isInclVat, effectiveDiscount, markup),
+    [preview.products, priceListType, isInclVat, effectiveDiscount, markup]
   );
 
   const filtered = useMemo(() => {
     if (!search) return products;
     const q = search.toLowerCase();
     return products.filter(
-      (p) =>
-        p.model_number.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q)
+      (p) => p.model_number.toLowerCase().includes(q) || p.description.toLowerCase().includes(q)
     );
   }, [products, search]);
 
-  // Sample product for preview calculation box
   const sample = products[0];
 
   const handleDownloadCSV = () => {
@@ -79,6 +80,8 @@ const ImportPreviewModal = ({
     URL.revokeObjectURL(url);
   };
 
+  const isCostPrice = priceListType === "cost_price";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
@@ -91,11 +94,53 @@ const ImportPreviewModal = ({
 
         <ScrollArea className="flex-1 pr-2 -mr-2">
           <div className="space-y-4">
-            {/* Detected Settings */}
+            {/* Price List Type Toggle */}
             <Card>
               <CardContent className="p-4 space-y-4">
-                <p className="text-sm font-semibold">Detected Settings</p>
+                <div className="flex items-start gap-3">
+                  {isCostPrice ? (
+                    <Wallet className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                  ) : (
+                    <Tag className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                  )}
+                  <div className="flex-1 space-y-3">
+                    <div>
+                      <p className="text-sm font-semibold">
+                        {isCostPrice ? "Cost Price" : "List Price with Trade Discount"}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {isCostPrice
+                          ? "This supplier's PDF shows our buy price directly — no discount needed."
+                          : "PDF shows RRP/list price — trade discount applied to get cost price."}
+                      </p>
+                    </div>
 
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant={isCostPrice ? "default" : "outline"}
+                        className="text-xs"
+                        onClick={() => setPriceListType("cost_price")}
+                      >
+                        <Wallet className="h-3 w-3 mr-1" /> Cost Price
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={!isCostPrice ? "default" : "outline"}
+                        className="text-xs"
+                        onClick={() => setPriceListType("list_price_with_discount")}
+                      >
+                        <Tag className="h-3 w-3 mr-1" /> List Price + Discount
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Settings */}
+            <Card>
+              <CardContent className="p-4 space-y-4">
                 {/* VAT Toggle */}
                 <div className="flex items-center justify-between gap-4">
                   <div className="space-y-0.5">
@@ -112,24 +157,31 @@ const ImportPreviewModal = ({
                   </div>
                 </div>
 
-                {/* Discount */}
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-0.5">
-                    <Label className="text-xs">Supplier Trade Discount %</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={60}
-                      value={discount}
-                      onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                      className="w-24 h-8 text-sm"
-                    />
+                {/* Trade Discount — only for list_price_with_discount */}
+                {!isCostPrice ? (
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <Label className="text-xs">Trade Discount %</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={60}
+                        value={discount}
+                        onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                        className="w-24 h-8 text-sm"
+                      />
+                    </div>
+                    <div className="text-right space-y-0.5">
+                      <ConfidenceBadge level={preview.discountConfidence} />
+                      <p className="text-[10px] text-muted-foreground max-w-[200px]">{preview.discountEvidence}</p>
+                    </div>
                   </div>
-                  <div className="text-right space-y-0.5">
-                    <ConfidenceBadge level={preview.discountConfidence} />
-                    <p className="text-[10px] text-muted-foreground max-w-[200px]">{preview.discountEvidence}</p>
+                ) : (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded px-3 py-2">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                    Trade Discount: N/A — this supplier lists cost prices directly.
                   </div>
-                </div>
+                )}
 
                 {/* Markup */}
                 <div className="space-y-0.5">
@@ -150,9 +202,13 @@ const ImportPreviewModal = ({
             {sample && (
               <Card className="bg-muted/30">
                 <CardContent className="p-4">
-                  <p className="text-xs font-semibold mb-2">Price Calculation Preview — {sample.model_number}</p>
+                  <p className="text-xs font-semibold mb-2">
+                    Calculation Example — {sample.model_number}
+                  </p>
                   <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-xs font-mono">
-                    <span className="text-muted-foreground">List Price ({isInclVat ? "Incl" : "Excl"} VAT):</span>
+                    <span className="text-muted-foreground">
+                      {isCostPrice ? "Cost" : "List"} Price ({isInclVat ? "Incl" : "Excl"} VAT):
+                    </span>
                     <span className="text-right">{formatRand(sample.raw_price)}</span>
 
                     {isInclVat && (
@@ -162,13 +218,17 @@ const ImportPreviewModal = ({
                       </>
                     )}
 
-                    <span className="text-muted-foreground">= Price Excl VAT:</span>
-                    <span className="text-right">{formatRand(sample.price_excl_vat)}</span>
-
-                    {discount > 0 && (
+                    {!isCostPrice && (
                       <>
-                        <span className="text-muted-foreground">Less {discount}% Trade Discount:</span>
-                        <span className="text-right text-destructive">− {formatRand(sample.price_excl_vat - sample.cost_price)}</span>
+                        <span className="text-muted-foreground">= Price Excl VAT:</span>
+                        <span className="text-right">{formatRand(sample.price_excl_vat)}</span>
+
+                        {effectiveDiscount > 0 && (
+                          <>
+                            <span className="text-muted-foreground">Less {effectiveDiscount}% Trade Discount:</span>
+                            <span className="text-right text-destructive">− {formatRand(sample.price_excl_vat - sample.cost_price)}</span>
+                          </>
+                        )}
                       </>
                     )}
 
@@ -176,9 +236,9 @@ const ImportPreviewModal = ({
                     <span className="text-right font-semibold">{formatRand(sample.cost_price)}</span>
 
                     <span className="text-muted-foreground">Plus {markup}% Markup:</span>
-                    <span className="text-right text-green-600">+ {formatRand(sample.calculated_price - sample.cost_price)}</span>
+                    <span className="text-right text-green-600 dark:text-green-400">+ {formatRand(sample.calculated_price - sample.cost_price)}</span>
 
-                    <span className="text-muted-foreground">= Our Sell Price (Excl VAT):</span>
+                    <span className="text-muted-foreground">= Sell Price (Excl VAT):</span>
                     <span className="text-right">{formatRand(sample.calculated_price)}</span>
 
                     <span className="text-muted-foreground">Plus 15% VAT:</span>
@@ -231,7 +291,7 @@ const ImportPreviewModal = ({
                     <TableRow>
                       <TableHead className="text-xs">Model</TableHead>
                       <TableHead className="text-xs">Description</TableHead>
-                      <TableHead className="text-xs text-right">List Price</TableHead>
+                      <TableHead className="text-xs text-right">{isCostPrice ? "Cost" : "List"} Price</TableHead>
                       <TableHead className="text-xs text-right">Cost</TableHead>
                       <TableHead className="text-xs text-right">Our Price</TableHead>
                       <TableHead className="text-xs text-right">Sell Incl</TableHead>

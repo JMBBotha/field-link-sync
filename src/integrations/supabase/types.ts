@@ -3892,7 +3892,9 @@ export type Database = {
           contact_name: string | null
           contact_phone: string | null
           created_at: string
+          default_markup_percent: number | null
           default_price_column: string | null
+          default_trade_discount: number | null
           default_vat_rate: number
           head_office_address: string | null
           id: string
@@ -3907,6 +3909,7 @@ export type Database = {
           postal_address: string | null
           price_includes_markup: boolean
           price_includes_vat: boolean
+          price_list_type: string | null
           registration_number: string | null
           supplier_discount_percent: number
           supplier_markup_percent: number
@@ -3922,7 +3925,9 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          default_markup_percent?: number | null
           default_price_column?: string | null
+          default_trade_discount?: number | null
           default_vat_rate?: number
           head_office_address?: string | null
           id?: string
@@ -3937,6 +3942,7 @@ export type Database = {
           postal_address?: string | null
           price_includes_markup?: boolean
           price_includes_vat?: boolean
+          price_list_type?: string | null
           registration_number?: string | null
           supplier_discount_percent?: number
           supplier_markup_percent?: number
@@ -3952,7 +3958,9 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          default_markup_percent?: number | null
           default_price_column?: string | null
+          default_trade_discount?: number | null
           default_vat_rate?: number
           head_office_address?: string | null
           id?: string
@@ -3967,6 +3975,7 @@ export type Database = {
           postal_address?: string | null
           price_includes_markup?: boolean
           price_includes_vat?: boolean
+          price_list_type?: string | null
           registration_number?: string | null
           supplier_discount_percent?: number
           supplier_markup_percent?: number

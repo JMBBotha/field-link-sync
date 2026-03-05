@@ -1,4 +1,15 @@
 import { VAT_RATE } from "@/utils/pricing";
+import { supabase } from "@/integrations/supabase/client";
+
+export type PriceListType = "cost_price" | "list_price_with_discount";
+
+export interface SupplierPricingSettings {
+  supplierName: string;
+  priceListType: PriceListType;
+  tradeDiscount: number;
+  markupPercent: number;
+  priceIncludesVat: boolean;
+}
 
 export interface ParsedProduct {
   model_number: string;
@@ -7,6 +18,7 @@ export interface ParsedProduct {
   raw_price: number;
   price_includes_vat: boolean;
   price_excl_vat: number;
+  price_list_type: PriceListType;
   supplier_discount_percent: number;
   cost_price: number;
   markup_percent: number;
@@ -29,6 +41,26 @@ export interface ImportPreview {
   discountEvidence: string;
   vatConfidence: "high" | "medium" | "low";
   discountConfidence: "high" | "medium" | "low";
+  supplierSettings: SupplierPricingSettings;
+}
+
+// ─────────────────────────────────────────
+// FETCH SUPPLIER PRICING SETTINGS
+// ─────────────────────────────────────────
+export async function getSupplierPricingSettings(supplierId: string): Promise<SupplierPricingSettings> {
+  const { data: supplier } = await (supabase
+    .from("suppliers") as any)
+    .select("name, price_list_type, default_trade_discount, default_markup_percent")
+    .eq("id", supplierId)
+    .single();
+
+  return {
+    supplierName: supplier?.name || "",
+    priceListType: supplier?.price_list_type || "cost_price",
+    tradeDiscount: supplier?.default_trade_discount ?? 0,
+    markupPercent: supplier?.default_markup_percent ?? 20,
+    priceIncludesVat: false,
+  };
 }
 
 // ─────────────────────────────────────────
@@ -36,13 +68,16 @@ export interface ImportPreview {
 // ─────────────────────────────────────────
 export async function parseImportFile(
   file: File,
-  supplierName: string,
-  defaultMarkup: number = 20
+  supplierId: string,
+  settingsOverride?: Partial<SupplierPricingSettings>
 ): Promise<ImportPreview> {
+  const dbSettings = await getSupplierPricingSettings(supplierId);
+  const settings: SupplierPricingSettings = { ...dbSettings, ...settingsOverride };
+
   if (file.name.endsWith(".csv") || file.type === "text/csv") {
-    return parseCSVFile(file, supplierName, defaultMarkup);
+    return parseCSVFile(file, settings);
   }
-  return parsePDFFile(file, supplierName, defaultMarkup);
+  return parsePDFFile(file, settings);
 }
 
 // ─────────────────────────────────────────
@@ -68,7 +103,6 @@ function detectVATInclusion(
   if (/\bVAT\b/.test(upperHeaders) && !/INCL/.test(upperHeaders))
     return { isIncl: false, confidence: "medium", evidence: "Separate VAT column detected — prices likely excl VAT" };
 
-  // Check for RRP column header — typically incl VAT in South Africa
   if (/\bRRP\b|RECOMMENDED\s*RETAIL/.test(upperText))
     return { isIncl: true, confidence: "medium", evidence: "RRP detected — typically incl VAT in SA" };
 
@@ -99,16 +133,25 @@ function detectDiscount(
 // ─────────────────────────────────────────
 export function calculateImportPrices(
   rawPrice: number,
+  priceListType: PriceListType,
   isInclVat: boolean,
   discountPercent: number,
   markupPercent: number
 ) {
+  // Step 1: Strip VAT if price includes it
   const price_excl_vat = isInclVat
     ? parseFloat((rawPrice / (1 + VAT_RATE)).toFixed(2))
     : rawPrice;
 
-  const cost_price = parseFloat((price_excl_vat * (1 - discountPercent / 100)).toFixed(2));
+  // Step 2: Apply trade discount ONLY if list_price_with_discount
+  const cost_price = priceListType === "list_price_with_discount"
+    ? parseFloat((price_excl_vat * (1 - discountPercent / 100)).toFixed(2))
+    : price_excl_vat; // Already IS the cost price
+
+  // Step 3: Apply markup to cost price
   const calculated_price = parseFloat((cost_price * (1 + markupPercent / 100)).toFixed(2));
+
+  // Step 4: VAT on sell price
   const vat_amount = parseFloat((calculated_price * VAT_RATE).toFixed(2));
   const sell_price_incl_vat = parseFloat((calculated_price + vat_amount).toFixed(2));
 
@@ -118,19 +161,22 @@ export function calculateImportPrices(
 // Re-calculate all products with new settings
 export function recalculateProducts(
   products: ParsedProduct[],
+  priceListType: PriceListType,
   isInclVat: boolean,
   discountPercent: number,
   markupPercent: number
 ): ParsedProduct[] {
   return products.map((p) => {
-    const calc = calculateImportPrices(p.raw_price, isInclVat, discountPercent, markupPercent);
+    const calc = calculateImportPrices(p.raw_price, priceListType, isInclVat, discountPercent, markupPercent);
     const flags: string[] = [];
     if (isInclVat) flags.push("price_incl_vat_stripped");
-    if (discountPercent > 0) flags.push(`discount_${discountPercent}pct_applied`);
+    if (priceListType === "list_price_with_discount" && discountPercent > 0)
+      flags.push(`discount_${discountPercent}pct_applied`);
     return {
       ...p,
       price_includes_vat: isInclVat,
-      supplier_discount_percent: discountPercent,
+      price_list_type: priceListType,
+      supplier_discount_percent: priceListType === "list_price_with_discount" ? discountPercent : 0,
       markup_percent: markupPercent,
       flags,
       ...calc,
@@ -141,16 +187,20 @@ export function recalculateProducts(
 // ─────────────────────────────────────────
 // CSV PARSER
 // ─────────────────────────────────────────
-async function parseCSVFile(file: File, _supplierName: string, defaultMarkup: number): Promise<ImportPreview> {
+async function parseCSVFile(file: File, settings: SupplierPricingSettings): Promise<ImportPreview> {
   const text = await file.text();
   const lines = text.split("\n").filter((l) => l.trim());
-  if (lines.length < 2) {
-    return emptyPreview("CSV file has no data rows", defaultMarkup);
-  }
+  if (lines.length < 2) return emptyPreview("CSV file has no data rows", settings);
 
   const headers = parseCSVLine(lines[0]);
   const vatDetection = detectVATInclusion(text, headers);
   const discountDetection = detectDiscount(text);
+
+  // Use supplier settings, but let document-detected values override if high confidence
+  const effectiveInclVat = vatDetection.confidence === "high" ? vatDetection.isIncl : settings.priceIncludesVat;
+  const effectiveDiscount = settings.priceListType === "list_price_with_discount"
+    ? (discountDetection.confidence === "high" ? discountDetection.percent : settings.tradeDiscount)
+    : 0;
 
   const columnMap: Record<string, string> = {};
   for (const header of headers) {
@@ -179,16 +229,12 @@ async function parseCSVFile(file: File, _supplierName: string, defaultMarkup: nu
     const rawPrice = parseFloat(row[priceCol]?.replace(/[R,\s]/g, "") || "0");
     if (!rawPrice || rawPrice <= 0) continue;
 
-    const rowDiscount = row[columnMap.discount]
-      ? parseFloat(row[columnMap.discount])
-      : discountDetection.percent;
-
-    const isInclVat = columnMap.price_incl ? priceCol === columnMap.price_incl : vatDetection.isIncl;
-
-    const calc = calculateImportPrices(rawPrice, isInclVat, rowDiscount, defaultMarkup);
+    const isInclVat = columnMap.price_incl ? priceCol === columnMap.price_incl : effectiveInclVat;
+    const calc = calculateImportPrices(rawPrice, settings.priceListType, isInclVat, effectiveDiscount, settings.markupPercent);
     const flags: string[] = [];
     if (isInclVat) flags.push("price_incl_vat_stripped");
-    if (rowDiscount > 0) flags.push(`discount_${rowDiscount}pct_applied`);
+    if (settings.priceListType === "list_price_with_discount" && effectiveDiscount > 0)
+      flags.push(`discount_${effectiveDiscount}pct_applied`);
 
     let modelNumber = row[columnMap.model] || "";
     if (!modelNumber) {
@@ -203,8 +249,9 @@ async function parseCSVFile(file: File, _supplierName: string, defaultMarkup: nu
       category: row[columnMap.category] || detectCategory(row[columnMap.description] || ""),
       raw_price: rawPrice,
       price_includes_vat: isInclVat,
-      supplier_discount_percent: rowDiscount,
-      markup_percent: defaultMarkup,
+      price_list_type: settings.priceListType,
+      supplier_discount_percent: settings.priceListType === "list_price_with_discount" ? effectiveDiscount : 0,
+      markup_percent: settings.markupPercent,
       confidence: vatDetection.confidence,
       flags,
       ...calc,
@@ -217,23 +264,24 @@ async function parseCSVFile(file: File, _supplierName: string, defaultMarkup: nu
 
   return {
     products,
-    detectedPriceType: vatDetection.isIncl ? "incl_vat" : "excl_vat",
-    detectedDiscount: discountDetection.percent,
-    suggestedMarkup: defaultMarkup,
+    detectedPriceType: effectiveInclVat ? "incl_vat" : "excl_vat",
+    detectedDiscount: effectiveDiscount,
+    suggestedMarkup: settings.markupPercent,
     totalProducts: products.length,
     warnings,
     columnMap,
     vatEvidence: vatDetection.evidence,
-    discountEvidence: discountDetection.evidence,
+    discountEvidence: settings.priceListType === "cost_price" ? "N/A — Cost price supplier" : discountDetection.evidence,
     vatConfidence: vatDetection.confidence,
-    discountConfidence: discountDetection.confidence,
+    discountConfidence: settings.priceListType === "cost_price" ? "high" : discountDetection.confidence,
+    supplierSettings: settings,
   };
 }
 
 // ─────────────────────────────────────────
 // PDF PARSER
 // ─────────────────────────────────────────
-async function parsePDFFile(file: File, _supplierName: string, defaultMarkup: number): Promise<ImportPreview> {
+async function parsePDFFile(file: File, settings: SupplierPricingSettings): Promise<ImportPreview> {
   const pdfjsLib = await import("pdfjs-dist");
   pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
@@ -268,6 +316,11 @@ async function parsePDFFile(file: File, _supplierName: string, defaultMarkup: nu
   const discountDetection = detectDiscount(allText);
   const warnings: string[] = [];
 
+  const effectiveInclVat = vatDetection.confidence === "high" ? vatDetection.isIncl : settings.priceIncludesVat;
+  const effectiveDiscount = settings.priceListType === "list_price_with_discount"
+    ? (discountDetection.confidence === "high" ? discountDetection.percent : settings.tradeDiscount)
+    : 0;
+
   if (vatDetection.confidence === "low") {
     warnings.push("⚠️ Could not confidently detect VAT inclusion — please verify below");
   }
@@ -281,19 +334,21 @@ async function parsePDFFile(file: File, _supplierName: string, defaultMarkup: nu
   });
 
   const products: ParsedProduct[] = uniqueRows.map((row) => {
-    const calc = calculateImportPrices(row.price, vatDetection.isIncl, discountDetection.percent, defaultMarkup);
+    const calc = calculateImportPrices(row.price, settings.priceListType, effectiveInclVat, effectiveDiscount, settings.markupPercent);
     const flags: string[] = [];
-    if (vatDetection.isIncl) flags.push("price_incl_vat_stripped");
-    if (discountDetection.percent > 0) flags.push(`discount_${discountDetection.percent}pct_applied`);
+    if (effectiveInclVat) flags.push("price_incl_vat_stripped");
+    if (settings.priceListType === "list_price_with_discount" && effectiveDiscount > 0)
+      flags.push(`discount_${effectiveDiscount}pct_applied`);
 
     return {
       model_number: row.model,
       description: row.description,
       category: row.category,
       raw_price: row.price,
-      price_includes_vat: vatDetection.isIncl,
-      supplier_discount_percent: discountDetection.percent,
-      markup_percent: defaultMarkup,
+      price_includes_vat: effectiveInclVat,
+      price_list_type: settings.priceListType,
+      supplier_discount_percent: settings.priceListType === "list_price_with_discount" ? effectiveDiscount : 0,
+      markup_percent: settings.markupPercent,
       confidence: vatDetection.confidence,
       flags,
       ...calc,
@@ -302,15 +357,16 @@ async function parsePDFFile(file: File, _supplierName: string, defaultMarkup: nu
 
   return {
     products,
-    detectedPriceType: vatDetection.isIncl ? "incl_vat" : "excl_vat",
-    detectedDiscount: discountDetection.percent,
-    suggestedMarkup: defaultMarkup,
+    detectedPriceType: effectiveInclVat ? "incl_vat" : "excl_vat",
+    detectedDiscount: effectiveDiscount,
+    suggestedMarkup: settings.markupPercent,
     totalProducts: products.length,
     warnings,
     vatEvidence: vatDetection.evidence,
-    discountEvidence: discountDetection.evidence,
+    discountEvidence: settings.priceListType === "cost_price" ? "N/A — Cost price supplier" : discountDetection.evidence,
     vatConfidence: vatDetection.confidence,
-    discountConfidence: discountDetection.confidence,
+    discountConfidence: settings.priceListType === "cost_price" ? "high" : discountDetection.confidence,
+    supplierSettings: settings,
   };
 }
 
@@ -343,17 +399,18 @@ function parseCSVLine(line: string): string[] {
   return result;
 }
 
-function emptyPreview(warning: string, defaultMarkup: number): ImportPreview {
+function emptyPreview(warning: string, settings: SupplierPricingSettings): ImportPreview {
   return {
     products: [],
     detectedPriceType: "unknown",
     detectedDiscount: 0,
-    suggestedMarkup: defaultMarkup,
+    suggestedMarkup: settings.markupPercent,
     totalProducts: 0,
     warnings: [warning],
     vatEvidence: "N/A",
     discountEvidence: "N/A",
     vatConfidence: "low",
     discountConfidence: "low",
+    supplierSettings: settings,
   };
 }
