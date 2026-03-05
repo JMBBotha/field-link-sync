@@ -642,6 +642,8 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
               baskets={baskets}
               onAddProductToBasket={addProductToBasket}
               onOpenVisualPanel={() => setVisualPanelOpen(true)}
+              pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
+              onPopOutSelected={() => setFloatingPanelOpen(true)}
             />
           </div>
 
