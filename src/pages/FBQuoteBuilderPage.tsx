@@ -269,6 +269,20 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
   const [summaryCollapsed, setSummaryCollapsed] = useState(false);
   const [mobileTab, setMobileTab] = useState<"palette" | "canvas">("palette");
 
+  // PDF selection state (shared with VisualCatalogPanel)
+  const [selectedFromPdf, setSelectedFromPdf] = useState<PdfSelectedProduct[]>([]);
+
+  const handleSelectProduct = useCallback((product: Pick<PdfSelectedProduct, "code" | "description" | "price"> & Partial<Pick<PdfSelectedProduct, "costPrice" | "markupPercent">>) => {
+    setSelectedFromPdf((prev) => {
+      if (prev.some((p) => p.code === product.code)) return prev.filter((p) => p.code !== product.code);
+      return [...prev, { ...product, quantity: 1, unitType: "units", costPrice: product.costPrice, markupPercent: product.markupPercent }];
+    });
+  }, []);
+
+  const updateSelectedItem = useCallback((code: string, updates: Partial<Pick<PdfSelectedProduct, "quantity" | "unitType" | "costPrice" | "markupPercent" | "price">>) => {
+    setSelectedFromPdf((prev) => prev.map((item) => (item.code === code ? { ...item, ...updates } : item)));
+  }, []);
+
   const scrollToCanvas = useCallback(() => {
     if (isMobile) setMobileTab("canvas");
   }, [isMobile]);
