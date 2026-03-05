@@ -175,16 +175,28 @@ const AdminCatalogPage = () => {
           <Package className="h-5 w-5 text-primary" />
           <h2 className="text-xl font-bold">Product Catalog</h2>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5"
-          onClick={handleScanLengths}
-          disabled={scanning}
-        >
-          {scanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ruler className="h-3.5 w-3.5" />}
-          {scanning ? "Scanning..." : "Scan & Calculate /m Pricing"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
+            onClick={() => setClearConfirmOpen(true)}
+            disabled={clearing}
+          >
+            {clearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+            {clearing ? "Clearing..." : "Clear All Products"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={handleScanLengths}
+            disabled={scanning}
+          >
+            {scanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ruler className="h-3.5 w-3.5" />}
+            {scanning ? "Scanning..." : "Scan & Calculate /m Pricing"}
+          </Button>
+        </div>
       </div>
 
       {/* Product category filter pills */}
