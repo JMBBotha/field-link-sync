@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileText, Trash2, Loader2, Eye, ImagePlus, PackageX, FileSpreadsheet, Sparkles } from "lucide-react";
+import { Upload, FileText, Trash2, Loader2, ImagePlus, PackageX, FileSpreadsheet, Sparkles } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -16,6 +16,7 @@ import SupplierInfoReviewModal from "./SupplierInfoReviewModal";
 import ImportPreviewModal from "./ImportPreviewModal";
 import type { ExtractedSupplierInfo } from "@/services/supplierInfoExtractor";
 import type { ImportPreview, ParsedProduct } from "@/services/productImportParser";
+import { cleanImportForSupplier, logImportAction } from "@/services/cleanImportPipeline";
 
 interface SupplierDocument {
   id: string;
@@ -57,6 +58,8 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [importFileName, setImportFileName] = useState("");
   const [importConfirming, setImportConfirming] = useState(false);
+  const [showImportCleanConfirm, setShowImportCleanConfirm] = useState(false);
+  const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
 
   const { data: documents = [], isLoading } = useQuery({
     queryKey: ["supplier-documents", supplierId],
@@ -102,13 +105,44 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
     },
   });
 
+  // Import audit log
+  const { data: importHistory = [] } = useQuery({
+    queryKey: ["import-audit-log", supplierId],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("import_audit_log") as any)
+        .select("*")
+        .eq("supplier_id", supplierId)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (error) return [];
+      return data || [];
+    },
+  });
+
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["supplier-active-product-count", supplierId] });
+    queryClient.invalidateQueries({ queryKey: ["supplier-product-count", supplierId] });
+    queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-suppliers-list"] });
+    queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
+    queryClient.invalidateQueries({ queryKey: ["consumable-products"] });
+    queryClient.invalidateQueries({ queryKey: ["supplier-catalog-pages", supplierId] });
+    queryClient.invalidateQueries({ queryKey: ["import-audit-log", supplierId] });
+    queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
+    queryClient.invalidateQueries({ queryKey: ["product-category-counts"] });
+    queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] });
+    queryClient.invalidateQueries({ queryKey: ["visual-panel-suppliers"] });
+    queryClient.invalidateQueries({ queryKey: ["visual-panel-pages"] });
+    queryClient.invalidateQueries({ queryKey: ["visual-catalog-suppliers"] });
+    queryClient.invalidateQueries({ queryKey: ["visual-catalog-pages"] });
+  };
+
   const deleteAllProducts = async (mode: "archive" | "delete") => {
     setDeletingProducts(true);
     try {
       if (mode === "delete") {
-        // Use centralized service for clean cascade deletion
-        const { deleteSupplierProductsOnly } = await import("@/services/supplierDeleteService");
-        await deleteSupplierProductsOnly(supplierId);
+        await cleanImportForSupplier(supplierId);
+        await logImportAction({ supplierId, action: "clean_purge", productsDeleted: activeProductCount });
       } else {
         const { error } = await (supabase.from("supplier_products") as any)
           .update({ archived: true })
@@ -116,14 +150,8 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
           .or("archived.is.null,archived.eq.false");
         if (error) throw error;
       }
-      queryClient.invalidateQueries({ queryKey: ["supplier-active-product-count", supplierId] });
-      queryClient.invalidateQueries({ queryKey: ["supplier-product-count", supplierId] });
-      queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-suppliers-list"] });
-      queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
-      queryClient.invalidateQueries({ queryKey: ["consumable-products"] });
-      queryClient.invalidateQueries({ queryKey: ["supplier-catalog-pages", supplierId] });
-      toast({ title: mode === "delete" ? "All products permanently deleted" : "All products archived", description: "Products for this supplier have been removed." });
+      invalidateAll();
+      toast({ title: mode === "delete" ? "All products permanently deleted" : "All products archived" });
     } catch (err: any) {
       toast({ title: "Failed", description: err.message, variant: "destructive" });
     } finally {
@@ -131,16 +159,15 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
       setShowDeleteProducts(false);
     }
   };
+
   const deleteCatalogPages = async () => {
     setDeletingCatalog(true);
     try {
-      // Get all pages to find storage paths
       const { data: pages } = await (supabase.from("supplier_pdf_pages") as any)
         .select("page_image_url, pdf_filename, pdf_storage_path")
         .eq("supplier_id", supplierId);
 
       if (pages && pages.length > 0) {
-        // Delete image files from storage
         const imagePaths = pages
           .map((p: any) => {
             const url = p.page_image_url || "";
@@ -153,25 +180,14 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
           await supabase.storage.from("supplier-pdf-pages").remove(imagePaths);
         }
 
-        // Delete source PDF from storage
         const filename = pages[0]?.pdf_filename;
         if (filename) {
-          const pdfPath = `${supplierId}/${filename}`;
-          await supabase.storage.from("supplier-pdfs").remove([pdfPath]);
+          await supabase.storage.from("supplier-pdfs").remove([`${supplierId}/${filename}`]);
         }
       }
 
-      // Delete all DB rows
-      await (supabase.from("supplier_pdf_pages") as any)
-        .delete()
-        .eq("supplier_id", supplierId);
-
-      queryClient.invalidateQueries({ queryKey: ["supplier-catalog-pages", supplierId] });
-      queryClient.invalidateQueries({ queryKey: ["visual-panel-suppliers"] });
-      queryClient.invalidateQueries({ queryKey: ["visual-panel-pages"] });
-      queryClient.invalidateQueries({ queryKey: ["visual-catalog-suppliers"] });
-      queryClient.invalidateQueries({ queryKey: ["visual-catalog-pages"] });
-
+      await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", supplierId);
+      invalidateAll();
       toast({ title: "PDF catalog deleted", description: `${pages?.length || 0} pages removed.` });
     } catch (err: any) {
       toast({ title: "Delete failed", description: err.message, variant: "destructive" });
@@ -184,7 +200,6 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
   const extractTextFromPDF = async (file: File): Promise<string> => {
     const pdfjsLib = await import("pdfjs-dist");
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     let text = "";
@@ -202,29 +217,13 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
     const phoneMatch = text.match(/(?:\+27|0)\s*\d{2}\s*\d{3}\s*\d{4}/g);
     if (phoneMatch) result.phone = phoneMatch[0].replace(/\s/g, "");
     const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
-    if (emailMatch) {
-      result.email = emailMatch[0];
-      const categorized: Record<string, string> = {};
-      emailMatch.forEach((em) => {
-        const lower = em.toLowerCase();
-        if (lower.startsWith("sales")) categorized["Sales"] = em;
-        else if (lower.startsWith("accounts") || lower.startsWith("finance")) categorized["Accounts"] = em;
-        else if (lower.startsWith("info")) categorized["General"] = em;
-        else if (lower.startsWith("tech") || lower.startsWith("support")) categorized["Technical"] = em;
-        else if (!categorized["General"]) categorized["General"] = em;
-      });
-      if (Object.keys(categorized).length > 0) {
-        result.categorized_emails = JSON.stringify(categorized);
-      }
-    }
+    if (emailMatch) result.email = emailMatch[0];
     const vatMatch = text.match(/(?:VAT|vat)\s*(?:No\.?|Number|#)?\s*:?\s*(\d{10})/i);
     if (vatMatch) result.vat_number = vatMatch[1];
     const regMatch = text.match(/(?:Reg|Registration|CK)\s*(?:No\.?|Number|#)?\s*:?\s*([\d/]+)/i);
     if (regMatch) result.registration_number = regMatch[1];
     const webMatch = text.match(/(?:www\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|https?:\/\/[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/gi);
     if (webMatch) result.website = webMatch[0];
-    const addressMatch = text.match(/\d+\s+[A-Z][a-zA-Z]+\s+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Lane|Ln|Way|Blvd|Boulevard)[^,\n]*/);
-    if (addressMatch) result.physical_address = addressMatch[0].trim();
     return result;
   };
 
@@ -245,33 +244,23 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
     }
   }, [catalogPageCount, toast]);
 
-  /** Process a PDF into page images for the Visual Catalog */
+  /** Process a PDF into page images for the Visual Catalog — with clean purge first */
   const processUpload = useCallback(async (file: File) => {
-
     setProcessingPriceList(true);
-    setPriceListProgress("Loading PDF...");
+    setPriceListProgress("Purging old data...");
 
     try {
-      // ── Step 1: Delete ALL existing products for this supplier (cascade) ──
-      setPriceListProgress("Cleaning up old products...");
-      const { data: existingProducts } = await (supabase.from("supplier_products") as any)
-        .select("id")
-        .eq("supplier_id", supplierId);
-      const existingIds = (existingProducts || []).map((p: any) => p.id);
+      // ── MANDATORY CLEAN PURGE ──
+      const purgeResult = await cleanImportForSupplier(supplierId);
+      await logImportAction({
+        supplierId,
+        action: "clean_purge",
+        productsDeleted: purgeResult.deletedProducts,
+        pdfsDeleted: purgeResult.deletedPdfs,
+      });
 
-      if (existingIds.length > 0) {
-        // Delete dependent rows first (FK constraints) — order matters
-        await (supabase.from("pdf_product_regions") as any).delete().in("product_id", existingIds);
-        await (supabase.from("bundle_items") as any).delete().in("supplier_product_id", existingIds);
-        await (supabase.from("inventory_stock") as any).delete().in("product_id", existingIds);
-        await (supabase.from("job_used_parts") as any).delete().in("product_id", existingIds);
-        await (supabase.from("quote_items") as any).delete().in("product_id", existingIds);
-        // Now delete all products
-        await (supabase.from("supplier_products") as any).delete().eq("supplier_id", supplierId);
-        console.log(`[processUpload] Deleted ${existingIds.length} old products for supplier ${supplierId}`);
-      }
-
-      // ── Step 2: Process the new PDF ──
+      // ── Process the new PDF ──
+      setPriceListProgress("Loading PDF...");
       const pdfjsLib = await import("pdfjs-dist");
       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
@@ -281,12 +270,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
 
       setPriceListProgress(`Processing ${totalPages} pages...`);
 
-      // Delete existing pages for this supplier first
-      if (catalogPageCount > 0) {
-        await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", supplierId);
-      }
-
-      const SCALE = 1.5; // Good quality for viewing
+      const SCALE = 1.5;
       const batchRows: any[] = [];
 
       for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
@@ -301,12 +285,10 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
         const ctx = canvas.getContext("2d")!;
         await page.render({ canvasContext: ctx, viewport }).promise;
 
-        // Convert to JPEG blob
         const blob: Blob = await new Promise((resolve) =>
           canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.85)
         );
 
-        // Upload to storage
         const storagePath = `${supplierId}/${file.name}/page_${pageNum}.jpg`;
         const { error: uploadErr } = await supabase.storage
           .from("supplier-pdf-pages")
@@ -326,22 +308,19 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
           page_image_url: urlData.publicUrl,
         });
 
-        // Insert in batches of 10
         if (batchRows.length >= 10) {
           await (supabase.from("supplier_pdf_pages") as any).insert(batchRows.splice(0, 10));
         }
 
-        // Cleanup canvas
         canvas.width = 0;
         canvas.height = 0;
       }
 
-      // Insert remaining rows
       if (batchRows.length > 0) {
         await (supabase.from("supplier_pdf_pages") as any).insert(batchRows);
       }
 
-      // Also upload the source PDF for interactive overlays
+      // Upload the source PDF
       const pdfStoragePath = `${supplierId}/${file.name}`;
       await supabase.storage.from("supplier-pdfs").upload(pdfStoragePath, file, { upsert: true, contentType: "application/pdf" });
       const { data: pdfUrlData } = supabase.storage.from("supplier-pdfs").getPublicUrl(pdfStoragePath);
@@ -352,23 +331,16 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
           .eq("pdf_filename", file.name);
       }
 
-      queryClient.invalidateQueries({ queryKey: ["visual-panel-suppliers"] });
-      queryClient.invalidateQueries({ queryKey: ["visual-panel-pages"] });
-      queryClient.invalidateQueries({ queryKey: ["visual-catalog-suppliers"] });
-      queryClient.invalidateQueries({ queryKey: ["visual-catalog-pages"] });
-      queryClient.invalidateQueries({ queryKey: ["supplier-catalog-pages", supplierId] });
-
+      invalidateAll();
       toast({ title: `Price list uploaded`, description: `${totalPages} pages processed for Visual Catalog.` });
 
-      // Auto-extract supplier contact info from PDF
+      // Auto-extract supplier contact info
       try {
         const { extractSupplierInfoFromPDF } = await import("@/services/supplierInfoExtractor");
         const info = await extractSupplierInfoFromPDF(file);
         const hasInfo = info.allEmails.length > 0 || info.allPhones.length > 0 ||
           info.vatNumber || info.website || info.departments.length > 0 || info.locations.length > 0;
-        if (hasInfo) {
-          setSupplierInfoExtracted(info);
-        }
+        if (hasInfo) setSupplierInfoExtracted(info);
       } catch (extractErr) {
         console.warn("[PriceList] Contact extraction failed:", extractErr);
       }
@@ -380,7 +352,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
       setPriceListProgress("");
       if (priceListInputRef.current) priceListInputRef.current.value = "";
     }
-  }, [supplierId, catalogPageCount, queryClient, toast]);
+  }, [supplierId, queryClient, toast]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -411,8 +383,6 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
           const info = parseExtractedInfo(text);
           if (Object.keys(info).length > 0) {
             setExtractedData(info);
-          } else {
-            toast({ title: "No extractable data found in PDF", description: "The PDF didn't contain recognizable supplier information." });
           }
         } catch (parseErr) {
           console.warn("PDF parse failed:", parseErr);
@@ -441,8 +411,8 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
 
   const deleteDoc = documents.find((d) => d.id === deleteId);
 
-  // ── AI Import Handler ──
-  const handleImportFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ── AI Import Handler — with mandatory clean purge ──
+  const handleImportFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const isPdf = file.name.toLowerCase().endsWith(".pdf");
@@ -453,6 +423,17 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
       return;
     }
 
+    // If products exist, show confirmation first
+    if (activeProductCount > 0) {
+      setPendingImportFile(file);
+      setShowImportCleanConfirm(true);
+    } else {
+      runImportAnalysis(file);
+    }
+    if (importInputRef.current) importInputRef.current.value = "";
+  }, [activeProductCount, toast]);
+
+  const runImportAnalysis = useCallback(async (file: File) => {
     setImportAnalysing(true);
     setImportFileName(file.name);
     try {
@@ -463,13 +444,21 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
       toast({ title: "Analysis failed", description: err.message, variant: "destructive" });
     } finally {
       setImportAnalysing(false);
-      if (importInputRef.current) importInputRef.current.value = "";
     }
   }, [supplierId, toast]);
 
   const handleImportConfirm = useCallback(async (products: ParsedProduct[]) => {
     setImportConfirming(true);
     try {
+      // ── MANDATORY CLEAN PURGE before inserting ──
+      const purgeResult = await cleanImportForSupplier(supplierId);
+      await logImportAction({
+        supplierId,
+        action: "clean_purge",
+        productsDeleted: purgeResult.deletedProducts,
+        pdfsDeleted: purgeResult.deletedPdfs,
+      });
+
       // Insert products into supplier_products
       const rows = products.map((p) => ({
         supplier_id: supplierId,
@@ -488,19 +477,21 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
         archived: false,
       }));
 
-      // Batch insert in chunks of 50
       for (let i = 0; i < rows.length; i += 50) {
         const batch = rows.slice(i, i + 50);
         const { error } = await (supabase.from("supplier_products") as any).insert(batch);
         if (error) throw error;
       }
 
-      queryClient.invalidateQueries({ queryKey: ["supplier-active-product-count", supplierId] });
-      queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
-      queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
-      queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
-      queryClient.invalidateQueries({ queryKey: ["product-category-counts"] });
+      const isPdf = importFileName.toLowerCase().endsWith(".pdf");
+      await logImportAction({
+        supplierId,
+        action: isPdf ? "pdf_import" : "csv_import",
+        productsImported: products.length,
+        fileName: importFileName,
+      });
 
+      invalidateAll();
       toast({
         title: `✅ ${products.length} products imported`,
         description: `${supplierName || "Supplier"} catalog updated.`,
@@ -511,19 +502,20 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
     } finally {
       setImportConfirming(false);
     }
-  }, [supplierId, supplierName, queryClient, toast]);
+  }, [supplierId, supplierName, importFileName, queryClient, toast]);
 
   const handleClearAndReupload = async () => {
     setDeletingProducts(true);
     try {
-      const { deleteSupplierProductsOnly } = await import("@/services/supplierDeleteService");
-      await deleteSupplierProductsOnly(supplierId);
-      queryClient.invalidateQueries({ queryKey: ["supplier-active-product-count", supplierId] });
-      queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
-      queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
-      queryClient.invalidateQueries({ queryKey: ["supplier-catalog-pages", supplierId] });
+      const purgeResult = await cleanImportForSupplier(supplierId);
+      await logImportAction({
+        supplierId,
+        action: "clean_purge",
+        productsDeleted: purgeResult.deletedProducts,
+        pdfsDeleted: purgeResult.deletedPdfs,
+      });
+      invalidateAll();
       toast({ title: "All products & PDFs cleared", description: "Upload a new price list below." });
-      // Open the file picker for immediate re-upload
       setTimeout(() => priceListInputRef.current?.click(), 300);
     } catch (err: any) {
       toast({ title: "Clear failed", description: err.message, variant: "destructive" });
@@ -552,10 +544,10 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
             <div className="min-w-0">
               <p className="text-sm font-medium flex items-center gap-1.5">
                 <Trash2 className="h-4 w-4 text-destructive shrink-0" />
-                Clear All Products & Re-upload
+                Clear All & Re-upload
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Deletes all {activeProductCount} products and {catalogPageCount} PDF pages, then opens the upload dialog.
+                Purges all {activeProductCount} products, {catalogPageCount} PDF pages, and cached data. Clean slate.
               </p>
             </div>
             <Button
@@ -636,7 +628,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
         </CardContent>
       </Card>
 
-      {/* AI Product Import (PDF/CSV) */}
+      {/* AI Product Import (PDF/CSV) — NO stored PDF extraction */}
       <Card className="border-dashed border-accent/30 bg-accent/5">
         <CardContent className="p-3">
           <div className="flex items-center justify-between gap-2">
@@ -646,7 +638,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
                 AI Product Import
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Upload a PDF or CSV price list — AI detects VAT, discounts & calculates pricing automatically.
+                Upload a PDF or CSV — AI detects VAT, discounts & pricing. Always starts fresh.
               </p>
             </div>
             <div className="shrink-0">
@@ -655,7 +647,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
                 type="file"
                 accept=".pdf,.csv"
                 className="hidden"
-                onChange={handleImportFileChange}
+                onChange={handleImportFileSelect}
               />
               <Button
                 size="sm"
@@ -675,7 +667,6 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
         </CardContent>
       </Card>
 
-
       {activeProductCount > 0 && catalogPageCount === 0 && (
         <Card className="border-dashed border-destructive/30 bg-destructive/5">
           <CardContent className="p-3">
@@ -686,7 +677,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
                   {activeProductCount} orphaned products
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Products exist without a PDF catalog. Clean up before uploading a new price list.
+                  Products exist without a PDF catalog.
                 </p>
               </div>
               <div className="flex gap-1.5 shrink-0">
@@ -710,6 +701,35 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
                   Delete All
                 </Button>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Import History */}
+      {importHistory.length > 0 && (
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-sm font-semibold mb-2">📋 Import History</p>
+            <div className="space-y-1 max-h-40 overflow-y-auto">
+              {importHistory.map((entry: any) => (
+                <div key={entry.id} className="flex items-center justify-between text-[11px] py-1 border-b last:border-b-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">
+                      {new Date(entry.created_at).toLocaleDateString()}{" "}
+                      {new Date(entry.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    <Badge variant={entry.action === "clean_purge" ? "destructive" : "default"} className="text-[9px] px-1.5 py-0">
+                      {entry.action === "clean_purge" ? "Purge" : entry.action === "pdf_import" ? "PDF Import" : "CSV Import"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-3 text-muted-foreground">
+                    {entry.file_name && <span className="truncate max-w-[120px]">{entry.file_name}</span>}
+                    {entry.products_deleted > 0 && <span className="text-destructive">-{entry.products_deleted}</span>}
+                    {entry.products_imported > 0 && <span className="text-green-600">+{entry.products_imported}</span>}
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -784,7 +804,6 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
           onComplete={() => {
             queryClient.invalidateQueries({ queryKey: ["supplier-contacts", supplierId] });
             queryClient.invalidateQueries({ queryKey: ["supplier-detail", supplierId] });
-            queryClient.invalidateQueries({ queryKey: ["supplier-locations", supplierId] });
           }}
         />
       )}
@@ -815,7 +834,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
           <AlertDialogHeader>
             <AlertDialogTitle>Delete PDF Catalog?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete all {catalogPageCount} PDF catalog pages? This cannot be undone. The supplier will be removed from the Visual Catalog until a new PDF is uploaded.
+              Delete all {catalogPageCount} PDF catalog pages? The supplier will be removed from the Visual Catalog until a new PDF is uploaded.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -837,13 +856,37 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
           <AlertDialogHeader>
             <AlertDialogTitle>Replace PDF Catalog?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will replace the existing {catalogPageCount} pages with the new PDF. Continue?
+              ⚠️ This will DELETE all existing products and {catalogPageCount} pages, then import from the new PDF. This ensures a clean slate with no data mixing.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => { setShowReplaceConfirm(false); if (pendingReplaceFile) { processUpload(pendingReplaceFile); setPendingReplaceFile(null); } }}>
-              Replace
+              Replace & Clean
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Import clean confirmation */}
+      <AlertDialog open={showImportCleanConfirm} onOpenChange={(o) => { if (!o) { setShowImportCleanConfirm(false); setPendingImportFile(null); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace existing products?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ⚠️ This will DELETE all {activeProductCount} existing products for this supplier before importing new ones. This ensures a clean catalog with no stale data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              setShowImportCleanConfirm(false);
+              if (pendingImportFile) {
+                runImportAnalysis(pendingImportFile);
+                setPendingImportFile(null);
+              }
+            }}>
+              Continue — Clean & Import
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -858,8 +901,8 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
             </AlertDialogTitle>
             <AlertDialogDescription>
               {productDeleteMode === "delete"
-                ? `This will permanently delete all ${activeProductCount} products for this supplier. This action cannot be undone.`
-                : `This will archive all ${activeProductCount} products for this supplier. The supplier record will be kept intact. You can re-import products by uploading a new price list PDF.`}
+                ? `This will permanently delete all ${activeProductCount} products for this supplier.`
+                : `This will archive all ${activeProductCount} products for this supplier.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
