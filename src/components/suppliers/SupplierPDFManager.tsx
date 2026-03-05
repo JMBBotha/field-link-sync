@@ -150,10 +150,10 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
   const totalProducts = Object.values(productCounts).reduce((a, b) => a + b, 0);
 
   const handleDeleteClick = async (pdf: PDFUploadRow) => {
-    const { data } = await (supabase.from("supplier_products") as any)
+    const { count } = await (supabase.from("supplier_products") as any)
       .select("id", { count: "exact", head: true })
       .eq("pdf_upload_id", pdf.id);
-    setDeleteProductCount(data?.length ?? productCounts[pdf.id] ?? 0);
+    setDeleteProductCount(count ?? productCounts[pdf.id] ?? 0);
     setDeleteTarget(pdf);
   };
 
