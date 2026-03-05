@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/collapsible";
 import {
   Building2, Plus, Search, Users, Package, MoreVertical, Trash2,
-  AlertTriangle, ChevronDown, Loader2, ShieldAlert,
+  AlertTriangle, ChevronDown, Loader2, ShieldAlert, Download,
 } from "lucide-react";
 import SupplierDetailSheet from "@/components/suppliers/SupplierDetailSheet";
 import SupplierFormDialog from "@/components/suppliers/SupplierFormDialog";
