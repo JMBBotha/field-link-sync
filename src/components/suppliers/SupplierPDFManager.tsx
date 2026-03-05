@@ -277,6 +277,49 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
         </Card>
       </div>
 
+      {/* Purge Orphaned Products */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={async () => {
+            setPurgingOrphans(true);
+            try {
+              // Find products whose pdf_upload_id no longer exists in pdf_uploads
+              const pdfIds = pdfUploads.map(p => p.id);
+              const { data: orphans } = await (supabase.from("supplier_products") as any)
+                .select("id, pdf_upload_id")
+                .not("pdf_upload_id", "is", null);
+              const orphanProducts = (orphans || []).filter((p: any) => !pdfIds.includes(p.pdf_upload_id));
+              if (orphanProducts.length === 0) {
+                toast({ title: "No orphaned products found", description: "All products are linked to existing PDFs." });
+              } else {
+                const orphanIds = orphanProducts.map((p: any) => p.id);
+                for (let i = 0; i < orphanIds.length; i += 500) {
+                  const batch = orphanIds.slice(i, i + 500);
+                  await (supabase.from("quote_items") as any).delete().in("product_id", batch);
+                  await (supabase.from("job_used_parts") as any).delete().in("product_id", batch);
+                  await (supabase.from("inventory_stock") as any).delete().in("product_id", batch);
+                  await (supabase.from("bundle_items") as any).delete().in("supplier_product_id", batch);
+                  await (supabase.from("supplier_products") as any).delete().in("id", batch);
+                }
+                toast({ title: `Purged ${orphanProducts.length} orphaned products`, description: "Products from deleted PDFs have been removed." });
+                queryClient.invalidateQueries({ queryKey: ["pdf-product-counts"] });
+              }
+            } catch (err: any) {
+              toast({ title: "Purge failed", description: err.message, variant: "destructive" });
+            } finally {
+              setPurgingOrphans(false);
+            }
+          }}
+          disabled={purgingOrphans}
+        >
+          {purgingOrphans ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+          Purge Orphaned Products
+        </Button>
+        <span className="text-xs text-muted-foreground">Remove products whose source PDF no longer exists</span>
+      </div>
+
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-[180px]">
