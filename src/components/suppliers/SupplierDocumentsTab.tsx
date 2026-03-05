@@ -636,7 +636,46 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
         </CardContent>
       </Card>
 
-      {/* Orphaned products cleanup */}
+      {/* AI Product Import (PDF/CSV) */}
+      <Card className="border-dashed border-accent/30 bg-accent/5">
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-sm font-medium flex items-center gap-1.5">
+                <Sparkles className="h-4 w-4 text-accent-foreground shrink-0" />
+                AI Product Import
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Upload a PDF or CSV price list — AI detects VAT, discounts & calculates pricing automatically.
+              </p>
+            </div>
+            <div className="shrink-0">
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".pdf,.csv"
+                className="hidden"
+                onChange={handleImportFileChange}
+              />
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => importInputRef.current?.click()}
+                disabled={importAnalysing}
+                className="text-xs gap-1.5"
+              >
+                {importAnalysing ? (
+                  <><Loader2 className="h-3 w-3 animate-spin" />Analysing...</>
+                ) : (
+                  <><FileSpreadsheet className="h-3 w-3" />Import Products</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+
       {activeProductCount > 0 && catalogPageCount === 0 && (
         <Card className="border-dashed border-destructive/30 bg-destructive/5">
           <CardContent className="p-3">
