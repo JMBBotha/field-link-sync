@@ -436,6 +436,17 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
 
   return (
     <div className="space-y-3 mt-2">
+      {/* Manage PDFs link */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full"
+        onClick={() => navigate(`/admin/pdf-documents?supplier=${supplierId}`)}
+      >
+        <FileText className="h-4 w-4 mr-2" />
+        Manage PDFs →
+      </Button>
+
       {/* Clear All & Re-upload */}
       {(activeProductCount > 0 || catalogPageCount > 0) && (
         <Card className="border-dashed border-destructive/30 bg-destructive/5">
