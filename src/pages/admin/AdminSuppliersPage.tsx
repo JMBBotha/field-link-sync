@@ -168,8 +168,26 @@ const AdminSuppliersPage = () => {
     setIsDeleting(true);
     try {
       if (deleteState.mode === "complete") {
-        await deleteSupplierCompletely(deleteState.supplierId);
-        toast({ title: `${deleteState.supplierName} removed completely.` });
+        const result = await deleteSupplierCompletely(deleteState.supplierId);
+        toast({
+          title: `${deleteState.supplierName} removed completely.`,
+          description: `${result.deletedProducts} products, ${result.deletedPdfPages} PDF pages removed from database and storage.`,
+        });
+      } else {
+        const result = await deleteSupplierProductsOnly(deleteState.supplierId);
+        toast({
+          title: `${deleteState.supplierName} cleared — ready for fresh upload.`,
+          description: `${result.deletedProducts} products, ${result.deletedPdfPages} PDF pages removed from database and storage.`,
+        });
+      }
+      refreshAll();
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+    } finally {
+      setIsDeleting(false);
+      setDeleteState(null);
+    }
+  };
       } else {
         await deleteSupplierProductsOnly(deleteState.supplierId);
         toast({ title: `${deleteState.supplierName} cleared — ready for fresh upload.` });
