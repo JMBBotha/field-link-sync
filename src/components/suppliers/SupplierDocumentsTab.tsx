@@ -41,6 +41,7 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
   const [pendingReplaceFile, setPendingReplaceFile] = useState<File | null>(null);
   const [showDeleteProducts, setShowDeleteProducts] = useState(false);
   const [deletingProducts, setDeletingProducts] = useState(false);
+  const [productDeleteMode, setProductDeleteMode] = useState<"archive" | "delete">("archive");
 
   const { data: documents = [], isLoading } = useQuery({
     queryKey: ["supplier-documents", supplierId],
@@ -86,21 +87,30 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
     },
   });
 
-  const deleteAllProducts = async () => {
+  const deleteAllProducts = async (mode: "archive" | "delete") => {
     setDeletingProducts(true);
     try {
-      const { error } = await (supabase.from("supplier_products") as any)
-        .update({ archived: true })
-        .eq("supplier_id", supplierId)
-        .or("archived.is.null,archived.eq.false");
-      if (error) throw error;
+      if (mode === "delete") {
+        const { error } = await (supabase.from("supplier_products") as any)
+          .delete()
+          .eq("supplier_id", supplierId);
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase.from("supplier_products") as any)
+          .update({ archived: true })
+          .eq("supplier_id", supplierId)
+          .or("archived.is.null,archived.eq.false");
+        if (error) throw error;
+      }
       queryClient.invalidateQueries({ queryKey: ["supplier-active-product-count", supplierId] });
       queryClient.invalidateQueries({ queryKey: ["supplier-product-count", supplierId] });
       queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
       queryClient.invalidateQueries({ queryKey: ["admin-suppliers-list"] });
-      toast({ title: "All products archived", description: `Products for this supplier have been removed.` });
+      queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
+      queryClient.invalidateQueries({ queryKey: ["consumable-products"] });
+      toast({ title: mode === "delete" ? "All products permanently deleted" : "All products archived", description: `Products for this supplier have been removed.` });
     } catch (err: any) {
-      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
     } finally {
       setDeletingProducts(false);
       setShowDeleteProducts(false);
@@ -460,19 +470,30 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
                   {activeProductCount} orphaned products
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Products exist without a PDF catalog. Archive them before uploading a new price list.
+                  Products exist without a PDF catalog. Clean up before uploading a new price list.
                 </p>
               </div>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => setShowDeleteProducts(true)}
-                disabled={deletingProducts}
-                className="text-xs shrink-0"
-              >
-                {deletingProducts ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Trash2 className="h-3 w-3 mr-1" />}
-                Archive All
-              </Button>
+              <div className="flex gap-1.5 shrink-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => { setProductDeleteMode("archive"); setShowDeleteProducts(true); }}
+                  disabled={deletingProducts}
+                  className="text-xs"
+                >
+                  Archive All
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => { setProductDeleteMode("delete"); setShowDeleteProducts(true); }}
+                  disabled={deletingProducts}
+                  className="text-xs"
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Delete All
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -601,19 +622,27 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
       <AlertDialog open={showDeleteProducts} onOpenChange={setShowDeleteProducts}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Archive all products?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {productDeleteMode === "delete" ? "Permanently delete all products?" : "Archive all products?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will archive all {activeProductCount} products for this supplier. The supplier record will be kept intact. You can re-import products by uploading a new price list PDF.
+              {productDeleteMode === "delete"
+                ? `This will permanently delete all ${activeProductCount} products for this supplier. This action cannot be undone.`
+                : `This will archive all ${activeProductCount} products for this supplier. The supplier record will be kept intact. You can re-import products by uploading a new price list PDF.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deletingProducts}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={deleteAllProducts}
+              onClick={() => deleteAllProducts(productDeleteMode)}
               disabled={deletingProducts}
             >
-              {deletingProducts ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Archiving...</> : `Archive ${activeProductCount} Products`}
+              {deletingProducts
+                ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />{productDeleteMode === "delete" ? "Deleting..." : "Archiving..."}</>
+                : productDeleteMode === "delete"
+                  ? `Delete ${activeProductCount} Products`
+                  : `Archive ${activeProductCount} Products`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
