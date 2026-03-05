@@ -101,15 +101,15 @@ serve(async (req) => {
       );
     }
 
-    if (result?.output) {
+    if (finalResult?.output) {
       return new Response(
-        JSON.stringify({ enhancedBase64: result.output }),
+        JSON.stringify({ enhancedBase64: finalResult.output }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (typeof result === "string" && result.startsWith("http")) {
-      const imgResp = await fetch(result);
+    if (typeof finalResult === "string" && finalResult.startsWith("http")) {
+      const imgResp = await fetch(finalResult);
       const imgBuffer = await imgResp.arrayBuffer();
       const base64 = arrayBufferToBase64(imgBuffer);
       const enhancedBase64 = `data:image/jpeg;base64,${base64}`;
@@ -120,9 +120,9 @@ serve(async (req) => {
       );
     }
 
-    console.error("[enhance-pdf-page] Unexpected response format:", JSON.stringify(result).substring(0, 500));
+    console.error("[enhance-pdf-page] Unexpected response format:", JSON.stringify(finalResult).substring(0, 500));
     return new Response(
-      JSON.stringify({ error: "Unexpected response format from Deep-Image API", rawKeys: Object.keys(result || {}) }),
+      JSON.stringify({ error: "Unexpected response format from Deep-Image API", rawKeys: Object.keys(finalResult || {}) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
