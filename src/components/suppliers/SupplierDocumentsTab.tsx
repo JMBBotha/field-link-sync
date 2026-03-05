@@ -6,14 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileText, Trash2, Loader2, Eye, ImagePlus, PackageX } from "lucide-react";
+import { Upload, FileText, Trash2, Loader2, Eye, ImagePlus, PackageX, FileSpreadsheet, Sparkles } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import PDFExtractReviewModal from "./PDFExtractReviewModal";
 import SupplierInfoReviewModal from "./SupplierInfoReviewModal";
+import ImportPreviewModal from "./ImportPreviewModal";
 import type { ExtractedSupplierInfo } from "@/services/supplierInfoExtractor";
+import type { ImportPreview, ParsedProduct } from "@/services/productImportParser";
 
 interface SupplierDocument {
   id: string;
@@ -35,6 +37,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const priceListInputRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [processingPriceList, setProcessingPriceList] = useState(false);
   const [priceListProgress, setPriceListProgress] = useState("");
@@ -48,6 +51,12 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
   const [deletingProducts, setDeletingProducts] = useState(false);
   const [productDeleteMode, setProductDeleteMode] = useState<"archive" | "delete">("archive");
   const [supplierInfoExtracted, setSupplierInfoExtracted] = useState<ExtractedSupplierInfo | null>(null);
+
+  // AI Import state
+  const [importAnalysing, setImportAnalysing] = useState(false);
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+  const [importFileName, setImportFileName] = useState("");
+  const [importConfirming, setImportConfirming] = useState(false);
 
   const { data: documents = [], isLoading } = useQuery({
     queryKey: ["supplier-documents", supplierId],
@@ -432,6 +441,78 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
 
   const deleteDoc = documents.find((d) => d.id === deleteId);
 
+  // ── AI Import Handler ──
+  const handleImportFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const isPdf = file.name.toLowerCase().endsWith(".pdf");
+    const isCsv = file.name.toLowerCase().endsWith(".csv");
+    if (!isPdf && !isCsv) {
+      toast({ title: "Only PDF or CSV files supported", variant: "destructive" });
+      if (importInputRef.current) importInputRef.current.value = "";
+      return;
+    }
+
+    setImportAnalysing(true);
+    setImportFileName(file.name);
+    try {
+      const { parseImportFile } = await import("@/services/productImportParser");
+      const preview = await parseImportFile(file, supplierName || "Supplier", 20);
+      setImportPreview(preview);
+    } catch (err: any) {
+      toast({ title: "Analysis failed", description: err.message, variant: "destructive" });
+    } finally {
+      setImportAnalysing(false);
+      if (importInputRef.current) importInputRef.current.value = "";
+    }
+  }, [supplierName, toast]);
+
+  const handleImportConfirm = useCallback(async (products: ParsedProduct[]) => {
+    setImportConfirming(true);
+    try {
+      // Insert products into supplier_products
+      const rows = products.map((p) => ({
+        supplier_id: supplierId,
+        product_code: p.model_number,
+        short_name: p.description.substring(0, 80),
+        description: p.description,
+        product_category: p.category,
+        cost_excl_vat: p.price_excl_vat,
+        cost_price: p.cost_price,
+        rrp: p.raw_price,
+        cost_incl_vat: p.price_includes_vat ? p.raw_price : parseFloat((p.price_excl_vat * 1.15).toFixed(2)),
+        default_markup_percent: p.markup_percent,
+        selling_price: p.calculated_price,
+        brand: supplierName || "",
+        is_active: true,
+        archived: false,
+      }));
+
+      // Batch insert in chunks of 50
+      for (let i = 0; i < rows.length; i += 50) {
+        const batch = rows.slice(i, i + 50);
+        const { error } = await (supabase.from("supplier_products") as any).insert(batch);
+        if (error) throw error;
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["supplier-active-product-count", supplierId] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
+      queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
+      queryClient.invalidateQueries({ queryKey: ["product-category-counts"] });
+
+      toast({
+        title: `✅ ${products.length} products imported`,
+        description: `${supplierName || "Supplier"} catalog updated.`,
+      });
+      setImportPreview(null);
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err.message, variant: "destructive" });
+    } finally {
+      setImportConfirming(false);
+    }
+  }, [supplierId, supplierName, queryClient, toast]);
+
   const handleClearAndReupload = async () => {
     setDeletingProducts(true);
     try {
@@ -555,7 +636,46 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
         </CardContent>
       </Card>
 
-      {/* Orphaned products cleanup */}
+      {/* AI Product Import (PDF/CSV) */}
+      <Card className="border-dashed border-accent/30 bg-accent/5">
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-sm font-medium flex items-center gap-1.5">
+                <Sparkles className="h-4 w-4 text-accent-foreground shrink-0" />
+                AI Product Import
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Upload a PDF or CSV price list — AI detects VAT, discounts & calculates pricing automatically.
+              </p>
+            </div>
+            <div className="shrink-0">
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".pdf,.csv"
+                className="hidden"
+                onChange={handleImportFileChange}
+              />
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => importInputRef.current?.click()}
+                disabled={importAnalysing}
+                className="text-xs gap-1.5"
+              >
+                {importAnalysing ? (
+                  <><Loader2 className="h-3 w-3 animate-spin" />Analysing...</>
+                ) : (
+                  <><FileSpreadsheet className="h-3 w-3" />Import Products</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+
       {activeProductCount > 0 && catalogPageCount === 0 && (
         <Card className="border-dashed border-destructive/30 bg-destructive/5">
           <CardContent className="p-3">
@@ -758,6 +878,18 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* AI Import Preview Modal */}
+      {importPreview && (
+        <ImportPreviewModal
+          open={!!importPreview}
+          onOpenChange={(o) => !o && setImportPreview(null)}
+          preview={importPreview}
+          fileName={importFileName}
+          onConfirm={handleImportConfirm}
+          confirming={importConfirming}
+        />
+      )}
     </div>
   );
 };
