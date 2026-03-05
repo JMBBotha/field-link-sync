@@ -465,7 +465,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
       setImportAnalysing(false);
       if (importInputRef.current) importInputRef.current.value = "";
     }
-  }, [supplierName, toast]);
+  }, [supplierId, toast]);
 
   const handleImportConfirm = useCallback(async (products: ParsedProduct[]) => {
     setImportConfirming(true);
