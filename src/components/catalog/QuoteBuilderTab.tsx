@@ -63,7 +63,11 @@ export interface PaletteProduct {
   markup_percent: number | null;
 }
 
-/** Returns the effective per-unit prices for a product, accounting for pack_qty and length */
+/** Returns the effective per-unit prices for a product, accounting for pack_qty and length.
+ *  cost_price = discounted buy price (discount already baked in)
+ *  selling_price = cost_price × (1 + markup) — already baked in
+ *  Do NOT re-apply discount or markup here.
+ */
 export function getEffectiveUnitPrices(product: PaletteProduct, isLengthOverride?: boolean) {
   const isLength = isLengthOverride ?? (product.sold_in_length && !!product.price_per_metre);
   const pq = product.pack_qty && product.pack_qty > 1 && !isLength ? product.pack_qty : 1;
@@ -73,10 +77,13 @@ export function getEffectiveUnitPrices(product: PaletteProduct, isLengthOverride
 
   if (isLength) {
     unitSell = product.price_per_metre || (product.selling_price || 0) / (product.unit_length || 1);
-    unitCost = (product.cost_incl_vat || product.cost_excl_vat || 0) / (product.unit_length || 1);
+    // For length items, cost_price per metre
+    const totalCost = product.cost_price ?? product.cost_excl_vat ?? product.cost_incl_vat ?? 0;
+    unitCost = totalCost / (product.unit_length || 1);
   } else {
     unitSell = (product.selling_price || product.cost_incl_vat || 0) / pq;
-    unitCost = (product.cost_excl_vat || product.cost_incl_vat || 0) / pq;
+    // Use cost_price (discounted buy price) — NOT cost_excl_vat (raw list price)
+    unitCost = (product.cost_price ?? product.cost_excl_vat ?? product.cost_incl_vat ?? 0) / pq;
   }
 
   return { unitCost, unitSell, isPackItem: pq > 1, packQty: pq };
