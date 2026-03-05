@@ -140,6 +140,18 @@ export async function autoCatalogFromRegions(
   // Extract brand from supplier name
   const brand = supplierText.trim().replace(/\s+$/, "");
 
+  // Look up brand discount from brand_discounts table
+  let brandDiscountPercent = 20; // default 20%
+  const { data: discountData } = await supabase
+    .from("brand_discounts")
+    .select("discount_percentage")
+    .ilike("brand", `%${brand}%`)
+    .limit(1);
+  if (discountData && discountData.length > 0) {
+    brandDiscountPercent = discountData[0].discount_percentage;
+  }
+  console.log(`[autoCatalog] Brand discount for "${brand}": ${brandDiscountPercent}%`);
+
   // Build candidate products
   const candidates: Array<{
     sku: string;
