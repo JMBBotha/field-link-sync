@@ -374,6 +374,7 @@ const AdminSuppliersPage = () => {
                 <ul className="list-disc list-inside text-sm space-y-1">
                   <li>{deleteState?.counts.products ?? 0} products will be deleted</li>
                   <li>{deleteState?.counts.pdfs ?? 0} PDF catalogs will be removed</li>
+                  <li>PDF files will be permanently deleted from storage</li>
                   {deleteState?.mode === "complete" && (
                     <li>{deleteState?.counts.contacts ?? 0} contacts will be removed</li>
                   )}
@@ -385,7 +386,7 @@ const AdminSuppliersPage = () => {
                 )}
                 {deleteState?.mode === "complete" && (
                   <p className="text-destructive font-semibold text-sm border border-destructive/30 rounded-md p-2 bg-destructive/5">
-                    ⚠️ This also removes all contacts and the supplier record. If any active quotes reference these products, those line items will be cleared. This cannot be undone.
+                    ⚠️ This also removes all contacts, the supplier record, and all uploaded PDF files including archived versions from storage. This cannot be undone.
                   </p>
                 )}
               </div>
