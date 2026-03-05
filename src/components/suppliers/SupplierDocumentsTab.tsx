@@ -91,10 +91,26 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
     setDeletingProducts(true);
     try {
       if (mode === "delete") {
-        const { error } = await (supabase.from("supplier_products") as any)
-          .delete()
+        // Get all product IDs for this supplier
+        const { data: products } = await (supabase.from("supplier_products") as any)
+          .select("id")
           .eq("supplier_id", supplierId);
-        if (error) throw error;
+        const productIds = (products || []).map((p: any) => p.id);
+        
+        if (productIds.length > 0) {
+          // Delete dependent rows first (FK constraints)
+          await (supabase.from("pdf_product_regions") as any)
+            .delete()
+            .in("supplier_product_id", productIds);
+          await (supabase.from("quote_items") as any)
+            .delete()
+            .in("supplier_product_id", productIds);
+          // Now delete the products
+          const { error } = await (supabase.from("supplier_products") as any)
+            .delete()
+            .eq("supplier_id", supplierId);
+          if (error) throw error;
+        }
       } else {
         const { error } = await (supabase.from("supplier_products") as any)
           .update({ archived: true })
