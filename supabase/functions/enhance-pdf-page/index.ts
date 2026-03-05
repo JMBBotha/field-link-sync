@@ -61,7 +61,29 @@ serve(async (req) => {
     const result = await response.json();
     console.log("[enhance-pdf-page] Deep-Image response received");
 
-    if (result?.result_url) {
+    // Handle async job polling when API queues the request
+    let finalResult = result;
+    if (!result?.result_url && result?.job) {
+      const jobId = result.job;
+      console.log(`[enhance-pdf-page] Job queued: ${jobId}, polling...`);
+      for (let i = 0; i < 12; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const pollResp = await fetch(`https://deep-image.ai/rest_api/result/${jobId}`, {
+          headers: { "X-API-KEY": apiKey }
+        });
+        const pollResult = await pollResp.json();
+        console.log(`[enhance-pdf-page] Poll ${i + 1}: status=${pollResult.status}`);
+        if (pollResult.status === 'complete' && pollResult.result_url) {
+          finalResult = pollResult;
+          break;
+        }
+        if (pollResult.status === 'error') {
+          throw new Error(`Deep-Image job failed: ${JSON.stringify(pollResult)}`);
+        }
+      }
+    }
+
+    if (finalResult?.result_url) {
       const imgResp = await fetch(result.result_url);
       if (!imgResp.ok) {
         return new Response(
@@ -79,15 +101,15 @@ serve(async (req) => {
       );
     }
 
-    if (result?.output) {
+    if (finalResult?.output) {
       return new Response(
-        JSON.stringify({ enhancedBase64: result.output }),
+        JSON.stringify({ enhancedBase64: finalResult.output }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (typeof result === "string" && result.startsWith("http")) {
-      const imgResp = await fetch(result);
+    if (typeof finalResult === "string" && finalResult.startsWith("http")) {
+      const imgResp = await fetch(finalResult);
       const imgBuffer = await imgResp.arrayBuffer();
       const base64 = arrayBufferToBase64(imgBuffer);
       const enhancedBase64 = `data:image/jpeg;base64,${base64}`;
@@ -98,9 +120,9 @@ serve(async (req) => {
       );
     }
 
-    console.error("[enhance-pdf-page] Unexpected response format:", JSON.stringify(result).substring(0, 500));
+    console.error("[enhance-pdf-page] Unexpected response format:", JSON.stringify(finalResult).substring(0, 500));
     return new Response(
-      JSON.stringify({ error: "Unexpected response format from Deep-Image API", rawKeys: Object.keys(result || {}) }),
+      JSON.stringify({ error: "Unexpected response format from Deep-Image API", rawKeys: Object.keys(finalResult || {}) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
