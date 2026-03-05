@@ -757,7 +757,7 @@ const LazyPdfPage = ({
 
   // No archived product code filtering needed — PdfPageOverlay handles dismissals via dismissed_pdf_regions table
 
-   // Live extraction for this page
+   // Live extraction for this page — enable even without hasPdfSource so fallback kicks in
   const queryEnabled = isVisible && hasPdfSource && activeProducts.length > 0;
   
   // Debug: log why query might not be enabled
