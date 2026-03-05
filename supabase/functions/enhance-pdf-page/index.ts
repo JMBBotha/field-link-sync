@@ -43,13 +43,9 @@ serve(async (req) => {
         "X-API-KEY": apiKey,
       },
       body: JSON.stringify({
-        image: `data:image/png;base64,${imageBase64}`,
-        transformations: {
-          denoise: { model: "default" },
-          sharpen: { model: "default" },
-          light: { model: "default" },
-          resize: { width },
-        },
+        url: `data:image/png;base64,${imageBase64}`,
+        width,
+        enhancements: ["denoise", "light"],
       }),
     });
 
