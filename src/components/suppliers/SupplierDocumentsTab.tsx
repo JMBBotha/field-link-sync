@@ -29,6 +29,7 @@ interface SupplierDocumentsTabProps {
 const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const priceListInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
