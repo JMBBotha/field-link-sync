@@ -87,21 +87,30 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
     },
   });
 
-  const deleteAllProducts = async () => {
+  const deleteAllProducts = async (mode: "archive" | "delete") => {
     setDeletingProducts(true);
     try {
-      const { error } = await (supabase.from("supplier_products") as any)
-        .update({ archived: true })
-        .eq("supplier_id", supplierId)
-        .or("archived.is.null,archived.eq.false");
-      if (error) throw error;
+      if (mode === "delete") {
+        const { error } = await (supabase.from("supplier_products") as any)
+          .delete()
+          .eq("supplier_id", supplierId);
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase.from("supplier_products") as any)
+          .update({ archived: true })
+          .eq("supplier_id", supplierId)
+          .or("archived.is.null,archived.eq.false");
+        if (error) throw error;
+      }
       queryClient.invalidateQueries({ queryKey: ["supplier-active-product-count", supplierId] });
       queryClient.invalidateQueries({ queryKey: ["supplier-product-count", supplierId] });
       queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
       queryClient.invalidateQueries({ queryKey: ["admin-suppliers-list"] });
-      toast({ title: "All products archived", description: `Products for this supplier have been removed.` });
+      queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
+      queryClient.invalidateQueries({ queryKey: ["consumable-products"] });
+      toast({ title: mode === "delete" ? "All products permanently deleted" : "All products archived", description: `Products for this supplier have been removed.` });
     } catch (err: any) {
-      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
     } finally {
       setDeletingProducts(false);
       setShowDeleteProducts(false);
