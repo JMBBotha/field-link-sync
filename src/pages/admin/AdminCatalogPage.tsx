@@ -107,6 +107,30 @@ const AdminCatalogPage = () => {
     }
   };
 
+  const handleClearAllProducts = async () => {
+    setClearing(true);
+    try {
+      // Clear all dependent records first
+      await (supabase.from("pdf_product_regions") as any).delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await (supabase.from("quote_items") as any).delete().not("product_id", "is", null);
+      await (supabase.from("job_used_parts") as any).delete().not("product_id", "is", null);
+      await (supabase.from("bundle_items") as any).delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await (supabase.from("inventory_stock") as any).delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      // Delete all products
+      await (supabase.from("supplier_products") as any).delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] });
+      queryClient.invalidateQueries({ queryKey: ["product-category-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
+      toast.success("All products cleared from catalog");
+    } catch (e: any) {
+      toast.error(e.message || "Clear failed");
+    } finally {
+      setClearing(false);
+      setClearConfirmOpen(false);
+    }
+  };
+
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers"],
     queryFn: async () => {
