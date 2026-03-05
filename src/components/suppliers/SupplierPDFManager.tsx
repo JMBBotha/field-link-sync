@@ -66,10 +66,25 @@ async function deleteSinglePDF(pdf: PDFUploadRow) {
   // 3. Delete PDF region overlays
   await (supabase.from("pdf_product_regions") as any).delete().eq("pdf_upload_id", pdf.id);
 
-  // 4. Delete the pdf_uploads DB record
+  // 4. Delete supplier_pdf_pages linked to this supplier
+  // supplier_pdf_pages uses text supplier_id (name) so we need to match by supplier name
+  const supplierName = pdf.suppliers?.name;
+  if (supplierName) {
+    // Delete pages matching this supplier name (with and without trailing space)
+    await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", supplierName);
+    await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", supplierName + " ");
+    // Also try matching by the pdf filename
+    if (pdf.file_name) {
+      await (supabase.from("supplier_pdf_pages") as any).delete().eq("pdf_filename", pdf.file_name);
+    }
+  }
+  // Also delete by supplier UUID in case some pages use UUID format
+  await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", pdf.supplier_id);
+
+  // 5. Delete the pdf_uploads DB record
   await (supabase.from("pdf_uploads") as any).delete().eq("id", pdf.id);
 
-  // 5. Delete actual file from storage
+  // 6. Delete actual file from storage
   const rawPath = pdf.file_path || pdf.storage_path || pdf.file_url || null;
   if (rawPath) {
     const match = rawPath.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)/);
@@ -213,35 +228,49 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
     }
   };
 
-  const handlePreview = (pdf: PDFUploadRow) => {
-    const rawPath = pdf.file_url || pdf.file_path || pdf.storage_path || null;
-    if (!rawPath) return;
+  const handlePreview = async (pdf: PDFUploadRow) => {
+    // Try all path fields in priority order
+    const candidates = [pdf.file_url, pdf.file_path, pdf.storage_path].filter(Boolean) as string[];
+    console.log("[PDFManager] Preview candidates:", candidates, "supplier:", pdf.suppliers?.name);
 
-    // If it's already a full URL (http/https), use directly
-    if (rawPath.startsWith("http")) {
-      setPreviewUrl(rawPath);
-      return;
-    }
+    for (const rawPath of candidates) {
+      // If it's already a full URL, use directly
+      if (rawPath.startsWith("http")) {
+        setPreviewUrl(rawPath);
+        return;
+      }
 
-    // Try to extract bucket/path from Supabase storage URL patterns
-    const match = rawPath.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)/);
-    if (match) {
-      const { data } = supabase.storage.from(match[1]).getPublicUrl(match[2]);
-      setPreviewUrl(data.publicUrl);
-      return;
-    }
-
-    // Assume it's a path in one of the common buckets - try each
-    for (const bucket of STORAGE_BUCKETS) {
-      const { data } = supabase.storage.from(bucket).getPublicUrl(rawPath);
-      if (data.publicUrl) {
+      // Try to extract bucket/path from Supabase storage URL patterns
+      const match = rawPath.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)/);
+      if (match) {
+        const { data } = supabase.storage.from(match[1]).getPublicUrl(match[2]);
         setPreviewUrl(data.publicUrl);
         return;
       }
+
+      // It's a raw path like "uuid/filename.pdf" — try known PDF buckets
+      const pdfBuckets = ["pdfs", "price-lists", "supplier-pdf-pages", "stock-documents"];
+      for (const bucket of pdfBuckets) {
+        const { data } = supabase.storage.from(bucket).getPublicUrl(rawPath);
+        // Verify the file actually exists by trying to fetch headers
+        try {
+          const resp = await fetch(data.publicUrl, { method: "HEAD" });
+          if (resp.ok) {
+            console.log("[PDFManager] Found PDF in bucket:", bucket, "path:", rawPath);
+            setPreviewUrl(data.publicUrl);
+            return;
+          }
+        } catch {}
+      }
     }
 
-    // Last resort: try as-is
-    setPreviewUrl(rawPath);
+    // Last resort: construct URL from file_path with 'pdfs' bucket
+    const fallback = candidates[0];
+    if (fallback) {
+      const { data } = supabase.storage.from("pdfs").getPublicUrl(fallback);
+      console.log("[PDFManager] Fallback URL:", data.publicUrl);
+      setPreviewUrl(data.publicUrl);
+    }
   };
 
   return (

@@ -757,7 +757,7 @@ const LazyPdfPage = ({
 
   // No archived product code filtering needed — PdfPageOverlay handles dismissals via dismissed_pdf_regions table
 
-   // Live extraction for this page
+   // Live extraction for this page — enable even without hasPdfSource so fallback kicks in
   const queryEnabled = isVisible && hasPdfSource && activeProducts.length > 0;
   
   // Debug: log why query might not be enabled
@@ -861,9 +861,10 @@ const LazyPdfPage = ({
     staleTime: 60000,
   });
 
-  // Build fallback regions from products matching this supplier when no PDF source and no stored regions
+  // Build fallback regions from products matching this supplier when no live extraction results
   const fallbackRegions: OverlayRegion[] = useMemo(() => {
-    if (hasPdfSource && liveRegions.length > 0) return [];
+    // If live extraction produced results, don't add fallbacks
+    if (liveRegions.length > 0) return [];
     if (storedRegions.length > 0) {
       // Use stored regions from pdf_product_regions table
       return storedRegions.map((sr: any, idx: number) => {
@@ -884,19 +885,49 @@ const LazyPdfPage = ({
       });
     }
     // Generate overlay regions from supplier products matching this page's supplier
+    const pageSupplierName = (supplierName || page.supplier_id || "").toLowerCase().trim();
     const supplierProducts = activeProducts.filter(p => {
-      const pageSupplierName = (supplierName || page.supplier_id || "").toLowerCase().trim();
-      const productSupplier = (p.supplier_name || "").toLowerCase().trim();
+      const productSupplier = (p.supplier_name || p.brand || "").toLowerCase().trim();
       return productSupplier.includes(pageSupplierName) || pageSupplierName.includes(productSupplier);
     });
-    if (supplierProducts.length === 0) return [];
-    // Distribute products evenly across the page area (5%-95%)
+    
+    if (supplierProducts.length === 0) {
+      console.log(`[VisualCatalog] Page ${page.page_number}: No supplier match for "${pageSupplierName}" among ${activeProducts.length} products. Showing ALL products as fallback.`);
+      // If no supplier match, show ALL products distributed across pages
+      // Each page shows a slice of the full product list
+      const productsPerPage = 20;
+      const startIdx = (page.page_number - 1) * productsPerPage;
+      const pageProducts = activeProducts.slice(startIdx, startIdx + productsPerPage);
+      if (pageProducts.length === 0) return [];
+      const usableRange = 90;
+      const rowHeight = Math.min(usableRange / pageProducts.length, 4);
+      return pageProducts.map((p, idx) => ({
+        id: `fallback-${page.id}-${idx}`,
+        x_pct: 0,
+        y_pct: 5 + (idx * (usableRange / pageProducts.length)),
+        w_pct: 100,
+        h_pct: rowHeight,
+        product: p,
+        product_code: p.product_code || "",
+        label: p.short_name || p.description || "",
+        has_price: !!(p.selling_price || p.cost_incl_vat),
+        detected_price: p.selling_price || p.cost_incl_vat || null,
+        matched: true,
+      }));
+    }
+    
+    // Distribute matched supplier products across pages
+    const productsPerPage = Math.ceil(supplierProducts.length / Math.max(1, pages.length));
+    const startIdx = pageIndex * productsPerPage;
+    const pageProducts = supplierProducts.slice(startIdx, startIdx + productsPerPage);
+    if (pageProducts.length === 0) return [];
+    
     const usableRange = 90;
-    const rowHeight = Math.min(usableRange / supplierProducts.length, 3);
-    return supplierProducts.map((p, idx) => ({
+    const rowHeight = Math.min(usableRange / pageProducts.length, 4);
+    return pageProducts.map((p, idx) => ({
       id: `fallback-${page.id}-${idx}`,
       x_pct: 0,
-      y_pct: 5 + (idx * (usableRange / supplierProducts.length)),
+      y_pct: 5 + (idx * (usableRange / pageProducts.length)),
       w_pct: 100,
       h_pct: rowHeight,
       product: p,
@@ -906,7 +937,7 @@ const LazyPdfPage = ({
       detected_price: p.selling_price || p.cost_incl_vat || null,
       matched: true,
     }));
-  }, [hasPdfSource, liveRegions, storedRegions, activeProducts, page.id, page.supplier_id, supplierName]);
+  }, [liveRegions, storedRegions, activeProducts, page.id, page.supplier_id, page.page_number, supplierName, pages.length, pageIndex]);
 
   const overlayRegions: OverlayRegion[] = useMemo(() => {
     // Prefer live regions, fall back to fallback
