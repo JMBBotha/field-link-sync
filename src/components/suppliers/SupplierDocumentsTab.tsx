@@ -47,6 +47,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
   const [showDeleteProducts, setShowDeleteProducts] = useState(false);
   const [deletingProducts, setDeletingProducts] = useState(false);
   const [productDeleteMode, setProductDeleteMode] = useState<"archive" | "delete">("archive");
+  const [supplierInfoExtracted, setSupplierInfoExtracted] = useState<ExtractedSupplierInfo | null>(null);
 
   const { data: documents = [], isLoading } = useQuery({
     queryKey: ["supplier-documents", supplierId],
