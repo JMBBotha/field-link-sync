@@ -350,6 +350,19 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
       queryClient.invalidateQueries({ queryKey: ["supplier-catalog-pages", supplierId] });
 
       toast({ title: `Price list uploaded`, description: `${totalPages} pages processed for Visual Catalog.` });
+
+      // Auto-extract supplier contact info from PDF
+      try {
+        const { extractSupplierInfoFromPDF } = await import("@/services/supplierInfoExtractor");
+        const info = await extractSupplierInfoFromPDF(file);
+        const hasInfo = info.allEmails.length > 0 || info.allPhones.length > 0 ||
+          info.vatNumber || info.website || info.departments.length > 0 || info.locations.length > 0;
+        if (hasInfo) {
+          setSupplierInfoExtracted(info);
+        }
+      } catch (extractErr) {
+        console.warn("[PriceList] Contact extraction failed:", extractErr);
+      }
     } catch (err: any) {
       console.error("[PriceList] Processing failed:", err);
       toast({ title: "Price list processing failed", description: err.message, variant: "destructive" });
