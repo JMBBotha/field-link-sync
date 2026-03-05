@@ -654,6 +654,21 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
         />
       )}
 
+      {supplierInfoExtracted && (
+        <SupplierInfoReviewModal
+          open={!!supplierInfoExtracted}
+          onOpenChange={(o) => !o && setSupplierInfoExtracted(null)}
+          supplierId={supplierId}
+          supplierName={supplierName || "Supplier"}
+          extracted={supplierInfoExtracted}
+          onComplete={() => {
+            queryClient.invalidateQueries({ queryKey: ["supplier-contacts", supplierId] });
+            queryClient.invalidateQueries({ queryKey: ["supplier-detail", supplierId] });
+            queryClient.invalidateQueries({ queryKey: ["supplier-locations", supplierId] });
+          }}
+        />
+      )}
+
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
