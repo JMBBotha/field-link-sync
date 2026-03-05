@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { calculatePricing } from "@/utils/pricing";
+import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { useDraggable } from "@dnd-kit/core";
 import {
