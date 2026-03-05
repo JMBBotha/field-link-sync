@@ -122,16 +122,20 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
   const runAnalysis = useCallback(async (file: File) => {
     setImportAnalysing(true);
     setImportFileName(file.name);
+    setImportStage(null);
     pendingFileRef.current = file;
     try {
       const { parseImportFile } = await import("@/services/productImportParser");
-      const preview = await parseImportFile(file, supplierId);
+      const preview = await parseImportFile(file, supplierId, undefined, (stage) => {
+        setImportStage(stage);
+      });
       setImportPreview(preview);
     } catch (err: any) {
       console.error("[Import] Analysis failed:", err);
       toast({ title: "Analysis failed", description: err.message, variant: "destructive" });
     } finally {
       setImportAnalysing(false);
+      setImportStage(null);
     }
   }, [supplierId, toast]);
 
