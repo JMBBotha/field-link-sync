@@ -210,21 +210,11 @@ async function parsePDFWithFullPipeline(
   });
   console.log(`[Import] PDF loaded: ${numPages} pages, ${allText.length} chars text`);
 
-  // STAGE 2: Enhance images with Deep-Image.ai (skip if > 30 pages to avoid timeout)
+  // STAGE 2: Enhancement SKIPPED by default — raw renders at 2.25x are sufficient
+  // Deep-Image.ai can be triggered manually post-import if needed
   let enhancedImages = images;
-  if (numPages <= 30) {
-    onStage?.({ stage: "enhancing_images", done: 0, total: numPages });
-    try {
-      enhancedImages = await enhancePDFPages(images, (done, total) => {
-        onStage?.({ stage: "enhancing_images", done, total });
-      });
-      console.log(`[Import] ${enhancedImages.length} pages enhanced with Deep-Image.ai`);
-    } catch (err) {
-      console.warn("[Import] Enhancement failed, using original images:", err);
-    }
-  } else {
-    console.log(`[Import] Skipping enhancement for ${numPages} pages (>30)`);
-  }
+  console.log(`[Import] Skipping Deep-Image.ai enhancement (disabled by default)`);
+
 
   // STAGE 3: Try Grok AI extraction (parse-pdf-with-grok) using extracted text in chunks
   onStage?.({ stage: "ai_extraction", detail: "Parsing with Grok AI..." });
