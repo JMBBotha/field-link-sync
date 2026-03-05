@@ -622,19 +622,27 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
       <AlertDialog open={showDeleteProducts} onOpenChange={setShowDeleteProducts}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Archive all products?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {productDeleteMode === "delete" ? "Permanently delete all products?" : "Archive all products?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will archive all {activeProductCount} products for this supplier. The supplier record will be kept intact. You can re-import products by uploading a new price list PDF.
+              {productDeleteMode === "delete"
+                ? `This will permanently delete all ${activeProductCount} products for this supplier. This action cannot be undone.`
+                : `This will archive all ${activeProductCount} products for this supplier. The supplier record will be kept intact. You can re-import products by uploading a new price list PDF.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deletingProducts}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={deleteAllProducts}
+              onClick={() => deleteAllProducts(productDeleteMode)}
               disabled={deletingProducts}
             >
-              {deletingProducts ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Archiving...</> : `Archive ${activeProductCount} Products`}
+              {deletingProducts
+                ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />{productDeleteMode === "delete" ? "Deleting..." : "Archiving..."}</>
+                : productDeleteMode === "delete"
+                  ? `Delete ${activeProductCount} Products`
+                  : `Archive ${activeProductCount} Products`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
