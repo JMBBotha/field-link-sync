@@ -101,10 +101,19 @@ const SupplierDocumentsTab = ({ supplierId }: SupplierDocumentsTabProps) => {
           // Delete dependent rows first (FK constraints)
           await (supabase.from("pdf_product_regions") as any)
             .delete()
-            .in("supplier_product_id", productIds);
+            .in("product_id", productIds);
           await (supabase.from("quote_items") as any)
             .delete()
+            .in("product_id", productIds);
+          await (supabase.from("bundle_items") as any)
+            .delete()
             .in("supplier_product_id", productIds);
+          await (supabase.from("inventory_stock") as any)
+            .delete()
+            .in("product_id", productIds);
+          await (supabase.from("job_used_parts") as any)
+            .delete()
+            .in("product_id", productIds);
           // Now delete the products
           const { error } = await (supabase.from("supplier_products") as any)
             .delete()
