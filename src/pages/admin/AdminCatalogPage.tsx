@@ -33,6 +33,8 @@ const AdminCatalogPage = () => {
   const [importKey, setImportKey] = useState(0);
   const [categoryFilter, setCategoryFilter] = useState<ProductCategoryFilter>("all");
   const [scanning, setScanning] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const handleScanLengths = async () => {
