@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, Globe, MapPin, Pencil, Users, Package, FileText, Wallet, Tag, Settings2, Loader2, CheckCircle2 } from "lucide-react";
+import { Building2, Globe, MapPin, Pencil, Users, Package, FileText, Wallet, Tag, Settings2, Loader2, CheckCircle2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import SupplierContactsTab from "./SupplierContactsTab";
 import SupplierDocumentsTab from "./SupplierDocumentsTab";
+import SupplierImportPanel from "./SupplierImportPanel";
 
 interface SupplierDetailSheetProps {
   supplierId: string;
@@ -55,7 +56,6 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit }: Supplie
   const [localTradeDiscount, setLocalTradeDiscount] = useState<number | null>(null);
   const [localMarkup, setLocalMarkup] = useState<number | null>(null);
 
-  // Derive effective values (local overrides DB)
   const priceListType = localPriceListType ?? supplier?.price_list_type ?? "cost_price";
   const tradeDiscount = localTradeDiscount ?? supplier?.default_trade_discount ?? 0;
   const markupPercent = localMarkup ?? supplier?.default_markup_percent ?? 20;
@@ -160,8 +160,11 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit }: Supplie
             <TabsTrigger value="contacts" className="flex-1 gap-1">
               <Users className="h-3 w-3" /> Contacts
             </TabsTrigger>
+            <TabsTrigger value="import" className="flex-1 gap-1">
+              <Upload className="h-3 w-3" /> Import
+            </TabsTrigger>
             <TabsTrigger value="documents" className="flex-1 gap-1">
-              <FileText className="h-3 w-3" /> Documents
+              <FileText className="h-3 w-3" /> Docs
             </TabsTrigger>
             <TabsTrigger value="pricing" className="flex-1 gap-1">
               <Settings2 className="h-3 w-3" /> Pricing
@@ -170,6 +173,20 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit }: Supplie
 
           <TabsContent value="contacts">
             <SupplierContactsTab supplierId={supplierId} />
+          </TabsContent>
+
+          <TabsContent value="import">
+            <div className="mt-2">
+              <SupplierImportPanel
+                supplierId={supplierId}
+                supplierName={supplier.company_name || supplier.name}
+                onImportComplete={() => {
+                  queryClient.invalidateQueries({ queryKey: ["supplier-product-count", supplierId] });
+                  queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
+                  queryClient.invalidateQueries({ queryKey: ["admin-suppliers-list"] });
+                }}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="documents">
@@ -184,7 +201,6 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit }: Supplie
                     💰 Pricing Configuration
                   </p>
 
-                  {/* Price List Type */}
                   <div className="space-y-2">
                     <Label className="text-xs">PDF Price List Type</Label>
                     <div className="flex gap-2">
@@ -212,7 +228,6 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit }: Supplie
                     </p>
                   </div>
 
-                  {/* Trade Discount */}
                   {priceListType === "list_price_with_discount" && (
                     <div className="space-y-1">
                       <Label className="text-xs">Default Trade Discount %</Label>
@@ -234,7 +249,6 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit }: Supplie
                     </div>
                   )}
 
-                  {/* Markup */}
                   <div className="space-y-1">
                     <Label className="text-xs">Default Markup %</Label>
                     <Input
@@ -248,7 +262,6 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit }: Supplie
                     <p className="text-[11px] text-muted-foreground">Applied to cost price for selling price calculation.</p>
                   </div>
 
-                  {/* Save */}
                   {hasChanges && (
                     <Button size="sm" onClick={savePricingSettings} disabled={savingPricing} className="w-full">
                       {savingPricing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}

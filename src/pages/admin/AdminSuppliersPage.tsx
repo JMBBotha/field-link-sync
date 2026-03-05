@@ -10,7 +10,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -21,10 +21,11 @@ import {
 } from "@/components/ui/collapsible";
 import {
   Building2, Plus, Search, Users, Package, MoreVertical, Trash2,
-  AlertTriangle, ChevronDown, Loader2, ShieldAlert, Download,
+  AlertTriangle, ChevronDown, Loader2, ShieldAlert, Download, FileUp, FileSpreadsheet,
 } from "lucide-react";
 import SupplierDetailSheet from "@/components/suppliers/SupplierDetailSheet";
 import SupplierFormDialog from "@/components/suppliers/SupplierFormDialog";
+import SupplierImportPanel from "@/components/suppliers/SupplierImportPanel";
 import FloatingQuoteBuilderButton from "@/components/shared/FloatingQuoteBuilderButton";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -64,6 +65,7 @@ const AdminSuppliersPage = () => {
   const [deleteState, setDeleteState] = useState<DeleteState | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [dangerOpen, setDangerOpen] = useState(false);
+  const [expandedImportId, setExpandedImportId] = useState<string | null>(null);
 
   // Bulk delete state
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -114,6 +116,23 @@ const AdminSuppliersPage = () => {
     },
   });
 
+  // Last import info per supplier
+  const { data: lastImports = {} } = useQuery({
+    queryKey: ["supplier-last-imports"],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("import_audit_log") as any)
+        .select("supplier_id, created_at, products_imported, file_name, action")
+        .in("action", ["pdf_import", "csv_import"])
+        .order("created_at", { ascending: false });
+      if (error) return {};
+      const map: Record<string, any> = {};
+      (data || []).forEach((r: any) => {
+        if (!map[r.supplier_id]) map[r.supplier_id] = r;
+      });
+      return map;
+    },
+  });
+
   const filtered = suppliers.filter((s) => {
     const q = search.toLowerCase();
     return !q || s.name.toLowerCase().includes(q) || s.company_name?.toLowerCase().includes(q) ||
@@ -127,13 +146,13 @@ const AdminSuppliersPage = () => {
     queryClient.invalidateQueries({ queryKey: ["admin-suppliers-list"] });
     queryClient.invalidateQueries({ queryKey: ["supplier-contact-counts"] });
     queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
+    queryClient.invalidateQueries({ queryKey: ["supplier-last-imports"] });
     queryClient.invalidateQueries({ queryKey: ["suppliers"] });
     queryClient.invalidateQueries({ queryKey: ["supplier-products"] });
     queryClient.invalidateQueries({ queryKey: ["consumable-products"] });
     runOrphanCheck();
   };
 
-  // Orphan check after page load
   const runOrphanCheck = async () => {
     try {
       const count = await getOrphanProductCount();
@@ -157,7 +176,6 @@ const AdminSuppliersPage = () => {
     }
   };
 
-  // Single supplier delete
   const openDeleteDialog = async (supplier: SupplierRow, mode: DeleteMode) => {
     const counts = await getSupplierDeleteCounts(supplier.id);
     setDeleteState({ supplierId: supplier.id, supplierName: supplier.company_name || supplier.name, mode, counts });
@@ -171,13 +189,13 @@ const AdminSuppliersPage = () => {
         const result = await deleteSupplierCompletely(deleteState.supplierId);
         toast({
           title: `${deleteState.supplierName} removed completely.`,
-          description: `${result.deletedProducts} products, ${result.deletedPdfPages} PDF pages removed from database and storage.`,
+          description: `${result.deletedProducts} products, ${result.deletedPdfPages} PDF pages removed.`,
         });
       } else {
         const result = await deleteSupplierProductsOnly(deleteState.supplierId);
         toast({
           title: `${deleteState.supplierName} cleared — ready for fresh upload.`,
-          description: `${result.deletedProducts} products, ${result.deletedPdfPages} PDF pages removed from database and storage.`,
+          description: `${result.deletedProducts} products, ${result.deletedPdfPages} PDF pages removed.`,
         });
       }
       refreshAll();
@@ -189,9 +207,6 @@ const AdminSuppliersPage = () => {
     }
   };
 
-
-
-  // Bulk delete all
   const handleBulkDeleteAll = async () => {
     setBulkOpen(false);
     setBulkConfirmText("");
@@ -266,13 +281,7 @@ const AdminSuppliersPage = () => {
                 ⚠️ {orphanCount} orphan product{orphanCount !== 1 ? "s" : ""} found with no supplier
               </span>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleCleanOrphans}
-              disabled={cleaningOrphans}
-              className="text-xs"
-            >
+            <Button size="sm" variant="outline" onClick={handleCleanOrphans} disabled={cleaningOrphans} className="text-xs">
               {cleaningOrphans ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Trash2 className="h-3 w-3 mr-1" />}
               Clean Orphans
             </Button>
@@ -280,7 +289,7 @@ const AdminSuppliersPage = () => {
         </Card>
       )}
 
-      {/* Danger Zone (collapsed) */}
+      {/* Danger Zone */}
       {suppliers.length > 0 && (
         <Collapsible open={dangerOpen} onOpenChange={setDangerOpen}>
           <Card className="border-destructive/30">
@@ -300,7 +309,6 @@ const AdminSuppliersPage = () => {
                     Delete ALL suppliers and their associated products, PDFs, contacts, and documents.
                     This action is irreversible.
                   </p>
-
                   {bulkProgress && (
                     <div className="space-y-2">
                       <p className="text-sm font-medium text-destructive">
@@ -310,13 +318,7 @@ const AdminSuppliersPage = () => {
                       <Progress value={(bulkProgress.current / bulkProgress.total) * 100} className="h-2" />
                     </div>
                   )}
-
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setBulkOpen(true)}
-                    disabled={!!bulkProgress}
-                  >
+                  <Button variant="destructive" size="sm" onClick={() => setBulkOpen(true)} disabled={!!bulkProgress}>
                     <AlertTriangle className="h-4 w-4 mr-1" /> Delete ALL {suppliers.length} Suppliers
                   </Button>
                 </div>
@@ -350,56 +352,118 @@ const AdminSuppliersPage = () => {
                   <TableHead className="text-center"><Users className="h-4 w-4 mx-auto" /></TableHead>
                   <TableHead className="text-center"><Package className="h-4 w-4 mx-auto" /></TableHead>
                   <TableHead className="hidden sm:table-cell">Type</TableHead>
-                  <TableHead className="w-10" />
+                  <TableHead className="hidden lg:table-cell">Last Import</TableHead>
+                  <TableHead className="w-20" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((s) => (
-                  <TableRow key={s.id} className="cursor-pointer hover:bg-muted/50">
-                    <TableCell className="font-medium" onClick={() => setSelectedSupplierId(s.id)}>
-                      {s.company_name || s.name}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground" onClick={() => setSelectedSupplierId(s.id)}>
-                      {s.trading_name || "—"}
-                    </TableCell>
-                    <TableCell className="text-center" onClick={() => setSelectedSupplierId(s.id)}>
-                      <Badge variant="secondary" className="text-xs">{contactCounts[s.id] || 0}</Badge>
-                    </TableCell>
-                    <TableCell className="text-center" onClick={() => setSelectedSupplierId(s.id)}>
-                      <Badge variant="outline" className="text-xs">{productCounts[s.id] || 0}</Badge>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell" onClick={() => setSelectedSupplierId(s.id)}>
-                      <Badge variant={s.supplier_type === "consumables" ? "default" : "secondary"} className="text-xs">
-                        {s.supplier_type === "consumables" ? "Consumables" : "AC Units"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openDeleteDialog(s, "products")}>
-                            <Trash2 className="h-4 w-4 mr-2" /> Clear Products & PDFs
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => openDeleteDialog(s, "complete")}
+                {filtered.map((s) => {
+                  const li = lastImports[s.id];
+                  return (
+                    <TableRow key={s.id} className="group">
+                      {/* Supplier row */}
+                      <TableCell className="font-medium cursor-pointer" onClick={() => setSelectedSupplierId(s.id)}>
+                        {s.company_name || s.name}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-muted-foreground cursor-pointer" onClick={() => setSelectedSupplierId(s.id)}>
+                        {s.trading_name || "—"}
+                      </TableCell>
+                      <TableCell className="text-center cursor-pointer" onClick={() => setSelectedSupplierId(s.id)}>
+                        <Badge variant="secondary" className="text-xs">{contactCounts[s.id] || 0}</Badge>
+                      </TableCell>
+                      <TableCell className="text-center cursor-pointer" onClick={() => setSelectedSupplierId(s.id)}>
+                        <Badge variant="outline" className="text-xs">{productCounts[s.id] || 0}</Badge>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => setSelectedSupplierId(s.id)}>
+                        <Badge variant={s.supplier_type === "consumables" ? "default" : "secondary"} className="text-xs">
+                          {s.supplier_type === "consumables" ? "Consumables" : "AC Units"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
+                        {li ? (
+                          <span>
+                            {new Date(li.created_at).toLocaleDateString()} ({li.products_imported} from {li.file_name?.substring(0, 20)})
+                          </span>
+                        ) : (
+                          <span className="italic">No imports yet</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          {/* Quick upload button */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Upload PDF/CSV Price List"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedImportId(expandedImportId === s.id ? null : s.id);
+                            }}
                           >
-                            <Trash2 className="h-4 w-4 mr-2" /> Delete Supplier Completely
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                            <FileUp className="h-4 w-4 text-primary" />
+                          </Button>
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setExpandedImportId(expandedImportId === s.id ? null : s.id)}>
+                                <FileUp className="h-4 w-4 mr-2" /> Upload & Parse PDF
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setExpandedImportId(expandedImportId === s.id ? null : s.id)}>
+                                <FileSpreadsheet className="h-4 w-4 mr-2" /> Upload & Parse CSV
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => openDeleteDialog(s, "products")}>
+                                <Trash2 className="h-4 w-4 mr-2" /> Clear Products & PDFs
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => openDeleteDialog(s, "complete")}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" /> Delete Supplier Completely
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
         </CardContent>
       </Card>
+
+      {/* Inline import panels (rendered outside table for proper layout) */}
+      {filtered.map((s) => expandedImportId === s.id && (
+        <Card key={`import-${s.id}`} className="border-primary/20 bg-primary/5">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold">
+                📄 Import Products — {s.company_name || s.name}
+              </p>
+              <Button variant="ghost" size="sm" onClick={() => setExpandedImportId(null)} className="text-xs">
+                Cancel
+              </Button>
+            </div>
+            <SupplierImportPanel
+              supplierId={s.id}
+              supplierName={s.company_name || s.name}
+              compact
+              onImportComplete={() => {
+                setExpandedImportId(null);
+                refreshAll();
+              }}
+            />
+          </CardContent>
+        </Card>
+      ))}
 
       {/* Single delete confirmation */}
       <AlertDialog open={!!deleteState} onOpenChange={(o) => !o && setDeleteState(null)}>
@@ -426,7 +490,7 @@ const AdminSuppliersPage = () => {
                 )}
                 {deleteState?.mode === "complete" && (
                   <p className="text-destructive font-semibold text-sm border border-destructive/30 rounded-md p-2 bg-destructive/5">
-                    ⚠️ This also removes all contacts, the supplier record, and all uploaded PDF files including archived versions from storage. This cannot be undone.
+                    ⚠️ This also removes all contacts, the supplier record, and all uploaded PDF files. This cannot be undone.
                   </p>
                 )}
               </div>
