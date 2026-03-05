@@ -338,15 +338,12 @@ function DraggableProductCard({
                           Used {usageCount}x
                         </Badge>
                       )}
-                      {product.cost_excl_vat > 0 && (() => {
-                        const p = calculatePricing(
-                          product.cost_excl_vat || 0,
-                          product.supplier_discount_percent ?? 0,
-                          product.markup_percent ?? 20
-                        );
+                      {product.selling_price > 0 && product.cost_price > 0 && (() => {
+                        // Show baked-in markup (selling_price vs cost_price)
+                        const bakedMarkup = ((product.selling_price / product.cost_price) - 1) * 100;
                         return (
                           <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 text-primary">
-                            {p.markupPercent.toFixed(0)}% M/Up
+                            {bakedMarkup.toFixed(0)}% M/Up
                           </Badge>
                         );
                       })()}
