@@ -92,15 +92,19 @@ const ImportPreviewModal = ({
           <DialogDescription className="truncate">{fileName}</DialogDescription>
           {preview.parseMethod && (
             <div className={`flex items-center gap-2 text-xs rounded px-3 py-1.5 mt-1 ${
-              preview.parseMethod === "ai"
+              preview.parseMethod === "grok_ai" || preview.parseMethod === "ai"
                 ? "bg-green-500/10 text-green-700 dark:text-green-400"
+                : preview.parseMethod === "lovable_ai"
+                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
                 : preview.parseMethod === "csv"
                 ? "bg-blue-500/10 text-blue-700 dark:text-blue-400"
                 : "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400"
             }`}>
-              {preview.parseMethod === "ai" && "🟢 HIGH QUALITY — Parsed using AI Vision"}
+              {preview.parseMethod === "grok_ai" && "🟢 HIGH — Enhanced with Deep-Image.ai + Parsed by Grok AI"}
+              {preview.parseMethod === "ai" && "🟢 HIGH — Parsed using AI Vision"}
+              {preview.parseMethod === "lovable_ai" && "🟢 GOOD — Parsed using Lovable AI"}
               {preview.parseMethod === "csv" && "🔵 CSV — Structured data import"}
-              {preview.parseMethod === "regex" && "🟡 STANDARD — Parsed using text extraction"}
+              {preview.parseMethod === "regex" && "🟡 STANDARD — Parsed using text extraction. AI APIs may be unavailable."}
             </div>
           )}
         </DialogHeader>
