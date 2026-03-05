@@ -1,5 +1,6 @@
 import { VAT_RATE } from "@/utils/pricing";
 import { supabase } from "@/integrations/supabase/client";
+import { renderPDFToImages, enhancePDFPages } from "@/utils/pdfEnhancer";
 
 export type PriceListType = "cost_price" | "list_price_with_discount";
 
@@ -42,8 +43,16 @@ export interface ImportPreview {
   vatConfidence: "high" | "medium" | "low";
   discountConfidence: "high" | "medium" | "low";
   supplierSettings: SupplierPricingSettings;
-  parseMethod?: "ai" | "regex" | "csv";
+  parseMethod?: "ai" | "regex" | "csv" | "grok_ai" | "lovable_ai";
 }
+
+export type ImportStage =
+  | { stage: "loading_pdf"; detail: string }
+  | { stage: "rendering_pages"; done: number; total: number }
+  | { stage: "enhancing_images"; done: number; total: number }
+  | { stage: "ai_extraction"; detail: string }
+  | { stage: "text_fallback"; detail: string }
+  | { stage: "complete"; detail: string };
 
 // ─────────────────────────────────────────
 // FETCH SUPPLIER PRICING SETTINGS
@@ -70,15 +79,16 @@ export async function getSupplierPricingSettings(supplierId: string): Promise<Su
 export async function parseImportFile(
   file: File,
   supplierId: string,
-  settingsOverride?: Partial<SupplierPricingSettings>
+  settingsOverride?: Partial<SupplierPricingSettings>,
+  onStage?: (stage: ImportStage) => void
 ): Promise<ImportPreview> {
   const dbSettings = await getSupplierPricingSettings(supplierId);
   const settings: SupplierPricingSettings = { ...dbSettings, ...settingsOverride };
 
   if (file.name.endsWith(".csv") || file.type === "text/csv") {
-    return parseCSVFile(file, settings);
+    return parseCSVFile(file, settings, supplierId);
   }
-  return parsePDFFile(file, settings, supplierId);
+  return parsePDFWithFullPipeline(file, settings, supplierId, onStage);
 }
 
 // ─────────────────────────────────────────
@@ -180,37 +190,45 @@ export function recalculateProducts(
 }
 
 // ─────────────────────────────────────────
-// AI-ENHANCED PDF PARSING
+// FULL PDF PIPELINE: Render → Enhance → Grok → Lovable AI → Regex
 // ─────────────────────────────────────────
 const CHUNK_SIZE = 12000;
 
-async function tryAIParsePDF(
+async function parsePDFWithFullPipeline(
   file: File,
+  settings: SupplierPricingSettings,
   supplierId: string,
-  supplierName: string
-): Promise<{ products: Array<{ model: string; description: string; price: number; category: string }>; success: boolean }> {
+  onStage?: (stage: ImportStage) => void
+): Promise<ImportPreview> {
+  let parseMethod: ImportPreview["parseMethod"] = "regex";
+  let rawRows: Array<{ model: string; description: string; price: number; category: string }> = [];
+
+  // STAGE 1: Render PDF pages to images + extract text
+  onStage?.({ stage: "loading_pdf", detail: `Loading ${file.name}...` });
+  const { images, numPages, allText } = await renderPDFToImages(file, 2.0, (done, total) => {
+    onStage?.({ stage: "rendering_pages", done, total });
+  });
+  console.log(`[Import] PDF loaded: ${numPages} pages, ${allText.length} chars text`);
+
+  // STAGE 2: Enhance images with Deep-Image.ai (skip if > 30 pages to avoid timeout)
+  let enhancedImages = images;
+  if (numPages <= 30) {
+    onStage?.({ stage: "enhancing_images", done: 0, total: numPages });
+    try {
+      enhancedImages = await enhancePDFPages(images, (done, total) => {
+        onStage?.({ stage: "enhancing_images", done, total });
+      });
+      console.log(`[Import] ${enhancedImages.length} pages enhanced with Deep-Image.ai`);
+    } catch (err) {
+      console.warn("[Import] Enhancement failed, using original images:", err);
+    }
+  } else {
+    console.log(`[Import] Skipping enhancement for ${numPages} pages (>30)`);
+  }
+
+  // STAGE 3: Try Grok AI extraction (parse-pdf-with-grok) using extracted text in chunks
+  onStage?.({ stage: "ai_extraction", detail: "Parsing with Grok AI..." });
   try {
-    const pdfjsLib = await import("pdfjs-dist");
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
-    // Extract text from all pages
-    let allText = "";
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items.map((item: any) => item.str).join(" ");
-      allText += pageText + "\n";
-    }
-
-    if (allText.trim().length < 50) {
-      console.log("[AI Parse] Insufficient text extracted from PDF");
-      return { products: [], success: false };
-    }
-
-    // Split into chunks for the edge function
     const chunks: string[] = [];
     let i = 0;
     while (i < allText.length) {
@@ -223,32 +241,30 @@ async function tryAIParsePDF(
       i = end;
     }
 
-    console.log(`[AI Parse] Sending ${chunks.length} chunks to AI parser`);
-
-    const allProducts: Array<{ model: string; description: string; price: number; category: string }> = [];
-
+    console.log(`[Import] Sending ${chunks.length} chunks to parse-pdf-with-grok`);
     for (let ci = 0; ci < chunks.length; ci++) {
+      onStage?.({ stage: "ai_extraction", detail: `Grok AI: chunk ${ci + 1}/${chunks.length}...` });
       const { data, error } = await supabase.functions.invoke("parse-pdf-with-grok", {
         body: {
           extracted_text: chunks[ci],
           supplier_id: supplierId,
-          supplier_name: supplierName,
+          supplier_name: settings.supplierName,
           chunk_index: ci,
           chunk_total: chunks.length,
         },
       });
 
       if (error) {
-        console.warn(`[AI Parse] Chunk ${ci} error:`, error);
+        console.warn(`[Import] Grok chunk ${ci} error:`, error);
         continue;
       }
 
       const products = data?.products || [];
       for (const p of products) {
-        const costPrice = typeof p.cost_price === "number" ? p.cost_price : 
+        const costPrice = typeof p.cost_price === "number" ? p.cost_price :
           (p.prices ? Object.values(p.prices)[0] as number : 0);
         if (costPrice > 0) {
-          allProducts.push({
+          rawRows.push({
             model: p.product_code || p.sku || "",
             description: p.description || p.name || "",
             price: costPrice,
@@ -258,78 +274,73 @@ async function tryAIParsePDF(
       }
     }
 
-    console.log(`[AI Parse] Total products extracted: ${allProducts.length}`);
-    return { products: allProducts, success: allProducts.length > 0 };
-  } catch (err) {
-    console.warn("[AI Parse] Failed:", err);
-    return { products: [], success: false };
-  }
-}
-
-// ─────────────────────────────────────────
-// PDF PARSER (AI-first, regex fallback)
-// ─────────────────────────────────────────
-async function parsePDFFile(file: File, settings: SupplierPricingSettings, supplierId?: string): Promise<ImportPreview> {
-  let parseMethod: "ai" | "regex" = "regex";
-  let rawRows: Array<{ model: string; description: string; price: number; category: string }> = [];
-
-  // Try AI parsing first
-  if (supplierId) {
-    console.log("[Parser] Attempting AI-enhanced parsing...");
-    const aiResult = await tryAIParsePDF(file, supplierId, settings.supplierName);
-    if (aiResult.success && aiResult.products.length > 0) {
-      rawRows = aiResult.products;
-      parseMethod = "ai";
-      console.log(`[Parser] AI parsing succeeded with ${rawRows.length} products`);
+    if (rawRows.length > 0) {
+      parseMethod = "grok_ai";
+      console.log(`[Import] Grok AI extracted ${rawRows.length} products`);
     }
+  } catch (err) {
+    console.warn("[Import] Grok AI parsing failed:", err);
   }
 
-  // Fallback to regex if AI didn't produce results
-  if (rawRows.length === 0) {
-    console.log("[Parser] Using regex text extraction fallback...");
-    const pdfjsLib = await import("pdfjs-dist");
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+  // STAGE 4: Fallback to Lovable AI (parse-price-list) if Grok didn't produce results
+  if (rawRows.length === 0 && allText.trim().length > 50) {
+    onStage?.({ stage: "ai_extraction", detail: "Trying Lovable AI..." });
+    try {
+      const { data, error } = await supabase.functions.invoke("parse-price-list", {
+        body: {
+          csv_text: allText.substring(0, 15000),
+          supplier_id: supplierId,
+          supplier_name: settings.supplierName,
+        },
+      });
 
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
-    let allText = "";
-
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items.map((item: any) => item.str).join(" ");
-      allText += pageText + "\n";
-
-      const pricePattern = /([A-Z0-9][A-Z0-9\-\/]{4,29})\s+([A-Za-z0-9\s\-\/,\.]{10,80}?)\s+R?\s*([\d,]+\.?\d{0,2})/g;
-      let match;
-      while ((match = pricePattern.exec(pageText)) !== null) {
-        const price = parseFloat(match[3].replace(/,/g, ""));
-        if (price > 0 && price < 1_000_000) {
-          rawRows.push({
-            model: match[1].trim(),
-            description: match[2].trim(),
-            price,
-            category: detectCategory(match[2]),
-          });
+      if (!error) {
+        const products = data?.products || (Array.isArray(data) ? data : []);
+        for (const p of products) {
+          const price = p.cost_price || 0;
+          if (price > 0) {
+            rawRows.push({
+              model: p.product_code || "",
+              description: p.description || "",
+              price,
+              category: p.category || "Air Conditioning",
+            });
+          }
+        }
+        if (rawRows.length > 0) {
+          parseMethod = "lovable_ai";
+          console.log(`[Import] Lovable AI extracted ${rawRows.length} products`);
         }
       }
+    } catch (err) {
+      console.warn("[Import] Lovable AI parsing failed:", err);
     }
   }
 
-  // Extract text for VAT/discount detection
-  let allText = "";
-  try {
-    const pdfjsLib = await import("pdfjs-dist");
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    for (let pageNum = 1; pageNum <= Math.min(pdf.numPages, 3); pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const textContent = await page.getTextContent();
-      allText += textContent.items.map((item: any) => item.str).join(" ") + "\n";
-    }
-  } catch (_) {}
+  // STAGE 5: Last resort — local regex text extraction
+  if (rawRows.length === 0) {
+    onStage?.({ stage: "text_fallback", detail: "Using text extraction fallback..." });
+    console.log("[Import] Using regex text extraction fallback...");
 
+    const pricePattern = /([A-Z0-9][A-Z0-9\-\/]{4,29})\s+([A-Za-z0-9\s\-\/,\.]{10,80}?)\s+R?\s*([\d,]+\.?\d{0,2})/g;
+    let match;
+    while ((match = pricePattern.exec(allText)) !== null) {
+      const price = parseFloat(match[3].replace(/,/g, ""));
+      if (price > 0 && price < 1_000_000) {
+        rawRows.push({
+          model: match[1].trim(),
+          description: match[2].trim(),
+          price,
+          category: detectCategory(match[2]),
+        });
+      }
+    }
+    parseMethod = "regex";
+  }
+
+  onStage?.({ stage: "complete", detail: `${rawRows.length} products found` });
+
+  // VAT / Discount detection
   const vatDetection = detectVATInclusion(allText, [allText.substring(0, 500)]);
   const discountDetection = detectDiscount(allText);
   const warnings: string[] = [];
@@ -339,15 +350,14 @@ async function parsePDFFile(file: File, settings: SupplierPricingSettings, suppl
     ? (discountDetection.confidence === "high" ? discountDetection.percent : settings.tradeDiscount)
     : 0;
 
-  if (vatDetection.confidence === "low") {
+  if (vatDetection.confidence === "low")
     warnings.push("⚠️ Could not confidently detect VAT inclusion — please verify below");
-  }
-
-  if (parseMethod === "regex") {
+  if (parseMethod === "regex")
     warnings.push("📝 Parsed using text extraction — results may be less accurate for complex layouts");
-  }
+  if (parseMethod === "lovable_ai")
+    warnings.push("🤖 Parsed using Lovable AI — review results for accuracy");
 
-  // Deduplicate by model number
+  // Deduplicate
   const seen = new Set<string>();
   const uniqueRows = rawRows.filter((r) => {
     const key = r.model.toLowerCase();
@@ -372,7 +382,7 @@ async function parsePDFFile(file: File, settings: SupplierPricingSettings, suppl
       price_list_type: settings.priceListType,
       supplier_discount_percent: settings.priceListType === "list_price_with_discount" ? effectiveDiscount : 0,
       markup_percent: settings.markupPercent,
-      confidence: parseMethod === "ai" ? "high" : vatDetection.confidence,
+      confidence: (parseMethod === "grok_ai" || parseMethod === "ai") ? "high" : parseMethod === "lovable_ai" ? "medium" : vatDetection.confidence,
       flags,
       ...calc,
     };
@@ -424,9 +434,9 @@ function parseCSVLine(line: string): string[] {
 }
 
 // ─────────────────────────────────────────
-// CSV PARSER
+// CSV PARSER — tries Lovable AI first, then local
 // ─────────────────────────────────────────
-async function parseCSVFile(file: File, settings: SupplierPricingSettings): Promise<ImportPreview> {
+async function parseCSVFile(file: File, settings: SupplierPricingSettings, supplierId?: string): Promise<ImportPreview> {
   const text = await file.text();
   const lines = text.split("\n").filter((l) => l.trim());
   if (lines.length < 2) return emptyPreview("CSV file has no data rows", settings);
@@ -440,6 +450,63 @@ async function parseCSVFile(file: File, settings: SupplierPricingSettings): Prom
     ? (discountDetection.confidence === "high" ? discountDetection.percent : settings.tradeDiscount)
     : 0;
 
+  // Try Lovable AI parse-price-list first for CSV
+  if (supplierId) {
+    try {
+      const { data, error } = await supabase.functions.invoke("parse-price-list", {
+        body: {
+          csv_text: text.substring(0, 15000),
+          supplier_id: supplierId,
+          supplier_name: settings.supplierName,
+        },
+      });
+
+      if (!error) {
+        const aiProducts = data?.products || (Array.isArray(data) ? data : []);
+        const validProducts = aiProducts.filter((p: any) => (p.cost_price || 0) > 0);
+
+        if (validProducts.length > 0) {
+          console.log(`[Import] Lovable AI CSV: ${validProducts.length} products`);
+          const products: ParsedProduct[] = validProducts.map((p: any) => {
+            const rawPrice = p.cost_price || 0;
+            const calc = calculateImportPrices(rawPrice, settings.priceListType, effectiveInclVat, effectiveDiscount, settings.markupPercent);
+            return {
+              model_number: p.product_code || "",
+              description: p.description || "",
+              category: p.category || "Air Conditioning",
+              raw_price: rawPrice,
+              price_includes_vat: effectiveInclVat,
+              price_list_type: settings.priceListType,
+              supplier_discount_percent: settings.priceListType === "list_price_with_discount" ? effectiveDiscount : 0,
+              markup_percent: settings.markupPercent,
+              confidence: "high" as const,
+              flags: [],
+              ...calc,
+            };
+          });
+
+          return {
+            products,
+            detectedPriceType: effectiveInclVat ? "incl_vat" : "excl_vat",
+            detectedDiscount: effectiveDiscount,
+            suggestedMarkup: settings.markupPercent,
+            totalProducts: products.length,
+            warnings: [],
+            vatEvidence: vatDetection.evidence,
+            discountEvidence: settings.priceListType === "cost_price" ? "N/A — Cost price supplier" : discountDetection.evidence,
+            vatConfidence: vatDetection.confidence,
+            discountConfidence: settings.priceListType === "cost_price" ? "high" : discountDetection.confidence,
+            supplierSettings: settings,
+            parseMethod: "lovable_ai",
+          };
+        }
+      }
+    } catch (err) {
+      console.warn("[Import] Lovable AI CSV parsing failed, using local:", err);
+    }
+  }
+
+  // Fallback: local CSV parsing
   const columnMap: Record<string, string> = {};
   for (const header of headers) {
     const h = header.toUpperCase();

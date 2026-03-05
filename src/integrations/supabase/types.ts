@@ -3808,6 +3808,7 @@ export type Database = {
           archived_at: string | null
           brand: string | null
           btu_rating: number | null
+          calculated_price: number | null
           capacity_btu: number | null
           category: string
           cost_excl_vat: number | null
@@ -3872,6 +3873,7 @@ export type Database = {
           archived_at?: string | null
           brand?: string | null
           btu_rating?: number | null
+          calculated_price?: number | null
           capacity_btu?: number | null
           category?: string
           cost_excl_vat?: number | null
@@ -3936,6 +3938,7 @@ export type Database = {
           archived_at?: string | null
           brand?: string | null
           btu_rating?: number | null
+          calculated_price?: number | null
           capacity_btu?: number | null
           category?: string
           cost_excl_vat?: number | null
