@@ -36,6 +36,7 @@ import type { PaletteProduct, BasketItem, Basket } from "@/components/catalog/Qu
 import { computeBundlePricing } from "@/components/catalog/quote-builder/BundleItemsPopover";
 import { useCompany } from "@/providers/CompanyProvider";
 import logo from "@/assets/logo.png";
+import PanelErrorBoundary from "@/components/shared/PanelErrorBoundary";
 import FloatingSelectedItems from "@/components/catalog/quote-builder/FloatingSelectedItems";
 
 // Custom sensor to skip data-no-dnd elements
@@ -651,29 +652,33 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
           <div ref={canvasRef}
             className={`${isMobile ? (mobileTab === "canvas" ? "flex" : "hidden") : "flex"} flex-col flex-1 min-h-0 min-w-0 overflow-hidden p-1`}>
             <div className="flex-1 min-h-0 overflow-y-auto p-4" style={{ scrollBehavior: "smooth" }}>
-              <BasketCanvas
-                baskets={baskets}
-                allProducts={products}
-                onAddBasket={handleAddBasket}
-                onRenameBasket={handleRenameBasket}
-                onRemoveBasket={handleRemoveBasket}
-                onRemoveItem={handleRemoveItem}
-                onUpdateQuantity={handleUpdateQuantity}
-                onAddProductToBasket={addProductToBasket}
-                onDuplicateBasket={handleDuplicateBasket}
-                onApplyTemplate={handleApplyTemplate}
-                onClearAll={handleClearAll}
-                onUpdateLength={handleUpdateLength}
-                isDragging={isDragging}
-                isCompact={visualPanelOpen}
-              />
+              <PanelErrorBoundary panelName="Build Area Quote">
+                <BasketCanvas
+                  baskets={baskets}
+                  allProducts={products}
+                  onAddBasket={handleAddBasket}
+                  onRenameBasket={handleRenameBasket}
+                  onRemoveBasket={handleRemoveBasket}
+                  onRemoveItem={handleRemoveItem}
+                  onUpdateQuantity={handleUpdateQuantity}
+                  onAddProductToBasket={addProductToBasket}
+                  onDuplicateBasket={handleDuplicateBasket}
+                  onApplyTemplate={handleApplyTemplate}
+                  onClearAll={handleClearAll}
+                  onUpdateLength={handleUpdateLength}
+                  isDragging={isDragging}
+                  isCompact={visualPanelOpen}
+                />
+              </PanelErrorBoundary>
             </div>
           </div>
 
           {/* RIGHT: Summary panel (desktop only) */}
           {!isMobile && (
             <div className={`transition-all duration-200 ease-in-out overflow-hidden ${summaryCollapsed ? "w-0" : "w-72 lg:w-80"}`}>
-              <QuoteSummaryColumn baskets={baskets} collapsed={summaryCollapsed} onToggle={() => setSummaryCollapsed((c) => !c)} />
+              <PanelErrorBoundary panelName="Quote Summary">
+                <QuoteSummaryColumn baskets={baskets} collapsed={summaryCollapsed} onToggle={() => setSummaryCollapsed((c) => !c)} />
+              </PanelErrorBoundary>
             </div>
           )}
         </div>
@@ -682,16 +687,18 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
           {activeProduct ? <DragOverlayCard product={activeProduct} /> : null}
         </DragOverlay>
         <FloatingDropZoneStrip baskets={baskets} visible={isDragging && visualPanelOpen} />
-        <VisualCatalogPanel
-          open={visualPanelOpen} onClose={() => setVisualPanelOpen(false)}
-          baskets={baskets} onAddProductToBasket={addProductToBasket}
-          onAddBasket={handleAddBasket} onRemoveBasket={handleRemoveBasket}
-          products={products} isDragging={isDragging}
-          onOpenWizard={handleOpenWizardFromPdf}
-          pdfSearchRef={pdfSearchRef}
-          wizardOpen={wizardOpen}
-          pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
-        />
+        <PanelErrorBoundary panelName="Visual Catalog">
+          <VisualCatalogPanel
+            open={visualPanelOpen} onClose={() => setVisualPanelOpen(false)}
+            baskets={baskets} onAddProductToBasket={addProductToBasket}
+            onAddBasket={handleAddBasket} onRemoveBasket={handleRemoveBasket}
+            products={products} isDragging={isDragging}
+            onOpenWizard={handleOpenWizardFromPdf}
+            pdfSearchRef={pdfSearchRef}
+            wizardOpen={wizardOpen}
+            pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
+          />
+        </PanelErrorBoundary>
       </DndContext>
 
       {/* Floating Selected Items panel */}
