@@ -463,7 +463,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
 
       // ── Upload PDF to storage & create pdf_uploads record ──
       let pdfUploadId: string | null = null;
-      const file = pendingImportFile;
+      const file = importFileRef.current;
       if (file && file.name.toLowerCase().endsWith(".pdf")) {
         console.log("[Import] Uploading PDF to storage...");
         const filePath = `${supplierId}/${Date.now()}_${file.name}`;
