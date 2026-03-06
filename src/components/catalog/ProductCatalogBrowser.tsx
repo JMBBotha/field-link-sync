@@ -94,6 +94,8 @@ interface SupplierProduct {
   sold_in_length?: boolean;
   price_per_metre?: number | null;
   unit_length?: number | null;
+  discounted_cost?: number | null;
+  supplier_discount_percent?: number | null;
 }
 
 interface ProductCatalogBrowserProps {
