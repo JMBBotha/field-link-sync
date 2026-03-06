@@ -47,7 +47,7 @@ const SupplierComparison = ({ category }: SupplierComparisonProps) => {
     queryFn: async () => {
       let query = supabase
         .from("supplier_products" as any)
-        .select("id, supplier_id, product_code, description, category, btu_rating, pipe_size, cost_price, selling_price, is_price_on_request, default_markup_percent")
+        .select("id, supplier_id, product_code, description, category, btu_rating, pipe_size, cost_price, selling_price, is_price_on_request, default_markup_percent, discounted_cost")
         .eq("is_active", true)
         .order("btu_rating", { ascending: true });
 
