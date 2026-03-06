@@ -113,8 +113,8 @@ const ImportPreviewModal = ({
           )}
         </DialogHeader>
 
-        <ScrollArea className="flex-1 overflow-hidden">
-          <div className="space-y-4 pr-4">
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="space-y-4 pr-1">
             {/* Detected Price Columns */}
             {detectedCols.length > 1 && (
               <Card className="border-blue-200 dark:border-blue-800">
@@ -379,7 +379,7 @@ const ImportPreviewModal = ({
               </div>
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="flex-row justify-between sm:justify-between gap-2 pt-4 border-t mt-4">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={confirming}>
