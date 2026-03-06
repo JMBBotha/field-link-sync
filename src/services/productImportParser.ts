@@ -259,6 +259,19 @@ async function parsePDFWithFullPipeline(
             description: p.description || p.name || "",
             price: costPrice,
             category: p.product_category || p.category || "Air Conditioning",
+            btu_rating: p.btu_rating || null,
+            pipe_size: p.pipe_size || null,
+            refrigerant_type: p.refrigerant_type || null,
+            phase: p.phase || null,
+            speed_type: p.speed_type || null,
+            kw: p.kw || null,
+            unit_type: p.unit_type || null,
+            short_name: p.short_name || null,
+            brand: p.brand || null,
+            product_category: p.product_category || null,
+            sold_in_length: p.sold_in_length || false,
+            unit_length: p.unit_length || null,
+            price_per_metre: p.price_per_metre || null,
           });
         }
       }
