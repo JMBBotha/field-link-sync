@@ -256,9 +256,44 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
 
   const backPath = mode === "agent" ? "/field" : mode === "admin" ? "/admin" : `/client/${companyId}/dashboard`;
 
-  const [baskets, setBaskets] = useState<Basket[]>([
-    { id: "basket-1", name: "Zone 1", items: [] },
-  ]);
+  const DRAFT_KEY = "quote-builder-draft";
+  const [showRecovery, setShowRecovery] = useState(false);
+  const [recoveredDraft, setRecoveredDraft] = useState<Basket[] | null>(null);
+
+  const [baskets, setBaskets] = useState<Basket[]>(() => {
+    return [{ id: "basket-1", name: "Zone 1", items: [] }];
+  });
+
+  // Draft recovery on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed.some((b: any) => b.items?.length > 0)) {
+          setRecoveredDraft(parsed);
+          setShowRecovery(true);
+        }
+      }
+    } catch { /* ignore corrupt data */ }
+  }, []);
+
+  // Auto-save every 30s
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (baskets.some(b => b.items.length > 0)) {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(baskets));
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [baskets]);
+
+  // Save on key mutations (debounced via state change)
+  useEffect(() => {
+    if (baskets.some(b => b.items.length > 0)) {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(baskets));
+    }
+  }, [baskets]);
   const [activeProduct, setActiveProduct] = useState<PaletteProduct | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
