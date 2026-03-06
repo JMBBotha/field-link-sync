@@ -113,8 +113,8 @@ const ImportPreviewModal = ({
           )}
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-2 -mr-2">
-          <div className="space-y-4">
+        <ScrollArea className="flex-1 overflow-hidden">
+          <div className="space-y-4 pr-4">
             {/* Detected Price Columns */}
             {detectedCols.length > 1 && (
               <Card className="border-blue-200 dark:border-blue-800">
