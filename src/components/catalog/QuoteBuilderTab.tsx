@@ -81,13 +81,11 @@ export function getEffectiveUnitPrices(product: PaletteProduct, isLengthOverride
 
   if (isLength) {
     unitSell = product.price_per_metre || (product.selling_price || 0) / (product.unit_length || 1);
-    // For length items, cost_price per metre
-    const totalCost = product.cost_price ?? product.cost_excl_vat ?? product.cost_incl_vat ?? 0;
+    const totalCost = product.cost_price || product.cost_excl_vat || 0;
     unitCost = totalCost / (product.unit_length || 1);
   } else {
-    unitSell = (product.selling_price || product.cost_incl_vat || 0) / pq;
-    // Use cost_price (discounted buy price) — NOT cost_excl_vat (raw list price)
-    unitCost = (product.cost_price ?? product.cost_excl_vat ?? product.cost_incl_vat ?? 0) / pq;
+    unitSell = (product.selling_price || 0) / pq;
+    unitCost = (product.cost_price || product.cost_excl_vat || 0) / pq;
   }
 
   return { unitCost, unitSell, isPackItem: pq > 1, packQty: pq };
