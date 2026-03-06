@@ -1,5 +1,5 @@
 import type { PaletteProduct } from "../QuoteBuilderTab";
-import { calculatePricing, exclVatFromIncl } from "@/utils/pricing";
+// pricing is now simplified — cost_price is the source of truth
 
 export interface QuoteArea {
   id: string;

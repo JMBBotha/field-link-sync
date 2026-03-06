@@ -4,7 +4,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { calculatePricing, VAT_RATE, exclVatFromIncl } from "@/utils/pricing";
+import { VAT_RATE } from "@/utils/pricing";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
