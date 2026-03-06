@@ -552,7 +552,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
     } finally {
       setImportConfirming(false);
     }
-  }, [supplierId, supplierName, importFileName, pendingImportFile, queryClient, toast]);
+  }, [supplierId, supplierName, importFileName, queryClient, toast]);
 
   const handleClearAndReupload = async () => {
     setDeletingProducts(true);
