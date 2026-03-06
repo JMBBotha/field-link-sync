@@ -135,7 +135,7 @@ const App = () => (
               <Route path="/admin/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><FBQuoteBuilderPage mode="admin" /></RequireRole>} />
 
               {/* Agent Quote Builder — same component, agent mode */}
-              <Route path="/field/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher", "agent"]}><FBQuoteBuilderPage mode="agent" /></RequireRole>} />
+              <Route path="/field/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher", "field_agent"]}><FBQuoteBuilderPage mode="agent" /></RequireRole>} />
 
               {/* FreshBooks multi-tenant client dashboards */}
               <Route path="/client/:companyId" element={<CompanyProvider><FBLayout /></CompanyProvider>}>
