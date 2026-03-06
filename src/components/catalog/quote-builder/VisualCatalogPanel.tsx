@@ -717,6 +717,7 @@ const LazyPdfPage = ({
   scrollContainerRef,
   onCategoriesDetected,
   registerRef,
+  totalPages,
   supplierName,
   onOpenWizard,
   onHoverStart,
