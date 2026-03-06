@@ -880,10 +880,10 @@ const LazyPdfPage = ({
     [products]
   );
 
-  // Stored regions fallback: query pdf_product_regions for pages without live extraction
+  // Stored regions fallback: query pdf_product_regions only when no PDF source for live extraction
   const { data: storedRegions = [] } = useQuery({
     queryKey: ["visual-panel-stored-regions", page.id],
-    enabled: isVisible && hasPdfSource,
+    enabled: isVisible && !hasPdfSource,
     queryFn: async () => {
       const { data } = await (supabase.from("pdf_product_regions") as any)
         .select("id, product_id, product_code, region_x, region_y, region_width, region_height, label")
