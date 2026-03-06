@@ -233,8 +233,9 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
           description: p.description || "",
           category: p.category || "Uncategorized",
           brand: supplierName || "",
-          cost_price: p.cost_price || p.price_excl_vat,
-          default_markup_percent: p.markup_percent || 20,
+          cost_price: p.cost_price || 0,
+          cost_excl_vat: p.cost_price || 0,
+          default_markup_percent: p.default_markup_percent || 20,
           is_active: true,
           archived: false,
         }));

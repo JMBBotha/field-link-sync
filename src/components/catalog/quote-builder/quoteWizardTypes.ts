@@ -81,13 +81,10 @@ export function createEmptyArea(name: string): QuoteArea {
 }
 
 export function computeAreaSubtotal(area: QuoteArea): number {
-  /** Use discounted_cost from DB when available, fallback to calculatePricing */
+  /** cost_price is the source of truth — already excl VAT, after any discount */
   const getCost = (p: any) => {
-    if (p?.discounted_cost > 0) return p.discounted_cost;
-    if (p?.cost_excl_vat > 0) {
-      return calculatePricing(p.cost_excl_vat, p?.supplier_discount_percent ?? 0).discountedCost;
-    }
-    if (p?.cost_incl_vat) return exclVatFromIncl(p.cost_incl_vat);
+    if (p?.cost_price > 0) return p.cost_price;
+    if (p?.cost_excl_vat > 0) return p.cost_excl_vat;
     return p?.selling_price || p?.price_per_metre || 0;
   };
   const acCost = area.acUnits.reduce((s, u) => s + getCost(u.product) * u.quantity, 0);

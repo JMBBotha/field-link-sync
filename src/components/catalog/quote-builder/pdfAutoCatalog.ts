@@ -235,23 +235,17 @@ export async function autoCatalogFromRegions(
 
   for (let i = 0; i < toInsert.length; i += batchSize) {
     const batch = toInsert.slice(i, i + batchSize).map(c => {
-      // cost_excl_vat = raw list price excl VAT (original reference)
       const rawExclVat = c.price;
-      // cost_price = discounted buy price (discount already baked in)
+      // cost_price = discounted buy price (discount already baked in at import)
       const costPrice = Math.round(rawExclVat * (1 - brandDiscountPercent / 100) * 100) / 100;
-      // selling_price = cost_price × 1.20 (standard 20% markup baked in)
-      const sellingPrice = Math.round(costPrice * 1.20 * 100) / 100;
       return {
         supplier_id: supplierUuid,
         product_code: c.sku,
         short_name: c.shortName,
         description: c.description,
-        cost_excl_vat: rawExclVat,
         cost_price: costPrice,
-        cost_incl_vat: Math.round(rawExclVat * 1.15 * 100) / 100,
-        selling_price: sellingPrice,
-        supplier_discount_percent: brandDiscountPercent,
-        markup_percent: 20,
+        cost_excl_vat: costPrice,
+        default_markup_percent: 20,
         brand,
         product_category: productCategory,
         category: productCategory,

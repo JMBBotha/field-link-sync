@@ -215,7 +215,7 @@ const EnhancedProductPopup = ({
               )}
             </div>
             {/* Markup row with +/- controls */}
-            {product.cost_excl_vat > 0 && (() => {
+            {(product.cost_price || product.cost_excl_vat || 0) > 0 && (() => {
               const p = getProductPricing(product);
               return (
               <div className="flex items-center gap-2 mt-1.5">

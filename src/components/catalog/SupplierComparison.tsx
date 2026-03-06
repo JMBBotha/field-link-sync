@@ -126,9 +126,9 @@ const SupplierComparison = ({ category }: SupplierComparisonProps) => {
                 </TableHeader>
                 <TableBody>
                   {group.products
-                    .sort((a, b) => (a.discounted_cost || a.cost_price) - (b.discounted_cost || b.cost_price))
+                    .sort((a, b) => a.cost_price - b.cost_price)
                     .map((product) => {
-                      const effectiveCost = product.discounted_cost || product.cost_price;
+                      const effectiveCost = product.cost_price;
                       const diff = effectiveCost > 0 && lowestPrice > 0
                         ? ((effectiveCost - lowestPrice) / lowestPrice * 100)
                         : 0;

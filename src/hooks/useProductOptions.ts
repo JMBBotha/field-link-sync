@@ -72,7 +72,7 @@ export function useProductOptions() {
           id: p.id,
           name: p.short_name || p.description,
           description: p.description,
-          rate: Number(p.discounted_cost ?? p.cost_price),
+          rate: Number(p.cost_price || 0),
           category: p.category,
           isFavorite: p.is_pinned ?? false,
           source: "product" as const,
