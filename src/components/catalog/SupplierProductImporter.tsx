@@ -770,11 +770,10 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
           archived: false,
           archived_at: null,
         };
-        if ((row as any)._cost_excl_vat !== undefined) {
-          updateData.cost_excl_vat = (row as any)._cost_excl_vat;
-          updateData.cost_incl_vat = (row as any)._cost_incl_vat;
-          updateData.rrp = (row as any)._rrp;
-        }
+         if ((row as any)._cost_excl_vat !== undefined) {
+           updateData.cost_excl_vat = (row as any)._cost_excl_vat;
+           updateData.cost_incl_vat = (row as any)._cost_incl_vat;
+         }
         const { error: err } = await supabase.from("supplier_products" as any)
           .update(updateData)
           .eq("id", row.existing_id);
