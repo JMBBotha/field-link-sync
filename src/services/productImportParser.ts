@@ -390,6 +390,9 @@ async function parsePDFWithFullPipeline(
     if (settings.priceListType === "list_price_with_discount" && effectiveDiscount > 0)
       flags.push(`discount_${effectiveDiscount}pct_applied`);
 
+    // Local spec extraction fallback — enrich specs from description/model if AI didn't provide them
+    const specs = extractSpecsFromText(row.model, row.description);
+
     return {
       model_number: row.model,
       description: row.description,
@@ -402,6 +405,20 @@ async function parsePDFWithFullPipeline(
       confidence: (parseMethod === "grok_ai" || parseMethod === "ai") ? "high" : parseMethod === "lovable_ai" ? "medium" : vatDetection.confidence,
       flags,
       ...calc,
+      // Specs: prefer AI-extracted, fallback to local regex
+      btu_rating: row.btu_rating || specs.btu_rating || null,
+      pipe_size: row.pipe_size || specs.pipe_size || null,
+      refrigerant_type: row.refrigerant_type || specs.refrigerant_type || null,
+      phase: row.phase || specs.phase || null,
+      speed_type: row.speed_type || specs.speed_type || null,
+      kw: row.kw || specs.kw || null,
+      unit_type: row.unit_type || specs.unit_type || null,
+      short_name: row.short_name || null,
+      brand: row.brand || null,
+      product_category: row.product_category || row.category || null,
+      sold_in_length: row.sold_in_length || false,
+      unit_length: row.unit_length || null,
+      price_per_metre: row.price_per_metre || null,
     };
   });
 
