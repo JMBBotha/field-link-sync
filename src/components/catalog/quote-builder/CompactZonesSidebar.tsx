@@ -60,7 +60,7 @@ const CompactZonesSidebar = memo(({ baskets, onAddBasket, onRemoveBasket }: Comp
                 if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
                   return s + i.product.price_per_metre * i.length;
                 }
-                return s + (i.product.selling_price || i.product.cost_incl_vat || 0) * i.quantity;
+                return s + (i.product.selling_price || 0) * i.quantity;
               }, 0);
               const totalQty = basket.items.reduce((s, i) => s + i.quantity, 0);
 

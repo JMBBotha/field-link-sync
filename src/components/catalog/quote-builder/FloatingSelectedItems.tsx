@@ -112,8 +112,8 @@ const FloatingSelectedItems = ({ pdfSelection, onClose }: FloatingSelectedItemsP
                           onClick={() => {
                             const cost = Number(item.costPrice);
                             const newMarkup = (item.markupPercent || 0) + 5;
-                            const result = calculatePricing(cost, 0, newMarkup);
-                            pdfSelection.updateSelectedItem(item.code, { markupPercent: newMarkup, price: String(Math.round(result.sellingPrice * 100) / 100) } as any);
+                            const { sellingExclVat } = calcSellingPrice(cost, newMarkup);
+                            pdfSelection.updateSelectedItem(item.code, { markupPercent: newMarkup, price: String(Math.round(sellingExclVat * 100) / 100) } as any);
                           }}
                         >
                           <ChevronUp className="h-2.5 w-2.5" />

@@ -34,7 +34,7 @@ const DraggableProductRow = ({
     data: { product },
   });
 
-  const price = product.selling_price || product.cost_incl_vat || 0;
+  const price = product.selling_price || 0;
 
   return (
     <div

@@ -6,13 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getCategoryIcon, getCategoryBg } from "./ProductPalette";
 import { getProductDisplayName } from "./productDisplayUtils";
-import { calculatePricing } from "@/utils/pricing";
+import { calcSellingPrice } from "@/utils/pricing";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
 function getProductPricing(product: PaletteProduct) {
   const cost = product.cost_price || product.cost_excl_vat || 0;
-  const markup = product.markup_percent ?? product.default_markup_percent ?? 20;
-  return calculatePricing(cost, 0, markup);
+  const markup = product.default_markup_percent ?? product.markup_percent ?? 20;
+  const { sellingExclVat, sellingInclVat } = calcSellingPrice(cost, markup);
+  return { costExclVat: cost, discountedCost: cost, markupPercent: markup, sellingPrice: sellingExclVat, sellingPriceInclVat: sellingInclVat, supplierDiscountPercent: 0 };
 }
 
 interface EnhancedProductPopupProps {

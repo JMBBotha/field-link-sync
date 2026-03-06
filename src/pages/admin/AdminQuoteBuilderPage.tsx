@@ -88,7 +88,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
         if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
           zoneTotal += i.product.price_per_metre * i.length;
         } else {
-          zoneTotal += (i.product.selling_price || i.product.cost_incl_vat || 0) * i.quantity;
+          zoneTotal += (i.product.selling_price || 0) * i.quantity;
         }
         zoneQty += i.quantity;
       });

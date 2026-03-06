@@ -124,12 +124,10 @@ const BrandDiscountsSection = () => {
       if (fetchErr) throw fetchErr;
 
       for (const p of (products || [])) {
-        const markup = p.default_markup_percent || 0;
-        const result = calculatePricing(p.original_cost_excl_vat, 0, markup);
         const { error } = await (supabase.from("supplier_products") as any)
           .update({
+            cost_price: p.original_cost_excl_vat,
             cost_excl_vat: p.original_cost_excl_vat,
-            selling_price: Math.round(result.sellingPrice * 100) / 100,
             original_cost_excl_vat: null,
           })
           .eq("id", p.id);
