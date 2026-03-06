@@ -232,6 +232,9 @@ async function parsePDFWithFullPipeline(
   onStage?: (stage: ImportStage) => void
 ): Promise<ImportPreview> {
   let parseMethod: ImportPreview["parseMethod"] = "regex";
+  let detectedPriceColumns: string[] = [];
+  let selectedPriceColumn: string | undefined;
+  let grokDetectedInclVat = false;
   let rawRows: Array<{
     model: string; description: string; price: number; category: string;
     btu_rating?: number | null; pipe_size?: string | null; refrigerant_type?: string | null;
@@ -273,8 +276,26 @@ async function parsePDFWithFullPipeline(
       });
       if (error) { console.warn(`[Import] Grok chunk ${ci} error:`, error); continue; }
 
+      // Capture detected price columns from Grok
+      if (data?.detected_price_columns?.length) {
+        for (const col of data.detected_price_columns) {
+          if (!detectedPriceColumns.includes(col)) detectedPriceColumns.push(col);
+        }
+      }
+
       for (const p of (data?.products || [])) {
-        const price = typeof p.cost_price === "number" ? p.cost_price : (p.prices ? Object.values(p.prices)[0] as number : 0);
+        // Use the smart-selected cost_price from Grok (already picked best column)
+        const price = typeof p.cost_price === "number" && p.cost_price > 0
+          ? p.cost_price
+          : 0;
+
+        // Track selected column and VAT detection from first product
+        if (!selectedPriceColumn && p.selected_price_column) {
+          selectedPriceColumn = p.selected_price_column;
+          grokDetectedInclVat = !!p.price_is_incl_vat;
+          console.log(`[Import] Grok selected column: "${selectedPriceColumn}", isInclVat: ${grokDetectedInclVat}`);
+        }
+
         if (price > 0) {
           rawRows.push({
             model: p.product_code || p.sku || "",
