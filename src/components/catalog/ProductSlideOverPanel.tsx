@@ -106,7 +106,8 @@ const ProductSlideOverPanel = ({
 
   if (!product) return null;
 
-  const margin = product.selling_price - product.cost_price;
+  const effectiveCost = product.discounted_cost ?? product.cost_price;
+  const margin = product.selling_price - effectiveCost;
   const brand = deriveBrand(product);
   const speedType = deriveSpeedType(product);
   const phase = derivePhase(product);
