@@ -76,6 +76,10 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const pdfAreaRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const HD_KEY = "visual-catalog-hd";
+  const [hdMode, setHdMode] = useState(() => {
+    try { return localStorage.getItem(HD_KEY) === "true"; } catch { return false; }
+  });
   const [hoveredProduct, setHoveredProduct] = useState<PaletteProduct | null>(null);
   const [hoverEvent, setHoverEvent] = useState<MouseEvent | null>(null);
   const [productInfoProduct, setProductInfoProduct] = useState<PaletteProduct | null>(null);
