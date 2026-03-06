@@ -738,12 +738,11 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
           unit_length_unit: row.unit_length_unit || "m",
           price_per_metre: row.price_per_metre || null,
           min_cut_length: row.min_cut_length || 0.5,
-          // Optional price columns
-          cost_excl_vat: (row as any)._cost_excl_vat ?? null,
-          cost_incl_vat: (row as any)._cost_incl_vat ?? null,
-          rrp: (row as any)._rrp ?? null,
-          supplier_discount_percent: (row as any)._supplier_discount_percent || 0,
-          vat_rate: (row as any)._vat_rate || 15,
+           // Optional price columns
+           cost_excl_vat: (row as any)._cost_excl_vat ?? null,
+           cost_incl_vat: (row as any)._cost_incl_vat ?? null,
+           supplier_discount_percent: (row as any)._supplier_discount_percent || 0,
+           vat_rate: (row as any)._vat_rate || 15,
         }));
 
         const { error: err, data } = await supabase.from("supplier_products" as any).insert(batchData as any).select("id");
