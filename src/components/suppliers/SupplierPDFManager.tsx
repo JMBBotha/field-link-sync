@@ -45,13 +45,27 @@ interface SupplierPDFManagerProps {
 const STORAGE_BUCKETS = ["supplier-pdf-pages", "stock-documents", "product-image", "pdfs", "price-lists"];
 
 async function deleteSinglePDF(pdf: PDFUploadRow) {
-  // 1. Get products linked to this PDF
-  const { data: products } = await (supabase.from("supplier_products") as any)
-    .select("id")
-    .eq("pdf_upload_id", pdf.id);
-  const productIds = (products || []).map((p: any) => p.id);
+  const isSynthetic = pdf.id.startsWith("spp-");
+  let productIds: string[] = [];
 
-  // 2. Delete dependent records
+  if (isSynthetic) {
+    // Synthetic entry from supplier_pdf_pages — find products by supplier_id
+    const supplierId = pdf.supplier_id;
+    if (supplierId) {
+      const { data: products } = await (supabase.from("supplier_products") as any)
+        .select("id")
+        .eq("supplier_id", supplierId);
+      productIds = (products || []).map((p: any) => p.id);
+    }
+  } else {
+    // Legacy pdf_uploads entry — find products by pdf_upload_id
+    const { data: products } = await (supabase.from("supplier_products") as any)
+      .select("id")
+      .eq("pdf_upload_id", pdf.id);
+    productIds = (products || []).map((p: any) => p.id);
+  }
+
+  // 2. Delete dependent records then products
   if (productIds.length > 0) {
     for (let i = 0; i < productIds.length; i += 500) {
       const batch = productIds.slice(i, i + 500);
@@ -59,30 +73,49 @@ async function deleteSinglePDF(pdf: PDFUploadRow) {
       await (supabase.from("job_used_parts") as any).delete().in("product_id", batch);
       await (supabase.from("inventory_stock") as any).delete().in("product_id", batch);
       await (supabase.from("bundle_items") as any).delete().in("supplier_product_id", batch);
+      await (supabase.from("pdf_product_regions") as any).delete().in("product_id", batch);
       await (supabase.from("supplier_products") as any).delete().in("id", batch);
     }
   }
 
-  // 3. Delete PDF region overlays
-  await (supabase.from("pdf_product_regions") as any).delete().eq("pdf_upload_id", pdf.id);
-
-  // 4. Delete supplier_pdf_pages linked to this supplier
-  // supplier_pdf_pages uses text supplier_id (name) so we need to match by supplier name
-  const supplierName = pdf.suppliers?.name;
-  if (supplierName) {
-    // Delete pages matching this supplier name (with and without trailing space)
-    await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", supplierName);
-    await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", supplierName + " ");
-    // Also try matching by the pdf filename
-    if (pdf.file_name) {
-      await (supabase.from("supplier_pdf_pages") as any).delete().eq("pdf_filename", pdf.file_name);
-    }
+  // 3. Delete PDF region overlays (legacy)
+  if (!isSynthetic) {
+    await (supabase.from("pdf_product_regions") as any).delete().eq("pdf_upload_id", pdf.id);
   }
-  // Also delete by supplier UUID in case some pages use UUID format
-  await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", pdf.supplier_id);
 
-  // 5. Delete the pdf_uploads DB record
-  await (supabase.from("pdf_uploads") as any).delete().eq("id", pdf.id);
+  // 4. Delete supplier_pdf_pages
+  if (isSynthetic) {
+    // Delete by supplier_id + pdf_filename
+    const supplierId = pdf.supplier_id;
+    const supplierName = pdf.suppliers?.name;
+    if (pdf.file_name) {
+      if (supplierId) {
+        await (supabase.from("supplier_pdf_pages") as any)
+          .delete().eq("supplier_id", supplierId).eq("pdf_filename", pdf.file_name);
+      }
+      if (supplierName) {
+        await (supabase.from("supplier_pdf_pages") as any)
+          .delete().eq("supplier_id", supplierName).eq("pdf_filename", pdf.file_name);
+        await (supabase.from("supplier_pdf_pages") as any)
+          .delete().eq("supplier_id", supplierName + " ").eq("pdf_filename", pdf.file_name);
+      }
+    }
+  } else {
+    const supplierName = pdf.suppliers?.name;
+    if (supplierName) {
+      await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", supplierName);
+      await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", supplierName + " ");
+      if (pdf.file_name) {
+        await (supabase.from("supplier_pdf_pages") as any).delete().eq("pdf_filename", pdf.file_name);
+      }
+    }
+    await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", pdf.supplier_id);
+  }
+
+  // 5. Delete the pdf_uploads DB record (legacy only)
+  if (!isSynthetic) {
+    await (supabase.from("pdf_uploads") as any).delete().eq("id", pdf.id);
+  }
 
   // 6. Delete actual file from storage
   const rawPath = pdf.file_path || pdf.storage_path || pdf.file_url || null;
@@ -91,6 +124,14 @@ async function deleteSinglePDF(pdf: PDFUploadRow) {
     const cleanPath = match ? match[1] : rawPath;
     for (const bucket of STORAGE_BUCKETS) {
       try { await supabase.storage.from(bucket).remove([cleanPath]); } catch {}
+    }
+  }
+
+  // Also try supplier-specific folder cleanup
+  const supplierId = pdf.supplier_id;
+  if (supplierId && pdf.file_name) {
+    for (const bucket of STORAGE_BUCKETS) {
+      try { await supabase.storage.from(bucket).remove([`${supplierId}/${pdf.file_name}`]); } catch {}
     }
   }
 
