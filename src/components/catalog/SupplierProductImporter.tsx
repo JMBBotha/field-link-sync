@@ -136,7 +136,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
 
   // AI / PDF state
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [enhanceImages, setEnhanceImages] = useState(true);
+  
   const [pdfPageCount, setPdfPageCount] = useState(0);
   const [extractedText, setExtractedText] = useState("");
   const [extracting, setExtracting] = useState(false);
