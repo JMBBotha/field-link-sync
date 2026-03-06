@@ -437,6 +437,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
   const runImportAnalysis = useCallback(async (file: File) => {
     setImportAnalysing(true);
     setImportFileName(file.name);
+    importFileRef.current = file;
     try {
       const { parseImportFile } = await import("@/services/productImportParser");
       const preview = await parseImportFile(file, supplierId);
