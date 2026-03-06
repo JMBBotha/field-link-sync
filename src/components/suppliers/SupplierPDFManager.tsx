@@ -113,32 +113,101 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [purgingOrphans, setPurgingOrphans] = useState(false);
 
-  // Fetch all PDFs
+  // Fetch all PDFs — merge pdf_uploads AND supplier_pdf_pages (grouped by filename)
   const { data: pdfUploads = [], isLoading } = useQuery({
     queryKey: ["pdf-uploads-manager"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("pdf_uploads") as any)
+      // Source 1: pdf_uploads table (legacy)
+      const { data: uploadsData } = await (supabase.from("pdf_uploads") as any)
         .select(`id, file_name, file_path, storage_path, file_url, created_at, status, supplier_id, suppliers ( id, name )`)
         .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data || []) as PDFUploadRow[];
+      const uploads = (uploadsData || []) as PDFUploadRow[];
+
+      // Source 2: supplier_pdf_pages table (used by import pipeline)
+      const { data: pagesData } = await (supabase.from("supplier_pdf_pages") as any)
+        .select("id, supplier_id, pdf_filename, page_number, page_image_url, uploaded_at, pdf_storage_path");
+      const pages = pagesData || [];
+
+      // Group pages by supplier_id + pdf_filename
+      const pageGroups: Record<string, any[]> = {};
+      for (const p of pages) {
+        const key = `${p.supplier_id}::${p.pdf_filename}`;
+        if (!pageGroups[key]) pageGroups[key] = [];
+        pageGroups[key].push(p);
+      }
+
+      // Build a set of filenames already covered by pdf_uploads
+      const coveredFiles = new Set(uploads.map(u => u.file_name).filter(Boolean));
+
+      // Get all suppliers to resolve names → UUIDs
+      const { data: allSuppliers } = await supabase.from("suppliers").select("id, name");
+      const supplierByName: Record<string, { id: string; name: string }> = {};
+      const supplierById: Record<string, { id: string; name: string }> = {};
+      for (const s of allSuppliers || []) {
+        supplierByName[s.name.toLowerCase().trim()] = s;
+        supplierById[s.id] = s;
+      }
+
+      // Create synthetic PDFUploadRow entries from supplier_pdf_pages groups
+      for (const [key, groupPages] of Object.entries(pageGroups)) {
+        const filename = groupPages[0].pdf_filename;
+        if (coveredFiles.has(filename)) continue; // already in pdf_uploads
+
+        const supplierIdText = groupPages[0].supplier_id?.trim() || "";
+        // Resolve supplier: try by UUID first, then by name
+        const resolvedSupplier = supplierById[supplierIdText]
+          || supplierByName[supplierIdText.toLowerCase()]
+          || null;
+
+        const syntheticId = `spp-${key.replace(/[^a-zA-Z0-9]/g, "_")}`;
+        const pdfStoragePath = groupPages.find((p: any) => p.pdf_storage_path)?.pdf_storage_path || null;
+
+        uploads.push({
+          id: syntheticId,
+          file_name: filename,
+          file_path: pdfStoragePath,
+          storage_path: pdfStoragePath,
+          file_url: pdfStoragePath,
+          created_at: groupPages[0].uploaded_at || new Date().toISOString(),
+          status: "parsed",
+          supplier_id: resolvedSupplier?.id || supplierIdText,
+          suppliers: resolvedSupplier ? { id: resolvedSupplier.id, name: resolvedSupplier.name } : null,
+        });
+      }
+
+      // Sort by date descending
+      uploads.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      return uploads;
     },
   });
 
-  // Fetch product counts per PDF
+  // Fetch product counts per PDF (by pdf_upload_id + by supplier_id for synthetic entries)
   const { data: productCounts = {} } = useQuery({
     queryKey: ["pdf-product-counts", pdfUploads.map((p) => p.id).join(",")],
     enabled: pdfUploads.length > 0,
     queryFn: async () => {
       const counts: Record<string, number> = {};
-      // Batch: get all products with pdf_upload_id in our list
-      const pdfIds = pdfUploads.map((p) => p.id);
-      const { data } = await (supabase.from("supplier_products") as any)
-        .select("id, pdf_upload_id")
-        .in("pdf_upload_id", pdfIds);
-      for (const row of data || []) {
-        counts[row.pdf_upload_id] = (counts[row.pdf_upload_id] || 0) + 1;
+
+      // Real pdf_upload_id counts
+      const realIds = pdfUploads.filter(p => !p.id.startsWith("spp-")).map(p => p.id);
+      if (realIds.length > 0) {
+        const { data } = await (supabase.from("supplier_products") as any)
+          .select("id, pdf_upload_id")
+          .in("pdf_upload_id", realIds);
+        for (const row of data || []) {
+          counts[row.pdf_upload_id] = (counts[row.pdf_upload_id] || 0) + 1;
+        }
       }
+
+      // For synthetic entries, count products by supplier_id
+      const syntheticEntries = pdfUploads.filter(p => p.id.startsWith("spp-"));
+      for (const entry of syntheticEntries) {
+        const { count } = await (supabase.from("supplier_products") as any)
+          .select("id", { count: "exact", head: true })
+          .eq("supplier_id", entry.supplier_id);
+        counts[entry.id] = count || 0;
+      }
+
       return counts;
     },
   });
