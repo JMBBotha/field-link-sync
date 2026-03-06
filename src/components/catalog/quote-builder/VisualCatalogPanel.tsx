@@ -845,6 +845,7 @@ const LazyPdfPage = ({
   onHoverEnd,
   pdfSelection,
   onProductInfoOpen,
+  hdMode,
 }: LazyPdfPageProps) => {
   const queryClient = useQueryClient();
   const divRef = useRef<HTMLDivElement | null>(null);
