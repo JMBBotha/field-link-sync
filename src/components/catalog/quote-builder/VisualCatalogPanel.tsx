@@ -734,6 +734,36 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
           onOpenChange={(open) => { if (!open) setProductInfoProduct(null); }}
         />
       )}
+
+      {/* Manual product entry dialog */}
+      <Dialog open={manualDialogOpen} onOpenChange={setManualDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Product Manually</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="manual-name">Product Name</Label>
+              <Input id="manual-name" placeholder="e.g. 9000 BTU Wall Mount" value={manualName} onChange={(e) => setManualName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="manual-code">Model Code</Label>
+              <Input id="manual-code" placeholder="e.g. FTXM25Q" value={manualCode} onChange={(e) => setManualCode(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="manual-price">Price (excl. VAT)</Label>
+              <Input id="manual-price" type="number" placeholder="0.00" value={manualPrice} onChange={(e) => setManualPrice(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setManualDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleManualProductSubmit} disabled={manualSaving}>
+              {manualSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Add Product
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
