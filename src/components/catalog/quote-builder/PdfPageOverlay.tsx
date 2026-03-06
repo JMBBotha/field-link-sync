@@ -1,5 +1,5 @@
 import { useState, memo, useCallback, useMemo, useRef } from "react";
-import { calculatePricing, exclVatFromIncl } from "@/utils/pricing";
+import { calcSellingPrice } from "@/utils/pricing";
 import { useDraggable } from "@dnd-kit/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
