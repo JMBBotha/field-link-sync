@@ -39,6 +39,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
   const fileInputRef = useRef<HTMLInputElement>(null);
   const priceListInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const importFileRef = useRef<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [processingPriceList, setProcessingPriceList] = useState(false);
   const [priceListProgress, setPriceListProgress] = useState("");
@@ -436,6 +437,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
   const runImportAnalysis = useCallback(async (file: File) => {
     setImportAnalysing(true);
     setImportFileName(file.name);
+    importFileRef.current = file;
     try {
       const { parseImportFile } = await import("@/services/productImportParser");
       const preview = await parseImportFile(file, supplierId);
@@ -459,19 +461,54 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
         pdfsDeleted: purgeResult.deletedPdfs,
       });
 
+      // ── Upload PDF to storage & create pdf_uploads record ──
+      let pdfUploadId: string | null = null;
+      const file = importFileRef.current;
+      if (file && file.name.toLowerCase().endsWith(".pdf")) {
+        console.log("[Import] Uploading PDF to storage...");
+        const filePath = `${supplierId}/${Date.now()}_${file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("supplier-pdfs")
+          .upload(filePath, file);
+        if (uploadError) {
+          console.warn("[Import] Storage upload failed (non-fatal):", uploadError.message);
+        }
+
+        const { data: pdfRecord, error: pdfError } = await (supabase.from("pdf_uploads") as any)
+          .insert({
+            supplier_id: supplierId,
+            file_name: file.name,
+            file_path: filePath,
+            status: "parsed",
+          })
+          .select()
+          .single();
+        if (pdfError) {
+          console.warn("[Import] PDF record creation failed (non-fatal):", pdfError.message);
+        } else {
+          pdfUploadId = pdfRecord?.id || null;
+          console.log("[Import] Created pdf_uploads record:", pdfUploadId);
+        }
+      }
+
       // Insert products into supplier_products
       const rows = products.map((p) => ({
         supplier_id: supplierId,
-        product_code: p.model_number,
-        short_name: p.description.substring(0, 80),
-        description: p.description,
-        product_category: p.category,
+        product_code: p.model_number || "UNKNOWN",
+        short_name: p.short_name || (p.description || "").substring(0, 80),
+        description: p.description || "",
+        category: p.category || "Uncategorized",
+        product_category: p.product_category || p.category || "Uncategorized",
         cost_price: p.cost_price,
         cost_excl_vat: p.cost_price,
         default_markup_percent: p.default_markup_percent || p.markup_percent || 20,
-        brand: supplierName || "",
+        brand: p.brand || supplierName || "",
         is_active: true,
         archived: false,
+        btu_rating: p.btu_rating || null,
+        pipe_size: p.pipe_size || null,
+        refrigerant_type: p.refrigerant_type || null,
+        ...(pdfUploadId ? { pdf_upload_id: pdfUploadId } : {}),
       }));
 
       for (let i = 0; i < rows.length; i += 50) {
@@ -494,6 +531,22 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
         description: `${supplierName || "Supplier"} catalog updated.`,
       });
       setImportPreview(null);
+
+      // ── Auto-extract supplier contact info from PDF ──
+      if (file && file.name.toLowerCase().endsWith(".pdf")) {
+        try {
+          const { extractSupplierInfoFromPDF } = await import("@/services/supplierInfoExtractor");
+          const info = await extractSupplierInfoFromPDF(file);
+          const hasInfo = info.allEmails.length > 0 || info.allPhones.length > 0 ||
+            info.vatNumber || info.website || info.departments.length > 0 || info.locations.length > 0;
+          if (hasInfo) {
+            console.log("[Import] Supplier info extracted, showing review modal");
+            setSupplierInfoExtracted(info);
+          }
+        } catch (extractErr) {
+          console.warn("[Import] Supplier info extraction failed (non-fatal):", extractErr);
+        }
+      }
     } catch (err: any) {
       toast({ title: "Import failed", description: err.message, variant: "destructive" });
     } finally {
