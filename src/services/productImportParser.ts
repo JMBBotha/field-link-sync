@@ -201,7 +201,7 @@ async function parsePDFWithFullPipeline(
   onStage?: (stage: ImportStage) => void
 ): Promise<ImportPreview> {
   let parseMethod: ImportPreview["parseMethod"] = "regex";
-  let rawRows: Array<{ model: string; description: string; price: number; category: string }> = [];
+  let rawRows: Array<{ model: string; description: string; price: number; category: string; btu_rating?: number | null; pipe_size?: string | null; refrigerant_type?: string | null; phase?: string | null; speed_type?: string | null; kw?: number | null; unit_type?: string | null; short_name?: string | null; brand?: string | null; product_category?: string | null; sold_in_length?: boolean; unit_length?: number | null; price_per_metre?: number | null }> = [];
 
   // STAGE 1: Render PDF pages to images + extract text
   onStage?.({ stage: "loading_pdf", detail: `Loading ${file.name}...` });
