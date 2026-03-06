@@ -88,7 +88,7 @@ const ImportPreviewModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             🤖 AI Import Analysis
@@ -113,8 +113,8 @@ const ImportPreviewModal = ({
           )}
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-2 -mr-2">
-          <div className="space-y-4">
+        <ScrollArea className="flex-1 overflow-hidden">
+          <div className="space-y-4 pr-4">
             {/* Detected Price Columns */}
             {detectedCols.length > 1 && (
               <Card className="border-blue-200 dark:border-blue-800">
@@ -381,7 +381,7 @@ const ImportPreviewModal = ({
           </div>
         </ScrollArea>
 
-        <DialogFooter className="flex-row justify-between sm:justify-between gap-2 pt-2">
+        <DialogFooter className="flex-row justify-between sm:justify-between gap-2 pt-4 border-t mt-4">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={confirming}>
             Cancel
           </Button>
