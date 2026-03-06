@@ -452,6 +452,7 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
   // ─── Basket operations ───
   const addProductToBasket = useCallback((basketId: string, product: PaletteProduct) => {
     trackUsage(product.id);
+    pushRecentProduct(product.id);
     setBaskets((prev) => prev.map((basket) => {
       if (basket.id !== basketId) return basket;
       const existing = basket.items.find((i) => i.product.id === product.id);
