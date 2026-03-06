@@ -355,11 +355,20 @@ async function parsePDFWithFullPipeline(
   const discountDetection = detectDiscount(allText);
   const warnings: string[] = [];
 
-  const effectiveInclVat = vatDetection.confidence === "high" ? vatDetection.isIncl : settings.pricesIncludeVat;
+  // If Grok detected the selected column is INCL VAT, override VAT detection
+  const effectiveInclVat = grokDetectedInclVat
+    ? true
+    : (vatDetection.confidence === "high" ? vatDetection.isIncl : settings.pricesIncludeVat);
   const effectiveDiscount = discountDetection.confidence === "high" ? discountDetection.percent : settings.tradeDiscount;
 
+  if (grokDetectedInclVat && !vatDetection.isIncl) {
+    warnings.push("⚠️ AI detected the selected price column is INCL VAT — VAT will be stripped");
+  }
   if (vatDetection.confidence === "low") warnings.push("⚠️ Could not detect VAT — please verify");
   if (parseMethod === "regex") warnings.push("📝 Text extraction — results may be less accurate");
+  if (detectedPriceColumns.length > 1) {
+    warnings.push(`📊 Multiple price columns detected: ${detectedPriceColumns.join(", ")}. Using "${selectedPriceColumn || detectedPriceColumns[0]}".`);
+  }
 
   // Deduplicate
   const seen = new Set<string>();
