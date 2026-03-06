@@ -880,30 +880,10 @@ const LazyPdfPage = ({
     [products]
   );
 
-  // ─── AUTHORITATIVE QUERY: supplier_products linked to this PDF page ───
-  const { data: pageProducts = [] } = useQuery({
-    queryKey: ["page-supplier-products", page.id],
-    enabled: isVisible,
-    queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_products") as any)
-        .select("id, product_code, short_name, description, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, is_pinned, pin_order, pipe_size, supplier_id, supplier_discount_percent, markup_percent, price_per_metre, sold_in_length, unit_length, is_material_favorite, rrp")
-        .eq("pdf_page_id", page.id)
-        .eq("archived", false)
-        .eq("is_active", true)
-        .order("product_code");
-      if (error) {
-        console.error(`[VisualCatalog] Failed to query products for page ${page.id}:`, error.message);
-        return [];
-      }
-      return data || [];
-    },
-    staleTime: 60000,
-  });
-
-  // Also query pdf_product_regions for stored geometry
-  const { data: storedGeometry = [] } = useQuery({
-    queryKey: ["page-product-geometry", page.id],
-    enabled: isVisible && pageProducts.length > 0,
+  // Stored regions fallback: query pdf_product_regions for pages without live extraction
+  const { data: storedRegions = [] } = useQuery({
+    queryKey: ["visual-panel-stored-regions", page.id],
+    enabled: isVisible && hasPdfSource,
     queryFn: async () => {
       const { data } = await (supabase.from("pdf_product_regions") as any)
         .select("id, product_id, product_code, region_x, region_y, region_width, region_height, label")
@@ -912,8 +892,6 @@ const LazyPdfPage = ({
     },
     staleTime: 60000,
   });
-
-  // No archived product code filtering needed — PdfPageOverlay handles dismissals via dismissed_pdf_regions table
 
    // Live extraction for this page — enable even without hasPdfSource so fallback kicks in
   const queryEnabled = isVisible && hasPdfSource && activeProducts.length > 0;
