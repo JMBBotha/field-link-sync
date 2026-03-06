@@ -18,6 +18,7 @@ import {
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import ProductPalette from "@/components/catalog/quote-builder/ProductPalette";
+import { pushRecentProduct } from "@/components/catalog/quote-builder/ProductPalette";
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
 import VisualCatalogPanel from "@/components/catalog/quote-builder/VisualCatalogPanel";
 import BasketCanvas from "@/components/catalog/quote-builder/BasketCanvas";
