@@ -680,6 +680,16 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                   onScrollToCategory={handleScrollToCategory}
                   activeCategory={activeCategory}
                 />
+
+                {/* Floating "+" button for manual product entry */}
+                <Button
+                  onClick={() => setManualDialogOpen(true)}
+                  className="absolute bottom-16 right-4 z-30 h-12 w-12 rounded-full shadow-lg"
+                  size="icon"
+                  title="Add product manually"
+                >
+                  <Plus className="h-5 w-5" />
+                </Button>
               </>
             )}
           </div>
