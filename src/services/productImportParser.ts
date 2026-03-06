@@ -102,7 +102,7 @@ export async function getSupplierPricingSettings(supplierId: string): Promise<Su
     supplierName: supplier?.name || "",
     tradeDiscount: supplier?.default_trade_discount ?? 0,
     markupPercent: supplier?.default_markup_percent ?? 20,
-    pricesIncludeVat: supplier?.prices_include_vat ?? false,
+    pricesIncludeVat: supplier?.price_includes_vat ?? false,
   };
 }
 
