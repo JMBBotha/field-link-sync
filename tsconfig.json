@@ -4,13 +4,13 @@
     "noImplicitAny": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
+    "skipLibCheck": true,
+    "suppressImplicitAnyIndexErrors": true,
     "paths": {
       "@/*": [
         "./src/*"
       ]
-    },
-    "skipLibCheck": true,
-    "strictNullChecks": false
+    }
   },
   "files": [],
   "references": [
