@@ -87,47 +87,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const [manualPrice, setManualPrice] = useState("");
   const [manualSaving, setManualSaving] = useState(false);
 
-  const handleManualProductSubmit = useCallback(async () => {
-    if (!manualName.trim() && !manualCode.trim()) {
-      toast({ title: "Enter at least a product name or model code", variant: "destructive" });
-      return;
-    }
-    const supplierId = selectedSupplier !== "all" ? selectedSupplier : (currentPage?.supplier_id || null);
-    if (!supplierId) {
-      toast({ title: "Select a supplier first", variant: "destructive" });
-      return;
-    }
-    setManualSaving(true);
-    try {
-      const priceVal = parseFloat(manualPrice) || 0;
-      const { data, error } = await (supabase.from("supplier_products") as any).insert({
-        supplier_id: supplierId,
-        product_code: manualCode.trim() || manualName.trim().substring(0, 20),
-        short_name: manualName.trim(),
-        description: manualName.trim(),
-        cost_excl_vat: priceVal,
-        cost_incl_vat: Math.round(priceVal * 1.15 * 100) / 100,
-        selling_price: Math.round(priceVal * 1.15 * 100) / 100,
-        category: "Manual",
-        is_active: true,
-        archived: false,
-      }).select().single();
-      if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
-      queryClient.invalidateQueries({ queryKey: ["visual-panel-live-extract"] });
-      clearExtractionCache();
-      toast({ title: "Product added", description: `${manualName.trim() || manualCode.trim()} added to catalog` });
-      setManualDialogOpen(false);
-      setManualName("");
-      setManualCode("");
-      setManualPrice("");
-    } catch (err) {
-      console.error("[ManualProduct] Insert failed:", err);
-      toast({ title: "Failed to add product", variant: "destructive" });
-    } finally {
-      setManualSaving(false);
-    }
-  }, [manualName, manualCode, manualPrice, selectedSupplier, currentPage, queryClient]);
+  // handleManualProductSubmit defined after currentPage declaration below
 
   const handleProductInfoOpen = useCallback((product: PaletteProduct) => {
     setProductInfoProduct(product);
