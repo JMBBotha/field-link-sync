@@ -15,28 +15,36 @@ export const VAT_RATE = 0.15;
 /** Round to 2 decimals */
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
-// ─── CORE PRICING FUNCTION ───
+// ─── THE ONE PRICING FUNCTION ───
 
-export interface ProductPricing {
-  costPrice: number;            // excl VAT — what we pay
-  markupPercent: number;        // our markup %
-  sellingPrice: number;         // excl VAT — what we charge
-  sellingPriceInclVat: number;  // incl VAT — customer-facing
-  profit: number;               // sellingPrice - costPrice
-  vatAmount: number;            // VAT on selling price
+export function calcSellingPrice(costPrice: number, markupPercent: number) {
+  const sellingExclVat = r2(costPrice * (1 + markupPercent / 100));
+  const vatAmount = r2(sellingExclVat * VAT_RATE);
+  const sellingInclVat = r2(sellingExclVat + vatAmount);
+  return { sellingExclVat, vatAmount, sellingInclVat };
 }
 
-/**
- * THE one pricing function. Used everywhere.
- * @param costPrice - excl VAT cost (after any trade discount)
- * @param markupPercent - markup percentage (default 20)
- */
+// ─── CONVENIENCE WRAPPER (richer return) ───
+
+export interface ProductPricing {
+  costPrice: number;
+  markupPercent: number;
+  sellingPrice: number;
+  sellingPriceInclVat: number;
+  profit: number;
+  vatAmount: number;
+}
+
 export function getProductPricing(costPrice: number, markupPercent: number = 20): ProductPricing {
-  const sellingPrice = r2(costPrice * (1 + markupPercent / 100));
-  const vatAmount = r2(sellingPrice * VAT_RATE);
-  const sellingPriceInclVat = r2(sellingPrice + vatAmount);
-  const profit = r2(sellingPrice - costPrice);
-  return { costPrice, markupPercent, sellingPrice, sellingPriceInclVat, profit, vatAmount };
+  const { sellingExclVat, vatAmount, sellingInclVat } = calcSellingPrice(costPrice, markupPercent);
+  return {
+    costPrice,
+    markupPercent,
+    sellingPrice: sellingExclVat,
+    sellingPriceInclVat: sellingInclVat,
+    profit: r2(sellingExclVat - costPrice),
+    vatAmount,
+  };
 }
 
 // ─── IMPORT HELPERS ───
@@ -91,13 +99,13 @@ export function calculatePricing(
   _discountPercent: number = 0,
   markupPercent: number = 20
 ): PricingResult {
-  const p = getProductPricing(costPrice, markupPercent);
+  const { sellingExclVat, sellingInclVat } = calcSellingPrice(costPrice, markupPercent);
   return {
     costExclVat: costPrice,
     supplierDiscountPercent: 0,
-    discountedCost: costPrice,    // cost_price IS the discounted cost now
+    discountedCost: costPrice,
     markupPercent,
-    sellingPrice: p.sellingPrice,
-    sellingPriceInclVat: p.sellingPriceInclVat,
+    sellingPrice: sellingExclVat,
+    sellingPriceInclVat: sellingInclVat,
   };
 }
