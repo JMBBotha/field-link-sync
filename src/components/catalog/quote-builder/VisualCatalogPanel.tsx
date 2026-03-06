@@ -960,8 +960,6 @@ const LazyPdfPage = ({
               
               // Invalidate the main products query so palette picks up new items
               queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
-              // Also refresh the authoritative page products query
-              queryClient.invalidateQueries({ queryKey: ["page-supplier-products", page.id] });
               
               return reMatched;
             }
