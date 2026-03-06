@@ -103,7 +103,7 @@ const SupplierComparison = ({ category }: SupplierComparisonProps) => {
       </h3>
 
       {grouped.map((group) => {
-        const lowestPrice = Math.min(...group.products.filter((p) => !p.is_price_on_request && (p.discounted_cost || p.cost_price) > 0).map((p) => p.discounted_cost || p.cost_price));
+        const lowestPrice = Math.min(...group.products.filter((p) => !p.is_price_on_request && p.cost_price > 0).map((p) => p.cost_price));
 
         return (
           <Card key={group.key}>
