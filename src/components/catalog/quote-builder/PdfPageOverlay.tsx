@@ -182,12 +182,13 @@ const DraggableRegion = memo(({
       {/* Full-width transparent hit area with hover highlight */}
       <div className="absolute inset-0 hover:bg-primary/5 rounded transition-colors duration-150" />
 
-      {/* PDF selection checkbox — positioned left of the icon column */}
-      {pdfSelection && region.product && (
-        <div
-          className="absolute top-1/2 -translate-y-1/2 z-20 pointer-events-auto"
-          style={{ right: "36px" }}
-        >
+      {/* Inline icon row in right gutter: checkbox + cart/star side by side */}
+      <div
+        className="absolute top-1/2 -translate-y-1/2 z-20 pointer-events-auto"
+        style={{ right: "12px", display: "flex", alignItems: "center", gap: "8px" }}
+      >
+        {/* PDF selection checkbox */}
+        {pdfSelection && region.product && (
           <div
             className="flex items-center justify-center rounded"
             style={{ width: "16px", height: "16px", backgroundColor: "rgba(255,255,255,0.95)", boxShadow: "0 0 2px rgba(0,0,0,0.3)" }}
@@ -195,32 +196,29 @@ const DraggableRegion = memo(({
             <input
               type="checkbox"
               checked={pdfSelection.selectedFromPdf.some((s) => s.code === region.product_code)}
-              onChange={() =>
-                {
-                  const product = region.product;
-                  const isCurrentlySelected = pdfSelection.selectedFromPdf.some((s) => s.code === region.product_code);
-                  const sellingPrice = product?.selling_price || product?.cost_incl_vat || region.detected_price || 0;
-                  const disc = (product as any)?.supplier_discount_percent ?? 0;
-                  let costPrice = 0;
-                  if (product?.cost_excl_vat && product.cost_excl_vat > 0) {
-                    costPrice = calculatePricing(product.cost_excl_vat, disc).discountedCost;
-                  } else if (region.detected_price && region.detected_price > 0) {
-                    costPrice = Math.round(exclVatFromIncl(region.detected_price) * 100) / 100;
-                  }
-                  const markupPercent = (product as any)?.markup_percent ?? 20;
-                  pdfSelection.handleSelectProduct({
-                    code: region.product_code,
-                    description: product?.short_name || region.label,
-                    price: String(sellingPrice),
-                    costPrice: costPrice > 0 ? costPrice : undefined,
-                    markupPercent,
-                  });
-                  // Open ProductInfoDialog when checking ON (not when unchecking)
-                  if (!isCurrentlySelected && product && onProductInfoOpen) {
-                    onProductInfoOpen(product);
-                  }
+              onChange={() => {
+                const product = region.product;
+                const isCurrentlySelected = pdfSelection.selectedFromPdf.some((s) => s.code === region.product_code);
+                const sellingPrice = product?.selling_price || product?.cost_incl_vat || region.detected_price || 0;
+                const disc = (product as any)?.supplier_discount_percent ?? 0;
+                let costPrice = 0;
+                if (product?.cost_excl_vat && product.cost_excl_vat > 0) {
+                  costPrice = calculatePricing(product.cost_excl_vat, disc).discountedCost;
+                } else if (region.detected_price && region.detected_price > 0) {
+                  costPrice = Math.round(exclVatFromIncl(region.detected_price) * 100) / 100;
                 }
-              }
+                const markupPercent = (product as any)?.markup_percent ?? 20;
+                pdfSelection.handleSelectProduct({
+                  code: region.product_code,
+                  description: product?.short_name || region.label,
+                  price: String(sellingPrice),
+                  costPrice: costPrice > 0 ? costPrice : undefined,
+                  markupPercent,
+                });
+                if (!isCurrentlySelected && product && onProductInfoOpen) {
+                  onProductInfoOpen(product);
+                }
+              }}
               onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
@@ -228,76 +226,73 @@ const DraggableRegion = memo(({
               title="Select for quote"
             />
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Icon positioned in QTY column at fixed left% */}
-      <div
-        className="absolute top-1/2 -translate-y-1/2 opacity-80 group-hover:opacity-100 transition-opacity z-10 flex flex-row items-center"
-        style={{ right: "8px" }}
-      >
-        {isMatched ? (
-          isFavorite ? (
-            <button
-              onDoubleClick={handleStarDoubleClick}
-              onClick={handleIconClick}
-              onContextMenu={handleContextMenu}
-              className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md"
-              style={{ background: "rgba(30,30,30,0.85)" }}
-              title="Double-click to remove from favorites · Right-click to hide"
-              aria-label="Remove from favorites"
-            >
-              <Star className="h-3 w-3" style={{ fill: "#FFD700", color: "#FFD700" }} />
-            </button>
-          ) : isAddedToQuote ? (
-            <button
-              onDoubleClick={handleStarDoubleClick}
-              onClick={handleIconClick}
-              onContextMenu={handleContextMenu}
-              className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md"
-              style={{ background: "#28a745" }}
-              title="Added to quote · Double-click to favorite · Right-click to hide"
-              aria-label="Added to quote"
-            >
-              <Check className="h-2.5 w-2.5 text-white" />
-            </button>
-          ) : inQuoteQty > 0 ? (
-            <button
-              onDoubleClick={handleStarDoubleClick}
-              onClick={handleIconClick}
-              onContextMenu={handleContextMenu}
-              className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white hover:scale-125 transition-transform cursor-pointer shadow-md"
-              style={{ background: "#22c55e" }}
-              title="Double-click to add to favorites · Right-click to hide"
-              aria-label={`In quote: ${inQuoteQty}. Double-click to favorite`}
-            >
-              {inQuoteQty}
-            </button>
+        {/* Cart / Star / Check icon */}
+        <div className="opacity-80 group-hover:opacity-100 transition-opacity">
+          {isMatched ? (
+            isFavorite ? (
+              <button
+                onDoubleClick={handleStarDoubleClick}
+                onClick={handleIconClick}
+                onContextMenu={handleContextMenu}
+                className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md"
+                style={{ background: "rgba(30,30,30,0.85)" }}
+                title="Double-click to remove from favorites · Right-click to hide"
+                aria-label="Remove from favorites"
+              >
+                <Star className="h-3 w-3" style={{ fill: "#FFD700", color: "#FFD700" }} />
+              </button>
+            ) : isAddedToQuote ? (
+              <button
+                onDoubleClick={handleStarDoubleClick}
+                onClick={handleIconClick}
+                onContextMenu={handleContextMenu}
+                className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md"
+                style={{ background: "#28a745" }}
+                title="Added to quote · Double-click to favorite · Right-click to hide"
+                aria-label="Added to quote"
+              >
+                <Check className="h-2.5 w-2.5 text-white" />
+              </button>
+            ) : inQuoteQty > 0 ? (
+              <button
+                onDoubleClick={handleStarDoubleClick}
+                onClick={handleIconClick}
+                onContextMenu={handleContextMenu}
+                className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white hover:scale-125 transition-transform cursor-pointer shadow-md"
+                style={{ background: "#22c55e" }}
+                title="Double-click to add to favorites · Right-click to hide"
+                aria-label={`In quote: ${inQuoteQty}. Double-click to favorite`}
+              >
+                {inQuoteQty}
+              </button>
+            ) : (
+              <button
+                onDoubleClick={handleStarDoubleClick}
+                onClick={handleIconClick}
+                onContextMenu={handleContextMenu}
+                className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md"
+                style={{ background: iconBg }}
+                title="Click row to add to quote · Double-click icon to favorite · Right-click to hide"
+                aria-label="Add to quote"
+              >
+                <ShoppingCart className="h-2.5 w-2.5 text-white" />
+              </button>
+            )
           ) : (
             <button
-              onDoubleClick={handleStarDoubleClick}
+              className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-all cursor-pointer shadow-md"
+              style={{ background: "#f97316" }}
               onClick={handleIconClick}
               onContextMenu={handleContextMenu}
-              className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md"
-              style={{ background: iconBg }}
-              title="Click row to add to quote · Double-click icon to favorite · Right-click to hide"
-              aria-label="Add to quote"
+              title="Right-click to hide"
+              aria-label="Unmatched product. Right-click to hide"
             >
               <ShoppingCart className="h-2.5 w-2.5 text-white" />
             </button>
-          )
-        ) : (
-          <button
-            className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-all cursor-pointer shadow-md"
-            style={{ background: "#f97316" }}
-            onClick={handleIconClick}
-            onContextMenu={handleContextMenu}
-            title="Right-click to hide"
-            aria-label="Unmatched product. Right-click to hide"
-          >
-            <ShoppingCart className="h-2.5 w-2.5 text-white" />
-          </button>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
