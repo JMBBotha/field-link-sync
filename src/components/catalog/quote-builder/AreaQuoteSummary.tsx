@@ -29,8 +29,9 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
   };
 
   const breakdown = useMemo(() => {
-    /** Use calculatePricing to get discountedCost consistently */
+    /** Use discounted_cost from DB when available, fallback to calculatePricing */
     const getCost = (p: any) => {
+      if (p?.discounted_cost > 0) return p.discounted_cost;
       if (p?.cost_excl_vat > 0) {
         return calculatePricing(p.cost_excl_vat, p?.supplier_discount_percent ?? 0).discountedCost;
       }

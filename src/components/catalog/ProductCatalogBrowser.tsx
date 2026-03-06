@@ -1080,7 +1080,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
                         <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-600 bg-amber-500/10 font-semibold">POR</Badge>
                       ) : (
                         <>
-                          <p className="text-[10px] text-muted-foreground">Cost: {formatZAR(product.cost_price)}</p>
+                          <p className="text-[10px] text-muted-foreground">Cost: {formatZAR(product.discounted_cost || product.cost_price)}</p>
                           {product.rrp && product.rrp > product.selling_price && (
                             <p className="text-[10px] text-muted-foreground line-through">{formatZAR(product.rrp)}</p>
                           )}

@@ -65,13 +65,10 @@ interface ProductInfoDialogProps {
 export default function ProductInfoDialog({ product, onMarkupSaved, open: controlledOpen, onOpenChange }: ProductInfoDialogProps) {
   const { isAdmin } = useRole();
   const btu = detectBTU(product);
-  const initialMarkup = (product as any).markup_percent ?? 20;
-  const pricing = calculatePricing(
-    product.cost_excl_vat || 0,
-    product.supplier_discount_percent ?? 0,
-    initialMarkup
-  );
-  const costPrice = pricing.discountedCost;
+  const initialMarkup = (product as any).markup_percent ?? (product as any).default_markup_percent ?? 20;
+  const costPrice = (product as any).discounted_cost > 0
+    ? (product as any).discounted_cost
+    : calculatePricing(product.cost_excl_vat || 0, product.supplier_discount_percent ?? 0, initialMarkup).discountedCost;
   const kW = extractKW(product);
   const phase = extractPhase(product);
   const imageUrl = (product as any).image_url;
