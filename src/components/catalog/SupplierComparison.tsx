@@ -140,7 +140,7 @@ const SupplierComparison = ({ category }: SupplierComparisonProps) => {
                           <TableCell className="text-xs font-medium">{supplierName(product.supplier_id)}</TableCell>
                           <TableCell className="text-xs font-mono">{product.product_code}</TableCell>
                           <TableCell className="text-xs text-right">
-                            {product.is_price_on_request ? "POR" : formatZAR(product.cost_price)}
+                            {product.is_price_on_request ? "POR" : formatZAR(effectiveCost)}
                           </TableCell>
                           <TableCell className="text-xs text-right font-semibold">
                             {product.is_price_on_request ? "POR" : formatZAR(product.selling_price)}

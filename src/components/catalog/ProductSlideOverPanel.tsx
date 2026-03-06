@@ -261,7 +261,7 @@ const ProductSlideOverPanel = ({
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-muted/30 rounded-lg p-2.5">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Cost</p>
-                  <p className="text-sm font-medium">{formatZAR(product.cost_price)}</p>
+                  <p className="text-sm font-medium">{formatZAR(effectiveCost)}</p>
                 </div>
                 <div className="bg-muted/30 rounded-lg p-2.5">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Selling</p>
