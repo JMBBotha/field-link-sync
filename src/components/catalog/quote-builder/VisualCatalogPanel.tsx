@@ -670,6 +670,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           onHoverEnd={handleHoverEnd}
                           pdfSelection={pdfSelection}
                           onProductInfoOpen={handleProductInfoOpen}
+                          hdMode={hdMode}
                           registerRef={(el) => {
                             if (el) pageRefs.current.set(idx, el);
                             else pageRefs.current.delete(idx);
