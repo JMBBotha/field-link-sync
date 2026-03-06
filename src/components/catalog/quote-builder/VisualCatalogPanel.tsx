@@ -691,6 +691,7 @@ interface LazyPdfPageProps {
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   onCategoriesDetected: (pageIndex: number, categories: string[]) => void;
   registerRef: (el: HTMLDivElement | null) => void;
+  totalPages: number;
   supplierName?: string;
   onOpenWizard?: (item: WizardTriggerItem) => void;
   onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent) => void;
