@@ -20,6 +20,10 @@ interface ParsedProduct {
   minCutLength?: number;
   productCategory?: string;
   brand?: string | null;
+  phase?: string | null;
+  speedType?: string | null;
+  kw?: number | null;
+  unitType?: string | null;
 }
 
 const CHUNK_SIZE = 12000;
