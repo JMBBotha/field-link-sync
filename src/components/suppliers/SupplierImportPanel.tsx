@@ -450,6 +450,20 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
           confirming={importConfirming}
         />
       )}
+      {supplierInfoExtracted && (
+        <SupplierInfoReviewModal
+          open={!!supplierInfoExtracted}
+          onOpenChange={(o) => !o && setSupplierInfoExtracted(null)}
+          supplierId={supplierId}
+          supplierName={supplierName}
+          extracted={supplierInfoExtracted}
+          onComplete={() => {
+            setSupplierInfoExtracted(null);
+            queryClient.invalidateQueries({ queryKey: ["supplier-contacts", supplierId] });
+            queryClient.invalidateQueries({ queryKey: ["supplier-locations", supplierId] });
+          }}
+        />
+      )}
     </>
   );
 };
