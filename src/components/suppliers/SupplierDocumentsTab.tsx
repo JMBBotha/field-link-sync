@@ -39,6 +39,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
   const fileInputRef = useRef<HTMLInputElement>(null);
   const priceListInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const importFileRef = useRef<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [processingPriceList, setProcessingPriceList] = useState(false);
   const [priceListProgress, setPriceListProgress] = useState("");
