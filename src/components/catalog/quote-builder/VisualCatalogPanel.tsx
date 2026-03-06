@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  ZoomIn, ZoomOut, X, FileImage, ScanSearch, Loader2, Lightbulb, Search, Trash2, Star, Plus,
+  ZoomIn, ZoomOut, X, FileImage, ScanSearch, Loader2, Lightbulb, Search, Trash2, Star, Plus, MonitorUp,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -76,6 +76,10 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const pdfAreaRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const HD_KEY = "visual-catalog-hd";
+  const [hdMode, setHdMode] = useState(() => {
+    try { return localStorage.getItem(HD_KEY) === "true"; } catch { return false; }
+  });
   const [hoveredProduct, setHoveredProduct] = useState<PaletteProduct | null>(null);
   const [hoverEvent, setHoverEvent] = useState<MouseEvent | null>(null);
   const [productInfoProduct, setProductInfoProduct] = useState<PaletteProduct | null>(null);
@@ -582,6 +586,26 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-[10px]">Magnifying glass</TooltipContent>
               </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={hdMode ? "secondary" : "ghost"}
+                    size="icon"
+                    className={`h-7 w-7 text-[9px] font-bold ${hdMode ? "ring-1 ring-primary" : ""}`}
+                    onClick={() => {
+                      const next = !hdMode;
+                      setHdMode(next);
+                      localStorage.setItem(HD_KEY, String(next));
+                      // Clear cache so pages re-render at new quality
+                      clearExtractionCache();
+                      queryClient.removeQueries({ queryKey: ["visual-panel-live-extract"] });
+                    }}
+                  >
+                    HD
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-[10px]">High quality PDF render (slower)</TooltipContent>
+              </Tooltip>
             </div>
 
             <Select value={selectedSupplier} onValueChange={(v) => { setSelectedSupplier(v); }}>
@@ -646,6 +670,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           onHoverEnd={handleHoverEnd}
                           pdfSelection={pdfSelection}
                           onProductInfoOpen={handleProductInfoOpen}
+                          hdMode={hdMode}
                           registerRef={(el) => {
                             if (el) pageRefs.current.set(idx, el);
                             else pageRefs.current.delete(idx);
@@ -795,6 +820,7 @@ interface LazyPdfPageProps {
   onHoverEnd?: () => void;
   pdfSelection?: PdfSelectionHandlers;
   onProductInfoOpen?: (product: PaletteProduct) => void;
+  hdMode?: boolean;
 }
 
 const LazyPdfPage = ({
@@ -820,6 +846,7 @@ const LazyPdfPage = ({
   onHoverEnd,
   pdfSelection,
   onProductInfoOpen,
+  hdMode,
 }: LazyPdfPageProps) => {
   const queryClient = useQueryClient();
   const divRef = useRef<HTMLDivElement | null>(null);
@@ -1128,6 +1155,7 @@ const LazyPdfPage = ({
             className="w-full block select-none"
             loading="lazy"
             draggable={false}
+            style={hdMode ? { imageRendering: "high-quality" as any } : undefined}
           />
           {/* Show overlays for ALL regions (matched + unmatched) — works with live extraction or fallback */}
           {overlayRegions.length > 0 && (

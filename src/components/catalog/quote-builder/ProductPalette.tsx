@@ -1,6 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
-import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { useDraggable } from "@dnd-kit/core";
 import {
   Search,
@@ -61,9 +60,22 @@ function HighlightText({ text, searchTerm }: { text: string; searchTerm: string 
   );
 }
 
+import { Clock } from "lucide-react";
+
+const RECENT_KEY = "recent-products";
+function getRecentProductIds(): string[] {
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]"); } catch { return []; }
+}
+export function pushRecentProduct(productId: string) {
+  const list = getRecentProductIds().filter(id => id !== productId);
+  list.unshift(productId);
+  localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 15)));
+}
+
 const CATEGORIES = [
   { value: "all", label: "All", icon: Package },
   { value: "favorites", label: "★ Favs", icon: Star },
+  { value: "recent", label: "Recent", icon: Clock },
   { value: "Air Conditioning", label: "AC", icon: Snowflake },
   { value: "Water Heaters", label: "Geyser", icon: Droplets },
   { value: "Inverters", label: "Inverter", icon: Zap },
@@ -493,12 +505,17 @@ const ProductPalette = ({
   onPopOutSelected,
 }: ProductPaletteProps) => {
   const [selectedCollapsed, setSelectedCollapsed] = useState(false);
+  const recentIds = useMemo(() => getRecentProductIds(), [products]);
   const filteredProducts = useMemo(() => {
     if (categoryFilter === "favorites") {
       return products.filter((p) => favorites.has(p.id));
     }
+    if (categoryFilter === "recent") {
+      const idSet = new Set(recentIds);
+      return products.filter((p) => idSet.has(p.id)).sort((a, b) => recentIds.indexOf(a.id) - recentIds.indexOf(b.id));
+    }
     return products;
-  }, [products, categoryFilter, favorites]);
+  }, [products, categoryFilter, favorites, recentIds]);
 
   // Sort: favorites first, then by usage count DESC, then alphabetical
   const sortedProducts = useMemo(() => {

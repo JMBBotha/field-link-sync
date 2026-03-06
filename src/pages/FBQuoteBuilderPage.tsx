@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import { splitVatFromTotal, VAT_RATE } from "@/utils/pricing";
 import { useNavigate } from "react-router-dom";
@@ -18,6 +18,7 @@ import {
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import ProductPalette from "@/components/catalog/quote-builder/ProductPalette";
+import { pushRecentProduct } from "@/components/catalog/quote-builder/ProductPalette";
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
 import VisualCatalogPanel from "@/components/catalog/quote-builder/VisualCatalogPanel";
 import BasketCanvas from "@/components/catalog/quote-builder/BasketCanvas";
@@ -256,9 +257,44 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
 
   const backPath = mode === "agent" ? "/field" : mode === "admin" ? "/admin" : `/client/${companyId}/dashboard`;
 
-  const [baskets, setBaskets] = useState<Basket[]>([
-    { id: "basket-1", name: "Zone 1", items: [] },
-  ]);
+  const DRAFT_KEY = "quote-builder-draft";
+  const [showRecovery, setShowRecovery] = useState(false);
+  const [recoveredDraft, setRecoveredDraft] = useState<Basket[] | null>(null);
+
+  const [baskets, setBaskets] = useState<Basket[]>(() => {
+    return [{ id: "basket-1", name: "Zone 1", items: [] }];
+  });
+
+  // Draft recovery on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed.some((b: any) => b.items?.length > 0)) {
+          setRecoveredDraft(parsed);
+          setShowRecovery(true);
+        }
+      }
+    } catch { /* ignore corrupt data */ }
+  }, []);
+
+  // Auto-save every 30s
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (baskets.some(b => b.items.length > 0)) {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(baskets));
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [baskets]);
+
+  // Save on key mutations (debounced via state change)
+  useEffect(() => {
+    if (baskets.some(b => b.items.length > 0)) {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(baskets));
+    }
+  }, [baskets]);
   const [activeProduct, setActiveProduct] = useState<PaletteProduct | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -417,6 +453,7 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
   // ─── Basket operations ───
   const addProductToBasket = useCallback((basketId: string, product: PaletteProduct) => {
     trackUsage(product.id);
+    pushRecentProduct(product.id);
     setBaskets((prev) => prev.map((basket) => {
       if (basket.id !== basketId) return basket;
       const existing = basket.items.find((i) => i.product.id === product.id);
@@ -605,6 +642,17 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
 
       {/* Gold accent line */}
       <div className="h-[3px] bg-[hsl(40,96%,53%)] shrink-0" />
+
+      {/* Draft recovery banner */}
+      {showRecovery && recoveredDraft && (
+        <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2 bg-amber-500/15 border-b border-amber-500/30">
+          <p className="text-xs font-medium text-foreground">Recover last unsaved quote? ({recoveredDraft.reduce((s, b) => s + b.items.length, 0)} items in {recoveredDraft.length} zones)</p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowRecovery(false); localStorage.removeItem(DRAFT_KEY); }}>Discard</Button>
+            <Button size="sm" className="h-7 text-xs" onClick={() => { setBaskets(recoveredDraft); setShowRecovery(false); toast({ title: "Quote recovered" }); }}>Recover</Button>
+          </div>
+        </div>
+      )}
 
       {/* ─── MOBILE TABS ─── */}
       {isMobile && (
