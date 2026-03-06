@@ -10,10 +10,9 @@ import { calculatePricing } from "@/utils/pricing";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
 function getProductPricing(product: PaletteProduct) {
-  const costExcl = product.cost_excl_vat || 0;
-  const disc = product.supplier_discount_percent ?? 0;
-  const markup = product.markup_percent ?? 20;
-  return calculatePricing(costExcl, disc, markup);
+  const cost = product.cost_price || product.cost_excl_vat || 0;
+  const markup = product.markup_percent ?? product.default_markup_percent ?? 20;
+  return calculatePricing(cost, 0, markup);
 }
 
 interface EnhancedProductPopupProps {
@@ -149,7 +148,7 @@ const EnhancedProductPopup = ({
             )}
           </div>
           {/* Markup display */}
-          {product.cost_excl_vat > 0 && (() => {
+          {(product.cost_price || product.cost_excl_vat || 0) > 0 && (() => {
             const p = getProductPricing(product);
             return (
               <div className="flex items-center gap-2 text-[10px]">
@@ -216,7 +215,7 @@ const EnhancedProductPopup = ({
               )}
             </div>
             {/* Markup row with +/- controls */}
-            {product.cost_excl_vat > 0 && (() => {
+            {(product.cost_price || product.cost_excl_vat || 0) > 0 && (() => {
               const p = getProductPricing(product);
               return (
               <div className="flex items-center gap-2 mt-1.5">

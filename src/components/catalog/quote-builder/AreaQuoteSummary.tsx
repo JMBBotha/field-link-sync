@@ -4,7 +4,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { calculatePricing, VAT_RATE, exclVatFromIncl } from "@/utils/pricing";
+import { VAT_RATE } from "@/utils/pricing";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
@@ -29,13 +29,10 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
   };
 
   const breakdown = useMemo(() => {
-    /** Use discounted_cost from DB when available, fallback to calculatePricing */
+    /** cost_price is the source of truth — already excl VAT, after any discount */
     const getCost = (p: any) => {
-      if (p?.discounted_cost > 0) return p.discounted_cost;
-      if (p?.cost_excl_vat > 0) {
-        return calculatePricing(p.cost_excl_vat, p?.supplier_discount_percent ?? 0).discountedCost;
-      }
-      if (p?.cost_incl_vat) return exclVatFromIncl(p.cost_incl_vat);
+      if (p?.cost_price > 0) return p.cost_price;
+      if (p?.cost_excl_vat > 0) return p.cost_excl_vat;
       return p?.selling_price || p?.price_per_metre || 0;
     };
 

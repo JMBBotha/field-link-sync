@@ -21,7 +21,6 @@ interface ComparisonProduct {
   selling_price: number;
   is_price_on_request: boolean;
   default_markup_percent: number;
-  discounted_cost: number | null;
 }
 
 interface SupplierComparisonProps {
@@ -47,7 +46,7 @@ const SupplierComparison = ({ category }: SupplierComparisonProps) => {
     queryFn: async () => {
       let query = supabase
         .from("supplier_products" as any)
-        .select("id, supplier_id, product_code, description, category, btu_rating, pipe_size, cost_price, selling_price, is_price_on_request, default_markup_percent, discounted_cost")
+        .select("id, supplier_id, product_code, description, category, btu_rating, pipe_size, cost_price, selling_price, is_price_on_request, default_markup_percent")
         .eq("is_active", true)
         .order("btu_rating", { ascending: true });
 
@@ -104,7 +103,7 @@ const SupplierComparison = ({ category }: SupplierComparisonProps) => {
       </h3>
 
       {grouped.map((group) => {
-        const lowestPrice = Math.min(...group.products.filter((p) => !p.is_price_on_request && (p.discounted_cost || p.cost_price) > 0).map((p) => p.discounted_cost || p.cost_price));
+        const lowestPrice = Math.min(...group.products.filter((p) => !p.is_price_on_request && p.cost_price > 0).map((p) => p.cost_price));
 
         return (
           <Card key={group.key}>
@@ -127,9 +126,9 @@ const SupplierComparison = ({ category }: SupplierComparisonProps) => {
                 </TableHeader>
                 <TableBody>
                   {group.products
-                    .sort((a, b) => (a.discounted_cost || a.cost_price) - (b.discounted_cost || b.cost_price))
+                    .sort((a, b) => a.cost_price - b.cost_price)
                     .map((product) => {
-                      const effectiveCost = product.discounted_cost || product.cost_price;
+                      const effectiveCost = product.cost_price;
                       const diff = effectiveCost > 0 && lowestPrice > 0
                         ? ((effectiveCost - lowestPrice) / lowestPrice * 100)
                         : 0;

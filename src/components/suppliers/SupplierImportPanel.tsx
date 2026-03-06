@@ -185,7 +185,7 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
         }
       }
 
-      // Step 4: Insert products in batches (NOTE: selling_price is a GENERATED column — never include it)
+      // Step 4: Insert products — ONLY set cost_price + default_markup_percent (selling_price is GENERATED)
       console.log(`[Import] Step 4: Inserting ${products.length} products...`);
       const rows = products.map((p) => ({
         supplier_id: supplierId,
@@ -194,15 +194,12 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
         description: p.description || "",
         category: p.category || "Uncategorized",
         product_category: p.product_category || p.category || "Uncategorized",
-        cost_excl_vat: p.price_excl_vat,
         cost_price: p.cost_price,
-        rrp: p.raw_price,
-        cost_incl_vat: p.price_includes_vat ? p.raw_price : parseFloat((p.price_excl_vat * 1.15).toFixed(2)),
-        default_markup_percent: p.markup_percent,
+        cost_excl_vat: p.cost_price,
+        default_markup_percent: p.default_markup_percent || p.markup_percent || 20,
         brand: p.brand || supplierName || "",
         is_active: true,
         archived: false,
-        // Technical specifications
         btu_rating: p.btu_rating || null,
         pipe_size: p.pipe_size || null,
         refrigerant_type: p.refrigerant_type || null,
@@ -236,8 +233,9 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
           description: p.description || "",
           category: p.category || "Uncategorized",
           brand: supplierName || "",
-          cost_price: p.cost_price || p.price_excl_vat,
-          default_markup_percent: p.markup_percent || 20,
+          cost_price: p.cost_price || 0,
+          cost_excl_vat: p.cost_price || 0,
+          default_markup_percent: p.default_markup_percent || 20,
           is_active: true,
           archived: false,
         }));

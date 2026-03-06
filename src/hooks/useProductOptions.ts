@@ -51,7 +51,7 @@ export function useProductOptions() {
         .order("name"),
       supabase
         .from("supplier_products")
-        .select("id, short_name, description, cost_price, discounted_cost, category, is_pinned")
+        .select("id, short_name, description, cost_price, category, is_pinned")
         .eq("is_active", true)
         .order("is_pinned", { ascending: false })
         .order("description"),
@@ -72,7 +72,7 @@ export function useProductOptions() {
           id: p.id,
           name: p.short_name || p.description,
           description: p.description,
-          rate: Number(p.discounted_cost ?? p.cost_price),
+          rate: Number(p.cost_price || 0),
           category: p.category,
           isFavorite: p.is_pinned ?? false,
           source: "product" as const,

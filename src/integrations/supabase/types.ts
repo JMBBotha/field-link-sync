@@ -3817,7 +3817,6 @@ export type Database = {
           created_at: string
           default_markup_percent: number
           description: string
-          discounted_cost: number | null
           id: string
           image_url: string | null
           import_confidence: string | null
@@ -3853,7 +3852,6 @@ export type Database = {
           product_type: string
           quote_usage_count: number
           refrigerant_type: string | null
-          rrp: number | null
           sell_price_incl_vat: number | null
           selling_price: number | null
           short_name: string | null
@@ -3883,7 +3881,6 @@ export type Database = {
           created_at?: string
           default_markup_percent?: number
           description: string
-          discounted_cost?: number | null
           id?: string
           image_url?: string | null
           import_confidence?: string | null
@@ -3919,7 +3916,6 @@ export type Database = {
           product_type?: string
           quote_usage_count?: number
           refrigerant_type?: string | null
-          rrp?: number | null
           sell_price_incl_vat?: number | null
           selling_price?: number | null
           short_name?: string | null
@@ -3949,7 +3945,6 @@ export type Database = {
           created_at?: string
           default_markup_percent?: number
           description?: string
-          discounted_cost?: number | null
           id?: string
           image_url?: string | null
           import_confidence?: string | null
@@ -3985,7 +3980,6 @@ export type Database = {
           product_type?: string
           quote_usage_count?: number
           refrigerant_type?: string | null
-          rrp?: number | null
           sell_price_incl_vat?: number | null
           selling_price?: number | null
           short_name?: string | null
