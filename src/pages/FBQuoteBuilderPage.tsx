@@ -687,16 +687,18 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
           {activeProduct ? <DragOverlayCard product={activeProduct} /> : null}
         </DragOverlay>
         <FloatingDropZoneStrip baskets={baskets} visible={isDragging && visualPanelOpen} />
-        <VisualCatalogPanel
-          open={visualPanelOpen} onClose={() => setVisualPanelOpen(false)}
-          baskets={baskets} onAddProductToBasket={addProductToBasket}
-          onAddBasket={handleAddBasket} onRemoveBasket={handleRemoveBasket}
-          products={products} isDragging={isDragging}
-          onOpenWizard={handleOpenWizardFromPdf}
-          pdfSearchRef={pdfSearchRef}
-          wizardOpen={wizardOpen}
-          pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
-        />
+        <PanelErrorBoundary panelName="Visual Catalog">
+          <VisualCatalogPanel
+            open={visualPanelOpen} onClose={() => setVisualPanelOpen(false)}
+            baskets={baskets} onAddProductToBasket={addProductToBasket}
+            onAddBasket={handleAddBasket} onRemoveBasket={handleRemoveBasket}
+            products={products} isDragging={isDragging}
+            onOpenWizard={handleOpenWizardFromPdf}
+            pdfSearchRef={pdfSearchRef}
+            wizardOpen={wizardOpen}
+            pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
+          />
+        </PanelErrorBoundary>
       </DndContext>
 
       {/* Floating Selected Items panel */}
