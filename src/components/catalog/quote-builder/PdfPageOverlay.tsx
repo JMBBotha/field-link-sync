@@ -225,8 +225,8 @@ const DraggableRegion = memo(({
         className="absolute top-1/2 -translate-y-1/2 z-20 pointer-events-auto"
         style={{ right: "12px", display: "flex", alignItems: "center", gap: "8px" }}
       >
-        {/* PDF selection checkbox */}
-        {pdfSelection && region.product && (
+        {/* PDF selection checkbox — show for all regions with a product or detected price */}
+        {pdfSelection && effectiveProduct && (
           <div
             className="flex items-center justify-center rounded"
             style={{ width: "16px", height: "16px", backgroundColor: "rgba(255,255,255,0.95)", boxShadow: "0 0 2px rgba(0,0,0,0.3)" }}
@@ -235,20 +235,14 @@ const DraggableRegion = memo(({
               type="checkbox"
               checked={pdfSelection.selectedFromPdf.some((s) => s.code === region.product_code)}
               onChange={() => {
-                const product = region.product;
+                const ep = effectiveProduct;
                 const isCurrentlySelected = pdfSelection.selectedFromPdf.some((s) => s.code === region.product_code);
-                const sellingPrice = product?.selling_price || product?.cost_incl_vat || region.detected_price || 0;
-                const disc = (product as any)?.supplier_discount_percent ?? 0;
-                let costPrice = 0;
-                if (product?.cost_excl_vat && product.cost_excl_vat > 0) {
-                  costPrice = calculatePricing(product.cost_excl_vat, disc).discountedCost;
-                } else if (region.detected_price && region.detected_price > 0) {
-                  costPrice = Math.round(exclVatFromIncl(region.detected_price) * 100) / 100;
-                }
-                const markupPercent = (product as any)?.markup_percent ?? 20;
+                const sellingPrice = ep?.selling_price || ep?.cost_incl_vat || region.detected_price || 0;
+                const costPrice = ep?.cost_price || ep?.cost_excl_vat || region.detected_price || 0;
+                const markupPercent = (ep as any)?.default_markup_percent ?? 20;
                 pdfSelection.handleSelectProduct({
                   code: region.product_code,
-                  description: product?.short_name || region.label,
+                  description: ep?.short_name || region.label,
                   price: String(sellingPrice),
                   costPrice: costPrice > 0 ? costPrice : undefined,
                   markupPercent,
