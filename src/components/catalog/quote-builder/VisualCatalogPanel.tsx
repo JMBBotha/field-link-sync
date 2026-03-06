@@ -583,6 +583,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           onRemoveRegion={handleRemoveRegion}
                           scrollContainerRef={scrollContainerRef}
                           onCategoriesDetected={handlePageCategories}
+                          totalPages={pages.length}
                           supplierName={currentSupplierName}
                           onOpenWizard={onOpenWizard}
                           onHoverStart={handleHoverStart}
