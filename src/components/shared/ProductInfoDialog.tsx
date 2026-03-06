@@ -79,15 +79,15 @@ export default function ProductInfoDialog({ product, onMarkupSaved, open: contro
     setSaving(true);
     const { error } = await supabase
       .from("supplier_products")
-      .update({ markup_percent: markup } as any)
+      .update({ default_markup_percent: markup } as any)
       .eq("id", product.id);
     setSaving(false);
     if (error) {
       toast.error("Failed to update markup");
     } else {
       toast.success("Markup updated");
-      const updated = calculatePricing(product.cost_excl_vat || 0, product.supplier_discount_percent ?? 0, markup);
-      onMarkupSaved?.(product.id, Math.round(updated.sellingPrice * 100) / 100);
+      const { sellingExclVat } = calcSellingPrice(costPrice, markup);
+      onMarkupSaved?.(product.id, Math.round(sellingExclVat * 100) / 100);
     }
   };
 
