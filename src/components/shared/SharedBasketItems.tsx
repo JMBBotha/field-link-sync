@@ -143,9 +143,17 @@ export function RegularItemCard({
   onUpdateLength,
 }: SharedBasketItemProps) {
   const isLengthItem = item.product.sold_in_length && !!item.product.price_per_metre;
-  const { unitSell, isPackItem, packQty } = getEffectiveUnitPrices(item.product);
+  const [markupAdj, setMarkupAdj] = useState(0);
+  const baseMarkup = (item.product as any).markup_percent ?? 20;
+  const effectiveMarkup = baseMarkup + markupAdj;
+
+  const { unitSell: rawUnitSell, isPackItem, packQty } = getEffectiveUnitPrices(item.product);
+  // Apply markup adjustment
+  const markupMultiplier = markupAdj !== 0 ? (1 + effectiveMarkup / 100) / (1 + baseMarkup / 100) : 1;
+  const unitSell = rawUnitSell * markupMultiplier;
+
   const price = isLengthItem
-    ? (item.product.price_per_metre || 0) * (item.length || 1)
+    ? (item.product.price_per_metre || 0) * markupMultiplier * (item.length || 1)
     : unitSell * item.quantity;
   const displayPrice = item.isBundle
     ? item.bundlePricingType === "p/meter"
@@ -178,6 +186,20 @@ export function RegularItemCard({
             </Button>
           </div>
         )}
+        {/* Markup quick-adjust */}
+        <div className="flex items-center gap-0.5 shrink-0" data-no-dnd="true">
+          <button
+            className="h-3.5 px-1 rounded-full bg-muted text-[8px] font-medium text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors"
+            onClick={() => setMarkupAdj(prev => prev - 5)}
+            onPointerDown={(e) => e.stopPropagation()}
+          >-5</button>
+          <span className="text-[8px] font-semibold text-foreground w-6 text-center">{effectiveMarkup}%</span>
+          <button
+            className="h-3.5 px-1 rounded-full bg-muted text-[8px] font-medium text-muted-foreground hover:bg-green-500/20 hover:text-green-600 transition-colors"
+            onClick={() => setMarkupAdj(prev => prev + 5)}
+            onPointerDown={(e) => e.stopPropagation()}
+          >+5</button>
+        </div>
         <span className="font-bold w-12 text-right shrink-0">
           R{displayPrice.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
         </span>
@@ -233,6 +255,22 @@ export function RegularItemCard({
           </Button>
         </div>
       )}
+      {/* Markup quick-adjust pills */}
+      <div className="flex items-center gap-0.5 shrink-0" data-no-dnd="true">
+        <button
+          className="h-5 px-1.5 rounded-full bg-muted text-[9px] font-semibold text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors"
+          onClick={() => setMarkupAdj(prev => prev - 5)}
+          onPointerDown={(e) => e.stopPropagation()}
+          title="Decrease markup 5%"
+        >-5%</button>
+        <span className="text-[10px] font-bold text-foreground w-8 text-center tabular-nums">{effectiveMarkup}%</span>
+        <button
+          className="h-5 px-1.5 rounded-full bg-muted text-[9px] font-semibold text-muted-foreground hover:bg-green-500/20 hover:text-green-600 transition-colors"
+          onClick={() => setMarkupAdj(prev => prev + 5)}
+          onPointerDown={(e) => e.stopPropagation()}
+          title="Increase markup 5%"
+        >+5%</button>
+      </div>
       <span className="text-xs font-bold w-16 text-right shrink-0">
         R{displayPrice.toLocaleString("en-ZA")}
       </span>
