@@ -506,12 +506,17 @@ const ProductPalette = ({
   onPopOutSelected,
 }: ProductPaletteProps) => {
   const [selectedCollapsed, setSelectedCollapsed] = useState(false);
+  const recentIds = useMemo(() => getRecentProductIds(), [products]);
   const filteredProducts = useMemo(() => {
     if (categoryFilter === "favorites") {
       return products.filter((p) => favorites.has(p.id));
     }
+    if (categoryFilter === "recent") {
+      const idSet = new Set(recentIds);
+      return products.filter((p) => idSet.has(p.id)).sort((a, b) => recentIds.indexOf(a.id) - recentIds.indexOf(b.id));
+    }
     return products;
-  }, [products, categoryFilter, favorites]);
+  }, [products, categoryFilter, favorites, recentIds]);
 
   // Sort: favorites first, then by usage count DESC, then alphabetical
   const sortedProducts = useMemo(() => {

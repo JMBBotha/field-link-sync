@@ -641,6 +641,17 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
       {/* Gold accent line */}
       <div className="h-[3px] bg-[hsl(40,96%,53%)] shrink-0" />
 
+      {/* Draft recovery banner */}
+      {showRecovery && recoveredDraft && (
+        <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2 bg-amber-500/15 border-b border-amber-500/30">
+          <p className="text-xs font-medium text-foreground">Recover last unsaved quote? ({recoveredDraft.reduce((s, b) => s + b.items.length, 0)} items in {recoveredDraft.length} zones)</p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowRecovery(false); localStorage.removeItem(DRAFT_KEY); }}>Discard</Button>
+            <Button size="sm" className="h-7 text-xs" onClick={() => { setBaskets(recoveredDraft); setShowRecovery(false); toast({ title: "Quote recovered" }); }}>Recover</Button>
+          </div>
+        </div>
+      )}
+
       {/* ─── MOBILE TABS ─── */}
       {isMobile && (
         <div className="shrink-0 flex border-b border-border/60 bg-card">
