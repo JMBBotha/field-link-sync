@@ -1113,18 +1113,6 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
                   </TooltipProvider>
                 </div>
 
-                {pdfFile && (
-                  <label className="flex items-center gap-2 px-1 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={enhanceImages}
-                      onChange={(e) => setEnhanceImages(e.target.checked)}
-                      className="rounded border-input"
-                    />
-                    <Sparkles className="h-3.5 w-3.5 text-primary" />
-                    <span className="text-xs text-muted-foreground">Enhance image quality (sharper text, better for visual catalog)</span>
-                  </label>
-                )}
 
                 {extractedText && (
                   <div className="space-y-2">
