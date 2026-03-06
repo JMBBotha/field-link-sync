@@ -260,6 +260,22 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
         description: `${supplierName} catalog updated.`,
       });
       setImportPreview(null);
+
+      // Auto-extract supplier contact info from PDF
+      if (file && file.name.toLowerCase().endsWith(".pdf")) {
+        try {
+          const { extractSupplierInfoFromPDF } = await import("@/services/supplierInfoExtractor");
+          const info = await extractSupplierInfoFromPDF(file);
+          const hasInfo = info.allEmails.length > 0 || info.allPhones.length > 0 ||
+            info.vatNumber || info.website || info.departments.length > 0 || info.locations.length > 0;
+          if (hasInfo) {
+            setSupplierInfoExtracted(info);
+          }
+        } catch (extractErr) {
+          console.warn("[Import] Supplier info extraction failed (non-fatal):", extractErr);
+        }
+      }
+
       pendingFileRef.current = null;
     } catch (err: any) {
       console.error("[Import] Failed:", err);
