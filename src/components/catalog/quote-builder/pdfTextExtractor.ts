@@ -51,8 +51,10 @@ export async function extractTextItemsFromPdfPage(
   pageHeight: number;
 }> {
   const pdfjsLib = await getPdfjsLib();
+  // Sanitize URL: fix trailing spaces in path segments (e.g. "Samsung /" → "Samsung/")
+  const sanitizedUrl = sanitizePdfUrl(pdfUrl);
   const loadingTask = pdfjsLib.getDocument({
-    url: pdfUrl,
+    url: sanitizedUrl,
     cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
     cMapPacked: true,
   });
