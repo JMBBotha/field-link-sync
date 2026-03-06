@@ -83,33 +83,14 @@ async function deleteSinglePDF(pdf: PDFUploadRow) {
     await (supabase.from("pdf_product_regions") as any).delete().eq("pdf_upload_id", pdf.id);
   }
 
-  // 4. Delete supplier_pdf_pages
-  if (isSynthetic) {
-    // Delete by supplier_id + pdf_filename
-    const supplierId = pdf.supplier_id;
-    const supplierName = pdf.suppliers?.name;
-    if (pdf.file_name) {
-      if (supplierId) {
-        await (supabase.from("supplier_pdf_pages") as any)
-          .delete().eq("supplier_id", supplierId).eq("pdf_filename", pdf.file_name);
-      }
-      if (supplierName) {
-        await (supabase.from("supplier_pdf_pages") as any)
-          .delete().eq("supplier_id", supplierName).eq("pdf_filename", pdf.file_name);
-        await (supabase.from("supplier_pdf_pages") as any)
-          .delete().eq("supplier_id", supplierName + " ").eq("pdf_filename", pdf.file_name);
-      }
-    }
-  } else {
-    const supplierName = pdf.suppliers?.name;
-    if (supplierName) {
-      await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", supplierName);
-      await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", supplierName + " ");
-      if (pdf.file_name) {
-        await (supabase.from("supplier_pdf_pages") as any).delete().eq("pdf_filename", pdf.file_name);
-      }
-    }
-    await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", pdf.supplier_id);
+  // 4. Delete supplier_pdf_pages — use pdf_filename only (supplier_id may be text name, not UUID)
+  if (pdf.file_name) {
+    console.log("[PDF Delete] Deleting supplier_pdf_pages by pdf_filename:", pdf.file_name);
+    const { error: pagesErr, count: pagesCount } = await (supabase.from("supplier_pdf_pages") as any)
+      .delete()
+      .eq("pdf_filename", pdf.file_name)
+      .select("id", { count: "exact", head: true });
+    console.log("[PDF Delete] supplier_pdf_pages delete result:", { error: pagesErr, count: pagesCount });
   }
 
   // 5. Delete the pdf_uploads DB record (legacy only)
