@@ -10,7 +10,9 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import ImportPreviewModal from "./ImportPreviewModal";
+import SupplierInfoReviewModal from "./SupplierInfoReviewModal";
 import type { ImportPreview, ParsedProduct, ImportStage } from "@/services/productImportParser";
+import type { ExtractedSupplierInfo } from "@/services/supplierInfoExtractor";
 import { cleanImportForSupplier, logImportAction } from "@/services/cleanImportPipeline";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle2 } from "lucide-react";
@@ -37,6 +39,7 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
   const [showCleanConfirm, setShowCleanConfirm] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [importStage, setImportStage] = useState<ImportStage | null>(null);
+  const [supplierInfoExtracted, setSupplierInfoExtracted] = useState<ExtractedSupplierInfo | null>(null);
 
   const { data: activeProductCount = 0 } = useQuery({
     queryKey: ["supplier-active-product-count", supplierId],
@@ -257,6 +260,22 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
         description: `${supplierName} catalog updated.`,
       });
       setImportPreview(null);
+
+      // Auto-extract supplier contact info from PDF
+      if (file && file.name.toLowerCase().endsWith(".pdf")) {
+        try {
+          const { extractSupplierInfoFromPDF } = await import("@/services/supplierInfoExtractor");
+          const info = await extractSupplierInfoFromPDF(file);
+          const hasInfo = info.allEmails.length > 0 || info.allPhones.length > 0 ||
+            info.vatNumber || info.website || info.departments.length > 0 || info.locations.length > 0;
+          if (hasInfo) {
+            setSupplierInfoExtracted(info);
+          }
+        } catch (extractErr) {
+          console.warn("[Import] Supplier info extraction failed (non-fatal):", extractErr);
+        }
+      }
+
       pendingFileRef.current = null;
     } catch (err: any) {
       console.error("[Import] Failed:", err);
@@ -429,6 +448,20 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
           fileName={importFileName}
           onConfirm={handleConfirm}
           confirming={importConfirming}
+        />
+      )}
+      {supplierInfoExtracted && (
+        <SupplierInfoReviewModal
+          open={!!supplierInfoExtracted}
+          onOpenChange={(o) => !o && setSupplierInfoExtracted(null)}
+          supplierId={supplierId}
+          supplierName={supplierName}
+          extracted={supplierInfoExtracted}
+          onComplete={() => {
+            setSupplierInfoExtracted(null);
+            queryClient.invalidateQueries({ queryKey: ["supplier-contacts", supplierId] });
+            queryClient.invalidateQueries({ queryKey: ["supplier-locations", supplierId] });
+          }}
         />
       )}
     </>
