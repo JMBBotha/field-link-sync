@@ -583,6 +583,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           onRemoveRegion={handleRemoveRegion}
                           scrollContainerRef={scrollContainerRef}
                           onCategoriesDetected={handlePageCategories}
+                          totalPages={pages.length}
                           supplierName={currentSupplierName}
                           onOpenWizard={onOpenWizard}
                           onHoverStart={handleHoverStart}
@@ -691,6 +692,7 @@ interface LazyPdfPageProps {
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   onCategoriesDetected: (pageIndex: number, categories: string[]) => void;
   registerRef: (el: HTMLDivElement | null) => void;
+  totalPages: number;
   supplierName?: string;
   onOpenWizard?: (item: WizardTriggerItem) => void;
   onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent) => void;
@@ -715,6 +717,7 @@ const LazyPdfPage = ({
   scrollContainerRef,
   onCategoriesDetected,
   registerRef,
+  totalPages,
   supplierName,
   onOpenWizard,
   onHoverStart,
@@ -917,7 +920,7 @@ const LazyPdfPage = ({
     }
     
     // Distribute matched supplier products across pages
-    const productsPerPage = Math.ceil(supplierProducts.length / Math.max(1, pages.length));
+    const productsPerPage = Math.ceil(supplierProducts.length / Math.max(1, totalPages));
     const startIdx = pageIndex * productsPerPage;
     const pageProducts = supplierProducts.slice(startIdx, startIdx + productsPerPage);
     if (pageProducts.length === 0) return [];
@@ -937,7 +940,7 @@ const LazyPdfPage = ({
       detected_price: p.selling_price || p.cost_incl_vat || null,
       matched: true,
     }));
-  }, [liveRegions, storedRegions, activeProducts, page.id, page.supplier_id, page.page_number, supplierName, pages.length, pageIndex]);
+  }, [liveRegions, storedRegions, activeProducts, page.id, page.supplier_id, page.page_number, supplierName, totalPages, pageIndex]);
 
   const overlayRegions: OverlayRegion[] = useMemo(() => {
     // Prefer live regions, fall back to fallback
