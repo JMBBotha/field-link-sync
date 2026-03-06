@@ -33,7 +33,16 @@ const SYSTEM_PROMPT_TEMPLATE = `HVAC price list parser. Extract products as JSON
 
 Return: {"detected_price_columns":[...],"products":[...]}
 
-Product fields: sku, name, description, category, prices (object: column→number), pipeSize, btuRating, refrigerantType, shortName, productCategory, brand.
+Product fields: sku, name, description, category, prices (object: column→number), pipeSize, btuRating, refrigerantType, shortName, productCategory, brand, phase, speedType, kw, unitType.
+
+CRITICAL SPECIFICATION EXTRACTION RULES:
+- btuRating: Extract BTU from "9000 BTU", "9K BTU", "9,000", or derive from kW (2.6kW=9000, 3.5kW=12000, 5.0kW=18000, 7.0kW=24000, 7.1kW=24000, 10kW=36000, 14kW=48000).
+- kw: Extract cooling capacity in kW from "2.6kW", "3.5 kW", "5.0KW" etc. If only BTU given, convert: BTU/3412=kW.
+- pipeSize: Extract pipe sizes like "1/4 x 3/8", "6.35/9.52", "1/4 x 1/2", "6.35x12.7mm". Look for liquid/gas pipe specs.
+- refrigerantType: Extract "R410A", "R32", "R22", "R290" from model codes or descriptions.
+- phase: "Single Phase" or "Three Phase". Detect from "1Ph", "1-phase", "single phase", "220V", "3Ph", "3-phase", "three phase", "380V", "415V". Default "Single Phase" for residential units.
+- speedType: "Inverter" or "Fixed Speed". Detect from "INV", "inverter", "DC inverter", "digital inverter", "fixed speed", "non-inverter", "FS". Check model codes too.
+- unitType: "Midwall", "Cassette", "Ducted", "Under Ceiling", "Floor Standing", "Ceiling", "Portable", "Multi Split", "VRF", "Window". Detect from "MW", "midwall", "wall mount", "split", "cassette", "ducted", "under ceiling", "UC", "floor", "ceiling", "portable", "multi".
 
 productCategory must be one of: "Air Conditioning", "Water Heaters", "Inverters", "Batteries", "Consumables".
 Auto-detect based on keywords:
