@@ -5,13 +5,7 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "skipLibCheck": true,
-    "suppressImplicitAnyIndexErrors": true,
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ]
-    }
-  },
+    "strictNullChecks": false
   "files": [],
   "references": [
     {
