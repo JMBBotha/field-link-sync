@@ -940,7 +940,7 @@ const LazyPdfPage = ({
       detected_price: p.selling_price || p.cost_incl_vat || null,
       matched: true,
     }));
-  }, [liveRegions, storedRegions, activeProducts, page.id, page.supplier_id, page.page_number, supplierName, pages.length, pageIndex]);
+  }, [liveRegions, storedRegions, activeProducts, page.id, page.supplier_id, page.page_number, supplierName, totalPages, pageIndex]);
 
   const overlayRegions: OverlayRegion[] = useMemo(() => {
     // Prefer live regions, fall back to fallback
