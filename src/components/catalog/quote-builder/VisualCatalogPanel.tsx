@@ -1152,6 +1152,7 @@ const LazyPdfPage = ({
             className="w-full block select-none"
             loading="lazy"
             draggable={false}
+            style={hdMode ? { imageRendering: "high-quality" as any } : undefined}
           />
           {/* Show overlays for ALL regions (matched + unmatched) — works with live extraction or fallback */}
           {overlayRegions.length > 0 && (
