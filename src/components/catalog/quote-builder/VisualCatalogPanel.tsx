@@ -920,7 +920,7 @@ const LazyPdfPage = ({
     }
     
     // Distribute matched supplier products across pages
-    const productsPerPage = Math.ceil(supplierProducts.length / Math.max(1, pages.length));
+    const productsPerPage = Math.ceil(supplierProducts.length / Math.max(1, totalPages));
     const startIdx = pageIndex * productsPerPage;
     const pageProducts = supplierProducts.slice(startIdx, startIdx + productsPerPage);
     if (pageProducts.length === 0) return [];
