@@ -168,6 +168,7 @@ const DraggableRegion = memo(({
         top: `${region.y_pct}%`,
         width: "100%",
         height: `${region.h_pct}%`,
+        maxHeight: "2.5%",
         touchAction: "none",
         minHeight: "14px",
         margin: 0,
@@ -179,12 +180,12 @@ const DraggableRegion = memo(({
       onMouseMove={onHoverMove}
       onMouseLeave={onHoverLeave}
     >
-      {/* Full-width hover gradient overlay */}
-      <div className="absolute inset-0 rounded transition-opacity duration-200 opacity-0 group-hover:opacity-100 pointer-events-none"
+      {/* Right 35% hover gradient overlay (covers price/icon area) */}
+      <div className="absolute top-0 bottom-0 rounded transition-opacity duration-200 opacity-0 group-hover:opacity-100 pointer-events-none"
         style={{
+          left: "65%",
+          width: "35%",
           background: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.15) 80%, rgba(0,0,0,0.3) 100%)",
-          right: "88px",
-          width: "calc(100% - 88px)",
         }}
       />
       {/* Chevron arrow at the right end of gradient */}
