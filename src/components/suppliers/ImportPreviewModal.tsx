@@ -379,7 +379,7 @@ const ImportPreviewModal = ({
               </div>
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="flex-row justify-between sm:justify-between gap-2 pt-4 border-t mt-4">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={confirming}>
