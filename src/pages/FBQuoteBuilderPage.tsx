@@ -36,6 +36,7 @@ import type { PaletteProduct, BasketItem, Basket } from "@/components/catalog/Qu
 import { computeBundlePricing } from "@/components/catalog/quote-builder/BundleItemsPopover";
 import { useCompany } from "@/providers/CompanyProvider";
 import logo from "@/assets/logo.png";
+import PanelErrorBoundary from "@/components/shared/PanelErrorBoundary";
 import FloatingSelectedItems from "@/components/catalog/quote-builder/FloatingSelectedItems";
 
 // Custom sensor to skip data-no-dnd elements
