@@ -26,6 +26,9 @@ interface Product {
   short_name?: string | null;
   rrp?: number | null;
   image_url?: string | null;
+  discounted_cost?: number | null;
+  supplier_discount_percent?: number | null;
+  cost_excl_vat?: number | null;
 }
 
 interface Props {
