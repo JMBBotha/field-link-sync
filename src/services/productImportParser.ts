@@ -76,6 +76,10 @@ export interface ImportPreview {
   discountConfidence: "high" | "medium" | "low";
   supplierSettings: SupplierPricingSettings;
   parseMethod?: "ai" | "regex" | "csv" | "grok_ai" | "lovable_ai";
+  /** Price columns detected by Grok AI */
+  detectedPriceColumns?: string[];
+  /** The column Grok auto-selected as best */
+  selectedPriceColumn?: string;
 }
 
 export type ImportStage =
