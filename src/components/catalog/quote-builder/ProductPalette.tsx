@@ -61,9 +61,22 @@ function HighlightText({ text, searchTerm }: { text: string; searchTerm: string 
   );
 }
 
+import { Clock } from "lucide-react";
+
+const RECENT_KEY = "recent-products";
+function getRecentProductIds(): string[] {
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]"); } catch { return []; }
+}
+export function pushRecentProduct(productId: string) {
+  const list = getRecentProductIds().filter(id => id !== productId);
+  list.unshift(productId);
+  localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 15)));
+}
+
 const CATEGORIES = [
   { value: "all", label: "All", icon: Package },
   { value: "favorites", label: "★ Favs", icon: Star },
+  { value: "recent", label: "Recent", icon: Clock },
   { value: "Air Conditioning", label: "AC", icon: Snowflake },
   { value: "Water Heaters", label: "Geyser", icon: Droplets },
   { value: "Inverters", label: "Inverter", icon: Zap },
