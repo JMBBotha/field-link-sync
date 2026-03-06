@@ -334,7 +334,8 @@ Categories for consumables: Copper Tube, Insulation, Cable, Trunking, Brackets, 
         success: true,
         detected_price_columns: [...allCols],
         products: deduped.map(p => {
-          const costPrice = Object.values(p.prices || {})[0] || 0;
+          const bestPrice = pickBestPrice(p.prices || {});
+          const costPrice = bestPrice.price;
           const soldInLength = p.soldInLength || false;
           const unitLength = p.unitLength || null;
           const pricePerMetre = soldInLength && unitLength && costPrice > 0
