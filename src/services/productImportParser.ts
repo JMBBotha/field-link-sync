@@ -28,6 +28,20 @@ export interface ParsedProduct {
   sell_price_incl_vat: number;
   confidence: "high" | "medium" | "low";
   flags: string[];
+  // Technical specs
+  btu_rating?: number | null;
+  pipe_size?: string | null;
+  refrigerant_type?: string | null;
+  phase?: string | null;
+  speed_type?: string | null;
+  kw?: number | null;
+  unit_type?: string | null;
+  short_name?: string | null;
+  brand?: string | null;
+  product_category?: string | null;
+  sold_in_length?: boolean;
+  unit_length?: number | null;
+  price_per_metre?: number | null;
 }
 
 export interface ImportPreview {
@@ -201,7 +215,7 @@ async function parsePDFWithFullPipeline(
   onStage?: (stage: ImportStage) => void
 ): Promise<ImportPreview> {
   let parseMethod: ImportPreview["parseMethod"] = "regex";
-  let rawRows: Array<{ model: string; description: string; price: number; category: string }> = [];
+  let rawRows: Array<{ model: string; description: string; price: number; category: string; btu_rating?: number | null; pipe_size?: string | null; refrigerant_type?: string | null; phase?: string | null; speed_type?: string | null; kw?: number | null; unit_type?: string | null; short_name?: string | null; brand?: string | null; product_category?: string | null; sold_in_length?: boolean; unit_length?: number | null; price_per_metre?: number | null }> = [];
 
   // STAGE 1: Render PDF pages to images + extract text
   onStage?.({ stage: "loading_pdf", detail: `Loading ${file.name}...` });
@@ -259,6 +273,19 @@ async function parsePDFWithFullPipeline(
             description: p.description || p.name || "",
             price: costPrice,
             category: p.product_category || p.category || "Air Conditioning",
+            btu_rating: p.btu_rating || null,
+            pipe_size: p.pipe_size || null,
+            refrigerant_type: p.refrigerant_type || null,
+            phase: p.phase || null,
+            speed_type: p.speed_type || null,
+            kw: p.kw || null,
+            unit_type: p.unit_type || null,
+            short_name: p.short_name || null,
+            brand: p.brand || null,
+            product_category: p.product_category || null,
+            sold_in_length: p.sold_in_length || false,
+            unit_length: p.unit_length || null,
+            price_per_metre: p.price_per_metre || null,
           });
         }
       }
@@ -363,6 +390,9 @@ async function parsePDFWithFullPipeline(
     if (settings.priceListType === "list_price_with_discount" && effectiveDiscount > 0)
       flags.push(`discount_${effectiveDiscount}pct_applied`);
 
+    // Local spec extraction fallback — enrich specs from description/model if AI didn't provide them
+    const specs = extractSpecsFromText(row.model, row.description);
+
     return {
       model_number: row.model,
       description: row.description,
@@ -375,6 +405,20 @@ async function parsePDFWithFullPipeline(
       confidence: (parseMethod === "grok_ai" || parseMethod === "ai") ? "high" : parseMethod === "lovable_ai" ? "medium" : vatDetection.confidence,
       flags,
       ...calc,
+      // Specs: prefer AI-extracted, fallback to local regex
+      btu_rating: row.btu_rating || specs.btu_rating || null,
+      pipe_size: row.pipe_size || specs.pipe_size || null,
+      refrigerant_type: row.refrigerant_type || specs.refrigerant_type || null,
+      phase: row.phase || specs.phase || null,
+      speed_type: row.speed_type || specs.speed_type || null,
+      kw: row.kw || specs.kw || null,
+      unit_type: row.unit_type || specs.unit_type || null,
+      short_name: row.short_name || null,
+      brand: row.brand || null,
+      product_category: row.product_category || row.category || null,
+      sold_in_length: row.sold_in_length || false,
+      unit_length: row.unit_length || null,
+      price_per_metre: row.price_per_metre || null,
     };
   });
 
@@ -402,6 +446,95 @@ function detectCategory(description: string): string {
   if (/COPPER|PIPE|FLARE|ELBOW|FITTING|TAPE|CABLE|BRACKET/.test(d)) return "Consumables";
   if (/REMOTE|CONTROLLER/.test(d)) return "Air Conditioning";
   return "Air Conditioning";
+}
+
+/**
+ * LOCAL SPEC EXTRACTION — regex-based fallback when AI doesn't extract specs.
+ * Extracts BTU, kW, pipe size, phase, speed type, refrigerant, unit type from text.
+ */
+function extractSpecsFromText(model: string, description: string): {
+  btu_rating: number | null;
+  kw: number | null;
+  pipe_size: string | null;
+  phase: string | null;
+  speed_type: string | null;
+  refrigerant_type: string | null;
+  unit_type: string | null;
+} {
+  const text = `${model} ${description}`.toUpperCase();
+
+  // BTU Rating
+  let btu_rating: number | null = null;
+  const btuMatch = text.match(/(\d{1,3})[,.]?(\d{3})\s*BTU/);
+  if (btuMatch) btu_rating = parseInt(btuMatch[1] + btuMatch[2]);
+  const btuKMatch = text.match(/(\d{1,3})K\s*BTU/);
+  if (!btu_rating && btuKMatch) btu_rating = parseInt(btuKMatch[1]) * 1000;
+
+  // kW — cooling capacity
+  let kw: number | null = null;
+  const kwMatch = text.match(/(\d+\.?\d*)\s*KW/);
+  if (kwMatch) kw = parseFloat(kwMatch[1]);
+
+  // Derive BTU from kW if missing
+  if (!btu_rating && kw) {
+    btu_rating = Math.round(kw * 3412);
+  }
+  // Derive kW from BTU if missing
+  if (!kw && btu_rating) {
+    kw = parseFloat((btu_rating / 3412).toFixed(1));
+  }
+
+  // Also derive BTU from Samsung model codes: AR09=9000, AR12=12000, AR18=18000, AR24=24000
+  if (!btu_rating) {
+    const arMatch = model.toUpperCase().match(/AR(\d{2})/);
+    if (arMatch) {
+      const num = parseInt(arMatch[1]);
+      const btuMap: Record<number, number> = { 9: 9000, 12: 12000, 18: 18000, 24: 24000, 28: 28000, 36: 36000 };
+      if (btuMap[num]) {
+        btu_rating = btuMap[num];
+        kw = parseFloat((btu_rating / 3412).toFixed(1));
+      }
+    }
+  }
+
+  // Pipe Size
+  let pipe_size: string | null = null;
+  const pipeMatch = text.match(/(1\/[24]|3\/8|1\/2|5\/8|3\/4)\s*[X×&]\s*(1\/[24]|3\/8|1\/2|5\/8|3\/4)/i);
+  if (pipeMatch) pipe_size = `${pipeMatch[1]} x ${pipeMatch[2]}`;
+  if (!pipe_size) {
+    const mmPipe = text.match(/(6\.35|9\.52|12\.7|15\.88|19\.05)\s*[X×\/]\s*(6\.35|9\.52|12\.7|15\.88|19\.05)/);
+    if (mmPipe) pipe_size = `${mmPipe[1]}/${mmPipe[2]}mm`;
+  }
+
+  // Phase
+  let phase: string | null = null;
+  if (/\b3[\s-]*PH|THREE\s*PHASE|380\s*V|415\s*V/i.test(text)) phase = "Three Phase";
+  else if (/\b1[\s-]*PH|SINGLE\s*PHASE|220\s*V|230\s*V/i.test(text)) phase = "Single Phase";
+
+  // Speed Type (Inverter vs Fixed Speed)
+  let speed_type: string | null = null;
+  if (/\bINV(?:ERTER)?\b|DC\s*INV|DIGITAL\s*INV/i.test(text)) speed_type = "Inverter";
+  else if (/FIXED\s*SPEED|NON[\s-]*INV|FS\b/i.test(text)) speed_type = "Fixed Speed";
+
+  // Refrigerant Type
+  let refrigerant_type: string | null = null;
+  const refMatch = text.match(/\b(R410A?|R32|R22|R290|R134A?)\b/i);
+  if (refMatch) refrigerant_type = refMatch[1].toUpperCase();
+
+  // Unit Type
+  let unit_type: string | null = null;
+  if (/\bMIDWALL|MID\s*WALL|WALL\s*MOUNT|HI[\s-]*WALL|\bMW\b/i.test(text)) unit_type = "Midwall";
+  else if (/\bCASSETTE?\b|\bCASS\b/i.test(text)) unit_type = "Cassette";
+  else if (/\bDUCT(?:ED)?\b/i.test(text)) unit_type = "Ducted";
+  else if (/UNDER\s*CEIL|UC\b/i.test(text)) unit_type = "Under Ceiling";
+  else if (/FLOOR\s*STAND/i.test(text)) unit_type = "Floor Standing";
+  else if (/\bCEILING\b/i.test(text) && !/UNDER/i.test(text)) unit_type = "Ceiling";
+  else if (/\bPORT(?:ABLE)?\b/i.test(text)) unit_type = "Portable";
+  else if (/MULTI[\s-]*SPLIT/i.test(text)) unit_type = "Multi Split";
+  else if (/\bVRF\b|\bVRV\b/i.test(text)) unit_type = "VRF";
+  else if (/\bWINDOW\b/i.test(text)) unit_type = "Window";
+
+  return { btu_rating, kw, pipe_size, phase, speed_type, refrigerant_type, unit_type };
 }
 
 function parseCSVLine(line: string): string[] {
