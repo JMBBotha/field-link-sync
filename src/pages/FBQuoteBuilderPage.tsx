@@ -652,22 +652,24 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
           <div ref={canvasRef}
             className={`${isMobile ? (mobileTab === "canvas" ? "flex" : "hidden") : "flex"} flex-col flex-1 min-h-0 min-w-0 overflow-hidden p-1`}>
             <div className="flex-1 min-h-0 overflow-y-auto p-4" style={{ scrollBehavior: "smooth" }}>
-              <BasketCanvas
-                baskets={baskets}
-                allProducts={products}
-                onAddBasket={handleAddBasket}
-                onRenameBasket={handleRenameBasket}
-                onRemoveBasket={handleRemoveBasket}
-                onRemoveItem={handleRemoveItem}
-                onUpdateQuantity={handleUpdateQuantity}
-                onAddProductToBasket={addProductToBasket}
-                onDuplicateBasket={handleDuplicateBasket}
-                onApplyTemplate={handleApplyTemplate}
-                onClearAll={handleClearAll}
-                onUpdateLength={handleUpdateLength}
-                isDragging={isDragging}
-                isCompact={visualPanelOpen}
-              />
+              <PanelErrorBoundary panelName="Build Area Quote">
+                <BasketCanvas
+                  baskets={baskets}
+                  allProducts={products}
+                  onAddBasket={handleAddBasket}
+                  onRenameBasket={handleRenameBasket}
+                  onRemoveBasket={handleRemoveBasket}
+                  onRemoveItem={handleRemoveItem}
+                  onUpdateQuantity={handleUpdateQuantity}
+                  onAddProductToBasket={addProductToBasket}
+                  onDuplicateBasket={handleDuplicateBasket}
+                  onApplyTemplate={handleApplyTemplate}
+                  onClearAll={handleClearAll}
+                  onUpdateLength={handleUpdateLength}
+                  isDragging={isDragging}
+                  isCompact={visualPanelOpen}
+                />
+              </PanelErrorBoundary>
             </div>
           </div>
 
