@@ -49,6 +49,7 @@ export interface PaletteProduct {
   cost_incl_vat: number;
   cost_price: number;
   selling_price: number;
+  default_markup_percent: number;
   description: string;
   is_pinned: boolean;
   pin_order: number | null;
@@ -60,7 +61,9 @@ export interface PaletteProduct {
   pipe_size: string | null;
   is_material_favorite: boolean;
   pack_qty: number | null;
+  /** @deprecated use default_markup_percent */
   supplier_discount_percent: number | null;
+  /** @deprecated use default_markup_percent */
   markup_percent: number | null;
 }
 
