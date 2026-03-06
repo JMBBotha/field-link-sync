@@ -370,9 +370,24 @@ async function parsePDFWithFullPipeline(
     warnings.push(`📊 Multiple price columns detected: ${detectedPriceColumns.join(", ")}. Using "${selectedPriceColumn || detectedPriceColumns[0]}".`);
   }
 
+  // Filter out section header rows (e.g. "AR3000 Non-Inverter" with no full model suffix)
+  const sectionHeaderPattern = /^AR\d{3,4}$/i; // e.g. AR3000, AR5000 — no full model suffix
+  const shortHeaderPattern = /^[A-Z]{1,4}\d{3,5}$/i; // Generic short codes that are section titles
+  const filteredRows = rawRows.filter((r) => {
+    const code = (r.model || "").trim();
+    // Skip rows with no model code
+    if (!code) return false;
+    // Skip section headers: short codes like "AR3000" without full suffix
+    if (sectionHeaderPattern.test(code)) {
+      console.log(`[Import] Skipping section header row: "${code}" — "${r.description}"`);
+      return false;
+    }
+    return true;
+  });
+
   // Deduplicate
   const seen = new Set<string>();
-  const uniqueRows = rawRows.filter((r) => {
+  const uniqueRows = filteredRows.filter((r) => {
     const key = r.model.toLowerCase();
     if (!key || seen.has(key)) return false;
     seen.add(key);

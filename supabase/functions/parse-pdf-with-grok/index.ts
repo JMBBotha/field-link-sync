@@ -63,7 +63,9 @@ Categories (subcategories): Midwall Inverter, Midwall Fixed Speed, Cassette Inve
 Samsung AC models typically start with AR (e.g. AR09TXHQA, AR12TXHQA, AR18TXHQA, AR24TXHQA) for indoor units and AR for outdoor units. Look for Samsung Wind-Free, BREEZELESS, Digital Inverter product lines. These have BTU ratings of 9000, 12000, 18000, 24000 BTU. Also detect kW values like 2.6kW=9K, 3.5kW=12K, 5.0kW=18K, 7.0kW=24K and convert to BTU.
 shortName format: BRAND BTU/kW ABBREV. Abbrevs: INV MW, FS MW, INV DUCT, FS DUCT, CASS, UC, WW, PORT, FS FLOOR, MULTI, VRF. Suffixes: BRZ, XTR, AUR, ULT.
 Prices: ZAR format "R 7 700,00"=7700. Detect BTU from "9000 BTU"/"2.6kW". Multiple price columns→use all. Single→"Unit Price".
-Skip headers/totals. Supplier: `;
+Skip headers/totals. Supplier: 
+
+CRITICAL: SKIP SECTION HEADER ROWS. These are rows like "AR3000 Non-Inverter", "AR5000 Inverter", "AR9500 Wind-Free" that act as section titles/groupings — they have NO price and NO full model code. A valid Samsung model code looks like "AR09TXHQASINXA" or "AR12TXHQA" (starts with AR followed by 2-digit size then letters). Do NOT include rows where the code is just "AR" + 3-4 digits (e.g. AR3000, AR5000, AR9500) — these are category headers, not products. Only include rows that have BOTH a full product model code AND at least one price > 0.`;
 
 function splitIntoChunks(text: string, chunkSize: number): string[] {
   const chunks: string[] = [];
