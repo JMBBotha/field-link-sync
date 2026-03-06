@@ -1214,6 +1214,15 @@ const LazyPdfPage = ({
   const matchedCount = overlayRegions.filter(r => r.product).length;
   const unmatchedCount = overlayRegions.filter(r => !r.product).length;
   const totalRegions = overlayRegions.length;
+  const authProductCount = pageProducts.length;
+  const hasPositionMismatch = authProductCount > 0 && totalRegions !== authProductCount;
+
+  // Cross-check: log warning if authoritative count != overlay count
+  useEffect(() => {
+    if (hasPositionMismatch) {
+      console.warn(`[VisualCatalog] Page ${page.page_number}: ${authProductCount} products in DB but ${totalRegions} overlay icons rendered`);
+    }
+  }, [hasPositionMismatch, authProductCount, totalRegions, page.page_number]);
 
   return (
     <div
@@ -1225,12 +1234,18 @@ const LazyPdfPage = ({
       className="relative border-b border-muted/30"
       style={{ minHeight: "400px", paddingRight: "88px", boxSizing: "border-box", overflow: "visible" }}
     >
-      {/* Page number label */}
+      {/* Page number label with cross-check badge */}
       <div className="absolute top-2 left-2 z-30 bg-black/60 text-white text-[9px] font-mono px-1.5 py-0.5 rounded flex items-center gap-1.5">
         <span>Page {page.page_number}</span>
         {isVisible && totalRegions > 0 && (
           <span className="text-green-300">
             {totalRegions} items · {matchedCount} matched{unmatchedCount > 0 && <span className="text-orange-300"> · {unmatchedCount} new</span>}
+          </span>
+        )}
+        {isVisible && authProductCount > 0 && hasPositionMismatch && (
+          <span className="flex items-center gap-0.5 text-amber-400" title={`DB has ${authProductCount} products but ${totalRegions} icons shown`}>
+            <AlertTriangle className="h-2.5 w-2.5" />
+            <span className="text-[8px]">{authProductCount}≠{totalRegions}</span>
           </span>
         )}
         {isVisible && starOverlays.length > 0 && (
