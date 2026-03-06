@@ -76,6 +76,10 @@ export interface ImportPreview {
   discountConfidence: "high" | "medium" | "low";
   supplierSettings: SupplierPricingSettings;
   parseMethod?: "ai" | "regex" | "csv" | "grok_ai" | "lovable_ai";
+  /** Price columns detected by Grok AI */
+  detectedPriceColumns?: string[];
+  /** The column Grok auto-selected as best */
+  selectedPriceColumn?: string;
 }
 
 export type ImportStage =
@@ -228,6 +232,9 @@ async function parsePDFWithFullPipeline(
   onStage?: (stage: ImportStage) => void
 ): Promise<ImportPreview> {
   let parseMethod: ImportPreview["parseMethod"] = "regex";
+  let detectedPriceColumns: string[] = [];
+  let selectedPriceColumn: string | undefined;
+  let grokDetectedInclVat = false;
   let rawRows: Array<{
     model: string; description: string; price: number; category: string;
     btu_rating?: number | null; pipe_size?: string | null; refrigerant_type?: string | null;
@@ -269,8 +276,26 @@ async function parsePDFWithFullPipeline(
       });
       if (error) { console.warn(`[Import] Grok chunk ${ci} error:`, error); continue; }
 
+      // Capture detected price columns from Grok
+      if (data?.detected_price_columns?.length) {
+        for (const col of data.detected_price_columns) {
+          if (!detectedPriceColumns.includes(col)) detectedPriceColumns.push(col);
+        }
+      }
+
       for (const p of (data?.products || [])) {
-        const price = typeof p.cost_price === "number" ? p.cost_price : (p.prices ? Object.values(p.prices)[0] as number : 0);
+        // Use the smart-selected cost_price from Grok (already picked best column)
+        const price = typeof p.cost_price === "number" && p.cost_price > 0
+          ? p.cost_price
+          : 0;
+
+        // Track selected column and VAT detection from first product
+        if (!selectedPriceColumn && p.selected_price_column) {
+          selectedPriceColumn = p.selected_price_column;
+          grokDetectedInclVat = !!p.price_is_incl_vat;
+          console.log(`[Import] Grok selected column: "${selectedPriceColumn}", isInclVat: ${grokDetectedInclVat}`);
+        }
+
         if (price > 0) {
           rawRows.push({
             model: p.product_code || p.sku || "",
@@ -330,11 +355,20 @@ async function parsePDFWithFullPipeline(
   const discountDetection = detectDiscount(allText);
   const warnings: string[] = [];
 
-  const effectiveInclVat = vatDetection.confidence === "high" ? vatDetection.isIncl : settings.pricesIncludeVat;
+  // If Grok detected the selected column is INCL VAT, override VAT detection
+  const effectiveInclVat = grokDetectedInclVat
+    ? true
+    : (vatDetection.confidence === "high" ? vatDetection.isIncl : settings.pricesIncludeVat);
   const effectiveDiscount = discountDetection.confidence === "high" ? discountDetection.percent : settings.tradeDiscount;
 
+  if (grokDetectedInclVat && !vatDetection.isIncl) {
+    warnings.push("⚠️ AI detected the selected price column is INCL VAT — VAT will be stripped");
+  }
   if (vatDetection.confidence === "low") warnings.push("⚠️ Could not detect VAT — please verify");
   if (parseMethod === "regex") warnings.push("📝 Text extraction — results may be less accurate");
+  if (detectedPriceColumns.length > 1) {
+    warnings.push(`📊 Multiple price columns detected: ${detectedPriceColumns.join(", ")}. Using "${selectedPriceColumn || detectedPriceColumns[0]}".`);
+  }
 
   // Deduplicate
   const seen = new Set<string>();
@@ -397,12 +431,14 @@ async function parsePDFWithFullPipeline(
     suggestedMarkup: settings.markupPercent,
     totalProducts: products.length,
     warnings,
-    vatEvidence: vatDetection.evidence,
+    vatEvidence: grokDetectedInclVat ? "AI selected INCL VAT column" : vatDetection.evidence,
     discountEvidence: effectiveDiscount > 0 ? discountDetection.evidence : "N/A — no discount",
-    vatConfidence: vatDetection.confidence,
+    vatConfidence: grokDetectedInclVat ? "high" : vatDetection.confidence,
     discountConfidence: effectiveDiscount > 0 ? discountDetection.confidence : "high",
     supplierSettings: settings,
     parseMethod,
+    detectedPriceColumns: detectedPriceColumns.length > 0 ? detectedPriceColumns : undefined,
+    selectedPriceColumn,
   };
 }
 

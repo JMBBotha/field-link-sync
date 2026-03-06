@@ -100,6 +100,42 @@ function parseAIContent(content: string): { detected_price_columns: string[]; pr
   return { detected_price_columns: parsed.detected_price_columns || [], products };
 }
 
+/**
+ * Smart price column selection.
+ * Prefer columns whose name contains "EXCL", "EX VAT", "COST", "NET", "DEALER".
+ * If none match, pick the LOWEST price (likely excl VAT).
+ * Returns { price, columnName, isInclVat }.
+ */
+function pickBestPrice(prices: Record<string, number>): { price: number; columnName: string; isInclVat: boolean } {
+  const entries = Object.entries(prices).filter(([, v]) => typeof v === "number" && v > 0);
+  if (entries.length === 0) return { price: 0, columnName: "", isInclVat: false };
+  if (entries.length === 1) {
+    const [col, val] = entries[0];
+    const upper = col.toUpperCase();
+    const isIncl = /INCL|INC\b|INCLUDING/.test(upper) && !/EXCL/.test(upper);
+    return { price: val, columnName: col, isInclVat: isIncl };
+  }
+
+  // Prefer EXCL / EX VAT / COST / NET / DEALER columns
+  const exclPatterns = [/EXCL/i, /EX\s*VAT/i, /\bCOST\b/i, /\bNET\b/i, /DEALER/i, /TRADE/i];
+  for (const pattern of exclPatterns) {
+    const match = entries.find(([col]) => pattern.test(col));
+    if (match) return { price: match[1], columnName: match[0], isInclVat: false };
+  }
+
+  // Check for INCL column — if found, pick the OTHER column (the excl one)
+  const inclIdx = entries.findIndex(([col]) => /INCL|INC\b|INCLUDING/i.test(col.toUpperCase()));
+  if (inclIdx !== -1 && entries.length > 1) {
+    // Pick the non-INCL column (likely excl VAT)
+    const exclEntry = entries.find((_, idx) => idx !== inclIdx);
+    if (exclEntry) return { price: exclEntry[1], columnName: exclEntry[0], isInclVat: false };
+  }
+
+  // Fallback: pick the LOWEST price (likely excl VAT)
+  entries.sort((a, b) => a[1] - b[1]);
+  return { price: entries[0][1], columnName: entries[0][0], isInclVat: false };
+}
+
 /** Fallback auto-detect brand from product name/code */
 function autoDetectBrand(p: ParsedProduct): string | null {
   const name = `${p.name || ""} ${p.description || ""}`;
@@ -298,7 +334,8 @@ Categories for consumables: Copper Tube, Insulation, Cable, Trunking, Brackets, 
         success: true,
         detected_price_columns: [...allCols],
         products: deduped.map(p => {
-          const costPrice = Object.values(p.prices || {})[0] || 0;
+          const bestPrice = pickBestPrice(p.prices || {});
+          const costPrice = bestPrice.price;
           const soldInLength = p.soldInLength || false;
           const unitLength = p.unitLength || null;
           const pricePerMetre = soldInLength && unitLength && costPrice > 0
@@ -310,6 +347,8 @@ Categories for consumables: Copper Tube, Insulation, Cable, Trunking, Brackets, 
             category: p.category || "Uncategorized",
             prices: p.prices || {},
             cost_price: costPrice,
+            selected_price_column: bestPrice.columnName,
+            price_is_incl_vat: bestPrice.isInclVat,
             pipe_size: p.pipeSize || null,
             btu_rating: p.btuRating || null,
             refrigerant_type: p.refrigerantType || null,
