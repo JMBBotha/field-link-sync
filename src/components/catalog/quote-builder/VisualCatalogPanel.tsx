@@ -984,32 +984,10 @@ const LazyPdfPage = ({
     staleTime: 120000,
   });
 
-  // ─── BUILD OVERLAY REGIONS: prefer liveRegions, fallback to stored/evenly-distributed ───
-  const overlayRegions: OverlayRegion[] = useMemo(() => {
-    // Primary: use live extraction regions with correct y_pct from PDF text parsing
-    if (liveRegions.length > 0) {
-      const result: OverlayRegion[] = [];
-      for (let idx = 0; idx < liveRegions.length; idx++) {
-        const r = liveRegions[idx];
-        // Cross-page dedup: skip if this exact item was already seen on an earlier page
-        const dedupKey = `${(r.label || "").substring(0, 80)}|${r.detected_price ?? "no-price"}`;
-        const firstPage = globalSeenRegions.get(dedupKey);
-        if (firstPage !== undefined && firstPage !== pageIndex) continue;
-        globalSeenRegions.set(dedupKey, pageIndex);
-
-        result.push({
-          id: `live-${page.id}-${idx}`,
-          x_pct: r.x_pct, y_pct: r.y_pct, w_pct: r.w_pct, h_pct: r.h_pct,
-          product: r.product as PaletteProduct | null,
-          product_code: r.product_code || "",
-          label: r.label || "",
-          has_price: r.has_price,
-          detected_price: r.detected_price,
-          matched: r.matched,
-        });
-      }
-      return result;
-    }
+  // ─── FALLBACK REGIONS: only used when no live extraction available ───
+  const fallbackRegions: OverlayRegion[] = useMemo(() => {
+    // If live regions exist, no fallback needed
+    if (liveRegions.length > 0) return [];
 
     // Secondary: use stored regions from pdf_product_regions table
     if (storedRegions.length > 0) {
@@ -1018,7 +996,7 @@ const LazyPdfPage = ({
         return {
           id: `stored-${page.id}-${idx}`,
           x_pct: sr.region_x ?? 0,
-          y_pct: sr.region_y ?? (5 + idx * (90 / Math.max(storedRegions.length, 1))),
+          y_pct: sr.region_y ?? (idx * 3),
           w_pct: sr.region_width ?? 100,
           h_pct: sr.region_height ?? 2.5,
           product: paletteProduct,
@@ -1068,7 +1046,40 @@ const LazyPdfPage = ({
     }
 
     return [];
-  }, [liveRegions, storedRegions, activeProducts, page.id, page.page_number, page.supplier_id, supplierName, totalPages, pageIndex]);
+  }, [liveRegions, storedRegions, activeProducts, page.id, page.supplier_id, supplierName, totalPages, pageIndex]);
+
+  // ─── OVERLAY REGIONS: prefer live extraction with cross-page dedup, else fallback ───
+  const overlayRegions: OverlayRegion[] = useMemo(() => {
+    const sourceRegions = liveRegions.length > 0 ? liveRegions : [];
+    const result: OverlayRegion[] = [];
+
+    for (let idx = 0; idx < sourceRegions.length; idx++) {
+      const r = sourceRegions[idx];
+      // Cross-page dedup: skip if this exact item was already seen on an earlier page
+      const dedupKey = `${(r.label || "").substring(0, 80)}|${r.detected_price ?? "no-price"}`;
+      const firstPage = globalSeenRegions.get(dedupKey);
+      if (firstPage !== undefined && firstPage !== pageIndex) continue;
+      globalSeenRegions.set(dedupKey, pageIndex);
+
+      result.push({
+        id: `live-${page.id}-${idx}`,
+        x_pct: r.x_pct, y_pct: r.y_pct, w_pct: r.w_pct, h_pct: r.h_pct,
+        product: r.product as PaletteProduct | null,
+        product_code: r.product_code || "",
+        label: r.label || "",
+        has_price: r.has_price,
+        detected_price: r.detected_price,
+        matched: r.matched,
+      });
+    }
+
+    // If no live regions produced results, use fallback
+    if (result.length === 0 && fallbackRegions.length > 0) {
+      return fallbackRegions;
+    }
+
+    return result;
+  }, [liveRegions, fallbackRegions, page.id, pageIndex]);
 
   // Report detected categories to parent for category→page mapping
   useEffect(() => {
