@@ -94,7 +94,7 @@ export type ImportStage =
 
 export async function getSupplierPricingSettings(supplierId: string): Promise<SupplierPricingSettings> {
   const { data: supplier } = await (supabase.from("suppliers") as any)
-    .select("name, default_trade_discount, default_markup_percent, prices_include_vat")
+    .select("name, default_trade_discount, default_markup_percent, price_includes_vat")
     .eq("id", supplierId)
     .single();
 
