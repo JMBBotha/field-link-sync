@@ -28,6 +28,20 @@ export interface ParsedProduct {
   sell_price_incl_vat: number;
   confidence: "high" | "medium" | "low";
   flags: string[];
+  // Technical specs
+  btu_rating?: number | null;
+  pipe_size?: string | null;
+  refrigerant_type?: string | null;
+  phase?: string | null;
+  speed_type?: string | null;
+  kw?: number | null;
+  unit_type?: string | null;
+  short_name?: string | null;
+  brand?: string | null;
+  product_category?: string | null;
+  sold_in_length?: boolean;
+  unit_length?: number | null;
+  price_per_metre?: number | null;
 }
 
 export interface ImportPreview {
