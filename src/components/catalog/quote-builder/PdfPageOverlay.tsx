@@ -315,11 +315,11 @@ const DraggableRegion = memo(({
           ) : (
             <button
               className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-all cursor-pointer shadow-md"
-              style={{ background: "#f97316" }}
+              style={{ background: iconBg }}
               onClick={handleIconClick}
               onContextMenu={handleContextMenu}
-              title="Right-click to hide"
-              aria-label="Unmatched product. Right-click to hide"
+              title={`${region.label.substring(0, 60)}${region.detected_price ? ` — R${region.detected_price.toLocaleString("en-ZA")}` : ""} · Right-click to hide`}
+              aria-label="Unmatched product. Click to add. Right-click to hide"
             >
               <ShoppingCart className="h-2.5 w-2.5 text-white" />
             </button>
