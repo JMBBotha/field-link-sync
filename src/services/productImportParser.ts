@@ -431,12 +431,14 @@ async function parsePDFWithFullPipeline(
     suggestedMarkup: settings.markupPercent,
     totalProducts: products.length,
     warnings,
-    vatEvidence: vatDetection.evidence,
+    vatEvidence: grokDetectedInclVat ? "AI selected INCL VAT column" : vatDetection.evidence,
     discountEvidence: effectiveDiscount > 0 ? discountDetection.evidence : "N/A — no discount",
-    vatConfidence: vatDetection.confidence,
+    vatConfidence: grokDetectedInclVat ? "high" : vatDetection.confidence,
     discountConfidence: effectiveDiscount > 0 ? discountDetection.confidence : "high",
     supplierSettings: settings,
     parseMethod,
+    detectedPriceColumns: detectedPriceColumns.length > 0 ? detectedPriceColumns : undefined,
+    selectedPriceColumn,
   };
 }
 
