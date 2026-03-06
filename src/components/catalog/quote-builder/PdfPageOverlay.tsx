@@ -3,7 +3,7 @@ import { calculatePricing, exclVatFromIncl } from "@/utils/pricing";
 import { useDraggable } from "@dnd-kit/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Plus, X, Star, Check } from "lucide-react";
+import { ShoppingCart, Plus, X, Star, Check, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { categorizePdfItem, categoryToWizardStep } from "./categorizePdfItem";
