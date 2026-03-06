@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { calculatePricing } from "@/utils/pricing";
+import { calcSellingPrice } from "@/utils/pricing";
 import { Info, X, ImageIcon } from "lucide-react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
@@ -65,10 +65,8 @@ interface ProductInfoDialogProps {
 export default function ProductInfoDialog({ product, onMarkupSaved, open: controlledOpen, onOpenChange }: ProductInfoDialogProps) {
   const { isAdmin } = useRole();
   const btu = detectBTU(product);
-  const initialMarkup = (product as any).markup_percent ?? (product as any).default_markup_percent ?? 20;
-  const costPrice = (product as any).discounted_cost > 0
-    ? (product as any).discounted_cost
-    : calculatePricing(product.cost_excl_vat || 0, product.supplier_discount_percent ?? 0, initialMarkup).discountedCost;
+  const initialMarkup = (product as any).default_markup_percent ?? (product as any).markup_percent ?? 20;
+  const costPrice = product.cost_price || product.cost_excl_vat || 0;
   const kW = extractKW(product);
   const phase = extractPhase(product);
   const imageUrl = (product as any).image_url;
@@ -81,15 +79,15 @@ export default function ProductInfoDialog({ product, onMarkupSaved, open: contro
     setSaving(true);
     const { error } = await supabase
       .from("supplier_products")
-      .update({ markup_percent: markup } as any)
+      .update({ default_markup_percent: markup } as any)
       .eq("id", product.id);
     setSaving(false);
     if (error) {
       toast.error("Failed to update markup");
     } else {
       toast.success("Markup updated");
-      const updated = calculatePricing(product.cost_excl_vat || 0, product.supplier_discount_percent ?? 0, markup);
-      onMarkupSaved?.(product.id, Math.round(updated.sellingPrice * 100) / 100);
+      const { sellingExclVat } = calcSellingPrice(costPrice, markup);
+      onMarkupSaved?.(product.id, Math.round(sellingExclVat * 100) / 100);
     }
   };
 
@@ -188,7 +186,7 @@ export default function ProductInfoDialog({ product, onMarkupSaved, open: contro
                         min={0}
                       />
                       <span className="text-muted-foreground text-xs">
-                        → {formatZAR(calculatePricing(costPrice, 0, markup).sellingPrice)}
+                        → {formatZAR(calcSellingPrice(costPrice, markup).sellingExclVat)}
                       </span>
                       <button
                         className="ml-auto text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"

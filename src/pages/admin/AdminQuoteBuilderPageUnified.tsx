@@ -191,7 +191,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     queryKey: ["quote-builder-products"],
     queryFn: async () => {
       const { data, error } = await (supabase.from("supplier_products") as any).
-      select("id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, suggested_consumables, pack_qty, supplier_discount_percent, markup_percent, suppliers(name, supplier_type)").
+      select("id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, suggested_consumables, pack_qty, default_markup_percent, suppliers(name, supplier_type)").
       or("archived.is.null,archived.eq.false").
       order("is_pinned", { ascending: false }).
       order("pin_order", { ascending: true, nullsFirst: false }).
@@ -208,8 +208,12 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         pipe_size: p.pipe_size || null,
         is_material_favorite: p.is_material_favorite || false,
         pack_qty: p.pack_qty || null,
-        supplier_discount_percent: p.supplier_discount_percent ?? null,
-        markup_percent: p.markup_percent ?? 20,
+        cost_price: p.cost_price ?? p.cost_excl_vat ?? 0,
+        cost_excl_vat: p.cost_excl_vat ?? p.cost_price ?? 0,
+        cost_incl_vat: 0,
+        supplier_discount_percent: null,
+        markup_percent: p.default_markup_percent ?? 20,
+        default_markup_percent: p.default_markup_percent ?? 20,
       })) as PaletteProduct[];
     },
     staleTime: 60000
