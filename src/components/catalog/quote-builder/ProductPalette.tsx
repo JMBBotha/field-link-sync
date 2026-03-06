@@ -350,9 +350,9 @@ function DraggableProductCard({
                           Used {usageCount}x
                         </Badge>
                       )}
-                      {product.selling_price > 0 && product.cost_price > 0 && (() => {
-                        // Show baked-in markup (selling_price vs cost_price)
-                        const bakedMarkup = ((product.selling_price / product.cost_price) - 1) * 100;
+                      {product.selling_price > 0 && (product.discounted_cost || product.cost_price) > 0 && (() => {
+                        const costBase = product.discounted_cost || product.cost_price;
+                        const bakedMarkup = ((product.selling_price / costBase) - 1) * 100;
                         return (
                           <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 text-primary">
                             {bakedMarkup.toFixed(0)}% M/Up
@@ -402,7 +402,7 @@ function DraggableProductCard({
                 </div>
                 <p className="font-mono font-medium text-primary/80">{product.product_code}</p>
                 {(() => {
-                  const costPrice = product.cost_price ?? product.cost_excl_vat ?? 0;
+                  const costPrice = product.discounted_cost ?? product.cost_price ?? product.cost_excl_vat ?? 0;
                   const sellPrice = product.selling_price ?? 0;
                   const bakedMarkup = costPrice > 0 ? ((sellPrice / costPrice) - 1) * 100 : 0;
                   return (

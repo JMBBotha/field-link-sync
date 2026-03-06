@@ -21,6 +21,7 @@ interface ComparisonProduct {
   selling_price: number;
   is_price_on_request: boolean;
   default_markup_percent: number;
+  discounted_cost: number | null;
 }
 
 interface SupplierComparisonProps {
@@ -46,7 +47,7 @@ const SupplierComparison = ({ category }: SupplierComparisonProps) => {
     queryFn: async () => {
       let query = supabase
         .from("supplier_products" as any)
-        .select("id, supplier_id, product_code, description, category, btu_rating, pipe_size, cost_price, selling_price, is_price_on_request, default_markup_percent")
+        .select("id, supplier_id, product_code, description, category, btu_rating, pipe_size, cost_price, selling_price, is_price_on_request, default_markup_percent, discounted_cost")
         .eq("is_active", true)
         .order("btu_rating", { ascending: true });
 
@@ -103,7 +104,7 @@ const SupplierComparison = ({ category }: SupplierComparisonProps) => {
       </h3>
 
       {grouped.map((group) => {
-        const lowestPrice = Math.min(...group.products.filter((p) => !p.is_price_on_request && p.cost_price > 0).map((p) => p.cost_price));
+        const lowestPrice = Math.min(...group.products.filter((p) => !p.is_price_on_request && (p.discounted_cost || p.cost_price) > 0).map((p) => p.discounted_cost || p.cost_price));
 
         return (
           <Card key={group.key}>
@@ -126,19 +127,20 @@ const SupplierComparison = ({ category }: SupplierComparisonProps) => {
                 </TableHeader>
                 <TableBody>
                   {group.products
-                    .sort((a, b) => a.cost_price - b.cost_price)
+                    .sort((a, b) => (a.discounted_cost || a.cost_price) - (b.discounted_cost || b.cost_price))
                     .map((product) => {
-                      const diff = product.cost_price > 0 && lowestPrice > 0
-                        ? ((product.cost_price - lowestPrice) / lowestPrice * 100)
+                      const effectiveCost = product.discounted_cost || product.cost_price;
+                      const diff = effectiveCost > 0 && lowestPrice > 0
+                        ? ((effectiveCost - lowestPrice) / lowestPrice * 100)
                         : 0;
-                      const isBest = product.cost_price === lowestPrice && !product.is_price_on_request;
+                      const isBest = effectiveCost === lowestPrice && !product.is_price_on_request;
 
                       return (
                         <TableRow key={product.id}>
                           <TableCell className="text-xs font-medium">{supplierName(product.supplier_id)}</TableCell>
                           <TableCell className="text-xs font-mono">{product.product_code}</TableCell>
                           <TableCell className="text-xs text-right">
-                            {product.is_price_on_request ? "POR" : formatZAR(product.cost_price)}
+                            {product.is_price_on_request ? "POR" : formatZAR(effectiveCost)}
                           </TableCell>
                           <TableCell className="text-xs text-right font-semibold">
                             {product.is_price_on_request ? "POR" : formatZAR(product.selling_price)}

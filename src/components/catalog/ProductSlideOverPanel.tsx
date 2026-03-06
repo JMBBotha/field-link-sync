@@ -26,6 +26,9 @@ interface Product {
   short_name?: string | null;
   rrp?: number | null;
   image_url?: string | null;
+  discounted_cost?: number | null;
+  supplier_discount_percent?: number | null;
+  cost_excl_vat?: number | null;
 }
 
 interface Props {
@@ -103,7 +106,8 @@ const ProductSlideOverPanel = ({
 
   if (!product) return null;
 
-  const margin = product.selling_price - product.cost_price;
+  const effectiveCost = product.discounted_cost ?? product.cost_price;
+  const margin = product.selling_price - effectiveCost;
   const brand = deriveBrand(product);
   const speedType = deriveSpeedType(product);
   const phase = derivePhase(product);
@@ -257,7 +261,7 @@ const ProductSlideOverPanel = ({
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-muted/30 rounded-lg p-2.5">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Cost</p>
-                  <p className="text-sm font-medium">{formatZAR(product.cost_price)}</p>
+                  <p className="text-sm font-medium">{formatZAR(effectiveCost)}</p>
                 </div>
                 <div className="bg-muted/30 rounded-lg p-2.5">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Selling</p>

@@ -15,6 +15,7 @@ interface SupplierProduct {
   product_code: string;
   description: string;
   cost_price: number;
+  discounted_cost: number | null;
   category: string;
   supplier_id: string;
 }
@@ -77,7 +78,7 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
       if (isOnline) {
         const { data, error } = await supabase
           .from("supplier_products")
-          .select("id, product_code, description, cost_price, category, supplier_id")
+          .select("id, product_code, description, cost_price, discounted_cost, category, supplier_id")
           .or(`product_code.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
           .eq("is_active", true)
           .limit(15);
@@ -111,7 +112,7 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
         product_id: product.id,
         product_code: product.product_code,
         product_name: product.description,
-        unit_cost: product.cost_price,
+        unit_cost: product.discounted_cost ?? product.cost_price,
         quantity,
         added_by: agentId,
       };
@@ -226,7 +227,7 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
                       <p className="text-xs text-muted-foreground truncate">{product.description}</p>
                     </div>
                     <span className="text-xs font-medium shrink-0 ml-2">
-                      {formatCurrency(product.cost_price)}
+                      {formatCurrency(product.discounted_cost ?? product.cost_price)}
                     </span>
                   </CommandItem>
                 ))}
@@ -242,7 +243,7 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium truncate">{selectedProduct.description}</p>
             <p className="text-[10px] text-muted-foreground">
-              {selectedProduct.product_code} · {formatCurrency(selectedProduct.cost_price)}
+              {selectedProduct.product_code} · {formatCurrency(selectedProduct.discounted_cost ?? selectedProduct.cost_price)}
             </p>
           </div>
           <div className="w-16 shrink-0">
