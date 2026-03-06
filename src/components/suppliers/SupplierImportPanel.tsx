@@ -39,6 +39,7 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
   const [showCleanConfirm, setShowCleanConfirm] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [importStage, setImportStage] = useState<ImportStage | null>(null);
+  const [supplierInfoExtracted, setSupplierInfoExtracted] = useState<ExtractedSupplierInfo | null>(null);
 
   const { data: activeProductCount = 0 } = useQuery({
     queryKey: ["supplier-active-product-count", supplierId],
