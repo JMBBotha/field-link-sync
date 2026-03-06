@@ -227,7 +227,7 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
                       <p className="text-xs text-muted-foreground truncate">{product.description}</p>
                     </div>
                     <span className="text-xs font-medium shrink-0 ml-2">
-                      {formatCurrency(product.cost_price)}
+                      {formatCurrency(product.discounted_cost ?? product.cost_price)}
                     </span>
                   </CommandItem>
                 ))}
