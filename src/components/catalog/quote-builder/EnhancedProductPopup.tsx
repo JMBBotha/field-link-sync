@@ -10,10 +10,9 @@ import { calculatePricing } from "@/utils/pricing";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
 function getProductPricing(product: PaletteProduct) {
-  const costExcl = product.cost_excl_vat || 0;
-  const disc = product.supplier_discount_percent ?? 0;
-  const markup = product.markup_percent ?? 20;
-  return calculatePricing(costExcl, disc, markup);
+  const cost = product.cost_price || product.cost_excl_vat || 0;
+  const markup = product.markup_percent ?? product.default_markup_percent ?? 20;
+  return calculatePricing(cost, 0, markup);
 }
 
 interface EnhancedProductPopupProps {
