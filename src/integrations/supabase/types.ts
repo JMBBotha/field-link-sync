@@ -3817,6 +3817,7 @@ export type Database = {
           created_at: string
           default_markup_percent: number
           description: string
+          discounted_cost: number | null
           id: string
           image_url: string | null
           import_confidence: string | null
@@ -3882,6 +3883,7 @@ export type Database = {
           created_at?: string
           default_markup_percent?: number
           description: string
+          discounted_cost?: number | null
           id?: string
           image_url?: string | null
           import_confidence?: string | null
@@ -3947,6 +3949,7 @@ export type Database = {
           created_at?: string
           default_markup_percent?: number
           description?: string
+          discounted_cost?: number | null
           id?: string
           image_url?: string | null
           import_confidence?: string | null
@@ -4496,7 +4499,9 @@ export type Database = {
               category: string
               cost_excl_vat: number
               cost_incl_vat: number
+              default_markup_percent: number
               description: string
+              discounted_cost: number
               id: string
               is_pinned: boolean
               pin_order: number
@@ -4505,6 +4510,7 @@ export type Database = {
               rrp: number
               selling_price: number
               short_name: string
+              supplier_discount_percent: number
               supplier_id: string
               supplier_name: string
             }[]
