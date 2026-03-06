@@ -586,6 +586,26 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-[10px]">Magnifying glass</TooltipContent>
               </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={hdMode ? "secondary" : "ghost"}
+                    size="icon"
+                    className={`h-7 w-7 text-[9px] font-bold ${hdMode ? "ring-1 ring-primary" : ""}`}
+                    onClick={() => {
+                      const next = !hdMode;
+                      setHdMode(next);
+                      localStorage.setItem(HD_KEY, String(next));
+                      // Clear cache so pages re-render at new quality
+                      clearExtractionCache();
+                      queryClient.removeQueries({ queryKey: ["visual-panel-live-extract"] });
+                    }}
+                  >
+                    HD
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-[10px]">High quality PDF render (slower)</TooltipContent>
+              </Tooltip>
             </div>
 
             <Select value={selectedSupplier} onValueChange={(v) => { setSelectedSupplier(v); }}>
