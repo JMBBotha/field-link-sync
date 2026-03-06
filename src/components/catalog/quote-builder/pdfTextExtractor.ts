@@ -8,6 +8,26 @@
  */
 import type { PaletteProduct } from "../QuoteBuilderTab";
 
+/**
+ * Sanitize PDF URL by trimming trailing spaces from path segments.
+ * Fixes 400 errors from storage when supplier names have trailing spaces.
+ */
+function sanitizePdfUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    // Decode, trim each segment, re-encode
+    u.pathname = u.pathname
+      .split("/")
+      .map(seg => decodeURIComponent(seg).trim())
+      .map(seg => encodeURIComponent(seg))
+      .join("/");
+    return u.toString();
+  } catch {
+    // Fallback: simple regex to remove %20 before /
+    return url.replace(/%20\//g, "/").replace(/ \//g, "/");
+  }
+}
+
 /** Lazily load pdfjs-dist to avoid top-level import conflicts with CDN version */
 let _pdfjsLib: any = null;
 async function getPdfjsLib() {
