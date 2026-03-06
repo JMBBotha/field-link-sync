@@ -831,7 +831,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
       if (pdfFile && storedPdfPages.length === 0) {
         import("@/lib/pdfPageCapture").then(async ({ capturePdfPages, matchProductsToPdfPages }) => {
           try {
-            const captureResult = await capturePdfPages(pdfFile, supplierName, undefined, enhanceImages);
+            const captureResult = await capturePdfPages(pdfFile, supplierName, undefined);
             toast({ title: `Visual Catalog`, description: `Stored ${captureResult.pagesStored} pages from ${pdfFile.name}` });
             queryClient.invalidateQueries({ queryKey: ["visual-panel-pages"] });
             queryClient.invalidateQueries({ queryKey: ["visual-panel-suppliers"] });
