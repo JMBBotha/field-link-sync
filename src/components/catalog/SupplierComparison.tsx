@@ -21,6 +21,7 @@ interface ComparisonProduct {
   selling_price: number;
   is_price_on_request: boolean;
   default_markup_percent: number;
+  discounted_cost: number | null;
 }
 
 interface SupplierComparisonProps {
