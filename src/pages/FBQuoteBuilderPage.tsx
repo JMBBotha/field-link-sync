@@ -676,7 +676,9 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
           {/* RIGHT: Summary panel (desktop only) */}
           {!isMobile && (
             <div className={`transition-all duration-200 ease-in-out overflow-hidden ${summaryCollapsed ? "w-0" : "w-72 lg:w-80"}`}>
-              <QuoteSummaryColumn baskets={baskets} collapsed={summaryCollapsed} onToggle={() => setSummaryCollapsed((c) => !c)} />
+              <PanelErrorBoundary panelName="Quote Summary">
+                <QuoteSummaryColumn baskets={baskets} collapsed={summaryCollapsed} onToggle={() => setSummaryCollapsed((c) => !c)} />
+              </PanelErrorBoundary>
             </div>
           )}
         </div>
