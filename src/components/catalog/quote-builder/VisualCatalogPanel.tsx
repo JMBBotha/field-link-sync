@@ -9,8 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  ZoomIn, ZoomOut, X, FileImage, ScanSearch, Loader2, Lightbulb, Search, Trash2, Star,
+  ZoomIn, ZoomOut, X, FileImage, ScanSearch, Loader2, Lightbulb, Search, Trash2, Star, Plus,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -76,6 +79,55 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const [hoveredProduct, setHoveredProduct] = useState<PaletteProduct | null>(null);
   const [hoverEvent, setHoverEvent] = useState<MouseEvent | null>(null);
   const [productInfoProduct, setProductInfoProduct] = useState<PaletteProduct | null>(null);
+
+  // Manual product dialog state
+  const [manualDialogOpen, setManualDialogOpen] = useState(false);
+  const [manualName, setManualName] = useState("");
+  const [manualCode, setManualCode] = useState("");
+  const [manualPrice, setManualPrice] = useState("");
+  const [manualSaving, setManualSaving] = useState(false);
+
+  const handleManualProductSubmit = useCallback(async () => {
+    if (!manualName.trim() && !manualCode.trim()) {
+      toast({ title: "Enter at least a product name or model code", variant: "destructive" });
+      return;
+    }
+    const supplierId = selectedSupplier !== "all" ? selectedSupplier : (currentPage?.supplier_id || null);
+    if (!supplierId) {
+      toast({ title: "Select a supplier first", variant: "destructive" });
+      return;
+    }
+    setManualSaving(true);
+    try {
+      const priceVal = parseFloat(manualPrice) || 0;
+      const { data, error } = await (supabase.from("supplier_products") as any).insert({
+        supplier_id: supplierId,
+        product_code: manualCode.trim() || manualName.trim().substring(0, 20),
+        short_name: manualName.trim(),
+        description: manualName.trim(),
+        cost_excl_vat: priceVal,
+        cost_incl_vat: Math.round(priceVal * 1.15 * 100) / 100,
+        selling_price: Math.round(priceVal * 1.15 * 100) / 100,
+        category: "Manual",
+        is_active: true,
+        archived: false,
+      }).select().single();
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
+      queryClient.invalidateQueries({ queryKey: ["visual-panel-live-extract"] });
+      clearExtractionCache();
+      toast({ title: "Product added", description: `${manualName.trim() || manualCode.trim()} added to catalog` });
+      setManualDialogOpen(false);
+      setManualName("");
+      setManualCode("");
+      setManualPrice("");
+    } catch (err) {
+      console.error("[ManualProduct] Insert failed:", err);
+      toast({ title: "Failed to add product", variant: "destructive" });
+    } finally {
+      setManualSaving(false);
+    }
+  }, [manualName, manualCode, manualPrice, selectedSupplier, currentPage, queryClient]);
 
   const handleProductInfoOpen = useCallback((product: PaletteProduct) => {
     setProductInfoProduct(product);
@@ -628,6 +680,16 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                   onScrollToCategory={handleScrollToCategory}
                   activeCategory={activeCategory}
                 />
+
+                {/* Floating "+" button for manual product entry */}
+                <Button
+                  onClick={() => setManualDialogOpen(true)}
+                  className="absolute bottom-16 right-4 z-30 h-12 w-12 rounded-full shadow-lg"
+                  size="icon"
+                  title="Add product manually"
+                >
+                  <Plus className="h-5 w-5" />
+                </Button>
               </>
             )}
           </div>
@@ -672,6 +734,36 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
           onOpenChange={(open) => { if (!open) setProductInfoProduct(null); }}
         />
       )}
+
+      {/* Manual product entry dialog */}
+      <Dialog open={manualDialogOpen} onOpenChange={setManualDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Product Manually</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="manual-name">Product Name</Label>
+              <Input id="manual-name" placeholder="e.g. 9000 BTU Wall Mount" value={manualName} onChange={(e) => setManualName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="manual-code">Model Code</Label>
+              <Input id="manual-code" placeholder="e.g. FTXM25Q" value={manualCode} onChange={(e) => setManualCode(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="manual-price">Price (excl. VAT)</Label>
+              <Input id="manual-price" type="number" placeholder="0.00" value={manualPrice} onChange={(e) => setManualPrice(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setManualDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleManualProductSubmit} disabled={manualSaving}>
+              {manualSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Add Product
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
@@ -1008,7 +1100,7 @@ const LazyPdfPage = ({
       }}
       data-page-index={pageIndex}
       className="relative border-b border-muted/30"
-      style={{ minHeight: "400px", paddingRight: "60px" }}
+      style={{ minHeight: "400px", paddingRight: "88px", boxSizing: "border-box", overflow: "visible" }}
     >
       {/* Page number label */}
       <div className="absolute top-2 left-2 z-30 bg-black/60 text-white text-[9px] font-mono px-1.5 py-0.5 rounded flex items-center gap-1.5">
