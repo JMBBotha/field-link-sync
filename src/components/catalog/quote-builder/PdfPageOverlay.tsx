@@ -179,8 +179,23 @@ const DraggableRegion = memo(({
       onMouseMove={onHoverMove}
       onMouseLeave={onHoverLeave}
     >
-      {/* Full-width transparent hit area with hover highlight */}
-      <div className="absolute inset-0 hover:bg-primary/5 rounded transition-colors duration-150" />
+      {/* Full-width hover gradient overlay */}
+      <div className="absolute inset-0 rounded transition-opacity duration-200 opacity-0 group-hover:opacity-100 pointer-events-none"
+        style={{
+          background: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.15) 80%, rgba(0,0,0,0.3) 100%)",
+          right: "88px",
+          width: "calc(100% - 88px)",
+        }}
+      />
+      {/* Chevron arrow at the right end of gradient */}
+      <div
+        className="absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10"
+        style={{ right: "92px" }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </div>
 
       {/* Inline icon row in right gutter: checkbox + cart/star side by side */}
       <div
