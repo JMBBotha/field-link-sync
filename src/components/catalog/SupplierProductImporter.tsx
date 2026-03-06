@@ -321,7 +321,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
       import("@/lib/pdfPageCapture").then(async ({ capturePdfPages }) => {
         try {
           console.log("[PDF Import] Capturing pages for visual catalog...");
-          const captureResult = await capturePdfPages(file, supplierName, undefined, enhanceImages);
+          const captureResult = await capturePdfPages(file, supplierName, undefined);
           console.log(`[PDF Import] Captured ${captureResult.pagesStored} pages`);
           toast({ title: "Visual Catalog Ready", description: `Stored ${captureResult.pagesStored} page images from ${file.name}` });
           queryClient.invalidateQueries({ queryKey: ["visual-panel-pages"] });
