@@ -1008,7 +1008,7 @@ const LazyPdfPage = ({
       }}
       data-page-index={pageIndex}
       className="relative border-b border-muted/30"
-      style={{ minHeight: "400px", paddingRight: "60px" }}
+      style={{ minHeight: "400px", paddingRight: "88px", boxSizing: "border-box", overflow: "visible" }}
     >
       {/* Page number label */}
       <div className="absolute top-2 left-2 z-30 bg-black/60 text-white text-[9px] font-mono px-1.5 py-0.5 rounded flex items-center gap-1.5">
