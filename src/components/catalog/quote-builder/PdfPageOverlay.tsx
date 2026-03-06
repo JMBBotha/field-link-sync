@@ -1,5 +1,5 @@
 import { useState, memo, useCallback, useMemo, useRef } from "react";
-import { calculatePricing, exclVatFromIncl } from "@/utils/pricing";
+import { calcSellingPrice } from "@/utils/pricing";
 import { useDraggable } from "@dnd-kit/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -157,8 +157,32 @@ const DraggableRegion = memo(({
     }
   }, [onRemoveRegion, region]);
 
-  // Determine icon color based on state
+  // Determine icon color based on state — blue for all actionable items
   const iconBg = isAddedToQuote ? "#28a745" : "#007BFF";
+  // Build a synthetic product for unmatched regions (for checkbox & hover)
+  const effectiveProduct: PaletteProduct | null = product || (region.detected_price ? {
+    id: `unmatched-${region.product_code}`,
+    product_code: region.product_code,
+    short_name: region.label.substring(0, 80),
+    description: region.label,
+    brand: "",
+    product_category: "",
+    category: "",
+    cost_excl_vat: region.detected_price || 0,
+    cost_incl_vat: region.detected_price || 0,
+    cost_price: region.detected_price || 0,
+    selling_price: region.detected_price || 0,
+    default_markup_percent: 20,
+    is_pinned: false,
+    pin_order: null,
+    supplier_name: "",
+    supplier_type: "both",
+    price_per_metre: null,
+    sold_in_length: false,
+    unit_length: null,
+    pipe_size: null,
+    is_material_favorite: false,
+  } as PaletteProduct : null);
 
   return (
     <div
@@ -201,8 +225,8 @@ const DraggableRegion = memo(({
         className="absolute top-1/2 -translate-y-1/2 z-20 pointer-events-auto"
         style={{ right: "12px", display: "flex", alignItems: "center", gap: "8px" }}
       >
-        {/* PDF selection checkbox */}
-        {pdfSelection && region.product && (
+        {/* PDF selection checkbox — show for all regions with a product or detected price */}
+        {pdfSelection && effectiveProduct && (
           <div
             className="flex items-center justify-center rounded"
             style={{ width: "16px", height: "16px", backgroundColor: "rgba(255,255,255,0.95)", boxShadow: "0 0 2px rgba(0,0,0,0.3)" }}
@@ -211,20 +235,14 @@ const DraggableRegion = memo(({
               type="checkbox"
               checked={pdfSelection.selectedFromPdf.some((s) => s.code === region.product_code)}
               onChange={() => {
-                const product = region.product;
+                const ep = effectiveProduct;
                 const isCurrentlySelected = pdfSelection.selectedFromPdf.some((s) => s.code === region.product_code);
-                const sellingPrice = product?.selling_price || product?.cost_incl_vat || region.detected_price || 0;
-                const disc = (product as any)?.supplier_discount_percent ?? 0;
-                let costPrice = 0;
-                if (product?.cost_excl_vat && product.cost_excl_vat > 0) {
-                  costPrice = calculatePricing(product.cost_excl_vat, disc).discountedCost;
-                } else if (region.detected_price && region.detected_price > 0) {
-                  costPrice = Math.round(exclVatFromIncl(region.detected_price) * 100) / 100;
-                }
-                const markupPercent = (product as any)?.markup_percent ?? 20;
+                const sellingPrice = ep?.selling_price || ep?.cost_incl_vat || region.detected_price || 0;
+                const costPrice = ep?.cost_price || ep?.cost_excl_vat || region.detected_price || 0;
+                const markupPercent = (ep as any)?.default_markup_percent ?? 20;
                 pdfSelection.handleSelectProduct({
                   code: region.product_code,
-                  description: product?.short_name || region.label,
+                  description: ep?.short_name || region.label,
                   price: String(sellingPrice),
                   costPrice: costPrice > 0 ? costPrice : undefined,
                   markupPercent,
@@ -297,11 +315,11 @@ const DraggableRegion = memo(({
           ) : (
             <button
               className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-all cursor-pointer shadow-md"
-              style={{ background: "#f97316" }}
+              style={{ background: iconBg }}
               onClick={handleIconClick}
               onContextMenu={handleContextMenu}
-              title="Right-click to hide"
-              aria-label="Unmatched product. Right-click to hide"
+              title={`${region.label.substring(0, 60)}${region.detected_price ? ` — R${region.detected_price.toLocaleString("en-ZA")}` : ""} · Right-click to hide`}
+              aria-label="Unmatched product. Click to add. Right-click to hide"
             >
               <ShoppingCart className="h-2.5 w-2.5 text-white" />
             </button>
@@ -466,8 +484,34 @@ const PdfPageOverlay = ({
 
   const handleHoverMove = useCallback((e: React.MouseEvent) => {
     const region = hoveredRegionRef.current;
-    if (region?.product) {
-      onHoverStart?.(region.product, e);
+    if (region) {
+      // Emit hover for both matched and unmatched regions
+      const hoverProduct: PaletteProduct | null = region.product || (region.detected_price ? {
+        id: `unmatched-${region.product_code}`,
+        product_code: region.product_code,
+        short_name: region.label.substring(0, 80),
+        description: region.label,
+        brand: "",
+        product_category: "",
+        category: "",
+        cost_excl_vat: region.detected_price || 0,
+        cost_incl_vat: region.detected_price || 0,
+        cost_price: region.detected_price || 0,
+        selling_price: region.detected_price || 0,
+        default_markup_percent: 20,
+        is_pinned: false,
+        pin_order: null,
+        supplier_name: "",
+        supplier_type: "both",
+        price_per_metre: null,
+        sold_in_length: false,
+        unit_length: null,
+        pipe_size: null,
+        is_material_favorite: false,
+      } as PaletteProduct : null);
+      if (hoverProduct) {
+        onHoverStart?.(hoverProduct, e);
+      }
     }
     onHoverMoveProp?.(e);
   }, [onHoverStart, onHoverMoveProp]);
