@@ -12,7 +12,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AlertTriangle, CheckCircle2, CircleHelp, Download, Loader2, Search, Tag, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CircleHelp, Columns, Download, Loader2, Search, Tag, Wallet } from "lucide-react";
 import { formatRand } from "@/utils/formatRand";
 import type { ImportPreview, ParsedProduct, PriceListType } from "@/services/productImportParser";
 import { recalculateProducts } from "@/services/productImportParser";
@@ -41,9 +41,13 @@ const ImportPreviewModal = ({
   confirming = false,
 }: ImportPreviewModalProps) => {
   const ss = preview.supplierSettings;
-  const [priceListType, setPriceListType] = useState<PriceListType>(ss.priceListType);
+  const detectedCols = preview.detectedPriceColumns || [];
+  const hasDiscount = preview.detectedDiscount > 0 || ss.tradeDiscount > 0;
+  const defaultPriceListType: PriceListType = hasDiscount ? "list_price_with_discount" : "cost_price";
+
+  const [priceListType, setPriceListType] = useState<PriceListType>(defaultPriceListType);
   const [isInclVat, setIsInclVat] = useState(preview.detectedPriceType === "incl_vat");
-  const [discount, setDiscount] = useState(ss.priceListType === "list_price_with_discount" ? (preview.detectedDiscount || ss.tradeDiscount) : ss.tradeDiscount);
+  const [discount, setDiscount] = useState(preview.detectedDiscount || ss.tradeDiscount);
   const [markup, setMarkup] = useState(ss.markupPercent);
   const [search, setSearch] = useState("");
 
@@ -111,6 +115,37 @@ const ImportPreviewModal = ({
 
         <ScrollArea className="flex-1 pr-2 -mr-2">
           <div className="space-y-4">
+            {/* Detected Price Columns */}
+            {detectedCols.length > 1 && (
+              <Card className="border-blue-200 dark:border-blue-800">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <Columns className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                    <div className="flex-1 space-y-2">
+                      <div>
+                        <p className="text-sm font-semibold">Detected Price Columns</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          AI found multiple price columns. Using <span className="font-bold">"{preview.selectedPriceColumn || detectedCols[0]}"</span> (the excl VAT / lowest column).
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {detectedCols.map((col) => (
+                          <Badge
+                            key={col}
+                            variant={col === (preview.selectedPriceColumn || detectedCols[0]) ? "default" : "outline"}
+                            className="text-[10px]"
+                          >
+                            {col}
+                            {col === (preview.selectedPriceColumn || detectedCols[0]) && " ✓"}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Price List Type Toggle */}
             <Card>
               <CardContent className="p-4 space-y-4">
@@ -231,19 +266,19 @@ const ImportPreviewModal = ({
                     {isInclVat && (
                       <>
                         <span className="text-muted-foreground">Strip 15% VAT:</span>
-                        <span className="text-right text-destructive">− {formatRand(sample.raw_price - sample.price_excl_vat)}</span>
+                        <span className="text-right text-destructive">− {formatRand(sample.raw_price - (sample.price_excl_vat ?? sample.raw_price))}</span>
                       </>
                     )}
 
                     {!isCostPrice && (
                       <>
                         <span className="text-muted-foreground">= Price Excl VAT:</span>
-                        <span className="text-right">{formatRand(sample.price_excl_vat)}</span>
+                        <span className="text-right">{formatRand(sample.price_excl_vat ?? sample.raw_price)}</span>
 
                         {effectiveDiscount > 0 && (
                           <>
                             <span className="text-muted-foreground">Less {effectiveDiscount}% Trade Discount:</span>
-                            <span className="text-right text-destructive">− {formatRand(sample.price_excl_vat - sample.cost_price)}</span>
+                            <span className="text-right text-destructive">− {formatRand((sample.price_excl_vat ?? sample.raw_price) - sample.cost_price)}</span>
                           </>
                         )}
                       </>
@@ -253,16 +288,16 @@ const ImportPreviewModal = ({
                     <span className="text-right font-semibold">{formatRand(sample.cost_price)}</span>
 
                     <span className="text-muted-foreground">Plus {markup}% Markup:</span>
-                    <span className="text-right text-green-600 dark:text-green-400">+ {formatRand(sample.calculated_price - sample.cost_price)}</span>
+                    <span className="text-right text-green-600 dark:text-green-400">+ {formatRand((sample.calculated_price ?? sample.selling_price) - sample.cost_price)}</span>
 
                     <span className="text-muted-foreground">= Sell Price (Excl VAT):</span>
-                    <span className="text-right">{formatRand(sample.calculated_price)}</span>
+                    <span className="text-right">{formatRand(sample.calculated_price ?? sample.selling_price)}</span>
 
                     <span className="text-muted-foreground">Plus 15% VAT:</span>
-                    <span className="text-right">+ {formatRand(sample.vat_amount)}</span>
+                    <span className="text-right">+ {formatRand(sample.vat_amount ?? 0)}</span>
 
                     <span className="text-muted-foreground font-bold">= Sell Price (Incl VAT):</span>
-                    <span className="text-right font-bold text-primary">{formatRand(sample.sell_price_incl_vat)}</span>
+                    <span className="text-right font-bold text-primary">{formatRand(sample.sell_price_incl_vat ?? sample.selling_price_incl_vat)}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -321,8 +356,8 @@ const ImportPreviewModal = ({
                         <TableCell className="text-xs py-1.5 max-w-[200px] truncate">{p.description}</TableCell>
                         <TableCell className="text-xs text-right py-1.5 text-muted-foreground">{formatRand(p.raw_price)}</TableCell>
                         <TableCell className="text-xs text-right py-1.5">{formatRand(p.cost_price)}</TableCell>
-                        <TableCell className="text-xs text-right py-1.5">{formatRand(p.calculated_price)}</TableCell>
-                        <TableCell className="text-xs text-right py-1.5 font-semibold">{formatRand(p.sell_price_incl_vat)}</TableCell>
+                        <TableCell className="text-xs text-right py-1.5">{formatRand(p.calculated_price ?? p.selling_price)}</TableCell>
+                        <TableCell className="text-xs text-right py-1.5 font-semibold">{formatRand(p.sell_price_incl_vat ?? p.selling_price_incl_vat)}</TableCell>
                       </TableRow>
                     ))}
                     {filtered.length > 100 && (
