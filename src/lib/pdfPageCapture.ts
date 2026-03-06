@@ -80,43 +80,53 @@ export async function capturePdfPages(
       // Enhance via Deep-Image.ai edge function if requested
       if (enhanceImages) {
         try {
-          console.log(`[PDF Capture] Enhancing page ${pageNum} via Deep-Image API...`);
-          // Convert blob to base64
-          const arrayBuf = await blob.arrayBuffer();
-          const bytes = new Uint8Array(arrayBuf);
-          let binary = "";
-          for (let i = 0; i < bytes.length; i++) {
-            binary += String.fromCharCode(bytes[i]);
-          }
-          const base64 = `data:image/jpeg;base64,${btoa(binary)}`;
-
-          const resp = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enhance-pdf-page`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-                apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-              },
-              body: JSON.stringify({ imageBase64: base64, width: 2400 }),
-            }
-          );
-
-          if (resp.ok) {
-            const { enhancedBase64 } = await resp.json();
-            if (enhancedBase64) {
-              // Convert enhanced base64 back to blob
-              const enhancedResp = await fetch(enhancedBase64);
-              blob = await enhancedResp.blob();
-              console.log(`[PDF Capture] Page ${pageNum} enhanced successfully`);
-            }
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+          if (!supabaseUrl || !supabaseKey) {
+            console.warn(`[PDF Capture] Image enhancement skipped for page ${pageNum}: missing env vars, using original image`);
           } else {
-            const errText = await resp.text();
-            console.warn(`[PDF Capture] Enhancement API returned ${resp.status} for page ${pageNum}, using original:`, errText);
+            console.log(`[PDF Capture] Enhancing page ${pageNum} via Deep-Image API...`);
+            // Convert blob to base64
+            const arrayBuf = await blob.arrayBuffer();
+            const bytes = new Uint8Array(arrayBuf);
+            let binary = "";
+            for (let i = 0; i < bytes.length; i++) {
+              binary += String.fromCharCode(bytes[i]);
+            }
+            const base64 = `data:image/jpeg;base64,${btoa(binary)}`;
+
+            const resp = await fetch(
+              `${supabaseUrl}/functions/v1/enhance-pdf-page`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${supabaseKey}`,
+                  apikey: supabaseKey,
+                },
+                body: JSON.stringify({ imageBase64: base64, width: 2400 }),
+              }
+            );
+
+            if (resp.ok) {
+              const json = await resp.json();
+              if (json?.enhancedBase64) {
+                const enhancedResp = await fetch(json.enhancedBase64);
+                if (enhancedResp.ok) {
+                  blob = await enhancedResp.blob();
+                  console.log(`[PDF Capture] Page ${pageNum} enhanced successfully`);
+                } else {
+                  console.warn(`[PDF Capture] Image enhancement failed for page ${pageNum} (enhanced image fetch returned ${enhancedResp.status}), falling back to original image`);
+                }
+              } else {
+                console.warn(`[PDF Capture] Image enhancement failed for page ${pageNum} (no enhancedBase64 in response), falling back to original image`);
+              }
+            } else {
+              console.warn(`[PDF Capture] Image enhancement failed for page ${pageNum} (status ${resp.status}), falling back to original image`);
+            }
           }
         } catch (enhErr) {
-          console.warn(`[PDF Capture] Enhancement failed page ${pageNum}, using original:`, enhErr);
+          console.warn(`[PDF Capture] Image enhancement failed for page ${pageNum}, falling back to original image:`, enhErr);
         }
       }
 
