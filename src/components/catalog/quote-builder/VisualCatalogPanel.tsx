@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  ZoomIn, ZoomOut, X, FileImage, ScanSearch, Loader2, Lightbulb, Search, Trash2, Star, Plus, MonitorUp, AlertTriangle,
+  ZoomIn, ZoomOut, X, FileImage, ScanSearch, Loader2, Lightbulb, Search, Trash2, Star, Plus, MonitorUp,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -880,30 +880,10 @@ const LazyPdfPage = ({
     [products]
   );
 
-  // ─── AUTHORITATIVE QUERY: supplier_products linked to this PDF page ───
-  const { data: pageProducts = [] } = useQuery({
-    queryKey: ["page-supplier-products", page.id],
-    enabled: isVisible,
-    queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_products") as any)
-        .select("id, product_code, short_name, description, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, is_pinned, pin_order, pipe_size, supplier_id, supplier_discount_percent, markup_percent, price_per_metre, sold_in_length, unit_length, is_material_favorite, rrp")
-        .eq("pdf_page_id", page.id)
-        .eq("archived", false)
-        .eq("is_active", true)
-        .order("product_code");
-      if (error) {
-        console.error(`[VisualCatalog] Failed to query products for page ${page.id}:`, error.message);
-        return [];
-      }
-      return data || [];
-    },
-    staleTime: 60000,
-  });
-
-  // Also query pdf_product_regions for stored geometry
-  const { data: storedGeometry = [] } = useQuery({
-    queryKey: ["page-product-geometry", page.id],
-    enabled: isVisible && pageProducts.length > 0,
+  // Stored regions fallback: query pdf_product_regions for pages without live extraction
+  const { data: storedRegions = [] } = useQuery({
+    queryKey: ["visual-panel-stored-regions", page.id],
+    enabled: isVisible && hasPdfSource,
     queryFn: async () => {
       const { data } = await (supabase.from("pdf_product_regions") as any)
         .select("id, product_id, product_code, region_x, region_y, region_width, region_height, label")
@@ -912,8 +892,6 @@ const LazyPdfPage = ({
     },
     staleTime: 60000,
   });
-
-  // No archived product code filtering needed — PdfPageOverlay handles dismissals via dismissed_pdf_regions table
 
    // Live extraction for this page — enable even without hasPdfSource so fallback kicks in
   const queryEnabled = isVisible && hasPdfSource && activeProducts.length > 0;
@@ -982,8 +960,6 @@ const LazyPdfPage = ({
               
               // Invalidate the main products query so palette picks up new items
               queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
-              // Also refresh the authoritative page products query
-              queryClient.invalidateQueries({ queryKey: ["page-supplier-products", page.id] });
               
               return reMatched;
             }
@@ -1008,185 +984,91 @@ const LazyPdfPage = ({
     staleTime: 120000,
   });
 
-  // Build a lookup from product_code/id → live extraction y_pct for position merging
-  const livePositionMap = useMemo(() => {
-    const map = new Map<string, { y_pct: number; h_pct: number; x_pct: number; w_pct: number; detected_price: number | null; has_price: boolean }>();
-    for (const r of liveRegions) {
-      if (r.product_code) map.set(r.product_code, { y_pct: r.y_pct, h_pct: r.h_pct, x_pct: r.x_pct, w_pct: r.w_pct, detected_price: r.detected_price, has_price: r.has_price });
-      if (r.product?.id) map.set(r.product.id, { y_pct: r.y_pct, h_pct: r.h_pct, x_pct: r.x_pct, w_pct: r.w_pct, detected_price: r.detected_price, has_price: r.has_price });
-    }
-    return map;
-  }, [liveRegions]);
-
-  // Build geometry lookup from stored pdf_product_regions
-  const storedGeometryMap = useMemo(() => {
-    const map = new Map<string, { y_pct: number; h_pct: number }>();
-    for (const g of storedGeometry) {
-      if (g.product_id) map.set(g.product_id, { y_pct: g.region_y ?? 0, h_pct: g.region_height ?? 2.5 });
-      if (g.product_code) map.set(g.product_code, { y_pct: g.region_y ?? 0, h_pct: g.region_height ?? 2.5 });
-    }
-    return map;
-  }, [storedGeometry]);
-
-  // ─── BUILD AUTHORITATIVE OVERLAY REGIONS ───
-  // Every supplier_product linked to this page gets exactly one icon
+  // ─── BUILD OVERLAY REGIONS: prefer liveRegions, fallback to stored/evenly-distributed ───
   const overlayRegions: OverlayRegion[] = useMemo(() => {
-    // If we have authoritative page products, use them as the canonical source
-    if (pageProducts.length > 0) {
-      const usableRange = 90; // 5% to 95% of page height
-      const evenSpacing = usableRange / Math.max(pageProducts.length, 1);
-      let positionedCount = 0;
+    // Primary: use live extraction regions with correct y_pct from PDF text parsing
+    if (liveRegions.length > 0) {
+      const result: OverlayRegion[] = [];
+      for (let idx = 0; idx < liveRegions.length; idx++) {
+        const r = liveRegions[idx];
+        // Cross-page dedup: skip if this exact item was already seen on an earlier page
+        const dedupKey = `${(r.label || "").substring(0, 80)}|${r.detected_price ?? "no-price"}`;
+        const firstPage = globalSeenRegions.get(dedupKey);
+        if (firstPage !== undefined && firstPage !== pageIndex) continue;
+        globalSeenRegions.set(dedupKey, pageIndex);
 
-      const regions: OverlayRegion[] = pageProducts.map((sp: any, idx: number) => {
-        // Try to find position from live extraction first
-        const livePos = livePositionMap.get(sp.product_code) || livePositionMap.get(sp.id);
-        // Then try stored geometry
-        const storedPos = storedGeometryMap.get(sp.id) || storedGeometryMap.get(sp.product_code);
+        result.push({
+          id: `live-${page.id}-${idx}`,
+          x_pct: r.x_pct, y_pct: r.y_pct, w_pct: r.w_pct, h_pct: r.h_pct,
+          product: r.product as PaletteProduct | null,
+          product_code: r.product_code || "",
+          label: r.label || "",
+          has_price: r.has_price,
+          detected_price: r.detected_price,
+          matched: r.matched,
+        });
+      }
+      return result;
+    }
 
-        let y_pct: number;
-        let h_pct: number;
-        let hasPosition = false;
-
-        if (livePos) {
-          y_pct = livePos.y_pct;
-          h_pct = livePos.h_pct;
-          hasPosition = true;
-          positionedCount++;
-        } else if (storedPos) {
-          y_pct = storedPos.y_pct;
-          h_pct = storedPos.h_pct;
-          hasPosition = true;
-          positionedCount++;
-        } else {
-          // Evenly distribute within the page
-          y_pct = 5 + idx * evenSpacing;
-          h_pct = Math.min(evenSpacing * 0.85, 4);
-        }
-
-        // Match against the palette products for full PaletteProduct data
-        const paletteProduct = activeProducts.find(p => p.id === sp.id) || null;
-
+    // Secondary: use stored regions from pdf_product_regions table
+    if (storedRegions.length > 0) {
+      return storedRegions.map((sr: any, idx: number) => {
+        const paletteProduct = activeProducts.find(p => p.id === sr.product_id || p.product_code === sr.product_code) || null;
         return {
-          id: `auth-${page.id}-${sp.id}`,
-          x_pct: livePos?.x_pct ?? 0,
-          y_pct,
-          w_pct: livePos?.w_pct ?? 100,
-          h_pct,
-          product: paletteProduct || {
-            id: sp.id,
-            product_code: sp.product_code,
-            short_name: sp.short_name || sp.description,
-            brand: sp.brand || "",
-            product_category: sp.product_category || sp.category || "",
-            category: sp.category || "",
-            cost_excl_vat: sp.cost_excl_vat || 0,
-            cost_incl_vat: sp.cost_incl_vat || 0,
-            selling_price: sp.selling_price || 0,
-            description: sp.description || "",
-            is_pinned: sp.is_pinned || false,
-            pin_order: sp.pin_order || null,
-            supplier_name: supplierName || "",
-            supplier_type: "both",
-            price_per_metre: sp.price_per_metre || null,
-            sold_in_length: sp.sold_in_length || false,
-            unit_length: sp.unit_length || null,
-            pipe_size: sp.pipe_size || null,
-            is_material_favorite: sp.is_material_favorite || false,
-          } as PaletteProduct,
-          product_code: sp.product_code || "",
-          label: sp.short_name || sp.description || "",
-          has_price: !!(sp.selling_price || sp.cost_incl_vat),
-          detected_price: sp.selling_price || sp.cost_incl_vat || null,
-          matched: true,
+          id: `stored-${page.id}-${idx}`,
+          x_pct: sr.region_x ?? 0,
+          y_pct: sr.region_y ?? (5 + idx * (90 / Math.max(storedRegions.length, 1))),
+          w_pct: sr.region_width ?? 100,
+          h_pct: sr.region_height ?? 2.5,
+          product: paletteProduct,
+          product_code: sr.product_code || "",
+          label: sr.label || paletteProduct?.short_name || "",
+          has_price: !!(paletteProduct?.selling_price || paletteProduct?.cost_incl_vat),
+          detected_price: paletteProduct?.selling_price || paletteProduct?.cost_incl_vat || null,
+          matched: !!paletteProduct,
         };
       });
-
-      // Cross-check validation
-      if (positionedCount < pageProducts.length) {
-        console.warn(`[VisualCatalog] Page ${page.page_number}: ${pageProducts.length} products but only ${positionedCount} have overlay positions`);
-      }
-
-      return regions;
     }
 
-    // ─── FALLBACK: use live extraction regions when no authoritative products ───
-    const sourceRegions = liveRegions.length > 0 ? liveRegions : [];
-    const result: OverlayRegion[] = [];
-    for (let idx = 0; idx < sourceRegions.length; idx++) {
-      const r = sourceRegions[idx];
-      // Cross-page dedup: skip if this exact item was already seen on an earlier page
-      const dedupKey = `${(r.label || "").substring(0, 80)}|${r.detected_price ?? "no-price"}`;
-      const firstPage = globalSeenRegions.get(dedupKey);
-      if (firstPage !== undefined && firstPage !== pageIndex) continue;
-      globalSeenRegions.set(dedupKey, pageIndex);
+    // Tertiary fallback: evenly distribute supplier products across the page
+    const pageSupplierName = (supplierName || page.supplier_id || "").toLowerCase().trim();
+    const supplierProds = activeProducts.filter(p => {
+      const productSupplier = (p.supplier_name || p.brand || "").toLowerCase().trim();
+      return productSupplier.includes(pageSupplierName) || pageSupplierName.includes(productSupplier);
+    });
 
-      result.push({
-        id: `live-${page.id}-${idx}`,
-        x_pct: r.x_pct, y_pct: r.y_pct, w_pct: r.w_pct, h_pct: r.h_pct,
-        product: r.product as PaletteProduct | null,
-        product_code: r.product_code || "",
-        label: r.label || "",
-        has_price: r.has_price,
-        detected_price: r.detected_price,
-        matched: r.matched,
-      });
+    let pageProds: PaletteProduct[] = [];
+    if (supplierProds.length > 0) {
+      const productsPerPage = Math.ceil(supplierProds.length / Math.max(1, totalPages));
+      const startIdx = pageIndex * productsPerPage;
+      pageProds = supplierProds.slice(startIdx, startIdx + productsPerPage);
+    } else {
+      const productsPerPage = 20;
+      const startIdx = (page.page_number - 1) * productsPerPage;
+      pageProds = activeProducts.slice(startIdx, startIdx + productsPerPage);
     }
 
-    // If no live regions, use supplier-based fallback distribution
-    if (result.length === 0) {
-      const pageSupplierName = (supplierName || page.supplier_id || "").toLowerCase().trim();
-      const supplierProds = activeProducts.filter(p => {
-        const productSupplier = (p.supplier_name || p.brand || "").toLowerCase().trim();
-        return productSupplier.includes(pageSupplierName) || pageSupplierName.includes(productSupplier);
-      });
-
-      if (supplierProds.length === 0) {
-        const productsPerPage = 20;
-        const startIdx = (page.page_number - 1) * productsPerPage;
-        const pageProds = activeProducts.slice(startIdx, startIdx + productsPerPage);
-        if (pageProds.length > 0) {
-          const usableRange = 90;
-          const rowHeight = Math.min(usableRange / pageProds.length, 4);
-          return pageProds.map((p, idx) => ({
-            id: `fallback-${page.id}-${idx}`,
-            x_pct: 0,
-            y_pct: 5 + (idx * (usableRange / pageProds.length)),
-            w_pct: 100,
-            h_pct: rowHeight,
-            product: p,
-            product_code: p.product_code || "",
-            label: p.short_name || p.description || "",
-            has_price: !!(p.selling_price || p.cost_incl_vat),
-            detected_price: p.selling_price || p.cost_incl_vat || null,
-            matched: true,
-          }));
-        }
-      } else {
-        const productsPerPage = Math.ceil(supplierProds.length / Math.max(1, totalPages));
-        const startIdx = pageIndex * productsPerPage;
-        const pageProds = supplierProds.slice(startIdx, startIdx + productsPerPage);
-        if (pageProds.length > 0) {
-          const usableRange = 90;
-          const rowHeight = Math.min(usableRange / pageProds.length, 4);
-          return pageProds.map((p, idx) => ({
-            id: `fallback-${page.id}-${idx}`,
-            x_pct: 0,
-            y_pct: 5 + (idx * (usableRange / pageProds.length)),
-            w_pct: 100,
-            h_pct: rowHeight,
-            product: p,
-            product_code: p.product_code || "",
-            label: p.short_name || p.description || "",
-            has_price: !!(p.selling_price || p.cost_incl_vat),
-            detected_price: p.selling_price || p.cost_incl_vat || null,
-            matched: true,
-          }));
-        }
-      }
+    if (pageProds.length > 0) {
+      const usableRange = 90;
+      const rowHeight = Math.min(usableRange / pageProds.length, 4);
+      return pageProds.map((p, idx) => ({
+        id: `fallback-${page.id}-${idx}`,
+        x_pct: 0,
+        y_pct: 5 + (idx * (usableRange / pageProds.length)),
+        w_pct: 100,
+        h_pct: rowHeight,
+        product: p,
+        product_code: p.product_code || "",
+        label: p.short_name || p.description || "",
+        has_price: !!(p.selling_price || p.cost_incl_vat),
+        detected_price: p.selling_price || p.cost_incl_vat || null,
+        matched: true,
+      }));
     }
 
-    return result;
-  }, [pageProducts, liveRegions, livePositionMap, storedGeometryMap, activeProducts, page.id, page.page_number, page.supplier_id, supplierName, totalPages, pageIndex]);
+    return [];
+  }, [liveRegions, storedRegions, activeProducts, page.id, page.page_number, page.supplier_id, supplierName, totalPages, pageIndex]);
 
   // Report detected categories to parent for category→page mapping
   useEffect(() => {
@@ -1214,15 +1096,6 @@ const LazyPdfPage = ({
   const matchedCount = overlayRegions.filter(r => r.product).length;
   const unmatchedCount = overlayRegions.filter(r => !r.product).length;
   const totalRegions = overlayRegions.length;
-  const authProductCount = pageProducts.length;
-  const hasPositionMismatch = authProductCount > 0 && totalRegions !== authProductCount;
-
-  // Cross-check: log warning if authoritative count != overlay count
-  useEffect(() => {
-    if (hasPositionMismatch) {
-      console.warn(`[VisualCatalog] Page ${page.page_number}: ${authProductCount} products in DB but ${totalRegions} overlay icons rendered`);
-    }
-  }, [hasPositionMismatch, authProductCount, totalRegions, page.page_number]);
 
   return (
     <div
@@ -1234,18 +1107,12 @@ const LazyPdfPage = ({
       className="relative border-b border-muted/30"
       style={{ minHeight: "400px", paddingRight: "88px", boxSizing: "border-box", overflow: "visible" }}
     >
-      {/* Page number label with cross-check badge */}
+      {/* Page number label */}
       <div className="absolute top-2 left-2 z-30 bg-black/60 text-white text-[9px] font-mono px-1.5 py-0.5 rounded flex items-center gap-1.5">
         <span>Page {page.page_number}</span>
         {isVisible && totalRegions > 0 && (
           <span className="text-green-300">
             {totalRegions} items · {matchedCount} matched{unmatchedCount > 0 && <span className="text-orange-300"> · {unmatchedCount} new</span>}
-          </span>
-        )}
-        {isVisible && authProductCount > 0 && hasPositionMismatch && (
-          <span className="flex items-center gap-0.5 text-amber-400" title={`DB has ${authProductCount} products but ${totalRegions} icons shown`}>
-            <AlertTriangle className="h-2.5 w-2.5" />
-            <span className="text-[8px]">{authProductCount}≠{totalRegions}</span>
           </span>
         )}
         {isVisible && starOverlays.length > 0 && (
