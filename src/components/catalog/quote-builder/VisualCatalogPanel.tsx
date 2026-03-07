@@ -1161,8 +1161,6 @@ const LazyPdfPage = ({
               onHoverMove={onHoverMove}
               onHoverEnd={onHoverEnd}
               pdfSelection={pdfSelection}
-              onProductInfoOpen={onProductInfoOpen}
-              isFirstPage={page.page_number === 1}
             />
           )}
           {extracting && (
