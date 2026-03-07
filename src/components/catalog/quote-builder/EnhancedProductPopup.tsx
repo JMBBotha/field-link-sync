@@ -146,7 +146,7 @@ const EnhancedProductPopup = ({
           </div>
           <div className="flex items-center gap-2">
             <span className="text-base font-bold text-foreground">
-              R{price.toLocaleString("en-ZA")}
+              R{safeNum(price).toLocaleString("en-ZA")}
             </span>
             {product.sold_in_length && product.price_per_metre && (
               <span className="text-[10px] text-orange-600 font-medium border border-orange-400/40 rounded px-1">
