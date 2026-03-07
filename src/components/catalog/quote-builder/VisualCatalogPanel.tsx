@@ -1088,10 +1088,6 @@ const LazyPdfPage = ({
       if (seenOnPage.has(dedupKey)) continue;
       seenOnPage.add(dedupKey);
 
-      // Row-level dedup: skip duplicate regions from the same physical PDF row
-      const roundedY = Math.round(r.y_pct);
-      if (seenYPct.has(roundedY)) continue;
-      seenYPct.add(roundedY);
 
       // Resolve product from activeProducts if extractor matched by code but didn't attach object
       const rawCode = (r.product_code || "").toLowerCase().trim();
