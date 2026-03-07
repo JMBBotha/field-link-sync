@@ -112,6 +112,11 @@ const DraggableRegion = memo(({
 
   const price = product?.selling_price || product?.cost_incl_vat || 0;
 
+  // Icon visibility: detected_price AND likely product row (not tall header, below top)
+  const hasDetectedPrice = region.detected_price != null && region.detected_price > 0;
+  const isLikelyProductRow = region.h_pct < 15 && region.y_pct > 20;
+  const showIcons = hasDetectedPrice && isLikelyProductRow;
+
   // Strip click → opens Area Quote Builder
   const handleStripClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -202,7 +207,7 @@ const DraggableRegion = memo(({
       onMouseLeave={onHoverLeave}
     >
       {/* Right 35% hover gradient overlay + Chevron + Icons — only show if row has price */}
-      {/R\s?[\d\s]+[,.]\d{2}/.test(region.label) && (
+      {showIcons && (
         <>
           {/* Right 35% hover gradient overlay (covers price/icon area) */}
           <div className="absolute top-0 bottom-0 rounded transition-opacity duration-200 opacity-0 group-hover:opacity-100 pointer-events-none"
