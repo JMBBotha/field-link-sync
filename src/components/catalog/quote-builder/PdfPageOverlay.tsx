@@ -617,6 +617,7 @@ const PdfPageOverlay = ({
           pdfSelection={pdfSelection}
           onOpenProductInfo={onOpenProductInfo}
           isDensePage={isDensePage}
+          itemNumber={idx + 1}
         />
       ))}
 
