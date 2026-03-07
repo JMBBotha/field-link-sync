@@ -901,6 +901,8 @@ const LazyPdfPage = ({
     console.log(`[VisualCatalog] Page ${page.page_number} query conditions: isVisible=${isVisible}, hasPdfSource=${hasPdfSource}, activeProducts=${activeProducts.length}, enabled=${queryEnabled}, pdf_storage_path=${page.pdf_storage_path?.substring(0, 60) || 'null'}`);
   }, [isVisible, hasPdfSource, activeProducts.length, queryEnabled, page.page_number, page.pdf_storage_path]);
 
+  const [extractionFullText, setExtractionFullText] = useState("");
+
   const { data: liveRegions = [], isLoading: extracting } = useQuery({
     queryKey: ["visual-panel-live-extract", page.id, page.pdf_storage_path, activeProducts.length],
     enabled: queryEnabled,
@@ -910,7 +912,6 @@ const LazyPdfPage = ({
         console.log(`[VisualCatalog] Extracting page ${page.page_number} from ${page.supplier_id}, matching against ${activeProducts.length} active products`);
         
         // Fetch PDF as blob first to bypass sanitizePdfUrl trimming bug
-        // (storage folders may have trailing spaces that sanitize incorrectly removes)
         let pdfUrl = page.pdf_storage_path;
         try {
           const resp = await fetch(page.pdf_storage_path);
@@ -925,7 +926,8 @@ const LazyPdfPage = ({
         }
 
         // First pass: extract and match against existing non-archived products
-        const regions = await extractAndMatchPage(pdfUrl, page.page_number, activeProducts);
+        const { regions, fullText } = await extractAndMatchPageFull(pdfUrl, page.page_number, activeProducts);
+        setExtractionFullText(fullText);
         const matched = regions.filter(r => r.matched);
         const unmatchedWithPrice = regions.filter(r => !r.matched && r.has_price && r.detected_price);
         
@@ -988,7 +990,6 @@ const LazyPdfPage = ({
               variant: "destructive",
               duration: 8000,
             });
-            // Return original regions with orange icons so user can still interact
           }
         }
         
@@ -1001,6 +1002,24 @@ const LazyPdfPage = ({
       }
     },
     staleTime: 120000,
+  });
+
+  // Supplier products count for cross-check
+  const { data: supplierProductsCount = 0 } = useQuery({
+    queryKey: ["supplier-products-count", page.supplier_id],
+    enabled: isVisible && !!page.supplier_id,
+    queryFn: async () => {
+      const { count, error } = await (supabase.from("supplier_products") as any)
+        .select("id", { count: "exact", head: true })
+        .eq("supplier_id", page.supplier_id)
+        .eq("is_active", true);
+      if (error) {
+        console.error("[CrossCheck] Failed to count supplier products:", error.message);
+        return 0;
+      }
+      return count || 0;
+    },
+    staleTime: 60000,
   });
 
   // ─── FALLBACK REGIONS: only used when no live extraction available ───
