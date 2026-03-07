@@ -85,21 +85,6 @@ const DraggableRegion = memo(({
   pdfSelection,
   onProductInfoOpen,
 }: {
-  baskets,
-  onAddProductToBasket,
-  inQuoteQty,
-  onProductClick,
-  onUnmatchedClick,
-  onToggleFavorite,
-  onRemoveRegion,
-  onRowStripClick,
-  isAddedToQuote,
-  onHover,
-  onHoverMove,
-  onHoverLeave,
-  pdfSelection,
-  onProductInfoOpen,
-}: {
   region: OverlayRegion;
   baskets: Basket[];
   onAddProductToBasket: (basketId: string, product: PaletteProduct) => void;
@@ -110,6 +95,7 @@ const DraggableRegion = memo(({
   onRemoveRegion?: (region: OverlayRegion) => void;
   onRowStripClick?: (region: OverlayRegion) => void;
   isAddedToQuote?: boolean;
+  isProductPage: boolean;
   onHover: (region: OverlayRegion) => void;
   onHoverMove: (e: React.MouseEvent) => void;
   onHoverLeave: () => void;
