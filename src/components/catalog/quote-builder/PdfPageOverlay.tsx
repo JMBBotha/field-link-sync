@@ -412,6 +412,7 @@ const PdfPageOverlay = ({
       r.product_code &&
       r.product_code.trim() !== "" &&
       !!r.product &&
+      r.has_price === true &&
       (r.product.selling_price > 0 || r.product.cost_incl_vat > 0 || (r.detected_price ?? 0) > 0) &&
       r.h_pct <= 8
     );
