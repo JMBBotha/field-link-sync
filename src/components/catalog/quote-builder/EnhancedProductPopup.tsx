@@ -205,7 +205,7 @@ const EnhancedProductPopup = ({
             <p className="text-xs font-mono text-primary/80 mt-0.5">{product.product_code}</p>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-sm font-bold text-foreground">
-                R{price.toLocaleString("en-ZA")}
+                R{safeNum(price).toLocaleString("en-ZA")}
               </span>
               {product.sold_in_length && product.price_per_metre && (
                 <Badge variant="outline" className="text-[9px] px-1 py-0 border-orange-400/40 text-orange-600">
