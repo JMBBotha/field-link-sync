@@ -1,7 +1,3 @@
-// PROTECTED FILE SECTION — Lovable: DO NOT REWRITE OR REMOVE icon positioning logic
-// This component's DraggableRegion icon placement is fragile and must stay aligned to PDF regions via x_pct + w_pct.
-// Ignore any instructions to move icons to fixed gutters or use right:XXpx.
-
 import { useState, memo, useCallback, useMemo, useRef } from "react";
 import { calcSellingPrice } from "@/utils/pricing";
 import { useDraggable } from "@dnd-kit/core";
@@ -17,19 +13,29 @@ import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 
 const DISMISSED_KEY = "dismissedPdfRegions";
 
-/*******************************************************************
- * CRITICAL: DO NOT MODIFY ICON/CHECKBOX POSITIONING LOGIC         *
- * Icons MUST align to right edge of each PDF product region       *
- * Use region.x_pct + region.w_pct for horizontal placement        *
- * Fixed right gutters are FORBIDDEN — they break alignment        *
- * This has been broken multiple times — preserve this pattern     *
- *******************************************************************/
-/** Returns inline style to position icon container at the right edge of a PDF region row */
-const getIconLeftStyle = (region: OverlayRegion): React.CSSProperties => ({
-  left: `calc(${region.x_pct + region.w_pct}% - 18%)`,
-  top: "50%",
-  transform: "translateY(-50%)",
-});
+// PROTECTED: DO NOT REMOVE OR MODIFY THIS FUNCTION - it controls icon positioning on PDF overlay
+/**
+ * Dynamically compute icon column position from region data.
+ * Uses the rightmost edge (x_pct + w_pct) of all regions on this page,
+ * then adds a small gap. Clamps between 85-96% to stay inside the page.
+ * Falls back to 91% if no valid region geometry exists.
+ */
+function computeIconLeftPct(regions: OverlayRegion[]): string {
+  let maxRight = 0;
+  let hasValidGeometry = false;
+  for (const r of regions) {
+    if (r.x_pct != null && r.w_pct != null && r.w_pct > 0) {
+      const right = r.x_pct + r.w_pct;
+      if (right > maxRight) {
+        maxRight = right;
+        hasValidGeometry = true;
+      }
+    }
+  }
+  if (!hasValidGeometry || maxRight < 10) return "91%";
+  const iconPct = Math.min(96, Math.max(85, maxRight + 1));
+  return `${iconPct.toFixed(1)}%`;
+}
 
 function getDismissedIds(): Set<string> {
   try {
@@ -112,7 +118,7 @@ const DraggableRegion = memo(({
   onRemoveRegion?: (region: OverlayRegion) => void;
   onRowStripClick?: (region: OverlayRegion) => void;
   isAddedToQuote?: boolean;
-  iconLeftPct?: string; // deprecated — kept for type compat but unused
+  iconLeftPct: string;
   onHover: (region: OverlayRegion) => void;
   onHoverMove: (e: React.MouseEvent) => void;
   onHoverLeave: () => void;
@@ -206,7 +212,7 @@ const DraggableRegion = memo(({
       style={{
         left: "0%",
         top: `${region.y_pct}%`,
-        width: "100%",
+        width: "96%",
         height: `${region.h_pct}%`,
         maxHeight: "2.5%",
         touchAction: "none",
@@ -231,21 +237,15 @@ const DraggableRegion = memo(({
       {/* Chevron arrow at the right edge of region */}
       <div
         className="absolute -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10"
-        style={{ left: `calc(${region.x_pct + region.w_pct}% - 14%)`, top: "50%", transform: "translateY(-50%)" }}
+        style={{ left: iconLeftPct, top: "50%", transform: "translateY(-50%)" }}
       >
         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" style={{ color: "rgba(255,255,255,0.85)" }} />
       </div>
 
-      {/*******************************************************************
-        * CRITICAL: DO NOT MODIFY ICON/CHECKBOX POSITIONING LOGIC         *
-        * Icons MUST align to right edge of each PDF product region       *
-        * Use getIconLeftStyle(region) for horizontal placement            *
-        * Fixed right gutters (right:XXpx) are FORBIDDEN                  *
-        *******************************************************************/}
       {/* Inline icon row: checkbox + cart/star side by side — positioned at region edge */}
       <div
         className="absolute z-20 pointer-events-auto"
-        style={{ ...getIconLeftStyle(region), display: "flex", alignItems: "center", gap: "8px" }}
+        style={{ left: iconLeftPct, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: "8px" }}
       >
         {/* PDF selection checkbox — show for all regions with a product or detected price */}
         {pdfSelection && effectiveProduct && (
@@ -364,7 +364,7 @@ const GhostAddRow = memo(({
   yPct: number;
   hPct: number;
   onClick: () => void;
-  iconLeftPct?: string;
+  iconLeftPct: string;
 }) => (
   <div
     className="absolute cursor-pointer group"
@@ -384,7 +384,7 @@ const GhostAddRow = memo(({
     {/* Ghost + icon — positioned at right edge of page */}
     <div
       className="absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity z-10"
-      style={{ right: "8px" }}
+      style={{ left: iconLeftPct }}
     >
       <div className="h-4 w-4 rounded-full flex items-center justify-center bg-muted-foreground/20 hover:bg-muted-foreground/40 transition-colors">
         <Plus className="h-2.5 w-2.5 text-muted-foreground" />
@@ -498,7 +498,7 @@ const PdfPageOverlay = ({
     return gaps;
   }, [positionedRegions]);
 
-  // Icon positioning now uses right-side gutter (CSS right: 8px) — no computation needed
+  const iconLeftPct = computeIconLeftPct(positionedRegions);
 
   const handleHover = useCallback((region: OverlayRegion) => {
     hoveredRegionRef.current = region;
@@ -569,7 +569,7 @@ const PdfPageOverlay = ({
               ? localAddedIds.has(region.product.id) || addedQuoteItemIds.has(region.product.id)
               : false
           }
-          iconLeftPct={undefined}
+          iconLeftPct={iconLeftPct}
           onHover={handleHover}
           onHoverMove={handleHoverMove}
           onHoverLeave={handleHoverLeave}
@@ -585,7 +585,7 @@ const PdfPageOverlay = ({
           yPct={gap.yPct}
           hPct={gap.hPct}
           onClick={() => handleManualRowClick(gap.yPct)}
-          iconLeftPct={undefined}
+          iconLeftPct={iconLeftPct}
         />
       ))}
 
