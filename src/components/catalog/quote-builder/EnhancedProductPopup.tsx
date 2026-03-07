@@ -50,6 +50,7 @@ const EnhancedProductPopup = ({
   isHoverMode = false,
   isVisible = true,
 }: EnhancedProductPopupProps) => {
+  const safeNum = (n: number) => (isFinite(n) && !isNaN(n) ? n : 0);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [markupOverride, setMarkupOverride] = useState<number | null>(null);
   const popupRef = useRef<HTMLDivElement>(null);
