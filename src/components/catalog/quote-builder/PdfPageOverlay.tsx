@@ -201,128 +201,133 @@ const DraggableRegion = memo(({
       onMouseMove={onHoverMove}
       onMouseLeave={onHoverLeave}
     >
-      {/* Right 35% hover gradient overlay (covers price/icon area) */}
-      <div className="absolute top-0 bottom-0 rounded transition-opacity duration-200 opacity-0 group-hover:opacity-100 pointer-events-none"
-        style={{
-          left: "65%",
-          width: "35%",
-          background: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.15) 80%, rgba(0,0,0,0.3) 100%)",
-        }}
-      />
-      {/* Chevron arrow — positioned at right edge of region */}
-      <div
-        className="absolute -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10"
-        style={{ left: `${region.x_pct + region.w_pct - 16}%`, top: "50%", transform: "translateY(-50%)" }}
-      >
-        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" style={{ color: "rgba(255,255,255,0.85)" }} />
-      </div>
-
-      {/* PROTECTED: Icons positioned at right edge of region (w_pct - 8%). Universal for all PDF layouts. DO NOT use fixed right% or remove this logic. */}
-      <div
-        className="absolute z-20 pointer-events-auto"
-        style={{ left: `${region.x_pct + region.w_pct - 19}%`, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: "4px", zIndex: 10 }}
-      >
-        {/* PDF selection checkbox — show for all regions with a product or detected price */}
-        {pdfSelection && effectiveProduct && (
+      {/* Right 35% hover gradient overlay + Chevron + Icons — only show if row has price */}
+      {(region.has_price === true || (region.detected_price != null && region.detected_price > 0) || (region.product && (region.product.selling_price > 0 || region.product.cost_incl_vat > 0))) && (
+        <>
+          {/* Right 35% hover gradient overlay (covers price/icon area) */}
+          <div className="absolute top-0 bottom-0 rounded transition-opacity duration-200 opacity-0 group-hover:opacity-100 pointer-events-none"
+            style={{
+              left: "65%",
+              width: "35%",
+              background: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.15) 80%, rgba(0,0,0,0.3) 100%)",
+            }}
+          />
+          {/* Chevron arrow — positioned at right edge of region */}
           <div
-            className="flex items-center justify-center rounded"
-            style={{ width: "16px", height: "16px", backgroundColor: "rgba(255,255,255,0.95)", boxShadow: "0 0 2px rgba(0,0,0,0.3)" }}
+            className="absolute -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10"
+            style={{ left: `${region.x_pct + region.w_pct - 16}%`, top: "50%", transform: "translateY(-50%)" }}
           >
-            <input
-              type="checkbox"
-              checked={pdfSelection.selectedFromPdf.some((s) => s.code === region.product_code)}
-              onChange={() => {
-                const ep = effectiveProduct;
-                const isCurrentlySelected = pdfSelection.selectedFromPdf.some((s) => s.code === region.product_code);
-                const sellingPrice = ep?.selling_price || ep?.cost_incl_vat || region.detected_price || 0;
-                const costPrice = ep?.cost_price || ep?.cost_excl_vat || region.detected_price || 0;
-                const markupPercent = (ep as any)?.default_markup_percent ?? 20;
-                pdfSelection.handleSelectProduct({
-                  code: region.product_code,
-                  description: ep?.short_name || region.label,
-                  price: String(sellingPrice),
-                  costPrice: costPrice > 0 ? costPrice : undefined,
-                  markupPercent,
-                });
-                if (!isCurrentlySelected && product && onProductInfoOpen) {
-                  onProductInfoOpen(product);
-                }
-              }}
-              onClick={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
-              className="h-3 w-3 accent-primary cursor-pointer"
-              title="Select for quote"
-            />
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" style={{ color: "rgba(255,255,255,0.85)" }} />
           </div>
-        )}
 
-        {/* Cart / Star / Check icon */}
-        <div className="opacity-80 group-hover:opacity-100 transition-opacity">
-          {isMatched ? (
-            isFavorite ? (
-              <button
-                onDoubleClick={handleStarDoubleClick}
-                onClick={handleIconClick}
-                onContextMenu={handleContextMenu}
-                className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md"
-                style={{ background: "rgba(30,30,30,0.85)" }}
-                title="Double-click to remove from favorites · Right-click to hide"
-                aria-label="Remove from favorites"
+          {/* PROTECTED: Icons positioned at right edge of region (w_pct - 19%). Universal for all PDF layouts. DO NOT use fixed right% or remove this logic. */}
+          <div
+            className="absolute z-20 pointer-events-auto"
+            style={{ left: `${region.x_pct + region.w_pct - 19}%`, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: "4px", zIndex: 10 }}
+          >
+            {/* PDF selection checkbox — show for all regions with a product or detected price */}
+            {pdfSelection && effectiveProduct && (
+              <div
+                className="flex items-center justify-center rounded"
+                style={{ width: "16px", height: "16px", backgroundColor: "rgba(255,255,255,0.95)", boxShadow: "0 0 2px rgba(0,0,0,0.3)" }}
               >
-                <Star className="h-3 w-3" style={{ fill: "#FFD700", color: "#FFD700" }} />
-              </button>
-            ) : isAddedToQuote ? (
-              <button
-                onDoubleClick={handleStarDoubleClick}
-                onClick={handleIconClick}
-                onContextMenu={handleContextMenu}
-                className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md"
-                style={{ background: "#28a745" }}
-                title="Added to quote · Double-click to favorite · Right-click to hide"
-                aria-label="Added to quote"
-              >
-                <Check className="h-2.5 w-2.5 text-white" />
-              </button>
-            ) : inQuoteQty > 0 ? (
-              <button
-                onDoubleClick={handleStarDoubleClick}
-                onClick={handleIconClick}
-                onContextMenu={handleContextMenu}
-                className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white hover:scale-125 transition-transform cursor-pointer shadow-md"
-                style={{ background: "#22c55e" }}
-                title="Double-click to add to favorites · Right-click to hide"
-                aria-label={`In quote: ${inQuoteQty}. Double-click to favorite`}
-              >
-                {inQuoteQty}
-              </button>
-            ) : (
-              <button
-                onDoubleClick={handleStarDoubleClick}
-                onClick={handleIconClick}
-                onContextMenu={handleContextMenu}
-                className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md"
-                style={{ background: iconBg }}
-                title="Click row to add to quote · Double-click icon to favorite · Right-click to hide"
-                aria-label="Add to quote"
-              >
-                <ShoppingCart className="h-2.5 w-2.5 text-white" />
-              </button>
-            )
-          ) : (
-            <button
-              className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-all cursor-pointer shadow-md"
-              style={{ background: iconBg }}
-              onClick={handleIconClick}
-              onContextMenu={handleContextMenu}
-              title={`${region.label.substring(0, 60)}${region.detected_price ? ` — R${region.detected_price.toLocaleString("en-ZA")}` : ""} · Right-click to hide`}
-              aria-label="Unmatched product. Click to add. Right-click to hide"
-            >
-              <ShoppingCart className="h-2.5 w-2.5 text-white" />
-            </button>
-          )}
-        </div>
-      </div>
+                <input
+                  type="checkbox"
+                  checked={pdfSelection.selectedFromPdf.some((s) => s.code === region.product_code)}
+                  onChange={() => {
+                    const ep = effectiveProduct;
+                    const isCurrentlySelected = pdfSelection.selectedFromPdf.some((s) => s.code === region.product_code);
+                    const sellingPrice = ep?.selling_price || ep?.cost_incl_vat || region.detected_price || 0;
+                    const costPrice = ep?.cost_price || ep?.cost_excl_vat || region.detected_price || 0;
+                    const markupPercent = (ep as any)?.default_markup_percent ?? 20;
+                    pdfSelection.handleSelectProduct({
+                      code: region.product_code,
+                      description: ep?.short_name || region.label,
+                      price: String(sellingPrice),
+                      costPrice: costPrice > 0 ? costPrice : undefined,
+                      markupPercent,
+                    });
+                    if (!isCurrentlySelected && product && onProductInfoOpen) {
+                      onProductInfoOpen(product);
+                    }
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  className="h-3 w-3 accent-primary cursor-pointer"
+                  title="Select for quote"
+                />
+              </div>
+            )}
+
+            {/* Cart / Star / Check icon */}
+            <div className="opacity-80 group-hover:opacity-100 transition-opacity">
+              {isMatched ? (
+                isFavorite ? (
+                  <button
+                    onDoubleClick={handleStarDoubleClick}
+                    onClick={handleIconClick}
+                    onContextMenu={handleContextMenu}
+                    className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md"
+                    style={{ background: "rgba(30,30,30,0.85)" }}
+                    title="Double-click to remove from favorites · Right-click to hide"
+                    aria-label="Remove from favorites"
+                  >
+                    <Star className="h-3 w-3" style={{ fill: "#FFD700", color: "#FFD700" }} />
+                  </button>
+                ) : isAddedToQuote ? (
+                  <button
+                    onDoubleClick={handleStarDoubleClick}
+                    onClick={handleIconClick}
+                    onContextMenu={handleContextMenu}
+                    className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md"
+                    style={{ background: "#28a745" }}
+                    title="Added to quote · Double-click to favorite · Right-click to hide"
+                    aria-label="Added to quote"
+                  >
+                    <Check className="h-2.5 w-2.5 text-white" />
+                  </button>
+                ) : inQuoteQty > 0 ? (
+                  <button
+                    onDoubleClick={handleStarDoubleClick}
+                    onClick={handleIconClick}
+                    onContextMenu={handleContextMenu}
+                    className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white hover:scale-125 transition-transform cursor-pointer shadow-md"
+                    style={{ background: "#22c55e" }}
+                    title="Double-click to add to favorites · Right-click to hide"
+                    aria-label={`In quote: ${inQuoteQty}. Double-click to favorite`}
+                  >
+                    {inQuoteQty}
+                  </button>
+                ) : (
+                  <button
+                    onDoubleClick={handleStarDoubleClick}
+                    onClick={handleIconClick}
+                    onContextMenu={handleContextMenu}
+                    className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md"
+                    style={{ background: iconBg }}
+                    title="Click row to add to quote · Double-click icon to favorite · Right-click to hide"
+                    aria-label="Add to quote"
+                  >
+                    <ShoppingCart className="h-2.5 w-2.5 text-white" />
+                  </button>
+                )
+              ) : (
+                <button
+                  className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-all cursor-pointer shadow-md"
+                  style={{ background: iconBg }}
+                  onClick={handleIconClick}
+                  onContextMenu={handleContextMenu}
+                  title={`${region.label.substring(0, 60)}${region.detected_price ? ` — R${region.detected_price.toLocaleString("en-ZA")}` : ""} · Right-click to hide`}
+                  aria-label="Unmatched product. Click to add. Right-click to hide"
+                >
+                  <ShoppingCart className="h-2.5 w-2.5 text-white" />
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 });
