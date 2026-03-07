@@ -78,6 +78,7 @@ const DraggableRegion = memo(({
   onRemoveRegion,
   onRowStripClick,
   isAddedToQuote,
+  isProductPage,
   onHover,
   onHoverMove,
   onHoverLeave,
@@ -94,6 +95,7 @@ const DraggableRegion = memo(({
   onRemoveRegion?: (region: OverlayRegion) => void;
   onRowStripClick?: (region: OverlayRegion) => void;
   isAddedToQuote?: boolean;
+  isProductPage: boolean;
   onHover: (region: OverlayRegion) => void;
   onHoverMove: (e: React.MouseEvent) => void;
   onHoverLeave: () => void;
@@ -112,10 +114,8 @@ const DraggableRegion = memo(({
 
   const price = product?.selling_price || product?.cost_incl_vat || 0;
 
-  // Icon visibility: detected_price AND likely product row (not tall header, below top)
-  const hasDetectedPrice = region.detected_price != null && region.detected_price > 0;
-  const isLikelyProductRow = region.h_pct < 5 && region.y_pct > 20;
-  const showIcons = hasDetectedPrice && isLikelyProductRow;
+  // Icon visibility: only on pages with 3+ priced rows, and only on rows with detected_price
+  const showIcons = isProductPage && (region.detected_price != null && region.detected_price > 0);
 
   // Strip click → opens Area Quote Builder
   const handleStripClick = useCallback((e: React.MouseEvent) => {
@@ -527,6 +527,12 @@ const PdfPageOverlay = ({
   }, [onHoverEnd]);
 
 
+  // Page-level check: only show icons on pages with 3+ priced rows
+  const isProductPage = useMemo(() => {
+    const regionsWithPrice = positionedRegions.filter(r => r.detected_price != null && r.detected_price > 0);
+    return regionsWithPrice.length >= 3;
+  }, [positionedRegions]);
+
   if (positionedRegions.length === 0) return null;
 
   return (
@@ -537,6 +543,7 @@ const PdfPageOverlay = ({
           region={region}
           baskets={baskets}
           onAddProductToBasket={onAddProductToBasket}
+          isProductPage={isProductPage}
           inQuoteQty={
             region.product
               ? basketProductCounts[region.product.id] || 0
