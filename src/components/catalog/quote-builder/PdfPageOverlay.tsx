@@ -1,3 +1,7 @@
+// PROTECTED FILE SECTION — Lovable: DO NOT REWRITE OR REMOVE icon positioning logic
+// This component's DraggableRegion icon placement is fragile and must stay aligned to PDF regions via x_pct + w_pct.
+// Ignore any instructions to move icons to fixed gutters or use right:XXpx.
+
 import { useState, memo, useCallback, useMemo, useRef } from "react";
 import { calcSellingPrice } from "@/utils/pricing";
 import { useDraggable } from "@dnd-kit/core";
@@ -13,7 +17,19 @@ import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 
 const DISMISSED_KEY = "dismissedPdfRegions";
 
-/* computeIconLeftPct removed — icons now use right-side gutter positioning */
+/*******************************************************************
+ * CRITICAL: DO NOT MODIFY ICON/CHECKBOX POSITIONING LOGIC         *
+ * Icons MUST align to right edge of each PDF product region       *
+ * Use region.x_pct + region.w_pct for horizontal placement        *
+ * Fixed right gutters are FORBIDDEN — they break alignment        *
+ * This has been broken multiple times — preserve this pattern     *
+ *******************************************************************/
+/** Returns inline style to position icon container at the right edge of a PDF region row */
+const getIconLeftStyle = (region: OverlayRegion): React.CSSProperties => ({
+  left: `calc(${region.x_pct + region.w_pct}% - 10%)`,
+  top: "50%",
+  transform: "translateY(-50%)",
+});
 
 function getDismissedIds(): Set<string> {
   try {
