@@ -78,7 +78,6 @@ const DraggableRegion = memo(({
   onRemoveRegion,
   onRowStripClick,
   isAddedToQuote,
-  iconLeftPct,
   onHover,
   onHoverMove,
   onHoverLeave,
