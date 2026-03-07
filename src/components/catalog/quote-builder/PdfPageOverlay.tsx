@@ -212,7 +212,7 @@ const DraggableRegion = memo(({
       {/* Chevron arrow — positioned at right edge of region */}
       <div
         className="absolute -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10"
-        style={{ left: `${region.x_pct + region.w_pct - 5}%`, top: "50%", transform: "translateY(-50%)" }}
+        style={{ left: `${region.x_pct + region.w_pct - 16}%`, top: "50%", transform: "translateY(-50%)" }}
       >
         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" style={{ color: "rgba(255,255,255,0.85)" }} />
       </div>
