@@ -1005,8 +1005,8 @@ const LazyPdfPage = ({
 
   // ─── FALLBACK REGIONS: only used when no live extraction available ───
   const fallbackRegions: OverlayRegion[] = useMemo(() => {
-    // If live regions exist, no fallback needed
-    if (liveRegions.length > 0) return [];
+    // Fallback regions are always computed; overlayRegions memo handles dedup
+    // They are only rendered for DB products NOT covered by live text extraction
 
     // Secondary: use stored regions from pdf_product_regions table
     if (storedRegions.length > 0) {
