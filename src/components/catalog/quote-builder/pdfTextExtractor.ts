@@ -196,16 +196,16 @@ function buildProductLookup(products: PaletteProduct[]) {
  * Detect price in text. Returns the numeric value or null.
  * Handles SA formats: R1,024.07, R 500.00, R150, R12,15, R 1 234,56
  */
-function detectPrice(text: string, isStandalone = false): number | null {
-  const prices = detectAllPrices(text, isStandalone);
+function detectPrice(text: string): number | null {
+  const prices = detectAllPrices(text);
   return prices.length > 0 ? prices[prices.length - 1] : null;
 }
 
 /**
  * Find ALL R-prefixed prices in a string, returned in order of appearance.
- * When isStandalone=true, also match standalone numerics like "1,234.56" without R prefix.
+ * ONLY matches explicit R-prefixed prices — no standalone numerics.
  */
-function detectAllPrices(text: string, isStandalone = false): number[] {
+function detectAllPrices(text: string): number[] {
   const results: number[] = [];
   const re = /R\s*([\d\s,]+[.,]\d{1,2})(?:\s|$|[^A-Za-z0-9]|,)/g;
   let m: RegExpExecArray | null;
@@ -224,24 +224,6 @@ function detectAllPrices(text: string, isStandalone = false): number[] {
     const raw = m[1].replace(/\s/g, "");
     const val = parseFloat(raw);
     if (!isNaN(val) && val >= 50 && !results.includes(val)) results.push(val);
-  }
-
-  // Standalone numeric detection (no R prefix) for column-based prices
-  if (isStandalone && results.length === 0) {
-    const re4 = /^([\d\s,]+[.,]\d{1,2})$/;
-    const match = text.trim().match(re4);
-    if (match) {
-      const val = parseRawPrice(match[1]);
-      if (val !== null && val >= 1) results.push(val);
-    }
-    // Whole number standalone
-    const re5 = /^(\d[\d\s]*)$/;
-    const match2 = text.trim().match(re5);
-    if (match2) {
-      const raw = match2[1].replace(/\s/g, "");
-      const val = parseFloat(raw);
-      if (!isNaN(val) && val >= 50 && !results.includes(val)) results.push(val);
-    }
   }
 
   return results;
