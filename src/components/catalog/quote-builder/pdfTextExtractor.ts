@@ -235,6 +235,9 @@ export function matchTextRowsToProducts(
   const modelRegex1 = /^[A-Z]{2,}[0-9]/;     // e.g. FTXM25Q, MS12F
   const modelRegex2 = /^[A-Z0-9]{6,}$/;       // e.g. AR09TXHQ
 
+  // Model/product code detection regex — must contain at least 2 letters followed by a digit
+  const productCodeRegex = /[A-Z]{2}\d/;
+
   // ─── STEP 4-7: Process each row ───
   const regions: ExtractedProductRegion[] = [];
 
@@ -256,6 +259,15 @@ export function matchTextRowsToProducts(
     // Label = all text items LEFT of the rightmost price item
     const labelItems = row.items.filter(i => i.x < rightmostPriceItem.x);
     const label = labelItems.map(i => i.text).join(" ").trim();
+
+    // BUG 2 FIX: Require at least one text item that looks like a model/product code.
+    // This prevents title rows and section headers from getting icons.
+    const allRowText = allText.toUpperCase();
+    const hasProductCode = productCodeRegex.test(allRowText);
+    if (!hasProductCode) {
+      console.log(`[pdfExtract v36] SKIP (no product code): "${allText.substring(0, 80)}"`);
+      continue;
+    }
 
     // Find model code in the row
     let modelCode = "";
