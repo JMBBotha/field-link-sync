@@ -202,7 +202,7 @@ const DraggableRegion = memo(({
       onMouseLeave={onHoverLeave}
     >
       {/* Right 35% hover gradient overlay + Chevron + Icons — only show if row has price */}
-      {(region.detected_price != null && region.detected_price > 0) && (
+      {/R\s?[\d\s]+[,.]\d{2}/.test(region.label) && (
         <>
           {/* Right 35% hover gradient overlay (covers price/icon area) */}
           <div className="absolute top-0 bottom-0 rounded transition-opacity duration-200 opacity-0 group-hover:opacity-100 pointer-events-none"
