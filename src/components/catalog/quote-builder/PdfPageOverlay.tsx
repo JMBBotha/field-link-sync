@@ -112,6 +112,11 @@ const DraggableRegion = memo(({
 
   const price = product?.selling_price || product?.cost_incl_vat || 0;
 
+  // Icon visibility: detected_price AND likely product row (not tall header, below top)
+  const hasDetectedPrice = region.detected_price != null && region.detected_price > 0;
+  const isLikelyProductRow = region.h_pct < 15 && region.y_pct > 20;
+  const showIcons = hasDetectedPrice && isLikelyProductRow;
+
   // Strip click → opens Area Quote Builder
   const handleStripClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
