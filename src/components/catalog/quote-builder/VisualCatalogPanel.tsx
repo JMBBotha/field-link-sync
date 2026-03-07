@@ -1238,7 +1238,7 @@ const LazyPdfPage = ({
           />
           {/* Show overlays for ALL regions (matched + unmatched) — works with live extraction or fallback */}
           {overlayRegions.length > 0 && (
-            <PdfPageOverlay
+             <PdfPageOverlay
               regions={overlayRegions}
               baskets={baskets}
               onAddProductToBasket={onAddProductToBasket}
@@ -1253,6 +1253,7 @@ const LazyPdfPage = ({
               onHoverMove={onHoverMove}
               onHoverEnd={onHoverEnd}
               pdfSelection={pdfSelection}
+              onOpenProductInfo={onProductInfoOpen}
             />
           )}
           {extracting && (
