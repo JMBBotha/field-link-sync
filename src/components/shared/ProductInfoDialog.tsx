@@ -43,12 +43,12 @@ function extractPhase(product: PaletteProduct): string {
 }
 
 /** Info row component for clean grid layout */
-function InfoRow({ label, value, mono }: { label: string; value: string | number | null | undefined; mono?: boolean }) {
+function InfoRow({ label, value, mono, color }: { label: string; value: string | number | null | undefined; mono?: boolean; color?: string }) {
   if (!value && value !== 0) return null;
   return (
     <>
       <span className="text-muted-foreground text-xs py-1">{label}</span>
-      <span className={cn("text-xs py-1 break-words", mono && "font-mono font-medium")}>{value}</span>
+      <span className={cn("text-xs py-1 break-words", mono && "font-mono font-medium", color)}>{value}</span>
     </>
   );
 }
