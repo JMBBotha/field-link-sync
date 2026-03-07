@@ -364,7 +364,7 @@ const GhostAddRow = memo(({
   yPct: number;
   hPct: number;
   onClick: () => void;
-  iconLeftPct?: string;
+  iconLeftPct: string;
 }) => (
   <div
     className="absolute cursor-pointer group"
