@@ -12,8 +12,13 @@ import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 function getProductPricing(product: PaletteProduct) {
   const cost = product.cost_price || product.cost_excl_vat || 0;
   const markup = product.default_markup_percent ?? product.markup_percent ?? 20;
+  if (cost <= 0) {
+    const fallbackPrice = product.cost_incl_vat || product.selling_price || 0;
+    return { costExclVat: 0, discountedCost: 0, markupPercent: markup, sellingPrice: fallbackPrice, sellingPriceInclVat: fallbackPrice, supplierDiscountPercent: 0 };
+  }
   const { sellingExclVat, sellingInclVat } = calcSellingPrice(cost, markup);
-  return { costExclVat: cost, discountedCost: cost, markupPercent: markup, sellingPrice: sellingExclVat, sellingPriceInclVat: sellingInclVat, supplierDiscountPercent: 0 };
+  const safe = (n: number) => (isFinite(n) && !isNaN(n) ? n : 0);
+  return { costExclVat: cost, discountedCost: cost, markupPercent: markup, sellingPrice: safe(sellingExclVat), sellingPriceInclVat: safe(sellingInclVat), supplierDiscountPercent: 0 };
 }
 
 interface EnhancedProductPopupProps {
