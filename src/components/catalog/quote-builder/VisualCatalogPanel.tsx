@@ -1213,6 +1213,31 @@ const LazyPdfPage = ({
     }
   }, [overlayRegions, pageIndex, onCategoriesDetected]);
 
+  // Cross-check validation: compare PDF price rows vs extractor regions vs overlay icons
+  useEffect(() => {
+    if (!extractionFullText || overlayRegions.length === 0) return;
+    const pdfPriceMatches = extractionFullText.match(/R\s*\d[\d\s,.]*/g);
+    const pdfPriceRowCount = pdfPriceMatches ? pdfPriceMatches.length : 0;
+    const extractorRegionCount = liveRegions.length;
+    const overlayIconCount = overlayRegions.length;
+
+    console.log(
+      `[CrossCheck] Page ${page.page_number}: PDF has ${pdfPriceRowCount} price rows, extractor found ${extractorRegionCount} regions, overlay shows ${overlayIconCount} icons, DB has ${supplierProductsCount} products for this supplier`
+    );
+
+    if (pdfPriceRowCount > 0 && extractorRegionCount < pdfPriceRowCount * 0.8) {
+      console.warn(
+        `[CrossCheck] WARNING: Page ${page.page_number}: Extractor found only ${extractorRegionCount}/${pdfPriceRowCount} price rows (${Math.round((extractorRegionCount / pdfPriceRowCount) * 100)}%). Some products may be missing icons.`
+      );
+      toast({
+        title: `Page ${page.page_number}: Some products may be missing`,
+        description: `Detected ${pdfPriceRowCount} prices in PDF but only ${extractorRegionCount} regions extracted. ${pdfPriceRowCount - extractorRegionCount} rows may lack icons.`,
+        variant: "destructive",
+        duration: 8000,
+      });
+    }
+  }, [extractionFullText, liveRegions.length, overlayRegions.length, page.page_number, supplierProductsCount]);
+
   const starOverlays = useMemo(() => {
     const starred = overlayRegions.filter(r => r.product && favoriteIds.has(r.product.id));
     if (starred.length > 0) {
