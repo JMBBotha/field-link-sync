@@ -323,7 +323,7 @@ const DraggableRegion = memo(({
         ) : (
           <button
             className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-all cursor-pointer shadow-md"
-            style={{ background: "#f97316" }}
+            style={{ background: "#007BFF" }}
             onClick={handleIconClick}
             onContextMenu={handleContextMenu}
             title="Right-click to hide"
