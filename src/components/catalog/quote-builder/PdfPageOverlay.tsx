@@ -83,6 +83,8 @@ interface PdfPageOverlayProps {
   onHoverEnd?: () => void;
   /** Shared PDF selection state */
   pdfSelection?: PdfSelectionHandlers;
+  /** Opens Product Info dialog for a product */
+  onOpenProductInfo?: (product: PaletteProduct) => void;
 }
 
 /* ─── Added-to-quote tracker (local state, shared across regions) ─── */
