@@ -411,7 +411,8 @@ const PdfPageOverlay = ({
         return (
           (r.has_price === true || (r.detected_price ?? 0) > 0) &&
           r.product_code &&
-          r.product_code.trim() !== ""
+          r.product_code.trim() !== "" &&
+          r.w_pct <= 70
         );
       })
       .sort((a, b) => a.y_pct - b.y_pct),
