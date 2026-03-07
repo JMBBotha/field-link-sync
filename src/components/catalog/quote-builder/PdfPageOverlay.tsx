@@ -218,7 +218,7 @@ const DraggableRegion = memo(({
                 {
                   const product = region.product;
                   const sellingPrice = product?.selling_price || product?.cost_incl_vat || region.detected_price || 0;
-                  const disc = (product as any)?.supplier_discount_percent ?? 0;
+                  const disc = (product as any)?.supplier_discount_percent ?? 20;
                   let costPrice = 0;
                   if (product?.cost_excl_vat && product.cost_excl_vat > 0) {
                     costPrice = calculatePricing(product.cost_excl_vat, disc).discountedCost;
