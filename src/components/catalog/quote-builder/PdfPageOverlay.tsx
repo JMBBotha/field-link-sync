@@ -61,6 +61,8 @@ interface PdfPageOverlayProps {
   pdfSelection?: PdfSelectionHandlers;
   /** Opens ProductInfoDialog for the given product */
   onProductInfoOpen?: (product: PaletteProduct) => void;
+  /** First page of PDF — never show icons on cover pages */
+  isFirstPage?: boolean;
 }
 
 /* ─── Added-to-quote tracker (local state, shared across regions) ─── */
