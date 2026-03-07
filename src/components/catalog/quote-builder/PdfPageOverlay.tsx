@@ -498,7 +498,7 @@ const PdfPageOverlay = ({
     return gaps;
   }, [positionedRegions]);
 
-  // Icon positioning now uses right-side gutter (CSS right: 8px) — no computation needed
+  const iconLeftPct = computeIconLeftPct(positionedRegions);
 
   const handleHover = useCallback((region: OverlayRegion) => {
     hoveredRegionRef.current = region;
