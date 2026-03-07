@@ -546,16 +546,34 @@ export function matchTextRowsToProducts(
 
 // Cache for extracted regions per page
 let _extractionVersion = 33; // v33: tight row context + position-aware left-preferential matching + dedup
-const extractionCache = new Map<string, ExtractedProductRegion[]>();
+const extractionCache = new Map<string, { regions: ExtractedProductRegion[]; fullText: string }>();
+
+export interface ExtractionResult {
+  regions: ExtractedProductRegion[];
+  fullText: string;
+}
 
 /**
  * Extract and match products from a PDF page, with caching.
+ * Returns regions AND the full concatenated text for cross-check validation.
  */
 export async function extractAndMatchPage(
   pdfUrl: string,
   pageNumber: number,
   products: PaletteProduct[]
 ): Promise<ExtractedProductRegion[]> {
+  const result = await extractAndMatchPageFull(pdfUrl, pageNumber, products);
+  return result.regions;
+}
+
+/**
+ * Full extraction returning both regions and fullText for cross-check validation.
+ */
+export async function extractAndMatchPageFull(
+  pdfUrl: string,
+  pageNumber: number,
+  products: PaletteProduct[]
+): Promise<ExtractionResult> {
   const cacheKey = `v${_extractionVersion}:${pdfUrl}:${pageNumber}:${products.length}`;
 
   if (extractionCache.has(cacheKey)) {
@@ -570,6 +588,8 @@ export async function extractAndMatchPage(
 
     console.log(`[pdfExtract] Page ${pageNumber}: ${items.length} raw text items extracted from PDF`);
 
+    const fullText = items.map(i => i.text).join(' ');
+
     const mergedItems = mergeCurrencyWithPrices(items);
     console.log(`[pdfExtract] Page ${pageNumber}: ${mergedItems.length} items after mergeCurrencyWithPrices (${items.length - mergedItems.length} merged)`);
 
@@ -583,11 +603,12 @@ export async function extractAndMatchPage(
 
     const regions = matchTextRowsToProducts(mergedItems, pageWidth, pageHeight, products);
     console.log(`[pdfExtract] Page ${pageNumber}: ${regions.length} final regions`);
-    extractionCache.set(cacheKey, regions);
-    return regions;
+    const result = { regions, fullText };
+    extractionCache.set(cacheKey, result);
+    return result;
   } catch (err) {
     console.error("[pdfTextExtractor] Failed to extract:", err);
-    return [];
+    return { regions: [], fullText: "" };
   }
 }
 

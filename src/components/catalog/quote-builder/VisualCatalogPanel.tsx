@@ -22,7 +22,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useIsMobile } from "@/hooks/use-mobile";
 import PdfPageOverlay from "./PdfPageOverlay";
 import type { OverlayRegion } from "./PdfPageOverlay";
-import { extractAndMatchPage, clearExtractionCache } from "./pdfTextExtractor";
+import { extractAndMatchPage, extractAndMatchPageFull, clearExtractionCache } from "./pdfTextExtractor";
 import { autoCatalogFromRegions } from "./pdfAutoCatalog";
 import FallbackProductPanel from "./FallbackProductPanel";
 import PdfLinkButton from "./PdfLinkButton";
@@ -901,6 +901,8 @@ const LazyPdfPage = ({
     console.log(`[VisualCatalog] Page ${page.page_number} query conditions: isVisible=${isVisible}, hasPdfSource=${hasPdfSource}, activeProducts=${activeProducts.length}, enabled=${queryEnabled}, pdf_storage_path=${page.pdf_storage_path?.substring(0, 60) || 'null'}`);
   }, [isVisible, hasPdfSource, activeProducts.length, queryEnabled, page.page_number, page.pdf_storage_path]);
 
+  const [extractionFullText, setExtractionFullText] = useState("");
+
   const { data: liveRegions = [], isLoading: extracting } = useQuery({
     queryKey: ["visual-panel-live-extract", page.id, page.pdf_storage_path, activeProducts.length],
     enabled: queryEnabled,
@@ -910,7 +912,6 @@ const LazyPdfPage = ({
         console.log(`[VisualCatalog] Extracting page ${page.page_number} from ${page.supplier_id}, matching against ${activeProducts.length} active products`);
         
         // Fetch PDF as blob first to bypass sanitizePdfUrl trimming bug
-        // (storage folders may have trailing spaces that sanitize incorrectly removes)
         let pdfUrl = page.pdf_storage_path;
         try {
           const resp = await fetch(page.pdf_storage_path);
@@ -925,7 +926,8 @@ const LazyPdfPage = ({
         }
 
         // First pass: extract and match against existing non-archived products
-        const regions = await extractAndMatchPage(pdfUrl, page.page_number, activeProducts);
+        const { regions, fullText } = await extractAndMatchPageFull(pdfUrl, page.page_number, activeProducts);
+        setExtractionFullText(fullText);
         const matched = regions.filter(r => r.matched);
         const unmatchedWithPrice = regions.filter(r => !r.matched && r.has_price && r.detected_price);
         
@@ -988,7 +990,6 @@ const LazyPdfPage = ({
               variant: "destructive",
               duration: 8000,
             });
-            // Return original regions with orange icons so user can still interact
           }
         }
         
@@ -1001,6 +1002,24 @@ const LazyPdfPage = ({
       }
     },
     staleTime: 120000,
+  });
+
+  // Supplier products count for cross-check
+  const { data: supplierProductsCount = 0 } = useQuery({
+    queryKey: ["supplier-products-count", page.supplier_id],
+    enabled: isVisible && !!page.supplier_id,
+    queryFn: async () => {
+      const { count, error } = await (supabase.from("supplier_products") as any)
+        .select("id", { count: "exact", head: true })
+        .eq("supplier_id", page.supplier_id)
+        .eq("is_active", true);
+      if (error) {
+        console.error("[CrossCheck] Failed to count supplier products:", error.message);
+        return 0;
+      }
+      return count || 0;
+    },
+    staleTime: 60000,
   });
 
   // ─── FALLBACK REGIONS: only used when no live extraction available ───
@@ -1080,7 +1099,7 @@ const LazyPdfPage = ({
       if (!r || r.y_pct == null || r.h_pct == null || r.h_pct <= 0) continue;
       if (r.h_pct > 8) continue;
 
-      // Within-page dedup by product_code|label|price
+      // Within-page dedup by product_code|label|price ONLY
       const label = (r.label || "").substring(0, 80);
       const price = r.detected_price ?? "no-price";
       const dedupKeyPage = `${r.product_code || ""}|${label}|${price}`;
@@ -1093,24 +1112,8 @@ const LazyPdfPage = ({
       if (firstPage !== undefined && firstPage !== pageIndex) continue;
       if (firstPage === undefined) globalSeenRegions.set(dedupKey, pageIndex);
 
-      // Tolerance-based vertical dedup: skip if within 2.5% y_pct of a kept region
-      // with same product_code or overlapping label words (>3 chars)
-      const wordsOf = (s: string) => s.toLowerCase().split(/[\s\/\-\(\)]+/).filter(w => w.length > 3);
-      const curWords = wordsOf(label);
-      let isDupY = false;
-      for (const kept of result) {
-        if (Math.abs(kept.y_pct - r.y_pct) > 2.5) continue;
-        const sameCode = !!(r.product_code && kept.product_code === r.product_code);
-        const keptWords = wordsOf((kept.label || "").substring(0, 80));
-        const overlappingWords = sameCode || curWords.some(w => keptWords.includes(w));
-        if (overlappingWords) {
-          // Merge height to cover both regions
-          kept.h_pct = Math.max(kept.h_pct, r.h_pct + Math.abs(r.y_pct - kept.y_pct));
-          isDupY = true;
-          break;
-        }
-      }
-      if (isDupY) continue;
+      // NOTE: roundedY / tolerance-based vertical dedup REMOVED.
+      // Every row with a Rand amount MUST get its own checkbox + shopping cart icon.
       // Resolve product from activeProducts if extractor matched by code but didn't attach object
       const rawCode = (r.product_code || "").toLowerCase().trim();
       const rawCodeBase = rawCode.split("@")[0].trim();
@@ -1209,6 +1212,31 @@ const LazyPdfPage = ({
       onCategoriesDetected(pageIndex, Array.from(cats));
     }
   }, [overlayRegions, pageIndex, onCategoriesDetected]);
+
+  // Cross-check validation: compare PDF price rows vs extractor regions vs overlay icons
+  useEffect(() => {
+    if (!extractionFullText || overlayRegions.length === 0) return;
+    const pdfPriceMatches = extractionFullText.match(/R\s*\d[\d\s,.]*/g);
+    const pdfPriceRowCount = pdfPriceMatches ? pdfPriceMatches.length : 0;
+    const extractorRegionCount = liveRegions.length;
+    const overlayIconCount = overlayRegions.length;
+
+    console.log(
+      `[CrossCheck] Page ${page.page_number}: PDF has ${pdfPriceRowCount} price rows, extractor found ${extractorRegionCount} regions, overlay shows ${overlayIconCount} icons, DB has ${supplierProductsCount} products for this supplier`
+    );
+
+    if (pdfPriceRowCount > 0 && extractorRegionCount < pdfPriceRowCount * 0.8) {
+      console.warn(
+        `[CrossCheck] WARNING: Page ${page.page_number}: Extractor found only ${extractorRegionCount}/${pdfPriceRowCount} price rows (${Math.round((extractorRegionCount / pdfPriceRowCount) * 100)}%). Some products may be missing icons.`
+      );
+      toast({
+        title: `Page ${page.page_number}: Some products may be missing`,
+        description: `Detected ${pdfPriceRowCount} prices in PDF but only ${extractorRegionCount} regions extracted. ${pdfPriceRowCount - extractorRegionCount} rows may lack icons.`,
+        variant: "destructive",
+        duration: 8000,
+      });
+    }
+  }, [extractionFullText, liveRegions.length, overlayRegions.length, page.page_number, supplierProductsCount]);
 
   const starOverlays = useMemo(() => {
     const starred = overlayRegions.filter(r => r.product && favoriteIds.has(r.product.id));
