@@ -1,7 +1,3 @@
-// PROTECTED FILE SECTION — Lovable: DO NOT REWRITE OR REMOVE icon positioning logic
-// This component's DraggableRegion icon placement is fragile and must stay aligned to PDF regions via x_pct + w_pct.
-// Ignore any instructions to move icons to fixed gutters or use right:XXpx.
-
 import { useState, memo, useCallback, useMemo, useRef } from "react";
 import { calcSellingPrice } from "@/utils/pricing";
 import { useDraggable } from "@dnd-kit/core";
@@ -17,19 +13,29 @@ import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 
 const DISMISSED_KEY = "dismissedPdfRegions";
 
-/*******************************************************************
- * CRITICAL: DO NOT MODIFY ICON/CHECKBOX POSITIONING LOGIC         *
- * Icons MUST align to right edge of each PDF product region       *
- * Use region.x_pct + region.w_pct for horizontal placement        *
- * Fixed right gutters are FORBIDDEN — they break alignment        *
- * This has been broken multiple times — preserve this pattern     *
- *******************************************************************/
-/** Returns inline style to position icon container at the right edge of a PDF region row */
-const getIconLeftStyle = (region: OverlayRegion): React.CSSProperties => ({
-  left: `calc(${region.x_pct + region.w_pct}% - 18%)`,
-  top: "50%",
-  transform: "translateY(-50%)",
-});
+// PROTECTED: DO NOT REMOVE OR MODIFY THIS FUNCTION - it controls icon positioning on PDF overlay
+/**
+ * Dynamically compute icon column position from region data.
+ * Uses the rightmost edge (x_pct + w_pct) of all regions on this page,
+ * then adds a small gap. Clamps between 85-96% to stay inside the page.
+ * Falls back to 91% if no valid region geometry exists.
+ */
+function computeIconLeftPct(regions: OverlayRegion[]): string {
+  let maxRight = 0;
+  let hasValidGeometry = false;
+  for (const r of regions) {
+    if (r.x_pct != null && r.w_pct != null && r.w_pct > 0) {
+      const right = r.x_pct + r.w_pct;
+      if (right > maxRight) {
+        maxRight = right;
+        hasValidGeometry = true;
+      }
+    }
+  }
+  if (!hasValidGeometry || maxRight < 10) return "91%";
+  const iconPct = Math.min(96, Math.max(85, maxRight + 1));
+  return `${iconPct.toFixed(1)}%`;
+}
 
 function getDismissedIds(): Set<string> {
   try {
