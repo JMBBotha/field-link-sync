@@ -146,7 +146,6 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       setVisiblePageIndex(0);
       setZoom(1);
       clearExtractionCache();
-      globalSeenRegions.clear(); // Reset cross-page dedup on panel open
       // Force all live-extract queries to re-run with latest detection logic
       queryClient.removeQueries({ queryKey: ["visual-panel-live-extract"] });
     }
