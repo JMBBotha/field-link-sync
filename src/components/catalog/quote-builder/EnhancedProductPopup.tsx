@@ -159,7 +159,7 @@ const EnhancedProductPopup = ({
             const p = getProductPricing(product);
             return (
               <div className="flex items-center gap-2 text-[10px]">
-                <span className="text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{p.discountedCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
+                <span className="text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{safeNum(p.discountedCost).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
                 <span className="text-muted-foreground">M/Up: <span className="font-mono font-semibold text-primary">{p.markupPercent.toFixed(1)}%</span></span>
               </div>
             );
