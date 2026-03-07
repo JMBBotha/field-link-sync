@@ -992,6 +992,8 @@ const LazyPdfPage = ({
           }
         }
         
+        // Revoke blob URL if we created one
+        if (pdfUrl !== page.pdf_storage_path) URL.revokeObjectURL(pdfUrl);
         return regions;
       } catch (err) {
         console.error("[VisualCatalog] Live extraction failed:", err);
