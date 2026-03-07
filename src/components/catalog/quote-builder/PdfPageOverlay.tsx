@@ -122,6 +122,7 @@ const DraggableRegion = memo(({
   onHoverLeave: () => void;
   pdfSelection?: PdfSelectionHandlers;
 }) => {
+  const [isRowHovered, setIsRowHovered] = useState(false);
   const product = region.product;
   const isMatched = !!product;
   const isFavorite = product?.is_pinned === true;
