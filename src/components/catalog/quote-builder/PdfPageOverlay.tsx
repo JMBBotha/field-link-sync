@@ -258,7 +258,7 @@ const DraggableRegion = memo(({
               onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
-              className="h-3 w-3 accent-primary cursor-pointer"
+              className="h-5 w-5 accent-primary cursor-pointer"
               title="Select for quote"
             />
           </div>

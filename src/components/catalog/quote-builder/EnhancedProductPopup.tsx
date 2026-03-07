@@ -288,7 +288,7 @@ const EnhancedProductPopup = ({
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate">{basket.name}</p>
                       <p className="text-[10px] text-muted-foreground">
-                        {basket.items.length} items · R{zoneTotal.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
+                        {basket.items.length} items · R{safeNum(zoneTotal).toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
