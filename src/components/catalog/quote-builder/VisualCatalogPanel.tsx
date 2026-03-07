@@ -1256,6 +1256,7 @@ const LazyPdfPage = ({
             loading="lazy"
             draggable={false}
             style={hdMode ? { imageRendering: "high-quality" as any } : undefined}
+            onClick={pageIndex === 0 ? () => toast({ title: "This is a cover page — no products", description: "Navigate to page 2 to start browsing products.", duration: 4000 }) : undefined}
           />
           {/* Show overlays for ALL regions (matched + unmatched) — works with live extraction or fallback */}
           {overlayRegions.length > 0 && (
