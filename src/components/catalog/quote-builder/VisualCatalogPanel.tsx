@@ -1097,7 +1097,7 @@ const LazyPdfPage = ({
       // Vertical dedup: 0.5% precision, keep first region at each Y
       const roundedY = Math.round(r.y_pct * 2) / 2;
       if (seenYSet.has(roundedY)) continue;
-      seenYSet.set(roundedY);
+      seenYSet.add(roundedY);
       // Resolve product from activeProducts if extractor matched by code but didn't attach object
       const rawCode = (r.product_code || "").toLowerCase().trim();
       const rawCodeBase = rawCode.split("@")[0].trim();
