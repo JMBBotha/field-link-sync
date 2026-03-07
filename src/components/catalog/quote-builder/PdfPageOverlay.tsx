@@ -13,29 +13,6 @@ import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 
 const DISMISSED_KEY = "dismissedPdfRegions";
 
-// PROTECTED: DO NOT REMOVE OR MODIFY THIS FUNCTION - it controls icon positioning on PDF overlay
-/**
- * Dynamically compute icon column position from region data.
- * Uses the rightmost edge (x_pct + w_pct) of all regions on this page,
- * then adds a small gap. Clamps between 85-96% to stay inside the page.
- * Falls back to 91% if no valid region geometry exists.
- */
-function computeIconLeftPct(regions: OverlayRegion[]): string {
-  let maxRight = 0;
-  let hasValidGeometry = false;
-  for (const r of regions) {
-    if (r.x_pct != null && r.w_pct != null && r.w_pct > 0) {
-      const right = r.x_pct + r.w_pct;
-      if (right > maxRight) {
-        maxRight = right;
-        hasValidGeometry = true;
-      }
-    }
-  }
-  if (!hasValidGeometry || maxRight < 10) return "91%";
-  const iconPct = Math.min(96, Math.max(85, maxRight + 1));
-  return `${iconPct.toFixed(1)}%`;
-}
 
 function getDismissedIds(): Set<string> {
   try {
