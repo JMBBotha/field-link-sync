@@ -256,7 +256,7 @@ const EnhancedProductPopup = ({
                   </Button>
                 </div>
                 <span className="text-[10px] font-mono text-foreground ml-auto">
-                  → R{pricing.sellingPrice.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  → R{safeNum(pricing.sellingPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
               );
