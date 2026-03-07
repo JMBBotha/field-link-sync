@@ -242,16 +242,10 @@ const DraggableRegion = memo(({
         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" style={{ color: "rgba(255,255,255,0.85)" }} />
       </div>
 
-      {/*******************************************************************
-        * CRITICAL: DO NOT MODIFY ICON/CHECKBOX POSITIONING LOGIC         *
-        * Icons MUST align to right edge of each PDF product region       *
-        * Use getIconLeftStyle(region) for horizontal placement            *
-        * Fixed right gutters (right:XXpx) are FORBIDDEN                  *
-        *******************************************************************/}
       {/* Inline icon row: checkbox + cart/star side by side — positioned at region edge */}
       <div
         className="absolute z-20 pointer-events-auto"
-        style={{ ...getIconLeftStyle(region), display: "flex", alignItems: "center", gap: "8px" }}
+        style={{ left: iconLeftPct, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: "8px" }}
       >
         {/* PDF selection checkbox — show for all regions with a product or detected price */}
         {pdfSelection && effectiveProduct && (
