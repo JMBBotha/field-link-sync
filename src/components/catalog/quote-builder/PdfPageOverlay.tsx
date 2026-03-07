@@ -542,7 +542,6 @@ const PdfPageOverlay = ({
               ? localAddedIds.has(region.product.id) || addedQuoteItemIds.has(region.product.id)
               : false
           }
-          iconLeftPct={iconLeftPct}
           onHover={handleHover}
           onHoverMove={handleHoverMove}
           onHoverLeave={handleHoverLeave}
