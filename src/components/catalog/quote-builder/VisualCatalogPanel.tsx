@@ -1075,6 +1075,7 @@ const LazyPdfPage = ({
     const result: OverlayRegion[] = [];
 
     const seenOnPage = new Set<string>();
+    const seenYCodes = new Map<number, string>();
     for (let idx = 0; idx < sourceRegions.length; idx++) {
       const r = sourceRegions[idx];
       // Cross-page dedup: skip if this exact item was already seen on an earlier page
@@ -1087,7 +1088,12 @@ const LazyPdfPage = ({
       if (seenOnPage.has(dedupKey)) continue;
       seenOnPage.add(dedupKey);
 
-
+      // Row-level dedup: skip if same product_code at same rounded Y position
+      const roundedY = Math.round(r.y_pct);
+      const code = r.product_code || "";
+      const prevCode = seenYCodes.get(roundedY);
+      if (prevCode !== undefined && prevCode === code) continue;
+      seenYCodes.set(roundedY, code);
       // Resolve product from activeProducts if extractor matched by code but didn't attach object
       const rawCode = (r.product_code || "").toLowerCase().trim();
       const rawCodeBase = rawCode.split("@")[0].trim();
