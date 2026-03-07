@@ -532,9 +532,10 @@ const PdfPageOverlay = ({
 
   // Page-level check: only show icons on pages with 3+ priced rows
   const isProductPage = useMemo(() => {
+    if (isFirstPage) return false;
     const uniquePrices = new Set(positionedRegions.filter(r => r.detected_price != null && r.detected_price > 0).map(r => r.detected_price));
     return uniquePrices.size >= 3;
-  }, [positionedRegions]);
+  }, [positionedRegions, isFirstPage]);
 
   if (positionedRegions.length === 0) return null;
 
