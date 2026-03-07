@@ -222,7 +222,7 @@ const DraggableRegion = memo(({
       )}
 
       {/* PDF selection checkbox — positioned left of the icon column */}
-      {pdfSelection && region.product && (
+      {pdfSelection && (
         <div
           className="absolute top-1/2 -translate-y-1/2 z-20 pointer-events-auto"
           style={{ left: `calc(${iconLeftPct} - 22px)` }}

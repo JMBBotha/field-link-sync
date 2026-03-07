@@ -1075,25 +1075,29 @@ const LazyPdfPage = ({
     const result: OverlayRegion[] = [];
 
     const seenOnPage = new Set<string>();
-    const seenYCodes = new Map<number, string>();
+    const seenYSet = new Set<number>();
     for (let idx = 0; idx < sourceRegions.length; idx++) {
       const r = sourceRegions[idx];
-      // Cross-page dedup: skip if this exact item was already seen on an earlier page
-      const dedupKey = `${r.product_code || ""}|${(r.label || "").substring(0, 80)}|${r.detected_price ?? "no-price"}`;
+      if (!r || r.y_pct == null || r.h_pct == null || r.h_pct <= 0) continue;
+      if (r.h_pct > 8) continue;
+
+      // Within-page dedup by product_code|label|price
+      const label = (r.label || "").substring(0, 80);
+      const price = r.detected_price ?? "no-price";
+      const dedupKeyPage = `${r.product_code || ""}|${label}|${price}`;
+      if (seenOnPage.has(dedupKeyPage)) continue;
+      seenOnPage.add(dedupKeyPage);
+
+      // Cross-page dedup
+      const dedupKey = `${r.product_code || ""}|${label}|${price}`;
       const firstPage = globalSeenRegions.get(dedupKey);
       if (firstPage !== undefined && firstPage !== pageIndex) continue;
-      globalSeenRegions.set(dedupKey, pageIndex);
+      if (firstPage === undefined) globalSeenRegions.set(dedupKey, pageIndex);
 
-      // Within-page dedup: skip if same dedupKey already added on this page
-      if (seenOnPage.has(dedupKey)) continue;
-      seenOnPage.add(dedupKey);
-
-      // Row-level dedup: skip if same product_code at same rounded Y position
-      const roundedY = Math.round(r.y_pct);
-      const code = r.product_code || "";
-      const prevCode = seenYCodes.get(roundedY);
-      if (prevCode !== undefined && prevCode === code) continue;
-      seenYCodes.set(roundedY, code);
+      // Vertical dedup: 0.5% precision, keep first region at each Y
+      const roundedY = Math.round(r.y_pct * 2) / 2;
+      if (seenYSet.has(roundedY)) continue;
+      seenYSet.set(roundedY);
       // Resolve product from activeProducts if extractor matched by code but didn't attach object
       const rawCode = (r.product_code || "").toLowerCase().trim();
       const rawCodeBase = rawCode.split("@")[0].trim();
