@@ -212,7 +212,7 @@ const DraggableRegion = memo(({
       {/* Chevron arrow — positioned at right edge of region */}
       <div
         className="absolute -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10"
-        style={{ left: `${region.x_pct + region.w_pct - 5}%`, top: "50%", transform: "translateY(-50%)" }}
+        style={{ left: `${region.x_pct + region.w_pct - 16}%`, top: "50%", transform: "translateY(-50%)" }}
       >
         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" style={{ color: "rgba(255,255,255,0.85)" }} />
       </div>
@@ -220,7 +220,7 @@ const DraggableRegion = memo(({
       {/* PROTECTED: Icons positioned at right edge of region (w_pct - 8%). Universal for all PDF layouts. DO NOT use fixed right% or remove this logic. */}
       <div
         className="absolute z-20 pointer-events-auto"
-        style={{ left: `${region.x_pct + region.w_pct - 8}%`, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: "4px", zIndex: 10 }}
+        style={{ left: `${region.x_pct + region.w_pct - 19}%`, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: "4px", zIndex: 10 }}
       >
         {/* PDF selection checkbox — show for all regions with a product or detected price */}
         {pdfSelection && effectiveProduct && (
@@ -357,7 +357,7 @@ const GhostAddRow = memo(({
     {/* Ghost + icon — positioned over price column */}
     <div
       className="absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity z-10"
-      style={{ left: "87%", top: "50%", transform: "translateY(-50%)" }}
+      style={{ left: "81%", top: "50%", transform: "translateY(-50%)" }}
     >
       <div className="h-4 w-4 rounded-full flex items-center justify-center bg-muted-foreground/20 hover:bg-muted-foreground/40 transition-colors">
         <Plus className="h-2.5 w-2.5 text-muted-foreground" />
