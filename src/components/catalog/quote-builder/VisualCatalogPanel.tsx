@@ -1262,22 +1262,22 @@ const LazyPdfPage = ({
           {/* Show overlays for ALL regions (matched + unmatched) — works with live extraction or fallback */}
           {overlayRegions.length > 0 && (
              <PdfPageOverlay
-              regions={overlayRegions}
-              baskets={baskets}
-              onAddProductToBasket={onAddProductToBasket}
-              basketProductCounts={basketProductCounts}
-              onProductClick={onProductClick}
-              onQuickAddProduct={onQuickAddProduct}
-              onToggleFavorite={onToggleFavorite}
-              onRemoveRegion={onRemoveRegion}
-              supplierName={supplierName}
-              onOpenWizard={onOpenWizard}
-              onHoverStart={onHoverStart}
-              onHoverMove={onHoverMove}
-              onHoverEnd={onHoverEnd}
-              pdfSelection={pdfSelection}
-              onOpenProductInfo={onProductInfoOpen}
-            />
+               regions={overlayRegions}
+               baskets={baskets}
+               onAddProductToBasket={onAddProductToBasket}
+               basketProductCounts={basketProductCounts}
+               onProductClick={handleProductClick}
+               onQuickAddProduct={handleQuickAddProduct}
+               onToggleFavorite={handleToggleFavorite}
+               onRemoveRegion={handleRemoveRegion}
+               supplierName={supplierName}
+               onOpenWizard={onOpenWizard}
+               onHoverStart={handleHoverStart}
+               onHoverMove={handleHoverMove}
+               onHoverEnd={handleHoverEnd}
+               pdfSelection={pdfSelection}
+               onOpenProductInfo={handleProductInfoOpen}
+             />
           )}
           {extracting && (
             <div className="absolute top-2 right-2 z-30 bg-black/50 text-white text-[9px] px-2 py-1 rounded flex items-center gap-1">
