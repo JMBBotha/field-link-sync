@@ -1134,6 +1134,7 @@ const LazyPdfPage = ({
         }) || null;
       }
 
+      const finalMatched = r.matched === true || !!resolvedProduct;
       result.push({
         id: `live-${page.id}-${idx}`,
         x_pct: r.x_pct, y_pct: r.y_pct, w_pct: r.w_pct, h_pct: r.h_pct,
@@ -1142,7 +1143,7 @@ const LazyPdfPage = ({
         label: r.label || "",
         has_price: r.has_price,
         detected_price: r.detected_price,
-        matched: r.matched || !!resolvedProduct,
+        matched: finalMatched,
       });
     }
 
