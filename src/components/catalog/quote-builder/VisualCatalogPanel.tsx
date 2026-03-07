@@ -1049,7 +1049,9 @@ const LazyPdfPage = ({
   }, [liveRegions, storedRegions, activeProducts, page.id, page.supplier_id, supplierName, totalPages, pageIndex]);
 
   // ─── OVERLAY REGIONS: prefer live extraction with cross-page dedup, else fallback ───
+  // Skip cover page (index 0) — every supplier PDF has a title/banner page with no product rows
   const overlayRegions: OverlayRegion[] = useMemo(() => {
+    if (pageIndex === 0) return [];
     const sourceRegions = liveRegions.length > 0 ? liveRegions : [];
     const result: OverlayRegion[] = [];
 
