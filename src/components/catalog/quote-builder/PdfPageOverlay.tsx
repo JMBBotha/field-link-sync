@@ -217,10 +217,10 @@ const DraggableRegion = memo(({
         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" style={{ color: "rgba(255,255,255,0.85)" }} />
       </div>
 
-      {/* Inline icon row: checkbox + cart/star side by side — positioned at region edge */}
+      {/* PROTECTED: Icon positioning uses right:6% to align with price column. DO NOT change to left-based or computeIconLeftPct. */}
       <div
         className="absolute z-20 pointer-events-auto"
-        style={{ left: iconLeftPct, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: "8px" }}
+        style={{ position: "absolute", right: "6%", top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: "4px", zIndex: 10 }}
       >
         {/* PDF selection checkbox — show for all regions with a product or detected price */}
         {pdfSelection && effectiveProduct && (
