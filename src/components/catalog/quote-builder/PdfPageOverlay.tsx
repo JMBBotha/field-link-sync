@@ -557,7 +557,6 @@ const PdfPageOverlay = ({
           yPct={gap.yPct}
           hPct={gap.hPct}
           onClick={() => handleManualRowClick(gap.yPct)}
-          iconLeftPct={iconLeftPct}
         />
       ))}
 
