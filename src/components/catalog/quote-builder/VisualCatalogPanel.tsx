@@ -1094,21 +1094,44 @@ const LazyPdfPage = ({
       seenYPct.add(roundedY);
 
       // Resolve product from activeProducts if extractor matched by code but didn't attach object
-      const rawCode = (r.product_code || "").toLowerCase();
-      const rawCodeBase = rawCode.split("@")[0];
+      const rawCode = (r.product_code || "").toLowerCase().trim();
+      const rawCodeBase = rawCode.split("@")[0].trim();
+      // Normalize: strip whitespace, dashes, slashes for fuzzy compare
+      const normalize = (s: string) => s.toLowerCase().replace(/[\s\-\/\._]+/g, "");
+      const normRaw = normalize(rawCodeBase);
+
+      // 1. Exact match
       let resolvedProduct = r.product
-        || (rawCode ? activeProducts.find(p => p.product_code.toLowerCase() === rawCode) || null : null);
-      // Substring match on product_code
-      if (!resolvedProduct && rawCodeBase) {
-        resolvedProduct = activeProducts.find(p =>
-          rawCodeBase.includes(p.product_code.toLowerCase()) ||
-          p.product_code.toLowerCase().includes(rawCodeBase)
-        ) || null;
+        || (rawCode ? activeProducts.find(p => p.product_code.toLowerCase().trim() === rawCode) || null : null);
+
+      // 2. Normalized exact match
+      if (!resolvedProduct && normRaw) {
+        resolvedProduct = activeProducts.find(p => normalize(p.product_code) === normRaw) || null;
       }
-      // Label-based match as last resort
+
+      // 3. Substring/contains match
+      if (!resolvedProduct && normRaw.length >= 4) {
+        resolvedProduct = activeProducts.find(p => {
+          const normDb = normalize(p.product_code);
+          return normDb.length >= 4 && (normRaw.includes(normDb) || normDb.includes(normRaw));
+        }) || null;
+      }
+
+      // 4. StartsWith match (DB code starts with extracted code or vice versa)
+      if (!resolvedProduct && normRaw.length >= 4) {
+        resolvedProduct = activeProducts.find(p => {
+          const normDb = normalize(p.product_code);
+          return normDb.length >= 4 && (normDb.startsWith(normRaw) || normRaw.startsWith(normDb));
+        }) || null;
+      }
+
+      // 5. Label-based match as last resort
       if (!resolvedProduct && r.label) {
-        const labelLower = r.label.toLowerCase();
-        resolvedProduct = activeProducts.find(p => labelLower.includes(p.product_code.toLowerCase())) || null;
+        const normLabel = normalize(r.label);
+        resolvedProduct = activeProducts.find(p => {
+          const normPc = normalize(p.product_code);
+          return normPc.length >= 4 && normLabel.includes(normPc);
+        }) || null;
       }
 
       result.push({
