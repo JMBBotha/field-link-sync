@@ -1266,18 +1266,18 @@ const LazyPdfPage = ({
                baskets={baskets}
                onAddProductToBasket={onAddProductToBasket}
                basketProductCounts={basketProductCounts}
-               onProductClick={handleProductClick}
-               onQuickAddProduct={handleQuickAddProduct}
-               onToggleFavorite={handleToggleFavorite}
-               onRemoveRegion={handleRemoveRegion}
+               onProductClick={onProductClick}
+               onQuickAddProduct={onQuickAddProduct}
+               onToggleFavorite={onToggleFavorite}
+               onRemoveRegion={onRemoveRegion}
                supplierName={supplierName}
                onOpenWizard={onOpenWizard}
-               onHoverStart={handleHoverStart}
-               onHoverMove={handleHoverMove}
-               onHoverEnd={handleHoverEnd}
+               onHoverStart={onHoverStart}
+               onHoverMove={onHoverMove}
+               onHoverEnd={onHoverEnd}
                pdfSelection={pdfSelection}
-               onOpenProductInfo={handleProductInfoOpen}
-             />
+               onOpenProductInfo={onProductInfoOpen}
+              />
           )}
           {extracting && (
             <div className="absolute top-2 right-2 z-30 bg-black/50 text-white text-[9px] px-2 py-1 rounded flex items-center gap-1">
