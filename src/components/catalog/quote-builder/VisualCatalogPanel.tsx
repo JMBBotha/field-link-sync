@@ -1005,8 +1005,8 @@ const LazyPdfPage = ({
 
   // ─── FALLBACK REGIONS: only used when no live extraction available ───
   const fallbackRegions: OverlayRegion[] = useMemo(() => {
-    // If live regions exist, no fallback needed
-    if (liveRegions.length > 0) return [];
+    // Fallback regions are always computed; overlayRegions memo handles dedup
+    // They are only rendered for DB products NOT covered by live text extraction
 
     // Secondary: use stored regions from pdf_product_regions table
     if (storedRegions.length > 0) {
@@ -1074,13 +1074,18 @@ const LazyPdfPage = ({
     const sourceRegions = liveRegions.length > 0 ? liveRegions : [];
     const result: OverlayRegion[] = [];
 
+    // Track product_codes from text-extracted regions to suppress fallback duplicates
+    const liveProductCodes = new Set<string>();
+
     for (let idx = 0; idx < sourceRegions.length; idx++) {
       const r = sourceRegions[idx];
-      // Cross-page dedup: skip if this exact item was already seen on an earlier page
-      const dedupKey = `${(r.label || "").substring(0, 80)}|${r.detected_price ?? "no-price"}`;
+      // Cross-page dedup: use product_code + price as key (not label, which can repeat)
+      const dedupKey = `${r.product_code || ""}|${r.detected_price ?? "no-price"}|y${Math.round(r.y_pct)}`;
       const firstPage = globalSeenRegions.get(dedupKey);
       if (firstPage !== undefined && firstPage !== pageIndex) continue;
       globalSeenRegions.set(dedupKey, pageIndex);
+
+      if (r.product_code) liveProductCodes.add(r.product_code.toLowerCase());
 
       result.push({
         id: `live-${page.id}-${idx}`,
@@ -1094,9 +1099,18 @@ const LazyPdfPage = ({
       });
     }
 
-    // If no live regions produced results, use fallback
+    // If no live regions produced results, use fallback entirely
     if (result.length === 0 && fallbackRegions.length > 0) {
       return fallbackRegions;
+    }
+
+    // Merge in fallback regions for DB products NOT covered by live extraction
+    if (fallbackRegions.length > 0) {
+      for (const fb of fallbackRegions) {
+        const fbCode = (fb.product_code || "").toLowerCase();
+        if (fbCode && liveProductCodes.has(fbCode)) continue; // already have tighter text-extracted region
+        result.push(fb);
+      }
     }
 
     return result;
