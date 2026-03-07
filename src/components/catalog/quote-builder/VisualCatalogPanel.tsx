@@ -22,7 +22,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useIsMobile } from "@/hooks/use-mobile";
 import PdfPageOverlay from "./PdfPageOverlay";
 import type { OverlayRegion } from "./PdfPageOverlay";
-import { extractAndMatchPage, clearExtractionCache } from "./pdfTextExtractor";
+import { extractAndMatchPage, extractAndMatchPageFull, clearExtractionCache } from "./pdfTextExtractor";
 import { autoCatalogFromRegions } from "./pdfAutoCatalog";
 import FallbackProductPanel from "./FallbackProductPanel";
 import PdfLinkButton from "./PdfLinkButton";
