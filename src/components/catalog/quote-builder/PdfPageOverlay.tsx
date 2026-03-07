@@ -139,34 +139,39 @@ const DraggableRegion = memo(({
 
   const price = product?.selling_price || product?.cost_incl_vat || 0;
 
-  // Strip click → opens Area Quote Builder
+  // Strip click → opens Area Quote Builder for matched, toast for unmatched
   const handleStripClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (onRowStripClick) {
-      onRowStripClick(region);
+    if (region.product) {
+      // Matched product → open wizard
+      if (onRowStripClick) onRowStripClick(region);
+    } else {
+      // Unmatched → show toast with details
+      toast({
+        title: `Unmatched Product: ${region.product_code || "Unknown"}`,
+        description: `${region.label.substring(0, 120)}${region.detected_price ? ` · Detected Price: R${region.detected_price.toLocaleString("en-ZA")}` : ""}`,
+        duration: 6000,
+      });
     }
   }, [onRowStripClick, region]);
 
-  // Icon click → open Product Info dialog
+  // Icon click → open Product Info dialog for matched, toast for unmatched
   const handleIconClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (onOpenProductInfo) {
-      const prod = product || {
-        id: region.id,
-        product_code: region.product_code,
-        short_name: region.label.substring(0, 80),
-        description: region.label,
-        cost_incl_vat: region.detected_price || 0,
-        selling_price: region.detected_price || 0,
-        supplier_id: "",
-        category: "",
-        is_pinned: false,
-      } as PaletteProduct;
-      onOpenProductInfo(prod);
+    if (region.product) {
+      // Matched → open product info
+      if (onOpenProductInfo) onOpenProductInfo(region.product);
+    } else {
+      // Unmatched → show toast with details
+      toast({
+        title: `Unmatched Product: ${region.product_code || "Unknown"}`,
+        description: `${region.label.substring(0, 120)}${region.detected_price ? ` · Detected Price: R${region.detected_price.toLocaleString("en-ZA")}` : ""}`,
+        duration: 6000,
+      });
     }
-  }, [onOpenProductInfo, product, region]);
+  }, [onOpenProductInfo, region]);
 
   const handleStarDoubleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
