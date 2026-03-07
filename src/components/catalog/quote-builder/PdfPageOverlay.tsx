@@ -200,7 +200,26 @@ const DraggableRegion = memo(({
       onMouseLeave={onHoverLeave}
     >
       {/* Full-width transparent hit area with hover highlight */}
-      <div className="absolute inset-0 hover:bg-primary/5 rounded transition-colors duration-150" />
+      <div 
+        className="absolute inset-0 hover:bg-primary/5 rounded transition-colors duration-150"
+        onMouseEnter={() => setIsRowHovered(true)}
+        onMouseLeave={() => setIsRowHovered(false)}
+      />
+
+      {/* Gradient overlay on hover */}
+      {isRowHovered && (
+        <div
+          className="absolute inset-0 pointer-events-none transition-opacity duration-150"
+          style={{ background: 'linear-gradient(to right, transparent 0%, rgba(99,102,241,0.08) 40%, rgba(99,102,241,0.18) 80%)' }}
+        />
+      )}
+
+      {/* Fat arrow before icon column on hover */}
+      {isRowHovered && (
+        <div className="absolute pointer-events-none z-30" style={{ left: `calc(${iconLeftPct} - 28px)`, top: '50%', transform: 'translateY(-50%)' }}>
+          <span className="text-xl font-black text-indigo-500 leading-none">❯</span>
+        </div>
+      )}
 
       {/* PDF selection checkbox — positioned left of the icon column */}
       {pdfSelection && region.product && (
