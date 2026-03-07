@@ -227,10 +227,10 @@ const DraggableRegion = memo(({
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" style={{ color: "rgba(255,255,255,0.85)" }} />
           </div>
 
-          {/* PROTECTED: Icons positioned at right edge of region (w_pct - 19%). Universal for all PDF layouts. DO NOT use fixed right% or remove this logic. */}
-          <div
-            className="absolute z-20 pointer-events-auto"
-            style={{ left: `${region.x_pct + region.w_pct - 19}%`, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: "4px", zIndex: 10 }}
+           {/* PROTECTED: Icons positioned at right edge of region (w_pct - 21%). Universal for all PDF layouts. DO NOT use fixed right% or remove this logic. */}
+           <div
+             className="absolute z-20 pointer-events-auto"
+             style={{ left: `${region.x_pct + region.w_pct - 21}%`, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: "4px", zIndex: 10 }}
           >
             {/* PDF selection checkbox — show for all regions with a product or detected price */}
             {pdfSelection && effectiveProduct && (
