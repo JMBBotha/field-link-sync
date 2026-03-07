@@ -72,10 +72,37 @@ export default function ProductInfoDialog({ product, onMarkupSaved, open: contro
   const imageUrl = (product as any).image_url;
 
   // Compute pricing for display
+  const detectedPrice = (product as any).detected_price as number | null | undefined;
+  const supplierDiscount = (product as any).supplier_discount_percent as number | null | undefined;
+  const sellingPrice = product.selling_price && product.selling_price > 0 ? product.selling_price : 0;
+
   const pricing = (() => {
-    const { sellingExclVat } = calcSellingPrice(costPrice, initialMarkup);
-    const sellingPrice = product.selling_price && product.selling_price > 0 ? product.selling_price : sellingExclVat;
-    return { sellingPrice, markupPercent: initialMarkup };
+    // Determine effective selling price
+    const effectiveSelling = sellingPrice > 0
+      ? sellingPrice
+      : calcSellingPrice(costPrice, initialMarkup).sellingExclVat;
+
+    // Calculate actual markup % from prices, not from stored field
+    let effectiveMarkup = initialMarkup;
+    if (costPrice > 0 && effectiveSelling > 0) {
+      effectiveMarkup = ((effectiveSelling / costPrice) - 1) * 100;
+    }
+    // If default_markup_percent is 0/null but we have selling & cost, derive it
+    if ((!initialMarkup || initialMarkup === 0) && costPrice > 0 && sellingPrice > 0) {
+      effectiveMarkup = ((sellingPrice / costPrice) - 1) * 100;
+    }
+
+    // Variance between DB selling price and PDF detected price
+    let variance: number | null = null;
+    if (detectedPrice && detectedPrice > 0 && effectiveSelling > 0) {
+      variance = effectiveSelling - detectedPrice;
+    }
+
+    return {
+      sellingPrice: effectiveSelling,
+      markupPercent: effectiveMarkup,
+      variance,
+    };
   })();
 
   const [markup, setMarkup] = useState(initialMarkup);
