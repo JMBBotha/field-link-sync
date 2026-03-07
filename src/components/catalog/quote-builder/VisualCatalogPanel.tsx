@@ -1075,6 +1075,7 @@ const LazyPdfPage = ({
     const result: OverlayRegion[] = [];
 
     const seenOnPage = new Set<string>();
+    const seenYPct = new Set<number>();
     for (let idx = 0; idx < sourceRegions.length; idx++) {
       const r = sourceRegions[idx];
       // Cross-page dedup: skip if this exact item was already seen on an earlier page
@@ -1087,8 +1088,28 @@ const LazyPdfPage = ({
       if (seenOnPage.has(dedupKey)) continue;
       seenOnPage.add(dedupKey);
 
+      // Row-level dedup: skip duplicate regions from the same physical PDF row
+      const roundedY = Math.round(r.y_pct);
+      if (seenYPct.has(roundedY)) continue;
+      seenYPct.add(roundedY);
+
       // Resolve product from activeProducts if extractor matched by code but didn't attach object
-      const resolvedProduct = r.product || (r.product_code ? activeProducts.find(p => p.product_code === r.product_code) || null : null);
+      const rawCode = (r.product_code || "").toLowerCase();
+      const rawCodeBase = rawCode.split("@")[0];
+      let resolvedProduct = r.product
+        || (rawCode ? activeProducts.find(p => p.product_code.toLowerCase() === rawCode) || null : null);
+      // Substring match on product_code
+      if (!resolvedProduct && rawCodeBase) {
+        resolvedProduct = activeProducts.find(p =>
+          rawCodeBase.includes(p.product_code.toLowerCase()) ||
+          p.product_code.toLowerCase().includes(rawCodeBase)
+        ) || null;
+      }
+      // Label-based match as last resort
+      if (!resolvedProduct && r.label) {
+        const labelLower = r.label.toLowerCase();
+        resolvedProduct = activeProducts.find(p => labelLower.includes(p.product_code.toLowerCase())) || null;
+      }
 
       result.push({
         id: `live-${page.id}-${idx}`,
