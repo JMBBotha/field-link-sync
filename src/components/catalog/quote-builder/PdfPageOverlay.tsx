@@ -354,10 +354,10 @@ const GhostAddRow = memo(({
   >
     {/* Hover highlight */}
     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 hover:bg-primary/5 rounded transition-colors duration-150" />
-    {/* Ghost + icon — positioned at right edge of page */}
+    {/* Ghost + icon — positioned over price column */}
     <div
       className="absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity z-10"
-      style={{ left: iconLeftPct }}
+      style={{ right: "6%" }}
     >
       <div className="h-4 w-4 rounded-full flex items-center justify-center bg-muted-foreground/20 hover:bg-muted-foreground/40 transition-colors">
         <Plus className="h-2.5 w-2.5 text-muted-foreground" />
