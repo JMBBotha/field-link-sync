@@ -1074,6 +1074,7 @@ const LazyPdfPage = ({
     const sourceRegions = liveRegions.length > 0 ? liveRegions : [];
     const result: OverlayRegion[] = [];
 
+    const seenOnPage = new Set<string>();
     for (let idx = 0; idx < sourceRegions.length; idx++) {
       const r = sourceRegions[idx];
       // Cross-page dedup: skip if this exact item was already seen on an earlier page
@@ -1082,15 +1083,22 @@ const LazyPdfPage = ({
       if (firstPage !== undefined && firstPage !== pageIndex) continue;
       globalSeenRegions.set(dedupKey, pageIndex);
 
+      // Within-page dedup: skip if same dedupKey already added on this page
+      if (seenOnPage.has(dedupKey)) continue;
+      seenOnPage.add(dedupKey);
+
+      // Resolve product from activeProducts if extractor matched by code but didn't attach object
+      const resolvedProduct = r.product || (r.product_code ? activeProducts.find(p => p.product_code === r.product_code) || null : null);
+
       result.push({
         id: `live-${page.id}-${idx}`,
         x_pct: r.x_pct, y_pct: r.y_pct, w_pct: r.w_pct, h_pct: r.h_pct,
-        product: r.product as PaletteProduct | null,
+        product: resolvedProduct as PaletteProduct | null,
         product_code: r.product_code || "",
         label: r.label || "",
         has_price: r.has_price,
         detected_price: r.detected_price,
-        matched: r.matched,
+        matched: r.matched || !!resolvedProduct,
       });
     }
 
