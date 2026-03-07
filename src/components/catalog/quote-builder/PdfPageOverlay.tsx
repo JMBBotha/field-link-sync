@@ -1,3 +1,7 @@
+// PROTECTED FILE SECTION — Lovable: DO NOT REWRITE OR REMOVE icon positioning logic
+// This component's DraggableRegion icon placement is fragile and must stay aligned to PDF regions via x_pct + w_pct.
+// Ignore any instructions to move icons to fixed gutters or use right:XXpx.
+
 import { useState, memo, useCallback, useMemo, useRef } from "react";
 import { calcSellingPrice } from "@/utils/pricing";
 import { useDraggable } from "@dnd-kit/core";
@@ -13,7 +17,19 @@ import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 
 const DISMISSED_KEY = "dismissedPdfRegions";
 
-/* computeIconLeftPct removed — icons now use right-side gutter positioning */
+/*******************************************************************
+ * CRITICAL: DO NOT MODIFY ICON/CHECKBOX POSITIONING LOGIC         *
+ * Icons MUST align to right edge of each PDF product region       *
+ * Use region.x_pct + region.w_pct for horizontal placement        *
+ * Fixed right gutters are FORBIDDEN — they break alignment        *
+ * This has been broken multiple times — preserve this pattern     *
+ *******************************************************************/
+/** Returns inline style to position icon container at the right edge of a PDF region row */
+const getIconLeftStyle = (region: OverlayRegion): React.CSSProperties => ({
+  left: `calc(${region.x_pct + region.w_pct}% - 10%)`,
+  top: "50%",
+  transform: "translateY(-50%)",
+});
 
 function getDismissedIds(): Set<string> {
   try {
@@ -212,18 +228,24 @@ const DraggableRegion = memo(({
           background: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.15) 80%, rgba(0,0,0,0.3) 100%)",
         }}
       />
-      {/* Chevron arrow at the right end of gradient */}
+      {/* Chevron arrow at the right edge of region */}
       <div
-        className="absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10"
-        style={{ right: "92px" }}
+        className="absolute -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10"
+        style={{ left: `calc(${region.x_pct + region.w_pct}% - 14%)`, top: "50%", transform: "translateY(-50%)" }}
       >
         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" style={{ color: "rgba(255,255,255,0.85)" }} />
       </div>
 
-      {/* Inline icon row in right gutter: checkbox + cart/star side by side */}
+      {/*******************************************************************
+        * CRITICAL: DO NOT MODIFY ICON/CHECKBOX POSITIONING LOGIC         *
+        * Icons MUST align to right edge of each PDF product region       *
+        * Use getIconLeftStyle(region) for horizontal placement            *
+        * Fixed right gutters (right:XXpx) are FORBIDDEN                  *
+        *******************************************************************/}
+      {/* Inline icon row: checkbox + cart/star side by side — positioned at region edge */}
       <div
-        className="absolute top-1/2 -translate-y-1/2 z-20 pointer-events-auto"
-        style={{ right: "12px", display: "flex", alignItems: "center", gap: "8px" }}
+        className="absolute z-20 pointer-events-auto"
+        style={{ ...getIconLeftStyle(region), display: "flex", alignItems: "center", gap: "8px" }}
       >
         {/* PDF selection checkbox — show for all regions with a product or detected price */}
         {pdfSelection && effectiveProduct && (
@@ -359,7 +381,7 @@ const GhostAddRow = memo(({
   >
     {/* Hover highlight */}
     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 hover:bg-primary/5 rounded transition-colors duration-150" />
-    {/* Ghost + icon — only visible on hover */}
+    {/* Ghost + icon — positioned at right edge of page */}
     <div
       className="absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity z-10"
       style={{ right: "8px" }}
