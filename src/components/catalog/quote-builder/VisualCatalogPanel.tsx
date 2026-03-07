@@ -1170,7 +1170,30 @@ const LazyPdfPage = ({
       return fallbackRegions;
     }
 
-    return result;
+    // Vertical merge step: merge consecutive regions within 1.5% y_pct
+    result.sort((a, b) => a.y_pct - b.y_pct);
+    const merged: OverlayRegion[] = [];
+    for (const r of result) {
+      if (merged.length > 0) {
+        const prev = merged[merged.length - 1];
+        if (Math.abs(r.y_pct - prev.y_pct) <= 1.5) {
+          // Keep the better one: prefer matched over unmatched, then prefer one with price
+          const prevScore = (prev.matched ? 2 : 0) + (prev.detected_price ? 1 : 0);
+          const curScore = (r.matched ? 2 : 0) + (r.detected_price ? 1 : 0);
+          if (curScore > prevScore) {
+            // Replace prev with current but merge height
+            const mergedH = Math.max(prev.h_pct, r.h_pct + Math.abs(r.y_pct - prev.y_pct));
+            merged[merged.length - 1] = { ...r, h_pct: mergedH, y_pct: Math.min(prev.y_pct, r.y_pct) };
+          } else {
+            prev.h_pct = Math.max(prev.h_pct, r.h_pct + Math.abs(r.y_pct - prev.y_pct));
+          }
+          continue;
+        }
+      }
+      merged.push({ ...r });
+    }
+
+    return merged;
   }, [liveRegions, fallbackRegions, page.id, pageIndex]);
 
   // Report detected categories to parent for category→page mapping

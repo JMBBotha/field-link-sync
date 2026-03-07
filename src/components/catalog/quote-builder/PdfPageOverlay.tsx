@@ -252,20 +252,20 @@ const DraggableRegion = memo(({
                 {
                   const product = region.product;
                   const sellingPrice = product?.selling_price || product?.cost_incl_vat || region.detected_price || 0;
-                  const disc = (product as any)?.supplier_discount_percent ?? 0;
                   let costPrice = 0;
+                  const markup = (product as any)?.default_markup_percent ?? (product as any)?.markup_percent ?? 20;
                   if (product?.cost_excl_vat && product.cost_excl_vat > 0) {
-                    costPrice = calculatePricing(product.cost_excl_vat, disc).discountedCost;
+                    const disc = (product as any)?.supplier_discount_percent ?? 0;
+                    costPrice = calculatePricing(product.cost_excl_vat, disc, markup).discountedCost;
                   } else if (region.detected_price && region.detected_price > 0) {
-                    costPrice = Math.round(exclVatFromIncl(region.detected_price) * 100) / 100;
+                    costPrice = exclVatFromIncl(region.detected_price);
                   }
-                  const markupPercent = (product as any)?.markup_percent ?? 20;
                   pdfSelection.handleSelectProduct({
                     code: region.product_code,
                     description: product?.short_name || region.label,
                     price: String(sellingPrice),
                     costPrice: costPrice > 0 ? costPrice : undefined,
-                    markupPercent,
+                    markupPercent: markup,
                   });
                 }
               }
