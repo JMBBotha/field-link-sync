@@ -1075,7 +1075,6 @@ const LazyPdfPage = ({
     const result: OverlayRegion[] = [];
 
     const seenOnPage = new Set<string>();
-    const seenYSet = new Set<number>();
     for (let idx = 0; idx < sourceRegions.length; idx++) {
       const r = sourceRegions[idx];
       if (!r || r.y_pct == null || r.h_pct == null || r.h_pct <= 0) continue;
@@ -1094,10 +1093,24 @@ const LazyPdfPage = ({
       if (firstPage !== undefined && firstPage !== pageIndex) continue;
       if (firstPage === undefined) globalSeenRegions.set(dedupKey, pageIndex);
 
-      // Vertical dedup: 0.5% precision, keep first region at each Y
-      const roundedY = Math.round(r.y_pct * 2) / 2;
-      if (seenYSet.has(roundedY)) continue;
-      seenYSet.add(roundedY);
+      // Tolerance-based vertical dedup: skip if within 2.5% y_pct of a kept region
+      // with same product_code or overlapping label words (>3 chars)
+      const wordsOf = (s: string) => s.toLowerCase().split(/[\s\/\-\(\)]+/).filter(w => w.length > 3);
+      const curWords = wordsOf(label);
+      let isDupY = false;
+      for (const kept of result) {
+        if (Math.abs(kept.y_pct - r.y_pct) > 2.5) continue;
+        const sameCode = !!(r.product_code && kept.product_code === r.product_code);
+        const keptWords = wordsOf((kept.label || "").substring(0, 80));
+        const overlappingWords = sameCode || curWords.some(w => keptWords.includes(w));
+        if (overlappingWords) {
+          // Merge height to cover both regions
+          kept.h_pct = Math.max(kept.h_pct, r.h_pct + Math.abs(r.y_pct - kept.y_pct));
+          isDupY = true;
+          break;
+        }
+      }
+      if (isDupY) continue;
       // Resolve product from activeProducts if extractor matched by code but didn't attach object
       const rawCode = (r.product_code || "").toLowerCase().trim();
       const rawCodeBase = rawCode.split("@")[0].trim();
@@ -1225,7 +1238,7 @@ const LazyPdfPage = ({
           />
           {/* Show overlays for ALL regions (matched + unmatched) — works with live extraction or fallback */}
           {overlayRegions.length > 0 && (
-            <PdfPageOverlay
+             <PdfPageOverlay
               regions={overlayRegions}
               baskets={baskets}
               onAddProductToBasket={onAddProductToBasket}
@@ -1240,6 +1253,7 @@ const LazyPdfPage = ({
               onHoverMove={onHoverMove}
               onHoverEnd={onHoverEnd}
               pdfSelection={pdfSelection}
+              onOpenProductInfo={onProductInfoOpen}
             />
           )}
           {extracting && (

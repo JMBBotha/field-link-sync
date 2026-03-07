@@ -83,6 +83,8 @@ interface PdfPageOverlayProps {
   onHoverEnd?: () => void;
   /** Shared PDF selection state */
   pdfSelection?: PdfSelectionHandlers;
+  /** Opens Product Info dialog for a product */
+  onOpenProductInfo?: (product: PaletteProduct) => void;
 }
 
 /* ─── Added-to-quote tracker (local state, shared across regions) ─── */
@@ -121,6 +123,7 @@ const DraggableRegion = memo(({
   onHoverMove: (e: React.MouseEvent) => void;
   onHoverLeave: () => void;
   pdfSelection?: PdfSelectionHandlers;
+  onOpenProductInfo?: (product: PaletteProduct) => void;
 }) => {
   const [isRowHovered, setIsRowHovered] = useState(false);
   const product = region.product;
@@ -144,14 +147,25 @@ const DraggableRegion = memo(({
     }
   }, [onRowStripClick, region]);
 
-  // Icon click → open Area Quote Builder (same as strip click)
+  // Icon click → open Product Info dialog
   const handleIconClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (onRowStripClick) {
-      onRowStripClick(region);
+    if (onOpenProductInfo) {
+      const prod = product || {
+        id: region.id,
+        product_code: region.product_code,
+        short_name: region.label.substring(0, 80),
+        description: region.label,
+        cost_incl_vat: region.detected_price || 0,
+        selling_price: region.detected_price || 0,
+        supplier_id: "",
+        category: "",
+        is_pinned: false,
+      } as PaletteProduct;
+      onOpenProductInfo(prod);
     }
-  }, [onRowStripClick, region]);
+  }, [onOpenProductInfo, product, region]);
 
   const handleStarDoubleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -395,6 +409,7 @@ const PdfPageOverlay = ({
   onHoverMove: onHoverMoveProp,
   onHoverEnd,
   pdfSelection,
+  onOpenProductInfo,
 }: PdfPageOverlayProps) => {
   const hoveredRegionRef = useRef<OverlayRegion | null>(null);
   const [localAddedIds, setLocalAddedIds] = useState<Set<string>>(new Set());
@@ -529,6 +544,7 @@ const PdfPageOverlay = ({
           onHoverMove={handleHoverMove}
           onHoverLeave={handleHoverLeave}
           pdfSelection={pdfSelection}
+          onOpenProductInfo={onOpenProductInfo}
         />
       ))}
 
