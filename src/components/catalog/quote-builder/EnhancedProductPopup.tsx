@@ -226,7 +226,7 @@ const EnhancedProductPopup = ({
               const p = getProductPricing(product);
               return (
               <div className="flex items-center gap-2 mt-1.5">
-                <span className="text-[10px] text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{p.discountedCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
+                <span className="text-[10px] text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{safeNum(p.discountedCost).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
                 <span className="text-[10px] text-muted-foreground">M/Up:</span>
                 <div className="flex items-center gap-0.5">
                   <Button
