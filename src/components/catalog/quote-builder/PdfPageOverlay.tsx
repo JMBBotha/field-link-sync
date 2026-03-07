@@ -212,7 +212,7 @@ const DraggableRegion = memo(({
       style={{
         left: "0%",
         top: `${region.y_pct}%`,
-        width: "100%",
+        width: "96%",
         height: `${region.h_pct}%`,
         maxHeight: "2.5%",
         touchAction: "none",
