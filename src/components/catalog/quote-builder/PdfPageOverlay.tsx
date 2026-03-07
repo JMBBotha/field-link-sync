@@ -94,7 +94,6 @@ const DraggableRegion = memo(({
   onRemoveRegion?: (region: OverlayRegion) => void;
   onRowStripClick?: (region: OverlayRegion) => void;
   isAddedToQuote?: boolean;
-  iconLeftPct: string;
   onHover: (region: OverlayRegion) => void;
   onHoverMove: (e: React.MouseEvent) => void;
   onHoverLeave: () => void;
