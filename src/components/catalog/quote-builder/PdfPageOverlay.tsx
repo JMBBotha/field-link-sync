@@ -527,6 +527,12 @@ const PdfPageOverlay = ({
   }, [onHoverEnd]);
 
 
+  // Page-level check: only show icons on pages with 3+ priced rows
+  const isProductPage = useMemo(() => {
+    const regionsWithPrice = positionedRegions.filter(r => r.detected_price != null && r.detected_price > 0);
+    return regionsWithPrice.length >= 3;
+  }, [positionedRegions]);
+
   if (positionedRegions.length === 0) return null;
 
   return (
@@ -537,6 +543,7 @@ const PdfPageOverlay = ({
           region={region}
           baskets={baskets}
           onAddProductToBasket={onAddProductToBasket}
+          isProductPage={isProductPage}
           inQuoteQty={
             region.product
               ? basketProductCounts[region.product.id] || 0
