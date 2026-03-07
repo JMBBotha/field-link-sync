@@ -357,7 +357,7 @@ const GhostAddRow = memo(({
     {/* Ghost + icon — positioned over price column */}
     <div
       className="absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity z-10"
-      style={{ right: "12%" }}
+      style={{ left: "87%", top: "50%", transform: "translateY(-50%)" }}
     >
       <div className="h-4 w-4 rounded-full flex items-center justify-center bg-muted-foreground/20 hover:bg-muted-foreground/40 transition-colors">
         <Plus className="h-2.5 w-2.5 text-muted-foreground" />
