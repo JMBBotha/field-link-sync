@@ -584,7 +584,7 @@ export function matchTextRowsToProducts(
 }
 
 // Cache for extracted regions per page
-let _extractionVersion = 34; // v34: density-adaptive, standalone numerics, relaxed ghost, per-row logging
+let _extractionVersion = 35; // v35: rightmost R-price per row, no standalone numerics, product-code ghost filter
 const extractionCache = new Map<string, { regions: ExtractedProductRegion[]; fullText: string }>();
 
 export interface ExtractionResult {
