@@ -408,12 +408,12 @@ const PdfPageOverlay = ({
         if (r.w_pct <= 0 && r.h_pct <= 0) return false;
         const dismissId = `${r.product_code}|${r.label.substring(0, 40)}`;
         if (dismissedIds.has(dismissId)) return false;
-        return (
-          (r.has_price === true || (r.detected_price ?? 0) > 0) &&
-          r.product_code &&
-          r.product_code.trim() !== "" &&
-          r.w_pct <= 70
-        );
+    return (
+      r.product_code &&
+      r.product_code.trim() !== "" &&
+      !!r.product &&
+      (r.product.selling_price > 0 || r.product.cost_incl_vat > 0 || (r.detected_price ?? 0) > 0)
+    );
       })
       .sort((a, b) => a.y_pct - b.y_pct),
     [regions, dismissedIds]
