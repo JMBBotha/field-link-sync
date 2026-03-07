@@ -402,25 +402,11 @@ export function matchTextRowsToProducts(
 
   if (priceItems.length === 0) return [];
 
-  // STEP 2: Group price items into rows by Y-coordinate
-  // Use a tighter threshold for row grouping (half of yThreshold) to avoid merging adjacent rows
-  const rowGroupThreshold = Math.max(avgHeight * 0.8, 5);
+  // STEP 2: Create one row per individual price item (no grouping).
+  // Previous grouping merged adjacent product rows into single blocks.
+  // Each price item gets its own row to ensure one icon per priced product row.
   const sortedPrices = [...priceItems].sort((a, b) => a.y - b.y);
-  const priceRows: { items: ExtractedTextItem[] }[] = [];
-  let curGroup: ExtractedTextItem[] = [sortedPrices[0]];
-  let groupStartY = sortedPrices[0].y;
-
-  for (let i = 1; i < sortedPrices.length; i++) {
-    // Compare against the GROUP START Y, not the last item (prevents cascading merges)
-    if (Math.abs(sortedPrices[i].y - groupStartY) <= rowGroupThreshold) {
-      curGroup.push(sortedPrices[i]);
-    } else {
-      priceRows.push({ items: curGroup.sort((a, b) => a.x - b.x) });
-      curGroup = [sortedPrices[i]];
-      groupStartY = sortedPrices[i].y;
-    }
-  }
-  priceRows.push({ items: curGroup.sort((a, b) => a.x - b.x) });
+  const priceRows: { items: ExtractedTextItem[] }[] = sortedPrices.map(p => ({ items: [p] }));
 
   // Model code regex - broad enough for Samsung, Daikin, Midea
   const modelRegex = /^[A-Za-z0-9\-\/]{5,}$/;
