@@ -909,8 +909,23 @@ const LazyPdfPage = ({
       try {
         console.log(`[VisualCatalog] Extracting page ${page.page_number} from ${page.supplier_id}, matching against ${activeProducts.length} active products`);
         
+        // Fetch PDF as blob first to bypass sanitizePdfUrl trimming bug
+        // (storage folders may have trailing spaces that sanitize incorrectly removes)
+        let pdfUrl = page.pdf_storage_path;
+        try {
+          const resp = await fetch(page.pdf_storage_path);
+          if (resp.ok) {
+            const blob = await resp.blob();
+            pdfUrl = URL.createObjectURL(blob);
+          } else {
+            console.warn(`[VisualCatalog] Direct fetch failed (${resp.status}), falling back to raw URL`);
+          }
+        } catch (fetchErr) {
+          console.warn("[VisualCatalog] Blob fetch failed, using raw URL:", fetchErr);
+        }
+
         // First pass: extract and match against existing non-archived products
-        const regions = await extractAndMatchPage(page.pdf_storage_path, page.page_number, activeProducts);
+        const regions = await extractAndMatchPage(pdfUrl, page.page_number, activeProducts);
         const matched = regions.filter(r => r.matched);
         const unmatchedWithPrice = regions.filter(r => !r.matched && r.has_price && r.detected_price);
         
@@ -956,11 +971,13 @@ const LazyPdfPage = ({
               // Clear cache and re-extract with augmented product list so icons turn blue
               clearExtractionCache();
               const allProducts = [...activeProducts, ...newPaletteProducts];
-              const reMatched = await extractAndMatchPage(page.pdf_storage_path!, page.page_number, allProducts);
+              const reMatched = await extractAndMatchPage(pdfUrl, page.page_number, allProducts);
               
               // Invalidate the main products query so palette picks up new items
               queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
               
+              // Revoke blob URL if we created one
+              if (pdfUrl !== page.pdf_storage_path) URL.revokeObjectURL(pdfUrl);
               return reMatched;
             }
           } catch (catalogErr) {
@@ -975,6 +992,8 @@ const LazyPdfPage = ({
           }
         }
         
+        // Revoke blob URL if we created one
+        if (pdfUrl !== page.pdf_storage_path) URL.revokeObjectURL(pdfUrl);
         return regions;
       } catch (err) {
         console.error("[VisualCatalog] Live extraction failed:", err);
