@@ -323,7 +323,7 @@ const DraggableRegion = memo(({
         ) : (
           <button
             className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-all cursor-pointer shadow-md"
-            style={{ background: "#f97316" }}
+            style={{ background: "#007BFF" }}
             onClick={handleIconClick}
             onContextMenu={handleContextMenu}
             title="Right-click to hide"
@@ -425,7 +425,7 @@ const PdfPageOverlay = ({
     regions
       .filter((r) => {
         if (r.x_pct == null || r.y_pct == null || r.w_pct == null || r.h_pct == null) return false;
-        if (r.w_pct <= 0 && r.h_pct <= 0) return false;
+        if (r.h_pct <= 0) return false;
         const dismissId = `${r.product_code}|${r.label.substring(0, 40)}`;
         if (dismissedIds.has(dismissId)) return false;
         return true;
