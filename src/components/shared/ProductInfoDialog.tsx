@@ -197,9 +197,22 @@ export default function ProductInfoDialog({ product, onMarkupSaved, open: contro
 
               {/* Pricing grid */}
               <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 rounded-lg border bg-muted/20 p-3">
-                <InfoRow label="Cost Price" value={formatZAR(costPrice)} />
-                <InfoRow label="Selling Price" value={formatZAR(pricing.sellingPrice)} />
+                <InfoRow label="Cost Price (excl. VAT)" value={formatZAR(costPrice)} mono />
+                {supplierDiscount != null && supplierDiscount > 0 && (
+                  <InfoRow label="Supplier Discount" value={`${supplierDiscount.toFixed(1)}%`} />
+                )}
+                <InfoRow label="Selling Price" value={formatZAR(pricing.sellingPrice)} mono />
                 <InfoRow label="Markup %" value={`${pricing.markupPercent.toFixed(1)}%`} />
+                {detectedPrice != null && detectedPrice > 0 && (
+                  <InfoRow label="PDF Detected Price" value={formatZAR(detectedPrice)} mono />
+                )}
+                {pricing.variance != null && (
+                  <InfoRow
+                    label="Variance (Selling − PDF)"
+                    value={`${pricing.variance >= 0 ? "+" : ""}${formatZAR(pricing.variance)}`}
+                    color={pricing.variance >= 0 ? "text-green-600" : "text-destructive"}
+                  />
+                )}
                 {product.price_per_metre != null && product.price_per_metre > 0 && (
                   <InfoRow label="Price/m" value={formatZAR(product.price_per_metre)} />
                 )}
