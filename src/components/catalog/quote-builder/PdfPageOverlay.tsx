@@ -220,7 +220,7 @@ const DraggableRegion = memo(({
       {/* PROTECTED: Icon positioning uses right:6% to align with price column. DO NOT change to left-based or computeIconLeftPct. */}
       <div
         className="absolute z-20 pointer-events-auto"
-        style={{ position: "absolute", right: "6%", top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: "4px", zIndex: 10 }}
+        style={{ position: "absolute", right: "12%", top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: "4px", zIndex: 10 }}
       >
         {/* PDF selection checkbox — show for all regions with a product or detected price */}
         {pdfSelection && effectiveProduct && (
