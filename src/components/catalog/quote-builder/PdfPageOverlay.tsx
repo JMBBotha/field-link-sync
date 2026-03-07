@@ -252,19 +252,24 @@ const DraggableRegion = memo(({
               onChange={() =>
                 {
                   const product = region.product;
-                  const sellingPrice = product?.selling_price || product?.cost_incl_vat || region.detected_price || 0;
+                  const markup = (product as any)?.markup_percent ?? (product as any)?.default_markup_percent ?? 20;
                   let costPrice = 0;
-                  const markup = (product as any)?.default_markup_percent ?? (product as any)?.markup_percent ?? 20;
                   if (product?.cost_excl_vat && product.cost_excl_vat > 0) {
                     const disc = (product as any)?.supplier_discount_percent ?? 0;
                     costPrice = calculatePricing(product.cost_excl_vat, disc, markup).discountedCost;
                   } else if (region.detected_price && region.detected_price > 0) {
                     costPrice = exclVatFromIncl(region.detected_price);
                   }
+                  let suggestedSellingPrice = 0;
+                  if (product?.selling_price && product.selling_price > 0) {
+                    suggestedSellingPrice = product.selling_price;
+                  } else if (costPrice > 0) {
+                    suggestedSellingPrice = Math.round(costPrice * (1 + markup / 100) * 100) / 100;
+                  }
                   pdfSelection.handleSelectProduct({
                     code: region.product_code,
                     description: product?.short_name || region.label,
-                    price: String(sellingPrice),
+                    price: String(suggestedSellingPrice),
                     costPrice: costPrice > 0 ? costPrice : undefined,
                     markupPercent: markup,
                   });
