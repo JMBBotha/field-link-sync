@@ -1075,7 +1075,6 @@ const LazyPdfPage = ({
     const result: OverlayRegion[] = [];
 
     const seenOnPage = new Set<string>();
-    const seenYPct = new Set<number>();
     for (let idx = 0; idx < sourceRegions.length; idx++) {
       const r = sourceRegions[idx];
       // Cross-page dedup: skip if this exact item was already seen on an earlier page
