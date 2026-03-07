@@ -209,18 +209,18 @@ const DraggableRegion = memo(({
           background: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.15) 80%, rgba(0,0,0,0.3) 100%)",
         }}
       />
-      {/* Chevron arrow — positioned over price column */}
+      {/* Chevron arrow — positioned at right edge of region */}
       <div
         className="absolute -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10"
-        style={{ right: "9%", top: "50%", transform: "translateY(-50%)" }}
+        style={{ left: `${region.x_pct + region.w_pct - 5}%`, top: "50%", transform: "translateY(-50%)" }}
       >
         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" style={{ color: "rgba(255,255,255,0.85)" }} />
       </div>
 
-      {/* PROTECTED: Icon positioning uses right:6% to align with price column. DO NOT change to left-based or computeIconLeftPct. */}
+      {/* PROTECTED: Icons positioned at right edge of region (w_pct - 8%). Universal for all PDF layouts. DO NOT use fixed right% or remove this logic. */}
       <div
         className="absolute z-20 pointer-events-auto"
-        style={{ position: "absolute", right: "12%", top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: "4px", zIndex: 10 }}
+        style={{ left: `${region.x_pct + region.w_pct - 8}%`, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: "4px", zIndex: 10 }}
       >
         {/* PDF selection checkbox — show for all regions with a product or detected price */}
         {pdfSelection && effectiveProduct && (
