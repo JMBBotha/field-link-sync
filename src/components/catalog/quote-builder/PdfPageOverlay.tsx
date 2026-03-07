@@ -61,6 +61,8 @@ interface PdfPageOverlayProps {
   pdfSelection?: PdfSelectionHandlers;
   /** Opens ProductInfoDialog for the given product */
   onProductInfoOpen?: (product: PaletteProduct) => void;
+  /** First page of PDF — never show icons on cover pages */
+  isFirstPage?: boolean;
 }
 
 /* ─── Added-to-quote tracker (local state, shared across regions) ─── */
@@ -394,6 +396,7 @@ const PdfPageOverlay = ({
   onHoverEnd,
   pdfSelection,
   onProductInfoOpen,
+  isFirstPage,
 }: PdfPageOverlayProps) => {
   const hoveredRegionRef = useRef<OverlayRegion | null>(null);
   const [localAddedIds, setLocalAddedIds] = useState<Set<string>>(new Set());
@@ -529,9 +532,10 @@ const PdfPageOverlay = ({
 
   // Page-level check: only show icons on pages with 3+ priced rows
   const isProductPage = useMemo(() => {
+    if (isFirstPage) return false;
     const uniquePrices = new Set(positionedRegions.filter(r => r.detected_price != null && r.detected_price > 0).map(r => r.detected_price));
     return uniquePrices.size >= 3;
-  }, [positionedRegions]);
+  }, [positionedRegions, isFirstPage]);
 
   if (positionedRegions.length === 0) return null;
 
