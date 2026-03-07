@@ -745,7 +745,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
            vat_rate: (row as any)._vat_rate || 15,
         }));
 
-        const { error: err, data } = await supabase.from("supplier_products" as any).insert(batchData as any).select("id");
+        const { error: err, data } = await (supabase.from("supplier_products" as any) as any).upsert(batchData as any, { onConflict: "supplier_id,product_code" }).select("id");
         if (err) {
           const msg = `INSERT batch failed: ${err.message} | ${err.details || ""} | ${err.hint || ""}`;
           console.error(`[Import]`, msg, err);
