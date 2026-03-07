@@ -71,6 +71,13 @@ export default function ProductInfoDialog({ product, onMarkupSaved, open: contro
   const phase = extractPhase(product);
   const imageUrl = (product as any).image_url;
 
+  // Compute pricing for display
+  const pricing = (() => {
+    const { sellingExclVat } = calcSellingPrice(costPrice, initialMarkup);
+    const sellingPrice = product.selling_price && product.selling_price > 0 ? product.selling_price : sellingExclVat;
+    return { sellingPrice, markupPercent: initialMarkup };
+  })();
+
   const [markup, setMarkup] = useState(initialMarkup);
   const [saving, setSaving] = useState(false);
 
