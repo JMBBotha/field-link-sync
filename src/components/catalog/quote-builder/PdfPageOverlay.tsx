@@ -26,7 +26,7 @@ const DISMISSED_KEY = "dismissedPdfRegions";
  *******************************************************************/
 /** Returns inline style to position icon container at the right edge of a PDF region row */
 const getIconLeftStyle = (region: OverlayRegion): React.CSSProperties => ({
-  left: `calc(${region.x_pct + region.w_pct}% - 10%)`,
+  left: `calc(${region.x_pct + region.w_pct}% - 18%)`,
   top: "50%",
   transform: "translateY(-50%)",
 });
