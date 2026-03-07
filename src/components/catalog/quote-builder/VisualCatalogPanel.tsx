@@ -1075,7 +1075,6 @@ const LazyPdfPage = ({
     const result: OverlayRegion[] = [];
 
     const seenOnPage = new Set<string>();
-    const seenYSet = new Set<number>();
     for (let idx = 0; idx < sourceRegions.length; idx++) {
       const r = sourceRegions[idx];
       if (!r || r.y_pct == null || r.h_pct == null || r.h_pct <= 0) continue;
