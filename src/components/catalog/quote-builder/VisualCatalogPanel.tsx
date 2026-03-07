@@ -34,8 +34,7 @@ import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
 import CategoryNavBar, { groupCategory } from "./CategoryNavBar";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
-// Cross-page dedup: tracks seen region keys across all pages to prevent duplicate icons
-const globalSeenRegions = new Map<string, number>(); // key → first pageIndex
+// Cross-page dedup removed — each page renders independently
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
 
 interface VisualCatalogPanelProps {
@@ -147,7 +146,6 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       setVisiblePageIndex(0);
       setZoom(1);
       clearExtractionCache();
-      globalSeenRegions.clear(); // Reset cross-page dedup on panel open
       // Force all live-extract queries to re-run with latest detection logic
       queryClient.removeQueries({ queryKey: ["visual-panel-live-extract"] });
     }
@@ -1086,8 +1084,8 @@ const LazyPdfPage = ({
     return [];
   }, [liveRegions, storedRegions, activeProducts, page.id, page.supplier_id, supplierName, totalPages, pageIndex]);
 
-  // ─── OVERLAY REGIONS: prefer live extraction with cross-page dedup, else fallback ───
-  // Skip cover page (index 0) — every supplier PDF has a title/banner page with no product rows
+  // ─── OVERLAY REGIONS: prefer live extraction, within-page dedup only ───
+  // Cover page (index 0) shows no overlay regions
   const overlayRegions: OverlayRegion[] = useMemo(() => {
     if (pageIndex === 0) return [];
     const sourceRegions = liveRegions.length > 0 ? liveRegions : [];
@@ -1099,25 +1097,18 @@ const LazyPdfPage = ({
       if (!r || r.y_pct == null || r.h_pct == null || r.h_pct <= 0) continue;
       if (r.h_pct > 8) continue;
 
-      // Within-page dedup by product_code|label|price ONLY
+      // Within-page dedup by product_code|label|detected_price ONLY
       const label = (r.label || "").substring(0, 80);
       const price = r.detected_price ?? "no-price";
       const dedupKeyPage = `${r.product_code || ""}|${label}|${price}`;
       if (seenOnPage.has(dedupKeyPage)) continue;
       seenOnPage.add(dedupKeyPage);
 
-      // Cross-page dedup
-      const dedupKey = `${r.product_code || ""}|${label}|${price}`;
-      const firstPage = globalSeenRegions.get(dedupKey);
-      if (firstPage !== undefined && firstPage !== pageIndex) continue;
-      if (firstPage === undefined) globalSeenRegions.set(dedupKey, pageIndex);
+      // No cross-page dedup — each page renders independently
 
-      // NOTE: roundedY / tolerance-based vertical dedup REMOVED.
-      // Every row with a Rand amount MUST get its own checkbox + shopping cart icon.
       // Resolve product from activeProducts if extractor matched by code but didn't attach object
       const rawCode = (r.product_code || "").toLowerCase().trim();
       const rawCodeBase = rawCode.split("@")[0].trim();
-      // Normalize: strip whitespace, dashes, slashes for fuzzy compare
       const normalize = (s: string) => s.toLowerCase().replace(/[\s\-\/\._]+/g, "");
       const normRaw = normalize(rawCodeBase);
 
@@ -1138,7 +1129,7 @@ const LazyPdfPage = ({
         }) || null;
       }
 
-      // 4. StartsWith match (DB code starts with extracted code or vice versa)
+      // 4. StartsWith match
       if (!resolvedProduct && normRaw.length >= 4) {
         resolvedProduct = activeProducts.find(p => {
           const normDb = normalize(p.product_code);
@@ -1265,6 +1256,7 @@ const LazyPdfPage = ({
             loading="lazy"
             draggable={false}
             style={hdMode ? { imageRendering: "high-quality" as any } : undefined}
+            onClick={pageIndex === 0 ? () => toast({ title: "This is a cover page — no products", description: "Navigate to page 2 to start browsing products.", duration: 4000 }) : undefined}
           />
           {/* Show overlays for ALL regions (matched + unmatched) — works with live extraction or fallback */}
           {overlayRegions.length > 0 && (

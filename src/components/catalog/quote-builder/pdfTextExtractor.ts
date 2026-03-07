@@ -196,16 +196,16 @@ function buildProductLookup(products: PaletteProduct[]) {
  * Detect price in text. Returns the numeric value or null.
  * Handles SA formats: R1,024.07, R 500.00, R150, R12,15, R 1 234,56
  */
-function detectPrice(text: string, isStandalone = false): number | null {
-  const prices = detectAllPrices(text, isStandalone);
+function detectPrice(text: string): number | null {
+  const prices = detectAllPrices(text);
   return prices.length > 0 ? prices[prices.length - 1] : null;
 }
 
 /**
  * Find ALL R-prefixed prices in a string, returned in order of appearance.
- * When isStandalone=true, also match standalone numerics like "1,234.56" without R prefix.
+ * ONLY matches explicit R-prefixed prices — no standalone numerics.
  */
-function detectAllPrices(text: string, isStandalone = false): number[] {
+function detectAllPrices(text: string): number[] {
   const results: number[] = [];
   const re = /R\s*([\d\s,]+[.,]\d{1,2})(?:\s|$|[^A-Za-z0-9]|,)/g;
   let m: RegExpExecArray | null;
@@ -224,24 +224,6 @@ function detectAllPrices(text: string, isStandalone = false): number[] {
     const raw = m[1].replace(/\s/g, "");
     const val = parseFloat(raw);
     if (!isNaN(val) && val >= 50 && !results.includes(val)) results.push(val);
-  }
-
-  // Standalone numeric detection (no R prefix) for column-based prices
-  if (isStandalone && results.length === 0) {
-    const re4 = /^([\d\s,]+[.,]\d{1,2})$/;
-    const match = text.trim().match(re4);
-    if (match) {
-      const val = parseRawPrice(match[1]);
-      if (val !== null && val >= 1) results.push(val);
-    }
-    // Whole number standalone
-    const re5 = /^(\d[\d\s]*)$/;
-    const match2 = text.trim().match(re5);
-    if (match2) {
-      const raw = match2[1].replace(/\s/g, "");
-      const val = parseFloat(raw);
-      if (!isNaN(val) && val >= 50 && !results.includes(val)) results.push(val);
-    }
   }
 
   return results;
@@ -401,8 +383,8 @@ function isHeaderRow(text: string): boolean {
 }
 
 /**
- * PRICE-FIRST approach v34: density-adaptive thresholds, standalone numeric detection,
- * relaxed ghost filter, per-row logging.
+ * PRICE-FIRST approach v35: rightmost R-price per row, no standalone numerics,
+ * product-code-aware ghost filter, per-row logging.
  */
 export function matchTextRowsToProducts(
   items: ExtractedTextItem[],
@@ -422,42 +404,56 @@ export function matchTextRowsToProducts(
   const itemDensity = mergedItems.length / (pageHeight / avgHeight);
   const isDense = itemDensity > 0.5;
   const yThreshold = isDense
-    ? Math.max(avgHeight * 1.2, 8)   // tighter for dense pages
-    : Math.max(avgHeight * 1.5, 8);  // wider for sparse pages
+    ? Math.max(avgHeight * 1.2, 8)
+    : Math.max(avgHeight * 1.5, 8);
 
   console.log(`[pdfExtract] Density analysis: ${mergedItems.length} items, avgHeight=${avgHeight.toFixed(1)}, density=${itemDensity.toFixed(2)}, isDense=${isDense}, yThreshold=${yThreshold.toFixed(1)}`);
 
-  // STEP 1a: Explicit R-prefixed prices
+  // STEP 1: Find ALL explicit R-prefixed price items ONLY (no standalone numerics)
   const explicitPriceItems = mergedItems.filter(
     (item) => /R\s*\d/.test(item.text) && detectPrice(item.text) !== null
   );
 
-  // STEP 1b: Column-based numeric prices
-  const columnPrices = findColumnPrices(mergedItems, pageWidth, pageHeight);
+  console.log(`[pdfExtract] matchTextRows: ${mergedItems.length} items, explicit R-prices=${explicitPriceItems.length}, pageWidth=${pageWidth.toFixed(0)}`);
 
-  // Combine and deduplicate by position
-  const seen = new Set<string>();
-  const priceItems: ExtractedTextItem[] = [];
-  for (const item of [...explicitPriceItems, ...columnPrices]) {
-    const key = `${item.x.toFixed(0)},${item.y.toFixed(0)}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      priceItems.push(item);
+  if (explicitPriceItems.length === 0) return [];
+
+  // STEP 2: Group R-prefixed price items by y-position (same row = y within avgHeight*1.2)
+  const rowGroupYThreshold = avgHeight * 1.2;
+  const priceRowGroups: ExtractedTextItem[][] = [];
+  const sortedPrices = [...explicitPriceItems].sort((a, b) => a.y - b.y);
+
+  for (const item of sortedPrices) {
+    let addedToGroup = false;
+    for (const group of priceRowGroups) {
+      const groupY = group[0].y;
+      if (Math.abs(item.y - groupY) <= rowGroupYThreshold) {
+        group.push(item);
+        addedToGroup = true;
+        break;
+      }
+    }
+    if (!addedToGroup) {
+      priceRowGroups.push([item]);
     }
   }
 
-  const colRange = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
-  console.log(`[pdfExtract] matchTextRows: ${mergedItems.length} items, yThreshold=${yThreshold.toFixed(1)}, explicit R-prices=${explicitPriceItems.length}, column-based prices=${columnPrices.length}, combined unique=${priceItems.length}, priceColumnRange=${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : 'none (using x>30% fallback)'}, pageWidth=${pageWidth.toFixed(0)}`);
+  // STEP 3: Keep ONLY the RIGHTMOST R-prefixed price per row (this is the INCL VAT price)
+  const rightmostPricePerRow: ExtractedTextItem[] = priceRowGroups.map(group => {
+    group.sort((a, b) => b.x - a.x); // sort by x descending
+    const rightmost = group[0];
+    if (group.length > 1) {
+      console.log(`[pdfExtract] Row at y≈${rightmost.y.toFixed(0)}: ${group.length} R-prices, keeping rightmost "${rightmost.text.trim()}" at x=${rightmost.x.toFixed(0)} (INCL VAT)`);
+    }
+    return rightmost;
+  });
 
-  if (priceItems.length === 0) return [];
-
-  // STEP 2: One row per price item
-  const sortedPrices = [...priceItems].sort((a, b) => a.y - b.y);
-  const priceRows: { items: ExtractedTextItem[] }[] = sortedPrices.map(p => ({ items: [p] }));
+  console.log(`[pdfExtract] ${priceRowGroups.length} price row groups → ${rightmostPricePerRow.length} rightmost prices`);
 
   const modelRegex = /^[A-Za-z0-9\-\/]{5,}$/;
+  const productCodeRegex = /^[A-Z]{2}\d/;
 
-  // STEP 3: For each price row, gather context and build a region
+  // STEP 4: For each price row, gather context and build a region
   const regions: ExtractedProductRegion[] = [];
   let skippedCount = { noPrice: 0, ghost: 0, outOfBounds: 0 };
   const assignedCodes = new Set<string>();
@@ -465,20 +461,15 @@ export function matchTextRowsToProducts(
   // Adaptive tightBand based on density
   const tightBand = isDense ? avgHeight * 0.6 : avgHeight * 0.9;
 
-  for (const pRow of priceRows) {
-    const rightmost = pRow.items[pRow.items.length - 1];
-    // Try explicit R-prefixed price first, then standalone numeric parse
-    let detectedPrice = detectPrice(rightmost.text);
-    if (detectedPrice === null) {
-      detectedPrice = detectPrice(rightmost.text, true); // isStandalone=true
-    }
+  for (const rightmost of rightmostPricePerRow) {
+    const detectedPrice = detectPrice(rightmost.text);
     if (detectedPrice === null || detectedPrice <= 0) {
       console.log(`[pdfExtract] SKIP row (noPrice): text="${rightmost.text.trim()}" at y=${rightmost.y.toFixed(1)}`);
       skippedCount.noPrice++;
       continue;
     }
 
-    const rowAvgY = pRow.items.reduce((s, i) => s + i.y, 0) / pRow.items.length;
+    const rowAvgY = rightmost.y;
     const y_pct = (rowAvgY / pageHeight) * 100;
 
     // Context items on the same row
@@ -489,8 +480,10 @@ export function matchTextRowsToProducts(
     const rowText = contextItems.map((it) => it.text).join(" ");
 
     // Ghost filter: skip if in top 5% AND is a header row
+    // BUT: never skip if the row has a product code matching /^[A-Z]{2}\d/
     const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
-    if (y_pct < 5 && !hasModel && isHeaderRow(rowText)) {
+    const hasProductCode = contextItems.some((i) => productCodeRegex.test(i.text.trim()));
+    if (y_pct < 5 && !hasModel && !hasProductCode && isHeaderRow(rowText)) {
       console.log(`[pdfExtract] SKIP row (ghost/header): y_pct=${y_pct.toFixed(1)}%, text="${rowText.trim().substring(0, 80)}"`);
       skippedCount.ghost++;
       continue;
@@ -579,7 +572,7 @@ export function matchTextRowsToProducts(
     });
   }
 
-  console.log(`[pdfExtract] Row processing: ${priceRows.length} price rows → ${regions.length} regions. Skipped: noPrice=${skippedCount.noPrice}, ghost=${skippedCount.ghost}, outOfBounds=${skippedCount.outOfBounds}`);
+  console.log(`[pdfExtract] Row processing: ${rightmostPricePerRow.length} price rows → ${regions.length} regions. Skipped: noPrice=${skippedCount.noPrice}, ghost=${skippedCount.ghost}, outOfBounds=${skippedCount.outOfBounds}`);
 
   // Align all icons to a single X column
   if (regions.length > 0) {
@@ -591,7 +584,7 @@ export function matchTextRowsToProducts(
 }
 
 // Cache for extracted regions per page
-let _extractionVersion = 34; // v34: density-adaptive, standalone numerics, relaxed ghost, per-row logging
+let _extractionVersion = 35; // v35: rightmost R-price per row, no standalone numerics, product-code ghost filter
 const extractionCache = new Map<string, { regions: ExtractedProductRegion[]; fullText: string }>();
 
 export interface ExtractionResult {
