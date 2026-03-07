@@ -1074,45 +1074,23 @@ const LazyPdfPage = ({
     const sourceRegions = liveRegions.length > 0 ? liveRegions : [];
     const result: OverlayRegion[] = [];
 
-    // DEBUG: log all source regions for this page to find missing items
-    if (sourceRegions.length > 0) {
-      console.log(`[OverlayDebug] Page ${pageIndex} (page_number=${page.page_number}): ${sourceRegions.length} source regions:`,
-        sourceRegions.map((r, i) => ({ i, code: r.product_code, label: (r.label||"").substring(0,60), y_pct: r.y_pct, h_pct: r.h_pct, w_pct: r.w_pct, price: r.detected_price, matched: r.matched }))
-      );
-    }
-
     const seenOnPage = new Set<string>();
     const seenYPct = new Set<number>();
     for (let idx = 0; idx < sourceRegions.length; idx++) {
       const r = sourceRegions[idx];
       // Cross-page dedup: skip if this exact item was already seen on an earlier page
-      const dedupKey = `${(r.label || "").substring(0, 80)}|${r.detected_price ?? "no-price"}`;
+      const dedupKey = `${r.product_code || ""}|${(r.label || "").substring(0, 80)}|${r.detected_price ?? "no-price"}`;
       const firstPage = globalSeenRegions.get(dedupKey);
-      if (firstPage !== undefined && firstPage !== pageIndex) {
-        if ((r.product_code || "").toLowerCase().includes("ar80") || (r.label || "").toLowerCase().includes("ar80")) {
-          console.warn(`[OverlayDebug] SKIPPED AR80 item by cross-page dedup: code=${r.product_code}, firstPage=${firstPage}, thisPage=${pageIndex}`);
-        }
-        continue;
-      }
+      if (firstPage !== undefined && firstPage !== pageIndex) continue;
       globalSeenRegions.set(dedupKey, pageIndex);
 
       // Within-page dedup: skip if same dedupKey already added on this page
-      if (seenOnPage.has(dedupKey)) {
-        if ((r.product_code || "").toLowerCase().includes("ar80") || (r.label || "").toLowerCase().includes("ar80")) {
-          console.warn(`[OverlayDebug] SKIPPED AR80 item by within-page dedup: code=${r.product_code}`);
-        }
-        continue;
-      }
+      if (seenOnPage.has(dedupKey)) continue;
       seenOnPage.add(dedupKey);
 
       // Row-level dedup: skip duplicate regions from the same physical PDF row
       const roundedY = Math.round(r.y_pct);
-      if (seenYPct.has(roundedY)) {
-        if ((r.product_code || "").toLowerCase().includes("ar80") || (r.label || "").toLowerCase().includes("ar80")) {
-          console.warn(`[OverlayDebug] SKIPPED AR80 item by roundedY dedup: code=${r.product_code}, roundedY=${roundedY}`);
-        }
-        continue;
-      }
+      if (seenYPct.has(roundedY)) continue;
       seenYPct.add(roundedY);
 
       // Resolve product from activeProducts if extractor matched by code but didn't attach object
