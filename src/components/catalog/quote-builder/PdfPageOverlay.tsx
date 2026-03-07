@@ -133,6 +133,7 @@ const DraggableRegion = memo(({
   pdfSelection,
   onOpenProductInfo,
   isDensePage,
+  itemNumber,
 }: {
   region: OverlayRegion;
   baskets: Basket[];
@@ -151,6 +152,7 @@ const DraggableRegion = memo(({
   pdfSelection?: PdfSelectionHandlers;
   onOpenProductInfo?: (product: PaletteProduct) => void;
   isDensePage?: boolean;
+  itemNumber?: number;
 }) => {
   const [isRowHovered, setIsRowHovered] = useState(false);
   const product = region.product;
@@ -332,73 +334,87 @@ const DraggableRegion = memo(({
         </div>
       )}
 
-      {/* Icon positioned in QTY column at fixed left% */}
+      {/* Icon strip — vertically centered within the row's full height */}
       <div
-        className="absolute top-1/2 -translate-y-1/2 opacity-80 group-hover:opacity-100 transition-opacity z-10 flex flex-row items-center"
-        style={{ left: iconLeftPct }}
+        className="absolute opacity-80 group-hover:opacity-100 transition-opacity z-10"
+        style={{
+          left: iconLeftPct,
+          top: 0,
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
-        {isMatched ? (
-          isFavorite ? (
-            <button
-              onDoubleClick={handleStarDoubleClick}
-              onClick={handleIconClick}
-              onContextMenu={handleContextMenu}
-              className={`pointer-events-auto ${iconSize} rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md`}
-              style={{ background: "rgba(30,30,30,0.85)" }}
-              title="Double-click to remove from favorites · Right-click to hide"
-              aria-label="Remove from favorites"
-            >
-              <Star className={`${innerIconSize}`} style={{ fill: "#FFD700", color: "#FFD700" }} />
-            </button>
-          ) : isAddedToQuote ? (
-            <button
-              onDoubleClick={handleStarDoubleClick}
-              onClick={handleIconClick}
-              onContextMenu={handleContextMenu}
-              className={`pointer-events-auto ${iconSize} rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md`}
-              style={{ background: "#28a745" }}
-              title="Added to quote · Double-click to favorite · Right-click to hide"
-              aria-label="Added to quote"
-            >
-              <Check className={`${innerIconSize} text-white`} />
-            </button>
-          ) : inQuoteQty > 0 ? (
-            <button
-              onDoubleClick={handleStarDoubleClick}
-              onClick={handleIconClick}
-              onContextMenu={handleContextMenu}
-              className={`pointer-events-auto ${iconSize} rounded-full flex items-center justify-center text-[8px] font-bold text-white hover:scale-125 transition-transform cursor-pointer shadow-md`}
-              style={{ background: "#22c55e" }}
-              title="Double-click to add to favorites · Right-click to hide"
-              aria-label={`In quote: ${inQuoteQty}. Double-click to favorite`}
-            >
-              {inQuoteQty}
-            </button>
+        <div className="flex flex-row items-center gap-0.5">
+          {/* Item number label */}
+          {itemNumber != null && (
+            <span className="text-[7px] font-bold text-muted-foreground/70 select-none leading-none mr-0.5">{itemNumber}</span>
+          )}
+          {isMatched ? (
+            isFavorite ? (
+              <button
+                onDoubleClick={handleStarDoubleClick}
+                onClick={handleIconClick}
+                onContextMenu={handleContextMenu}
+                className={`pointer-events-auto ${iconSize} rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md`}
+                style={{ background: "rgba(30,30,30,0.85)" }}
+                title="Double-click to remove from favorites · Right-click to hide"
+                aria-label="Remove from favorites"
+              >
+                <Star className={`${innerIconSize}`} style={{ fill: "#FFD700", color: "#FFD700" }} />
+              </button>
+            ) : isAddedToQuote ? (
+              <button
+                onDoubleClick={handleStarDoubleClick}
+                onClick={handleIconClick}
+                onContextMenu={handleContextMenu}
+                className={`pointer-events-auto ${iconSize} rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md`}
+                style={{ background: "#28a745" }}
+                title="Added to quote · Double-click to favorite · Right-click to hide"
+                aria-label="Added to quote"
+              >
+                <Check className={`${innerIconSize} text-white`} />
+              </button>
+            ) : inQuoteQty > 0 ? (
+              <button
+                onDoubleClick={handleStarDoubleClick}
+                onClick={handleIconClick}
+                onContextMenu={handleContextMenu}
+                className={`pointer-events-auto ${iconSize} rounded-full flex items-center justify-center text-[8px] font-bold text-white hover:scale-125 transition-transform cursor-pointer shadow-md`}
+                style={{ background: "#22c55e" }}
+                title="Double-click to add to favorites · Right-click to hide"
+                aria-label={`In quote: ${inQuoteQty}. Double-click to favorite`}
+              >
+                {inQuoteQty}
+              </button>
+            ) : (
+              <button
+                onDoubleClick={handleStarDoubleClick}
+                onClick={handleIconClick}
+                onContextMenu={handleContextMenu}
+                className={`pointer-events-auto ${iconSize} rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md`}
+                style={{ background: iconBg }}
+                title="Click row to add to quote · Double-click icon to favorite · Right-click to hide"
+                aria-label="Add to quote"
+              >
+                <ShoppingCart className={`${innerIconSize} text-white`} />
+              </button>
+            )
           ) : (
             <button
-              onDoubleClick={handleStarDoubleClick}
+              className={`pointer-events-auto ${iconSize} rounded-full flex items-center justify-center hover:scale-125 transition-all cursor-pointer shadow-md`}
+              style={{ background: "#007BFF" }}
               onClick={handleIconClick}
               onContextMenu={handleContextMenu}
-              className={`pointer-events-auto ${iconSize} rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md`}
-              style={{ background: iconBg }}
-              title="Click row to add to quote · Double-click icon to favorite · Right-click to hide"
-              aria-label="Add to quote"
+              title="Right-click to hide"
+              aria-label="Unmatched product. Right-click to hide"
             >
               <ShoppingCart className={`${innerIconSize} text-white`} />
             </button>
-          )
-        ) : (
-          <button
-            className={`pointer-events-auto ${iconSize} rounded-full flex items-center justify-center hover:scale-125 transition-all cursor-pointer shadow-md`}
-            style={{ background: "#007BFF" }}
-            onClick={handleIconClick}
-            onContextMenu={handleContextMenu}
-            title="Right-click to hide"
-            aria-label="Unmatched product. Right-click to hide"
-          >
-            <ShoppingCart className={`${innerIconSize} text-white`} />
-          </button>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
@@ -617,6 +633,7 @@ const PdfPageOverlay = ({
           pdfSelection={pdfSelection}
           onOpenProductInfo={onOpenProductInfo}
           isDensePage={isDensePage}
+          itemNumber={idx + 1}
         />
       ))}
 
