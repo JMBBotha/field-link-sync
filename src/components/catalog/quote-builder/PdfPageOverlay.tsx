@@ -228,18 +228,24 @@ const DraggableRegion = memo(({
           background: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.15) 80%, rgba(0,0,0,0.3) 100%)",
         }}
       />
-      {/* Chevron arrow at the right end of gradient */}
+      {/* Chevron arrow at the right edge of region */}
       <div
-        className="absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10"
-        style={{ right: "92px" }}
+        className="absolute -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10"
+        style={{ left: `calc(${region.x_pct + region.w_pct}% - 14%)`, top: "50%", transform: "translateY(-50%)" }}
       >
         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" style={{ color: "rgba(255,255,255,0.85)" }} />
       </div>
 
-      {/* Inline icon row in right gutter: checkbox + cart/star side by side */}
+      {/*******************************************************************
+        * CRITICAL: DO NOT MODIFY ICON/CHECKBOX POSITIONING LOGIC         *
+        * Icons MUST align to right edge of each PDF product region       *
+        * Use getIconLeftStyle(region) for horizontal placement            *
+        * Fixed right gutters (right:XXpx) are FORBIDDEN                  *
+        *******************************************************************/}
+      {/* Inline icon row: checkbox + cart/star side by side — positioned at region edge */}
       <div
-        className="absolute top-1/2 -translate-y-1/2 z-20 pointer-events-auto"
-        style={{ right: "12px", display: "flex", alignItems: "center", gap: "8px" }}
+        className="absolute z-20 pointer-events-auto"
+        style={{ ...getIconLeftStyle(region), display: "flex", alignItems: "center", gap: "8px" }}
       >
         {/* PDF selection checkbox — show for all regions with a product or detected price */}
         {pdfSelection && effectiveProduct && (
