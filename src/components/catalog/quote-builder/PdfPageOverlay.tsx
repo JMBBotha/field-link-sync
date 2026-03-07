@@ -381,7 +381,7 @@ const GhostAddRow = memo(({
   >
     {/* Hover highlight */}
     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 hover:bg-primary/5 rounded transition-colors duration-150" />
-    {/* Ghost + icon — only visible on hover */}
+    {/* Ghost + icon — positioned at right edge of page */}
     <div
       className="absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity z-10"
       style={{ right: "8px" }}
