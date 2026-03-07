@@ -91,20 +91,19 @@ export interface PricingResult {
 }
 
 /**
- * Full pricing calculation that applies supplier discount THEN markup.
- * discountPercent: trade discount from supplier (e.g. 20 for 20% off list price)
+ * Legacy function — discount is now baked into cost_price at import time.
+ * The _discountPercent param is ignored (kept for call-site compat).
  */
 export function calculatePricing(
-  costExclVat: number,
-  discountPercent: number = 0,
+  costPrice: number,
+  _discountPercent: number = 0,
   markupPercent: number = 20
 ): PricingResult {
-  const discountedCost = r2(costExclVat * (1 - discountPercent / 100));
-  const { sellingExclVat, sellingInclVat } = calcSellingPrice(discountedCost, markupPercent);
+  const { sellingExclVat, sellingInclVat } = calcSellingPrice(costPrice, markupPercent);
   return {
-    costExclVat,
-    supplierDiscountPercent: discountPercent,
-    discountedCost,
+    costExclVat: costPrice,
+    supplierDiscountPercent: 0,
+    discountedCost: costPrice,
     markupPercent,
     sellingPrice: sellingExclVat,
     sellingPriceInclVat: sellingInclVat,
