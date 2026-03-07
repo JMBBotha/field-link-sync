@@ -971,11 +971,13 @@ const LazyPdfPage = ({
               // Clear cache and re-extract with augmented product list so icons turn blue
               clearExtractionCache();
               const allProducts = [...activeProducts, ...newPaletteProducts];
-              const reMatched = await extractAndMatchPage(page.pdf_storage_path!, page.page_number, allProducts);
+              const reMatched = await extractAndMatchPage(pdfUrl, page.page_number, allProducts);
               
               // Invalidate the main products query so palette picks up new items
               queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
               
+              // Revoke blob URL if we created one
+              if (pdfUrl !== page.pdf_storage_path) URL.revokeObjectURL(pdfUrl);
               return reMatched;
             }
           } catch (catalogErr) {
