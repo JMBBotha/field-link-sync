@@ -123,6 +123,7 @@ const DraggableRegion = memo(({
   onHoverMove: (e: React.MouseEvent) => void;
   onHoverLeave: () => void;
   pdfSelection?: PdfSelectionHandlers;
+  onOpenProductInfo?: (product: PaletteProduct) => void;
 }) => {
   const [isRowHovered, setIsRowHovered] = useState(false);
   const product = region.product;
