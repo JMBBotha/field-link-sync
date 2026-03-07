@@ -471,7 +471,7 @@ const PdfPageOverlay = ({
     return gaps;
   }, [positionedRegions]);
 
-  const iconLeftPct = computeIconLeftPct(positionedRegions);
+
 
   const handleHover = useCallback((region: OverlayRegion) => {
     hoveredRegionRef.current = region;
