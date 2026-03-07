@@ -107,6 +107,7 @@ const DraggableRegion = memo(({
   onHoverMove,
   onHoverLeave,
   pdfSelection,
+  onOpenProductInfo,
 }: {
   region: OverlayRegion;
   baskets: Basket[];
