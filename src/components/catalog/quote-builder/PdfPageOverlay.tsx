@@ -133,6 +133,7 @@ const DraggableRegion = memo(({
   pdfSelection,
   onOpenProductInfo,
   isDensePage,
+  itemNumber,
 }: {
   region: OverlayRegion;
   baskets: Basket[];
@@ -151,6 +152,7 @@ const DraggableRegion = memo(({
   pdfSelection?: PdfSelectionHandlers;
   onOpenProductInfo?: (product: PaletteProduct) => void;
   isDensePage?: boolean;
+  itemNumber?: number;
 }) => {
   const [isRowHovered, setIsRowHovered] = useState(false);
   const product = region.product;
