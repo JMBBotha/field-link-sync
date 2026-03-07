@@ -212,7 +212,7 @@ const DraggableRegion = memo(({
       {/* Chevron arrow — positioned over price column */}
       <div
         className="absolute -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10"
-        style={{ right: "3%", top: "50%", transform: "translateY(-50%)" }}
+        style={{ right: "9%", top: "50%", transform: "translateY(-50%)" }}
       >
         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" style={{ color: "rgba(255,255,255,0.85)" }} />
       </div>
@@ -220,7 +220,7 @@ const DraggableRegion = memo(({
       {/* PROTECTED: Icon positioning uses right:6% to align with price column. DO NOT change to left-based or computeIconLeftPct. */}
       <div
         className="absolute z-20 pointer-events-auto"
-        style={{ position: "absolute", right: "6%", top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: "4px", zIndex: 10 }}
+        style={{ position: "absolute", right: "12%", top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: "4px", zIndex: 10 }}
       >
         {/* PDF selection checkbox — show for all regions with a product or detected price */}
         {pdfSelection && effectiveProduct && (
@@ -357,7 +357,7 @@ const GhostAddRow = memo(({
     {/* Ghost + icon — positioned over price column */}
     <div
       className="absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity z-10"
-      style={{ right: "6%" }}
+      style={{ right: "12%" }}
     >
       <div className="h-4 w-4 rounded-full flex items-center justify-center bg-muted-foreground/20 hover:bg-muted-foreground/40 transition-colors">
         <Plus className="h-2.5 w-2.5 text-muted-foreground" />
