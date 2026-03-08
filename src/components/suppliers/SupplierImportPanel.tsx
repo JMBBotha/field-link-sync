@@ -13,7 +13,7 @@ import ImportPreviewModal from "./ImportPreviewModal";
 import SupplierInfoReviewModal from "./SupplierInfoReviewModal";
 import type { ImportPreview, ParsedProduct, ImportStage } from "@/services/productImportParser";
 import type { ExtractedSupplierInfo } from "@/services/supplierInfoExtractor";
-import { cleanImportForSupplier, logImportAction } from "@/services/cleanImportPipeline";
+import { runImportPipeline } from "@/services/pdfImportPipeline";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle2 } from "lucide-react";
 
