@@ -23,9 +23,10 @@ const DISMISSED_KEY = "dismissedPdfRegions";
 function computeIconLeftPct(regions: OverlayRegion[]): string {
   let maxRight = 0;
   let hasValidGeometry = false;
-  // Only consider regions with has_price === true for alignment
-  const priceRegions = regions.filter(r => r.has_price === true);
-  for (const r of priceRegions.length > 0 ? priceRegions : regions) {
+  // Prioritize price regions with actual prices for maxRight calculation
+  const priceRegions = regions.filter(r => r.has_price === true && r.detected_price != null && r.detected_price > 0);
+  const useRegions = priceRegions.length > 0 ? priceRegions : regions;
+  for (const r of useRegions) {
     if (r.x_pct != null && r.w_pct != null && r.w_pct > 0) {
       const right = r.x_pct + r.w_pct;
       if (right > maxRight) {
@@ -35,10 +36,10 @@ function computeIconLeftPct(regions: OverlayRegion[]): string {
     }
   }
   if (!hasValidGeometry || maxRight < 10) return "92%";
-  // Place icon 2% after rightmost price edge, then convert page-% to div-% (div is 96% wide)
-  const pageTargetPct = Math.min(95, maxRight + 2);
+  // Adjusted gap for better post-price spacing; clamp for uniformity
+  const pageTargetPct = Math.min(96, maxRight + 2.5);
   const divLeftPct = (pageTargetPct / 96) * 100;
-  const clamped = Math.min(99, Math.max(70, divLeftPct));
+  const clamped = Math.min(98, Math.max(75, divLeftPct));
   console.log(`[computeIconLeftPct] maxRight: ${maxRight}, pageTargetPct: ${pageTargetPct}, divLeftPct: ${clamped}`);
   return `${clamped.toFixed(1)}%`;
 }
