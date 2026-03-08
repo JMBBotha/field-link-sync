@@ -89,7 +89,7 @@ serve(async (req) => {
       const customer = schedule.customers as any;
       if (!customer?.phone) continue;
 
-      const contractLabel = schedule.service_agreements?.contract_type || "maintenance";
+      const contractLabel = (schedule.service_agreements as any)?.contract_type || "maintenance";
 
       await supabase.from("notification_queue").insert({
         customer_id: (schedule as any).customer_id || schedule.id,
