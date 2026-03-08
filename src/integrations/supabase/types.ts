@@ -3836,6 +3836,7 @@ export type Database = {
           name: string | null
           original_cost_excl_vat: number | null
           pack_qty: number | null
+          page_number: number | null
           pdf_page_id: string | null
           pdf_upload_id: string | null
           phase: string | null
@@ -3843,6 +3844,7 @@ export type Database = {
           pipe_gas: string | null
           pipe_liquid: string | null
           pipe_size: string | null
+          price_bbox: Json | null
           price_excl_vat: number | null
           price_includes_vat: boolean | null
           price_per_metre: number | null
@@ -3852,6 +3854,7 @@ export type Database = {
           product_type: string
           quote_usage_count: number
           refrigerant_type: string | null
+          row_bbox: Json | null
           sell_price_incl_vat: number | null
           selling_price: number | null
           short_name: string | null
@@ -3900,6 +3903,7 @@ export type Database = {
           name?: string | null
           original_cost_excl_vat?: number | null
           pack_qty?: number | null
+          page_number?: number | null
           pdf_page_id?: string | null
           pdf_upload_id?: string | null
           phase?: string | null
@@ -3907,6 +3911,7 @@ export type Database = {
           pipe_gas?: string | null
           pipe_liquid?: string | null
           pipe_size?: string | null
+          price_bbox?: Json | null
           price_excl_vat?: number | null
           price_includes_vat?: boolean | null
           price_per_metre?: number | null
@@ -3916,6 +3921,7 @@ export type Database = {
           product_type?: string
           quote_usage_count?: number
           refrigerant_type?: string | null
+          row_bbox?: Json | null
           sell_price_incl_vat?: number | null
           selling_price?: number | null
           short_name?: string | null
@@ -3964,6 +3970,7 @@ export type Database = {
           name?: string | null
           original_cost_excl_vat?: number | null
           pack_qty?: number | null
+          page_number?: number | null
           pdf_page_id?: string | null
           pdf_upload_id?: string | null
           phase?: string | null
@@ -3971,6 +3978,7 @@ export type Database = {
           pipe_gas?: string | null
           pipe_liquid?: string | null
           pipe_size?: string | null
+          price_bbox?: Json | null
           price_excl_vat?: number | null
           price_includes_vat?: boolean | null
           price_per_metre?: number | null
@@ -3980,6 +3988,7 @@ export type Database = {
           product_type?: string
           quote_usage_count?: number
           refrigerant_type?: string | null
+          row_bbox?: Json | null
           sell_price_incl_vat?: number | null
           selling_price?: number | null
           short_name?: string | null
