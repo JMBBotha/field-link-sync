@@ -297,7 +297,7 @@ const DraggableRegion = memo(({
       {/* Icon positioned in QTY column at fixed left% */}
       <div
         className="absolute top-1/2 -translate-y-1/2 opacity-80 group-hover:opacity-100 transition-opacity z-10 flex flex-row items-center"
-        style={{ left: iconLeftPct }}
+        style={{ left: rowIconLeftPct }}
       >
         {isMatched ? (
           isFavorite ? (
