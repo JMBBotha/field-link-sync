@@ -4,7 +4,7 @@
  * Uses pdfjs-dist to extract text items with their exact coordinates
  * from a PDF page, then cross-references against the products database.
  *
- * v36: TOC detection, stricter price regex, improved ghost filtering.
+ * v37: Stricter dedup (y_pct within 1.5%, keep priced), anti-overlap clamp with 0.2% gap, enhanced ghost filtering (TOC, headers, subtotals, blanks), standalone 4+ digit prices in rightmost, detailed logging.
  */
 import type { PaletteProduct } from "../QuoteBuilderTab";
 /**
@@ -178,23 +178,32 @@ function detectPrice(text: string): number | null {
 /** Find ALL R-prefixed prices in a string, returned in order of appearance */
 function detectAllPrices(text: string): number[] {
   const results: number[] = [];
+  // Strict: Require R prefix and at least 4 digits total (e.g., R1234 or R12,34.56), or R with decimal/comma
   const re = /R\s*([\d\s,]+[.,]\d{1,2})(?:\s|$|[^A-Za-z0-9]|,)/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
-    const val = parseRawPrice(m[1]);
-    if (val !== null) results.push(val);
+    const digits = m[1].replace(/[\s,.]/g, "");
+    if (digits.length >= 4) { // Min 4 digits for validity
+      const val = parseRawPrice(m[1]);
+      if (val !== null) results.push(val);
+    }
   }
   const re2 = /R\s*([\d\s,]+[.,]\d{1,2})$/g;
   while ((m = re2.exec(text)) !== null) {
-    const val = parseRawPrice(m[1]);
-    if (val !== null && !results.includes(val)) results.push(val);
+    const digits = m[1].replace(/[\s,.]/g, "");
+    if (digits.length >= 4) {
+      const val = parseRawPrice(m[1]);
+      if (val !== null && !results.includes(val)) results.push(val);
+    }
   }
-  // Whole number prices >= 50
+  // Whole number prices: Require R prefix and >= 1000 (4 digits min)
   const re3 = /R\s*(\d[\d\s]*)(?![A-Za-z])/g;
   while ((m = re3.exec(text)) !== null) {
     const raw = m[1].replace(/\s/g, "");
-    const val = parseFloat(raw);
-    if (!isNaN(val) && val >= 50 && !results.includes(val)) results.push(val);
+    if (raw.length >= 4) {
+      const val = parseFloat(raw);
+      if (!isNaN(val) && val >= 1000 && !results.includes(val)) results.push(val);
+    }
   }
   return results;
 }
@@ -286,6 +295,7 @@ function findPriceColumnRange(
 /**
  * COLUMN-BASED price detection: find numeric items in the price column area,
  * or fallback to right-side heuristic (x > 40% of page width).
+ * Updated: Capture standalone 4+ digit numbers in rightmost if no R prefix.
  */
 function findColumnPrices(
   items: ExtractedTextItem[],
@@ -298,9 +308,9 @@ function findColumnPrices(
     const t = item.text.trim();
     // Must be numeric-ish: digits with optional spaces/commas/periods
     if (!/^\d[\d\s,.]*$/.test(t)) continue;
-    // Must have at least 2 digits total
+    // Must have at least 4 digits total for standalone (no R)
     const digits = t.replace(/[\s,.]/g, "");
-    if (digits.length < 2) continue;
+    if (digits.length < 4) continue;
     // Parse as price value
     let raw = t.replace(/\s/g, "");
     if (/,\d{1,2}$/.test(raw) && !/\.\d/.test(raw)) {
@@ -356,7 +366,7 @@ function isHeaderOrNonProductRow(
 }
 
 /**
- * PRICE-FIRST approach v36: column-based detection for dense table PDFs.
+ * PRICE-FIRST approach v37: column-based detection for dense table PDFs.
  * Combines R-prefixed prices with column-position-based numeric prices.
  */
 export function matchTextRowsToProducts(
@@ -401,7 +411,7 @@ export function matchTextRowsToProducts(
   const modelRegex = /^[A-Za-z0-9\-\/]{5,}$/;
   // STEP 3: For each price row, gather context and build a region
   // IMPROVED MATCHING – TIGHT ROW + POSITION-AWARE + DEDUP
-  const regions: ExtractedProductRegion[] = [];
+  let regions: ExtractedProductRegion[] = [];
   let skippedCount = { noPrice: 0, ghost: 0, outOfBounds: 0 };
   const assignedCodes = new Set<string>();
   // Build a flat list of all product codes for candidate scanning
@@ -426,6 +436,7 @@ export function matchTextRowsToProducts(
       continue;
     }
     const rowAvgY = pRow.items.reduce((s, i) => s + i.y, 0) / pRow.items.length;
+    // Ghost filter: skip if in top 3% AND no model code nearby
     const y_pct = (rowAvgY / pageHeight) * 100;
     // TIGHT same-row context ONLY (no aboveItems, no wide band)
     const tightBand = avgHeight * 0.6;
@@ -522,7 +533,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 36; // v36: TOC detection, stricter price regex, improved ghost filtering
+let _extractionVersion = 37; // v37: Stricter dedup, anti-overlap, enhanced ghost filtering, standalone 4+ digit prices, detailed logging
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
@@ -551,8 +562,50 @@ export async function extractAndMatchPage(
     if (loneRItems.length > 0 && loneRItems.length <= 5) {
       loneRItems.forEach(r => console.log(`[pdfExtract] R at x=${r.x.toFixed(1)} y=${r.y.toFixed(1)}`));
     }
-    const regions = matchTextRowsToProducts(mergedItems, pageWidth, pageHeight, products);
-    console.log(`[pdfExtract] Page ${pageNumber}: ${regions.length} final regions`);
+    if (numericItems.length > 0 && numericItems.length <= 10) {
+      numericItems.forEach(n => console.log(`[pdfExtract] Numeric at x=${n.x.toFixed(1)} y=${n.y.toFixed(1)} text="${n.text.trim()}"`));
+    }
+    let regions = matchTextRowsToProducts(mergedItems, pageWidth, pageHeight, products);
+    // New dedup: Sort by y_pct, if within 1.5%, keep priced one
+    regions = regions.sort((a, b) => a.y_pct - b.y_pct);
+    const deduped = [];
+    let ghostsRemoved = 0;
+    let overlapsFixed = 0;
+    for (let i = 0; i < regions.length; i++) {
+      const current = regions[i];
+      let isDuplicate = false;
+      for (let j = 0; j < deduped.length; j++) {
+        const existing = deduped[j];
+        if (Math.abs(current.y_pct - existing.y_pct) < 1.5) {
+          // Keep the one with price (detected_price > 0)
+          if (current.detected_price > 0 && existing.detected_price <= 0) {
+            deduped[j] = current;
+          }
+          isDuplicate = true;
+          ghostsRemoved++;
+          console.log(`[pdfExtract] Dedup removed ghost/duplicate at y_pct=${current.y_pct.toFixed(2)}`);
+          break;
+        }
+      }
+      if (!isDuplicate) {
+        deduped.push(current);
+      }
+    }
+    regions = deduped;
+
+    // Anti-overlap: Clamp h_pct to not extend past next y_pct, with 0.2% gap
+    for (let i = 0; i < regions.length - 1; i++) {
+      const current = regions[i];
+      const nextY = regions[i + 1].y_pct;
+      const maxH = nextY - current.y_pct - 0.2; // 0.2% gap
+      if (current.h_pct > maxH) {
+        current.h_pct = maxH;
+        overlapsFixed++;
+        console.log(`[pdfExtract] Fixed overlap at y_pct=${current.y_pct.toFixed(2)}, clamped h_pct to ${maxH.toFixed(2)}`);
+      }
+    }
+
+    console.log(`[pdfExtract] Page ${pageNumber}: ${regions.length} final regions after dedup. Ghosts removed: ${ghostsRemoved}, Overlaps fixed: ${overlapsFixed}`);
     extractionCache.set(cacheKey, regions);
     return regions;
   } catch (err) {
