@@ -419,6 +419,20 @@ const AdminSuppliersPage = () => {
                                 <FileSpreadsheet className="h-4 w-4 mr-2" /> Upload & Parse CSV
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={async () => {
+                                try {
+                                  const result = await cleanSupplierProducts(s.id);
+                                  toast({
+                                    title: `${s.company_name || s.name}: ${result.deletedProducts} products removed`,
+                                    description: "All products for this supplier have been cleaned up.",
+                                  });
+                                  refreshAll();
+                                } catch (err: any) {
+                                  toast({ title: "Clean failed", description: err.message, variant: "destructive" });
+                                }
+                              }}>
+                                <Package className="h-4 w-4 mr-2" /> Clean Products Only
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => openDeleteDialog(s, "products")}>
                                 <Trash2 className="h-4 w-4 mr-2" /> Clear Products & PDFs
                               </DropdownMenuItem>
