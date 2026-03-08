@@ -706,6 +706,12 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
       } as any;
     });
 
+    console.log(`[PriceConfig] Mapped ${rows.length} rows, sample codes:`, rows.slice(0, 5).map(r => r.product_code));
+    const emptyCodeCount = rows.filter(r => !r.product_code || r.product_code.trim() === "").length;
+    if (emptyCodeCount > 0) {
+      console.error(`[PriceConfig] WARNING: ${emptyCodeCount} rows still have empty product_code!`);
+    }
+
     setParsedRows(rows);
     const diff = await buildDiff(rows);
     setDiffRows(diff);
