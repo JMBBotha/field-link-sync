@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { calcSellingPrice } from "@/utils/pricing";
+import { calcSellingPrice, getProductPricing } from "@/utils/pricing";
 import { Info, X, ImageIcon } from "lucide-react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
