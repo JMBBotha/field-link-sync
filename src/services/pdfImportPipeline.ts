@@ -8,6 +8,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { cleanImportForSupplier, logImportAction } from "@/services/cleanImportPipeline";
+import { capturePdfPages } from "@/lib/pdfPageCapture";
 import {
   validateProduct,
   VALIDATION_RULES,
@@ -83,6 +84,19 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
       console.warn("[Pipeline] PDF record creation failed (non-fatal):", pdfError.message);
     } else {
       pdfUploadId = pdfRecord?.id || null;
+    }
+
+    // ── STEP 2b: EXTRACT PDF pages as images for visual builder ──
+    console.log("[Pipeline] Step 2b: Extracting PDF pages as images...");
+    try {
+      const captureResult = await capturePdfPages(file, supplierName, undefined, supplierId);
+      console.log(`[Pipeline] Page capture: ${captureResult.pagesStored} stored, ${captureResult.errors} errors`);
+      if (captureResult.pagesStored === 0) {
+        warnings.push("PDF page image extraction failed — visual builder may not show pages");
+      }
+    } catch (captureErr: any) {
+      console.warn("[Pipeline] PDF page capture failed (non-fatal):", captureErr.message);
+      warnings.push("PDF page image extraction failed — visual builder may not show pages");
     }
   }
 

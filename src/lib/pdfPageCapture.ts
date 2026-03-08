@@ -40,6 +40,8 @@ export async function capturePdfPages(
   file: File,
   supplierName: string,
   onProgress?: (current: number, total: number) => void,
+  /** Optional supplierId to use as storage folder key (falls back to supplierName) */
+  supplierId?: string,
 ): Promise<CaptureResult> {
   console.log("[PDF Capture] Loading pdfjs...");
   const pdfjsLib = await loadPdfJs();
@@ -78,7 +80,8 @@ export async function capturePdfPages(
 
       // Upload to storage
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const storagePath = `${supplierName}/${safeName}/page-${pageNum}.jpg`;
+      const folderKey = supplierId || supplierName;
+      const storagePath = `${folderKey}/${safeName}/page-${pageNum}.jpg`;
 
       const { error: uploadError } = await supabase.storage
         .from("supplier-pdf-pages")
@@ -100,7 +103,7 @@ export async function capturePdfPages(
 
       // Insert into supplier_pdf_pages table
       const { error: insertError } = await (supabase.from("supplier_pdf_pages") as any).insert({
-        supplier_id: supplierName,
+        supplier_id: supplierId || supplierName,
         pdf_filename: file.name,
         page_number: pageNum,
         page_image_url: urlData.publicUrl,
@@ -127,7 +130,8 @@ export async function capturePdfPages(
   if (pagesStored > 0) {
     try {
       const safePdfName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const pdfStoragePath = `${supplierName}/${safePdfName}`;
+      const folderKeyPdf = supplierId || supplierName;
+      const pdfStoragePath = `${folderKeyPdf}/${safePdfName}`;
       const { error: pdfUploadErr } = await supabase.storage
         .from("supplier-pdf-pages")
         .upload(pdfStoragePath, file, {
@@ -141,7 +145,7 @@ export async function capturePdfPages(
         // Update all page records with the PDF storage path
         await (supabase.from("supplier_pdf_pages") as any)
           .update({ pdf_storage_path: pdfUrlData.publicUrl })
-          .eq("supplier_id", supplierName)
+          .eq("supplier_id", supplierId || supplierName)
           .eq("pdf_filename", file.name);
         console.log("[PDF Capture] Original PDF linked for live overlays");
       } else {
