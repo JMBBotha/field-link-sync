@@ -73,6 +73,9 @@ export default function ProductInfoDialog({ product, onMarkupSaved, open: contro
 
   const [markup, setMarkup] = useState(initialMarkup);
   const [saving, setSaving] = useState(false);
+  const sellingPrice = costPrice > 0 ? Math.round(costPrice * (1 + markup / 100) * 100) / 100 : (product.selling_price || 0);
+  const markupPercent = costPrice > 0 ? markup : (product.selling_price && costPrice > 0 ? ((product.selling_price / costPrice) - 1) * 100 : 0);
+  const pricing = { sellingPrice, markupPercent };
 
   const handleSaveMarkup = async () => {
     if (costPrice <= 0) return;

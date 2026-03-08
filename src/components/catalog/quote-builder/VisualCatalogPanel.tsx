@@ -955,7 +955,9 @@ const LazyPdfPage = ({
                 category: "Consumables",
                 cost_excl_vat: np.cost_excl_vat || 0,
                 cost_incl_vat: Math.round(inclVatFromExcl(np.cost_excl_vat || 0) * 100) / 100,
+                cost_price: np.cost_excl_vat || 0,
                 selling_price: 0,
+                default_markup_percent: 20,
                 description: np.description || "",
                 is_pinned: false,
                 pin_order: null,
@@ -966,6 +968,9 @@ const LazyPdfPage = ({
                 unit_length: null,
                 pipe_size: null,
                 is_material_favorite: false,
+                pack_qty: null,
+                supplier_discount_percent: null,
+                markup_percent: null,
               }));
               
               // Clear cache and re-extract with augmented product list so icons turn blue

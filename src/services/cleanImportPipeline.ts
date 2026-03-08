@@ -122,7 +122,7 @@ export async function cleanImportForSupplier(supplierId: string): Promise<{
 /** Safe delete that won't throw if table/column doesn't exist */
 async function safeDelete(table: string, column: string, ids: string[]) {
   try {
-    await (supabase.from(table) as any).delete().in(column, ids);
+    await (supabase.from(table as any) as any).delete().in(column, ids);
   } catch (_) {
     // Table or column may not exist — that's OK during cleanup
   }
