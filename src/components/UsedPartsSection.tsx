@@ -15,7 +15,6 @@ interface SupplierProduct {
   product_code: string;
   description: string;
   cost_price: number;
-  discounted_cost: number | null;
   category: string;
   supplier_id: string;
 }
