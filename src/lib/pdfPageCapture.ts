@@ -103,7 +103,7 @@ export async function capturePdfPages(
 
       // Insert into supplier_pdf_pages table
       const { error: insertError } = await (supabase.from("supplier_pdf_pages") as any).insert({
-        supplier_id: supplierName,
+        supplier_id: supplierId || supplierName,
         pdf_filename: file.name,
         page_number: pageNum,
         page_image_url: urlData.publicUrl,
