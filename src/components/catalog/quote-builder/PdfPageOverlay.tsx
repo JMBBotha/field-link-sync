@@ -23,9 +23,10 @@ const DISMISSED_KEY = "dismissedPdfRegions";
 function computeIconLeftPct(regions: OverlayRegion[]): string {
   let maxRight = 0;
   let hasValidGeometry = false;
-  // Only consider regions with has_price === true for alignment
-  const priceRegions = regions.filter(r => r.has_price === true);
-  for (const r of priceRegions.length > 0 ? priceRegions : regions) {
+  // Prioritize price regions with actual prices for maxRight calculation
+  const priceRegions = regions.filter(r => r.has_price === true && r.detected_price != null && r.detected_price > 0);
+  const useRegions = priceRegions.length > 0 ? priceRegions : regions;
+  for (const r of useRegions) {
     if (r.x_pct != null && r.w_pct != null && r.w_pct > 0) {
       const right = r.x_pct + r.w_pct;
       if (right > maxRight) {
@@ -35,10 +36,10 @@ function computeIconLeftPct(regions: OverlayRegion[]): string {
     }
   }
   if (!hasValidGeometry || maxRight < 10) return "92%";
-  // Place icon 2% after rightmost price edge, then convert page-% to div-% (div is 96% wide)
-  const pageTargetPct = Math.min(95, maxRight + 2);
+  // Adjusted gap for better post-price spacing; clamp for uniformity
+  const pageTargetPct = Math.min(96, maxRight + 2.5);
   const divLeftPct = (pageTargetPct / 96) * 100;
-  const clamped = Math.min(99, Math.max(70, divLeftPct));
+  const clamped = Math.min(98, Math.max(75, divLeftPct));
   console.log(`[computeIconLeftPct] maxRight: ${maxRight}, pageTargetPct: ${pageTargetPct}, divLeftPct: ${clamped}`);
   return `${clamped.toFixed(1)}%`;
 }
@@ -144,6 +145,9 @@ const DraggableRegion = memo(({
 
   const price = product?.selling_price || product?.cost_incl_vat || 0;
 
+  // Per-row fallback if global iconLeftPct seems off (e.g., merged row variance)
+  const rowIconLeftPct = region.has_price ? `${Math.min(98, (region.x_pct + region.w_pct + 2.5) / 96 * 100).toFixed(1)}%` : iconLeftPct;
+
   // Strip click → opens Area Quote Builder
   const handleStripClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -236,7 +240,7 @@ const DraggableRegion = memo(({
 
       {/* Fat arrow before icon column on hover */}
       {isRowHovered && (
-        <div className="absolute pointer-events-none z-30" style={{ left: `calc(${iconLeftPct} - 1.5%)`, top: '50%', transform: 'translateY(-50%)' }}>
+        <div className="absolute pointer-events-none z-30" style={{ left: `calc(${rowIconLeftPct} - 1.5%)`, top: '50%', transform: 'translateY(-50%)' }}>
           <span className="text-xl font-black text-indigo-500 leading-none">❯</span>
         </div>
       )}
@@ -245,7 +249,7 @@ const DraggableRegion = memo(({
       {pdfSelection && (
         <div
           className="absolute top-1/2 -translate-y-1/2 z-20 pointer-events-auto"
-          style={{ left: `calc(${iconLeftPct} - 1.2%)` }}
+          style={{ left: `calc(${rowIconLeftPct} - 1.2%)` }}
         >
           <div
             className="flex items-center justify-center rounded"
@@ -293,7 +297,7 @@ const DraggableRegion = memo(({
       {/* Icon positioned in QTY column at fixed left% */}
       <div
         className="absolute top-1/2 -translate-y-1/2 opacity-80 group-hover:opacity-100 transition-opacity z-10 flex flex-row items-center"
-        style={{ left: iconLeftPct }}
+        style={{ left: rowIconLeftPct }}
       >
         {isMatched ? (
           isFavorite ? (
