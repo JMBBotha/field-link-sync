@@ -34,8 +34,7 @@ import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
 import CategoryNavBar, { groupCategory } from "./CategoryNavBar";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
-// Cross-page dedup: tracks seen region keys across all pages to prevent duplicate icons
-const globalSeenRegions = new Map<string, number>(); // key → first pageIndex
+    // Cross-page dedup removed in Step 2 rebuild — each page handles its own regions independently
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
 
 interface VisualCatalogPanelProps {
