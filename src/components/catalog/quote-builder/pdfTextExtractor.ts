@@ -519,13 +519,17 @@ export function matchTextRowsToProducts(
     const h_pct = Math.max((anchorHeight / pageHeight) * 100, 1.5);
     if (y_pct > 100 || h_pct > 5) { skippedCount.outOfBounds++; continue; }
 
+    // Use ACTUAL price item coordinates for icon alignment (not hardcoded)
+    const actualX_pct = (rightmost.x / pageWidth) * 100;
+    const actualW_pct = Math.max((rightmost.width / pageWidth) * 100, 2);
+
     regions.push({
       product: matched,
       product_code: extractedCode,
       label: rowText.trim().substring(0, 200),
-      x_pct: 95,
+      x_pct: actualX_pct,
       y_pct: Math.max(0, y_pct),
-      w_pct: 4,
+      w_pct: actualW_pct,
       h_pct: Math.min(100 - y_pct, h_pct),
       matched: !!matched,
       has_price: true,
