@@ -130,7 +130,8 @@ export async function capturePdfPages(
   if (pagesStored > 0) {
     try {
       const safePdfName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const pdfStoragePath = `${supplierName}/${safePdfName}`;
+      const folderKeyPdf = supplierId || supplierName;
+      const pdfStoragePath = `${folderKeyPdf}/${safePdfName}`;
       const { error: pdfUploadErr } = await supabase.storage
         .from("supplier-pdf-pages")
         .upload(pdfStoragePath, file, {
