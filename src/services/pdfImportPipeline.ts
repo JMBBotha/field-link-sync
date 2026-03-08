@@ -119,6 +119,13 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
       continue;
     }
 
+    // Non-negotiable: validate price_bbox is in rightmost column if present
+    if (p.price_bbox && (p.price_bbox.x + p.price_bbox.width) < 0.7) {
+      warnings.push(`price_bbox not in rightmost column for "${p.model_number}" — bbox ignored`);
+      validProducts.push({ ...p, price_bbox: null });
+      continue;
+    }
+
     validProducts.push(p);
   }
 
@@ -162,6 +169,9 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
     sold_in_length: p.sold_in_length || false,
     unit_length: p.unit_length || null,
     price_per_metre: p.price_per_metre || null,
+    row_bbox: p.row_bbox || null,
+    price_bbox: p.price_bbox || null,
+    page_number: p.page_number || null,
     ...(pdfUploadId ? { pdf_upload_id: pdfUploadId } : {}),
   }));
 
