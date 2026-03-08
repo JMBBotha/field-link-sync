@@ -192,7 +192,7 @@ function BundlePaletteButton({
           {subItems.length}
         </Badge>
         <span className="text-[10px] font-bold shrink-0">
-          R{unitPrice.toFixed(0)}/{pricingType === "per_metre" ? "m" : "ea"}
+          R{unitPrice.toFixed(0)}/{pricingType === "p/meter" ? "m" : "ea"}
         </span>
       </div>
     </BundleItemsPopover>
