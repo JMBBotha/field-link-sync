@@ -560,6 +560,32 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         return true;
       });
 
+      // Generate fallback product_codes for any product missing one
+      let autoIdx = 0;
+      for (const p of mergedProducts) {
+        if (!p.product_code || String(p.product_code).trim() === "") {
+          autoIdx++;
+          // Try to derive a code from description
+          const desc = String(p.description || p.name || "").trim();
+          const words = desc.replace(/[^A-Za-z0-9 ]/g, "").split(/\s+/).filter(Boolean);
+          const derived = words.slice(0, 3).join("-").toUpperCase().substring(0, 30);
+          p.product_code = derived || `AUTO-${autoIdx}`;
+          console.warn(`[AI Parse] Product missing SKU, generated code: "${p.product_code}" from: "${desc.substring(0, 60)}"`);
+        }
+      }
+      // Final dedup pass after code generation (some generated codes might collide)
+      const seen2 = new Set<string>();
+      const finalProducts = mergedProducts.filter((p) => {
+        let key = String(p.product_code).toLowerCase();
+        if (seen2.has(key)) {
+          // Append a unique suffix
+          p.product_code = `${p.product_code}-${seen2.size}`;
+          key = p.product_code.toLowerCase();
+        }
+        seen2.add(key);
+        return true;
+      });
+
       // Also collect any price keys from products
       for (const p of mergedProducts) {
         if (p?.prices) for (const k of Object.keys(p.prices)) allCols.add(k);
