@@ -240,7 +240,7 @@ const DraggableRegion = memo(({
 
       {/* Fat arrow before icon column on hover */}
       {isRowHovered && (
-        <div className="absolute pointer-events-none z-30" style={{ left: `calc(${iconLeftPct} - 1.5%)`, top: '50%', transform: 'translateY(-50%)' }}>
+        <div className="absolute pointer-events-none z-30" style={{ left: `calc(${rowIconLeftPct} - 1.5%)`, top: '50%', transform: 'translateY(-50%)' }}>
           <span className="text-xl font-black text-indigo-500 leading-none">❯</span>
         </div>
       )}
