@@ -119,6 +119,13 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
       continue;
     }
 
+    // Non-negotiable: validate price_bbox is in rightmost column if present
+    if (p.price_bbox && (p.price_bbox.x + p.price_bbox.width) < 0.7) {
+      warnings.push(`price_bbox not in rightmost column for "${p.model_number}" — bbox ignored`);
+      validProducts.push({ ...p, price_bbox: null });
+      continue;
+    }
+
     validProducts.push(p);
   }
 
