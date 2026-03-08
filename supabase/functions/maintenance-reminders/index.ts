@@ -120,7 +120,7 @@ serve(async (req) => {
 
     let nextScheduled = 0;
     for (const cs of completedSchedules || []) {
-      const freq = cs.service_agreements?.frequency || "annual";
+      const freq = (cs.service_agreements as any)?.frequency || "annual";
       const intervalMonths = freq === "monthly" ? 1 : freq === "quarterly" ? 3 : freq === "biannual" ? 6 : 12;
       const currentDue = new Date(cs.due_date);
       const nextDue = new Date(currentDue);
