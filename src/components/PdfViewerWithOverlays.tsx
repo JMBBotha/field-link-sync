@@ -57,25 +57,59 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
   // Load page images + products
   useEffect(() => {
     async function loadData() {
-      // Page images from storage
-      const folderPath = uploadId
-        ? `${supplierId}/${uploadId}`
-        : `${supplierId}`;
+      // Try to load page images from supplier_pdf_pages table first (most reliable)
+      const { data: pageRows } = await (supabase.from("supplier_pdf_pages") as any)
+        .select("page_image_url, page_number")
+        .eq("supplier_id", supplierId)
+        .order("page_number", { ascending: true });
 
-      const { data: files } = await supabase.storage
-        .from("supplier-pdf-pages")
-        .list(folderPath, { sortBy: { column: "name", order: "asc" } });
+      if (pageRows?.length) {
+        const urls = pageRows
+          .map((r: any) => r.page_image_url)
+          .filter((u: string | null) => !!u);
+        if (urls.length > 0) {
+          setPages(urls);
+        }
+      }
 
-      if (files?.length) {
-        const urls = files
-          .filter((f) => /\.(png|jpg|jpeg|webp)$/i.test(f.name))
-          .map((f) => {
-            const { data } = supabase.storage
-              .from("supplier-pdf-pages")
-              .getPublicUrl(`${folderPath}/${f.name}`);
-            return data.publicUrl;
-          });
-        setPages(urls);
+      // Fallback: list from storage directly
+      if (!pageRows?.length) {
+        const folderPath = uploadId
+          ? `${supplierId}/${uploadId}`
+          : `${supplierId}`;
+
+        const { data: folders } = await supabase.storage
+          .from("supplier-pdf-pages")
+          .list(folderPath, { sortBy: { column: "name", order: "asc" } });
+
+        // Check for subfolders (e.g. supplierId/filename/)
+        const allUrls: string[] = [];
+        if (folders?.length) {
+          for (const item of folders) {
+            if (/\.(png|jpg|jpeg|webp)$/i.test(item.name)) {
+              const { data } = supabase.storage
+                .from("supplier-pdf-pages")
+                .getPublicUrl(`${folderPath}/${item.name}`);
+              allUrls.push(data.publicUrl);
+            } else if (!item.name.includes(".")) {
+              // Likely a subfolder — list its contents
+              const { data: subFiles } = await supabase.storage
+                .from("supplier-pdf-pages")
+                .list(`${folderPath}/${item.name}`, { sortBy: { column: "name", order: "asc" } });
+              if (subFiles?.length) {
+                for (const sf of subFiles) {
+                  if (/\.(png|jpg|jpeg|webp)$/i.test(sf.name)) {
+                    const { data } = supabase.storage
+                      .from("supplier-pdf-pages")
+                      .getPublicUrl(`${folderPath}/${item.name}/${sf.name}`);
+                    allUrls.push(data.publicUrl);
+                  }
+                }
+              }
+            }
+          }
+        }
+        if (allUrls.length > 0) setPages(allUrls);
       }
 
       // Products with bbox data
