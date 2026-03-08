@@ -909,8 +909,23 @@ const LazyPdfPage = ({
       try {
         console.log(`[VisualCatalog] Extracting page ${page.page_number} from ${page.supplier_id}, matching against ${activeProducts.length} active products`);
         
+        // Fetch PDF as blob first to bypass sanitizePdfUrl trimming bug
+        // (storage folders may have trailing spaces that sanitize incorrectly removes)
+        let pdfUrl = page.pdf_storage_path;
+        try {
+          const resp = await fetch(page.pdf_storage_path);
+          if (resp.ok) {
+            const blob = await resp.blob();
+            pdfUrl = URL.createObjectURL(blob);
+          } else {
+            console.warn(`[VisualCatalog] Direct fetch failed (${resp.status}), falling back to raw URL`);
+          }
+        } catch (fetchErr) {
+          console.warn("[VisualCatalog] Blob fetch failed, using raw URL:", fetchErr);
+        }
+
         // First pass: extract and match against existing non-archived products
-        const regions = await extractAndMatchPage(page.pdf_storage_path, page.page_number, activeProducts);
+        const regions = await extractAndMatchPage(pdfUrl, page.page_number, activeProducts);
         const matched = regions.filter(r => r.matched);
         const unmatchedWithPrice = regions.filter(r => !r.matched && r.has_price && r.detected_price);
         
@@ -956,11 +971,13 @@ const LazyPdfPage = ({
               // Clear cache and re-extract with augmented product list so icons turn blue
               clearExtractionCache();
               const allProducts = [...activeProducts, ...newPaletteProducts];
-              const reMatched = await extractAndMatchPage(page.pdf_storage_path!, page.page_number, allProducts);
+              const reMatched = await extractAndMatchPage(pdfUrl, page.page_number, allProducts);
               
               // Invalidate the main products query so palette picks up new items
               queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
               
+              // Revoke blob URL if we created one
+              if (pdfUrl !== page.pdf_storage_path) URL.revokeObjectURL(pdfUrl);
               return reMatched;
             }
           } catch (catalogErr) {
@@ -975,6 +992,8 @@ const LazyPdfPage = ({
           }
         }
         
+        // Revoke blob URL if we created one
+        if (pdfUrl !== page.pdf_storage_path) URL.revokeObjectURL(pdfUrl);
         return regions;
       } catch (err) {
         console.error("[VisualCatalog] Live extraction failed:", err);
@@ -1049,27 +1068,100 @@ const LazyPdfPage = ({
   }, [liveRegions, storedRegions, activeProducts, page.id, page.supplier_id, supplierName, totalPages, pageIndex]);
 
   // ─── OVERLAY REGIONS: prefer live extraction with cross-page dedup, else fallback ───
+  // Skip cover page (index 0) — every supplier PDF has a title/banner page with no product rows
   const overlayRegions: OverlayRegion[] = useMemo(() => {
+    if (pageIndex === 0) return [];
     const sourceRegions = liveRegions.length > 0 ? liveRegions : [];
     const result: OverlayRegion[] = [];
 
+    const seenOnPage = new Set<string>();
     for (let idx = 0; idx < sourceRegions.length; idx++) {
       const r = sourceRegions[idx];
-      // Cross-page dedup: skip if this exact item was already seen on an earlier page
-      const dedupKey = `${(r.label || "").substring(0, 80)}|${r.detected_price ?? "no-price"}`;
+      if (!r || r.y_pct == null || r.h_pct == null || r.h_pct <= 0) continue;
+      if (r.h_pct > 8) continue;
+
+      // Within-page dedup by product_code|label|price
+      const label = (r.label || "").substring(0, 80);
+      const price = r.detected_price ?? "no-price";
+      const dedupKeyPage = `${r.product_code || ""}|${label}|${price}`;
+      if (seenOnPage.has(dedupKeyPage)) continue;
+      seenOnPage.add(dedupKeyPage);
+
+      // Cross-page dedup
+      const dedupKey = `${r.product_code || ""}|${label}|${price}`;
       const firstPage = globalSeenRegions.get(dedupKey);
       if (firstPage !== undefined && firstPage !== pageIndex) continue;
-      globalSeenRegions.set(dedupKey, pageIndex);
+      if (firstPage === undefined) globalSeenRegions.set(dedupKey, pageIndex);
 
+      // Tolerance-based vertical dedup: skip if within 2.5% y_pct of a kept region
+      // with same product_code or overlapping label words (>3 chars)
+      const wordsOf = (s: string) => s.toLowerCase().split(/[\s\/\-\(\)]+/).filter(w => w.length > 3);
+      const curWords = wordsOf(label);
+      let isDupY = false;
+      for (const kept of result) {
+        if (Math.abs(kept.y_pct - r.y_pct) > 2.5) continue;
+        const sameCode = !!(r.product_code && kept.product_code === r.product_code);
+        const keptWords = wordsOf((kept.label || "").substring(0, 80));
+        const overlappingWords = sameCode || curWords.some(w => keptWords.includes(w));
+        if (overlappingWords) {
+          // Merge height to cover both regions
+          kept.h_pct = Math.max(kept.h_pct, r.h_pct + Math.abs(r.y_pct - kept.y_pct));
+          isDupY = true;
+          break;
+        }
+      }
+      if (isDupY) continue;
+      // Resolve product from activeProducts if extractor matched by code but didn't attach object
+      const rawCode = (r.product_code || "").toLowerCase().trim();
+      const rawCodeBase = rawCode.split("@")[0].trim();
+      // Normalize: strip whitespace, dashes, slashes for fuzzy compare
+      const normalize = (s: string) => s.toLowerCase().replace(/[\s\-\/\._]+/g, "");
+      const normRaw = normalize(rawCodeBase);
+
+      // 1. Exact match
+      let resolvedProduct = r.product
+        || (rawCode ? activeProducts.find(p => p.product_code.toLowerCase().trim() === rawCode) || null : null);
+
+      // 2. Normalized exact match
+      if (!resolvedProduct && normRaw) {
+        resolvedProduct = activeProducts.find(p => normalize(p.product_code) === normRaw) || null;
+      }
+
+      // 3. Substring/contains match
+      if (!resolvedProduct && normRaw.length >= 4) {
+        resolvedProduct = activeProducts.find(p => {
+          const normDb = normalize(p.product_code);
+          return normDb.length >= 4 && (normRaw.includes(normDb) || normDb.includes(normRaw));
+        }) || null;
+      }
+
+      // 4. StartsWith match (DB code starts with extracted code or vice versa)
+      if (!resolvedProduct && normRaw.length >= 4) {
+        resolvedProduct = activeProducts.find(p => {
+          const normDb = normalize(p.product_code);
+          return normDb.length >= 4 && (normDb.startsWith(normRaw) || normRaw.startsWith(normDb));
+        }) || null;
+      }
+
+      // 5. Label-based match as last resort
+      if (!resolvedProduct && r.label) {
+        const normLabel = normalize(r.label);
+        resolvedProduct = activeProducts.find(p => {
+          const normPc = normalize(p.product_code);
+          return normPc.length >= 4 && normLabel.includes(normPc);
+        }) || null;
+      }
+
+      const finalMatched = r.matched === true || !!resolvedProduct;
       result.push({
         id: `live-${page.id}-${idx}`,
         x_pct: r.x_pct, y_pct: r.y_pct, w_pct: r.w_pct, h_pct: r.h_pct,
-        product: r.product as PaletteProduct | null,
+        product: resolvedProduct as PaletteProduct | null,
         product_code: r.product_code || "",
         label: r.label || "",
         has_price: r.has_price,
         detected_price: r.detected_price,
-        matched: r.matched,
+        matched: finalMatched,
       });
     }
 
@@ -1078,7 +1170,30 @@ const LazyPdfPage = ({
       return fallbackRegions;
     }
 
-    return result;
+    // Vertical merge step: merge consecutive regions within 1.5% y_pct
+    result.sort((a, b) => a.y_pct - b.y_pct);
+    const merged: OverlayRegion[] = [];
+    for (const r of result) {
+      if (merged.length > 0) {
+        const prev = merged[merged.length - 1];
+        if (Math.abs(r.y_pct - prev.y_pct) <= 1.5) {
+          // Keep the better one: prefer matched over unmatched, then prefer one with price
+          const prevScore = (prev.matched ? 2 : 0) + (prev.detected_price ? 1 : 0);
+          const curScore = (r.matched ? 2 : 0) + (r.detected_price ? 1 : 0);
+          if (curScore > prevScore) {
+            // Replace prev with current but merge height
+            const mergedH = Math.max(prev.h_pct, r.h_pct + Math.abs(r.y_pct - prev.y_pct));
+            merged[merged.length - 1] = { ...r, h_pct: mergedH, y_pct: Math.min(prev.y_pct, r.y_pct) };
+          } else {
+            prev.h_pct = Math.max(prev.h_pct, r.h_pct + Math.abs(r.y_pct - prev.y_pct));
+          }
+          continue;
+        }
+      }
+      merged.push({ ...r });
+    }
+
+    return merged;
   }, [liveRegions, fallbackRegions, page.id, pageIndex]);
 
   // Report detected categories to parent for category→page mapping
@@ -1146,23 +1261,23 @@ const LazyPdfPage = ({
           />
           {/* Show overlays for ALL regions (matched + unmatched) — works with live extraction or fallback */}
           {overlayRegions.length > 0 && (
-            <PdfPageOverlay
-              regions={overlayRegions}
-              baskets={baskets}
-              onAddProductToBasket={onAddProductToBasket}
-              basketProductCounts={basketProductCounts}
-              onProductClick={onProductClick}
-              onQuickAddProduct={onQuickAddProduct}
-              onToggleFavorite={onToggleFavorite}
-              onRemoveRegion={onRemoveRegion}
-              supplierName={supplierName}
-              onOpenWizard={onOpenWizard}
-              onHoverStart={onHoverStart}
-              onHoverMove={onHoverMove}
-              onHoverEnd={onHoverEnd}
-              pdfSelection={pdfSelection}
-              onProductInfoOpen={onProductInfoOpen}
-            />
+             <PdfPageOverlay
+               regions={overlayRegions}
+               baskets={baskets}
+               onAddProductToBasket={onAddProductToBasket}
+               basketProductCounts={basketProductCounts}
+               onProductClick={onProductClick}
+               onQuickAddProduct={onQuickAddProduct}
+               onToggleFavorite={onToggleFavorite}
+               onRemoveRegion={onRemoveRegion}
+               supplierName={supplierName}
+               onOpenWizard={onOpenWizard}
+               onHoverStart={onHoverStart}
+               onHoverMove={onHoverMove}
+               onHoverEnd={onHoverEnd}
+               pdfSelection={pdfSelection}
+               onOpenProductInfo={onProductInfoOpen}
+              />
           )}
           {extracting && (
             <div className="absolute top-2 right-2 z-30 bg-black/50 text-white text-[9px] px-2 py-1 rounded flex items-center gap-1">

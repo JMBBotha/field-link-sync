@@ -96,14 +96,15 @@ export interface PricingResult {
  */
 export function calculatePricing(
   costPrice: number,
-  _discountPercent: number = 0,
+  discountPercent: number = 0,
   markupPercent: number = 20
 ): PricingResult {
-  const { sellingExclVat, sellingInclVat } = calcSellingPrice(costPrice, markupPercent);
+  const discountedCost = r2(costPrice * (1 - discountPercent / 100));
+  const { sellingExclVat, sellingInclVat } = calcSellingPrice(discountedCost, markupPercent);
   return {
     costExclVat: costPrice,
-    supplierDiscountPercent: 0,
-    discountedCost: costPrice,
+    supplierDiscountPercent: discountPercent,
+    discountedCost: discountedCost,
     markupPercent,
     sellingPrice: sellingExclVat,
     sellingPriceInclVat: sellingInclVat,

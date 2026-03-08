@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { calcSellingPrice, getProductPricing } from "@/utils/pricing";
+import { calcSellingPrice } from "@/utils/pricing";
 import { Info, X, ImageIcon } from "lucide-react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
@@ -73,8 +73,6 @@ export default function ProductInfoDialog({ product, onMarkupSaved, open: contro
 
   const [markup, setMarkup] = useState(initialMarkup);
   const [saving, setSaving] = useState(false);
-
-  const pricing = getProductPricing(costPrice, markup);
 
   const handleSaveMarkup = async () => {
     if (costPrice <= 0) return;
