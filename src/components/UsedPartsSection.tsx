@@ -111,7 +111,7 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
         product_id: product.id,
         product_code: product.product_code,
         product_name: product.description,
-        unit_cost: product.discounted_cost ?? product.cost_price,
+        unit_cost: product.cost_price,
         quantity,
         added_by: agentId,
       };

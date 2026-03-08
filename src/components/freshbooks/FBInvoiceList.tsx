@@ -42,8 +42,8 @@ const FBInvoiceList = () => {
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ["company-invoices", companyId],
     queryFn: async () => {
-      const { data } = await supabase.from("company_invoices" as any).select("*, fb_contacts(name)").eq("company_id", companyId!).order("created_at", { ascending: false });
-      return data || [];
+      const { data } = await (supabase.from("company_invoices" as any).select("*, fb_contacts(name)").eq("company_id", companyId!).order("created_at", { ascending: false }) as any);
+      return (data || []) as any[];
     },
     enabled: !!companyId,
   });

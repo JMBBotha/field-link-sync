@@ -149,7 +149,7 @@ const FBDashboard = () => {
     queryKey: ["fb-dashboard-stats", companyId],
     queryFn: async () => {
       const [invRes, payRes, expRes] = await Promise.all([
-        supabase.from("company_invoices" as any).select("id, total_amount, status, due_date, invoice_number, created_at, contact_id").eq("company_id", companyId!),
+        supabase.from("company_invoices" as any).select("id, total_amount, status, due_date, invoice_number, created_at, contact_id").eq("company_id", companyId!) as any,
         supabase.from("fb_payments").select("id, amount, date, company_invoice_id, method").eq("company_id", companyId!).order("date", { ascending: false }),
         supabase.from("fb_expenses").select("id, amount, date, category").eq("company_id", companyId!),
       ]);
