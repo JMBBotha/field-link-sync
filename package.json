@@ -5,11 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/patch-dexie.cjs && vite build",
-    "build:dev": "node scripts/patch-dexie.cjs && vite build --mode development",
+    "build": "vite build",
+    "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "postinstall": "node scripts/patch-dexie.cjs"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",
