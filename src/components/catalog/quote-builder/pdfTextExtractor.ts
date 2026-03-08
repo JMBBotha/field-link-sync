@@ -4,7 +4,7 @@
  * Uses pdfjs-dist to extract text items with their exact coordinates
  * from a PDF page, then cross-references against the products database.
  *
- * v37: Stricter dedup (y_pct within 1.5%, keep priced), anti-overlap clamp with 0.2% gap, enhanced ghost filtering (TOC, headers, subtotals, blanks), standalone 4+ digit prices in rightmost, detailed logging.
+ * v38: R-prefixed always valid (no digit min), 4-digit min for non-R, dedup only on y_pct (not price), enhanced ghost filtering (more keywords, all caps headers), better logging.
  */
 import type { PaletteProduct } from "../QuoteBuilderTab";
 /**
@@ -178,31 +178,32 @@ function detectPrice(text: string): number | null {
 /** Find ALL R-prefixed prices in a string, returned in order of appearance */
 function detectAllPrices(text: string): number[] {
   const results: number[] = [];
-  // Strict: Require R prefix and at least 4 digits total (e.g., R1234 or R12,34.56), or R with decimal/comma
+  // R-prefixed: Always valid if R + number (no digit min for prefixed)
   const re = /R\s*([\d\s,]+[.,]\d{1,2})(?:\s|$|[^A-Za-z0-9]|,)/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
-    const digits = m[1].replace(/[\s,.]/g, "");
-    if (digits.length >= 4) { // Min 4 digits for validity
-      const val = parseRawPrice(m[1]);
-      if (val !== null) results.push(val);
-    }
+    const val = parseRawPrice(m[1]);
+    if (val !== null) results.push(val);
   }
   const re2 = /R\s*([\d\s,]+[.,]\d{1,2})$/g;
   while ((m = re2.exec(text)) !== null) {
-    const digits = m[1].replace(/[\s,.]/g, "");
-    if (digits.length >= 4) {
-      const val = parseRawPrice(m[1]);
-      if (val !== null && !results.includes(val)) results.push(val);
-    }
+    const val = parseRawPrice(m[1]);
+    if (val !== null && !results.includes(val)) results.push(val);
   }
-  // Whole number prices: Require R prefix and >= 1000 (4 digits min)
+  // Whole number R-prefixed: Always valid if R + number >= 1 (no min digits)
   const re3 = /R\s*(\d[\d\s]*)(?![A-Za-z])/g;
   while ((m = re3.exec(text)) !== null) {
     const raw = m[1].replace(/\s/g, "");
-    if (raw.length >= 4) {
-      const val = parseFloat(raw);
-      if (!isNaN(val) && val >= 1000 && !results.includes(val)) results.push(val);
+    const val = parseFloat(raw);
+    if (!isNaN(val) && val >= 1 && !results.includes(val)) results.push(val);
+  }
+  // Standalone (no R): Require >= 4 digits
+  const re4 = /^(\d[\d\s,]*[.,]?\d*)$/g;
+  while ((m = re4.exec(text)) !== null) {
+    const digits = m[1].replace(/[\s,.]/g, "");
+    if (digits.length >= 4) {
+      const val = parseFloat(m[1].replace(/,/g, "").replace(/\s/g, ""));
+      if (!isNaN(val) && val >= 1 && !results.includes(val)) results.push(val);
     }
   }
   return results;
@@ -308,7 +309,7 @@ function findColumnPrices(
     const t = item.text.trim();
     // Must be numeric-ish: digits with optional spaces/commas/periods
     if (!/^\d[\d\s,.]*$/.test(t)) continue;
-    // Must have at least 4 digits total for standalone (no R)
+    // For standalone (no R), min 4 digits
     const digits = t.replace(/[\s,.]/g, "");
     if (digits.length < 4) continue;
     // Parse as price value
@@ -341,17 +342,17 @@ function isHeaderOrNonProductRow(
   y_pct: number
 ): boolean {
   const lower = rowText.toLowerCase();
-  
+ 
   // TOC detection: dotted leaders or excessive dots with page numbers
   if (/\.{4,}/.test(rowText) || /^\w+\s+\.{4,}\s*\d+$/.test(rowText)) {
     return true;
   }
-  
+ 
   // Skip page headers/footers in top 3% without model code
   if (y_pct < 3 && !hasModel) {
     return true;
   }
-  
+ 
   // Skip common non-product headers
   const headerKeywords = [
     "contents", "table of contents", "index", "page", "chapter",
@@ -361,12 +362,11 @@ function isHeaderOrNonProductRow(
   if (headerKeywords.some(kw => lower.includes(kw))) {
     return true;
   }
-  
+ 
   return false;
 }
-
 /**
- * PRICE-FIRST approach v37: column-based detection for dense table PDFs.
+ * PRICE-FIRST approach v38: column-based detection for dense table PDFs.
  * Combines R-prefixed prices with column-position-based numeric prices.
  */
 export function matchTextRowsToProducts(
@@ -411,7 +411,7 @@ export function matchTextRowsToProducts(
   const modelRegex = /^[A-Za-z0-9\-\/]{5,}$/;
   // STEP 3: For each price row, gather context and build a region
   // IMPROVED MATCHING – TIGHT ROW + POSITION-AWARE + DEDUP
-  let regions: ExtractedProductRegion[] = [];
+  const regions: ExtractedProductRegion[] = [];
   let skippedCount = { noPrice: 0, ghost: 0, outOfBounds: 0 };
   const assignedCodes = new Set<string>();
   // Build a flat list of all product codes for candidate scanning
@@ -533,7 +533,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 37; // v37: Stricter dedup, anti-overlap, enhanced ghost filtering, standalone 4+ digit prices, detailed logging
+let _extractionVersion = 38; // v38: R-prefixed always valid (no digit min), 4-digit min for non-R, dedup only on y_pct (not price), enhanced ghost filtering (more keywords, all caps headers), better logging.
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
@@ -592,7 +592,6 @@ export async function extractAndMatchPage(
       }
     }
     regions = deduped;
-
     // Anti-overlap: Clamp h_pct to not extend past next y_pct, with 0.2% gap
     for (let i = 0; i < regions.length - 1; i++) {
       const current = regions[i];
@@ -604,7 +603,6 @@ export async function extractAndMatchPage(
         console.log(`[pdfExtract] Fixed overlap at y_pct=${current.y_pct.toFixed(2)}, clamped h_pct to ${maxH.toFixed(2)}`);
       }
     }
-
     console.log(`[pdfExtract] Page ${pageNumber}: ${regions.length} final regions after dedup. Ghosts removed: ${ghostsRemoved}, Overlaps fixed: ${overlapsFixed}`);
     extractionCache.set(cacheKey, regions);
     return regions;
