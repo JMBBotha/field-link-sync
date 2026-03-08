@@ -100,12 +100,22 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
     }
   }
 
-  // ── STEP 3: VALIDATE products ──
+  // ── STEP 3: VALIDATE products (with duplicate detection) ──
   console.log(`[Pipeline] Step 3: Validating ${products.length} products...`);
   const validProducts: ParsedProduct[] = [];
   let skipped = 0;
+  const seenCodes = new Set<string>();
 
   for (const p of products) {
+    // Duplicate detection — warn but don't throw; append suffix to keep both rows
+    const code = (p.model_number || "").trim().toUpperCase();
+    if (code && seenCodes.has(code)) {
+      const dedupCode = `${code}-DUP${seenCodes.size}`;
+      warnings.push(`Duplicate product_code "${code}" — renamed to "${dedupCode}"`);
+      p.model_number = dedupCode;
+    }
+    if (code) seenCodes.add(code);
+
     const error = validateProduct({
       product_code: p.model_number,
       cost_price: p.cost_price,
@@ -133,11 +143,15 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
       continue;
     }
 
-    // Non-negotiable: validate price_bbox is in rightmost column if present
-    if (p.price_bbox && (p.price_bbox.x + p.price_bbox.width) < 0.7) {
-      warnings.push(`price_bbox not in rightmost column for "${p.model_number}" — bbox ignored`);
-      validProducts.push({ ...p, price_bbox: null });
-      continue;
+    // Stricter bbox validation: must be defined, positive, and right-aligned
+    if (p.price_bbox) {
+      const bbox = p.price_bbox;
+      if (bbox.x < 0 || bbox.x > 1 || bbox.width <= 0 || bbox.y < 0 || bbox.y > 1 ||
+          (bbox.x + bbox.width) < 0.7) {
+        warnings.push(`Invalid/misaligned price_bbox for "${p.model_number}" — bbox ignored`);
+        validProducts.push({ ...p, price_bbox: null });
+        continue;
+      }
     }
 
     validProducts.push(p);
