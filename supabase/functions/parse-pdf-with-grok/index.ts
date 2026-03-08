@@ -351,14 +351,14 @@ Categories for consumables: Copper Tube, Insulation, Cable, Trunking, Brackets, 
       if (p.prices) for (const k of Object.keys(p.prices)) allCols.add(k);
     }
 
-    if (deduped.length === 0) {
+    if (validated.length === 0) {
       return new Response(
         JSON.stringify({ error: "Could not parse products.", products: [], detected_price_columns: [] }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("[Grok] Products:", deduped.length, `chunk ${chunkIndex + 1}/${chunkTotal}`);
+    console.log("[Grok] Products:", validated.length, `(${deduped.length - validated.length} filtered)`, `chunk ${chunkIndex + 1}/${chunkTotal}`);
 
     return new Response(
       JSON.stringify({
