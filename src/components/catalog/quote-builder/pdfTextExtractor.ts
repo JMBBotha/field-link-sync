@@ -76,15 +76,19 @@ export async function extractTextItemsFromPdfPage(
   const viewport = page.getViewport({ scale: 1 });
   const textContent = await page.getTextContent();
 
+  const styles = textContent.styles || {};
   const items: ExtractedTextItem[] = [];
   for (const item of textContent.items) {
     if (!("str" in item) || !item.str.trim()) continue;
     const tx = item.transform;
-    const fontSize = Math.sqrt(tx[0] * tx[0] + tx[1] * tx[1]);
+    const fontSizeY = Math.abs(tx[3]) || Math.sqrt(tx[0] * tx[0] + tx[1] * tx[1]);
+    const style = (item as any).fontName ? styles[(item as any).fontName] : undefined;
+    const ascent = style?.ascent ?? 0.75;
+    const descent = style?.descent ?? -0.25;
     const x = tx[4];
-    const y = viewport.height - tx[5] - fontSize;
-    const width = item.width ?? item.str.length * fontSize * 0.6;
-    const height = fontSize * 1.2;
+    const y = viewport.height - tx[5] - (ascent * fontSizeY);
+    const width = item.width ?? item.str.length * fontSizeY * 0.6;
+    const height = (ascent - descent) * fontSizeY;
     items.push({ text: item.str, x, y, width, height });
   }
 
