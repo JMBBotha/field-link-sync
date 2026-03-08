@@ -28,7 +28,7 @@ const STORAGE_BUCKETS = [
 async function deleteBatched(table: string, column: string, ids: string[]) {
   for (let i = 0; i < ids.length; i += 500) {
     const batch = ids.slice(i, i + 500);
-    await (supabase.from(table) as any).delete().in(column, batch);
+    await (supabase.from(table as any) as any).delete().in(column, batch);
   }
 }
 

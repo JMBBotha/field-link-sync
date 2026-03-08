@@ -411,7 +411,7 @@ async function parsePDFWithFullPipeline(
       selling_price: calc.selling_price,
       selling_price_incl_vat: calc.selling_price_incl_vat,
       default_markup_percent: settings.markupPercent,
-      confidence: (parseMethod === "grok_ai" || parseMethod === "ai" || parseMethod === "lovable_ai") ? "high" : vatDetection.confidence,
+      confidence: (["grok_ai", "ai", "lovable_ai"] as string[]).includes(parseMethod || "") ? "high" : vatDetection.confidence,
       flags,
       // Legacy compat
       price_excl_vat: calc.price_excl_vat,

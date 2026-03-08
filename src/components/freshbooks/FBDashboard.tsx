@@ -64,15 +64,15 @@ const FBDashboard = () => {
       const contactIds = contacts?.map(c => c.id) || [];
 
       // 5 invoices (company_invoices)
-      const { data: invoicesInserted, error: invErr } = await supabase.from("company_invoices" as any).insert([
+      const { data: invoicesInserted, error: invErr } = await (supabase.from("company_invoices" as any).insert([
         { company_id: companyId, invoice_number: "INV-DEMO-001", subtotal: 1200, vat_amount: 180, total_amount: 1380, tax: 180, status: "Draft", due_date: d(14), contact_id: contactIds[0] || null, items: [{ description: "AC Unit Service", qty: 1, rate: 1200 }] },
         { company_id: companyId, invoice_number: "INV-DEMO-002", subtotal: 3500, vat_amount: 525, total_amount: 4025, tax: 525, status: "Sent", due_date: d(7), contact_id: contactIds[1] || null, items: [{ description: "Split Unit Installation", qty: 1, rate: 3500 }] },
         { company_id: companyId, invoice_number: "INV-DEMO-003", subtotal: 2200, vat_amount: 330, total_amount: 2530, tax: 330, status: "Viewed", due_date: d(-3), contact_id: contactIds[2] || null, items: [{ description: "Duct Cleaning", qty: 2, rate: 1100 }] },
         { company_id: companyId, invoice_number: "INV-DEMO-004", subtotal: 4800, vat_amount: 720, total_amount: 5520, tax: 720, status: "Overdue", due_date: d(-10), contact_id: contactIds[0] || null, items: [{ description: "Central AC Repair", qty: 1, rate: 4800 }] },
         { company_id: companyId, invoice_number: "INV-DEMO-005", subtotal: 1500, vat_amount: 225, total_amount: 1725, tax: 225, status: "Paid", due_date: d(-20), contact_id: contactIds[1] || null, items: [{ description: "Refrigerant Refill", qty: 3, rate: 500 }] },
-      ]).select();
+      ]).select() as any);
       if (invErr) console.error("Invoice insert error:", invErr);
-      const invoiceIds = invoicesInserted?.map(i => i.id) || [];
+      const invoiceIds = (invoicesInserted as any[])?.map((i: any) => i.id) || [];
 
       // 3 estimates
       const { error: estErr } = await supabase.from("fb_estimates").insert([

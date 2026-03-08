@@ -34,8 +34,8 @@ const FBPaymentsList = () => {
   const { data: invoices = [] } = useQuery({
     queryKey: ["company-invoices-for-payment", companyId],
     queryFn: async () => {
-      const { data } = await supabase.from("company_invoices" as any).select("id, invoice_number, total_amount, status").eq("company_id", companyId!).neq("status", "Paid").neq("status", "Archived");
-      return data || [];
+      const { data } = await (supabase.from("company_invoices" as any).select("id, invoice_number, total_amount, status").eq("company_id", companyId!).neq("status", "Paid").neq("status", "Archived") as any);
+      return (data || []) as any[];
     },
     enabled: !!companyId,
   });
