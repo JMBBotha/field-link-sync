@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  return base64Encode(new Uint8Array(buffer));
+  return base64Encode(new Uint8Array(buffer) as unknown as ArrayBuffer);
 }
 
 serve(async (req) => {
