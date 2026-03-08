@@ -10,6 +10,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface BBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 interface ParsedProduct {
   sku: string;
   name: string;
@@ -31,6 +38,9 @@ interface ParsedProduct {
   speedType?: string | null;
   kw?: number | null;
   unitType?: string | null;
+  pageNumber?: number | null;
+  rowBbox?: BBox | null;
+  priceBbox?: BBox | null;
 }
 
 const CHUNK_SIZE = 12000;
