@@ -331,6 +331,21 @@ Categories for consumables: Copper Tube, Insulation, Cable, Trunking, Brackets, 
       return true;
     });
 
+    // ─── Validate products against shared rules ───
+    const validated = deduped.filter((p) => {
+      const code = (p.sku || "").trim();
+      if (code.length < SHARED_MIN_CODE_LEN) {
+        console.warn(`[Grok] Skipping product with short code: "${code}"`);
+        return false;
+      }
+      const bestP = pickBestPrice(p.prices || {});
+      if (bestP.price < SHARED_MIN_PRICE || bestP.price > SHARED_MAX_PRICE) {
+        console.warn(`[Grok] Skipping product "${code}" with out-of-range price: ${bestP.price}`);
+        return false;
+      }
+      return true;
+    });
+
     const allCols = new Set<string>(result.cols || []);
     for (const p of deduped) {
       if (p.prices) for (const k of Object.keys(p.prices)) allCols.add(k);
