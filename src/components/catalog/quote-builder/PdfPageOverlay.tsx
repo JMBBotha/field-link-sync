@@ -255,6 +255,9 @@ const DraggableRegion = memo(({
         minHeight: "14px",
         margin: 0,
         padding: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "flex-end",
       }}
       onClick={handleStripClick}
       onContextMenu={handleContextMenu}

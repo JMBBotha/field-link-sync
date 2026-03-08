@@ -319,8 +319,14 @@ export function matchTextRowsToProducts(
     }
 
     const productCode = matched?.product_code || modelCode || `${label.substring(0, 60)}@${detectedPrice}`;
-    const y_pct = (row.y / pageHeight) * 100;
-    const h_pct = Math.max((avgHeight / pageHeight) * 100, 1.5);
+
+    // Use actual row extents for accurate vertical centering
+    const row_min_y = Math.min(...row.items.map(i => i.y));
+    const row_max_bottom = Math.max(...row.items.map(i => i.y + i.height));
+    const row_height = row_max_bottom - row_min_y;
+    const h_pct = Math.max((row_height / pageHeight) * 100, 1.5);
+    const center_y = row_min_y + row_height / 2;
+    const y_pct = ((center_y / pageHeight) * 100) - (h_pct / 2);
 
     // Bounds check
     if (y_pct < 0 || y_pct > 100) continue;
