@@ -245,7 +245,7 @@ const DraggableRegion = memo(({
       {pdfSelection && (
         <div
           className="absolute top-1/2 -translate-y-1/2 z-20 pointer-events-auto"
-          style={{ left: `calc(${iconLeftPct} - 22px)` }}
+          style={{ left: `calc(${iconLeftPct} - 1.2%)` }}
         >
           <div
             className="flex items-center justify-center rounded"
