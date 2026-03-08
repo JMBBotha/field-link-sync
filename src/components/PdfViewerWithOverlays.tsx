@@ -150,7 +150,21 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
   };
 
   const productsForPage = (pageIdx: number) =>
-    products.filter((p) => p.page_number === pageIdx + 1 && p.row_bbox && p.price_bbox);
+    products.filter((p) => {
+      if (p.page_number !== pageIdx + 1 || !p.row_bbox || !p.price_bbox) return false;
+      const pb = p.price_bbox;
+      const rb = p.row_bbox;
+      // Guard: positive dimensions and right-column alignment
+      if (pb.width <= 0 || rb.width <= 0 || pb.x < 0 || pb.y < 0 || rb.x < 0 || rb.y < 0) {
+        console.warn(`[Overlay] Skipping ghost for ${p.id}: invalid bbox coords`);
+        return false;
+      }
+      if (pb.x + pb.width < 0.7) {
+        console.warn(`[Overlay] Skipping ${p.id}: price_bbox not in rightmost column`);
+        return false;
+      }
+      return true;
+    });
 
   if (!pages.length) {
     return (
