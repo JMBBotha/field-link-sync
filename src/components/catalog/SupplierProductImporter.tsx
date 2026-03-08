@@ -592,7 +592,8 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
       }
 
       const columns: string[] = [...allCols];
-      const products = mergedProducts;
+      const products = finalProducts;
+      console.log(`[AI Parse] Final product count: ${products.length}, sample codes:`, products.slice(0, 5).map((p: any) => p.product_code));
 
       if (columns.length > 0) {
         setDetectedPriceColumns(columns);
