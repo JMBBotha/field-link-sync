@@ -49,8 +49,8 @@ serve(async (req) => {
       const customer = schedule.customers as any;
       if (!customer?.phone) continue;
 
-      const contractLabel = schedule.service_agreements?.contract_type || "maintenance";
-      const equipInfo = schedule.equipment ? `${schedule.equipment.brand || ""} ${schedule.equipment.model || ""}`.trim() : "";
+      const contractLabel = (schedule.service_agreements as any)?.contract_type || "maintenance";
+      const equipInfo = schedule.equipment ? `${(schedule.equipment as any).brand || ""} ${(schedule.equipment as any).model || ""}`.trim() : "";
 
       // Queue WhatsApp notification
       await supabase.from("notification_queue").insert({
