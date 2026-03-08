@@ -134,5 +134,21 @@ export const PDF_EXTRACTION_CONFIG = {
   pricingRules: PRICING_RULES,
   validationRules: VALIDATION_RULES,
   bboxFields: ['row_bbox', 'price_bbox', 'page_number'] as const,
-  aiPromptTemplate: `Extract ALL products from EVERY page of this HVAC supplier price list PDF, starting from page 1, as a JSON array of objects. Include cover/intro pages if they contain product rows. Focus on accuracy—do NOT merge or dedupe rows, even if costs are identical; treat each table row as unique based on product_code or name differences. Each object must include: {fields}. Prices are supplier costs; if VAT is included, note it separately. Exclude totals/footers. Output only the JSON array.`,
+  aiPromptTemplate: `Extract structured product data from this HVAC supplier price list PDF, strictly following these rules:
+
+1. Core Objective: Extract and populate overlay information universally across ALL pages and suppliers. Start exclusively from the rightmost column with final amount values (RAND/R costs).
+
+2. Extraction Process:
+   - Step 1: Identify the last (rightmost) column on each page containing numeric final costs (supplier prices ex-VAT). Ignore all other columns until this is found.
+   - Step 2: For each final amount, calculate and include its horizontal center point as 'center_x' inside price_bbox (normalized 0-1, midpoint of the bounding box).
+   - Step 3: Cross-reference with other extracted data (product_code, name, description). Only include if there is a 1:1 match; no variations or merging allowed.
+
+3. Overlay Population Rules:
+   - price_bbox must correspond to rightmost final amounts ONLY. Icons align exactly to horizontal center.
+   - No icons on rates, subtotals, headers, or left columns—no exceptions.
+
+4. Post-Processing Validation:
+   - Verify all price_bbox are right-aligned (x + width > 0.7 normalized) and centers match amounts.
+
+5. Enforcement: Output only a JSON array of objects with fields: {fields}. Each price_bbox MUST include center_x. Do NOT merge or dedupe rows. Exclude totals/footers. Include cover/intro pages only if they contain product rows.`,
 } as const;
