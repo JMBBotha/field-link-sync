@@ -681,7 +681,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         : (p.price_per_metre || null);
 
       return {
-        product_code: p.product_code || "",
+        product_code: p.product_code || p.sku || `GEN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
         description: p.description || "",
         category: p.category || "Uncategorized",
         cost_price: calculated.trueCost,
