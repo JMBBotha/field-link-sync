@@ -401,7 +401,7 @@ function DraggableProductCard({
                 </div>
                 <p className="font-mono font-medium text-primary/80">{product.product_code}</p>
                 {(() => {
-                  const costPrice = product.discounted_cost ?? product.cost_price ?? product.cost_excl_vat ?? 0;
+                  const costPrice = (product as any).discounted_cost ?? product.cost_price ?? product.cost_excl_vat ?? 0;
                   const sellPrice = product.selling_price ?? 0;
                   const bakedMarkup = costPrice > 0 ? ((sellPrice / costPrice) - 1) * 100 : 0;
                   return (

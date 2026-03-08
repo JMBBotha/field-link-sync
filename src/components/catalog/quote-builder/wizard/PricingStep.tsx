@@ -309,7 +309,7 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
         }
         return {
           areaName: li.area.name,
-          unitName: li.area.acUnits[0]?.product.name || li.area.acUnits[0]?.product.short_name || li.area.acUnits[0]?.product.product_code || "—",
+          unitName: li.area.acUnits[0]?.product.short_name || li.area.acUnits[0]?.product.product_code || "—",
           btu: li.area.acUnits[0]?.btu || 0,
           quantity: li.quantity,
           unitPrice: li.sellingPrice,

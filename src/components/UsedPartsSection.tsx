@@ -242,7 +242,7 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium truncate">{selectedProduct.description}</p>
             <p className="text-[10px] text-muted-foreground">
-              {selectedProduct.product_code} · {formatCurrency(selectedProduct.discounted_cost ?? selectedProduct.cost_price)}
+              {selectedProduct.product_code} · {formatCurrency(selectedProduct.cost_price)}
             </p>
           </div>
           <div className="w-16 shrink-0">

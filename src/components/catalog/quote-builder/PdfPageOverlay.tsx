@@ -163,7 +163,7 @@ const DraggableRegion = memo(({
         supplier_id: "",
         category: "",
         is_pinned: false,
-      } as PaletteProduct;
+      } as unknown as PaletteProduct;
       onOpenProductInfo(prod);
     }
   }, [onOpenProductInfo, product, region]);
