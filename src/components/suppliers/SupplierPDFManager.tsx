@@ -58,11 +58,18 @@ async function deleteSinglePDF(pdf: PDFUploadRow) {
       productIds = (products || []).map((p: any) => p.id);
     }
   } else {
-    // Legacy pdf_uploads entry — find products by pdf_upload_id
+    // Legacy pdf_uploads entry — find products by pdf_upload_id first, fall back to supplier_id
     const { data: products } = await (supabase.from("supplier_products") as any)
       .select("id")
       .eq("pdf_upload_id", pdf.id);
     productIds = (products || []).map((p: any) => p.id);
+    // If no products found by pdf_upload_id, also clean ALL products for this supplier
+    if (productIds.length === 0 && pdf.supplier_id) {
+      const { data: allProducts } = await (supabase.from("supplier_products") as any)
+        .select("id")
+        .eq("supplier_id", pdf.supplier_id);
+      productIds = (allProducts || []).map((p: any) => p.id);
+    }
   }
 
   // 2. Delete dependent records then products
