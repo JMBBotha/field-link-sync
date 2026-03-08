@@ -127,7 +127,7 @@ serve(async (req) => {
       nextDue.setMonth(nextDue.getMonth() + intervalMonths);
       const nextDueStr = nextDue.toISOString().split("T")[0];
 
-      if (cs.service_agreements?.end_date && nextDueStr > cs.service_agreements.end_date) continue;
+      if ((cs.service_agreements as any)?.end_date && nextDueStr > (cs.service_agreements as any).end_date) continue;
 
       // Check if next schedule already exists
       const { data: existing } = await supabase
