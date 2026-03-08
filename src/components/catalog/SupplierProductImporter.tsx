@@ -745,10 +745,20 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
 
     try {
       console.log(`[Import] Starting import for supplier "${supplierName}" (id: ${supplierId}), ${newRows.length} new, ${updateRows.length} updates, ${archiveRows.length} archives`);
+      
+      // Filter out any rows with empty product_code before inserting
+      const validNewRows = newRows.filter(r => r.product_code && r.product_code.trim() !== "");
+      const skippedEmpty = newRows.length - validNewRows.length;
+      if (skippedEmpty > 0) {
+        console.warn(`[Import] Skipping ${skippedEmpty} new rows with empty product_code`);
+        toast({ title: `Skipped ${skippedEmpty} products`, description: "Products without a SKU/product code were excluded.", variant: "destructive" });
+        errors += skippedEmpty;
+      }
+
       // ── PHASE 1: INSERT new products (in batches of 50) ──
       const BATCH = 50;
-      for (let b = 0; b < newRows.length; b += BATCH) {
-        const batch = newRows.slice(b, b + BATCH);
+      for (let b = 0; b < validNewRows.length; b += BATCH) {
+        const batch = validNewRows.slice(b, b + BATCH);
         const batchData = batch.map(row => ({
           supplier_id: supplierId,
           product_code: row.product_code,
