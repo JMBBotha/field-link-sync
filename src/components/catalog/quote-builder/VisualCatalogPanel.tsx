@@ -22,7 +22,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useIsMobile } from "@/hooks/use-mobile";
 import PdfPageOverlay from "./PdfPageOverlay";
 import type { OverlayRegion } from "./PdfPageOverlay";
-import { extractAndMatchPage, extractAndMatchPageFull, clearExtractionCache } from "./pdfTextExtractor";
+import { extractAndMatchPage, clearExtractionCache } from "./pdfTextExtractor";
 import { autoCatalogFromRegions } from "./pdfAutoCatalog";
 import FallbackProductPanel from "./FallbackProductPanel";
 import PdfLinkButton from "./PdfLinkButton";
@@ -34,7 +34,8 @@ import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
 import CategoryNavBar, { groupCategory } from "./CategoryNavBar";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
-// Cross-page dedup removed — each page renders independently
+// Cross-page dedup: tracks seen region keys across all pages to prevent duplicate icons
+const globalSeenRegions = new Map<string, number>(); // key → first pageIndex
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
 
 interface VisualCatalogPanelProps {
@@ -146,6 +147,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       setVisiblePageIndex(0);
       setZoom(1);
       clearExtractionCache();
+      globalSeenRegions.clear(); // Reset cross-page dedup on panel open
       // Force all live-extract queries to re-run with latest detection logic
       queryClient.removeQueries({ queryKey: ["visual-panel-live-extract"] });
     }
@@ -899,8 +901,6 @@ const LazyPdfPage = ({
     console.log(`[VisualCatalog] Page ${page.page_number} query conditions: isVisible=${isVisible}, hasPdfSource=${hasPdfSource}, activeProducts=${activeProducts.length}, enabled=${queryEnabled}, pdf_storage_path=${page.pdf_storage_path?.substring(0, 60) || 'null'}`);
   }, [isVisible, hasPdfSource, activeProducts.length, queryEnabled, page.page_number, page.pdf_storage_path]);
 
-  const [extractionFullText, setExtractionFullText] = useState("");
-
   const { data: liveRegions = [], isLoading: extracting } = useQuery({
     queryKey: ["visual-panel-live-extract", page.id, page.pdf_storage_path, activeProducts.length],
     enabled: queryEnabled,
@@ -909,23 +909,8 @@ const LazyPdfPage = ({
       try {
         console.log(`[VisualCatalog] Extracting page ${page.page_number} from ${page.supplier_id}, matching against ${activeProducts.length} active products`);
         
-        // Fetch PDF as blob first to bypass sanitizePdfUrl trimming bug
-        let pdfUrl = page.pdf_storage_path;
-        try {
-          const resp = await fetch(page.pdf_storage_path);
-          if (resp.ok) {
-            const blob = await resp.blob();
-            pdfUrl = URL.createObjectURL(blob);
-          } else {
-            console.warn(`[VisualCatalog] Direct fetch failed (${resp.status}), falling back to raw URL`);
-          }
-        } catch (fetchErr) {
-          console.warn("[VisualCatalog] Blob fetch failed, using raw URL:", fetchErr);
-        }
-
         // First pass: extract and match against existing non-archived products
-        const { regions, fullText } = await extractAndMatchPageFull(pdfUrl, page.page_number, activeProducts);
-        setExtractionFullText(fullText);
+        const regions = await extractAndMatchPage(page.pdf_storage_path, page.page_number, activeProducts);
         const matched = regions.filter(r => r.matched);
         const unmatchedWithPrice = regions.filter(r => !r.matched && r.has_price && r.detected_price);
         
@@ -971,13 +956,11 @@ const LazyPdfPage = ({
               // Clear cache and re-extract with augmented product list so icons turn blue
               clearExtractionCache();
               const allProducts = [...activeProducts, ...newPaletteProducts];
-              const reMatched = await extractAndMatchPage(pdfUrl, page.page_number, allProducts);
+              const reMatched = await extractAndMatchPage(page.pdf_storage_path!, page.page_number, allProducts);
               
               // Invalidate the main products query so palette picks up new items
               queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
               
-              // Revoke blob URL if we created one
-              if (pdfUrl !== page.pdf_storage_path) URL.revokeObjectURL(pdfUrl);
               return reMatched;
             }
           } catch (catalogErr) {
@@ -988,11 +971,10 @@ const LazyPdfPage = ({
               variant: "destructive",
               duration: 8000,
             });
+            // Return original regions with orange icons so user can still interact
           }
         }
         
-        // Revoke blob URL if we created one
-        if (pdfUrl !== page.pdf_storage_path) URL.revokeObjectURL(pdfUrl);
         return regions;
       } catch (err) {
         console.error("[VisualCatalog] Live extraction failed:", err);
@@ -1000,24 +982,6 @@ const LazyPdfPage = ({
       }
     },
     staleTime: 120000,
-  });
-
-  // Supplier products count for cross-check
-  const { data: supplierProductsCount = 0 } = useQuery({
-    queryKey: ["supplier-products-count", page.supplier_id],
-    enabled: isVisible && !!page.supplier_id,
-    queryFn: async () => {
-      const { count, error } = await (supabase.from("supplier_products") as any)
-        .select("id", { count: "exact", head: true })
-        .eq("supplier_id", page.supplier_id)
-        .eq("is_active", true);
-      if (error) {
-        console.error("[CrossCheck] Failed to count supplier products:", error.message);
-        return 0;
-      }
-      return count || 0;
-    },
-    staleTime: 60000,
   });
 
   // ─── FALLBACK REGIONS: only used when no live extraction available ───
@@ -1084,78 +1048,28 @@ const LazyPdfPage = ({
     return [];
   }, [liveRegions, storedRegions, activeProducts, page.id, page.supplier_id, supplierName, totalPages, pageIndex]);
 
-  // ─── OVERLAY REGIONS: prefer live extraction, within-page dedup only ───
-  // Cover page (index 0) shows no overlay regions
+  // ─── OVERLAY REGIONS: prefer live extraction with cross-page dedup, else fallback ───
   const overlayRegions: OverlayRegion[] = useMemo(() => {
-    if (pageIndex === 0) return [];
     const sourceRegions = liveRegions.length > 0 ? liveRegions : [];
     const result: OverlayRegion[] = [];
 
-    const seenOnPage = new Set<string>();
     for (let idx = 0; idx < sourceRegions.length; idx++) {
       const r = sourceRegions[idx];
-      if (!r || r.y_pct == null || r.h_pct == null || r.h_pct <= 0) continue;
-      if (r.h_pct > 8) continue;
+      // Cross-page dedup: skip if this exact item was already seen on an earlier page
+      const dedupKey = `${(r.label || "").substring(0, 80)}|${r.detected_price ?? "no-price"}`;
+      const firstPage = globalSeenRegions.get(dedupKey);
+      if (firstPage !== undefined && firstPage !== pageIndex) continue;
+      globalSeenRegions.set(dedupKey, pageIndex);
 
-      // Within-page dedup by product_code|label|detected_price ONLY
-      const label = (r.label || "").substring(0, 80);
-      const price = r.detected_price ?? "no-price";
-      const dedupKeyPage = `${r.product_code || ""}|${label}|${price}`;
-      if (seenOnPage.has(dedupKeyPage)) continue;
-      seenOnPage.add(dedupKeyPage);
-
-      // No cross-page dedup — each page renders independently
-
-      // Resolve product from activeProducts if extractor matched by code but didn't attach object
-      const rawCode = (r.product_code || "").toLowerCase().trim();
-      const rawCodeBase = rawCode.split("@")[0].trim();
-      const normalize = (s: string) => s.toLowerCase().replace(/[\s\-\/\._]+/g, "");
-      const normRaw = normalize(rawCodeBase);
-
-      // 1. Exact match
-      let resolvedProduct = r.product
-        || (rawCode ? activeProducts.find(p => p.product_code.toLowerCase().trim() === rawCode) || null : null);
-
-      // 2. Normalized exact match
-      if (!resolvedProduct && normRaw) {
-        resolvedProduct = activeProducts.find(p => normalize(p.product_code) === normRaw) || null;
-      }
-
-      // 3. Substring/contains match
-      if (!resolvedProduct && normRaw.length >= 4) {
-        resolvedProduct = activeProducts.find(p => {
-          const normDb = normalize(p.product_code);
-          return normDb.length >= 4 && (normRaw.includes(normDb) || normDb.includes(normRaw));
-        }) || null;
-      }
-
-      // 4. StartsWith match
-      if (!resolvedProduct && normRaw.length >= 4) {
-        resolvedProduct = activeProducts.find(p => {
-          const normDb = normalize(p.product_code);
-          return normDb.length >= 4 && (normDb.startsWith(normRaw) || normRaw.startsWith(normDb));
-        }) || null;
-      }
-
-      // 5. Label-based match as last resort
-      if (!resolvedProduct && r.label) {
-        const normLabel = normalize(r.label);
-        resolvedProduct = activeProducts.find(p => {
-          const normPc = normalize(p.product_code);
-          return normPc.length >= 4 && normLabel.includes(normPc);
-        }) || null;
-      }
-
-      const finalMatched = r.matched === true || !!resolvedProduct;
       result.push({
         id: `live-${page.id}-${idx}`,
         x_pct: r.x_pct, y_pct: r.y_pct, w_pct: r.w_pct, h_pct: r.h_pct,
-        product: resolvedProduct as PaletteProduct | null,
+        product: r.product as PaletteProduct | null,
         product_code: r.product_code || "",
         label: r.label || "",
         has_price: r.has_price,
         detected_price: r.detected_price,
-        matched: finalMatched,
+        matched: r.matched,
       });
     }
 
@@ -1164,8 +1078,6 @@ const LazyPdfPage = ({
       return fallbackRegions;
     }
 
-    // Sort by Y position — no vertical merging, every price row keeps its own icon
-    result.sort((a, b) => a.y_pct - b.y_pct);
     return result;
   }, [liveRegions, fallbackRegions, page.id, pageIndex]);
 
@@ -1182,31 +1094,6 @@ const LazyPdfPage = ({
       onCategoriesDetected(pageIndex, Array.from(cats));
     }
   }, [overlayRegions, pageIndex, onCategoriesDetected]);
-
-  // Cross-check validation: compare PDF price rows vs extractor regions vs overlay icons
-  useEffect(() => {
-    if (!extractionFullText || overlayRegions.length === 0) return;
-    const pdfPriceMatches = extractionFullText.match(/R\s*\d[\d\s,.]*/g);
-    const pdfPriceRowCount = pdfPriceMatches ? pdfPriceMatches.length : 0;
-    const extractorRegionCount = liveRegions.length;
-    const overlayIconCount = overlayRegions.length;
-
-    console.log(
-      `[CrossCheck] Page ${page.page_number}: PDF has ${pdfPriceRowCount} price rows, extractor found ${extractorRegionCount} regions, overlay shows ${overlayIconCount} icons, DB has ${supplierProductsCount} products for this supplier`
-    );
-
-    if (pdfPriceRowCount > 0 && extractorRegionCount < pdfPriceRowCount * 0.8) {
-      console.warn(
-        `[CrossCheck] WARNING: Page ${page.page_number}: Extractor found only ${extractorRegionCount}/${pdfPriceRowCount} price rows (${Math.round((extractorRegionCount / pdfPriceRowCount) * 100)}%). Some products may be missing icons.`
-      );
-      toast({
-        title: `Page ${page.page_number}: Some products may be missing`,
-        description: `Detected ${pdfPriceRowCount} prices in PDF but only ${extractorRegionCount} regions extracted. ${pdfPriceRowCount - extractorRegionCount} rows may lack icons.`,
-        variant: "destructive",
-        duration: 8000,
-      });
-    }
-  }, [extractionFullText, liveRegions.length, overlayRegions.length, page.page_number, supplierProductsCount]);
 
   const starOverlays = useMemo(() => {
     const starred = overlayRegions.filter(r => r.product && favoriteIds.has(r.product.id));
@@ -1256,27 +1143,26 @@ const LazyPdfPage = ({
             loading="lazy"
             draggable={false}
             style={hdMode ? { imageRendering: "high-quality" as any } : undefined}
-            onClick={pageIndex === 0 ? () => toast({ title: "This is a cover page — no products", description: "Navigate to page 2 to start browsing products.", duration: 4000 }) : undefined}
           />
           {/* Show overlays for ALL regions (matched + unmatched) — works with live extraction or fallback */}
           {overlayRegions.length > 0 && (
-             <PdfPageOverlay
-               regions={overlayRegions}
-               baskets={baskets}
-               onAddProductToBasket={onAddProductToBasket}
-               basketProductCounts={basketProductCounts}
-               onProductClick={onProductClick}
-               onQuickAddProduct={onQuickAddProduct}
-               onToggleFavorite={onToggleFavorite}
-               onRemoveRegion={onRemoveRegion}
-               supplierName={supplierName}
-               onOpenWizard={onOpenWizard}
-               onHoverStart={onHoverStart}
-               onHoverMove={onHoverMove}
-               onHoverEnd={onHoverEnd}
-               pdfSelection={pdfSelection}
-               onOpenProductInfo={onProductInfoOpen}
-              />
+            <PdfPageOverlay
+              regions={overlayRegions}
+              baskets={baskets}
+              onAddProductToBasket={onAddProductToBasket}
+              basketProductCounts={basketProductCounts}
+              onProductClick={onProductClick}
+              onQuickAddProduct={onQuickAddProduct}
+              onToggleFavorite={onToggleFavorite}
+              onRemoveRegion={onRemoveRegion}
+              supplierName={supplierName}
+              onOpenWizard={onOpenWizard}
+              onHoverStart={onHoverStart}
+              onHoverMove={onHoverMove}
+              onHoverEnd={onHoverEnd}
+              pdfSelection={pdfSelection}
+              onProductInfoOpen={onProductInfoOpen}
+            />
           )}
           {extracting && (
             <div className="absolute top-2 right-2 z-30 bg-black/50 text-white text-[9px] px-2 py-1 rounded flex items-center gap-1">

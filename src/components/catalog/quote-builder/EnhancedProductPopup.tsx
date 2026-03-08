@@ -12,13 +12,8 @@ import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 function getProductPricing(product: PaletteProduct) {
   const cost = product.cost_price || product.cost_excl_vat || 0;
   const markup = product.default_markup_percent ?? product.markup_percent ?? 20;
-  if (cost <= 0) {
-    const fallbackPrice = product.cost_incl_vat || product.selling_price || 0;
-    return { costExclVat: 0, discountedCost: 0, markupPercent: markup, sellingPrice: fallbackPrice, sellingPriceInclVat: fallbackPrice, supplierDiscountPercent: 0 };
-  }
   const { sellingExclVat, sellingInclVat } = calcSellingPrice(cost, markup);
-  const safe = (n: number) => (isFinite(n) && !isNaN(n) ? n : 0);
-  return { costExclVat: cost, discountedCost: cost, markupPercent: markup, sellingPrice: safe(sellingExclVat), sellingPriceInclVat: safe(sellingInclVat), supplierDiscountPercent: 0 };
+  return { costExclVat: cost, discountedCost: cost, markupPercent: markup, sellingPrice: sellingExclVat, sellingPriceInclVat: sellingInclVat, supplierDiscountPercent: 0 };
 }
 
 interface EnhancedProductPopupProps {
@@ -50,7 +45,6 @@ const EnhancedProductPopup = ({
   isHoverMode = false,
   isVisible = true,
 }: EnhancedProductPopupProps) => {
-  const safeNum = (n: number) => (isFinite(n) && !isNaN(n) ? n : 0);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [markupOverride, setMarkupOverride] = useState<number | null>(null);
   const popupRef = useRef<HTMLDivElement>(null);
@@ -146,7 +140,7 @@ const EnhancedProductPopup = ({
           </div>
           <div className="flex items-center gap-2">
             <span className="text-base font-bold text-foreground">
-              R{safeNum(price).toLocaleString("en-ZA")}
+              R{price.toLocaleString("en-ZA")}
             </span>
             {product.sold_in_length && product.price_per_metre && (
               <span className="text-[10px] text-orange-600 font-medium border border-orange-400/40 rounded px-1">
@@ -159,7 +153,7 @@ const EnhancedProductPopup = ({
             const p = getProductPricing(product);
             return (
               <div className="flex items-center gap-2 text-[10px]">
-                <span className="text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{safeNum(p.discountedCost).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
+                <span className="text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{p.discountedCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
                 <span className="text-muted-foreground">M/Up: <span className="font-mono font-semibold text-primary">{p.markupPercent.toFixed(1)}%</span></span>
               </div>
             );
@@ -205,7 +199,7 @@ const EnhancedProductPopup = ({
             <p className="text-xs font-mono text-primary/80 mt-0.5">{product.product_code}</p>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-sm font-bold text-foreground">
-                R{safeNum(price).toLocaleString("en-ZA")}
+                R{price.toLocaleString("en-ZA")}
               </span>
               {product.sold_in_length && product.price_per_metre && (
                 <Badge variant="outline" className="text-[9px] px-1 py-0 border-orange-400/40 text-orange-600">
@@ -226,7 +220,7 @@ const EnhancedProductPopup = ({
               const p = getProductPricing(product);
               return (
               <div className="flex items-center gap-2 mt-1.5">
-                <span className="text-[10px] text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{safeNum(p.discountedCost).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
+                <span className="text-[10px] text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{p.discountedCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
                 <span className="text-[10px] text-muted-foreground">M/Up:</span>
                 <div className="flex items-center gap-0.5">
                   <Button
@@ -256,7 +250,7 @@ const EnhancedProductPopup = ({
                   </Button>
                 </div>
                 <span className="text-[10px] font-mono text-foreground ml-auto">
-                  → R{safeNum(pricing.sellingPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  → R{pricing.sellingPrice.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
               );
@@ -288,7 +282,7 @@ const EnhancedProductPopup = ({
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate">{basket.name}</p>
                       <p className="text-[10px] text-muted-foreground">
-                        {basket.items.length} items · R{safeNum(zoneTotal).toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
+                        {basket.items.length} items · R{zoneTotal.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">

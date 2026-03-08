@@ -202,9 +202,6 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
     queryClient.invalidateQueries({ queryKey: ["comparison-products"] });
     queryClient.invalidateQueries({ queryKey: ["inventory-from-catalog"] });
     queryClient.invalidateQueries({ queryKey: ["import-history"] });
-    queryClient.invalidateQueries({ queryKey: ["suppliers"] });
-    queryClient.invalidateQueries({ queryKey: ["supplier-list"] });
-    queryClient.invalidateQueries({ queryKey: ["catalog-products"] });
   };
 
   // ─── Extract from stored PDF ───
@@ -563,40 +560,13 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         return true;
       });
 
-      // Generate fallback product_codes for any product missing one
-      let autoIdx = 0;
-      for (const p of mergedProducts) {
-        if (!p.product_code || String(p.product_code).trim() === "") {
-          autoIdx++;
-          // Try to derive a code from description
-          const desc = String(p.description || p.name || "").trim();
-          const words = desc.replace(/[^A-Za-z0-9 ]/g, "").split(/\s+/).filter(Boolean);
-          const derived = words.slice(0, 3).join("-").toUpperCase().substring(0, 30);
-          p.product_code = derived || `AUTO-${autoIdx}`;
-          console.warn(`[AI Parse] Product missing SKU, generated code: "${p.product_code}" from: "${desc.substring(0, 60)}"`);
-        }
-      }
-      // Final dedup pass after code generation (some generated codes might collide)
-      const seen2 = new Set<string>();
-      const finalProducts = mergedProducts.filter((p) => {
-        let key = String(p.product_code).toLowerCase();
-        if (seen2.has(key)) {
-          // Append a unique suffix
-          p.product_code = `${p.product_code}-${seen2.size}`;
-          key = p.product_code.toLowerCase();
-        }
-        seen2.add(key);
-        return true;
-      });
-
       // Also collect any price keys from products
       for (const p of mergedProducts) {
         if (p?.prices) for (const k of Object.keys(p.prices)) allCols.add(k);
       }
 
       const columns: string[] = [...allCols];
-      const products = finalProducts;
-      console.log(`[AI Parse] Final product count: ${products.length}, sample codes:`, products.slice(0, 5).map((p: any) => p.product_code));
+      const products = mergedProducts;
 
       if (columns.length > 0) {
         setDetectedPriceColumns(columns);
@@ -684,7 +654,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         : (p.price_per_metre || null);
 
       return {
-        product_code: p.product_code || p.sku || `GEN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+        product_code: p.product_code || "",
         description: p.description || "",
         category: p.category || "Uncategorized",
         cost_price: calculated.trueCost,
@@ -708,12 +678,6 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         _vat_rate: config.vatRate,
       } as any;
     });
-
-    console.log(`[PriceConfig] Mapped ${rows.length} rows, sample codes:`, rows.slice(0, 5).map(r => r.product_code));
-    const emptyCodeCount = rows.filter(r => !r.product_code || r.product_code.trim() === "").length;
-    if (emptyCodeCount > 0) {
-      console.error(`[PriceConfig] WARNING: ${emptyCodeCount} rows still have empty product_code!`);
-    }
 
     setParsedRows(rows);
     const diff = await buildDiff(rows);
@@ -748,20 +712,10 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
 
     try {
       console.log(`[Import] Starting import for supplier "${supplierName}" (id: ${supplierId}), ${newRows.length} new, ${updateRows.length} updates, ${archiveRows.length} archives`);
-      
-      // Filter out any rows with empty product_code before inserting
-      const validNewRows = newRows.filter(r => r.product_code && r.product_code.trim() !== "");
-      const skippedEmpty = newRows.length - validNewRows.length;
-      if (skippedEmpty > 0) {
-        console.warn(`[Import] Skipping ${skippedEmpty} new rows with empty product_code`);
-        toast({ title: `Skipped ${skippedEmpty} products`, description: "Products without a SKU/product code were excluded.", variant: "destructive" });
-        errors += skippedEmpty;
-      }
-
       // ── PHASE 1: INSERT new products (in batches of 50) ──
       const BATCH = 50;
-      for (let b = 0; b < validNewRows.length; b += BATCH) {
-        const batch = validNewRows.slice(b, b + BATCH);
+      for (let b = 0; b < newRows.length; b += BATCH) {
+        const batch = newRows.slice(b, b + BATCH);
         const batchData = batch.map(row => ({
           supplier_id: supplierId,
           product_code: row.product_code,
@@ -791,7 +745,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
            vat_rate: (row as any)._vat_rate || 15,
         }));
 
-        const { error: err, data } = await (supabase.from("supplier_products" as any) as any).upsert(batchData as any, { onConflict: "supplier_id,product_code" }).select("id");
+        const { error: err, data } = await supabase.from("supplier_products" as any).insert(batchData as any).select("id");
         if (err) {
           const msg = `INSERT batch failed: ${err.message} | ${err.details || ""} | ${err.hint || ""}`;
           console.error(`[Import]`, msg, err);

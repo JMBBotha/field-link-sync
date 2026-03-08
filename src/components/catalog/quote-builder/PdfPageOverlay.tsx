@@ -1,10 +1,9 @@
-// LOCKED FILE - DO NOT MODIFY ICON POSITIONING. Restored from commit 1544de5.
 import { useState, memo, useCallback, useMemo, useRef } from "react";
-import { exclVatFromIncl } from "@/utils/pricing";
+import { calcSellingPrice } from "@/utils/pricing";
 import { useDraggable } from "@dnd-kit/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Plus, X, Star, Check } from "lucide-react";
+import { ShoppingCart, Plus, X, Star, Check, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { categorizePdfItem, categoryToWizardStep } from "./categorizePdfItem";
@@ -14,29 +13,7 @@ import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 
 const DISMISSED_KEY = "dismissedPdfRegions";
 
-/**
- * Dynamically compute icon column position from region data.
- * Uses the rightmost edge (x_pct + w_pct) of all regions on this page,
- * then adds a small gap. Clamps between 85-96% to stay inside the page.
- * Falls back to 91% if no valid region geometry exists.
- */
-function computeIconLeftPct(regions: OverlayRegion[]): string {
-  let maxRight = 0;
-  let hasValidGeometry = false;
-  for (const r of regions) {
-    if (r.x_pct != null && r.w_pct != null && r.w_pct > 0) {
-      const right = r.x_pct + r.w_pct;
-      if (right > maxRight) {
-        maxRight = right;
-        hasValidGeometry = true;
-      }
-    }
-  }
-  if (!hasValidGeometry || maxRight < 10) return "91%";
-  // Add ~1% padding after the rightmost content edge, clamp to 85-96%
-  const iconPct = Math.min(96, Math.max(85, maxRight + 1));
-  return `${iconPct.toFixed(1)}%`;
-}
+/* computeIconLeftPct removed — icons now use right-side gutter positioning */
 
 function getDismissedIds(): Set<string> {
   try {
@@ -83,36 +60,12 @@ interface PdfPageOverlayProps {
   onHoverEnd?: () => void;
   /** Shared PDF selection state */
   pdfSelection?: PdfSelectionHandlers;
-  /** Opens Product Info dialog for a product */
-  onOpenProductInfo?: (product: PaletteProduct) => void;
+  /** Opens ProductInfoDialog for the given product */
+  onProductInfoOpen?: (product: PaletteProduct) => void;
 }
 
-/**
- * Build a temporary PaletteProduct from an unmatched region for product info display.
- */
-function buildTempProduct(region: OverlayRegion): PaletteProduct {
-  return {
-    id: `temp-${region.product_code || region.id}`,
-    product_code: region.product_code || "UNKNOWN",
-    short_name: region.label.substring(0, 80) || region.product_code || "Unmatched Product",
-    brand: "",
-    product_category: "",
-    category: "",
-    cost_excl_vat: region.detected_price ? exclVatFromIncl(region.detected_price) : 0,
-    cost_incl_vat: region.detected_price || 0,
-    selling_price: 0,
-    description: region.label || "",
-    is_pinned: false,
-    pin_order: null,
-    supplier_name: "",
-    supplier_type: "both",
-    price_per_metre: null,
-    sold_in_length: false,
-    unit_length: null,
-    pipe_size: null,
-    is_material_favorite: false,
-  } as PaletteProduct;
-}
+/* ─── Added-to-quote tracker (local state, shared across regions) ─── */
+const addedQuoteItemIds = new Set<string>();
 
 /* ─── DraggableRegion: one per product row ─── */
 const DraggableRegion = memo(({
@@ -131,9 +84,7 @@ const DraggableRegion = memo(({
   onHoverMove,
   onHoverLeave,
   pdfSelection,
-  onOpenProductInfo,
-  isDensePage,
-  itemNumber,
+  onProductInfoOpen,
 }: {
   region: OverlayRegion;
   baskets: Basket[];
@@ -145,16 +96,13 @@ const DraggableRegion = memo(({
   onRemoveRegion?: (region: OverlayRegion) => void;
   onRowStripClick?: (region: OverlayRegion) => void;
   isAddedToQuote?: boolean;
-  iconLeftPct: string;
+  iconLeftPct?: string; // deprecated — kept for type compat but unused
   onHover: (region: OverlayRegion) => void;
   onHoverMove: (e: React.MouseEvent) => void;
   onHoverLeave: () => void;
   pdfSelection?: PdfSelectionHandlers;
-  onOpenProductInfo?: (product: PaletteProduct) => void;
-  isDensePage?: boolean;
-  itemNumber?: number;
+  onProductInfoOpen?: (product: PaletteProduct) => void;
 }) => {
-  const [isRowHovered, setIsRowHovered] = useState(false);
   const product = region.product;
   const isMatched = !!product;
   const isFavorite = product?.is_pinned === true;
@@ -167,41 +115,23 @@ const DraggableRegion = memo(({
 
   const price = product?.selling_price || product?.cost_incl_vat || 0;
 
-  // Dense page sizing
-  const iconSize = isDensePage ? "h-4 w-4" : "h-5 w-5";
-  const innerIconSize = isDensePage ? "h-2 w-2" : "h-2.5 w-2.5";
-  const checkboxSize = isDensePage ? "h-4 w-4" : "h-5 w-5";
-
-  // Strip click → opens Area Quote Builder for matched, toast for unmatched
+  // Strip click → opens Area Quote Builder
   const handleStripClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (region.product) {
-      if (onRowStripClick) onRowStripClick(region);
-    } else {
-      toast({
-        title: `Unmatched Product: ${region.product_code || "Unknown"}`,
-        description: `${region.label.substring(0, 120)}${region.detected_price ? ` · Detected Price: R${region.detected_price.toLocaleString("en-ZA")}` : ""}`,
-        duration: 6000,
-      });
+    if (onRowStripClick) {
+      onRowStripClick(region);
     }
   }, [onRowStripClick, region]);
 
-  // Icon click → open Product Info dialog for matched AND unmatched
+  // Icon click → open Area Quote Builder (same as strip click)
   const handleIconClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (onOpenProductInfo) {
-      if (region.product) {
-        // Pass detected_price through via augmented product
-        const augmented = { ...region.product, detected_price: region.detected_price } as PaletteProduct;
-        onOpenProductInfo(augmented);
-      } else {
-        // Unmatched → create temporary PaletteProduct with detected_price
-        onOpenProductInfo(buildTempProduct(region));
-      }
+    if (onRowStripClick) {
+      onRowStripClick(region);
     }
-  }, [onOpenProductInfo, region]);
+  }, [onRowStripClick, region]);
 
   const handleStarDoubleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -227,21 +157,32 @@ const DraggableRegion = memo(({
     }
   }, [onRemoveRegion, region]);
 
-  // Determine icon color based on state
+  // Determine icon color based on state — blue for all actionable items
   const iconBg = isAddedToQuote ? "#28a745" : "#007BFF";
-
-  // Checkbox click handler: also open ProductInfo
-  const handleCheckboxWrapperClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onOpenProductInfo) {
-      if (region.product) {
-        const augmented = { ...region.product, detected_price: region.detected_price } as PaletteProduct;
-        onOpenProductInfo(augmented);
-      } else {
-        onOpenProductInfo(buildTempProduct(region));
-      }
-    }
-  }, [onOpenProductInfo, region]);
+  // Build a synthetic product for unmatched regions (for checkbox & hover)
+  const effectiveProduct: PaletteProduct | null = product || (region.detected_price ? {
+    id: `unmatched-${region.product_code}`,
+    product_code: region.product_code,
+    short_name: region.label.substring(0, 80),
+    description: region.label,
+    brand: "",
+    product_category: "",
+    category: "",
+    cost_excl_vat: region.detected_price || 0,
+    cost_incl_vat: region.detected_price || 0,
+    cost_price: region.detected_price || 0,
+    selling_price: region.detected_price || 0,
+    default_markup_percent: 20,
+    is_pinned: false,
+    pin_order: null,
+    supplier_name: "",
+    supplier_type: "both",
+    price_per_metre: null,
+    sold_in_length: false,
+    unit_length: null,
+    pipe_size: null,
+    is_material_favorite: false,
+  } as PaletteProduct : null);
 
   return (
     <div
@@ -249,15 +190,13 @@ const DraggableRegion = memo(({
       style={{
         left: "0%",
         top: `${region.y_pct}%`,
-        width: "96%",
+        width: "100%",
         height: `${region.h_pct}%`,
+        maxHeight: "2.5%",
         touchAction: "none",
         minHeight: "14px",
         margin: 0,
         padding: 0,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "flex-end",
       }}
       onClick={handleStripClick}
       onContextMenu={handleContextMenu}
@@ -265,35 +204,29 @@ const DraggableRegion = memo(({
       onMouseMove={onHoverMove}
       onMouseLeave={onHoverLeave}
     >
-      {/* Full-width transparent hit area with hover highlight */}
-      <div 
-        className="absolute inset-0 hover:bg-primary/5 rounded transition-colors duration-150"
-        onMouseEnter={() => setIsRowHovered(true)}
-        onMouseLeave={() => setIsRowHovered(false)}
+      {/* Right 35% hover gradient overlay (covers price/icon area) */}
+      <div className="absolute top-0 bottom-0 rounded transition-opacity duration-200 opacity-0 group-hover:opacity-100 pointer-events-none"
+        style={{
+          left: "65%",
+          width: "35%",
+          background: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.15) 80%, rgba(0,0,0,0.3) 100%)",
+        }}
       />
+      {/* Chevron arrow at the right end of gradient */}
+      <div
+        className="absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10"
+        style={{ right: "92px" }}
+      >
+        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" style={{ color: "rgba(255,255,255,0.85)" }} />
+      </div>
 
-      {/* Gradient overlay on hover */}
-      {isRowHovered && (
-        <div
-          className="absolute inset-0 pointer-events-none transition-opacity duration-150"
-          style={{ background: 'linear-gradient(to right, transparent 0%, rgba(99,102,241,0.08) 40%, rgba(99,102,241,0.18) 80%)' }}
-        />
-      )}
-
-      {/* Fat arrow before icon column on hover */}
-      {isRowHovered && (
-        <div className="absolute pointer-events-none z-30" style={{ left: `calc(${iconLeftPct} - 28px)`, top: '50%', transform: 'translateY(-50%)' }}>
-          <span className="text-xl font-black text-indigo-500 leading-none">❯</span>
-        </div>
-      )}
-
-      {/* PDF selection checkbox — positioned left of the icon column */}
-      {pdfSelection && (
-        <div
-          className="absolute top-1/2 -translate-y-1/2 z-20 pointer-events-auto"
-          style={{ left: `calc(${iconLeftPct} - 22px)` }}
-          onClick={handleCheckboxWrapperClick}
-        >
+      {/* Inline icon row in right gutter: checkbox + cart/star side by side */}
+      <div
+        className="absolute top-1/2 -translate-y-1/2 z-20 pointer-events-auto"
+        style={{ right: "12px", display: "flex", alignItems: "center", gap: "8px" }}
+      >
+        {/* PDF selection checkbox — show for all regions with a product or detected price */}
+        {pdfSelection && effectiveProduct && (
           <div
             className="flex items-center justify-center rounded"
             style={{ width: "16px", height: "16px", backgroundColor: "rgba(255,255,255,0.95)", boxShadow: "0 0 2px rgba(0,0,0,0.3)" }}
@@ -301,91 +234,65 @@ const DraggableRegion = memo(({
             <input
               type="checkbox"
               checked={pdfSelection.selectedFromPdf.some((s) => s.code === region.product_code)}
-              onChange={() =>
-                {
-                  const product = region.product;
-                  const markup = (product as any)?.markup_percent ?? (product as any)?.default_markup_percent ?? 20;
-                  // BUG FIX: Use cost_excl_vat directly (already discounted in DB), don't re-apply calculatePricing
-                  let costPrice = 0;
-                  if (product?.cost_excl_vat && product.cost_excl_vat > 0) {
-                    costPrice = product.cost_excl_vat;
-                  } else if (region.detected_price && region.detected_price > 0) {
-                    costPrice = exclVatFromIncl(region.detected_price);
-                  }
-                  let suggestedSellingPrice = 0;
-                  if (product?.selling_price && product.selling_price > 0) {
-                    suggestedSellingPrice = product.selling_price;
-                  } else if (costPrice > 0) {
-                    suggestedSellingPrice = Math.round(costPrice * (1 + markup / 100) * 100) / 100;
-                  }
-                  pdfSelection.handleSelectProduct({
-                    code: region.product_code,
-                    description: product?.short_name || region.label,
-                    price: String(suggestedSellingPrice),
-                    costPrice: costPrice > 0 ? costPrice : undefined,
-                    markupPercent: markup,
-                  });
+              onChange={() => {
+                const ep = effectiveProduct;
+                const isCurrentlySelected = pdfSelection.selectedFromPdf.some((s) => s.code === region.product_code);
+                const sellingPrice = ep?.selling_price || ep?.cost_incl_vat || region.detected_price || 0;
+                const costPrice = ep?.cost_price || ep?.cost_excl_vat || region.detected_price || 0;
+                const markupPercent = (ep as any)?.default_markup_percent ?? 20;
+                pdfSelection.handleSelectProduct({
+                  code: region.product_code,
+                  description: ep?.short_name || region.label,
+                  price: String(sellingPrice),
+                  costPrice: costPrice > 0 ? costPrice : undefined,
+                  markupPercent,
+                });
+                if (!isCurrentlySelected && product && onProductInfoOpen) {
+                  onProductInfoOpen(product);
                 }
-              }
+              }}
               onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
-              className={`${checkboxSize} accent-primary cursor-pointer`}
+              className="h-3 w-3 accent-primary cursor-pointer"
               title="Select for quote"
             />
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Icon strip — vertically centered within the row's full height */}
-      <div
-        className="absolute opacity-80 group-hover:opacity-100 transition-opacity z-10"
-        style={{
-          left: iconLeftPct,
-          top: 0,
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <div className="flex flex-row items-center gap-0.5">
-          {/* Item number label */}
-          {itemNumber != null && (
-            <span className="text-[7px] font-bold text-muted-foreground/70 select-none leading-none mr-0.5">{itemNumber}</span>
-          )}
+        {/* Cart / Star / Check icon */}
+        <div className="opacity-80 group-hover:opacity-100 transition-opacity">
           {isMatched ? (
             isFavorite ? (
               <button
                 onDoubleClick={handleStarDoubleClick}
                 onClick={handleIconClick}
                 onContextMenu={handleContextMenu}
-                className={`pointer-events-auto ${iconSize} rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md`}
+                className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md"
                 style={{ background: "rgba(30,30,30,0.85)" }}
                 title="Double-click to remove from favorites · Right-click to hide"
                 aria-label="Remove from favorites"
               >
-                <Star className={`${innerIconSize}`} style={{ fill: "#FFD700", color: "#FFD700" }} />
+                <Star className="h-3 w-3" style={{ fill: "#FFD700", color: "#FFD700" }} />
               </button>
             ) : isAddedToQuote ? (
               <button
                 onDoubleClick={handleStarDoubleClick}
                 onClick={handleIconClick}
                 onContextMenu={handleContextMenu}
-                className={`pointer-events-auto ${iconSize} rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md`}
+                className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md"
                 style={{ background: "#28a745" }}
                 title="Added to quote · Double-click to favorite · Right-click to hide"
                 aria-label="Added to quote"
               >
-                <Check className={`${innerIconSize} text-white`} />
+                <Check className="h-2.5 w-2.5 text-white" />
               </button>
             ) : inQuoteQty > 0 ? (
               <button
                 onDoubleClick={handleStarDoubleClick}
                 onClick={handleIconClick}
                 onContextMenu={handleContextMenu}
-                className={`pointer-events-auto ${iconSize} rounded-full flex items-center justify-center text-[8px] font-bold text-white hover:scale-125 transition-transform cursor-pointer shadow-md`}
+                className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white hover:scale-125 transition-transform cursor-pointer shadow-md"
                 style={{ background: "#22c55e" }}
                 title="Double-click to add to favorites · Right-click to hide"
                 aria-label={`In quote: ${inQuoteQty}. Double-click to favorite`}
@@ -397,24 +304,24 @@ const DraggableRegion = memo(({
                 onDoubleClick={handleStarDoubleClick}
                 onClick={handleIconClick}
                 onContextMenu={handleContextMenu}
-                className={`pointer-events-auto ${iconSize} rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md`}
+                className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-md"
                 style={{ background: iconBg }}
                 title="Click row to add to quote · Double-click icon to favorite · Right-click to hide"
                 aria-label="Add to quote"
               >
-                <ShoppingCart className={`${innerIconSize} text-white`} />
+                <ShoppingCart className="h-2.5 w-2.5 text-white" />
               </button>
             )
           ) : (
             <button
-              className={`pointer-events-auto ${iconSize} rounded-full flex items-center justify-center hover:scale-125 transition-all cursor-pointer shadow-md`}
-              style={{ background: "#007BFF" }}
+              className="pointer-events-auto h-5 w-5 rounded-full flex items-center justify-center hover:scale-125 transition-all cursor-pointer shadow-md"
+              style={{ background: iconBg }}
               onClick={handleIconClick}
               onContextMenu={handleContextMenu}
-              title="Right-click to hide"
-              aria-label="Unmatched product. Right-click to hide"
+              title={`${region.label.substring(0, 60)}${region.detected_price ? ` — R${region.detected_price.toLocaleString("en-ZA")}` : ""} · Right-click to hide`}
+              aria-label="Unmatched product. Click to add. Right-click to hide"
             >
-              <ShoppingCart className={`${innerIconSize} text-white`} />
+              <ShoppingCart className="h-2.5 w-2.5 text-white" />
             </button>
           )}
         </div>
@@ -435,14 +342,14 @@ const GhostAddRow = memo(({
   yPct: number;
   hPct: number;
   onClick: () => void;
-  iconLeftPct: string;
+  iconLeftPct?: string;
 }) => (
   <div
     className="absolute cursor-pointer group"
     style={{
       left: "0%",
       top: `${yPct}%`,
-      width: "96%",
+      width: "100%",
       height: `${hPct}%`,
       minHeight: "18px",
       margin: 0,
@@ -455,7 +362,7 @@ const GhostAddRow = memo(({
     {/* Ghost + icon — only visible on hover */}
     <div
       className="absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity z-10"
-      style={{ left: iconLeftPct }}
+      style={{ right: "8px" }}
     >
       <div className="h-4 w-4 rounded-full flex items-center justify-center bg-muted-foreground/20 hover:bg-muted-foreground/40 transition-colors">
         <Plus className="h-2.5 w-2.5 text-muted-foreground" />
@@ -481,7 +388,7 @@ const PdfPageOverlay = ({
   onHoverMove: onHoverMoveProp,
   onHoverEnd,
   pdfSelection,
-  onOpenProductInfo,
+  onProductInfoOpen,
 }: PdfPageOverlayProps) => {
   const hoveredRegionRef = useRef<OverlayRegion | null>(null);
   const [localAddedIds, setLocalAddedIds] = useState<Set<string>>(new Set());
@@ -508,36 +415,19 @@ const PdfPageOverlay = ({
     return new Set([...local, ...dbDismissedKeys]);
   }, [dbDismissedKeys]);
 
-  // BUG FIX: Price validation filter — only show regions with valid pricing
   const positionedRegions = useMemo(() =>
     regions
       .filter((r) => {
         if (r.x_pct == null || r.y_pct == null || r.w_pct == null || r.h_pct == null) return false;
-        if (r.h_pct <= 0) return false;
+        if (r.w_pct <= 0 && r.h_pct <= 0) return false;
         const dismissId = `${r.product_code}|${r.label.substring(0, 40)}`;
         if (dismissedIds.has(dismissId)) return false;
-        // Price validation: only show if has a real price
-        const hasDetectedPrice = (r.detected_price ?? 0) > 0;
-        const hasSellingPrice = (r.product?.selling_price ?? 0) > 0;
-        const hasCostPrice = (r.product?.cost_excl_vat ?? 0) > 0;
-        if (!hasDetectedPrice && !hasSellingPrice && !hasCostPrice) return false;
         return true;
       })
       .sort((a, b) => a.y_pct - b.y_pct),
     [regions, dismissedIds]
   );
 
-  // Compute if page is dense (avg y-spacing < 3%)
-  const isDensePage = useMemo(() => {
-    if (positionedRegions.length < 3) return false;
-    const sorted = positionedRegions;
-    let totalSpacing = 0;
-    for (let i = 1; i < sorted.length; i++) {
-      totalSpacing += sorted[i].y_pct - sorted[i - 1].y_pct;
-    }
-    const avgSpacing = totalSpacing / (sorted.length - 1);
-    return avgSpacing < 3;
-  }, [positionedRegions]);
 
   const handleRemoveRegion = useCallback((region: OverlayRegion) => {
     forceUpdate(n => n + 1);
@@ -566,12 +456,14 @@ const PdfPageOverlay = ({
     onOpenWizard({ name: "", code: "", description: "", price: 0, category: "UNKNOWN", step: 1 });
   }, [onOpenWizard]);
 
+
+
   // Generate ghost rows for gaps between positioned regions
   const ghostRows = useMemo(() => {
     if (positionedRegions.length === 0) return [];
     const sorted = [...positionedRegions].sort((a, b) => a.y_pct - b.y_pct);
     const gaps: { yPct: number; hPct: number }[] = [];
-
+    
     for (let i = 0; i < sorted.length - 1; i++) {
       const endOfCurrent = sorted[i].y_pct + sorted[i].h_pct;
       const startOfNext = sorted[i + 1].y_pct;
@@ -584,8 +476,7 @@ const PdfPageOverlay = ({
     return gaps;
   }, [positionedRegions]);
 
-  // Dynamically compute icon column position from region geometry
-  const iconLeftPct = useMemo(() => computeIconLeftPct(positionedRegions), [positionedRegions]);
+  // Icon positioning now uses right-side gutter (CSS right: 8px) — no computation needed
 
   const handleHover = useCallback((region: OverlayRegion) => {
     hoveredRegionRef.current = region;
@@ -593,8 +484,34 @@ const PdfPageOverlay = ({
 
   const handleHoverMove = useCallback((e: React.MouseEvent) => {
     const region = hoveredRegionRef.current;
-    if (region?.product) {
-      onHoverStart?.(region.product, e);
+    if (region) {
+      // Emit hover for both matched and unmatched regions
+      const hoverProduct: PaletteProduct | null = region.product || (region.detected_price ? {
+        id: `unmatched-${region.product_code}`,
+        product_code: region.product_code,
+        short_name: region.label.substring(0, 80),
+        description: region.label,
+        brand: "",
+        product_category: "",
+        category: "",
+        cost_excl_vat: region.detected_price || 0,
+        cost_incl_vat: region.detected_price || 0,
+        cost_price: region.detected_price || 0,
+        selling_price: region.detected_price || 0,
+        default_markup_percent: 20,
+        is_pinned: false,
+        pin_order: null,
+        supplier_name: "",
+        supplier_type: "both",
+        price_per_metre: null,
+        sold_in_length: false,
+        unit_length: null,
+        pipe_size: null,
+        is_material_favorite: false,
+      } as PaletteProduct : null);
+      if (hoverProduct) {
+        onHoverStart?.(hoverProduct, e);
+      }
     }
     onHoverMoveProp?.(e);
   }, [onHoverStart, onHoverMoveProp]);
@@ -603,6 +520,7 @@ const PdfPageOverlay = ({
     hoveredRegionRef.current = null;
     onHoverEnd?.();
   }, [onHoverEnd]);
+
 
   if (positionedRegions.length === 0) return null;
 
@@ -626,17 +544,15 @@ const PdfPageOverlay = ({
           onRowStripClick={handleRowStripClick}
           isAddedToQuote={
             region.product
-              ? localAddedIds.has(region.product.id)
+              ? localAddedIds.has(region.product.id) || addedQuoteItemIds.has(region.product.id)
               : false
           }
-          iconLeftPct={iconLeftPct}
+          iconLeftPct={undefined}
           onHover={handleHover}
           onHoverMove={handleHoverMove}
           onHoverLeave={handleHoverLeave}
           pdfSelection={pdfSelection}
-          onOpenProductInfo={onOpenProductInfo}
-          isDensePage={isDensePage}
-          itemNumber={idx + 1}
+          onProductInfoOpen={onProductInfoOpen}
         />
       ))}
 
@@ -647,7 +563,7 @@ const PdfPageOverlay = ({
           yPct={gap.yPct}
           hPct={gap.hPct}
           onClick={() => handleManualRowClick(gap.yPct)}
-          iconLeftPct={iconLeftPct}
+          iconLeftPct={undefined}
         />
       ))}
 
