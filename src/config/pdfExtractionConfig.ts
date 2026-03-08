@@ -125,3 +125,13 @@ export const AI_FIELD_INSTRUCTION = `Each product MUST include at minimum: ${REQ
 // ─── Price column selection keywords ───
 export const EXCL_VAT_COLUMN_PATTERNS = [/EXCL/i, /EX\s*VAT/i, /\bCOST\b/i, /\bNET\b/i, /DEALER/i, /TRADE/i];
 export const INCL_VAT_COLUMN_PATTERNS = [/INCL/i, /INC\b/i, /INCLUDING/i];
+
+// ─── Consolidated PDF extraction config ───
+export const PDF_EXTRACTION_CONFIG = {
+  requiredFields: REQUIRED_FIELDS,
+  optionalFields: OPTIONAL_FIELDS,
+  validCategories: VALID_PRODUCT_CATEGORIES,
+  pricingRules: PRICING_RULES,
+  validationRules: VALIDATION_RULES,
+  bboxFields: ['row_bbox', 'price_bbox', 'page_number'] as const,
+} as const;
