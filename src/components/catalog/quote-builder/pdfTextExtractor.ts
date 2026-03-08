@@ -4,7 +4,7 @@
  * Uses pdfjs-dist to extract text items with their exact coordinates
  * from a PDF page, then cross-references against the products database.
  *
- * v24: Unified price-first approach with avgHeight-based adaptive threshold.
+ * v36: TOC detection, stricter price regex, improved ghost filtering.
  */
 import type { PaletteProduct } from "../QuoteBuilderTab";
 /**
@@ -285,7 +285,7 @@ function findPriceColumnRange(
 }
 /**
  * COLUMN-BASED price detection: find numeric items in the price column area,
- * or fallback to right-side heuristic (x > 55% of page width).
+ * or fallback to right-side heuristic (x > 40% of page width).
  */
 function findColumnPrices(
   items: ExtractedTextItem[],
@@ -320,7 +320,43 @@ function findColumnPrices(
   return candidates;
 }
 /**
- * PRICE-FIRST approach v29: column-based detection for dense table PDFs.
+ * Detect if row is a table of contents, header, or non-product row.
+ * TOC rows contain dotted leaders (......) or page numbers.
+ * Headers are typically in top 3% with no price or model codes.
+ */
+function isHeaderOrNonProductRow(
+  rowText: string,
+  detectedPrice: number,
+  hasModel: boolean,
+  y_pct: number
+): boolean {
+  const lower = rowText.toLowerCase();
+  
+  // TOC detection: dotted leaders or excessive dots with page numbers
+  if (/\.{4,}/.test(rowText) || /^\w+\s+\.{4,}\s*\d+$/.test(rowText)) {
+    return true;
+  }
+  
+  // Skip page headers/footers in top 3% without model code
+  if (y_pct < 3 && !hasModel) {
+    return true;
+  }
+  
+  // Skip common non-product headers
+  const headerKeywords = [
+    "contents", "table of contents", "index", "page", "chapter",
+    "introduction", "notes", "disclaimer", "warranty", "terms",
+    "technical specifications", "installation", "maintenance"
+  ];
+  if (headerKeywords.some(kw => lower.includes(kw))) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * PRICE-FIRST approach v36: column-based detection for dense table PDFs.
  * Combines R-prefixed prices with column-position-based numeric prices.
  */
 export function matchTextRowsToProducts(
@@ -386,10 +422,10 @@ export function matchTextRowsToProducts(
     }
     if (detectedPrice === null || detectedPrice <= 0) {
       skippedCount.noPrice++;
+      console.log(`[pdfExtract] Skipped noPrice: ${rightmost.text} at y=${rightmost.y}`);
       continue;
     }
     const rowAvgY = pRow.items.reduce((s, i) => s + i.y, 0) / pRow.items.length;
-    // Ghost filter: skip if in top 3% AND no model code nearby
     const y_pct = (rowAvgY / pageHeight) * 100;
     // TIGHT same-row context ONLY (no aboveItems, no wide band)
     const tightBand = avgHeight * 0.6;
@@ -397,8 +433,12 @@ export function matchTextRowsToProducts(
       (it) => Math.abs(it.y - rowAvgY) <= tightBand
     );
     const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
-    if (y_pct < 3 && !hasModel) { skippedCount.ghost++; continue; }
     const rowText = contextItems.map((it) => it.text).join(" ");
+    if (isHeaderOrNonProductRow(rowText, detectedPrice, hasModel, y_pct)) {
+      skippedCount.ghost++;
+      console.log(`[pdfExtract] Skipped ghost: ${rowText} at y_pct=${y_pct.toFixed(1)}, detectedPrice=${detectedPrice}`);
+      continue;
+    }
     const matchTextLower = rowText.toLowerCase();
     // POSITION-AWARE matching: find candidate codes in this row's items, sorted left-to-right
     const candidates: { code: string; product: PaletteProduct; x: number }[] = [];
@@ -482,7 +522,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 34; // v34: actual price coordinates for icon alignment
+let _extractionVersion = 36; // v36: TOC detection, stricter price regex, improved ghost filtering
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
