@@ -145,7 +145,7 @@ export async function capturePdfPages(
         // Update all page records with the PDF storage path
         await (supabase.from("supplier_pdf_pages") as any)
           .update({ pdf_storage_path: pdfUrlData.publicUrl })
-          .eq("supplier_id", supplierName)
+          .eq("supplier_id", supplierId || supplierName)
           .eq("pdf_filename", file.name);
         console.log("[PDF Capture] Original PDF linked for live overlays");
       } else {
