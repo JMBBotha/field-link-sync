@@ -40,6 +40,8 @@ export async function capturePdfPages(
   file: File,
   supplierName: string,
   onProgress?: (current: number, total: number) => void,
+  /** Optional supplierId to use as storage folder key (falls back to supplierName) */
+  supplierId?: string,
 ): Promise<CaptureResult> {
   console.log("[PDF Capture] Loading pdfjs...");
   const pdfjsLib = await loadPdfJs();
