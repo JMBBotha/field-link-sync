@@ -156,7 +156,7 @@ Supplier name for context: ${supplier_name || "Unknown"}`
   } catch (err) {
     console.error("Parse price list error:", err);
     return new Response(
-      JSON.stringify({ error: err.message }),
+      JSON.stringify({ error: (err as Error).message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

@@ -49,8 +49,8 @@ serve(async (req) => {
       const customer = schedule.customers as any;
       if (!customer?.phone) continue;
 
-      const contractLabel = schedule.service_agreements?.contract_type || "maintenance";
-      const equipInfo = schedule.equipment ? `${schedule.equipment.brand || ""} ${schedule.equipment.model || ""}`.trim() : "";
+      const contractLabel = (schedule.service_agreements as any)?.contract_type || "maintenance";
+      const equipInfo = schedule.equipment ? `${(schedule.equipment as any).brand || ""} ${(schedule.equipment as any).model || ""}`.trim() : "";
 
       // Queue WhatsApp notification
       await supabase.from("notification_queue").insert({
@@ -89,7 +89,7 @@ serve(async (req) => {
       const customer = schedule.customers as any;
       if (!customer?.phone) continue;
 
-      const contractLabel = schedule.service_agreements?.contract_type || "maintenance";
+      const contractLabel = (schedule.service_agreements as any)?.contract_type || "maintenance";
 
       await supabase.from("notification_queue").insert({
         customer_id: (schedule as any).customer_id || schedule.id,
@@ -120,14 +120,14 @@ serve(async (req) => {
 
     let nextScheduled = 0;
     for (const cs of completedSchedules || []) {
-      const freq = cs.service_agreements?.frequency || "annual";
+      const freq = (cs.service_agreements as any)?.frequency || "annual";
       const intervalMonths = freq === "monthly" ? 1 : freq === "quarterly" ? 3 : freq === "biannual" ? 6 : 12;
       const currentDue = new Date(cs.due_date);
       const nextDue = new Date(currentDue);
       nextDue.setMonth(nextDue.getMonth() + intervalMonths);
       const nextDueStr = nextDue.toISOString().split("T")[0];
 
-      if (cs.service_agreements?.end_date && nextDueStr > cs.service_agreements.end_date) continue;
+      if ((cs.service_agreements as any)?.end_date && nextDueStr > (cs.service_agreements as any).end_date) continue;
 
       // Check if next schedule already exists
       const { data: existing } = await supabase
