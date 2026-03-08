@@ -1,10 +1,17 @@
 import { supabase } from "@/integrations/supabase/client";
+import { validateProduct, VALIDATION_RULES, VALID_PRODUCT_CATEGORIES, type ProductCategory } from "@/config/pdfExtractionConfig";
 
 /**
  * CLEAN IMPORT PIPELINE
  * Enforces: DELETE ALL old data for this supplier → THEN insert new data
  * Never upserts. Never merges. Always fresh.
+ *
+ * Validation uses shared rules from pdfExtractionConfig.ts
  */
+
+/** Re-export for use by importers */
+export { validateProduct, VALIDATION_RULES, VALID_PRODUCT_CATEGORIES };
+export type { ProductCategory };
 export async function cleanImportForSupplier(supplierId: string): Promise<{
   success: boolean;
   deletedProducts: number;

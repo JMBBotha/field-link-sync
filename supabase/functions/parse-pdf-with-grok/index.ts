@@ -1,3 +1,10 @@
+// ─── Shared config values (duplicated from src/config/pdfExtractionConfig.ts for Deno edge fn) ───
+const SHARED_VAT_RATE = 0.15;
+const SHARED_MIN_PRICE = 0.01;
+const SHARED_MAX_PRICE = 1_000_000;
+const SHARED_MIN_CODE_LEN = 2;
+const SHARED_VALID_CATEGORIES = ["Air Conditioning", "Water Heaters", "Inverters", "Batteries", "Consumables"];
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -324,25 +331,40 @@ Categories for consumables: Copper Tube, Insulation, Cable, Trunking, Brackets, 
       return true;
     });
 
+    // ─── Validate products against shared rules ───
+    const validated = deduped.filter((p) => {
+      const code = (p.sku || "").trim();
+      if (code.length < SHARED_MIN_CODE_LEN) {
+        console.warn(`[Grok] Skipping product with short code: "${code}"`);
+        return false;
+      }
+      const bestP = pickBestPrice(p.prices || {});
+      if (bestP.price < SHARED_MIN_PRICE || bestP.price > SHARED_MAX_PRICE) {
+        console.warn(`[Grok] Skipping product "${code}" with out-of-range price: ${bestP.price}`);
+        return false;
+      }
+      return true;
+    });
+
     const allCols = new Set<string>(result.cols || []);
     for (const p of deduped) {
       if (p.prices) for (const k of Object.keys(p.prices)) allCols.add(k);
     }
 
-    if (deduped.length === 0) {
+    if (validated.length === 0) {
       return new Response(
         JSON.stringify({ error: "Could not parse products.", products: [], detected_price_columns: [] }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("[Grok] Products:", deduped.length, `chunk ${chunkIndex + 1}/${chunkTotal}`);
+    console.log("[Grok] Products:", validated.length, `(${deduped.length - validated.length} filtered)`, `chunk ${chunkIndex + 1}/${chunkTotal}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         detected_price_columns: [...allCols],
-        products: deduped.map(p => {
+        products: validated.map(p => {
           const bestPrice = pickBestPrice(p.prices || {});
           const costPrice = bestPrice.price;
           const soldInLength = p.soldInLength || false;
@@ -368,7 +390,7 @@ Categories for consumables: Copper Tube, Insulation, Cable, Trunking, Brackets, 
             unit_length_unit: p.unitLengthUnit || "m",
             price_per_metre: pricePerMetre,
             min_cut_length: p.minCutLength || 0.5,
-            product_category: p.productCategory || autoDetectCategory(p),
+            product_category: SHARED_VALID_CATEGORIES.includes(p.productCategory || "") ? p.productCategory : autoDetectCategory(p),
             brand: p.brand || autoDetectBrand(p),
             phase: p.phase || null,
             speed_type: p.speedType || null,
