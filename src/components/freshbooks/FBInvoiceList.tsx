@@ -323,7 +323,7 @@ const FBInvoiceList = () => {
                   <td className="px-4 py-3 font-medium text-blue-600">
                     {inv.invoice_number}
                     {rec?.interval && rec.interval !== "none" && (
-                      <RefreshCw className="inline h-3 w-3 ml-1 text-muted-foreground" title={`Recurring: ${rec.interval}`} />
+                      <RefreshCw className="inline h-3 w-3 ml-1 text-muted-foreground" aria-label={`Recurring: ${rec.interval}`} />
                     )}
                   </td>
                   <td className="px-4 py-3 text-foreground">{inv.fb_contacts?.name || "—"}</td>
