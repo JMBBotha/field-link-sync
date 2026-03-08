@@ -38,7 +38,7 @@ interface PdfPageOverlayProps {
 /* ─── Simple region div: just a border to visualize detection ─── */
 const RegionBox = memo(({ region }: { region: OverlayRegion }) => (
   <div
-    className="absolute border-2 border-blue-400 pointer-events-none"
+    className="absolute border-2 border-primary pointer-events-none"
     style={{
       left: `${region.x_pct}%`,
       top: `${region.y_pct}%`,
