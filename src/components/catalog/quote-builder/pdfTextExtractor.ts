@@ -545,11 +545,46 @@ export function matchTextRowsToProducts(
     for (const r of regions) r.x_pct = maxX;
   }
 
-  return regions;
+  // New: Dedup and no-overlap in extractor (RULE 3: y_pct within 1.5%, keep priced)
+  const sortedRegions = [...regions].sort((a, b) => a.y_pct - b.y_pct);
+  const finalRegions = [];
+  for (let i = 0; i < sortedRegions.length; i++) {
+    const current = sortedRegions[i];
+    let isDuplicate = false;
+    for (let j = 0; j < finalRegions.length; j++) {
+      const existing = finalRegions[j];
+      if (Math.abs(current.y_pct - existing.y_pct) < 1.5) { // Within 1.5%
+        // Keep the one with price or higher price
+        if (current.has_price && (!existing.has_price || (current.detected_price ?? 0) > (existing.detected_price ?? 0))) {
+          finalRegions[j] = current;
+        }
+        isDuplicate = true;
+        break;
+      }
+    }
+    if (!isDuplicate) {
+      finalRegions.push(current);
+    }
+  }
+
+  // Enforce no vertical overlap (adjust heights if needed)
+  for (let i = 0; i < finalRegions.length - 1; i++) {
+    const current = finalRegions[i];
+    const next = finalRegions[i + 1];
+    const overlap = Math.max(0, (current.y_pct + current.h_pct) - next.y_pct);
+    if (overlap > 0) {
+      const adjust = overlap / 2;
+      current.h_pct -= adjust;
+      next.y_pct += adjust;
+      next.h_pct -= adjust;
+    }
+  }
+
+  return finalRegions;
 }
 
 // Cache for extracted regions per page
-let _extractionVersion = 34; // v34: actual price coordinates for icon alignment
+let _extractionVersion = 35; // v35: deduplication + no-overlap adjustment
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 
 /**
@@ -582,11 +617,11 @@ export async function extractAndMatchPage(
     const numericItems = mergedItems.filter(i => /^\d[\d\s,.]+$/.test(i.text.trim()));
     console.log(`[pdfExtract] Page ${pageNumber}: ${loneRItems.length} lone "R" items, ${numericItems.length} standalone numeric items`);
     if (loneRItems.length > 0 && loneRItems.length <= 5) {
-      loneRItems.forEach(r => console.log(`[pdfExtract]   R at x=${r.x.toFixed(1)} y=${r.y.toFixed(1)}`));
+      loneRItems.forEach(r => console.log(`[pdfExtract] R at x=${r.x.toFixed(1)} y=${r.y.toFixed(1)}`));
     }
 
     const regions = matchTextRowsToProducts(mergedItems, pageWidth, pageHeight, products);
-    console.log(`[pdfExtract] Page ${pageNumber}: ${regions.length} final regions`);
+    console.log(`[pdfExtract] Page ${pageNumber}: ${regions.length} final regions after dedup+overlap adjustment`);
     extractionCache.set(cacheKey, regions);
     return regions;
   } catch (err) {
