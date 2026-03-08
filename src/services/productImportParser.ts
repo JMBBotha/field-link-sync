@@ -51,6 +51,10 @@ export interface ParsedProduct {
   sold_in_length?: boolean;
   unit_length?: number | null;
   price_per_metre?: number | null;
+  // Bounding box fields (from AI extraction, normalized 0-1)
+  row_bbox?: { x: number; y: number; width: number; height: number } | null;
+  price_bbox?: { x: number; y: number; width: number; height: number } | null;
+  page_number?: number | null;
   // Legacy fields (kept for ImportPreviewModal display compat)
   price_excl_vat?: number;
   price_includes_vat?: boolean;
