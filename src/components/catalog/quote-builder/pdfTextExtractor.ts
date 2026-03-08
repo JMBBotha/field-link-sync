@@ -549,7 +549,7 @@ export function matchTextRowsToProducts(
 }
 
 // Cache for extracted regions per page
-let _extractionVersion = 33; // v33: tight row context + position-aware left-preferential matching + dedup
+let _extractionVersion = 34; // v34: actual price coordinates for icon alignment
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 
 /**

@@ -17,8 +17,8 @@ const DISMISSED_KEY = "dismissedPdfRegions";
 /**
  * Dynamically compute icon column position from region data.
  * Uses the rightmost edge (x_pct + w_pct) of all regions on this page,
- * then adds a small gap. Clamps between 85-96% to stay inside the page.
- * Falls back to 91% if no valid region geometry exists.
+ * then adds a small gap. The icon is placed just after the price column.
+ * Since the DraggableRegion div has width:96%, we convert page-% to div-%.
  */
 function computeIconLeftPct(regions: OverlayRegion[]): string {
   let maxRight = 0;
@@ -33,9 +33,11 @@ function computeIconLeftPct(regions: OverlayRegion[]): string {
     }
   }
   if (!hasValidGeometry || maxRight < 10) return "91%";
-  // Add ~1% padding after the rightmost content edge, clamp to 85-96%
-  const iconPct = Math.min(96, Math.max(85, maxRight + 1));
-  return `${iconPct.toFixed(1)}%`;
+  // Place icon 1.5% after rightmost price edge, then convert page-% to div-% (div is 96% wide)
+  const pageTargetPct = Math.min(95, maxRight + 1.5);
+  const divLeftPct = (pageTargetPct / 96) * 100;
+  const clamped = Math.min(99, Math.max(70, divLeftPct));
+  return `${clamped.toFixed(1)}%`;
 }
 
 function getDismissedIds(): Set<string> {
