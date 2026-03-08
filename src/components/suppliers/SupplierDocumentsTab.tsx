@@ -17,6 +17,7 @@ import ImportPreviewModal from "./ImportPreviewModal";
 import type { ExtractedSupplierInfo } from "@/services/supplierInfoExtractor";
 import type { ImportPreview, ParsedProduct } from "@/services/productImportParser";
 import { cleanImportForSupplier, logImportAction } from "@/services/cleanImportPipeline";
+import { runImportPipeline } from "@/services/pdfImportPipeline";
 
 interface SupplierDocument {
   id: string;
@@ -452,83 +453,23 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
   const handleImportConfirm = useCallback(async (products: ParsedProduct[]) => {
     setImportConfirming(true);
     try {
-      // ── MANDATORY CLEAN PURGE before inserting ──
-      const purgeResult = await cleanImportForSupplier(supplierId);
-      await logImportAction({
-        supplierId,
-        action: "clean_purge",
-        productsDeleted: purgeResult.deletedProducts,
-        pdfsDeleted: purgeResult.deletedPdfs,
-      });
-
-      // ── Upload PDF to storage & create pdf_uploads record ──
-      let pdfUploadId: string | null = null;
       const file = importFileRef.current;
-      if (file && file.name.toLowerCase().endsWith(".pdf")) {
-        console.log("[Import] Uploading PDF to storage...");
-        const filePath = `${supplierId}/${Date.now()}_${file.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from("supplier-pdfs")
-          .upload(filePath, file);
-        if (uploadError) {
-          console.warn("[Import] Storage upload failed (non-fatal):", uploadError.message);
-        }
 
-        const { data: pdfRecord, error: pdfError } = await (supabase.from("pdf_uploads") as any)
-          .insert({
-            supplier_id: supplierId,
-            file_name: file.name,
-            file_path: filePath,
-            status: "parsed",
-          })
-          .select()
-          .single();
-        if (pdfError) {
-          console.warn("[Import] PDF record creation failed (non-fatal):", pdfError.message);
-        } else {
-          pdfUploadId = pdfRecord?.id || null;
-          console.log("[Import] Created pdf_uploads record:", pdfUploadId);
-        }
-      }
-
-      // Insert products into supplier_products
-      const rows = products.map((p) => ({
-        supplier_id: supplierId,
-        product_code: p.model_number || "UNKNOWN",
-        short_name: p.short_name || (p.description || "").substring(0, 80),
-        description: p.description || "",
-        category: p.category || "Uncategorized",
-        product_category: p.product_category || p.category || "Uncategorized",
-        cost_price: p.cost_price,
-        cost_excl_vat: p.cost_price,
-        default_markup_percent: p.default_markup_percent || p.markup_percent || 20,
-        brand: p.brand || supplierName || "",
-        is_active: true,
-        archived: false,
-        btu_rating: p.btu_rating || null,
-        pipe_size: p.pipe_size || null,
-        refrigerant_type: p.refrigerant_type || null,
-        ...(pdfUploadId ? { pdf_upload_id: pdfUploadId } : {}),
-      }));
-
-      for (let i = 0; i < rows.length; i += 50) {
-        const batch = rows.slice(i, i + 50);
-        const { error } = await (supabase.from("supplier_products") as any).insert(batch);
-        if (error) throw error;
-      }
-
-      const isPdf = importFileName.toLowerCase().endsWith(".pdf");
-      await logImportAction({
+      const result = await runImportPipeline({
         supplierId,
-        action: isPdf ? "pdf_import" : "csv_import",
-        productsImported: products.length,
-        fileName: importFileName,
+        supplierName: supplierName || "",
+        products,
+        file,
       });
+
+      if (!result.success) {
+        throw new Error(result.error || "Import pipeline failed");
+      }
 
       invalidateAll();
       toast({
-        title: `✅ ${products.length} products imported`,
-        description: `${supplierName || "Supplier"} catalog updated.`,
+        title: `✅ ${result.productsImported} products imported`,
+        description: `${supplierName || "Supplier"} catalog updated.${result.productsSkipped > 0 ? ` ${result.productsSkipped} skipped.` : ""}`,
       });
       setImportPreview(null);
 

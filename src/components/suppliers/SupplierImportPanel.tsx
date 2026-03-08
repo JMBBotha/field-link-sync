@@ -13,7 +13,7 @@ import ImportPreviewModal from "./ImportPreviewModal";
 import SupplierInfoReviewModal from "./SupplierInfoReviewModal";
 import type { ImportPreview, ParsedProduct, ImportStage } from "@/services/productImportParser";
 import type { ExtractedSupplierInfo } from "@/services/supplierInfoExtractor";
-import { cleanImportForSupplier, logImportAction } from "@/services/cleanImportPipeline";
+import { runImportPipeline } from "@/services/pdfImportPipeline";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle2 } from "lucide-react";
 
@@ -145,126 +145,29 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
   const handleConfirm = useCallback(async (products: ParsedProduct[]) => {
     setImportConfirming(true);
     try {
-      // Step 1: Clean import — purge old data
-      console.log("[Import] Step 1: Clean purge...");
-      const purgeResult = await cleanImportForSupplier(supplierId);
-      await logImportAction({
-        supplierId,
-        action: "clean_purge",
-        productsDeleted: purgeResult.deletedProducts,
-        pdfsDeleted: purgeResult.deletedPdfs,
-      });
-
-      // Step 2: Upload PDF to storage (if it's a PDF file)
-      let pdfUploadId: string | null = null;
       const file = pendingFileRef.current;
-      if (file && file.name.toLowerCase().endsWith(".pdf")) {
-        console.log("[Import] Step 2: Uploading PDF to storage...");
-        const filePath = `${supplierId}/${Date.now()}_${file.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from("supplier-pdfs")
-          .upload(filePath, file);
-        if (uploadError) {
-          console.warn("[Import] Storage upload failed (non-fatal):", uploadError.message);
-        }
 
-        // Step 3: Create pdf_uploads record
-        const { data: pdfRecord, error: pdfError } = await (supabase.from("pdf_uploads") as any)
-          .insert({
-            supplier_id: supplierId,
-            file_name: file.name,
-            file_path: filePath,
-            status: "parsed",
-          })
-          .select()
-          .single();
-        if (pdfError) {
-          console.warn("[Import] PDF record creation failed (non-fatal):", pdfError.message);
-        } else {
-          pdfUploadId = pdfRecord?.id || null;
-        }
-      }
-
-      // Step 4: Insert products — ONLY set cost_price + default_markup_percent (selling_price is GENERATED)
-      console.log(`[Import] Step 4: Inserting ${products.length} products...`);
-      const rows = products.map((p) => ({
-        supplier_id: supplierId,
-        product_code: p.model_number || "UNKNOWN",
-        short_name: p.short_name || (p.description || "").substring(0, 80),
-        description: p.description || "",
-        category: p.category || "Uncategorized",
-        product_category: p.product_category || p.category || "Uncategorized",
-        cost_price: p.cost_price,
-        cost_excl_vat: p.cost_price,
-        default_markup_percent: p.default_markup_percent || p.markup_percent || 20,
-        brand: p.brand || supplierName || "",
-        is_active: true,
-        archived: false,
-        btu_rating: p.btu_rating || null,
-        pipe_size: p.pipe_size || null,
-        refrigerant_type: p.refrigerant_type || null,
-        phase: p.phase || null,
-        kw: p.kw || null,
-        sold_in_length: p.sold_in_length || false,
-        unit_length: p.unit_length || null,
-        price_per_metre: p.price_per_metre || null,
-        ...(pdfUploadId ? { pdf_upload_id: pdfUploadId } : {}),
-      }));
-
-      let insertSuccess = false;
-      // Try full insert first
-      try {
-        for (let i = 0; i < rows.length; i += 50) {
-          const batch = rows.slice(i, i + 50);
-          const { error } = await (supabase.from("supplier_products") as any).insert(batch);
-          if (error) {
-            console.error(`[Import] Batch ${i / 50 + 1} failed:`, error);
-            throw error;
-          }
-        }
-        insertSuccess = true;
-      } catch (fullErr: any) {
-        console.warn("[Import] Full insert failed, trying basic fallback:", fullErr.message);
-        // Fallback: use only guaranteed-safe columns
-        const basicRows = products.map((p) => ({
-          supplier_id: supplierId,
-          product_code: p.model_number || "UNKNOWN",
-          short_name: (p.description || "").substring(0, 80),
-          description: p.description || "",
-          category: p.category || "Uncategorized",
-          brand: supplierName || "",
-          cost_price: p.cost_price || 0,
-          cost_excl_vat: p.cost_price || 0,
-          default_markup_percent: p.default_markup_percent || 20,
-          is_active: true,
-          archived: false,
-        }));
-        for (let i = 0; i < basicRows.length; i += 50) {
-          const batch = basicRows.slice(i, i + 50);
-          const { error } = await (supabase.from("supplier_products") as any).insert(batch);
-          if (error) {
-            console.error(`[Import] Basic fallback batch ${i / 50 + 1} failed:`, error);
-            throw new Error(`Product insert failed: ${error.message}`);
-          }
-        }
-        insertSuccess = true;
-      }
-
-      // Step 5: Log audit
-      const isPdf = importFileName.toLowerCase().endsWith(".pdf");
-      await logImportAction({
+      const result = await runImportPipeline({
         supplierId,
-        action: isPdf ? "pdf_import" : "csv_import",
-        productsImported: products.length,
-        fileName: importFileName,
+        supplierName,
+        products,
+        file,
       });
 
-      console.log(`[Import] ✅ Complete — ${products.length} products imported`);
+      if (!result.success) {
+        throw new Error(result.error || "Import pipeline failed");
+      }
+
+      if (result.validationWarnings.length > 0) {
+        console.warn("[Import] Validation warnings:", result.validationWarnings);
+      }
+
+      console.log(`[Import] ✅ Complete — ${result.productsImported} products imported, ${result.productsSkipped} skipped`);
       invalidateAll();
       onImportComplete?.();
       toast({
-        title: `✅ ${products.length} products imported`,
-        description: `${supplierName} catalog updated.`,
+        title: `✅ ${result.productsImported} products imported`,
+        description: `${supplierName} catalog updated.${result.productsSkipped > 0 ? ` ${result.productsSkipped} skipped.` : ""}`,
       });
       setImportPreview(null);
 
