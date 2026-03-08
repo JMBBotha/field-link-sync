@@ -2,7 +2,8 @@
  * PdfViewerWithOverlays — renders supplier PDF page images with
  * interactive bbox overlays for each extracted product row.
  *
- * Usage: <PdfViewerWithOverlays supplierId={id} uploadId={uploadId} />
+ * Non-negotiable: Icons appear ONLY next to rightmost final amounts.
+ * center_x correspondence is enforced at filter + post-render validation.
  */
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
@@ -15,7 +16,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, CircleDot, ChevronLeft, ChevronRight } from "lucide-react";
-import { calculatePricing } from "@/utils/pricing";
 import { formatRand } from "@/utils/formatRand";
 
 interface BBox {
@@ -23,6 +23,7 @@ interface BBox {
   y: number;
   width: number;
   height: number;
+  center_x?: number;
 }
 
 interface OverlayProduct {
@@ -44,6 +45,9 @@ interface PdfViewerWithOverlaysProps {
   uploadId?: string | null;
 }
 
+const RIGHT_THRESHOLD = 0.7;
+const CENTER_TOLERANCE = 0.01;
+
 const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
   supplierId,
   uploadId,
@@ -57,7 +61,7 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
   // Load page images + products
   useEffect(() => {
     async function loadData() {
-      // Try to load page images from supplier_pdf_pages table first (most reliable)
+      // Try to load page images from supplier_pdf_pages table first
       const { data: pageRows } = await (supabase.from("supplier_pdf_pages") as any)
         .select("page_image_url, page_number")
         .eq("supplier_id", supplierId)
@@ -67,22 +71,16 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
         const urls = pageRows
           .map((r: any) => r.page_image_url)
           .filter((u: string | null) => !!u);
-        if (urls.length > 0) {
-          setPages(urls);
-        }
+        if (urls.length > 0) setPages(urls);
       }
 
       // Fallback: list from storage directly
       if (!pageRows?.length) {
-        const folderPath = uploadId
-          ? `${supplierId}/${uploadId}`
-          : `${supplierId}`;
-
+        const folderPath = uploadId ? `${supplierId}/${uploadId}` : `${supplierId}`;
         const { data: folders } = await supabase.storage
           .from("supplier-pdf-pages")
           .list(folderPath, { sortBy: { column: "name", order: "asc" } });
 
-        // Check for subfolders (e.g. supplierId/filename/)
         const allUrls: string[] = [];
         if (folders?.length) {
           for (const item of folders) {
@@ -92,7 +90,6 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
                 .getPublicUrl(`${folderPath}/${item.name}`);
               allUrls.push(data.publicUrl);
             } else if (!item.name.includes(".")) {
-              // Likely a subfolder — list its contents
               const { data: subFiles } = await supabase.storage
                 .from("supplier-pdf-pages")
                 .list(`${folderPath}/${item.name}`, { sortBy: { column: "name", order: "asc" } });
@@ -113,7 +110,7 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
       }
 
       // Products with bbox data
-      const query = (supabase.from("supplier_products") as any)
+      const { data } = await (supabase.from("supplier_products") as any)
         .select(
           "id, product_code, short_name, description, cost_price, cost_excl_vat, default_markup_percent, supplier_discount_percent, row_bbox, price_bbox, page_number"
         )
@@ -121,7 +118,6 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
         .not("page_number", "is", null)
         .not("price_bbox", "is", null);
 
-      const { data } = await query;
       setProducts((data as OverlayProduct[]) || []);
     }
 
@@ -142,27 +138,59 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
     return () => window.removeEventListener("resize", updateDimensions);
   }, [updateDimensions]);
 
-  const computePricing = (p: OverlayProduct) => {
-    const markup = p.default_markup_percent || 20;
-    const costExVat = p.cost_excl_vat || p.cost_price || 0;
-    const sellingExVat = costExVat * (1 + markup / 100);
-    return { costExVat, sellingExVat, markup };
-  };
+  // Post-render validation effect
+  useEffect(() => {
+    if (products.length === 0) return;
+    let misaligned = 0;
+    products.forEach((p) => {
+      if (!p.price_bbox) return;
+      const pb = p.price_bbox;
+      const computedCenter = pb.x + pb.width / 2;
+      const aiCenter = pb.center_x ?? computedCenter;
+      if (Math.abs(aiCenter - computedCenter) > CENTER_TOLERANCE) {
+        console.error(`[PostRender] Misalignment: ${p.product_code} center_x=${aiCenter.toFixed(3)} vs computed=${computedCenter.toFixed(3)}`);
+        misaligned++;
+      }
+      if (computedCenter < RIGHT_THRESHOLD) {
+        console.error(`[PostRender] ${p.product_code} center not in rightmost column (${computedCenter.toFixed(3)})`);
+        misaligned++;
+      }
+    });
+    if (misaligned > 0) {
+      console.warn(`[PostRender] ${misaligned} overlay misalignment(s) detected — suppressed in render`);
+    }
+  }, [products, pages]);
 
   const productsForPage = (pageIdx: number) =>
     products.filter((p) => {
       if (p.page_number !== pageIdx + 1 || !p.row_bbox || !p.price_bbox) return false;
       const pb = p.price_bbox;
       const rb = p.row_bbox;
-      // Guard: positive dimensions and right-column alignment
+
+      // Guard: positive dimensions
       if (pb.width <= 0 || rb.width <= 0 || pb.x < 0 || pb.y < 0 || rb.x < 0 || rb.y < 0) {
         console.warn(`[Overlay] Skipping ghost for ${p.id}: invalid bbox coords`);
         return false;
       }
-      if (pb.x + pb.width < 0.7) {
+
+      // Right-column gate
+      if (pb.x + pb.width < RIGHT_THRESHOLD) {
         console.warn(`[Overlay] Skipping ${p.id}: price_bbox not in rightmost column`);
         return false;
       }
+
+      // Center correspondence check
+      const computedCenter = pb.x + pb.width / 2;
+      const aiCenter = pb.center_x ?? computedCenter;
+      if (Math.abs(aiCenter - computedCenter) > CENTER_TOLERANCE) {
+        console.warn(`[Overlay] center_x mismatch for ${p.id} — suppressing`);
+        return false;
+      }
+      if (computedCenter < RIGHT_THRESHOLD) {
+        console.warn(`[Overlay] center not in rightmost column for ${p.id}`);
+        return false;
+      }
+
       return true;
     });
 
@@ -198,16 +226,10 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
             const rb = product.row_bbox;
             const pb = product.price_bbox;
 
-            // Use center_x from AI if available, otherwise compute
-            const centerXNorm = (pb as any).center_x ?? (pb.x + pb.width / 2);
+            // Use center_x for exact horizontal alignment (non-negotiable)
+            const centerXNorm = pb.center_x ?? (pb.x + pb.width / 2);
             const priceCenterX = centerXNorm * w;
             const priceCenterY = pb.y * h + (pb.height * h) / 2;
-
-            // Post-render validation: suppress if center not in rightmost 30%
-            if (centerXNorm < 0.7) {
-              console.error(`[Overlay] BLOCKED: ${product.product_code} center_x=${centerXNorm.toFixed(3)} not in rightmost column`);
-              return null;
-            }
 
             return (
               <div key={product.id}>
@@ -225,12 +247,12 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
                   }}
                 />
 
-                {/* Left chevron + radio icon — anchored to price center */}
+                {/* Left of price center: chevron + radio */}
                 <div
                   className="absolute flex items-center gap-0.5 cursor-pointer opacity-80 hover:opacity-100 transition-opacity"
                   style={{
                     top: `${priceCenterY - 12}px`,
-                    left: `${priceCenterX - 56}px`,
+                    left: `${priceCenterX - 50}px`,
                   }}
                   onClick={() => setSelectedProduct(product)}
                 >
@@ -238,12 +260,12 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
                   <CircleDot className="h-5 w-5 text-primary" />
                 </div>
 
-                {/* Trolley icon + right chevron */}
+                {/* Right of price center: trolley + chevron */}
                 <div
                   className="absolute flex items-center gap-0.5 cursor-pointer opacity-80 hover:opacity-100 transition-opacity"
                   style={{
                     top: `${priceCenterY - 12}px`,
-                    left: `${priceCenterX + 20}px`,
+                    right: `${w - priceCenterX - 24}px`,
                   }}
                   onClick={() => setSelectedProduct(product)}
                 >
