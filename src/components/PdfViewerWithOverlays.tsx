@@ -198,8 +198,16 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
             const rb = product.row_bbox;
             const pb = product.price_bbox;
 
-            const priceCenterX = pb.x * w + (pb.width * w) / 2;
+            // Use center_x from AI if available, otherwise compute
+            const centerXNorm = (pb as any).center_x ?? (pb.x + pb.width / 2);
+            const priceCenterX = centerXNorm * w;
             const priceCenterY = pb.y * h + (pb.height * h) / 2;
+
+            // Post-render validation: suppress if center not in rightmost 30%
+            if (centerXNorm < 0.7) {
+              console.error(`[Overlay] BLOCKED: ${product.product_code} center_x=${centerXNorm.toFixed(3)} not in rightmost column`);
+              return null;
+            }
 
             return (
               <div key={product.id}>
@@ -217,7 +225,7 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
                   }}
                 />
 
-                {/* Left chevron + radio icon */}
+                {/* Left chevron + radio icon — anchored to price center */}
                 <div
                   className="absolute flex items-center gap-0.5 cursor-pointer opacity-80 hover:opacity-100 transition-opacity"
                   style={{
