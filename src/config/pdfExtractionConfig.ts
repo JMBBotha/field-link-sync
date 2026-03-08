@@ -34,6 +34,9 @@ export const OPTIONAL_FIELDS = [
   "sold_in_length",
   "unit_length",
   "price_per_metre",
+  "page_number",
+  "row_bbox",
+  "price_bbox",
 ] as const;
 
 // ─── Valid product categories ───

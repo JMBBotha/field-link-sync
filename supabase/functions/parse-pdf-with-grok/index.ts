@@ -10,6 +10,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface BBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 interface ParsedProduct {
   sku: string;
   name: string;
@@ -31,6 +38,9 @@ interface ParsedProduct {
   speedType?: string | null;
   kw?: number | null;
   unitType?: string | null;
+  pageNumber?: number | null;
+  rowBbox?: BBox | null;
+  priceBbox?: BBox | null;
 }
 
 const CHUNK_SIZE = 12000;
@@ -40,7 +50,13 @@ const SYSTEM_PROMPT_TEMPLATE = `HVAC price list parser. Extract products as JSON
 
 Return: {"detected_price_columns":[...],"products":[...]}
 
-Product fields: sku, name, description, category, prices (object: column→number), pipeSize, btuRating, refrigerantType, shortName, productCategory, brand, phase, speedType, kw, unitType.
+Product fields: sku, name, description, category, prices (object: column→number), pipeSize, btuRating, refrigerantType, shortName, productCategory, brand, phase, speedType, kw, unitType, pageNumber, rowBbox, priceBbox.
+
+BOUNDING BOX FIELDS (optional but preferred):
+- pageNumber: integer (1-indexed) — the PDF page where this product row appears.
+- rowBbox: object {x, y, width, height} — normalized coordinates (0-1 relative to page dimensions) for the entire product row span.
+- priceBbox: object {x, y, width, height} — normalized coordinates for the FINAL cost amount (rightmost R/RAND value only). Must align to the actual price number, NOT codes or descriptions.
+If bounding box coordinates cannot be determined, omit these fields (do not guess).
 
 CRITICAL SPECIFICATION EXTRACTION RULES:
 - btuRating: Extract BTU from "9000 BTU", "9K BTU", "9,000", or derive from kW (2.6kW=9000, 3.5kW=12000, 5.0kW=18000, 7.0kW=24000, 7.1kW=24000, 10kW=36000, 14kW=48000).
@@ -396,6 +412,9 @@ Categories for consumables: Copper Tube, Insulation, Cable, Trunking, Brackets, 
             speed_type: p.speedType || null,
             kw: p.kw || null,
             unit_type: p.unitType || null,
+            page_number: p.pageNumber || null,
+            row_bbox: p.rowBbox || null,
+            price_bbox: p.priceBbox || null,
           };
         }),
       }),
