@@ -134,4 +134,5 @@ export const PDF_EXTRACTION_CONFIG = {
   pricingRules: PRICING_RULES,
   validationRules: VALIDATION_RULES,
   bboxFields: ['row_bbox', 'price_bbox', 'page_number'] as const,
+  aiPromptTemplate: `Extract ALL products from EVERY page of this HVAC supplier price list PDF, starting from page 1, as a JSON array of objects. Include cover/intro pages if they contain product rows. Focus on accuracy—do NOT merge or dedupe rows, even if costs are identical; treat each table row as unique based on product_code or name differences. Each object must include: {fields}. Prices are supplier costs; if VAT is included, note it separately. Exclude totals/footers. Output only the JSON array.`,
 } as const;
