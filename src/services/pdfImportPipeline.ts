@@ -143,12 +143,22 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
       continue;
     }
 
-    // Stricter bbox validation: must be defined, positive, and right-aligned
+    // Stricter bbox validation: must be defined, positive, right-aligned, with center_x
     if (p.price_bbox) {
       const bbox = p.price_bbox;
       if (bbox.x < 0 || bbox.x > 1 || bbox.width <= 0 || bbox.y < 0 || bbox.y > 1 ||
           (bbox.x + bbox.width) < 0.7) {
         warnings.push(`Invalid/misaligned price_bbox for "${p.model_number}" — bbox ignored`);
+        validProducts.push({ ...p, price_bbox: null });
+        continue;
+      }
+      // Compute center_x if AI didn't provide it
+      if (!(bbox as any).center_x) {
+        (bbox as any).center_x = bbox.x + bbox.width / 2;
+      }
+      // Final correspondence check: center_x must be >= 0.7 (rightmost column)
+      if ((bbox as any).center_x < 0.7) {
+        warnings.push(`price_bbox center_x not in rightmost column for "${p.model_number}" — bbox ignored`);
         validProducts.push({ ...p, price_bbox: null });
         continue;
       }
