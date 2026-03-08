@@ -2,7 +2,6 @@ import { memo } from "react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
-
 export interface OverlayRegion {
   id: string;
   x_pct: number;
@@ -16,7 +15,6 @@ export interface OverlayRegion {
   detected_price?: number | null;
   matched?: boolean;
 }
-
 interface PdfPageOverlayProps {
   regions: OverlayRegion[];
   baskets: Basket[];
@@ -34,27 +32,21 @@ interface PdfPageOverlayProps {
   pdfSelection?: PdfSelectionHandlers;
   onOpenProductInfo?: (product: PaletteProduct) => void;
 }
-
-/* ─── Simple region div: just a border to visualize detection ─── */
 const RegionBox = memo(({ region }: { region: OverlayRegion }) => (
   <div
     className="absolute border-2 border-primary pointer-events-none"
     style={{
-      left: `${region.x_pct}%`,
+      left: `0%`, // Span full width starting from left edge
       top: `${region.y_pct}%`,
-      width: `${region.w_pct}%`,
+      width: `100%`, // Full width of the row
       height: `${region.h_pct}%`,
     }}
     title={`${region.label} (${region.product_code})`}
   />
 ));
-
 RegionBox.displayName = "RegionBox";
-
-/* ─── Main PdfPageOverlay: render only positioned region borders ─── */
 const PdfPageOverlay = ({ regions }: PdfPageOverlayProps) => {
   if (regions.length === 0) return null;
-
   return (
     <>
       {regions.map((region) => (
@@ -63,5 +55,4 @@ const PdfPageOverlay = ({ regions }: PdfPageOverlayProps) => {
     </>
   );
 };
-
 export default PdfPageOverlay;
