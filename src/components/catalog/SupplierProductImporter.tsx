@@ -202,6 +202,9 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
     queryClient.invalidateQueries({ queryKey: ["comparison-products"] });
     queryClient.invalidateQueries({ queryKey: ["inventory-from-catalog"] });
     queryClient.invalidateQueries({ queryKey: ["import-history"] });
+    queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+    queryClient.invalidateQueries({ queryKey: ["supplier-list"] });
+    queryClient.invalidateQueries({ queryKey: ["catalog-products"] });
   };
 
   // ─── Extract from stored PDF ───
