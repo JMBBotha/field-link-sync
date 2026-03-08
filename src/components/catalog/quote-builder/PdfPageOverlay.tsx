@@ -145,6 +145,9 @@ const DraggableRegion = memo(({
 
   const price = product?.selling_price || product?.cost_incl_vat || 0;
 
+  // Per-row fallback if global iconLeftPct seems off (e.g., merged row variance)
+  const rowIconLeftPct = region.has_price ? `${Math.min(98, (region.x_pct + region.w_pct + 2.5) / 96 * 100).toFixed(1)}%` : iconLeftPct;
+
   // Strip click → opens Area Quote Builder
   const handleStripClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
