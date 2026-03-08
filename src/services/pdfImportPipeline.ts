@@ -143,22 +143,48 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
       continue;
     }
 
-    // Stricter bbox validation: must be defined, positive, right-aligned, with center_x
+    // Non-negotiable: Start from rightmost column — enforce price_bbox strictly
     if (p.price_bbox) {
       const bbox = p.price_bbox;
-      if (bbox.x < 0 || bbox.x > 1 || bbox.width <= 0 || bbox.y < 0 || bbox.y > 1 ||
-          (bbox.x + bbox.width) < 0.7) {
-        warnings.push(`Invalid/misaligned price_bbox for "${p.model_number}" — bbox ignored`);
+      const RIGHT_THRESHOLD = 0.7;
+
+      // Basic coord validation
+      if (bbox.x < 0 || bbox.x > 1 || bbox.width <= 0 || bbox.y < 0 || bbox.y > 1) {
+        warnings.push(`Invalid price_bbox coords for "${p.model_number}" — bbox ignored`);
         validProducts.push({ ...p, price_bbox: null });
         continue;
       }
-      // Compute center_x if AI didn't provide it
-      if (!(bbox as any).center_x) {
-        (bbox as any).center_x = bbox.x + bbox.width / 2;
+
+      // Right-alignment gate
+      if ((bbox.x + bbox.width) < RIGHT_THRESHOLD) {
+        warnings.push(`price_bbox not in rightmost column for "${p.model_number}" — bbox ignored`);
+        validProducts.push({ ...p, price_bbox: null });
+        continue;
       }
-      // Final correspondence check: center_x must be >= 0.7 (rightmost column)
-      if ((bbox as any).center_x < 0.7) {
-        warnings.push(`price_bbox center_x not in rightmost column for "${p.model_number}" — bbox ignored`);
+
+      // Compute center_x if AI didn't provide it
+      const computedCenter = bbox.x + bbox.width / 2;
+      if (!(bbox as any).center_x) {
+        (bbox as any).center_x = computedCenter;
+      }
+
+      // Correspondence check: center_x must match computed center (tolerance 0.01)
+      const aiCenter = (bbox as any).center_x;
+      if (Math.abs(aiCenter - computedCenter) > 0.01) {
+        warnings.push(`center_x mismatch for "${p.model_number}": AI=${aiCenter.toFixed(3)} vs computed=${computedCenter.toFixed(3)} — using computed`);
+        (bbox as any).center_x = computedCenter;
+      }
+
+      // Final gate: center must be in rightmost 30%
+      if ((bbox as any).center_x < RIGHT_THRESHOLD) {
+        warnings.push(`center_x not in rightmost column for "${p.model_number}" — bbox ignored`);
+        validProducts.push({ ...p, price_bbox: null });
+        continue;
+      }
+
+      // Correspondence with cost: bbox without a valid cost is meaningless
+      if (!p.cost_price || p.cost_price <= 0) {
+        warnings.push(`price_bbox present but no valid cost for "${p.model_number}" — bbox ignored`);
         validProducts.push({ ...p, price_bbox: null });
         continue;
       }
