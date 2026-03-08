@@ -34,8 +34,7 @@ import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
 import CategoryNavBar, { groupCategory } from "./CategoryNavBar";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
-// Cross-page dedup: tracks seen region keys across all pages to prevent duplicate icons
-const globalSeenRegions = new Map<string, number>(); // key → first pageIndex
+    // Cross-page dedup removed in Step 2 rebuild — each page handles its own regions independently
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
 
 interface VisualCatalogPanelProps {
@@ -147,7 +146,6 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       setVisiblePageIndex(0);
       setZoom(1);
       clearExtractionCache();
-      globalSeenRegions.clear(); // Reset cross-page dedup on panel open
       // Force all live-extract queries to re-run with latest detection logic
       queryClient.removeQueries({ queryKey: ["visual-panel-live-extract"] });
     }
@@ -1092,30 +1090,6 @@ const LazyPdfPage = ({
       if (seenOnPage.has(dedupKeyPage)) continue;
       seenOnPage.add(dedupKeyPage);
 
-      // Cross-page dedup
-      const dedupKey = `${r.product_code || ""}|${label}|${price}`;
-      const firstPage = globalSeenRegions.get(dedupKey);
-      if (firstPage !== undefined && firstPage !== pageIndex) continue;
-      if (firstPage === undefined) globalSeenRegions.set(dedupKey, pageIndex);
-
-      // Tolerance-based vertical dedup: skip if within 2.5% y_pct of a kept region
-      // with same product_code or overlapping label words (>3 chars)
-      const wordsOf = (s: string) => s.toLowerCase().split(/[\s\/\-\(\)]+/).filter(w => w.length > 3);
-      const curWords = wordsOf(label);
-      let isDupY = false;
-      for (const kept of result) {
-        if (Math.abs(kept.y_pct - r.y_pct) > 2.5) continue;
-        const sameCode = !!(r.product_code && kept.product_code === r.product_code);
-        const keptWords = wordsOf((kept.label || "").substring(0, 80));
-        const overlappingWords = sameCode || curWords.some(w => keptWords.includes(w));
-        if (overlappingWords) {
-          // Merge height to cover both regions
-          kept.h_pct = Math.max(kept.h_pct, r.h_pct + Math.abs(r.y_pct - kept.y_pct));
-          isDupY = true;
-          break;
-        }
-      }
-      if (isDupY) continue;
       // Resolve product from activeProducts if extractor matched by code but didn't attach object
       const rawCode = (r.product_code || "").toLowerCase().trim();
       const rawCodeBase = rawCode.split("@")[0].trim();
@@ -1175,30 +1149,7 @@ const LazyPdfPage = ({
       return fallbackRegions;
     }
 
-    // Vertical merge step: merge consecutive regions within 1.5% y_pct
-    result.sort((a, b) => a.y_pct - b.y_pct);
-    const merged: OverlayRegion[] = [];
-    for (const r of result) {
-      if (merged.length > 0) {
-        const prev = merged[merged.length - 1];
-        if (Math.abs(r.y_pct - prev.y_pct) <= 1.5) {
-          // Keep the better one: prefer matched over unmatched, then prefer one with price
-          const prevScore = (prev.matched ? 2 : 0) + (prev.detected_price ? 1 : 0);
-          const curScore = (r.matched ? 2 : 0) + (r.detected_price ? 1 : 0);
-          if (curScore > prevScore) {
-            // Replace prev with current but merge height
-            const mergedH = Math.max(prev.h_pct, r.h_pct + Math.abs(r.y_pct - prev.y_pct));
-            merged[merged.length - 1] = { ...r, h_pct: mergedH, y_pct: Math.min(prev.y_pct, r.y_pct) };
-          } else {
-            prev.h_pct = Math.max(prev.h_pct, r.h_pct + Math.abs(r.y_pct - prev.y_pct));
-          }
-          continue;
-        }
-      }
-      merged.push({ ...r });
-    }
-
-    return merged;
+    return result;
   }, [liveRegions, fallbackRegions, page.id, pageIndex]);
 
   // Report detected categories to parent for category→page mapping
