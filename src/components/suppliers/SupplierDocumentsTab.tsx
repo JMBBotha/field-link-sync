@@ -17,6 +17,7 @@ import ImportPreviewModal from "./ImportPreviewModal";
 import type { ExtractedSupplierInfo } from "@/services/supplierInfoExtractor";
 import type { ImportPreview, ParsedProduct } from "@/services/productImportParser";
 import { cleanImportForSupplier, logImportAction } from "@/services/cleanImportPipeline";
+import { runImportPipeline } from "@/services/pdfImportPipeline";
 
 interface SupplierDocument {
   id: string;
