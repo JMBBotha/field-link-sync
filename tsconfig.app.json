@@ -20,6 +20,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "dexie": [
+        "./src/types/dexie-override.d.ts"
       ]
     },
     "skipLibCheck": true,
