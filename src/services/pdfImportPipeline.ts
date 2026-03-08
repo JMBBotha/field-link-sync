@@ -8,6 +8,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { cleanImportForSupplier, logImportAction } from "@/services/cleanImportPipeline";
+import { capturePdfPages } from "@/lib/pdfPageCapture";
 import {
   validateProduct,
   VALIDATION_RULES,
