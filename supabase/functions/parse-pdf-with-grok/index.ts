@@ -1,3 +1,10 @@
+// ─── Shared config values (duplicated from src/config/pdfExtractionConfig.ts for Deno edge fn) ───
+const SHARED_VAT_RATE = 0.15;
+const SHARED_MIN_PRICE = 0.01;
+const SHARED_MAX_PRICE = 1_000_000;
+const SHARED_MIN_CODE_LEN = 2;
+const SHARED_VALID_CATEGORIES = ["Air Conditioning", "Water Heaters", "Inverters", "Batteries", "Consumables"];
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
