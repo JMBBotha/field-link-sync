@@ -36,6 +36,7 @@ import {
   getOrphanProductCount,
   cleanOrphanProducts,
 } from "@/services/supplierDeleteService";
+import { cleanSupplierProducts } from "@/services/priceListDeleteService";
 
 interface SupplierRow {
   id: string;
