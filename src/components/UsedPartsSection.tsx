@@ -77,7 +77,7 @@ const UsedPartsSection = ({ leadId, agentId, isOnline, queueOperation }: UsedPar
       if (isOnline) {
         const { data, error } = await supabase
           .from("supplier_products")
-          .select("id, product_code, description, cost_price, discounted_cost, category, supplier_id")
+          .select("id, product_code, description, cost_price, category, supplier_id")
           .or(`product_code.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
           .eq("is_active", true)
           .limit(15);
