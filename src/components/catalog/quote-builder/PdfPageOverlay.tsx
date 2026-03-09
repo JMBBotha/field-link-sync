@@ -52,26 +52,18 @@ const RegionBox = memo(({ region }: { region: OverlayRegion }) => {
         height: `${region.h_pct}%`,
       }}
     >
-      {/* Radio button shifted further right of price center */}
-      <Circle
-        className="absolute pointer-events-auto cursor-pointer text-primary"
-        size={16}
+      {/* Radio + Cart container, shifted right of price center */}
+      <div
+        className="absolute pointer-events-auto flex items-center gap-[6px]"
         style={{
-          left: `${priceCenterX - region.x_pct + 8}%`,
+          left: `${priceCenterX - region.x_pct + 20}%`,
           top: `${priceCenterY - region.y_pct - 1}%`,
-          transform: "translate(0%, -50%)",
+          transform: "translateY(-50%)",
         }}
-      />
-      {/* Shopping cart icon further right */}
-      <ShoppingCart
-        className="absolute pointer-events-auto cursor-pointer text-primary"
-        size={16}
-        style={{
-          left: `${priceCenterX - region.x_pct + 16}%`,
-          top: `${priceCenterY - region.y_pct - 1}%`,
-          transform: "translate(0%, -50%)",
-        }}
-      />
+      >
+        <Circle className="cursor-pointer text-primary" size={16} />
+        <ShoppingCart className="cursor-pointer text-primary" size={16} />
+      </div>
     </div>
   );
 });
