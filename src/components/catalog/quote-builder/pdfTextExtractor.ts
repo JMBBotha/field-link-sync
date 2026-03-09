@@ -93,8 +93,9 @@ export async function extractTextItemsFromPdfPage(
 /**
  * Merge lone "R" currency symbols with adjacent price digits on the same row.
  * Handles table-layout PDFs where pdfjs-dist splits "R" and "172,79" into separate items.
+ * Fixed: Only merge if "R" is in price column (x >= minX or x > 75%).
  */
-export function mergeCurrencyWithPrices(items: ExtractedTextItem[]): ExtractedTextItem[] {
+export function mergeCurrencyWithPrices(items: ExtractedTextItem[], colRange: { minX: number; maxX: number } | null, pageWidth: number): ExtractedTextItem[] {
   // Sort by y then x
   const sorted = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
   const result: ExtractedTextItem[] = [];
@@ -110,6 +111,13 @@ export function mergeCurrencyWithPrices(items: ExtractedTextItem[]): ExtractedTe
     // Match lone "R" currency symbol (trim handles trailing whitespace)
     const trimmed = item.text.trim();
     if (trimmed === "R" || trimmed === "R ") {
+      // Check if "R" is in price column
+      const centerX = item.x + item.width / 2;
+      const inColumn = colRange ? (centerX >= colRange.minX) : (centerX / pageWidth > 0.75);
+      if (!inColumn) {
+        result.push(item); // Don't merge if not in price column
+        continue;
+      }
       // Find the next item to the right on the same row
       let bestJ = -1;
       for (let j = i + 1; j < sorted.length; j++) {
@@ -564,7 +572,9 @@ export async function extractAndMatchPage(
       pageNumber
     );
     console.log(`[pdfExtract] Page ${pageNumber}: ${items.length} raw text items extracted from PDF`);
-    const mergedItems = mergeCurrencyWithPrices(items);
+    // Detect price column range early for mergeCurrencyWithPrices
+    const colRangeForMerge = findPriceColumnRange(items, pageWidth, pageHeight);
+    const mergedItems = mergeCurrencyWithPrices(items, colRangeForMerge, pageWidth);
     console.log(`[pdfExtract] Page ${pageNumber}: ${mergedItems.length} items after mergeCurrencyWithPrices (${items.length - mergedItems.length} merged)`);
     // Log sample of lone "R" items and standalone numeric items for debugging
     const loneRItems = mergedItems.filter(i => i.text.trim() === "R");
