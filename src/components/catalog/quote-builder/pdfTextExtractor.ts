@@ -281,8 +281,9 @@ function mergeAdjacentPriceFragments(
   return merged;
 }
 /**
- * Find price column x-range by locating header text like "PRICE", "EXCL", "INCL"
+ * Find price column x-range by locating header text like "PRICE", "EXCL", "INCL", "NETT PRICE", "INSTALLER PRICE"
  * near the top of the page. Returns {minX, maxX} or null.
+ * Enhanced: Daikin/Samsung-specific headers, rightmost if multiple. Fallback to price cluster if no header.
  */
 function findPriceColumnRange(
   items: ExtractedTextItem[],
@@ -293,13 +294,24 @@ function findPriceColumnRange(
   const headerItems = items.filter((i) => i.y / pageHeight < 0.15);
   const priceHeaders = headerItems.filter((i) => {
     const t = i.text.trim().toUpperCase();
-    return t.includes("PRICE") || t === "EXCL" || t.includes("EXCL VAT") || t.includes("INCL VAT");
+    return t.includes("PRICE") || t === "EXCL" || t.includes("EXCL VAT") || t.includes("INCL VAT") ||
+      t.includes("NETT PRICE") || t.includes("INSTALLER PRICE") || t.includes("WEBSHOP PRICE") || t.includes("CAMPAIGN PRICE") ||
+      t.includes("LIST PRICE") || t.includes("VAT");
   });
-  if (priceHeaders.length === 0) return null;
-  // Use the rightmost price-related header
-  priceHeaders.sort((a, b) => b.x - a.x);
-  const header = priceHeaders[0];
-  return { minX: header.x - 20, maxX: header.x + header.width + 30 };
+  if (priceHeaders.length > 0) {
+    // Use the rightmost price-related header
+    priceHeaders.sort((a, b) => b.x - a.x);
+    const header = priceHeaders[0];
+    return { minX: header.x - 20, maxX: header.x + header.width + 30 };
+  }
+  // Fallback: Cluster numeric items on right side
+  const rightNumerics = items.filter(i => i.x / pageWidth > 0.7 && /^\d[\d\s,.]+$/.test(i.text.trim()));
+  if (rightNumerics.length > 5) { // Enough to indicate a column
+    const minX = Math.min(...rightNumerics.map(i => i.x));
+    const maxX = Math.max(...rightNumerics.map(i => i.x + i.width));
+    return { minX: minX - 10, maxX: maxX + 10 };
+  }
+  return null; // No column detected
 }
 /**
  * COLUMN-BASED price detection: find numeric items in the price column area,
