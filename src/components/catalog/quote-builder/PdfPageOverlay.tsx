@@ -108,9 +108,9 @@ const PdfPageOverlay = ({ regions }: PdfPageOverlayProps) => {
 
         return (
           <div key={region.id}>
-            {/* Gradient row highlight with chevron arrow end */}
+            {/* Gradient row highlight with chevron arrow end — triggers popup on hover */}
             <div
-              className="absolute pointer-events-none"
+              className="absolute pointer-events-auto cursor-pointer"
               style={{
                 left: `${rowLeft}%`,
                 top: `${rowTop}%`,
@@ -119,6 +119,8 @@ const PdfPageOverlay = ({ regions }: PdfPageOverlayProps) => {
                 background: "linear-gradient(to right, transparent 0%, hsl(var(--muted) / 0.45) 70%, hsl(var(--muted-foreground) / 0.25) 100%)",
                 clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%)",
               }}
+              onMouseEnter={() => setHoveredId(region.id)}
+              onMouseLeave={() => setHoveredId(null)}
             />
 
             {/* Icons */}
@@ -131,11 +133,7 @@ const PdfPageOverlay = ({ regions }: PdfPageOverlayProps) => {
               }}
             >
               <Circle className="cursor-pointer text-primary" size={16} />
-              <div
-                className="relative"
-                onMouseEnter={() => setHoveredId(region.id)}
-                onMouseLeave={() => setHoveredId(null)}
-              >
+              <div className="relative">
                 <ShoppingCart className="cursor-pointer text-primary" size={16} />
                 {hoveredId === region.id && <ProductPopup region={region} />}
               </div>
