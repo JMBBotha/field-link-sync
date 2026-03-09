@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShoppingCart, Circle } from "lucide-react";
+import { ShoppingCart, Circle, Info } from "lucide-react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
@@ -108,9 +108,9 @@ const PdfPageOverlay = ({ regions }: PdfPageOverlayProps) => {
 
         return (
           <div key={region.id}>
-            {/* Gradient row highlight with chevron arrow end — triggers popup on hover */}
+            {/* Gradient row highlight with chevron arrow end + info icon — triggers popup on hover */}
             <div
-              className="absolute pointer-events-auto cursor-pointer"
+              className="absolute pointer-events-auto cursor-pointer flex items-center justify-end pr-4"
               style={{
                 left: `${rowLeft}%`,
                 top: `${rowTop}%`,
@@ -121,7 +121,9 @@ const PdfPageOverlay = ({ regions }: PdfPageOverlayProps) => {
               }}
               onMouseEnter={() => setHoveredId(region.id)}
               onMouseLeave={() => setHoveredId(null)}
-            />
+            >
+              <Info className="text-muted-foreground/70" size={13} />
+            </div>
 
             {/* Icons */}
             <div
