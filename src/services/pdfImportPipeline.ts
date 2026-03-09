@@ -233,9 +233,9 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
     sold_in_length: p.sold_in_length || false,
     unit_length: p.unit_length || null,
     price_per_metre: p.price_per_metre || null,
-    row_bbox: p.row_bbox || null,
-    price_bbox: p.price_bbox || null,
-    page_number: p.page_number || null,
+    row_bbox: p.row_bbox ?? null,
+    price_bbox: p.price_bbox ?? null,
+    page_number: p.page_number ?? null,
     ...(pdfUploadId ? { pdf_upload_id: pdfUploadId } : {}),
   }));
 
@@ -287,6 +287,9 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
       default_markup_percent: r.default_markup_percent || PRICING_RULES.defaultMarkupPercent,
       is_active: true,
       archived: false,
+      row_bbox: r.row_bbox ?? null,
+      price_bbox: r.price_bbox ?? null,
+      page_number: r.page_number ?? null,
     }));
 
     for (let i = 0; i < basicRows.length; i += 50) {
