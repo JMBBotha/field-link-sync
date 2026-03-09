@@ -95,29 +95,50 @@ const PdfPageOverlay = ({ regions }: PdfPageOverlayProps) => {
     if (right > maxRightPct) maxRightPct = right;
   });
   const iconsLeftPct = Math.min(maxRightPct + 2, 95);
+  const chevronTipPct = iconsLeftPct - 1; // gradient arrow ends just before icons
 
   return (
     <>
       {regions.map((region) => {
         const priceCenterY = region.price_center_y || region.y_pct + region.h_pct / 2;
+        const rowTop = region.y_pct;
+        const rowHeight = region.h_pct;
+        const rowLeft = region.x_pct;
+        const gradientWidth = Math.max(chevronTipPct - rowLeft, 0);
+
         return (
-          <div
-            key={region.id}
-            className="absolute pointer-events-auto flex items-center gap-[6px]"
-            style={{
-              left: `${iconsLeftPct}%`,
-              top: `${priceCenterY}%`,
-              transform: "translateY(-50%)",
-            }}
-          >
-            <Circle className="cursor-pointer text-primary" size={16} />
+          <div key={region.id}>
+            {/* Gradient row highlight with chevron arrow end */}
             <div
-              className="relative"
-              onMouseEnter={() => setHoveredId(region.id)}
-              onMouseLeave={() => setHoveredId(null)}
+              className="absolute pointer-events-none"
+              style={{
+                left: `${rowLeft}%`,
+                top: `${rowTop}%`,
+                width: `${gradientWidth}%`,
+                height: `${rowHeight}%`,
+                background: "linear-gradient(to right, transparent 0%, hsl(var(--muted) / 0.45) 70%, hsl(var(--muted-foreground) / 0.25) 100%)",
+                clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%)",
+              }}
+            />
+
+            {/* Icons */}
+            <div
+              className="absolute pointer-events-auto flex items-center gap-[6px]"
+              style={{
+                left: `${iconsLeftPct}%`,
+                top: `${priceCenterY}%`,
+                transform: "translateY(-50%)",
+              }}
             >
-              <ShoppingCart className="cursor-pointer text-primary" size={16} />
-              {hoveredId === region.id && <ProductPopup region={region} />}
+              <Circle className="cursor-pointer text-primary" size={16} />
+              <div
+                className="relative"
+                onMouseEnter={() => setHoveredId(region.id)}
+                onMouseLeave={() => setHoveredId(null)}
+              >
+                <ShoppingCart className="cursor-pointer text-primary" size={16} />
+                {hoveredId === region.id && <ProductPopup region={region} />}
+              </div>
             </div>
           </div>
         );
