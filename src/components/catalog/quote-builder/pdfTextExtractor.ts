@@ -17,8 +17,8 @@ function sanitizePdfUrl(url: string): string {
     const u = new URL(url);
     u.pathname = u.pathname
       .split("/")
-      .map(seg => decodeURIComponent(seg).trim())
-      .map(seg => encodeURIComponent(seg))
+      .map((seg) => decodeURIComponent(seg).trim())
+      .map((seg) => encodeURIComponent(seg))
       .join("/");
     return u.toString();
   } catch {
@@ -62,7 +62,7 @@ export interface ExtractedProductRegion {
  */
 export async function extractTextItemsFromPdfPage(
   pdfUrl: string,
-  pageNumber: number
+  pageNumber: number,
 ): Promise<{
   items: ExtractedTextItem[];
   pageWidth: number;
@@ -100,7 +100,7 @@ export async function extractTextItemsFromPdfPage(
  * Find the RIGHTMOST price column x-range.
  *
  * Strategy:
- * 1. Look for column headers ("PRICE", "INCL", "EXCL", "VAT") in the top 15%.
+ * 1. Look for column headers ("PRICE", "INCL", "EXCL", "VAT") across the entire page.
  *    Pick the RIGHTMOST header as the price column.
  * 2. Fallback: cluster R-prefixed prices by x-position; pick rightmost cluster.
  * 3. Last resort: x > 80% of page width.
@@ -108,11 +108,10 @@ export async function extractTextItemsFromPdfPage(
 function findPriceColumnRange(
   items: ExtractedTextItem[],
   pageWidth: number,
-  pageHeight: number
+  pageHeight: number,
 ): { minX: number; maxX: number } | null {
   // --- Strategy 1: Header-based ---
-  const headerItems = items.filter((i) => i.y / pageHeight < 0.15);
-  const priceHeaders = headerItems.filter((i) => {
+  const priceHeaders = items.filter((i) => {
     const t = i.text.trim().toUpperCase();
     return (
       t.includes("PRICE") ||
@@ -135,7 +134,9 @@ function findPriceColumnRange(
     const header = priceHeaders[0];
     const colMinX = header.x - 20;
     const colMaxX = header.x + header.width + 40;
-    console.log(`[pdfExtract] Price column from header "${header.text.trim()}" at x=${header.x.toFixed(0)}: range ${colMinX.toFixed(0)}-${colMaxX.toFixed(0)} (pageWidth=${pageWidth.toFixed(0)})`);
+    console.log(
+      `[pdfExtract] Price column from header "${header.text.trim()}" at x=${header.x.toFixed(0)}: range ${colMinX.toFixed(0)}-${colMaxX.toFixed(0)} (pageWidth=${pageWidth.toFixed(0)})`,
+    );
     return { minX: colMinX, maxX: colMaxX };
   }
 
@@ -155,16 +156,16 @@ function findPriceColumnRange(
       if (bucketItems.length >= 2) {
         const minX = Math.min(...bucketItems.map((i) => i.x)) - 10;
         const maxX = Math.max(...bucketItems.map((i) => i.x + i.width)) + 10;
-        console.log(`[pdfExtract] Price column from R-price cluster at bucket x=${bucketX}: range ${minX.toFixed(0)}-${maxX.toFixed(0)}`);
+        console.log(
+          `[pdfExtract] Price column from R-price cluster at bucket x=${bucketX}: range ${minX.toFixed(0)}-${maxX.toFixed(0)}`,
+        );
         return { minX, maxX };
       }
     }
   }
 
   // --- Strategy 3: Right-side numeric fallback ---
-  const rightNumerics = items.filter(
-    (i) => i.x / pageWidth > 0.75 && /^\d[\d\s,.]+$/.test(i.text.trim())
-  );
+  const rightNumerics = items.filter((i) => i.x / pageWidth > 0.75 && /^\d[\d\s,.]+$/.test(i.text.trim()));
   if (rightNumerics.length > 3) {
     const minX = Math.min(...rightNumerics.map((i) => i.x)) - 10;
     const maxX = Math.max(...rightNumerics.map((i) => i.x + i.width)) + 10;
@@ -182,14 +183,14 @@ function findPriceColumnRange(
 function isInPriceColumn(
   item: ExtractedTextItem,
   colRange: { minX: number; maxX: number } | null,
-  pageWidth: number
+  pageWidth: number,
 ): boolean {
   const centerX = item.x + item.width / 2;
   if (colRange) {
     return centerX >= colRange.minX && centerX <= colRange.maxX;
   }
   // No column detected → only accept items in the rightmost 20%
-  return centerX / pageWidth > 0.80;
+  return centerX / pageWidth > 0.8;
 }
 
 // ─── Currency Merging ───────────────────────────────────────────────────────
@@ -201,16 +202,13 @@ function isInPriceColumn(
 export function mergeCurrencyWithPrices(
   items: ExtractedTextItem[],
   colRange: { minX: number; maxX: number } | null,
-  pageWidth: number
+  pageWidth: number,
 ): ExtractedTextItem[] {
   const sorted = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
   const result: ExtractedTextItem[] = [];
   const skip = new Set<number>();
 
-  const avgHeight =
-    sorted.length > 0
-      ? sorted.reduce((sum, i) => sum + i.height, 0) / sorted.length
-      : 10;
+  const avgHeight = sorted.length > 0 ? sorted.reduce((sum, i) => sum + i.height, 0) / sorted.length : 10;
   const yThreshold = Math.max(avgHeight * 1.2, 8);
 
   for (let i = 0; i < sorted.length; i++) {
@@ -344,12 +342,7 @@ function buildProductLookup(products: PaletteProduct[]) {
 
 // ─── Ghost / Header Filtering ───────────────────────────────────────────────
 
-function isHeaderOrNonProductRow(
-  rowText: string,
-  _detectedPrice: number,
-  hasModel: boolean,
-  y_pct: number
-): boolean {
+function isHeaderOrNonProductRow(rowText: string, _detectedPrice: number, hasModel: boolean, y_pct: number): boolean {
   const lower = rowText.toLowerCase();
 
   // TOC detection
@@ -364,9 +357,19 @@ function isHeaderOrNonProductRow(
 
   // Non-product keywords
   const headerKeywords = [
-    "contents", "table of contents", "index", "page", "chapter",
-    "introduction", "notes", "disclaimer", "warranty", "terms",
-    "technical specifications", "installation", "maintenance",
+    "contents",
+    "table of contents",
+    "index",
+    "page",
+    "chapter",
+    "introduction",
+    "notes",
+    "disclaimer",
+    "warranty",
+    "terms",
+    "technical specifications",
+    "installation",
+    "maintenance",
   ];
   if (headerKeywords.some((kw) => lower.includes(kw))) {
     return true;
@@ -388,7 +391,7 @@ export function matchTextRowsToProducts(
   items: ExtractedTextItem[],
   pageWidth: number,
   pageHeight: number,
-  products: PaletteProduct[]
+  products: PaletteProduct[],
 ): ExtractedProductRegion[] {
   if (items.length === 0 || pageHeight === 0) return [];
 
@@ -398,8 +401,7 @@ export function matchTextRowsToProducts(
   // Merge R+digits only in rightmost column
   const mergedItems = mergeCurrencyWithPrices(items, colRange, pageWidth);
 
-  const avgHeight =
-    mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length || 10;
+  const avgHeight = mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length || 10;
 
   // ── STEP 1: Collect ALL price items, but ONLY from the rightmost column ──
 
@@ -445,9 +447,9 @@ export function matchTextRowsToProducts(
 
   console.log(
     `[pdfExtract] matchTextRows v40: ${mergedItems.length} items, ` +
-    `rightmost-column prices=${priceItems.length}, ` +
-    `colRange=${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : "none (x>80%)"}, ` +
-    `pageWidth=${pageWidth.toFixed(0)}`
+      `rightmost-column prices=${priceItems.length}, ` +
+      `colRange=${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : "none (x>80%)"}, ` +
+      `pageWidth=${pageWidth.toFixed(0)}`,
   );
 
   if (priceItems.length === 0) return [];
@@ -485,9 +487,7 @@ export function matchTextRowsToProducts(
     const y_pct = (priceItem.y / pageHeight) * 100;
 
     // Gather context from the SAME ROW (tight band)
-    const contextItems = mergedItems.filter(
-      (it) => Math.abs(it.y - priceItem.y) <= tightBand
-    );
+    const contextItems = mergedItems.filter((it) => Math.abs(it.y - priceItem.y) <= tightBand);
     const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
     const rowText = contextItems.map((it) => it.text).join(" ");
 
@@ -514,9 +514,7 @@ export function matchTextRowsToProducts(
     let matchedCode = "";
 
     for (const cand of candidates) {
-      const occurrences = contextItems.filter((i) =>
-        i.text.toLowerCase().includes(cand.code)
-      ).length;
+      const occurrences = contextItems.filter((i) => i.text.toLowerCase().includes(cand.code)).length;
       if (!assignedCodes.has(cand.code) || occurrences > 1) {
         matched = cand.product;
         matchedCode = cand.product.product_code;
@@ -555,9 +553,7 @@ export function matchTextRowsToProducts(
           .map((it) => it.text)
           .join(" ")
           .match(/\b([A-Za-z]{2,}\d+[A-Za-z0-9\-]*)\b/);
-        return codeMatch
-          ? codeMatch[1]
-          : rowText.trim().substring(0, 80) + `@${detectedPrice}`;
+        return codeMatch ? codeMatch[1] : rowText.trim().substring(0, 80) + `@${detectedPrice}`;
       })();
 
     const anchorHeight = priceItem.height;
@@ -587,8 +583,8 @@ export function matchTextRowsToProducts(
 
   console.log(
     `[pdfExtract] Row processing: ${sortedPrices.length} price items → ` +
-    `${regions.length} regions. Skipped: noPrice=${skippedCount.noPrice}, ` +
-    `ghost=${skippedCount.ghost}, outOfBounds=${skippedCount.outOfBounds}`
+      `${regions.length} regions. Skipped: noPrice=${skippedCount.noPrice}, ` +
+      `ghost=${skippedCount.ghost}, outOfBounds=${skippedCount.outOfBounds}`,
   );
 
   // Align all region icons to a single X column (rightmost)
@@ -611,7 +607,7 @@ const extractionCache = new Map<string, ExtractedProductRegion[]>();
 export async function extractAndMatchPage(
   pdfUrl: string,
   pageNumber: number,
-  products: PaletteProduct[]
+  products: PaletteProduct[],
 ): Promise<ExtractedProductRegion[]> {
   const cacheKey = `v${_extractionVersion}:${pdfUrl}:${pageNumber}:${products.length}`;
   if (extractionCache.has(cacheKey)) {
@@ -619,30 +615,18 @@ export async function extractAndMatchPage(
   }
 
   try {
-    const { items, pageWidth, pageHeight } = await extractTextItemsFromPdfPage(
-      pdfUrl,
-      pageNumber
-    );
-    console.log(
-      `[pdfExtract] Page ${pageNumber}: ${items.length} raw text items extracted`
-    );
+    const { items, pageWidth, pageHeight } = await extractTextItemsFromPdfPage(pdfUrl, pageNumber);
+    console.log(`[pdfExtract] Page ${pageNumber}: ${items.length} raw text items extracted`);
 
     const colRange = findPriceColumnRange(items, pageWidth, pageHeight);
     const mergedItems = mergeCurrencyWithPrices(items, colRange, pageWidth);
     console.log(
       `[pdfExtract] Page ${pageNumber}: ${mergedItems.length} items after merge ` +
-      `(${items.length - mergedItems.length} merged)`
+        `(${items.length - mergedItems.length} merged)`,
     );
 
-    const regions = matchTextRowsToProducts(
-      mergedItems,
-      pageWidth,
-      pageHeight,
-      products
-    );
-    console.log(
-      `[pdfExtract] Page ${pageNumber}: ${regions.length} final regions`
-    );
+    const regions = matchTextRowsToProducts(mergedItems, pageWidth, pageHeight, products);
+    console.log(`[pdfExtract] Page ${pageNumber}: ${regions.length} final regions`);
 
     extractionCache.set(cacheKey, regions);
     return regions;
