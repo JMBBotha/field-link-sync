@@ -219,62 +219,59 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
             onLoad={updateDimensions}
           />
 
-          {productsForPage(pageIdx).map((product) => {
+          {(() => {
             const dim = dimensions[pageIdx];
-            if (!dim || !product.row_bbox || !product.price_bbox) return null;
+            if (!dim) return null;
             const { w, h } = dim;
-            const rb = product.row_bbox;
-            const pb = product.price_bbox;
+            const pageProducts = productsForPage(pageIdx);
+            // Find the rightmost edge of all price bboxes on this page
+            let maxRightNorm = 0;
+            pageProducts.forEach((p) => {
+              if (!p.price_bbox) return;
+              const right = p.price_bbox.x + p.price_bbox.width;
+              if (right > maxRightNorm) maxRightNorm = right;
+            });
+            // Icons positioned ~1cm (38px) outside the rightmost column edge
+            const iconsLeftPx = maxRightNorm * w + 38;
 
-            // Use center_x for exact horizontal alignment (non-negotiable)
-            const centerXNorm = pb.center_x ?? (pb.x + pb.width / 2);
-            const priceCenterX = centerXNorm * w;
-            const priceCenterY = pb.y * h + (pb.height * h) / 2;
+            return pageProducts.map((product) => {
+              if (!product.row_bbox || !product.price_bbox) return null;
+              const rb = product.row_bbox;
+              const pb = product.price_bbox;
+              const priceCenterY = pb.y * h + (pb.height * h) / 2;
 
-            return (
-              <div key={product.id}>
-                {/* Row gradient overlay */}
-                <div
-                  className="absolute pointer-events-none"
-                  style={{
-                    top: `${rb.y * h}px`,
-                    left: `${rb.x * w}px`,
-                    width: `${rb.width * w}px`,
-                    height: `${rb.height * h}px`,
-                    background:
-                      "linear-gradient(to right, hsl(var(--primary) / 0.15), transparent, hsl(var(--primary) / 0.15))",
-                    borderRadius: "2px",
-                  }}
-                />
+              return (
+                <div key={product.id}>
+                  {/* Row gradient overlay */}
+                  <div
+                    className="absolute pointer-events-none"
+                    style={{
+                      top: `${rb.y * h}px`,
+                      left: `${rb.x * w}px`,
+                      width: `${rb.width * w}px`,
+                      height: `${rb.height * h}px`,
+                      background:
+                        "linear-gradient(to right, hsl(var(--primary) / 0.15), transparent, hsl(var(--primary) / 0.15))",
+                      borderRadius: "2px",
+                    }}
+                  />
 
-                {/* Left of price center: chevron + radio */}
-                <div
-                  className="absolute flex items-center gap-0.5 cursor-pointer opacity-80 hover:opacity-100 transition-opacity"
-                  style={{
-                    top: `${priceCenterY - 12}px`,
-                    left: `${priceCenterX - 50}px`,
-                  }}
-                  onClick={() => setSelectedProduct(product)}
-                >
-                  <ChevronRight className="h-4 w-4 text-primary" />
-                  <CircleDot className="h-5 w-5 text-primary" />
+                  {/* Vertically aligned icons outside rightmost column */}
+                  <div
+                    className="absolute flex items-center gap-[6px] cursor-pointer opacity-80 hover:opacity-100 transition-opacity"
+                    style={{
+                      top: `${priceCenterY - 12}px`,
+                      left: `${iconsLeftPx}px`,
+                    }}
+                    onClick={() => setSelectedProduct(product)}
+                  >
+                    <CircleDot className="h-5 w-5 text-primary" />
+                    <ShoppingCart className="h-5 w-5 text-primary" />
+                  </div>
                 </div>
-
-                {/* Right of price center: trolley + chevron */}
-                <div
-                  className="absolute flex items-center gap-0.5 cursor-pointer opacity-80 hover:opacity-100 transition-opacity"
-                  style={{
-                    top: `${priceCenterY - 12}px`,
-                    right: `${w - priceCenterX - 24}px`,
-                  }}
-                  onClick={() => setSelectedProduct(product)}
-                >
-                  <ShoppingCart className="h-5 w-5 text-primary" />
-                  <ChevronLeft className="h-4 w-4 text-primary" />
-                </div>
-              </div>
-            );
-          })}
+              );
+            });
+          })()}
         </div>
       ))}
 

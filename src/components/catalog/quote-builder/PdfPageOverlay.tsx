@@ -38,45 +38,37 @@ interface PdfPageOverlayProps {
   onOpenProductInfo?: (product: PaletteProduct) => void;
 }
 
-const RegionBox = memo(({ region }: { region: OverlayRegion }) => {
-  const priceCenterX = region.price_center_x || region.x_pct + region.w_pct / 2;
-  const priceCenterY = region.price_center_y || region.y_pct + region.h_pct / 2;
-
-  return (
-    <div
-      className="absolute pointer-events-none"
-      style={{
-        left: `${region.x_pct}%`,
-        top: `${region.y_pct}%`,
-        width: `${region.w_pct}%`,
-        height: `${region.h_pct}%`,
-      }}
-    >
-      {/* Radio + Cart container, shifted right of price center */}
-      <div
-        className="absolute pointer-events-auto flex items-center gap-[6px]"
-        style={{
-          left: `${priceCenterX - region.x_pct + 64}%`,
-          top: `${priceCenterY - region.y_pct - 1}%`,
-          transform: "translateY(-50%)",
-        }}
-      >
-        <Circle className="cursor-pointer text-primary" size={16} />
-        <ShoppingCart className="cursor-pointer text-primary" size={16} />
-      </div>
-    </div>
-  );
-});
-
-RegionBox.displayName = "RegionBox";
-
 const PdfPageOverlay = ({ regions }: PdfPageOverlayProps) => {
   if (regions.length === 0) return null;
+
+  // Find the rightmost edge of all regions on this page (percentage-based)
+  let maxRightPct = 0;
+  regions.forEach((r) => {
+    const right = r.x_pct + r.w_pct;
+    if (right > maxRightPct) maxRightPct = right;
+  });
+  // Position icons ~1cm outside the rightmost column edge
+  const iconsLeftPct = maxRightPct + 5;
+
   return (
     <>
-      {regions.map((region) => (
-        <RegionBox key={region.id} region={region} />
-      ))}
+      {regions.map((region) => {
+        const priceCenterY = region.price_center_y || region.y_pct + region.h_pct / 2;
+        return (
+          <div
+            key={region.id}
+            className="absolute pointer-events-auto flex items-center gap-[6px]"
+            style={{
+              left: `${iconsLeftPct}%`,
+              top: `${priceCenterY}%`,
+              transform: "translateY(-50%)",
+            }}
+          >
+            <Circle className="cursor-pointer text-primary" size={16} />
+            <ShoppingCart className="cursor-pointer text-primary" size={16} />
+          </div>
+        );
+      })}
     </>
   );
 };
