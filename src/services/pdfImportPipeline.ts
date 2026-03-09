@@ -271,6 +271,10 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
     insertedCount = 0;
 
     // Fallback: only guaranteed-safe columns
+    // Reset dedup tracking — full insert already inserted batch 1 successfully
+    // so fallback must re-insert ALL rows to avoid partial state
+    await (supabase.from("supplier_products") as any).delete().eq("supplier_id", supplierId);
+
     const basicRows = cleanRows.map((r) => ({
       supplier_id: r.supplier_id,
       product_code: r.product_code,
