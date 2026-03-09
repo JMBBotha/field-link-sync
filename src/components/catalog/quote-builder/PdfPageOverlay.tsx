@@ -50,7 +50,7 @@ const ProductPopup = ({ region }: { region: OverlayRegion }) => {
   return (
     <div
       className="absolute z-50 pointer-events-none rounded-lg border border-border bg-popover text-popover-foreground shadow-lg p-3 w-56"
-      style={{ bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 8 }}
+      style={{ bottom: "100%", right: 0, marginBottom: 8 }}
     >
       <p className="font-semibold text-sm truncate">{region.label}</p>
       <p className="text-xs text-muted-foreground mt-0.5">Code: {region.product_code}</p>
