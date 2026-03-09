@@ -290,7 +290,7 @@ function detectAllPrices(text: string): number[] {
   while ((m = re3.exec(text)) !== null) {
     const raw = m[1].replace(/\s/g, "");
     const val = parseFloat(raw);
-    if (!isNaN(val) && val >= 100 && !results.includes(val)) results.push(val);
+    if (!isNaN(val) && val >= 1 && !results.includes(val)) results.push(val);
   }
 
   // Standalone (no R): Require >= 4 digits
