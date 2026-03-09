@@ -397,7 +397,8 @@ export function matchTextRowsToProducts(
   if (items.length === 0 || pageHeight === 0) return [];
   const lookup = buildProductLookup(products);
   const { byCode, byName, byDescription } = lookup;
-  const mergedItems = mergeAdjacentPriceFragments(items, 3);
+  const colRange = findPriceColumnRange(items, pageWidth, pageHeight);
+  const mergedItems = mergeCurrencyWithPrices(items, colRange, pageWidth); // Pass colRange and pageWidth to merge
   // Adaptive Y-threshold
   const avgHeight =
     mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length || 10;
@@ -418,8 +419,7 @@ export function matchTextRowsToProducts(
       priceItems.push(item);
     }
   }
-  const colRange = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
-  console.log(`[pdfExtract] matchTextRows: ${mergedItems.length} items, yThreshold=${yThreshold.toFixed(1)}, explicit R-prices=${explicitPriceItems.length}, column-based prices=${columnPrices.length}, combined unique=${priceItems.length}, priceColumnRange=${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : 'none (using x>40% fallback)'}, pageWidth=${pageWidth.toFixed(0)}`);
+  console.log(`[pdfExtract] matchTextRows: ${mergedItems.length} items, yThreshold=${yThreshold.toFixed(1)}, explicit R-prices=${explicitPriceItems.length}, column-based prices=${columnPrices.length}, combined unique=${priceItems.length}, priceColumnRange=${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : 'none (using x>75% fallback)'}, pageWidth=${pageWidth.toFixed(0)}`);
   if (priceItems.length === 0) return [];
   // STEP 2: Create one row per individual price item (no grouping).
   // Previous grouping merged adjacent product rows into single blocks.
