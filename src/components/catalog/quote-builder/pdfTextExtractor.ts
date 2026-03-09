@@ -315,8 +315,7 @@ function findPriceColumnRange(
 }
 /**
  * COLUMN-BASED price detection: find numeric items in the price column area,
- * or fallback to right-side heuristic (x > 40% of page width).
- * Updated: Capture standalone 4+ digit numbers in rightmost if no R prefix.
+ * or fallback to right-side heuristic (x > 75% of page width if no colRange).
  */
 function findColumnPrices(
   items: ExtractedTextItem[],
@@ -341,11 +340,12 @@ function findColumnPrices(
     }
     const val = parseFloat(raw);
     if (isNaN(val) || val < 1) continue;
-    // Check if in price column or right side of page
-    const inColumn = colRange && item.x >= colRange.minX && item.x <= colRange.maxX;
-    const inRightSide = item.x / pageWidth > 0.40;
-    if (inColumn || inRightSide) {
+    // Strict: Must be in detected colRange or x > 75% (rightmost)
+    const centerX = item.x + item.width / 2;
+    const inColumn = colRange ? (centerX >= colRange.minX && centerX <= colRange.maxX) : (centerX / pageWidth > 0.75);
+    if (inColumn) {
       candidates.push(item);
+      console.log(`[pdfExtract] Detected price item: "${t}" at x=${centerX.toFixed(1)} (val=${val})`);
     }
   }
   return candidates;
