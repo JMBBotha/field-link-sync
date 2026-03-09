@@ -342,11 +342,16 @@ function buildProductLookup(products: PaletteProduct[]) {
 
 // ─── Ghost / Header Filtering ───────────────────────────────────────────────
 
-function isHeaderOrNonProductRow(rowText: string, _detectedPrice: number, hasModel: boolean, y_pct: number): boolean {
+function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasModel: boolean, y_pct: number, hasRPrefix: boolean = false): boolean {
   const lower = rowText.toLowerCase();
 
-  // TOC detection
+  // TOC detection: dotted leaders or lines ending with small page numbers
   if (/\.{4,}/.test(rowText) || /^\w+\s+\.{4,}\s*\d+$/.test(rowText)) {
+    return true;
+  }
+
+  // Lines ending with a standalone 1-3 digit number (page numbers)
+  if (/\s\d{1,3}\s*$/.test(rowText.trim()) && !hasModel && !hasRPrefix) {
     return true;
   }
 
@@ -355,7 +360,7 @@ function isHeaderOrNonProductRow(rowText: string, _detectedPrice: number, hasMod
     return true;
   }
 
-  // Non-product keywords
+  // Non-product & section keywords
   const headerKeywords = [
     "contents",
     "table of contents",
@@ -370,8 +375,18 @@ function isHeaderOrNonProductRow(rowText: string, _detectedPrice: number, hasMod
     "technical specifications",
     "installation",
     "maintenance",
+    "series",
+    "total",
+    "subtotal",
+    "sub total",
+    "note",
   ];
   if (headerKeywords.some((kw) => lower.includes(kw))) {
+    return true;
+  }
+
+  // Small standalone price without R prefix and no model code = likely ghost
+  if (detectedPrice < 100 && !hasModel && !hasRPrefix) {
     return true;
   }
 
