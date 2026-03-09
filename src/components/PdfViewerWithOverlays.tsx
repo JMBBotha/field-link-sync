@@ -243,17 +243,17 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
 
               return (
                 <div key={product.id}>
-                  {/* Row gradient overlay */}
+                  {/* Row gradient overlay with chevron arrow */}
                   <div
                     className="absolute pointer-events-none"
                     style={{
                       top: `${rb.y * h}px`,
                       left: `${rb.x * w}px`,
-                      width: `${rb.width * w}px`,
+                      width: `${Math.max(iconsLeftPx - rb.x * w - 4, 0)}px`,
                       height: `${rb.height * h}px`,
                       background:
-                        "linear-gradient(to right, hsl(var(--primary) / 0.15), transparent, hsl(var(--primary) / 0.15))",
-                      borderRadius: "2px",
+                        "linear-gradient(to right, transparent 0%, hsl(var(--muted) / 0.45) 70%, hsl(var(--muted-foreground) / 0.25) 100%)",
+                      clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%)",
                     }}
                   />
 
