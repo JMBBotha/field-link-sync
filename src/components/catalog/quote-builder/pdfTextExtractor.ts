@@ -291,11 +291,11 @@ function detectAllPrices(text: string): number[] {
     if (!isNaN(val) && val >= 1 && !results.includes(val)) results.push(val);
   }
 
-  // Standalone (no R): Require >= 4 digits
+  // Standalone (no R): Require >= 4 digits to avoid page numbers & small ghost values
   const re4 = /^(\d[\d\s,]*[.,]?\d*)$/g;
   while ((m = re4.exec(text)) !== null) {
     const digits = m[1].replace(/[\s,.]/g, "");
-    if (digits.length >= 1) {
+    if (digits.length >= 4) {
       const val = parseFloat(m[1].replace(/,/g, "").replace(/\s/g, ""));
       if (!isNaN(val) && val >= 1 && !results.includes(val)) results.push(val);
     }
