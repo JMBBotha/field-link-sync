@@ -354,7 +354,6 @@ function findColumnPrices(
  * Detect if row is a table of contents, header, or non-product row.
  * TOC rows contain dotted leaders (......) or page numbers.
  * Headers are typically in top 3% with no price or model codes.
- * Enhanced: Filter years 2020-2030, all-caps headers, blank rows, subtotals.
  */
 function isHeaderOrNonProductRow(
   rowText: string,
@@ -363,18 +362,6 @@ function isHeaderOrNonProductRow(
   y_pct: number
 ): boolean {
   const lower = rowText.toLowerCase();
-  const trimmed = rowText.trim();
- 
-  // Blank or empty rows
-  if (!trimmed || trimmed.length < 3) {
-    return true;
-  }
- 
-  // Year patterns: 4-digit 2020-2030, especially without price/model
-  if (/20(20|21|22|23|24|25|26|27|28|29|30)/.test(rowText) && !hasModel) {
-    console.log(`[pdfExtract] Ghost: Year pattern detected - ${rowText}`);
-    return true;
-  }
  
   // TOC detection: dotted leaders or excessive dots with page numbers
   if (/\.{4,}/.test(rowText) || /^\w+\s+\.{4,}\s*\d+$/.test(rowText)) {
@@ -383,18 +370,6 @@ function isHeaderOrNonProductRow(
  
   // Skip page headers/footers in top 3% without model code
   if (y_pct < 3 && !hasModel) {
-    return true;
-  }
- 
-  // All-caps headers or category titles
-  if (trimmed === trimmed.toUpperCase() && trimmed.length > 5 && !hasModel) {
-    console.log(`[pdfExtract] Ghost: All-caps header detected - ${rowText}`);
-    return true;
-  }
- 
-  // Subtotals: Contains "total", "subtotal", or aggregated terms
-  if (lower.includes("total") || lower.includes("subtotal")) {
-    console.log(`[pdfExtract] Ghost: Subtotal detected - ${rowText}`);
     return true;
   }
  
@@ -424,7 +399,7 @@ export function matchTextRowsToProducts(
   const lookup = buildProductLookup(products);
   const { byCode, byName, byDescription } = lookup;
   const colRange = findPriceColumnRange(items, pageWidth, pageHeight);
-  const mergedItems = mergeCurrencyWithPrices(items, colRange, pageWidth);
+  const mergedItems = mergeCurrencyWithPrices(items, colRange, pageWidth); // Pass colRange to restrict merging
   // Adaptive Y-threshold
   const avgHeight =
     mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length || 10;
@@ -448,18 +423,14 @@ export function matchTextRowsToProducts(
   console.log(`[pdfExtract] matchTextRows: ${mergedItems.length} items, yThreshold=${yThreshold.toFixed(1)}, explicit R-prices=${explicitPriceItems.length}, column-based prices=${columnPrices.length}, combined unique=${priceItems.length}, priceColumnRange=${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : 'none (using x>75% fallback)'}, pageWidth=${pageWidth.toFixed(0)}`);
   if (priceItems.length === 0) return [];
   // STEP 2: Create one row per individual price item (no grouping).
-  // Previous grouping merged adjacent product rows into single blocks.
-  // Each price item gets its own row to ensure one icon per priced product row.
   const sortedPrices = [...priceItems].sort((a, b) => a.y - b.y);
   const priceRows: { items: ExtractedTextItem[] }[] = sortedPrices.map(p => ({ items: [p] }));
   // Model code regex - broad enough for Samsung, Daikin, Midea
   const modelRegex = /^[A-Za-z0-9\-\/]{5,}$/;
   // STEP 3: For each price row, gather context and build a region
-  // IMPROVED MATCHING – TIGHT ROW + POSITION-AWARE + DEDUP
   const regions: ExtractedProductRegion[] = [];
   let skippedCount = { noPrice: 0, ghost: 0, outOfBounds: 0 };
   const assignedCodes = new Set<string>();
-  // Build a flat list of all product codes for candidate scanning
   const allProductCodes = [...byCode.keys()];
   for (const pRow of priceRows) {
     const rightmost = pRow.items[pRow.items.length - 1];
@@ -481,9 +452,8 @@ export function matchTextRowsToProducts(
       continue;
     }
     const rowAvgY = pRow.items.reduce((s, i) => s + i.y, 0) / pRow.items.length;
-    // Ghost filter: skip if in top 3% AND no model code nearby
     const y_pct = (rowAvgY / pageHeight) * 100;
-    // TIGHT same-row context ONLY (no aboveItems, no wide band)
+    // TIGHT same-row context ONLY
     const tightBand = avgHeight * 0.6;
     const contextItems = mergedItems.filter(
       (it) => Math.abs(it.y - rowAvgY) <= tightBand
@@ -506,11 +476,9 @@ export function matchTextRowsToProducts(
         }
       }
     }
-    // Sort leftmost first – prefer codes physically left of the price
     candidates.sort((a, b) => a.x - b.x);
     let matched: PaletteProduct | null = null;
     let matchedCode = "";
-    // Pick leftmost candidate that hasn't been assigned yet (or genuinely appears multiple times)
     for (const cand of candidates) {
       const occurrences = contextItems.filter((i) => i.text.toLowerCase().includes(cand.code)).length;
       if (!assignedCodes.has(cand.code) || occurrences > 1) {
@@ -520,7 +488,6 @@ export function matchTextRowsToProducts(
         break;
       }
     }
-    // Fallback: try byName then byDescription (loose, but still row-scoped)
     if (!matched) {
       for (const [name, product] of byName) {
         if (name.length >= 5 && matchTextLower.includes(name)) {
@@ -553,7 +520,6 @@ export function matchTextRowsToProducts(
     const anchorHeight = rightmost.height;
     const h_pct = Math.max((anchorHeight / pageHeight) * 100, 1.5);
     if (y_pct > 100 || h_pct > 5) { skippedCount.outOfBounds++; continue; }
-    // Use ACTUAL price item coordinates for icon alignment (not hardcoded)
     const actualX_pct = (rightmost.x / pageWidth) * 100;
     const actualW_pct = Math.max((rightmost.width / pageWidth) * 100, 2);
     regions.push({
@@ -578,7 +544,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 39; // v39: Filter years 2020-2030 as ghosts, all-caps headers, subtotals, blank rows
+let _extractionVersion = 39; // v39: Strict rightmost column detection, ignore left/middle R-values, enhanced Daikin/Samsung header detection.
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
@@ -598,8 +564,7 @@ export async function extractAndMatchPage(
       pageNumber
     );
     console.log(`[pdfExtract] Page ${pageNumber}: ${items.length} raw text items extracted from PDF`);
-    const colRangeForMerge = findPriceColumnRange(items, pageWidth, pageHeight);
-    const mergedItems = mergeCurrencyWithPrices(items, colRangeForMerge, pageWidth);
+    const mergedItems = mergeCurrencyWithPrices(items, findPriceColumnRange(items, pageWidth, pageHeight), pageWidth); // Pass colRange to merge
     console.log(`[pdfExtract] Page ${pageNumber}: ${mergedItems.length} items after mergeCurrencyWithPrices (${items.length - mergedItems.length} merged)`);
     // Log sample of lone "R" items and standalone numeric items for debugging
     const loneRItems = mergedItems.filter(i => i.text.trim() === "R");
