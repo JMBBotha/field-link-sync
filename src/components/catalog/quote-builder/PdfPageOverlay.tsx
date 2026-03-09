@@ -52,22 +52,22 @@ const RegionBox = memo(({ region }: { region: OverlayRegion }) => {
         height: `${region.h_pct}%`,
       }}
     >
-      {/* Radio button left of price center */}
+      {/* Radio button to the right of price center */}
       <Circle
         className="absolute pointer-events-auto cursor-pointer text-primary"
         size={16}
         style={{
-          left: `${priceCenterX - region.x_pct - 4}%`,
+          left: `${priceCenterX - region.x_pct + 4}%`,
           top: `${priceCenterY - region.y_pct - 1}%`,
-          transform: "translate(-100%, -50%)",
+          transform: "translate(0%, -50%)",
         }}
       />
-      {/* Shopping cart icon right of price center */}
+      {/* Shopping cart icon further right of radio */}
       <ShoppingCart
         className="absolute pointer-events-auto cursor-pointer text-primary"
         size={16}
         style={{
-          left: `${priceCenterX - region.x_pct + 4}%`,
+          left: `${priceCenterX - region.x_pct + 12}%`,
           top: `${priceCenterY - region.y_pct - 1}%`,
           transform: "translate(0%, -50%)",
         }}
