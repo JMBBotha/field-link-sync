@@ -93,8 +93,9 @@ export async function extractTextItemsFromPdfPage(
 /**
  * Merge lone "R" currency symbols with adjacent price digits on the same row.
  * Handles table-layout PDFs where pdfjs-dist splits "R" and "172,79" into separate items.
+ * Fixed: Only merge if "R" is in the rightmost price column.
  */
-export function mergeCurrencyWithPrices(items: ExtractedTextItem[]): ExtractedTextItem[] {
+export function mergeCurrencyWithPrices(items: ExtractedTextItem[], colRange: { minX: number; maxX: number } | null, pageWidth: number): ExtractedTextItem[] {
   // Sort by y then x
   const sorted = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
   const result: ExtractedTextItem[] = [];
@@ -110,6 +111,13 @@ export function mergeCurrencyWithPrices(items: ExtractedTextItem[]): ExtractedTe
     // Match lone "R" currency symbol (trim handles trailing whitespace)
     const trimmed = item.text.trim();
     if (trimmed === "R" || trimmed === "R ") {
+      // Strict: Only merge if "R" is in rightmost price column
+      const centerX = item.x + item.width / 2;
+      const inColumn = colRange ? (centerX >= colRange.minX) : (centerX / pageWidth > 0.75);
+      if (!inColumn) {
+        result.push(item);
+        continue;
+      }
       // Find the next item to the right on the same row
       let bestJ = -1;
       for (let j = i + 1; j < sorted.length; j++) {
@@ -273,8 +281,9 @@ function mergeAdjacentPriceFragments(
   return merged;
 }
 /**
- * Find price column x-range by locating header text like "PRICE", "EXCL", "INCL"
+ * Find price column x-range by locating header text like "PRICE", "EXCL", "INCL", "NETT PRICE", "INSTALLER PRICE"
  * near the top of the page. Returns {minX, maxX} or null.
+ * Enhanced: Daikin/Samsung-specific headers, rightmost if multiple. Fallback to price cluster if no header.
  */
 function findPriceColumnRange(
   items: ExtractedTextItem[],
@@ -285,13 +294,24 @@ function findPriceColumnRange(
   const headerItems = items.filter((i) => i.y / pageHeight < 0.15);
   const priceHeaders = headerItems.filter((i) => {
     const t = i.text.trim().toUpperCase();
-    return t.includes("PRICE") || t === "EXCL" || t.includes("EXCL VAT") || t.includes("INCL VAT");
+    return t.includes("PRICE") || t === "EXCL" || t.includes("EXCL VAT") || t.includes("INCL VAT") ||
+      t.includes("NETT PRICE") || t.includes("INSTALLER PRICE") || t.includes("WEBSHOP PRICE") || t.includes("CAMPAIGN PRICE") ||
+      t.includes("LIST PRICE") || t.includes("VAT");
   });
-  if (priceHeaders.length === 0) return null;
-  // Use the rightmost price-related header
-  priceHeaders.sort((a, b) => b.x - a.x);
-  const header = priceHeaders[0];
-  return { minX: header.x - 20, maxX: header.x + header.width + 30 };
+  if (priceHeaders.length > 0) {
+    // Use the rightmost price-related header
+    priceHeaders.sort((a, b) => b.x - a.x);
+    const header = priceHeaders[0];
+    return { minX: header.x - 20, maxX: header.x + header.width + 30 };
+  }
+  // Fallback: Cluster numeric items on right side
+  const rightNumerics = items.filter(i => i.x / pageWidth > 0.7 && /^\d[\d\s,.]+$/.test(i.text.trim()));
+  if (rightNumerics.length > 5) { // Enough to indicate a column
+    const minX = Math.min(...rightNumerics.map(i => i.x));
+    const maxX = Math.max(...rightNumerics.map(i => i.x + i.width));
+    return { minX: minX - 10, maxX: maxX + 10 };
+  }
+  return null; // No column detected
 }
 /**
  * COLUMN-BASED price detection: find numeric items in the price column area,
@@ -403,7 +423,8 @@ export function matchTextRowsToProducts(
   if (items.length === 0 || pageHeight === 0) return [];
   const lookup = buildProductLookup(products);
   const { byCode, byName, byDescription } = lookup;
-  const mergedItems = mergeAdjacentPriceFragments(items, 3);
+  const colRange = findPriceColumnRange(items, pageWidth, pageHeight);
+  const mergedItems = mergeCurrencyWithPrices(items, colRange, pageWidth);
   // Adaptive Y-threshold
   const avgHeight =
     mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length || 10;
@@ -424,8 +445,7 @@ export function matchTextRowsToProducts(
       priceItems.push(item);
     }
   }
-  const colRange = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
-  console.log(`[pdfExtract] matchTextRows: ${mergedItems.length} items, yThreshold=${yThreshold.toFixed(1)}, explicit R-prices=${explicitPriceItems.length}, column-based prices=${columnPrices.length}, combined unique=${priceItems.length}, priceColumnRange=${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : 'none (using x>40% fallback)'}, pageWidth=${pageWidth.toFixed(0)}`);
+  console.log(`[pdfExtract] matchTextRows: ${mergedItems.length} items, yThreshold=${yThreshold.toFixed(1)}, explicit R-prices=${explicitPriceItems.length}, column-based prices=${columnPrices.length}, combined unique=${priceItems.length}, priceColumnRange=${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : 'none (using x>75% fallback)'}, pageWidth=${pageWidth.toFixed(0)}`);
   if (priceItems.length === 0) return [];
   // STEP 2: Create one row per individual price item (no grouping).
   // Previous grouping merged adjacent product rows into single blocks.
@@ -578,7 +598,8 @@ export async function extractAndMatchPage(
       pageNumber
     );
     console.log(`[pdfExtract] Page ${pageNumber}: ${items.length} raw text items extracted from PDF`);
-    const mergedItems = mergeCurrencyWithPrices(items);
+    const colRangeForMerge = findPriceColumnRange(items, pageWidth, pageHeight);
+    const mergedItems = mergeCurrencyWithPrices(items, colRangeForMerge, pageWidth);
     console.log(`[pdfExtract] Page ${pageNumber}: ${mergedItems.length} items after mergeCurrencyWithPrices (${items.length - mergedItems.length} merged)`);
     // Log sample of lone "R" items and standalone numeric items for debugging
     const loneRItems = mergedItems.filter(i => i.text.trim() === "R");
