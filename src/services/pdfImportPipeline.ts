@@ -240,7 +240,19 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
   }));
 
   // Final filter: remove any rows with empty product_code
-  const cleanRows = rows.filter((r) => r.product_code && r.product_code !== "UNKNOWN" && r.product_code.length >= VALIDATION_RULES.minProductCodeLength);
+  const filteredRows = rows.filter((r) => r.product_code && r.product_code !== "UNKNOWN" && r.product_code.length >= VALIDATION_RULES.minProductCodeLength);
+
+  // Deduplicate product_codes within this import — append -DUP suffix
+  const codeCount = new Map<string, number>();
+  const cleanRows = filteredRows.map((r) => {
+    const key = r.product_code.toLowerCase();
+    const count = codeCount.get(key) || 0;
+    codeCount.set(key, count + 1);
+    if (count > 0) {
+      return { ...r, product_code: `${r.product_code}-DUP${count}` };
+    }
+    return r;
+  });
 
   let insertedCount = 0;
   try {
