@@ -228,7 +228,7 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
     btu_rating: p.btu_rating || null,
     pipe_size: p.pipe_size || null,
     refrigerant_type: p.refrigerant_type || null,
-    phase: p.phase || null,
+    phase: (p.phase === 'single' || p.phase === 'three') ? p.phase : null,
     kw: p.kw || null,
     sold_in_length: p.sold_in_length || false,
     unit_length: p.unit_length || null,
@@ -271,6 +271,10 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
     insertedCount = 0;
 
     // Fallback: only guaranteed-safe columns
+    // Reset dedup tracking — full insert already inserted batch 1 successfully
+    // so fallback must re-insert ALL rows to avoid partial state
+    await (supabase.from("supplier_products") as any).delete().eq("supplier_id", supplierId);
+
     const basicRows = cleanRows.map((r) => ({
       supplier_id: r.supplier_id,
       product_code: r.product_code,
