@@ -598,7 +598,8 @@ export async function extractAndMatchPage(
       pageNumber
     );
     console.log(`[pdfExtract] Page ${pageNumber}: ${items.length} raw text items extracted from PDF`);
-    const mergedItems = mergeCurrencyWithPrices(items);
+    const colRangeForMerge = findPriceColumnRange(items, pageWidth, pageHeight);
+    const mergedItems = mergeCurrencyWithPrices(items, colRangeForMerge, pageWidth);
     console.log(`[pdfExtract] Page ${pageNumber}: ${mergedItems.length} items after mergeCurrencyWithPrices (${items.length - mergedItems.length} merged)`);
     // Log sample of lone "R" items and standalone numeric items for debugging
     const loneRItems = mergedItems.filter(i => i.text.trim() === "R");
