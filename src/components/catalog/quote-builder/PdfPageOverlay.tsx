@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { useState } from "react";
 import { ShoppingCart, Circle } from "lucide-react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
@@ -38,16 +38,62 @@ interface PdfPageOverlayProps {
   onOpenProductInfo?: (product: PaletteProduct) => void;
 }
 
+const safeNum = (v: number | null | undefined): number =>
+  v != null && isFinite(v) ? v : 0;
+
+const ProductPopup = ({ region }: { region: OverlayRegion }) => {
+  const p = region.product;
+  const costExVat = safeNum(p?.cost_excl_vat);
+  const sellingPrice = safeNum(p?.selling_price);
+  const markup = costExVat > 0 ? Math.round((sellingPrice / costExVat - 1) * 100) : safeNum(p?.default_markup_percent);
+
+  return (
+    <div
+      className="absolute z-50 pointer-events-none rounded-lg border border-border bg-popover text-popover-foreground shadow-lg p-3 w-56"
+      style={{ bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 8 }}
+    >
+      <p className="font-semibold text-sm truncate">{region.label}</p>
+      <p className="text-xs text-muted-foreground mt-0.5">Code: {region.product_code}</p>
+      <div className="mt-2 space-y-1 text-xs">
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Cost (ex-VAT)</span>
+          <span className="font-medium">R {costExVat.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Selling Price</span>
+          <span className="font-medium">R {sellingPrice.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Markup</span>
+          <span className="font-medium">{markup}%</span>
+        </div>
+        {region.detected_price != null && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">PDF Price</span>
+            <span className="font-medium">R {safeNum(region.detected_price).toFixed(2)}</span>
+          </div>
+        )}
+        {p?.description && (
+          <p className="text-muted-foreground pt-1 border-t border-border mt-1 line-clamp-2">
+            {p.description}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const PdfPageOverlay = ({ regions }: PdfPageOverlayProps) => {
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
   if (regions.length === 0) return null;
 
-  // Find the rightmost edge of all regions on this page (percentage-based)
+  // Find the rightmost edge of all regions on this page
   let maxRightPct = 0;
   regions.forEach((r) => {
     const right = r.x_pct + r.w_pct;
     if (right > maxRightPct) maxRightPct = right;
   });
-  // Position icons just outside the rightmost column, clamped to stay visible
   const iconsLeftPct = Math.min(maxRightPct + 2, 95);
 
   return (
@@ -65,7 +111,14 @@ const PdfPageOverlay = ({ regions }: PdfPageOverlayProps) => {
             }}
           >
             <Circle className="cursor-pointer text-primary" size={16} />
-            <ShoppingCart className="cursor-pointer text-primary" size={16} />
+            <div
+              className="relative"
+              onMouseEnter={() => setHoveredId(region.id)}
+              onMouseLeave={() => setHoveredId(null)}
+            >
+              <ShoppingCart className="cursor-pointer text-primary" size={16} />
+              {hoveredId === region.id && <ProductPopup region={region} />}
+            </div>
           </div>
         );
       })}
