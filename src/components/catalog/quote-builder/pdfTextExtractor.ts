@@ -295,7 +295,7 @@ function detectAllPrices(text: string): number[] {
   const re4 = /^(\d[\d\s,]*[.,]?\d*)$/g;
   while ((m = re4.exec(text)) !== null) {
     const digits = m[1].replace(/[\s,.]/g, "");
-    if (digits.length >= 4) {
+    if (digits.length >= 1) {
       const val = parseFloat(m[1].replace(/,/g, "").replace(/\s/g, ""));
       if (!isNaN(val) && val >= 1 && !results.includes(val)) results.push(val);
     }
