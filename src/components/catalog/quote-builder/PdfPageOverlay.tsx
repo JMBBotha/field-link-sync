@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShoppingCart, Circle } from "lucide-react";
+import { ShoppingCart, Circle, Info } from "lucide-react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
