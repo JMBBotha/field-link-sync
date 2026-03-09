@@ -446,9 +446,9 @@ async function parsePDFWithFullPipeline(
       sold_in_length: row.sold_in_length || false,
       unit_length: row.unit_length || null,
       price_per_metre: row.price_per_metre || null,
-      row_bbox: row.row_bbox || null,
-      price_bbox: row.price_bbox || null,
-      page_number: row.page_number || null,
+      row_bbox: row.row_bbox ?? null,
+      price_bbox: row.price_bbox ?? null,
+      page_number: row.page_number ?? null,
     };
   });
 
