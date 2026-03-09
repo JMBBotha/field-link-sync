@@ -228,7 +228,7 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
     btu_rating: p.btu_rating || null,
     pipe_size: p.pipe_size || null,
     refrigerant_type: p.refrigerant_type || null,
-    phase: p.phase || null,
+    phase: (p.phase === 'single' || p.phase === 'three') ? p.phase : null,
     kw: p.kw || null,
     sold_in_length: p.sold_in_length || false,
     unit_length: p.unit_length || null,
