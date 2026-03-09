@@ -231,8 +231,9 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
               const right = p.price_bbox.x + p.price_bbox.width;
               if (right > maxRightNorm) maxRightNorm = right;
             });
-            // Icons positioned ~1cm (38px) outside the rightmost column edge
-            const iconsLeftPx = maxRightNorm * w + 38;
+            // Icons positioned 8px outside the rightmost column, clamped to stay on-page
+            const iconGroupWidth = 50; // approx width of both icons + gap
+            const iconsLeftPx = Math.min(maxRightNorm * w + 8, w - iconGroupWidth - 4);
 
             return pageProducts.map((product) => {
               if (!product.row_bbox || !product.price_bbox) return null;

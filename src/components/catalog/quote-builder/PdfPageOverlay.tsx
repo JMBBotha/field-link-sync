@@ -47,8 +47,8 @@ const PdfPageOverlay = ({ regions }: PdfPageOverlayProps) => {
     const right = r.x_pct + r.w_pct;
     if (right > maxRightPct) maxRightPct = right;
   });
-  // Position icons ~1cm outside the rightmost column edge
-  const iconsLeftPct = maxRightPct + 5;
+  // Position icons just outside the rightmost column, clamped to stay visible
+  const iconsLeftPct = Math.min(maxRightPct + 2, 95);
 
   return (
     <>
