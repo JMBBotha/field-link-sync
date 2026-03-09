@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { ShoppingCart, Circle } from "lucide-react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
@@ -83,45 +83,83 @@ const ProductPopup = ({ region }: { region: OverlayRegion }) => {
   );
 };
 
+const RegionBox = memo(({ region, hoveredId, setHoveredId }: {
+  region: OverlayRegion;
+  hoveredId: string | null;
+  setHoveredId: (id: string | null) => void;
+}) => {
+  const priceCenterX = region.price_center_x || region.x_pct + region.w_pct / 2;
+  const priceCenterY = region.price_center_y || region.y_pct + region.h_pct / 2;
+  const isHovered = hoveredId === region.id;
+
+  return (
+    <div
+      className="absolute inset-0 pointer-events-auto"
+      style={{ left: `${region.x_pct}%`, top: `${region.y_pct}%`, width: `${region.w_pct}%`, height: `${region.h_pct}%` }}
+      onMouseEnter={() => setHoveredId(region.id)}
+      onMouseLeave={() => setHoveredId(null)}
+    >
+      {/* Gradient row highlight with chevron */}
+      <div
+        className="absolute inset-0 rounded-sm transition-opacity duration-150"
+        style={{
+          background: "linear-gradient(to right, hsl(var(--primary) / 0.12), hsl(var(--muted) / 0.08))",
+          opacity: isHovered ? 1 : 0,
+        }}
+      />
+      {isHovered && (
+        <span
+          className="absolute text-xs font-bold text-primary select-none"
+          style={{ right: "-1.5%", top: "50%", transform: "translateY(-50%)" }}
+        >
+          &gt;&gt;&gt;
+        </span>
+      )}
+
+      {/* Radio button icon */}
+      <Circle
+        className="absolute text-primary"
+        style={{
+          left: `calc(${priceCenterX - region.x_pct}% + 2.5%)`,
+          top: `${priceCenterY - region.y_pct}%`,
+          transform: "translate(-50%, -50%)",
+        }}
+        size={16}
+      />
+
+      {/* Shopping cart icon with popup */}
+      <div
+        className="absolute"
+        style={{
+          left: `calc(${priceCenterX - region.x_pct}% + 5.5%)`,
+          top: `${priceCenterY - region.y_pct}%`,
+          transform: "translate(-50%, -50%)",
+        }}
+      >
+        <ShoppingCart className="text-primary cursor-pointer" size={16} />
+        {isHovered && <ProductPopup region={region} />}
+      </div>
+    </div>
+  );
+});
+
+RegionBox.displayName = "RegionBox";
+
 const PdfPageOverlay = ({ regions }: PdfPageOverlayProps) => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   if (regions.length === 0) return null;
 
-  // Find the rightmost edge of all regions on this page
-  let maxRightPct = 0;
-  regions.forEach((r) => {
-    const right = r.x_pct + r.w_pct;
-    if (right > maxRightPct) maxRightPct = right;
-  });
-  const iconsLeftPct = Math.min(maxRightPct + 2, 95);
-
   return (
     <>
-      {regions.map((region) => {
-        const priceCenterY = region.price_center_y || region.y_pct + region.h_pct / 2;
-        return (
-          <div
-            key={region.id}
-            className="absolute pointer-events-auto flex items-center gap-[6px]"
-            style={{
-              left: `${iconsLeftPct}%`,
-              top: `${priceCenterY}%`,
-              transform: "translateY(-50%)",
-            }}
-          >
-            <Circle className="cursor-pointer text-primary" size={16} />
-            <div
-              className="relative"
-              onMouseEnter={() => setHoveredId(region.id)}
-              onMouseLeave={() => setHoveredId(null)}
-            >
-              <ShoppingCart className="cursor-pointer text-primary" size={16} />
-              {hoveredId === region.id && <ProductPopup region={region} />}
-            </div>
-          </div>
-        );
-      })}
+      {regions.map((region) => (
+        <RegionBox
+          key={region.id}
+          region={region}
+          hoveredId={hoveredId}
+          setHoveredId={setHoveredId}
+        />
+      ))}
     </>
   );
 };
