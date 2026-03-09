@@ -572,7 +572,6 @@ export async function extractAndMatchPage(
       pageNumber
     );
     console.log(`[pdfExtract] Page ${pageNumber}: ${items.length} raw text items extracted from PDF`);
-    // Detect price column range early for mergeCurrencyWithPrices
     const colRangeForMerge = findPriceColumnRange(items, pageWidth, pageHeight);
     const mergedItems = mergeCurrencyWithPrices(items, colRangeForMerge, pageWidth);
     console.log(`[pdfExtract] Page ${pageNumber}: ${mergedItems.length} items after mergeCurrencyWithPrices (${items.length - mergedItems.length} merged)`);
@@ -586,45 +585,8 @@ export async function extractAndMatchPage(
     if (numericItems.length > 0 && numericItems.length <= 10) {
       numericItems.forEach(n => console.log(`[pdfExtract] Numeric at x=${n.x.toFixed(1)} y=${n.y.toFixed(1)} text="${n.text.trim()}"`));
     }
-    let regions = matchTextRowsToProducts(mergedItems, pageWidth, pageHeight, products);
-    // New dedup: Sort by y_pct, if within 1.5%, keep priced one
-    regions = regions.sort((a, b) => a.y_pct - b.y_pct);
-    const deduped = [];
-    let ghostsRemoved = 0;
-    let overlapsFixed = 0;
-    for (let i = 0; i < regions.length; i++) {
-      const current = regions[i];
-      let isDuplicate = false;
-      for (let j = 0; j < deduped.length; j++) {
-        const existing = deduped[j];
-        if (Math.abs(current.y_pct - existing.y_pct) < 1.5) {
-          // Keep the one with price (detected_price > 0)
-          if (current.detected_price > 0 && existing.detected_price <= 0) {
-            deduped[j] = current;
-          }
-          isDuplicate = true;
-          ghostsRemoved++;
-          console.log(`[pdfExtract] Dedup removed ghost/duplicate at y_pct=${current.y_pct.toFixed(2)}`);
-          break;
-        }
-      }
-      if (!isDuplicate) {
-        deduped.push(current);
-      }
-    }
-    regions = deduped;
-    // Anti-overlap: Clamp h_pct to not extend past next y_pct, with 0.2% gap
-    for (let i = 0; i < regions.length - 1; i++) {
-      const current = regions[i];
-      const nextY = regions[i + 1].y_pct;
-      const maxH = nextY - current.y_pct - 0.2; // 0.2% gap
-      if (current.h_pct > maxH) {
-        current.h_pct = maxH;
-        overlapsFixed++;
-        console.log(`[pdfExtract] Fixed overlap at y_pct=${current.y_pct.toFixed(2)}, clamped h_pct to ${maxH.toFixed(2)}`);
-      }
-    }
-    console.log(`[pdfExtract] Page ${pageNumber}: ${regions.length} final regions after dedup. Ghosts removed: ${ghostsRemoved}, Overlaps fixed: ${overlapsFixed}`);
+    const regions = matchTextRowsToProducts(mergedItems, pageWidth, pageHeight, products);
+    console.log(`[pdfExtract] Page ${pageNumber}: ${regions.length} final regions`);
     extractionCache.set(cacheKey, regions);
     return regions;
   } catch (err) {
