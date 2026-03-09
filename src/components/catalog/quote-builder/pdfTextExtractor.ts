@@ -93,8 +93,9 @@ export async function extractTextItemsFromPdfPage(
 /**
  * Merge lone "R" currency symbols with adjacent price digits on the same row.
  * Handles table-layout PDFs where pdfjs-dist splits "R" and "172,79" into separate items.
+ * Fixed: Only merge if "R" is in the rightmost price column.
  */
-export function mergeCurrencyWithPrices(items: ExtractedTextItem[]): ExtractedTextItem[] {
+export function mergeCurrencyWithPrices(items: ExtractedTextItem[], colRange: { minX: number; maxX: number } | null, pageWidth: number): ExtractedTextItem[] {
   // Sort by y then x
   const sorted = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
   const result: ExtractedTextItem[] = [];
@@ -110,6 +111,13 @@ export function mergeCurrencyWithPrices(items: ExtractedTextItem[]): ExtractedTe
     // Match lone "R" currency symbol (trim handles trailing whitespace)
     const trimmed = item.text.trim();
     if (trimmed === "R" || trimmed === "R ") {
+      // Strict: Only merge if "R" is in rightmost price column
+      const centerX = item.x + item.width / 2;
+      const inColumn = colRange ? (centerX >= colRange.minX) : (centerX / pageWidth > 0.75);
+      if (!inColumn) {
+        result.push(item);
+        continue;
+      }
       // Find the next item to the right on the same row
       let bestJ = -1;
       for (let j = i + 1; j < sorted.length; j++) {
