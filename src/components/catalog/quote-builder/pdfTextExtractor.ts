@@ -291,11 +291,11 @@ function detectAllPrices(text: string): number[] {
     if (!isNaN(val) && val >= 1 && !results.includes(val)) results.push(val);
   }
 
-  // Standalone (no R): Require >= 4 digits
+  // Standalone (no R): Require >= 4 digits to avoid page numbers & small ghost values
   const re4 = /^(\d[\d\s,]*[.,]?\d*)$/g;
   while ((m = re4.exec(text)) !== null) {
     const digits = m[1].replace(/[\s,.]/g, "");
-    if (digits.length >= 1) {
+    if (digits.length >= 4) {
       const val = parseFloat(m[1].replace(/,/g, "").replace(/\s/g, ""));
       if (!isNaN(val) && val >= 1 && !results.includes(val)) results.push(val);
     }
@@ -342,11 +342,16 @@ function buildProductLookup(products: PaletteProduct[]) {
 
 // ─── Ghost / Header Filtering ───────────────────────────────────────────────
 
-function isHeaderOrNonProductRow(rowText: string, _detectedPrice: number, hasModel: boolean, y_pct: number): boolean {
+function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasModel: boolean, y_pct: number, hasRPrefix: boolean = false): boolean {
   const lower = rowText.toLowerCase();
 
-  // TOC detection
+  // TOC detection: dotted leaders or lines ending with small page numbers
   if (/\.{4,}/.test(rowText) || /^\w+\s+\.{4,}\s*\d+$/.test(rowText)) {
+    return true;
+  }
+
+  // Lines ending with a standalone 1-3 digit number (page numbers)
+  if (/\s\d{1,3}\s*$/.test(rowText.trim()) && !hasModel && !hasRPrefix) {
     return true;
   }
 
@@ -355,7 +360,7 @@ function isHeaderOrNonProductRow(rowText: string, _detectedPrice: number, hasMod
     return true;
   }
 
-  // Non-product keywords
+  // Non-product & section keywords
   const headerKeywords = [
     "contents",
     "table of contents",
@@ -370,8 +375,18 @@ function isHeaderOrNonProductRow(rowText: string, _detectedPrice: number, hasMod
     "technical specifications",
     "installation",
     "maintenance",
+    "series",
+    "total",
+    "subtotal",
+    "sub total",
+    "note",
   ];
   if (headerKeywords.some((kw) => lower.includes(kw))) {
+    return true;
+  }
+
+  // Small standalone price without R prefix and no model code = likely ghost
+  if (detectedPrice < 100 && !hasModel && !hasRPrefix) {
     return true;
   }
 
@@ -490,9 +505,11 @@ export function matchTextRowsToProducts(
     const contextItems = mergedItems.filter((it) => Math.abs(it.y - priceItem.y) <= tightBand);
     const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
     const rowText = contextItems.map((it) => it.text).join(" ");
+    const hasRPrefix = /R\s*\d/.test(rowText);
 
-    if (isHeaderOrNonProductRow(rowText, detectedPrice, hasModel, y_pct)) {
+    if (isHeaderOrNonProductRow(rowText, detectedPrice, hasModel, y_pct, hasRPrefix)) {
       skippedCount.ghost++;
+      console.log(`[pdfExtract] Skipped ghost: "${rowText.trim().substring(0, 120)}" price: ${detectedPrice}, y_pct: ${y_pct.toFixed(1)}, hasModel: ${hasModel}, hasR: ${hasRPrefix}`);
       continue;
     }
 
