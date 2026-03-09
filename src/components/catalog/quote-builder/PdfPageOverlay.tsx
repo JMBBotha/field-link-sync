@@ -56,7 +56,7 @@ const RegionBox = memo(({ region }: { region: OverlayRegion }) => {
       <div
         className="absolute pointer-events-auto flex items-center gap-[6px]"
         style={{
-          left: `${priceCenterX - region.x_pct + 28}%`,
+          left: `${priceCenterX - region.x_pct + 40}%`,
           top: `${priceCenterY - region.y_pct - 1}%`,
           transform: "translateY(-50%)",
         }}
