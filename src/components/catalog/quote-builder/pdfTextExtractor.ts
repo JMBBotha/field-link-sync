@@ -445,8 +445,7 @@ export function matchTextRowsToProducts(
       priceItems.push(item);
     }
   }
-  const colRange = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
-  console.log(`[pdfExtract] matchTextRows: ${mergedItems.length} items, yThreshold=${yThreshold.toFixed(1)}, explicit R-prices=${explicitPriceItems.length}, column-based prices=${columnPrices.length}, combined unique=${priceItems.length}, priceColumnRange=${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : 'none (using x>40% fallback)'}, pageWidth=${pageWidth.toFixed(0)}`);
+  console.log(`[pdfExtract] matchTextRows: ${mergedItems.length} items, yThreshold=${yThreshold.toFixed(1)}, explicit R-prices=${explicitPriceItems.length}, column-based prices=${columnPrices.length}, combined unique=${priceItems.length}, priceColumnRange=${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : 'none (using x>75% fallback)'}, pageWidth=${pageWidth.toFixed(0)}`);
   if (priceItems.length === 0) return [];
   // STEP 2: Create one row per individual price item (no grouping).
   // Previous grouping merged adjacent product rows into single blocks.
