@@ -505,9 +505,11 @@ export function matchTextRowsToProducts(
     const contextItems = mergedItems.filter((it) => Math.abs(it.y - priceItem.y) <= tightBand);
     const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
     const rowText = contextItems.map((it) => it.text).join(" ");
+    const hasRPrefix = /R\s*\d/.test(rowText);
 
-    if (isHeaderOrNonProductRow(rowText, detectedPrice, hasModel, y_pct)) {
+    if (isHeaderOrNonProductRow(rowText, detectedPrice, hasModel, y_pct, hasRPrefix)) {
       skippedCount.ghost++;
+      console.log(`[pdfExtract] Skipped ghost: "${rowText.trim().substring(0, 120)}" price: ${detectedPrice}, y_pct: ${y_pct.toFixed(1)}, hasModel: ${hasModel}, hasR: ${hasRPrefix}`);
       continue;
     }
 
