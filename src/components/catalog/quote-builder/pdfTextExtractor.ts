@@ -547,7 +547,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 37; // v37: Stricter dedup, anti-overlap, enhanced ghost filtering, standalone 4+ digit prices, detailed logging
+let _extractionVersion = 38; // v38: Fix overly aggressive ghost filter that killed pages 1-3
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
