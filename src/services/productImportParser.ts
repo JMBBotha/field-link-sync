@@ -312,10 +312,9 @@ async function parsePDFWithFullPipeline(
       }
 
       for (const p of (data?.products || [])) {
-        // Use the smart-selected cost_price from Grok (already picked best column)
-        const price = typeof p.cost_price === "number" && p.cost_price > 0
-          ? p.cost_price
-          : 0;
+        // Use parsePrice to handle SA number formats
+        const rawPriceStr = p.cost_price ?? p.price ?? "";
+        const price = parsePrice(rawPriceStr);
 
         // Track selected column and VAT detection from first product
         if (!selectedPriceColumn && p.selected_price_column) {
@@ -323,6 +322,9 @@ async function parsePDFWithFullPipeline(
           grokDetectedInclVat = !!p.price_is_incl_vat;
           console.log(`[Import] Grok selected column: "${selectedPriceColumn}", isInclVat: ${grokDetectedInclVat}`);
         }
+
+        // FIX 4: Per-page debug logging
+        console.log(`[Import:Debug] Page ${p.page_number ?? "?"} | "${p.product_code || p.sku || "?"}" | raw="${rawPriceStr}" → parsed=${price}`);
 
         if (price > 0) {
           rawRows.push({
@@ -336,7 +338,7 @@ async function parsePDFWithFullPipeline(
             short_name: p.short_name || null, brand: p.brand || null,
             product_category: p.product_category || null,
             sold_in_length: p.sold_in_length || false, unit_length: p.unit_length || null,
-            price_per_metre: p.price_per_metre || null,
+            price_per_metre: parsePrice(p.price_per_metre) || null,
             row_bbox: p.row_bbox ?? null,
             price_bbox: p.price_bbox ?? null,
             page_number: p.page_number ?? null,
