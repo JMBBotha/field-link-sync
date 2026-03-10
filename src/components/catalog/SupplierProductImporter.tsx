@@ -219,10 +219,18 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
     try {
       console.log("[Stored PDF] Loading pdfjs-dist...");
       const pdfjsLib = await loadPdfJs();
-      console.log("[Stored PDF] Fetching PDF from:", storedPdfUrl);
+      console.log("[Stored PDF] Fetching PDF as ArrayBuffer from:", storedPdfUrl);
+
+      // Fetch PDF as ArrayBuffer first to avoid CORS issues with pdfjs url loading
+      const fetchResp = await fetch(storedPdfUrl);
+      if (!fetchResp.ok) {
+        throw new Error(`Failed to fetch stored PDF: HTTP ${fetchResp.status} ${fetchResp.statusText}`);
+      }
+      const arrayBuffer = await fetchResp.arrayBuffer();
+      console.log(`[Stored PDF] Downloaded ${arrayBuffer.byteLength} bytes`);
 
       const pdf = await pdfjsLib.getDocument({
-        url: storedPdfUrl,
+        data: arrayBuffer,
         cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/",
         cMapPacked: true,
       }).promise;
