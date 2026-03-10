@@ -229,31 +229,36 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
 
     const processChunk = async (chunkText: string, chunkIdx: number): Promise<{ cols: string[]; products: ParsedProduct[] }> => {
       const t0 = Date.now();
-      let apiUrl: string, apiKey: string, model: string, useXai: boolean;
-
+      
+      // Try xAI first, but with a short timeout to avoid wasting time on 403s
+      let resp: Response | null = null;
+      
       if (xaiApiKey) {
-        apiUrl = "https://api.x.ai/v1/chat/completions";
-        apiKey = xaiApiKey;
-        model = "grok-3-fast";
-        useXai = true;
-      } else {
-        apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
-        apiKey = lovableApiKey!;
-        model = "google/gemini-2.5-flash";
-        useXai = false;
+        try {
+          const xaiController = new AbortController();
+          const xaiTimeout = setTimeout(() => xaiController.abort(), 15000); // 15s max for xAI attempt
+          resp = await callAI(chunkText, "https://api.x.ai/v1/chat/completions", xaiApiKey, "grok-3-fast", true);
+          clearTimeout(xaiTimeout);
+          
+          if (!resp.ok) {
+            console.warn(`[Grok] Chunk ${chunkIdx}: xAI failed (${resp.status}), falling back to Lovable AI`);
+            await resp.text(); // consume body
+            resp = null;
+          }
+        } catch (xaiErr) {
+          console.warn(`[Grok] Chunk ${chunkIdx}: xAI error, falling back to Lovable AI`);
+          resp = null;
+        }
       }
-
-      let resp = await callAI(chunkText, apiUrl, apiKey, model, useXai);
-
-      if (!resp.ok && useXai && lovableApiKey) {
-        console.warn(`[Grok] Chunk ${chunkIdx}: xAI failed (${resp.status}), falling back`);
-        await resp.text(); // consume body
+      
+      // Fallback to Lovable AI gateway
+      if (!resp && lovableApiKey) {
         resp = await callAI(chunkText, "https://ai.gateway.lovable.dev/v1/chat/completions", lovableApiKey, "google/gemini-2.5-flash", false);
       }
 
-      if (!resp.ok) {
-        const errText = await resp.text();
-        console.error(`[Grok] Chunk ${chunkIdx} failed:`, resp.status, errText.substring(0, 300));
+      if (!resp || !resp.ok) {
+        const errText = resp ? await resp.text() : "No API key available";
+        console.error(`[Grok] Chunk ${chunkIdx} failed:`, resp?.status, typeof errText === 'string' ? errText.substring(0, 300) : '');
         return { cols: [], products: [] };
       }
 
