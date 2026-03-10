@@ -184,6 +184,8 @@ Deno.serve(async (req) => {
     const xaiApiKey = Deno.env.get("XAI_API_KEY");
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
 
+    console.log("[Grok] API keys loaded:", { hasXaiKey: !!xaiApiKey, xaiKeyPrefix: xaiApiKey ? xaiApiKey.substring(0, 8) + "..." : "none", hasLovableKey: !!lovableApiKey });
+
     if (!xaiApiKey && !lovableApiKey) {
       return new Response(JSON.stringify({ error: "No API key configured" }), {
         status: 500,
