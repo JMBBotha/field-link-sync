@@ -1,9 +1,7 @@
-import { memo, useState } from "react";
-import { ShoppingCart, Circle, Info } from "lucide-react";
+import { memo } from "react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
-
 export interface OverlayRegion {
   id: string;
   x_pct: number;
@@ -16,10 +14,7 @@ export interface OverlayRegion {
   has_price?: boolean;
   detected_price?: number | null;
   matched?: boolean;
-  price_center_x?: number;
-  price_center_y?: number;
 }
-
 interface PdfPageOverlayProps {
   regions: OverlayRegion[];
   baskets: Basket[];
@@ -37,137 +32,27 @@ interface PdfPageOverlayProps {
   pdfSelection?: PdfSelectionHandlers;
   onOpenProductInfo?: (product: PaletteProduct) => void;
 }
-
-const safeNum = (v: number | null | undefined): number =>
-  v != null && isFinite(v) ? v : 0;
-
-const RegionBox = memo(({ region, iconsLeftPct, chevronTipPct }: { region: OverlayRegion; iconsLeftPct: number; chevronTipPct: number }) => {
-  const priceCenterY = region.price_center_y || region.y_pct + region.h_pct / 2;
-  const rowTop = region.y_pct;
-  const rowHeight = region.h_pct;
-  const rowLeft = region.x_pct;
-  const gradientWidth = Math.max(chevronTipPct - rowLeft, 0);
-
-  const [showPopup, setShowPopup] = useState(false);
-  const [popupError] = useState<string | null>(null);
-
-  const product = region.product;
-  const costExVat = safeNum(product?.cost_excl_vat);
-  const sellingPrice = safeNum(product?.selling_price);
-  const markup = costExVat > 0
-    ? Math.round((sellingPrice / costExVat - 1) * 100)
-    : safeNum(product?.default_markup_percent);
-
-  return (
-    <div key={region.id}>
-      {/* Gradient row highlight with chevron arrow end + info icon */}
-      <div
-        className="absolute pointer-events-auto cursor-pointer flex items-center justify-end pr-4"
-        style={{
-          left: `${rowLeft}%`,
-          top: `${rowTop}%`,
-          width: `${gradientWidth}%`,
-          height: `${rowHeight}%`,
-          background:
-            "linear-gradient(to right, transparent 0%, hsl(var(--muted) / 0.45) 70%, hsl(var(--muted-foreground) / 0.25) 100%)",
-          clipPath:
-            "polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%)",
-        }}
-        onMouseEnter={() => setShowPopup(true)}
-        onMouseLeave={() => setShowPopup(false)}
-      >
-        <Info className="text-muted-foreground/70" size={13} />
-      </div>
-
-      {/* Icons */}
-      <div
-        className="absolute pointer-events-auto flex items-center gap-[6px]"
-        style={{
-          left: `${iconsLeftPct}%`,
-          top: `${priceCenterY}%`,
-          transform: "translateY(-50%)",
-        }}
-      >
-        <Circle className="cursor-pointer text-primary" size={16} />
-        <div className="relative">
-          <ShoppingCart className="cursor-pointer text-primary" size={16} />
-          {/* Pop-up on row hover, anchored right */}
-          {showPopup && (
-            <div
-              className="absolute z-50 pointer-events-none rounded-lg border border-border bg-popover text-popover-foreground shadow-lg p-3 w-56"
-              style={{ bottom: "100%", right: 0, marginBottom: 8 }}
-            >
-              {popupError ? (
-                <p className="text-sm text-destructive">{popupError}</p>
-              ) : (
-                <>
-                  <p className="font-semibold text-sm truncate">{region.label}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Code: {region.product_code}
-                  </p>
-                  <div className="mt-2 space-y-1 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Cost (ex-VAT)</span>
-                      <span className="font-medium">R {costExVat.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Selling Price</span>
-                      <span className="font-medium">R {sellingPrice.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Markup</span>
-                      <span className="font-medium">{markup}%</span>
-                    </div>
-                    {region.detected_price != null && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">PDF Price</span>
-                        <span className="font-medium">
-                          R {safeNum(region.detected_price).toFixed(2)}
-                        </span>
-                      </div>
-                    )}
-                    {product?.description && (
-                      <p className="text-muted-foreground pt-1 border-t border-border mt-1 line-clamp-2">
-                        {product.description}
-                      </p>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-});
-
+const RegionBox = memo(({ region }: { region: OverlayRegion }) => (
+  <div
+    className="absolute border-2 border-primary pointer-events-none"
+    style={{
+      left: `0%`, // Span full width starting from left edge
+      top: `${region.y_pct}%`,
+      width: `100%`, // Full width of the row
+      height: `${region.h_pct}%`,
+    }}
+    title={`${region.label} (${region.product_code})`}
+  />
+));
 RegionBox.displayName = "RegionBox";
-
 const PdfPageOverlay = ({ regions }: PdfPageOverlayProps) => {
   if (regions.length === 0) return null;
-
-  // Find the rightmost edge of all regions on this page
-  let maxRightPct = 0;
-  regions.forEach((r) => {
-    const right = r.x_pct + r.w_pct;
-    if (right > maxRightPct) maxRightPct = right;
-  });
-  const iconsLeftPct = Math.min(maxRightPct + 2, 95);
-  const chevronTipPct = iconsLeftPct - 1;
-
   return (
     <>
       {regions.map((region) => (
-        <RegionBox
-          key={region.id}
-          region={region}
-          iconsLeftPct={iconsLeftPct}
-          chevronTipPct={chevronTipPct}
-        />
+        <RegionBox key={region.id} region={region} />
       ))}
     </>
   );
 };
-
 export default PdfPageOverlay;
