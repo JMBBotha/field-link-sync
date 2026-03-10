@@ -456,7 +456,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         ? extractedText.substring(0, MAX_PAYLOAD_SIZE)
         : extractedText;
 
-    const CHUNK_SIZE = 6000;
+    const CHUNK_SIZE = 12000;
     const splitIntoChunks = (text: string, chunkSize: number): string[] => {
       const chunks: string[] = [];
       let i = 0;

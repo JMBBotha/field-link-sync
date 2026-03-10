@@ -9,39 +9,6 @@ import { VAT_RATE, stripVat, applyDiscount, addVat } from "@/utils/pricing";
 import { supabase } from "@/integrations/supabase/client";
 import { renderPDFToImages } from "@/utils/pdfEnhancer";
 
-// ─── SA PRICE PARSING ───
-
-/** Parse South African price formats like "R 1 234,56" or "1234.56" */
-function parsePrice(priceStr: string): number {
-  if (!priceStr) return 0;
-  priceStr = priceStr.replace(/[^\d., ]/g, '').trim();
-  priceStr = priceStr.replace(/\s/g, '');
-  const commaIndex = priceStr.lastIndexOf(',');
-  if (commaIndex > -1 && priceStr.length - commaIndex - 1 === 2) {
-    priceStr = priceStr.replace(/,/g, '.');
-  } else {
-    priceStr = priceStr.replace(/,/g, '');
-  }
-  return parseFloat(priceStr) || 0;
-}
-
-// ─── SUPPLIER CONFIG ───
-
-const supplierConfig: Record<string, { baseColumn: string; discountPercent: number }> = {
-  'Samsung': { baseColumn: 'List Price Excl VAT', discountPercent: 20 },
-  'Daikin': { baseColumn: 'Webshop Price', discountPercent: 0 },
-  'One Stop Shop': { baseColumn: 'Nett Price', discountPercent: 0 },
-};
-
-const defaultSupplierConfig = { baseColumn: 'Price', discountPercent: 0 };
-
-function getSupplierConfig(supplierName: string): { baseColumn: string; discountPercent: number } {
-  const key = Object.keys(supplierConfig).find(
-    (k) => supplierName.toLowerCase().includes(k.toLowerCase())
-  );
-  return key ? supplierConfig[key] : defaultSupplierConfig;
-}
-
 // ─── TYPES ───
 
 export interface SupplierPricingSettings {
@@ -260,7 +227,7 @@ function detectDiscount(
 
 // ─── PDF PIPELINE ───
 
-const CHUNK_SIZE = 6000;
+const CHUNK_SIZE = 12000;
 
 async function parsePDFWithFullPipeline(
   file: File,
@@ -320,25 +287,17 @@ async function parsePDFWithFullPipeline(
         }
       }
 
-      // Resolve supplier config once per import
-      const sConfig = getSupplierConfig(settings.supplierName);
-
       for (const p of (data?.products || [])) {
         // Use the smart-selected cost_price from Grok (already picked best column)
-        let price = typeof p.cost_price === "number" && p.cost_price > 0
+        const price = typeof p.cost_price === "number" && p.cost_price > 0
           ? p.cost_price
-          : (typeof p.cost_price === "string" ? parsePrice(p.cost_price) : 0);
+          : 0;
 
         // Track selected column and VAT detection from first product
         if (!selectedPriceColumn && p.selected_price_column) {
           selectedPriceColumn = p.selected_price_column;
           grokDetectedInclVat = !!p.price_is_incl_vat;
           console.log(`[Import] Grok selected column: "${selectedPriceColumn}", isInclVat: ${grokDetectedInclVat}`);
-        }
-
-        // Apply supplier-specific discount if configured
-        if (price > 0 && sConfig.discountPercent > 0) {
-          price = price * (1 - sConfig.discountPercent / 100);
         }
 
         if (price > 0) {
