@@ -15,7 +15,6 @@ import {
   PRICING_RULES,
 } from "@/config/pdfExtractionConfig";
 import type { ParsedProduct, ImportStage } from "@/services/productImportParser";
-import { parsePrice } from "@/services/productImportParser";
 
 // ─── TYPES ───
 
@@ -213,52 +212,35 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
 
   // ── STEP 4: INSERT products ──
   console.log(`[Pipeline] Step 4: Inserting ${validProducts.length} products...`);
-  const rows = validProducts.map((p) => {
-    const costPrice = parsePrice(p.cost_price);
-    const costExclVat = costPrice; // cost_price is already excl VAT from the parser
-    console.log(`[Pipeline:Debug] Insert | "${p.model_number}" pg=${p.page_number ?? "?"} | cost=${costPrice} | excl_vat=${costExclVat}`);
-    return {
-      supplier_id: supplierId,
-      product_code: p.model_number || "UNKNOWN",
-      short_name: p.short_name || (p.description || "").substring(0, 80),
-      description: p.description || "",
-      category: p.category || "Uncategorized",
-      product_category: p.product_category || p.category || "Uncategorized",
-      cost_price: costPrice,
-      cost_excl_vat: costExclVat,
-      default_markup_percent: p.default_markup_percent || p.markup_percent || PRICING_RULES.defaultMarkupPercent,
-      brand: p.brand || supplierName || "",
-      is_active: true,
-      archived: false,
-      btu_rating: p.btu_rating || null,
-      pipe_size: p.pipe_size || null,
-      refrigerant_type: p.refrigerant_type || null,
-      phase: (p.phase === 'single' || p.phase === 'three') ? p.phase : null,
-      kw: p.kw || null,
-      sold_in_length: p.sold_in_length || false,
-      unit_length: p.unit_length || null,
-      price_per_metre: parsePrice(p.price_per_metre) || null,
-      row_bbox: p.row_bbox ?? null,
-      price_bbox: p.price_bbox ?? null,
-      page_number: p.page_number ?? null,
-      ...(pdfUploadId ? { pdf_upload_id: pdfUploadId } : {}),
-    };
-  });
+  const rows = validProducts.map((p) => ({
+    supplier_id: supplierId,
+    product_code: p.model_number || "UNKNOWN",
+    short_name: p.short_name || (p.description || "").substring(0, 80),
+    description: p.description || "",
+    category: p.category || "Uncategorized",
+    product_category: p.product_category || p.category || "Uncategorized",
+    cost_price: p.cost_price,
+    cost_excl_vat: p.cost_price,
+    default_markup_percent: p.default_markup_percent || p.markup_percent || PRICING_RULES.defaultMarkupPercent,
+    brand: p.brand || supplierName || "",
+    is_active: true,
+    archived: false,
+    btu_rating: p.btu_rating || null,
+    pipe_size: p.pipe_size || null,
+    refrigerant_type: p.refrigerant_type || null,
+    phase: p.phase || null,
+    kw: p.kw || null,
+    sold_in_length: p.sold_in_length || false,
+    unit_length: p.unit_length || null,
+    price_per_metre: p.price_per_metre || null,
+    row_bbox: p.row_bbox || null,
+    price_bbox: p.price_bbox || null,
+    page_number: p.page_number || null,
+    ...(pdfUploadId ? { pdf_upload_id: pdfUploadId } : {}),
+  }));
 
   // Final filter: remove any rows with empty product_code
-  const filteredRows = rows.filter((r) => r.product_code && r.product_code !== "UNKNOWN" && r.product_code.length >= VALIDATION_RULES.minProductCodeLength);
-
-  // Deduplicate product_codes within this import — append -DUP suffix
-  const codeCount = new Map<string, number>();
-  const cleanRows = filteredRows.map((r) => {
-    const key = r.product_code.toLowerCase();
-    const count = codeCount.get(key) || 0;
-    codeCount.set(key, count + 1);
-    if (count > 0) {
-      return { ...r, product_code: `${r.product_code}-DUP${count}` };
-    }
-    return r;
-  });
+  const cleanRows = rows.filter((r) => r.product_code && r.product_code !== "UNKNOWN" && r.product_code.length >= VALIDATION_RULES.minProductCodeLength);
 
   let insertedCount = 0;
   try {
@@ -277,10 +259,6 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
     insertedCount = 0;
 
     // Fallback: only guaranteed-safe columns
-    // Reset dedup tracking — full insert already inserted batch 1 successfully
-    // so fallback must re-insert ALL rows to avoid partial state
-    await (supabase.from("supplier_products") as any).delete().eq("supplier_id", supplierId);
-
     const basicRows = cleanRows.map((r) => ({
       supplier_id: r.supplier_id,
       product_code: r.product_code,
@@ -288,14 +266,11 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
       description: r.description,
       category: r.category,
       brand: r.brand,
-      cost_price: parsePrice(r.cost_price) || 0,
-      cost_excl_vat: parsePrice(r.cost_excl_vat) || 0,
+      cost_price: r.cost_price || 0,
+      cost_excl_vat: r.cost_excl_vat || 0,
       default_markup_percent: r.default_markup_percent || PRICING_RULES.defaultMarkupPercent,
       is_active: true,
       archived: false,
-      row_bbox: r.row_bbox ?? null,
-      price_bbox: r.price_bbox ?? null,
-      page_number: r.page_number ?? null,
     }));
 
     for (let i = 0; i < basicRows.length; i += 50) {

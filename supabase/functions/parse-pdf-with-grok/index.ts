@@ -43,7 +43,7 @@ interface ParsedProduct {
   priceBbox?: BBox | null;
 }
 
-const CHUNK_SIZE = 8000;
+const CHUNK_SIZE = 12000;
 const MAX_TEXT = 250000;
 
 const SYSTEM_PROMPT = `You are a strict HVAC price list parser. Your job is to extract ONLY product rows that have a valid price in the NETT/COST price column.
@@ -161,66 +161,6 @@ function autoDetectCategory(p: ParsedProduct): string {
   return "Air Conditioning";
 }
 
-// FIX 3: Retry logic with exponential backoff for non-403 errors
-async function callXaiWithRetry(
-  apiKey: string,
-  payload: any,
-  maxRetries = 2
-): Promise<Response | null> {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    console.log('[xAI Debug] Request:', {
-      hasAuthHeader: true,
-      endpoint: 'https://api.x.ai/v1/chat/completions',
-      model: payload.model,
-      chunkLength: payload.messages?.[1]?.content?.length ?? 0,
-      attempt,
-    });
-
-    let resp: Response;
-    try {
-      resp = await fetch('https://api.x.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-    } catch (fetchErr) {
-      console.warn(`[xAI Debug] Fetch error attempt ${attempt}:`, (fetchErr as Error).message);
-      if (attempt < maxRetries) {
-        const delay = 1000 * Math.pow(2, attempt);
-        console.log(`[xAI Debug] Retrying in ${delay}ms...`);
-        await new Promise(r => setTimeout(r, delay));
-        continue;
-      }
-      return null;
-    }
-
-    console.log('[xAI Debug] Response:', { status: resp.status, statusText: resp.statusText });
-
-    // 403 = auth failure, fail fast — no retry
-    if (resp.status === 403) {
-      const errorBody = await resp.text();
-      console.error('[xAI 403 Error] Auth failure, no retry. Body:', errorBody);
-      return resp; // Return the failed response so caller knows it was 403
-    }
-
-    if (resp.ok) return resp;
-
-    // Non-403 error — retry with backoff
-    const errText = await resp.text();
-    console.warn(`[xAI Debug] Non-OK response ${resp.status} attempt ${attempt}:`, errText.substring(0, 300));
-    if (attempt < maxRetries) {
-      const delay = 1000 * Math.pow(2, attempt);
-      console.log(`[xAI Debug] Retrying in ${delay}ms...`);
-      await new Promise(r => setTimeout(r, delay));
-    }
-  }
-  console.error('[xAI Debug] All retries exhausted');
-  return null;
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -241,15 +181,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // FIX 2: Load API keys ONCE at the top, reused for all paths
     const xaiApiKey = Deno.env.get("XAI_API_KEY");
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-
-    console.log("[Grok] API keys loaded:", {
-      hasXaiKey: !!xaiApiKey,
-      xaiKeyPrefix: xaiApiKey ? xaiApiKey.substring(0, 8) + '...' : 'none',
-      hasLovableKey: !!lovableApiKey,
-    });
 
     if (!xaiApiKey && !lovableApiKey) {
       return new Response(JSON.stringify({ error: "No API key configured" }), {
@@ -278,57 +211,49 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
       );
     }
 
-    const callLovableAI = async (text: string) => {
-      return await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const callAI = async (text: string, url: string, key: string, mdl: string, isXai: boolean) => {
+      return await fetch(url, {
         method: "POST",
-        headers: { "Authorization": `Bearer ${lovableApiKey}`, "Content-Type": "application/json" },
+        headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: mdl,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: text },
           ],
           temperature: 0.1,
+          ...(isXai ? { response_format: { type: "json_object" } } : {}),
         }),
       });
     };
 
     const processChunk = async (chunkText: string, chunkIdx: number): Promise<{ cols: string[]; products: ParsedProduct[] }> => {
       const t0 = Date.now();
-      let resp: Response | null = null;
+      let apiUrl: string, apiKey: string, model: string, useXai: boolean;
 
-      // Try xAI first with retry logic (FIX 1 + FIX 3)
       if (xaiApiKey) {
-        const xaiPayload = {
-          model: "grok-3-fast",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: chunkText },
-          ],
-          temperature: 0.1,
-          response_format: { type: "json_object" },
-        };
-
-        resp = await callXaiWithRetry(xaiApiKey, xaiPayload, 2);
-
-        if (resp && !resp.ok) {
-          console.warn(`[Grok] Chunk ${chunkIdx}: xAI failed (${resp.status}), falling back to Lovable AI`);
-          // Body already consumed in callXaiWithRetry for 403
-          resp = null;
-        } else if (!resp) {
-          console.warn(`[Grok] Chunk ${chunkIdx}: xAI all retries failed, falling back to Lovable AI`);
-        }
+        apiUrl = "https://api.x.ai/v1/chat/completions";
+        apiKey = xaiApiKey;
+        model = "grok-3-fast";
+        useXai = true;
+      } else {
+        apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
+        apiKey = lovableApiKey!;
+        model = "google/gemini-2.5-flash";
+        useXai = false;
       }
 
-      // Fallback to Lovable AI gateway
-      if (!resp && lovableApiKey) {
-        console.log(`[Grok] Chunk ${chunkIdx}: Using Lovable AI (Gemini) fallback`);
-        resp = await callLovableAI(chunkText);
+      let resp = await callAI(chunkText, apiUrl, apiKey, model, useXai);
+
+      if (!resp.ok && useXai && lovableApiKey) {
+        console.warn(`[Grok] Chunk ${chunkIdx}: xAI failed (${resp.status}), falling back`);
+        await resp.text(); // consume body
+        resp = await callAI(chunkText, "https://ai.gateway.lovable.dev/v1/chat/completions", lovableApiKey, "google/gemini-2.5-flash", false);
       }
 
-      if (!resp || !resp.ok) {
-        const errText = resp ? await resp.text() : "No API key available";
-        console.error(`[Grok] Chunk ${chunkIdx} failed:`, resp?.status, typeof errText === 'string' ? errText.substring(0, 300) : '');
+      if (!resp.ok) {
+        const errText = await resp.text();
+        console.error(`[Grok] Chunk ${chunkIdx} failed:`, resp.status, errText.substring(0, 300));
         return { cols: [], products: [] };
       }
 
@@ -342,8 +267,7 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
       }
       const content = data.choices?.[0]?.message?.content || "";
       const result = parseAIContent(content);
-      const provider = xaiApiKey && resp ? 'xAI' : 'Lovable AI';
-      console.log(`[Grok] Chunk ${chunkIdx}: ${result.products.length} products via ${provider} in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+      console.log(`[Grok] Chunk ${chunkIdx}: ${result.products.length} products in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
       return { cols: result.detected_price_columns, products: result.products };
     };
 
@@ -423,9 +347,9 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
             speed_type: p.speedType || null,
             kw: p.kw || null,
             unit_type: p.unitType || null,
-            page_number: p.pageNumber ?? null,
-            row_bbox: p.rowBbox ?? null,
-            price_bbox: p.priceBbox ?? null,
+            page_number: p.pageNumber || null,
+            row_bbox: p.rowBbox || null,
+            price_bbox: p.priceBbox || null,
           };
         }),
       }),
