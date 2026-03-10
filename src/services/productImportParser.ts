@@ -358,8 +358,10 @@ async function parsePDFWithFullPipeline(
       });
       if (!error) {
         for (const p of (data?.products || (Array.isArray(data) ? data : []))) {
-          if ((p.cost_price || 0) > 0) {
-            rawRows.push({ model: p.product_code || "", description: p.description || "", price: p.cost_price, category: p.category || "Air Conditioning" });
+          const price = parsePrice(p.cost_price);
+          console.log(`[Import:Debug] Lovable AI | "${p.product_code || "?"}" | raw="${p.cost_price}" → parsed=${price}`);
+          if (price > 0) {
+            rawRows.push({ model: p.product_code || "", description: p.description || "", price, category: p.category || "Air Conditioning" });
           }
         }
         if (rawRows.length > 0) { parseMethod = "lovable_ai"; }
