@@ -9,6 +9,39 @@ import { VAT_RATE, stripVat, applyDiscount, addVat } from "@/utils/pricing";
 import { supabase } from "@/integrations/supabase/client";
 import { renderPDFToImages } from "@/utils/pdfEnhancer";
 
+// ─── SA PRICE PARSING ───
+
+/** Parse South African price formats like "R 1 234,56" or "1234.56" */
+function parsePrice(priceStr: string): number {
+  if (!priceStr) return 0;
+  priceStr = priceStr.replace(/[^\d., ]/g, '').trim();
+  priceStr = priceStr.replace(/\s/g, '');
+  const commaIndex = priceStr.lastIndexOf(',');
+  if (commaIndex > -1 && priceStr.length - commaIndex - 1 === 2) {
+    priceStr = priceStr.replace(/,/g, '.');
+  } else {
+    priceStr = priceStr.replace(/,/g, '');
+  }
+  return parseFloat(priceStr) || 0;
+}
+
+// ─── SUPPLIER CONFIG ───
+
+const supplierConfig: Record<string, { baseColumn: string; discountPercent: number }> = {
+  'Samsung': { baseColumn: 'List Price Excl VAT', discountPercent: 20 },
+  'Daikin': { baseColumn: 'Webshop Price', discountPercent: 0 },
+  'One Stop Shop': { baseColumn: 'Nett Price', discountPercent: 0 },
+};
+
+const defaultSupplierConfig = { baseColumn: 'Price', discountPercent: 0 };
+
+function getSupplierConfig(supplierName: string): { baseColumn: string; discountPercent: number } {
+  const key = Object.keys(supplierConfig).find(
+    (k) => supplierName.toLowerCase().includes(k.toLowerCase())
+  );
+  return key ? supplierConfig[key] : defaultSupplierConfig;
+}
+
 // ─── TYPES ───
 
 export interface SupplierPricingSettings {
