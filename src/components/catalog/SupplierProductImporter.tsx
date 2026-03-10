@@ -893,6 +893,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
       invalidateAll();
       onComplete();
     } catch (err: any) {
+      console.error("[Import] CRASH:", err, err?.stack);
       setError(err.message || "Import failed");
       toast({ title: "Import crashed", description: err.message, variant: "destructive" });
     } finally { setImportingDiff(false); }
