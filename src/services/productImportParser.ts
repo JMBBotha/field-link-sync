@@ -260,7 +260,7 @@ function detectDiscount(
 
 // ─── PDF PIPELINE ───
 
-const CHUNK_SIZE = 12000;
+const CHUNK_SIZE = 6000;
 
 async function parsePDFWithFullPipeline(
   file: File,
