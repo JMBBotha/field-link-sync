@@ -340,7 +340,7 @@ function isHeaderOrNonProductRow(
   hasModel: boolean,
   y_pct: number
 ): boolean {
-  const lower = rowText.toLowerCase();
+  const lower = rowText.toLowerCase().trim();
   
   // TOC detection: dotted leaders or excessive dots with page numbers
   if (/\.{4,}/.test(rowText) || /^\w+\s+\.{4,}\s*\d+$/.test(rowText)) {
@@ -352,13 +352,27 @@ function isHeaderOrNonProductRow(
     return true;
   }
   
-  // Skip common non-product headers
-  const headerKeywords = [
-    "contents", "table of contents", "index", "page", "chapter",
-    "introduction", "notes", "disclaimer", "warranty", "terms",
-    "technical specifications", "installation", "maintenance"
-  ];
-  if (headerKeywords.some(kw => lower.includes(kw))) {
+  // Only skip rows that are PURELY header text (no model code, no real price context).
+  // These are full-line headers like "Table of Contents" or "Terms & Conditions".
+  // Do NOT filter product rows that merely contain common words like "installation".
+  if (!hasModel && detectedPrice < 100) {
+    const pureHeaderPatterns = [
+      /^table of contents$/,
+      /^contents$/,
+      /^index$/,
+      /^chapter\s+\d/,
+      /^introduction$/,
+      /^disclaimer/,
+      /^terms\s+(and|&)\s+conditions/,
+      /^warranty\s+(information|policy|terms)/,
+    ];
+    if (pureHeaderPatterns.some(pat => pat.test(lower))) {
+      return true;
+    }
+  }
+  
+  // Skip subtotal/total rows
+  if (/\b(sub\s*total|grand\s*total)\b/i.test(lower) && !hasModel) {
     return true;
   }
   
@@ -533,7 +547,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 37; // v37: Stricter dedup, anti-overlap, enhanced ghost filtering, standalone 4+ digit prices, detailed logging
+let _extractionVersion = 38; // v38: Fix overly aggressive ghost filter that killed pages 1-3
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
