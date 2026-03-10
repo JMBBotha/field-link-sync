@@ -635,7 +635,8 @@ async function parseCSVFile(file: File, settings: SupplierPricingSettings, suppl
     const priceCol = columnMap.price_excl || columnMap.price || columnMap.price_incl;
     if (!priceCol || !row[priceCol]) continue;
 
-    const rawPrice = parseFloat(row[priceCol]?.replace(/[R,\s]/g, "") || "0");
+    const rawPrice = parsePrice(row[priceCol]);
+    console.log(`[Import:Debug] CSV | "${row[columnMap.model] || "?"}" | raw="${row[priceCol]}" → parsed=${rawPrice}`);
     if (!rawPrice || rawPrice <= 0) continue;
 
     const isInclVat = columnMap.price_incl ? priceCol === columnMap.price_incl : effectiveInclVat;
