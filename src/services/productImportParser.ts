@@ -320,17 +320,25 @@ async function parsePDFWithFullPipeline(
         }
       }
 
+      // Resolve supplier config once per import
+      const sConfig = getSupplierConfig(settings.supplierName);
+
       for (const p of (data?.products || [])) {
         // Use the smart-selected cost_price from Grok (already picked best column)
-        const price = typeof p.cost_price === "number" && p.cost_price > 0
+        let price = typeof p.cost_price === "number" && p.cost_price > 0
           ? p.cost_price
-          : 0;
+          : (typeof p.cost_price === "string" ? parsePrice(p.cost_price) : 0);
 
         // Track selected column and VAT detection from first product
         if (!selectedPriceColumn && p.selected_price_column) {
           selectedPriceColumn = p.selected_price_column;
           grokDetectedInclVat = !!p.price_is_incl_vat;
           console.log(`[Import] Grok selected column: "${selectedPriceColumn}", isInclVat: ${grokDetectedInclVat}`);
+        }
+
+        // Apply supplier-specific discount if configured
+        if (price > 0 && sConfig.discountPercent > 0) {
+          price = price * (1 - sConfig.discountPercent / 100);
         }
 
         if (price > 0) {
