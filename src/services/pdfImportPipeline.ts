@@ -15,6 +15,7 @@ import {
   PRICING_RULES,
 } from "@/config/pdfExtractionConfig";
 import type { ParsedProduct, ImportStage } from "@/services/productImportParser";
+import { parsePrice } from "@/services/productImportParser";
 
 // ─── TYPES ───
 
