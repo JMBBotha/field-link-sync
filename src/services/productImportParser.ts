@@ -110,6 +110,27 @@ export async function getSupplierPricingSettings(supplierId: string): Promise<Su
   };
 }
 
+// ─── PARSE PRICE (SA FORMAT) ───
+
+export function parsePrice(priceStr: string | number | null | undefined): number {
+  if (priceStr == null) return 0;
+  if (typeof priceStr === "number") return isNaN(priceStr) ? 0 : priceStr;
+  let s = String(priceStr);
+  // Strip currency symbols and non-numeric chars except separators
+  s = s.replace(/[^\d., ]/g, "").trim();
+  // Remove spaces (thousands in SA format)
+  s = s.replace(/\s/g, "");
+  // Handle comma as decimal if it appears with 2 digits after (e.g., "965,00" -> "965.00")
+  const commaIndex = s.lastIndexOf(",");
+  if (commaIndex > -1 && s.length - commaIndex - 1 === 2) {
+    s = s.replace(/,/g, ".");
+  } else {
+    // Otherwise, commas are thousands separators - remove them
+    s = s.replace(/,/g, "");
+  }
+  return parseFloat(s) || 0;
+}
+
 // ─── SIMPLE PRICE CALCULATION ───
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -291,10 +312,9 @@ async function parsePDFWithFullPipeline(
       }
 
       for (const p of (data?.products || [])) {
-        // Use the smart-selected cost_price from Grok (already picked best column)
-        const price = typeof p.cost_price === "number" && p.cost_price > 0
-          ? p.cost_price
-          : 0;
+        // Use parsePrice to handle SA number formats
+        const rawPriceStr = p.cost_price ?? p.price ?? "";
+        const price = parsePrice(rawPriceStr);
 
         // Track selected column and VAT detection from first product
         if (!selectedPriceColumn && p.selected_price_column) {
@@ -302,6 +322,9 @@ async function parsePDFWithFullPipeline(
           grokDetectedInclVat = !!p.price_is_incl_vat;
           console.log(`[Import] Grok selected column: "${selectedPriceColumn}", isInclVat: ${grokDetectedInclVat}`);
         }
+
+        // FIX 4: Per-page debug logging
+        console.log(`[Import:Debug] Page ${p.page_number ?? "?"} | "${p.product_code || p.sku || "?"}" | raw="${rawPriceStr}" → parsed=${price}`);
 
         if (price > 0) {
           rawRows.push({
@@ -315,7 +338,7 @@ async function parsePDFWithFullPipeline(
             short_name: p.short_name || null, brand: p.brand || null,
             product_category: p.product_category || null,
             sold_in_length: p.sold_in_length || false, unit_length: p.unit_length || null,
-            price_per_metre: p.price_per_metre || null,
+            price_per_metre: parsePrice(p.price_per_metre) || null,
             row_bbox: p.row_bbox ?? null,
             price_bbox: p.price_bbox ?? null,
             page_number: p.page_number ?? null,
@@ -335,8 +358,10 @@ async function parsePDFWithFullPipeline(
       });
       if (!error) {
         for (const p of (data?.products || (Array.isArray(data) ? data : []))) {
-          if ((p.cost_price || 0) > 0) {
-            rawRows.push({ model: p.product_code || "", description: p.description || "", price: p.cost_price, category: p.category || "Air Conditioning" });
+          const price = parsePrice(p.cost_price);
+          console.log(`[Import:Debug] Lovable AI | "${p.product_code || "?"}" | raw="${p.cost_price}" → parsed=${price}`);
+          if (price > 0) {
+            rawRows.push({ model: p.product_code || "", description: p.description || "", price, category: p.category || "Air Conditioning" });
           }
         }
         if (rawRows.length > 0) { parseMethod = "lovable_ai"; }
@@ -350,7 +375,8 @@ async function parsePDFWithFullPipeline(
     const pricePattern = /([A-Z0-9][A-Z0-9\-\/]{4,29})\s+([A-Za-z0-9\s\-\/,\.]{10,80}?)\s+R?\s*([\d,]+\.?\d{0,2})/g;
     let match;
     while ((match = pricePattern.exec(allText)) !== null) {
-      const price = parseFloat(match[3].replace(/,/g, ""));
+      const price = parsePrice(match[3]);
+      console.log(`[Import:Debug] Regex | "${match[1].trim()}" | raw="${match[3]}" → parsed=${price}`);
       if (price > 0 && price < 1_000_000) {
         rawRows.push({ model: match[1].trim(), description: match[2].trim(), price, category: detectCategory(match[2]) });
       }
@@ -609,7 +635,8 @@ async function parseCSVFile(file: File, settings: SupplierPricingSettings, suppl
     const priceCol = columnMap.price_excl || columnMap.price || columnMap.price_incl;
     if (!priceCol || !row[priceCol]) continue;
 
-    const rawPrice = parseFloat(row[priceCol]?.replace(/[R,\s]/g, "") || "0");
+    const rawPrice = parsePrice(row[priceCol]);
+    console.log(`[Import:Debug] CSV | "${row[columnMap.model] || "?"}" | raw="${row[priceCol]}" → parsed=${rawPrice}`);
     if (!rawPrice || rawPrice <= 0) continue;
 
     const isInclVat = columnMap.price_incl ? priceCol === columnMap.price_incl : effectiveInclVat;
