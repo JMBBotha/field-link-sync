@@ -271,6 +271,9 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
       default_markup_percent: r.default_markup_percent || PRICING_RULES.defaultMarkupPercent,
       is_active: true,
       archived: false,
+      row_bbox: r.row_bbox ?? null,
+      price_bbox: r.price_bbox ?? null,
+      page_number: r.page_number ?? null,
     }));
 
     for (let i = 0; i < basicRows.length; i += 50) {
