@@ -43,7 +43,7 @@ interface ParsedProduct {
   priceBbox?: BBox | null;
 }
 
-const CHUNK_SIZE = 12000;
+const CHUNK_SIZE = 6000;
 const MAX_TEXT = 250000;
 
 const SYSTEM_PROMPT = `You are a strict HVAC price list parser. Your job is to extract ONLY product rows that have a valid price in the NETT/COST price column.
