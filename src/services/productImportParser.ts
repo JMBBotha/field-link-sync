@@ -110,6 +110,27 @@ export async function getSupplierPricingSettings(supplierId: string): Promise<Su
   };
 }
 
+// ─── PARSE PRICE (SA FORMAT) ───
+
+export function parsePrice(priceStr: string | number | null | undefined): number {
+  if (priceStr == null) return 0;
+  if (typeof priceStr === "number") return isNaN(priceStr) ? 0 : priceStr;
+  let s = String(priceStr);
+  // Strip currency symbols and non-numeric chars except separators
+  s = s.replace(/[^\d., ]/g, "").trim();
+  // Remove spaces (thousands in SA format)
+  s = s.replace(/\s/g, "");
+  // Handle comma as decimal if it appears with 2 digits after (e.g., "965,00" -> "965.00")
+  const commaIndex = s.lastIndexOf(",");
+  if (commaIndex > -1 && s.length - commaIndex - 1 === 2) {
+    s = s.replace(/,/g, ".");
+  } else {
+    // Otherwise, commas are thousands separators - remove them
+    s = s.replace(/,/g, "");
+  }
+  return parseFloat(s) || 0;
+}
+
 // ─── SIMPLE PRICE CALCULATION ───
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
