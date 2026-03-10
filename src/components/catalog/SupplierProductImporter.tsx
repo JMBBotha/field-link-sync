@@ -550,11 +550,14 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         allProducts.push(...products);
       }
 
-      // Merge + dedupe by product_code (keep first)
+      // Merge + dedupe by product_code (keep first, filter out empty codes)
       const seen = new Set<string>();
       const mergedProducts = allProducts.filter((p) => {
-        const key = String(p?.product_code || "").toLowerCase();
-        if (!key) return true;
+        const key = String(p?.product_code || p?.sku || "").trim().toLowerCase();
+        if (!key) {
+          console.warn("[AI Parse] Skipping product with empty code:", p?.description?.substring(0, 60));
+          return false;
+        }
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
