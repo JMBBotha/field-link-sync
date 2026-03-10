@@ -340,42 +340,33 @@ function isHeaderOrNonProductRow(
   hasModel: boolean,
   y_pct: number
 ): boolean {
-  const lower = rowText.toLowerCase().trim();
-  
+  // Keep all rows with a valid model or price >= R100
+  if (hasModel || detectedPrice >= 100) {
+    return false;
+  }
+
+  const lower = rowText.toLowerCase();
+
   // TOC detection: dotted leaders or excessive dots with page numbers
   if (/\.{4,}/.test(rowText) || /^\w+\s+\.{4,}\s*\d+$/.test(rowText)) {
     return true;
   }
-  
+
   // Skip page headers/footers in top 3% without model code
   if (y_pct < 3 && !hasModel) {
     return true;
   }
-  
-  // Only skip rows that are PURELY header text (no model code, no real price context).
-  // These are full-line headers like "Table of Contents" or "Terms & Conditions".
-  // Do NOT filter product rows that merely contain common words like "installation".
-  if (!hasModel && detectedPrice < 100) {
-    const pureHeaderPatterns = [
-      /^table of contents$/,
-      /^contents$/,
-      /^index$/,
-      /^chapter\s+\d/,
-      /^introduction$/,
-      /^disclaimer/,
-      /^terms\s+(and|&)\s+conditions/,
-      /^warranty\s+(information|policy|terms)/,
-    ];
-    if (pureHeaderPatterns.some(pat => pat.test(lower))) {
-      return true;
-    }
-  }
-  
-  // Skip subtotal/total rows
-  if (/\b(sub\s*total|grand\s*total)\b/i.test(lower) && !hasModel) {
+
+  // Skip common non-product headers (only if no model and low/no price)
+  const headerKeywords = [
+    "contents", "table of contents", "index", "page", "chapter",
+    "introduction", "notes", "disclaimer", "warranty", "terms",
+    "technical specifications", "installation", "maintenance"
+  ];
+  if (headerKeywords.some(kw => lower.includes(kw))) {
     return true;
   }
-  
+
   return false;
 }
 
