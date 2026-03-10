@@ -347,9 +347,9 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
             speed_type: p.speedType || null,
             kw: p.kw || null,
             unit_type: p.unitType || null,
-            page_number: p.pageNumber || null,
-            row_bbox: p.rowBbox || null,
-            price_bbox: p.priceBbox || null,
+            page_number: p.pageNumber ?? null,
+            row_bbox: p.rowBbox ?? null,
+            price_bbox: p.priceBbox ?? null,
           };
         }),
       }),

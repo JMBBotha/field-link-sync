@@ -550,11 +550,14 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         allProducts.push(...products);
       }
 
-      // Merge + dedupe by product_code (keep first)
+      // Merge + dedupe by product_code (keep first, filter out empty codes)
       const seen = new Set<string>();
       const mergedProducts = allProducts.filter((p) => {
-        const key = String(p?.product_code || "").toLowerCase();
-        if (!key) return true;
+        const key = String(p?.product_code || p?.sku || "").trim().toLowerCase();
+        if (!key) {
+          console.warn("[AI Parse] Skipping product with empty code:", p?.description?.substring(0, 60));
+          return false;
+        }
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
@@ -712,13 +715,31 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
 
     try {
       console.log(`[Import] Starting import for supplier "${supplierName}" (id: ${supplierId}), ${newRows.length} new, ${updateRows.length} updates, ${archiveRows.length} archives`);
+      
+      // Pre-filter: remove rows with empty product_code and deduplicate
+      const validNewRows = newRows.filter(r => r.product_code && r.product_code.trim().length >= 2);
+      const seenCodes = new Set<string>();
+      const dedupedNewRows = validNewRows.filter(r => {
+        const key = r.product_code.trim().toLowerCase();
+        if (seenCodes.has(key)) {
+          console.warn(`[Import] Skipping duplicate product_code in batch: "${r.product_code}"`);
+          return false;
+        }
+        seenCodes.add(key);
+        return true;
+      });
+      
+      if (dedupedNewRows.length < newRows.length) {
+        console.warn(`[Import] Filtered ${newRows.length - dedupedNewRows.length} invalid/duplicate rows before insert`);
+      }
+      
       // ── PHASE 1: INSERT new products (in batches of 50) ──
       const BATCH = 50;
-      for (let b = 0; b < newRows.length; b += BATCH) {
-        const batch = newRows.slice(b, b + BATCH);
+      for (let b = 0; b < dedupedNewRows.length; b += BATCH) {
+        const batch = dedupedNewRows.slice(b, b + BATCH);
         const batchData = batch.map(row => ({
           supplier_id: supplierId,
-          product_code: row.product_code,
+          product_code: row.product_code.trim(),
           description: row.description,
           category: row.category || "General",
           cost_price: row.cost_price,
@@ -745,6 +766,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
            vat_rate: (row as any)._vat_rate || 15,
         }));
 
+        console.log(`[Import] Upserting batch ${Math.floor(b/BATCH)+1}, ${batch.length} rows, first code: "${batch[0]?.product_code}"`);
         const { error: err, data } = await (supabase.from("supplier_products" as any) as any).upsert(batchData as any, { onConflict: "supplier_id,product_code" }).select("id");
         if (err) {
           const msg = `INSERT batch failed: ${err.message} | ${err.details || ""} | ${err.hint || ""}`;
@@ -871,6 +893,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
       invalidateAll();
       onComplete();
     } catch (err: any) {
+      console.error("[Import] CRASH:", err, err?.stack);
       setError(err.message || "Import failed");
       toast({ title: "Import crashed", description: err.message, variant: "destructive" });
     } finally { setImportingDiff(false); }
