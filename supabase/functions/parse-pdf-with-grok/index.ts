@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
     const chunkIndex = Number.isFinite(Number(chunk_index)) ? Number(chunk_index) : 0;
     const chunkTotal = Number.isFinite(Number(chunk_total)) ? Number(chunk_total) : 1;
 
-    console.log("[Grok] Request:", { textLength: extracted_text?.length, supplier_id, chunkIndex, chunkTotal });
+    console.log(`[Grok] Request: chunk ${chunkIndex + 1}/${chunkTotal}, textLength=${extracted_text?.length}, supplier=${supplier_name || supplier_id}`);
 
     if (!extracted_text || !supplier_id) {
       return new Response(JSON.stringify({ error: "extracted_text and supplier_id required" }), {
