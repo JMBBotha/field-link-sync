@@ -456,7 +456,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         ? extractedText.substring(0, MAX_PAYLOAD_SIZE)
         : extractedText;
 
-    const CHUNK_SIZE = 12000;
+    const CHUNK_SIZE = 6000; // Smaller chunks to avoid edge function timeouts when xAI falls back to Gemini
     const splitIntoChunks = (text: string, chunkSize: number): string[] => {
       const chunks: string[] = [];
       let i = 0;
