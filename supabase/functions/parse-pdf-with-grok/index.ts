@@ -43,7 +43,7 @@ interface ParsedProduct {
   priceBbox?: BBox | null;
 }
 
-const CHUNK_SIZE = 12000;
+const CHUNK_SIZE = 6000;
 const MAX_TEXT = 250000;
 
 const SYSTEM_PROMPT = `You are a strict HVAC price list parser. Your job is to extract ONLY product rows that have a valid price in the NETT/COST price column.
@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
     const chunkIndex = Number.isFinite(Number(chunk_index)) ? Number(chunk_index) : 0;
     const chunkTotal = Number.isFinite(Number(chunk_total)) ? Number(chunk_total) : 1;
 
-    console.log("[Grok] Request:", { textLength: extracted_text?.length, supplier_id, chunkIndex, chunkTotal });
+    console.log(`[Grok] Request: chunk ${chunkIndex + 1}/${chunkTotal}, textLength=${extracted_text?.length}, supplier=${supplier_name || supplier_id}`);
 
     if (!extracted_text || !supplier_id) {
       return new Response(JSON.stringify({ error: "extracted_text and supplier_id required" }), {
@@ -183,6 +183,8 @@ Deno.serve(async (req) => {
 
     const xaiApiKey = Deno.env.get("XAI_API_KEY");
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+
+    console.log("[Grok] API keys loaded:", { hasXaiKey: !!xaiApiKey, xaiKeyPrefix: xaiApiKey ? xaiApiKey.substring(0, 8) + "..." : "none", hasLovableKey: !!lovableApiKey });
 
     if (!xaiApiKey && !lovableApiKey) {
       return new Response(JSON.stringify({ error: "No API key configured" }), {
@@ -227,48 +229,114 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
       });
     };
 
+    const GEMINI_TIMEOUT_MS = 30_000;
+
+    const callWithTimeout = async (text: string, url: string, key: string, mdl: string, isXai: boolean, timeoutMs: number): Promise<Response> => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            model: mdl,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: text },
+            ],
+            temperature: 0.1,
+            ...(isXai ? { response_format: { type: "json_object" } } : {}),
+          }),
+        });
+        return resp;
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+
     const processChunk = async (chunkText: string, chunkIdx: number): Promise<{ cols: string[]; products: ParsedProduct[] }> => {
       const t0 = Date.now();
-      let apiUrl: string, apiKey: string, model: string, useXai: boolean;
 
+      // Try xAI first
       if (xaiApiKey) {
-        apiUrl = "https://api.x.ai/v1/chat/completions";
-        apiKey = xaiApiKey;
-        model = "grok-3-fast";
-        useXai = true;
-      } else {
-        apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
-        apiKey = lovableApiKey!;
-        model = "google/gemini-2.5-flash";
-        useXai = false;
+        console.log(`[Grok] Chunk ${chunkIdx}: Trying xAI (grok-3-fast), ${chunkText.length} chars`);
+        try {
+          let resp = await callWithTimeout(chunkText, "https://api.x.ai/v1/chat/completions", xaiApiKey, "grok-3-fast", true, 60_000);
+
+          if (resp.status === 403) {
+            const errBody = await resp.text();
+            console.error(`[xAI 403 Error] Auth failure on attempt 1. Body: ${errBody.substring(0, 200)}`);
+            // Retry once after 1s
+            await new Promise(r => setTimeout(r, 1000));
+            console.log(`[Grok] Chunk ${chunkIdx}: Retrying xAI after 403...`);
+            resp = await callWithTimeout(chunkText, "https://api.x.ai/v1/chat/completions", xaiApiKey, "grok-3-fast", true, 60_000);
+
+            if (resp.status === 403) {
+              const errBody2 = await resp.text();
+              console.error(`[xAI 403 Error] Auth failure on retry. Body: ${errBody2.substring(0, 200)}`);
+              // Fall through to Gemini
+            }
+          }
+
+          if (resp.ok) {
+            const rawText = await resp.text();
+            try {
+              const data = JSON.parse(rawText);
+              const content = data.choices?.[0]?.message?.content || "";
+              const result = parseAIContent(content);
+              console.log(`[Grok] Chunk ${chunkIdx}: ${result.products.length} products via xAI in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+              return { cols: result.detected_price_columns, products: result.products };
+            } catch (parseErr) {
+              console.error(`[Grok] Chunk ${chunkIdx}: xAI response parse error`, (parseErr as Error).message);
+            }
+          } else if (resp.status !== 403) {
+            const errText = await resp.text();
+            console.warn(`[Grok] Chunk ${chunkIdx}: xAI failed (${resp.status}), falling back to Lovable AI`);
+          }
+        } catch (err) {
+          console.warn(`[Grok] Chunk ${chunkIdx}: xAI request error: ${(err as Error).message}`);
+        }
       }
 
-      let resp = await callAI(chunkText, apiUrl, apiKey, model, useXai);
+      // Fallback to Gemini with timeout guard
+      if (lovableApiKey) {
+        console.log(`[Grok] Chunk ${chunkIdx}: Using Lovable AI (Gemini) fallback`);
+        try {
+          const resp = await callWithTimeout(
+            chunkText,
+            "https://ai.gateway.lovable.dev/v1/chat/completions",
+            lovableApiKey,
+            "google/gemini-2.5-flash",
+            false,
+            GEMINI_TIMEOUT_MS
+          );
 
-      if (!resp.ok && useXai && lovableApiKey) {
-        console.warn(`[Grok] Chunk ${chunkIdx}: xAI failed (${resp.status}), falling back`);
-        await resp.text(); // consume body
-        resp = await callAI(chunkText, "https://ai.gateway.lovable.dev/v1/chat/completions", lovableApiKey, "google/gemini-2.5-flash", false);
+          if (!resp.ok) {
+            const errText = await resp.text();
+            console.error(`[Grok] Chunk ${chunkIdx}: Gemini failed (${resp.status}): ${errText.substring(0, 300)}`);
+            return { cols: [], products: [] };
+          }
+
+          const rawText = await resp.text();
+          const data = JSON.parse(rawText);
+          const content = data.choices?.[0]?.message?.content || "";
+          const result = parseAIContent(content);
+          console.log(`[Grok] Chunk ${chunkIdx}: ${result.products.length} products via Gemini in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+          return { cols: result.detected_price_columns, products: result.products };
+        } catch (err) {
+          const msg = (err as Error).message;
+          if (msg.includes("abort")) {
+            console.error(`[Grok] Chunk ${chunkIdx}: Gemini TIMED OUT after ${GEMINI_TIMEOUT_MS / 1000}s`);
+          } else {
+            console.error(`[Grok] Chunk ${chunkIdx}: Gemini error: ${msg}`);
+          }
+          return { cols: [], products: [] };
+        }
       }
 
-      if (!resp.ok) {
-        const errText = await resp.text();
-        console.error(`[Grok] Chunk ${chunkIdx} failed:`, resp.status, errText.substring(0, 300));
-        return { cols: [], products: [] };
-      }
-
-      let data: any;
-      try {
-        const rawText = await resp.text();
-        data = JSON.parse(rawText);
-      } catch (parseErr) {
-        console.error(`[Grok] Chunk ${chunkIdx}: Failed to parse response`, (parseErr as Error).message);
-        return { cols: [], products: [] };
-      }
-      const content = data.choices?.[0]?.message?.content || "";
-      const result = parseAIContent(content);
-      console.log(`[Grok] Chunk ${chunkIdx}: ${result.products.length} products in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
-      return { cols: result.detected_price_columns, products: result.products };
+      console.error(`[Grok] Chunk ${chunkIdx}: No API available`);
+      return { cols: [], products: [] };
     };
 
     const result = await processChunk(truncatedText, chunkIndex);
@@ -347,9 +415,9 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
             speed_type: p.speedType || null,
             kw: p.kw || null,
             unit_type: p.unitType || null,
-            page_number: p.pageNumber || null,
-            row_bbox: p.rowBbox || null,
-            price_bbox: p.priceBbox || null,
+            page_number: p.pageNumber ?? null,
+            row_bbox: p.rowBbox ?? null,
+            price_bbox: p.priceBbox ?? null,
           };
         }),
       }),
