@@ -375,7 +375,8 @@ async function parsePDFWithFullPipeline(
     const pricePattern = /([A-Z0-9][A-Z0-9\-\/]{4,29})\s+([A-Za-z0-9\s\-\/,\.]{10,80}?)\s+R?\s*([\d,]+\.?\d{0,2})/g;
     let match;
     while ((match = pricePattern.exec(allText)) !== null) {
-      const price = parseFloat(match[3].replace(/,/g, ""));
+      const price = parsePrice(match[3]);
+      console.log(`[Import:Debug] Regex | "${match[1].trim()}" | raw="${match[3]}" → parsed=${price}`);
       if (price > 0 && price < 1_000_000) {
         rawRows.push({ model: match[1].trim(), description: match[2].trim(), price, category: detectCategory(match[2]) });
       }
