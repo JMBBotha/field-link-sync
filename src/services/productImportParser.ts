@@ -405,7 +405,6 @@ async function parsePDFWithFullPipeline(
 
   // Filter out section header rows (e.g. "AR3000 Non-Inverter" with no full model suffix)
   const sectionHeaderPattern = /^AR\d{3,4}$/i; // e.g. AR3000, AR5000 — no full model suffix
-  const shortHeaderPattern = /^[A-Z]{1,4}[-\s]?\d{2,5}[A-Z]?$/i; // Generic short codes incl hyphens (KJR-12B kept via description dedup)
   const filteredRows = rawRows.filter((r) => {
     const code = (r.model || "").trim();
     // Skip rows with no model code
@@ -417,15 +416,20 @@ async function parsePDFWithFullPipeline(
     }
     return true;
   });
+  console.log(`[Import] After section header filter: ${filteredRows.length}/${rawRows.length} rows (${rawRows.length - filteredRows.length} removed)`);
 
-  // Deduplicate
+  // Deduplicate — use model+description+price to keep accessories in different sections
   const seen = new Set<string>();
   const uniqueRows = filteredRows.filter((r) => {
-    const key = r.model.toLowerCase() + '|' + r.description.toLowerCase().substring(0, 50);
-    if (!key || seen.has(key)) return false;
+    const key = r.model.toLowerCase() + '|' + r.description.toLowerCase().substring(0, 50) + '|' + r.price;
+    if (!key || seen.has(key)) {
+      console.log(`[Import] Dedup: removing "${r.model}" @ R${r.price} — "${r.description.substring(0, 40)}"`);
+      return false;
+    }
     seen.add(key);
     return true;
   });
+  console.log(`[Import] After dedup: ${uniqueRows.length}/${filteredRows.length} rows (${filteredRows.length - uniqueRows.length} duplicates removed)`);
 
   const products: ParsedProduct[] = uniqueRows.map((row) => {
     const calc = calculateImportPrices(row.price, effectiveInclVat, effectiveDiscount, settings.markupPercent);
