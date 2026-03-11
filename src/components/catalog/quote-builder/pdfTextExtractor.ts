@@ -415,7 +415,7 @@ export function matchTextRowsToProducts(
   const yThreshold = Math.max(avgHeight * 1.5, 8);
   // STEP 1a: Explicit R-prefixed prices (works for Samsung/Daikin/Midea)
   const explicitPriceItems = mergedItems.filter(
-    (item) => /R\s*\d/.test(item.text) && detectPrice(item.text) !== null
+    (item) => /R\s*\d/.test(item.text) && detectPrice(item.text) !== null && (item.x / pageWidth > 0.65)
   );
   // STEP 1b: Column-based numeric prices (works for dense table PDFs like One Stop)
   const columnPrices = findColumnPrices(mergedItems, pageWidth, pageHeight);
@@ -563,7 +563,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 41; // v41: x>65% right-side threshold, STEP3 min R50, skip <50 at source
+let _extractionVersion = 42; // v42: enforce x>65% for explicit R-prices in STEP 1a (plus existing STEP 1b/STEP 3 guards)
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
