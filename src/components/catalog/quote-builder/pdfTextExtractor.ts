@@ -460,7 +460,7 @@ export function matchTextRowsToProducts(
       const val = parseFloat(raw);
       if (!isNaN(val) && val >= 50) detectedPrice = val;
     }
-    if (detectedPrice === null || detectedPrice <= 0) {
+    if (detectedPrice === null || detectedPrice < 50) {
       skippedCount.noPrice++;
       console.log(`[pdfExtract] Skipped noPrice: ${rightmost.text} at y=${rightmost.y}`);
       continue;
