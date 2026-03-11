@@ -227,7 +227,21 @@ function detectDiscount(
 
 // ─── PDF PIPELINE ───
 
-const CHUNK_SIZE = 12000;
+const CHUNK_SIZE = 6000;
+
+/** Parse SA price formats: spaces as thousand separators, comma decimals */
+function parsePrice(priceStr: string): number {
+  if (!priceStr) return 0;
+  priceStr = priceStr.replace(/[^\d., ]/g, '').trim();
+  priceStr = priceStr.replace(/\s/g, '');
+  const commaIndex = priceStr.lastIndexOf(',');
+  if (commaIndex > -1 && priceStr.length - commaIndex - 1 === 2) {
+    priceStr = priceStr.replace(/,/g, '.');
+  } else {
+    priceStr = priceStr.replace(/,/g, '');
+  }
+  return parseFloat(priceStr) || 0;
+}
 
 async function parsePDFWithFullPipeline(
   file: File,
