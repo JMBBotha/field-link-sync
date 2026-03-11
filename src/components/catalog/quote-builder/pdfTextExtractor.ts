@@ -360,7 +360,7 @@ function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasMode
     return true;
   }
 
-  sourceRegions;
+  // Skip page footers in bottom 3% without model code
   if (y_pct > 97 && !hasModel) {
     return true;
   }
