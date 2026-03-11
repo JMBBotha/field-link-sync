@@ -287,11 +287,21 @@ async function parsePDFWithFullPipeline(
       i = end;
     }
 
+    // Fetch supplier_type so edge function gets correct consumables prompt
+    let supplierType: string | null = null;
+    try {
+      const { data: supRow } = await (supabase.from("suppliers") as any)
+        .select("supplier_type")
+        .eq("id", supplierId)
+        .single();
+      supplierType = supRow?.supplier_type || null;
+    } catch { /* ignore */ }
+
     for (let ci = 0; ci < chunks.length; ci++) {
       onStage?.({ stage: "ai_extraction", detail: `Grok AI: chunk ${ci + 1}/${chunks.length} (${chunks[ci].length} chars)...` });
-      console.log(`[Import] Sending chunk ${ci + 1}/${chunks.length}: ${chunks[ci].length} chars`);
+      console.log(`[Import] Sending chunk ${ci + 1}/${chunks.length}: ${chunks[ci].length} chars, first 200: "${chunks[ci].substring(0, 200).replace(/\n/g, '\\n')}"`);
       const { data, error } = await supabase.functions.invoke("parse-pdf-with-grok", {
-        body: { extracted_text: chunks[ci], supplier_id: supplierId, supplier_name: settings.supplierName, chunk_index: ci, chunk_total: chunks.length },
+        body: { extracted_text: chunks[ci], supplier_id: supplierId, supplier_name: settings.supplierName, supplier_type: supplierType === "consumables" || supplierType === "both" ? "consumables" : undefined, chunk_index: ci, chunk_total: chunks.length },
       });
       if (error) { console.error(`[Import] Grok chunk ${ci} error:`, error.message || error, 'data:', JSON.stringify(data)?.substring(0, 200)); continue; }
 
