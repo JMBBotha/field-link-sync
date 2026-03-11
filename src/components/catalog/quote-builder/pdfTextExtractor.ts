@@ -346,7 +346,7 @@ function isHeaderOrNonProductRow(
   }
 
   // Fundamental rule: Skip (no item, no blue rectangle) if no valid Rand value detected on the right-hand side
-  // or if the detected price is too low (< R50, to eliminate false positives like TOC page numbers 3-13)
+  // (detectedPrice < 50 or NaN means no/low R amount was found/parsed)
   if (detectedPrice < 50 || isNaN(detectedPrice)) {
     return true;
   }
