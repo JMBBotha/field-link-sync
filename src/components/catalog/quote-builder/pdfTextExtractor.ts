@@ -4,7 +4,7 @@
  * Uses pdfjs-dist to extract text items with their exact coordinates
  * from a PDF page, then cross-references against the products database.
  *
- * v39: Raise minimum price threshold to R50 to eliminate TOC page numbers as false positives. Improved TOC regex to catch spaced/unicode dot variations.
+ * v40: Lower right-side threshold to 25% to pick up sub-table prices. Raise standalone numeric minimum to R50. Add footer skip (bottom 3%). Stricter empty-row check.
  */
 import type { PaletteProduct } from "../QuoteBuilderTab";
 /**
@@ -319,10 +319,10 @@ function findColumnPrices(
       raw = raw.replace(/,/g, "");
     }
     const val = parseFloat(raw);
-    if (isNaN(val) || val < 1) continue;
+    if (isNaN(val) || val < 50) continue;
     // Check if in price column or right side of page
     const inColumn = colRange && item.x >= colRange.minX && item.x <= colRange.maxX;
-    const inRightSide = item.x / pageWidth > 0.40;
+    const inRightSide = item.x / pageWidth > 0.25;
     if (inColumn || inRightSide) {
       candidates.push(item);
     }
@@ -340,13 +340,13 @@ function isHeaderOrNonProductRow(
   hasModel: boolean,
   y_pct: number
 ): boolean {
-  // Skip empty or whitespace-only rows
-  if (!rowText.trim()) {
+  // Skip empty or whitespace-only rows (strict: collapse all whitespace variants)
+  if (rowText.replace(/\s/g, '').length === 0) {
     return true;
   }
 
   // Fundamental rule: Skip (no item, no blue rectangle) if no valid Rand value detected on the right-hand side
-  // or if the detected price is too low (< R50, to eliminate false positives like TOC page numbers 3-13)
+  // (detectedPrice < 50 or NaN means no/low R amount was found/parsed)
   if (detectedPrice < 50 || isNaN(detectedPrice)) {
     return true;
   }
@@ -370,6 +370,16 @@ function isHeaderOrNonProductRow(
 
   // Skip page headers/footers in top 3% without model code
   if (y_pct < 3 && !hasModel) {
+    return true;
+  }
+
+  // Skip page footers in bottom 3% without model code
+  if (y_pct > 97 && !hasModel) {
+    return true;
+  }
+
+  // Additional TOC detection: Skip if line ends with optional space(s) followed by 1-2 digits
+  if (/\s*\d{1,2}$/.test(rowText)) {
     return true;
   }
 
@@ -420,7 +430,7 @@ export function matchTextRowsToProducts(
     }
   }
   const colRange = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
-  console.log(`[pdfExtract] matchTextRows: ${mergedItems.length} items, yThreshold=${yThreshold.toFixed(1)}, explicit R-prices=${explicitPriceItems.length}, column-based prices=${columnPrices.length}, combined unique=${priceItems.length}, priceColumnRange=${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : 'none (using x>40% fallback)'}, pageWidth=${pageWidth.toFixed(0)}`);
+  console.log(`[pdfExtract] matchTextRows: ${mergedItems.length} items, yThreshold=${yThreshold.toFixed(1)}, explicit R-prices=${explicitPriceItems.length}, column-based prices=${columnPrices.length}, combined unique=${priceItems.length}, priceColumnRange=${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : 'none (using x>25% fallback)'}, pageWidth=${pageWidth.toFixed(0)}`);
   if (priceItems.length === 0) return [];
   // STEP 2: Create one row per individual price item (no grouping).
   // Previous grouping merged adjacent product rows into single blocks.
@@ -553,7 +563,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 39; // v39: R50 minimum price threshold + improved TOC regex
+let _extractionVersion = 40; // v40: x>25% threshold, standalone min R50, footer skip, stricter empty check
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
