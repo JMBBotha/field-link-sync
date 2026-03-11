@@ -634,7 +634,7 @@ export async function extractAndMatchPage(
     for (let i = 0; i < regions.length - 1; i++) {
       const current = regions[i];
       const nextY = regions[i + 1].y_pct;
-      const maxH = nextY - current.y_pct - 0.2; // 0.2% gap
+      const maxH = nextY - current.y_pct - 0.05; // 0.05% gap
       if (current.h_pct > maxH) {
         current.h_pct = maxH;
         overlapsFixed++;
