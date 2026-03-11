@@ -1,0 +1,1 @@
+UPDATE suppliers SET supplier_type = 'consumables' WHERE id = 'fcde5a6e-87d3-4fa3-ab0c-921fc9d56f9e';
