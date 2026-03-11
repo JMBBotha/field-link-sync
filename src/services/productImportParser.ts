@@ -280,9 +280,15 @@ async function parsePDFWithFullPipeline(
       });
       if (error) { console.warn(`[Import] Grok chunk ${ci} error:`, error); continue; }
 
-      // Capture detected price columns from Grok
+      // Capture detected price columns from Grok (filter out raw R-amounts)
       if (data?.detected_price_columns?.length) {
         for (const col of data.detected_price_columns) {
+          const t = (col || "").trim();
+          if (!t) continue;
+          // Exclude pure price strings
+          if (/^(R\s*)?[\d\s,]+(\.\s?\d{1,2})?$/i.test(t)) continue;
+          // Must contain a header keyword
+          if (!/\b(PRICE|VAT|LIST|EXCL|INCL|INC|NETT|WEBSHOP|CAMPAIGN|RRP|COST|RETAIL|TRADE|DEALER)\b/i.test(t)) continue;
           if (!detectedPriceColumns.includes(col)) detectedPriceColumns.push(col);
         }
       }

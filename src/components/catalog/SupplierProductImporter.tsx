@@ -14,6 +14,20 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import PriceConfigPanel, { calculatePrices, type PriceConfig } from "./PriceConfigPanel";
 
+/** Only allow worded column headers — exclude raw R-amounts */
+function isWordedColumnHeader(text: string): boolean {
+  const trimmed = (text || "").trim();
+  if (!trimmed) return false;
+  // Exclude pure price strings like "R7 899", "R1,024.07", "12 699", etc.
+  if (/^(R\s*)?[\d\s,]+(\.\s?\d{1,2})?$/i.test(trimmed)) return false;
+  // Must contain at least one common price-header keyword
+  const HEADER_KEYWORDS = /\b(PRICE|VAT|LIST|EXCL|INCL|INC|NETT|WEBSHOP|CAMPAIGN|RRP|COST|RETAIL|TRADE|DEALER)\b/i;
+  if (!HEADER_KEYWORDS.test(trimmed)) return false;
+  // Must contain at least one alphabetic word (2+ letters)
+  if (!/[A-Za-z]{2,}/.test(trimmed)) return false;
+  return true;
+}
+
 interface SupplierProductImporterProps {
   supplierId: string;
   supplierName: string;
@@ -565,7 +579,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         if (p?.prices) for (const k of Object.keys(p.prices)) allCols.add(k);
       }
 
-      const columns: string[] = [...allCols];
+      const columns: string[] = [...allCols].filter(isWordedColumnHeader);
       const products = mergedProducts;
 
       if (columns.length > 0) {
