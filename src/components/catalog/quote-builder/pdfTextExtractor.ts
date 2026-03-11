@@ -4,7 +4,7 @@
  * Uses pdfjs-dist to extract text items with their exact coordinates
  * from a PDF page, then cross-references against the products database.
  *
- * v38: Fundamental rule - skip rows with no valid Rand value (no ghost rectangles). Removed broad header keywords that caused false positives.
+ * v39: Raise minimum price threshold to R50 to eliminate TOC page numbers as false positives. Improved TOC regex to catch spaced/unicode dot variations.
  */
 import type { PaletteProduct } from "../QuoteBuilderTab";
 /**
