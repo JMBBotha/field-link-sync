@@ -319,7 +319,7 @@ function findColumnPrices(
       raw = raw.replace(/,/g, "");
     }
     const val = parseFloat(raw);
-    if (isNaN(val) || val < 1) continue;
+    if (isNaN(val) || val < 50) continue;
     // Check if in price column or right side of page
     const inColumn = colRange && item.x >= colRange.minX && item.x <= colRange.maxX;
     const inRightSide = item.x / pageWidth > 0.40;
