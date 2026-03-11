@@ -4,7 +4,7 @@
  * Uses pdfjs-dist to extract text items with their exact coordinates
  * from a PDF page, then cross-references against the products database.
  *
- * v37: Stricter dedup (y_pct within 1.5%, keep priced), anti-overlap clamp with 0.2% gap, enhanced ghost filtering (TOC, headers, subtotals, blanks), standalone 4+ digit prices in rightmost, detailed logging.
+ * v38: Fundamental rule - skip rows with no valid Rand value (no ghost rectangles). Removed broad header keywords that caused false positives.
  */
 import type { PaletteProduct } from "../QuoteBuilderTab";
 /**
@@ -340,7 +340,18 @@ function isHeaderOrNonProductRow(
   hasModel: boolean,
   y_pct: number
 ): boolean {
-  // Keep all rows with a valid model or price >= R100
+  // Skip empty or whitespace-only rows
+  if (!rowText.trim()) {
+    return true;
+  }
+
+  // Fundamental rule: Skip (no item, no blue rectangle) if no valid Rand value detected on the right-hand side
+  // (detectedPrice <= 0 or NaN means no R amount like R1,024.07 was found/parsed)
+  if (detectedPrice <= 0 || isNaN(detectedPrice)) {
+    return true;
+  }
+
+  // Additional safeguards: Keep rows with model or sufficient price, but skip obvious non-products
   if (hasModel || detectedPrice >= 100) {
     return false;
   }
@@ -357,11 +368,10 @@ function isHeaderOrNonProductRow(
     return true;
   }
 
-  // Skip common non-product headers (only if no model and low/no price)
+  // Skip common non-product headers (only pure headers; removed broad keywords to avoid false positives)
   const headerKeywords = [
     "contents", "table of contents", "index", "page", "chapter",
-    "introduction", "notes", "disclaimer", "warranty", "terms",
-    "technical specifications", "installation", "maintenance"
+    "introduction", "disclaimer", "warranty", "terms"
   ];
   if (headerKeywords.some(kw => lower.includes(kw))) {
     return true;
@@ -371,7 +381,7 @@ function isHeaderOrNonProductRow(
 }
 
 /**
- * PRICE-FIRST approach v37: column-based detection for dense table PDFs.
+ * PRICE-FIRST approach v38: column-based detection for dense table PDFs.
  * Combines R-prefixed prices with column-position-based numeric prices.
  */
 export function matchTextRowsToProducts(
