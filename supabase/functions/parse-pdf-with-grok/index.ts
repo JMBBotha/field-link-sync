@@ -46,15 +46,18 @@ interface ParsedProduct {
 const CHUNK_SIZE = 12000;
 const MAX_TEXT = 250000;
 
-const SYSTEM_PROMPT = `You are a strict HVAC price list parser. Your job is to extract ONLY product rows that have a valid price in the NETT/COST price column.
+const SYSTEM_PROMPT = `You are a strict HVAC and installation materials price list parser. Your job is to extract EVERY product row that has a valid Rand price (R followed by digits) in the rightmost price column.
 
 CRITICAL RULES:
-1. Extract ONLY rows that have a numeric price > 0 in the rightmost price column (typically "NETT PRICE", "COST", "EXCL VAT", or similar)
-2. ONE region per product row — NEVER merge multiple product rows into one entry
-3. SKIP all non-product content: headers, footers, page titles, images, blank lines, subtotals, category headers, section dividers
-4. SKIP rows where the price is 0, empty, or "POA"/"Price on Request"
-5. Every valid priced product row MUST be extracted — do not miss any
-6. Each product must have a unique SKU/product_code — if two rows have the same code, they are separate entries (e.g. indoor + outdoor unit)
+1. Extract ALL rows that have a numeric price > 0 in the rightmost price column (typically "NETT PRICE", "COST", "EXCL VAT", or similar)
+2. The product category does NOT matter — extract copper, insulation, PVC, brackets, fittings, tape, gas, piping, trunking, cable, and ALL other items. If a row has a valid R price, it IS a product.
+3. ONE region per product row — NEVER merge multiple product rows into one entry
+4. SKIP all non-product content: headers, footers, page titles, date lines, document metadata, images, blank lines, subtotals, category headers, section dividers
+5. SKIP rows where the price is 0, empty, or "POA"/"Price on Request"
+6. SKIP rows that contain document metadata like "PRICELIST", "PRICE LIST", "VALID FROM", dates, or version numbers — these are NOT products
+7. Every valid priced product row MUST be extracted — do not miss any
+8. Each product must have a unique SKU/product_code — if two rows have the same code, they are separate entries (e.g. indoor + outdoor unit)
+9. If a row has an R value (price > 0) in the right-side column of the PDF, it IS a product. If it has no R value, it is NOT a product. Period.
 
 Return JSON: {"detected_price_columns":[...],"products":[...]}
 
@@ -62,7 +65,7 @@ Product fields:
 - sku: string (the product/model code)
 - name: string (product name/model)
 - description: string (full description text from the row)
-- category: string (subcategory like "Midwall Inverter", "Cassette", "Ducted", etc.)
+- category: string (subcategory like "Midwall Inverter", "Cassette", "Ducted", "Copper", "Insulation", "PVC", "Brackets", etc.)
 - prices: object mapping column name → numeric price value
 - pipeSize, btuRating, refrigerantType, shortName, productCategory, brand, phase, speedType, kw, unitType
 - pageNumber: integer (1-indexed PDF page)
@@ -92,6 +95,7 @@ shortName: BRAND BTU/kW ABBREV format (e.g. "Samsung 9K INV MW")
 Prices: ZAR format "R 7 700,00" = 7700. Use rightmost NETT/COST column preferentially.
 
 SECTION HEADER DETECTION: Rows like "AR3000 Non-Inverter" or "Midwall Split Systems" with NO price are section headers — SKIP them entirely.
+Document title/date rows like "CPT ONLY ONE STOP SHOP - PRICELIST NO.17 VALID FROM 13 NOVEMBER 2025" are NOT products — SKIP them.
 
 Supplier: `;
 
