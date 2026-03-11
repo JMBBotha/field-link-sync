@@ -565,7 +565,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         if (p?.prices) for (const k of Object.keys(p.prices)) allCols.add(k);
       }
 
-      const columns: string[] = [...allCols];
+      const columns: string[] = [...allCols].filter(isWordedColumnHeader);
       const products = mergedProducts;
 
       if (columns.length > 0) {
