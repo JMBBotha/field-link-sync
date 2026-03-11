@@ -460,7 +460,7 @@ export function matchTextRowsToProducts(
       const val = parseFloat(raw);
       if (!isNaN(val) && val >= 50) detectedPrice = val;
     }
-    console.log(`[pdfExtract] STEP3 row: page=${pageIndex} rightText="${rightmost.text}" x=${rightmost.x} xPct=${(rightmost.x/pageWidth*100).toFixed(1)}% detectedPrice=${detectedPrice}`);
+    console.log(`[pdfExtract] STEP3 row: rightText="${rightmost.text}" x=${rightmost.x.toFixed(1)} xPct=${(rightmost.x/pageWidth*100).toFixed(1)}% detectedPrice=${detectedPrice}`);
     if (detectedPrice === null || detectedPrice < 50) {
       skippedCount.noPrice++;
       console.log(`[pdfExtract] Skipped noPrice: ${rightmost.text} at y=${rightmost.y}`);
