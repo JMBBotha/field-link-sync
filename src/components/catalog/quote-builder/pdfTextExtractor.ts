@@ -567,7 +567,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 44; // v44: widen right-side to 40%, reduce chunk size to 6000, SA price parser
+let _extractionVersion = 45; // v45: reduce dedup threshold 1.5→0.5, tighter anti-overlap gap 0.2→0.05
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
@@ -613,7 +613,7 @@ export async function extractAndMatchPage(
       let isDuplicate = false;
       for (let j = 0; j < deduped.length; j++) {
         const existing = deduped[j];
-        if (Math.abs(current.y_pct - existing.y_pct) < 1.5) {
+        if (Math.abs(current.y_pct - existing.y_pct) < 0.5) {
           // Keep the one with price (detected_price > 0)
           if (current.detected_price > 0 && existing.detected_price <= 0) {
             deduped[j] = current;
@@ -634,7 +634,7 @@ export async function extractAndMatchPage(
     for (let i = 0; i < regions.length - 1; i++) {
       const current = regions[i];
       const nextY = regions[i + 1].y_pct;
-      const maxH = nextY - current.y_pct - 0.2; // 0.2% gap
+      const maxH = nextY - current.y_pct - 0.05; // 0.05% gap
       if (current.h_pct > maxH) {
         current.h_pct = maxH;
         overlapsFixed++;
