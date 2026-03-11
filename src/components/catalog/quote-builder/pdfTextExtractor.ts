@@ -613,7 +613,7 @@ export async function extractAndMatchPage(
       let isDuplicate = false;
       for (let j = 0; j < deduped.length; j++) {
         const existing = deduped[j];
-        if (Math.abs(current.y_pct - existing.y_pct) < 1.5) {
+        if (Math.abs(current.y_pct - existing.y_pct) < 0.5) {
           // Keep the one with price (detected_price > 0)
           if (current.detected_price > 0 && existing.detected_price <= 0) {
             deduped[j] = current;
