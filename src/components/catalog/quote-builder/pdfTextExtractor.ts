@@ -347,7 +347,7 @@ function isHeaderOrNonProductRow(
 
   // Fundamental rule: Skip (no item, no blue rectangle) if no valid Rand value detected on the right-hand side
   // (detectedPrice <= 0 or NaN means no R amount like R1,024.07 was found/parsed)
-  if (detectedPrice <= 0 || isNaN(detectedPrice)) {
+  if (detectedPrice < 50 || isNaN(detectedPrice)) {
     return true;
   }
 
