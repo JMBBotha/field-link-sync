@@ -397,7 +397,7 @@ async function parsePDFWithFullPipeline(
 
   // Filter out section header rows (e.g. "AR3000 Non-Inverter" with no full model suffix)
   const sectionHeaderPattern = /^AR\d{3,4}$/i; // e.g. AR3000, AR5000 — no full model suffix
-  const shortHeaderPattern = /^[A-Z]{1,4}\d{3,5}$/i; // Generic short codes that are section titles
+  const shortHeaderPattern = /^[A-Z]{1,4}[-\s]?\d{2,5}[A-Z]?$/i; // Generic short codes incl hyphens (KJR-12B kept via description dedup)
   const filteredRows = rawRows.filter((r) => {
     const code = (r.model || "").trim();
     // Skip rows with no model code
