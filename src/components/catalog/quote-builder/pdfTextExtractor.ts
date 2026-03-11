@@ -4,7 +4,7 @@
  * Uses pdfjs-dist to extract text items with their exact coordinates
  * from a PDF page, then cross-references against the products database.
  *
- * v38: Fundamental rule - skip rows with no valid Rand value (no ghost rectangles). Removed broad header keywords that caused false positives.
+ * v39: Raise minimum price threshold to R50 to eliminate TOC page numbers as false positives. Improved TOC regex to catch spaced/unicode dot variations.
  */
 import type { PaletteProduct } from "../QuoteBuilderTab";
 /**
@@ -347,7 +347,7 @@ function isHeaderOrNonProductRow(
 
   // Fundamental rule: Skip (no item, no blue rectangle) if no valid Rand value detected on the right-hand side
   // (detectedPrice <= 0 or NaN means no R amount like R1,024.07 was found/parsed)
-  if (detectedPrice <= 0 || isNaN(detectedPrice)) {
+  if (detectedPrice < 50 || isNaN(detectedPrice)) {
     return true;
   }
 
@@ -359,7 +359,7 @@ function isHeaderOrNonProductRow(
   const lower = rowText.toLowerCase();
 
   // TOC detection: dotted leaders or excessive dots with page numbers
-  if (/\.{4,}/.test(rowText) || /^\w+\s+\.{4,}\s*\d+$/.test(rowText)) {
+  if (/[.\s]{4,}/.test(rowText) || /^[\w\s-]+\s+[.\s]{4,}\s*\d+$/.test(rowText)) {
     return true;
   }
 
@@ -548,7 +548,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 38; // v38: Fix overly aggressive ghost filter that killed pages 1-3
+let _extractionVersion = 39; // v39: R50 minimum price threshold + improved TOC regex
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
