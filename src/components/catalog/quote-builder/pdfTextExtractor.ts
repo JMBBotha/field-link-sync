@@ -346,20 +346,25 @@ function isHeaderOrNonProductRow(
   }
 
   // Fundamental rule: Skip (no item, no blue rectangle) if no valid Rand value detected on the right-hand side
-  // (detectedPrice <= 0 or NaN means no R amount like R1,024.07 was found/parsed)
+  // or if the detected price is too low (< R50, to eliminate false positives like TOC page numbers 3-13)
   if (detectedPrice < 50 || isNaN(detectedPrice)) {
     return true;
   }
 
-  // Additional safeguards: Keep rows with model or sufficient price, but skip obvious non-products
-  if (hasModel || detectedPrice >= 100) {
+  // If price >= R50, always keep the row (to ensure items like controllers are not skipped by other filters)
+  if (detectedPrice >= 50) {
     return false;
   }
 
   const lower = rowText.toLowerCase();
 
-  // TOC detection: dotted leaders or excessive dots with page numbers
-  if (/[.\s]{4,}/.test(rowText) || /^[\w\s-]+\s+[.\s]{4,}\s*\d+$/.test(rowText)) {
+  // Additional TOC detection: Skip if line ends with optional space(s) followed by 1-2 digits (likely page number)
+  if (/\s*\d{1,2}$/.test(rowText)) {
+    return true;
+  }
+
+  // TOC detection: Improved to handle multi-word entries, dots/spaces/unicode variations, and attached numbers
+  if (/[.\s]{4,}\s*\d{1,2}/.test(rowText) || /^[\w\s-]+\s+[.\s]{4,}\s*\d+$/.test(rowText)) {
     return true;
   }
 
@@ -368,7 +373,7 @@ function isHeaderOrNonProductRow(
     return true;
   }
 
-  // Skip common non-product headers (only pure headers; removed broad keywords to avoid false positives)
+  // Skip common non-product headers (only pure headers; removed broad keywords like 'notes', 'technical specifications', 'installation', 'maintenance' to avoid false positives on product descriptions)
   const headerKeywords = [
     "contents", "table of contents", "index", "page", "chapter",
     "introduction", "disclaimer", "warranty", "terms"
@@ -381,7 +386,7 @@ function isHeaderOrNonProductRow(
 }
 
 /**
- * PRICE-FIRST approach v38: column-based detection for dense table PDFs.
+ * PRICE-FIRST approach v39: column-based detection for dense table PDFs.
  * Combines R-prefixed prices with column-position-based numeric prices.
  */
 export function matchTextRowsToProducts(
