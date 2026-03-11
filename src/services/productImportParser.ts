@@ -227,7 +227,21 @@ function detectDiscount(
 
 // ─── PDF PIPELINE ───
 
-const CHUNK_SIZE = 12000;
+const CHUNK_SIZE = 6000;
+
+/** Parse SA price formats: spaces as thousand separators, comma decimals */
+function parsePrice(priceStr: string): number {
+  if (!priceStr) return 0;
+  priceStr = priceStr.replace(/[^\d., ]/g, '').trim();
+  priceStr = priceStr.replace(/\s/g, '');
+  const commaIndex = priceStr.lastIndexOf(',');
+  if (commaIndex > -1 && priceStr.length - commaIndex - 1 === 2) {
+    priceStr = priceStr.replace(/,/g, '.');
+  } else {
+    priceStr = priceStr.replace(/,/g, '');
+  }
+  return parseFloat(priceStr) || 0;
+}
 
 async function parsePDFWithFullPipeline(
   file: File,
@@ -347,10 +361,11 @@ async function parsePDFWithFullPipeline(
   // STAGE 5: Regex fallback
   if (rawRows.length === 0) {
     onStage?.({ stage: "text_fallback", detail: "Using text extraction fallback..." });
-    const pricePattern = /([A-Z0-9][A-Z0-9\-\/]{4,29})\s+([A-Za-z0-9\s\-\/,\.]{10,80}?)\s+R?\s*([\d,]+\.?\d{0,2})/g;
+    const pricePattern = /([A-Z0-9][A-Z0-9\-\/]{4,29})\s+([A-Za-z0-9\s\-\/,\.]{10,80}?)\s+R?\s*([\d\s,]+\.?\d{0,2})/g;
     let match;
     while ((match = pricePattern.exec(allText)) !== null) {
-      const price = parseFloat(match[3].replace(/,/g, ""));
+      const price = parsePrice(match[3]);
+      if (price < 50) continue;
       if (price > 0 && price < 1_000_000) {
         rawRows.push({ model: match[1].trim(), description: match[2].trim(), price, category: detectCategory(match[2]) });
       }
@@ -382,7 +397,7 @@ async function parsePDFWithFullPipeline(
 
   // Filter out section header rows (e.g. "AR3000 Non-Inverter" with no full model suffix)
   const sectionHeaderPattern = /^AR\d{3,4}$/i; // e.g. AR3000, AR5000 — no full model suffix
-  const shortHeaderPattern = /^[A-Z]{1,4}\d{3,5}$/i; // Generic short codes that are section titles
+  const shortHeaderPattern = /^[A-Z]{1,4}[-\s]?\d{2,5}[A-Z]?$/i; // Generic short codes incl hyphens (KJR-12B kept via description dedup)
   const filteredRows = rawRows.filter((r) => {
     const code = (r.model || "").trim();
     // Skip rows with no model code
@@ -398,7 +413,7 @@ async function parsePDFWithFullPipeline(
   // Deduplicate
   const seen = new Set<string>();
   const uniqueRows = filteredRows.filter((r) => {
-    const key = r.model.toLowerCase();
+    const key = r.model.toLowerCase() + '|' + r.description.toLowerCase().substring(0, 50);
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
