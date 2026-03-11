@@ -413,7 +413,7 @@ async function parsePDFWithFullPipeline(
   // Deduplicate
   const seen = new Set<string>();
   const uniqueRows = filteredRows.filter((r) => {
-    const key = r.model.toLowerCase();
+    const key = r.model.toLowerCase() + '|' + r.description.toLowerCase().substring(0, 50);
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;

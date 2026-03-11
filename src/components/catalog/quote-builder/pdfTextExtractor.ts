@@ -567,7 +567,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 43; // v43: widen right-side threshold from 65% to 55% to capture Optional Extras controllers
+let _extractionVersion = 44; // v44: widen right-side to 40%, reduce chunk size to 6000, SA price parser
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
