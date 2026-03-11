@@ -563,7 +563,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 40; // v40: x>25% threshold, standalone min R50, footer skip, stricter empty check
+let _extractionVersion = 41; // v41: x>65% right-side threshold, STEP3 min R50, skip <50 at source
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
