@@ -4,7 +4,7 @@
  * Uses pdfjs-dist to extract text items with their exact coordinates
  * from a PDF page, then cross-references against the products database.
  *
- * v40: Lower right-side threshold to 25% to pick up sub-table prices. Raise standalone numeric minimum to R50. Add footer skip (bottom 3%). Stricter empty-row check.
+ * v41: Right-side threshold raised to 65% so blue rectangles only appear for rightmost R values. STEP 3 fallback minimum raised to R50 and skip threshold raised to <50 to eliminate ghost TOC items at source.
  */
 import type { PaletteProduct } from "../QuoteBuilderTab";
 /**
