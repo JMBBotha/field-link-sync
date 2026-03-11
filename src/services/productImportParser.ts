@@ -288,11 +288,15 @@ async function parsePDFWithFullPipeline(
     }
 
     for (let ci = 0; ci < chunks.length; ci++) {
-      onStage?.({ stage: "ai_extraction", detail: `Grok AI: chunk ${ci + 1}/${chunks.length}...` });
+      onStage?.({ stage: "ai_extraction", detail: `Grok AI: chunk ${ci + 1}/${chunks.length} (${chunks[ci].length} chars)...` });
+      console.log(`[Import] Sending chunk ${ci + 1}/${chunks.length}: ${chunks[ci].length} chars`);
       const { data, error } = await supabase.functions.invoke("parse-pdf-with-grok", {
         body: { extracted_text: chunks[ci], supplier_id: supplierId, supplier_name: settings.supplierName, chunk_index: ci, chunk_total: chunks.length },
       });
       if (error) { console.warn(`[Import] Grok chunk ${ci} error:`, error); continue; }
+
+      const chunkProducts = data?.products || [];
+      let chunkAccepted = 0;
 
       // Capture detected price columns from Grok (filter out raw R-amounts)
       if (data?.detected_price_columns?.length) {
@@ -307,7 +311,7 @@ async function parsePDFWithFullPipeline(
         }
       }
 
-      for (const p of (data?.products || [])) {
+      for (const p of chunkProducts) {
         // Use the smart-selected cost_price from Grok (already picked best column)
         const price = typeof p.cost_price === "number" && p.cost_price > 0
           ? p.cost_price
@@ -334,10 +338,14 @@ async function parsePDFWithFullPipeline(
             sold_in_length: p.sold_in_length || false, unit_length: p.unit_length || null,
             price_per_metre: p.price_per_metre || null,
           });
+          chunkAccepted++;
+        } else {
+          console.warn(`[Import] Chunk ${ci}: Skipped product "${p.product_code || p.sku}" — price=${price} (cost_price=${p.cost_price})`);
         }
       }
+      console.log(`[Import] Chunk ${ci + 1}/${chunks.length}: ${chunkProducts.length} from Grok, ${chunkAccepted} accepted into rawRows (${chunkProducts.length - chunkAccepted} skipped for price<=0)`);
     }
-    if (rawRows.length > 0) { parseMethod = "grok_ai"; console.log(`[Import] Grok: ${rawRows.length} products`); }
+    if (rawRows.length > 0) { parseMethod = "grok_ai"; console.log(`[Import] Grok total: ${rawRows.length} products across ${chunks.length} chunks`); }
   } catch (err) { console.warn("[Import] Grok failed:", err); }
 
   // STAGE 4: Lovable AI fallback
