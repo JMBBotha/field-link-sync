@@ -1144,10 +1144,8 @@ const LazyPdfPage = ({
       });
     }
 
-    // If no live regions produced results, use fallback
-    if (result.length === 0 && fallbackRegions.length > 0) {
-      return fallbackRegions;
-    }
+    // FUNDAMENTAL RULE: If pdfTextExtractor found no valid R-value prices on a page,
+    // that page should show 0 items and 0 blue rectangles. No fallback filling.
 
     return result;
   }, [liveRegions, fallbackRegions, page.id, pageIndex]);
