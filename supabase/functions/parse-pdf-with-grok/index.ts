@@ -265,12 +265,32 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
       }
 
       let data: any;
+      let rawText: string;
       try {
-        const rawText = await resp.text();
+        rawText = await resp.text();
         data = JSON.parse(rawText);
       } catch (parseErr) {
-        console.error(`[Grok] Chunk ${chunkIdx}: Failed to parse response`, (parseErr as Error).message);
-        return { cols: [], products: [] };
+        console.warn(`[Grok] Chunk ${chunkIdx}: JSON parse failed (${(parseErr as Error).message}), retrying with gemini-2.5-pro`);
+        // Retry with a more capable model that produces complete JSON
+        if (lovableApiKey) {
+          try {
+            const retryResp = await callAI(chunkText, "https://ai.gateway.lovable.dev/v1/chat/completions", lovableApiKey!, "google/gemini-2.5-pro", false);
+            if (retryResp.ok) {
+              const retryText = await retryResp.text();
+              data = JSON.parse(retryText);
+              console.log(`[Grok] Chunk ${chunkIdx}: retry with gemini-2.5-pro succeeded`);
+            } else {
+              await retryResp.text();
+              console.error(`[Grok] Chunk ${chunkIdx}: retry HTTP failed (${retryResp.status})`);
+              return { cols: [], products: [] };
+            }
+          } catch (retryErr) {
+            console.error(`[Grok] Chunk ${chunkIdx}: retry also failed:`, (retryErr as Error).message);
+            return { cols: [], products: [] };
+          }
+        } else {
+          return { cols: [], products: [] };
+        }
       }
       const content = data.choices?.[0]?.message?.content || "";
       const result = parseAIContent(content);
