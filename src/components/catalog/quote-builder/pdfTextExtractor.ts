@@ -583,26 +583,62 @@ export async function extractAndMatchPage(
   }
   try {
     const { items, pageWidth, pageHeight } = await extractTextItemsFromPdfPage(pdfUrl, pageNumber);
-    console.log(`[pdfExtract] Page ${pageNumber}: ${items.length} raw text items extracted from PDF`);
+    // DEBUG 1: Total raw text items from pdf.js
+    console.log(`[PDF-DEBUG] Page ${pageNumber}: ${items.length} total raw text items from pdf.js, pageWidth=${pageWidth.toFixed(1)}, pageHeight=${pageHeight.toFixed(1)}`);
+    
+    // DEBUG 5: Log first 10 text items for page 1 to see what pdf.js extracts
+    if (pageNumber === 1) {
+      const first10 = items.slice(0, 10);
+      first10.forEach((item, idx) => {
+        console.log(`[PDF-DEBUG] Page 1 item[${idx}]: x=${item.x.toFixed(1)} y=${item.y.toFixed(1)} w=${item.width.toFixed(1)} h=${item.height.toFixed(1)} text="${item.text}"`);
+      });
+      // Also log ALL items that contain "R" followed by digits (potential prices)
+      const rPriceItems = items.filter(i => /R\s*\d/.test(i.text));
+      console.log(`[PDF-DEBUG] Page 1: ${rPriceItems.length} items containing R+digits pattern`);
+      rPriceItems.slice(0, 10).forEach((item, idx) => {
+        console.log(`[PDF-DEBUG] Page 1 R-item[${idx}]: x=${item.x.toFixed(1)} y=${item.y.toFixed(1)} text="${item.text}" xPct=${((item.x / pageWidth) * 100).toFixed(1)}%`);
+      });
+    }
+
     const mergedItems = mergeCurrencyWithPrices(items);
-    console.log(
-      `[pdfExtract] Page ${pageNumber}: ${mergedItems.length} items after mergeCurrencyWithPrices (${items.length - mergedItems.length} merged)`,
-    );
+    console.log(`[PDF-DEBUG] Page ${pageNumber}: ${mergedItems.length} items after mergeCurrencyWithPrices (${items.length - mergedItems.length} merged)`);
+    
     // Log sample of lone "R" items and standalone numeric items for debugging
     const loneRItems = mergedItems.filter((i) => i.text.trim() === "R");
     const numericItems = mergedItems.filter((i) => /^\d[\d\s,.]+$/.test(i.text.trim()));
-    console.log(
-      `[pdfExtract] Page ${pageNumber}: ${loneRItems.length} lone "R" items, ${numericItems.length} standalone numeric items`,
-    );
-    if (loneRItems.length > 0 && loneRItems.length <= 5) {
-      loneRItems.forEach((r) => console.log(`[pdfExtract] R at x=${r.x.toFixed(1)} y=${r.y.toFixed(1)}`));
+    console.log(`[PDF-DEBUG] Page ${pageNumber}: ${loneRItems.length} lone "R" items remaining, ${numericItems.length} standalone numeric items`);
+    if (loneRItems.length > 0) {
+      loneRItems.slice(0, 10).forEach((r) => console.log(`[PDF-DEBUG] Page ${pageNumber} lone-R at x=${r.x.toFixed(1)} y=${r.y.toFixed(1)}`));
     }
-    if (numericItems.length > 0 && numericItems.length <= 10) {
-      numericItems.forEach((n) =>
-        console.log(`[pdfExtract] Numeric at x=${n.x.toFixed(1)} y=${n.y.toFixed(1)} text="${n.text.trim()}"`),
+    if (numericItems.length > 0) {
+      numericItems.slice(0, 10).forEach((n) =>
+        console.log(`[PDF-DEBUG] Page ${pageNumber} numeric at x=${n.x.toFixed(1)} y=${n.y.toFixed(1)} text="${n.text.trim()}" xPct=${((n.x / pageWidth) * 100).toFixed(1)}%`),
       );
     }
+    
+    // DEBUG 2: Explicit R-prefixed items (pre-matchTextRows check)
+    const preCheckExplicit = mergedItems.filter(
+      (item) => /R\s*\d/.test(item.text) && detectPrice(item.text) !== null && item.x / pageWidth > 0.4,
+    );
+    console.log(`[PDF-DEBUG] Page ${pageNumber}: STEP 1a - ${preCheckExplicit.length} R-prefixed price items with x > 40% pageWidth`);
+    preCheckExplicit.slice(0, 10).forEach((item, idx) => {
+      console.log(`[PDF-DEBUG] Page ${pageNumber} explicit[${idx}]: text="${item.text}" x=${item.x.toFixed(1)} xPct=${((item.x / pageWidth) * 100).toFixed(1)}% price=${detectPrice(item.text)}`);
+    });
+    
+    // DEBUG 3: Column prices check
+    const preCheckColumn = findColumnPrices(mergedItems, pageWidth, pageHeight);
+    console.log(`[PDF-DEBUG] Page ${pageNumber}: STEP 1b - ${preCheckColumn.length} column-based prices found`);
+    preCheckColumn.slice(0, 10).forEach((item, idx) => {
+      console.log(`[PDF-DEBUG] Page ${pageNumber} colPrice[${idx}]: text="${item.text}" x=${item.x.toFixed(1)} xPct=${((item.x / pageWidth) * 100).toFixed(1)}%`);
+    });
+    
+    // DEBUG: Price column header detection
+    const colRange = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
+    console.log(`[PDF-DEBUG] Page ${pageNumber}: Price column header range = ${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : 'NOT FOUND'}`);
+
     let regions = matchTextRowsToProducts(mergedItems, pageWidth, pageHeight, products);
+    // DEBUG 4: Final regions count
+    console.log(`[PDF-DEBUG] Page ${pageNumber}: STEP 3 - ${regions.length} regions created from matchTextRowsToProducts`);
     // New dedup: Sort by y_pct, if within 1.5%, keep priced one
     regions = regions.sort((a, b) => a.y_pct - b.y_pct);
     const deduped = [];
