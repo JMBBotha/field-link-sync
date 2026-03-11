@@ -326,16 +326,29 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
       return true;
     });
 
-    // Validate products
+    // Validate products — strict post-processing
+    const HEADER_PATTERNS = /\b(VALID\s+FROM|PRICELIST|PRICE\s*LIST|EFFECTIVE\s+DATE)\b/i;
+    const YEAR_PATTERN = /\b(202[3-9]|203[0-9])\b/;
+
     const validated = deduped.filter((p) => {
       const code = (p.sku || "").trim();
       if (code.length < SHARED_MIN_CODE_LEN) {
-        console.warn(`[Grok] Skipping short code: "${code}"`);
+        console.warn(`[Grok] Reject short code: "${code}"`);
         return false;
       }
       const bestP = pickBestPrice(p.prices || {});
-      if (bestP.price < SHARED_MIN_PRICE || bestP.price > SHARED_MAX_PRICE) {
-        console.warn(`[Grok] Skipping "${code}" out-of-range price: ${bestP.price}`);
+      if (!bestP.price || !Number.isFinite(bestP.price) || bestP.price < SHARED_MIN_PRICE || bestP.price > SHARED_MAX_PRICE) {
+        console.warn(`[Grok] Reject "${code}" invalid/out-of-range price: ${bestP.price}`);
+        return false;
+      }
+      // Reject document header/date rows mistakenly extracted as products
+      const fullText = `${p.name || ""} ${p.description || ""} ${code}`;
+      if (HEADER_PATTERNS.test(fullText)) {
+        console.warn(`[Grok] Reject header row: "${code}" — "${fullText.substring(0, 80)}"`);
+        return false;
+      }
+      if (YEAR_PATTERN.test(code) && code.length < 8) {
+        console.warn(`[Grok] Reject year-like code: "${code}"`);
         return false;
       }
       return true;
