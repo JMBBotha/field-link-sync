@@ -361,10 +361,11 @@ async function parsePDFWithFullPipeline(
   // STAGE 5: Regex fallback
   if (rawRows.length === 0) {
     onStage?.({ stage: "text_fallback", detail: "Using text extraction fallback..." });
-    const pricePattern = /([A-Z0-9][A-Z0-9\-\/]{4,29})\s+([A-Za-z0-9\s\-\/,\.]{10,80}?)\s+R?\s*([\d,]+\.?\d{0,2})/g;
+    const pricePattern = /([A-Z0-9][A-Z0-9\-\/]{4,29})\s+([A-Za-z0-9\s\-\/,\.]{10,80}?)\s+R?\s*([\d\s,]+\.?\d{0,2})/g;
     let match;
     while ((match = pricePattern.exec(allText)) !== null) {
-      const price = parseFloat(match[3].replace(/,/g, ""));
+      const price = parsePrice(match[3]);
+      if (price < 50) continue;
       if (price > 0 && price < 1_000_000) {
         rawRows.push({ model: match[1].trim(), description: match[2].trim(), price, category: detectCategory(match[2]) });
       }
