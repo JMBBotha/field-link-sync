@@ -246,14 +246,21 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
       let resp = await callAI(chunkText, apiUrl, apiKey, model, useXai);
 
       if (!resp.ok && useXai && lovableApiKey) {
-        console.warn(`[Grok] Chunk ${chunkIdx}: xAI failed (${resp.status}), falling back`);
+        console.warn(`[Grok] Chunk ${chunkIdx}: xAI failed (${resp.status}), falling back to Lovable AI`);
         await resp.text(); // consume body
         resp = await callAI(chunkText, "https://ai.gateway.lovable.dev/v1/chat/completions", lovableApiKey, "google/gemini-2.5-flash", false);
       }
 
+      // Retry once with a different model if first attempt fails
+      if (!resp.ok && lovableApiKey) {
+        console.warn(`[Grok] Chunk ${chunkIdx}: first fallback failed (${resp.status}), retrying with gemini-2.5-pro`);
+        await resp.text(); // consume body
+        resp = await callAI(chunkText, "https://ai.gateway.lovable.dev/v1/chat/completions", lovableApiKey, "google/gemini-2.5-pro", false);
+      }
+
       if (!resp.ok) {
         const errText = await resp.text();
-        console.error(`[Grok] Chunk ${chunkIdx} failed:`, resp.status, errText.substring(0, 300));
+        console.error(`[Grok] Chunk ${chunkIdx} failed after all retries:`, resp.status, errText.substring(0, 300));
         return { cols: [], products: [] };
       }
 
