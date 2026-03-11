@@ -300,19 +300,25 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
 
     const result = await processChunk(truncatedText, chunkIndex);
 
-    // Deduplicate by SKU+category+pageNumber within chunk
-    // Accessories like KJR-12B appear in multiple sections — keep them if category/page differs
-    const seen = new Map<string, number>();
+    // Deduplicate only truly identical rows: same SKU, same price, same page, within 2% y-position
+    const seen: Array<{ sku: string; price: number; page: number; yBucket: number }> = [];
     const deduped = result.products.filter((p) => {
       const sku = (p.sku || "").toLowerCase();
       if (!sku) return true; // keep products without SKU
-      // Build composite key: SKU + category + page
-      const key = `${sku}|${(p.category || "").toLowerCase()}|${p.pageNumber || 0}`;
-      if (seen.has(key)) {
-        console.log(`[Grok] Dedup: skipping duplicate "${sku}" (cat: ${p.category}, page: ${p.pageNumber})`);
+      const bestPrice = pickBestPrice(p.prices || {}).price;
+      const page = p.pageNumber || 0;
+      // Bucket y-position to nearest 2% so only rows at nearly the same vertical position dedup
+      const yPct = p.rowBbox?.y ?? -1;
+      const yBucket = yPct >= 0 ? Math.round(yPct * 50) : -1; // 50 buckets = 2% each
+
+      const isDupe = seen.some(
+        (s) => s.sku === sku && s.price === bestPrice && s.page === page && (yBucket < 0 || s.yBucket < 0 || Math.abs(s.yBucket - yBucket) <= 1)
+      );
+      if (isDupe) {
+        console.log(`[Grok] Dedup: skipping true duplicate "${sku}" (page: ${page}, y: ${yPct?.toFixed(3)})`);
         return false;
       }
-      seen.set(key, 1);
+      seen.push({ sku, price: bestPrice, page, yBucket });
       return true;
     });
 
