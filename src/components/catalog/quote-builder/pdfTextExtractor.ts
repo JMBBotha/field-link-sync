@@ -567,7 +567,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 42; // v42: enforce x>65% for explicit R-prices in STEP 1a (plus existing STEP 1b/STEP 3 guards)
+let _extractionVersion = 43; // v43: widen right-side threshold from 65% to 55% to capture Optional Extras controllers
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
