@@ -273,12 +273,19 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
 
     const result = await processChunk(truncatedText, chunkIndex);
 
-    // Deduplicate by SKU within chunk
-    const seen = new Set<string>();
+    // Deduplicate by SKU+category+pageNumber within chunk
+    // Accessories like KJR-12B appear in multiple sections — keep them if category/page differs
+    const seen = new Map<string, number>();
     const deduped = result.products.filter((p) => {
-      const key = (p.sku || "").toLowerCase();
-      if (!key || seen.has(key)) return !key ? true : false;
-      seen.add(key);
+      const sku = (p.sku || "").toLowerCase();
+      if (!sku) return true; // keep products without SKU
+      // Build composite key: SKU + category + page
+      const key = `${sku}|${(p.category || "").toLowerCase()}|${p.pageNumber || 0}`;
+      if (seen.has(key)) {
+        console.log(`[Grok] Dedup: skipping duplicate "${sku}" (cat: ${p.category}, page: ${p.pageNumber})`);
+        return false;
+      }
+      seen.set(key, 1);
       return true;
     });
 
