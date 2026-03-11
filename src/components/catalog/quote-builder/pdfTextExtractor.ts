@@ -373,6 +373,16 @@ function isHeaderOrNonProductRow(
     return true;
   }
 
+  // Skip page footers in bottom 3% without model code
+  if (y_pct > 97 && !hasModel) {
+    return true;
+  }
+
+  // Additional TOC detection: Skip if line ends with optional space(s) followed by 1-2 digits
+  if (/\s*\d{1,2}$/.test(rowText)) {
+    return true;
+  }
+
   // Skip common non-product headers (only pure headers; removed broad keywords like 'notes', 'technical specifications', 'installation', 'maintenance' to avoid false positives on product descriptions)
   const headerKeywords = [
     "contents", "table of contents", "index", "page", "chapter",
