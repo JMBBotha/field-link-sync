@@ -340,8 +340,8 @@ function isHeaderOrNonProductRow(
   hasModel: boolean,
   y_pct: number
 ): boolean {
-  // Skip empty or whitespace-only rows
-  if (!rowText.trim()) {
+  // Skip empty or whitespace-only rows (strict: collapse all whitespace variants)
+  if (rowText.replace(/\s/g, '').length === 0) {
     return true;
   }
 
