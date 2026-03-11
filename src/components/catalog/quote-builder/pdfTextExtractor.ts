@@ -458,7 +458,7 @@ export function matchTextRowsToProducts(
         raw = raw.replace(/,/g, "");
       }
       const val = parseFloat(raw);
-      if (!isNaN(val) && val >= 1) detectedPrice = val;
+      if (!isNaN(val) && val >= 50) detectedPrice = val;
     }
     if (detectedPrice === null || detectedPrice <= 0) {
       skippedCount.noPrice++;
