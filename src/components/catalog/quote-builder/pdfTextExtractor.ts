@@ -7,6 +7,7 @@
  * v41: Right-side threshold raised to 65% so blue rectangles only appear for rightmost R values. STEP 3 fallback minimum raised to R50 and skip threshold raised to <50 to eliminate ghost TOC items at source.
  */
 import type { PaletteProduct } from "../QuoteBuilderTab";
+import { supabase } from "@/integrations/supabase/client";
 /**
  * Sanitize PDF URL by trimming trailing spaces from path segments.
  * Fixes 400 errors from storage when supplier names have trailing spaces.
