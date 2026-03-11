@@ -293,7 +293,7 @@ async function parsePDFWithFullPipeline(
       const { data, error } = await supabase.functions.invoke("parse-pdf-with-grok", {
         body: { extracted_text: chunks[ci], supplier_id: supplierId, supplier_name: settings.supplierName, chunk_index: ci, chunk_total: chunks.length },
       });
-      if (error) { console.warn(`[Import] Grok chunk ${ci} error:`, error); continue; }
+      if (error) { console.error(`[Import] Grok chunk ${ci} error:`, error.message || error, 'data:', JSON.stringify(data)?.substring(0, 200)); continue; }
 
       const chunkProducts = data?.products || [];
       let chunkAccepted = 0;
