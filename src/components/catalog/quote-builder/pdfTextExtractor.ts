@@ -4,7 +4,7 @@
  * Uses pdfjs-dist to extract text items with their exact coordinates
  * from a PDF page, then cross-references against the products database.
  *
- * v37: Stricter dedup (y_pct within 1.5%, keep priced), anti-overlap clamp with 0.2% gap, enhanced ghost filtering (TOC, headers, subtotals, blanks), standalone 4+ digit prices in rightmost, detailed logging.
+ * v38: Fundamental rule - skip rows with no valid Rand value (no ghost rectangles). Removed broad header keywords that caused false positives.
  */
 import type { PaletteProduct } from "../QuoteBuilderTab";
 /**
