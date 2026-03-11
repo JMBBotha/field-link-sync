@@ -359,7 +359,7 @@ function isHeaderOrNonProductRow(
   const lower = rowText.toLowerCase();
 
   // TOC detection: dotted leaders or excessive dots with page numbers
-  if (/\.{4,}/.test(rowText) || /^\w+\s+\.{4,}\s*\d+$/.test(rowText)) {
+  if (/[.\s]{4,}/.test(rowText) || /^[\w\s-]+\s+[.\s]{4,}\s*\d+$/.test(rowText)) {
     return true;
   }
 
