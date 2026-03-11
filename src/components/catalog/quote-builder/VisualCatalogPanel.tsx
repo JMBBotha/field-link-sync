@@ -923,7 +923,7 @@ const LazyPdfPage = ({
         }
 
         // First pass: extract and match against existing non-archived products
-        const regions = await extractAndMatchPage(pdfUrl, page.page_number, activeProducts);
+        const regions = await extractAndMatchPage(pdfUrl, page.page_number, activeProducts, page.supplier_id);
         const matched = regions.filter(r => r.matched);
         const unmatchedWithPrice = regions.filter(r => !r.matched && r.has_price && r.detected_price);
         
@@ -974,7 +974,7 @@ const LazyPdfPage = ({
               // Clear cache and re-extract with augmented product list so icons turn blue
               clearExtractionCache();
               const allProducts = [...activeProducts, ...newPaletteProducts];
-              const reMatched = await extractAndMatchPage(pdfUrl, page.page_number, allProducts);
+              const reMatched = await extractAndMatchPage(pdfUrl, page.page_number, allProducts, page.supplier_id);
               
               // Invalidate the main products query so palette picks up new items
               queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
