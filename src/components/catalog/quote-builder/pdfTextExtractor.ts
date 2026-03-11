@@ -4,7 +4,7 @@
  * Uses pdfjs-dist to extract text items with their exact coordinates
  * from a PDF page, then cross-references against the products database.
  *
- * v40: Lower right-side threshold to 25% to pick up sub-table prices. Raise standalone numeric minimum to R50. Add footer skip (bottom 3%). Stricter empty-row check.
+ * v41: Right-side threshold raised to 65% so blue rectangles only appear for rightmost R values. STEP 3 fallback minimum raised to R50 and skip threshold raised to <50 to eliminate ghost TOC items at source.
  */
 import type { PaletteProduct } from "../QuoteBuilderTab";
 /**
@@ -322,7 +322,7 @@ function findColumnPrices(
     if (isNaN(val) || val < 50) continue;
     // Check if in price column or right side of page
     const inColumn = colRange && item.x >= colRange.minX && item.x <= colRange.maxX;
-    const inRightSide = item.x / pageWidth > 0.25;
+    const inRightSide = item.x / pageWidth > 0.65;
     if (inColumn || inRightSide) {
       candidates.push(item);
     }
@@ -458,9 +458,9 @@ export function matchTextRowsToProducts(
         raw = raw.replace(/,/g, "");
       }
       const val = parseFloat(raw);
-      if (!isNaN(val) && val >= 1) detectedPrice = val;
+      if (!isNaN(val) && val >= 50) detectedPrice = val;
     }
-    if (detectedPrice === null || detectedPrice <= 0) {
+    if (detectedPrice === null || detectedPrice < 50) {
       skippedCount.noPrice++;
       console.log(`[pdfExtract] Skipped noPrice: ${rightmost.text} at y=${rightmost.y}`);
       continue;
@@ -563,7 +563,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 40; // v40: x>25% threshold, standalone min R50, footer skip, stricter empty check
+let _extractionVersion = 41; // v41: x>65% right-side threshold, STEP3 min R50, skip <50 at source
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
