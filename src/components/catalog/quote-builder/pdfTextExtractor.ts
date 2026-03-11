@@ -381,7 +381,7 @@ function isHeaderOrNonProductRow(
 }
 
 /**
- * PRICE-FIRST approach v37: column-based detection for dense table PDFs.
+ * PRICE-FIRST approach v38: column-based detection for dense table PDFs.
  * Combines R-prefixed prices with column-position-based numeric prices.
  */
 export function matchTextRowsToProducts(
