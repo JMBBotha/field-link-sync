@@ -4,7 +4,7 @@
  * Uses pdfjs-dist to extract text items with their exact coordinates
  * from a PDF page, then cross-references against the products database.
  *
- * v39: Raise minimum price threshold to R50 to eliminate TOC page numbers as false positives. Improved TOC regex to catch spaced/unicode dot variations.
+ * v40: Lower right-side threshold to 25% to pick up sub-table prices. Raise standalone numeric minimum to R50. Add footer skip (bottom 3%). Stricter empty-row check.
  */
 import type { PaletteProduct } from "../QuoteBuilderTab";
 /**
