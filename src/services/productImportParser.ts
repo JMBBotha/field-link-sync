@@ -9,6 +9,20 @@ import { VAT_RATE, stripVat, applyDiscount, addVat } from "@/utils/pricing";
 import { supabase } from "@/integrations/supabase/client";
 import { renderPDFToImages } from "@/utils/pdfEnhancer";
 
+/** Strip non-numeric chars from AI values like "9000 BTU" → 9000 */
+function sanitizeInt(val: any): number | null {
+  if (val == null) return null;
+  if (typeof val === "number") return isNaN(val) ? null : Math.round(val);
+  const n = parseInt(String(val).replace(/[^0-9\-]/g, ""), 10);
+  return isNaN(n) ? null : n;
+}
+function sanitizeFloat(val: any): number | null {
+  if (val == null) return null;
+  if (typeof val === "number") return isNaN(val) ? null : val;
+  const n = parseFloat(String(val).replace(/[^0-9.\-]/g, ""));
+  return isNaN(n) ? null : n;
+}
+
 // ─── TYPES ───
 
 export interface SupplierPricingSettings {
