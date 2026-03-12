@@ -569,7 +569,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 51; // v51: enforce right-side threshold directly in explicitPriceItems filter order
+let _extractionVersion = 52; // v52: enforce right-side >55% threshold in ALL code paths: explicitPriceItems, mergeAdjacentPriceFragments, mergeCurrencyWithPrices, and STEP 3 row loop
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
