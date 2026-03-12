@@ -566,20 +566,6 @@ export function matchTextRowsToProducts(
   console.log(
     `[pdfExtract] Row processing: ${priceRows.length} price rows → ${regions.length} regions. Skipped: noPrice=${skippedCount.noPrice}, ghost=${skippedCount.ghost}, outOfBounds=${skippedCount.outOfBounds}`,
   );
-  if (debugPage6) {
-    p6Debug += `\n=== RESULT: ${regions.length} regions, skipped: noPrice=${skippedCount.noPrice} ghost=${skippedCount.ghost} oob=${skippedCount.outOfBounds} ===\n`;
-    regions.forEach((r, i) => {
-      p6Debug += `  region[${i}] code="${r.product_code}" price=${r.detected_price} matched=${r.matched}\n`;
-    });
-    try {
-      const debugDiv = document.createElement('div');
-      debugDiv.id = 'pdf-debug-p6';
-      debugDiv.style.cssText = 'position:fixed;top:80px;left:10px;background:black;color:lime;padding:10px;z-index:99999;max-height:400px;overflow:auto;font-size:11px;white-space:pre;opacity:0.95;pointer-events:auto;border:2px solid lime;';
-      debugDiv.textContent = p6Debug;
-      document.getElementById('pdf-debug-p6')?.remove();
-      document.body.appendChild(debugDiv);
-    } catch (_) {}
-  }
   // Align all icons to a single X column
   if (regions.length > 0) {
     const maxX = Math.max(...regions.map((r) => r.x_pct));
