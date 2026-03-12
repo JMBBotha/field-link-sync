@@ -161,6 +161,9 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   }, [open, onClose, wizardOpen]);
 
   // Fetch suppliers
+  // UUID pattern to filter out raw IDs that shouldn't appear as display names
+  const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
   const { data: supplierOptions = [] } = useQuery({
     queryKey: ["visual-panel-suppliers"],
     enabled: open,
