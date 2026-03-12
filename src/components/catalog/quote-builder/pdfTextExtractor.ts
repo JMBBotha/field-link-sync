@@ -568,7 +568,7 @@ export async function extractAndMatchPage(
   try {
     const { items, pageWidth, pageHeight } = await extractTextItemsFromPdfPage(pdfUrl, pageNumber);
     // DEBUG 1: Total raw text items from pdf.js
-    console.log(`[PDF-DEBUG] Page ${pageNumber}: ${items.length} total raw text items from pdf.js, pageWidth=${pageWidth.toFixed(1)}, pageHeight=${pageHeight.toFixed(1)}`);
+    console.log(`[PDF-DEBUG] Page ${pageNumber}: ${items.length} total raw text items, supplierType="${supplierType || "NOT SET"}", supplierId="${supplierId || "none"}"`);
 
     // FALLBACK: If pdf.js returns 0 text items (scanned/image-based page),
     // return empty — the UI layer (VisualCatalogPanel) shows a banner instead
