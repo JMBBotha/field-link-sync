@@ -603,7 +603,7 @@ export async function extractAndMatchPage(
       });
     }
 
-    const mergedItems = mergeCurrencyWithPrices(items);
+    const mergedItems = mergeCurrencyWithPrices(items, pageWidth);
     console.log(`[PDF-DEBUG] Page ${pageNumber}: ${mergedItems.length} items after mergeCurrencyWithPrices (${items.length - mergedItems.length} merged)`);
     
     // Log sample of lone "R" items and standalone numeric items for debugging
