@@ -578,7 +578,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 55; // v55: removed debug overlay, all Samsung fixes retained
+let _extractionVersion = 56; // v56: filter phone numbers & broaden AR model code pattern
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
