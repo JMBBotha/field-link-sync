@@ -108,7 +108,7 @@ export function mergeCurrencyWithPrices(items: ExtractedTextItem[], pageWidth?: 
     if (skip.has(i)) continue;
     const item = sorted[i];
     const trimmed = item.text.trim();
-    if (trimmed === "R" || trimmed === "R ") {
+    if ((trimmed === "R" || trimmed === "R ") && (!pageWidth || (item.x / pageWidth) > RIGHT_SIDE_THRESHOLD)) {
       // Multi-fragment merge: collect up to 3 numeric fragments to the right on same row
       // Handles pdf.js splitting "R 1 000.00" into ["R", "1", "000.00"]
       const fragments: number[] = [];
