@@ -685,6 +685,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           pdfSelection={pdfSelection}
                           onProductInfoOpen={handleProductInfoOpen}
                           hdMode={hdMode}
+                          supplierType={supplierTypeMap[page.supplier_id]}
                           registerRef={(el) => {
                             if (el) pageRefs.current.set(idx, el);
                             else pageRefs.current.delete(idx);
