@@ -862,6 +862,7 @@ const LazyPdfPage = ({
   pdfSelection,
   onProductInfoOpen,
   hdMode,
+  supplierType,
 }: LazyPdfPageProps) => {
   const queryClient = useQueryClient();
   const divRef = useRef<HTMLDivElement | null>(null);
