@@ -307,7 +307,7 @@ function findPriceColumnRange(
  * or fallback to right-side heuristic (x > 40% of page width).
  * Updated: Capture standalone 4+ digit numbers in rightmost if no R prefix.
  */
-function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHeight: number, minPrice: number = 50): ExtractedTextItem[] {
+function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHeight: number, minPrice: number = 1): ExtractedTextItem[] {
   const colRange = findPriceColumnRange(items, pageWidth, pageHeight);
   const candidates: ExtractedTextItem[] = [];
   for (const item of items) {
