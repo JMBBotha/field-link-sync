@@ -404,13 +404,12 @@ export function matchTextRowsToProducts(
   const { byCode, byName, byDescription } = lookup;
   const mergedItems = mergeAdjacentPriceFragments(items, 3, pageWidth);
   const debugPage6 = pageIndex === 5;
+  let p6Debug = debugPage6 ? '=== PAGE 6 DEBUG ===\n' : '';
   if (debugPage6) {
     const mergedRWithDigits = mergedItems.filter((item) => /R\s*\d/.test(item.text));
-    console.log(`[pdfExtract][p6] mergedItems R+digit count=${mergedRWithDigits.length}`);
+    p6Debug += `mergedItems R+digit count=${mergedRWithDigits.length}\n`;
     mergedRWithDigits.forEach((item, idx) => {
-      console.log(
-        `[pdfExtract][p6] mergedR[${idx}] text="${item.text}" x=${item.x.toFixed(1)} xPct=${((item.x / pageWidth) * 100).toFixed(2)}%`,
-      );
+      p6Debug += `  mergedR[${idx}] "${item.text}" x=${item.x.toFixed(1)} xPct=${((item.x / pageWidth) * 100).toFixed(2)}%\n`;
     });
   }
   // Adaptive Y-threshold
