@@ -95,7 +95,8 @@ export async function extractTextItemsFromPdfPage(
  * Merge lone "R" currency symbols with adjacent price digits on the same row.
  * Handles table-layout PDFs where pdfjs-dist splits "R" and "172,79" into separate items.
  */
-export function mergeCurrencyWithPrices(items: ExtractedTextItem[]): ExtractedTextItem[] {
+export function mergeCurrencyWithPrices(items: ExtractedTextItem[], pageWidth?: number): ExtractedTextItem[] {
+  const RIGHT_SIDE_THRESHOLD = 0.55;
   // Sort by y then x
   const sorted = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
   const result: ExtractedTextItem[] = [];
@@ -107,7 +108,7 @@ export function mergeCurrencyWithPrices(items: ExtractedTextItem[]): ExtractedTe
     if (skip.has(i)) continue;
     const item = sorted[i];
     const trimmed = item.text.trim();
-    if (trimmed === "R" || trimmed === "R ") {
+    if ((trimmed === "R" || trimmed === "R ") && (!pageWidth || (item.x / pageWidth) > RIGHT_SIDE_THRESHOLD)) {
       // Multi-fragment merge: collect up to 3 numeric fragments to the right on same row
       // Handles pdf.js splitting "R 1 000.00" into ["R", "1", "000.00"]
       const fragments: number[] = [];
@@ -559,7 +560,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 49; // v49: fix split-fragment refrigerant matching (R 410 → R410)
+let _extractionVersion = 50; // v50: enforce right-side threshold in mergeCurrencyWithPrices to block left-side R-fragment merging
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
@@ -602,7 +603,7 @@ export async function extractAndMatchPage(
       });
     }
 
-    const mergedItems = mergeCurrencyWithPrices(items);
+    const mergedItems = mergeCurrencyWithPrices(items, pageWidth);
     console.log(`[PDF-DEBUG] Page ${pageNumber}: ${mergedItems.length} items after mergeCurrencyWithPrices (${items.length - mergedItems.length} merged)`);
     
     // Log sample of lone "R" items and standalone numeric items for debugging
