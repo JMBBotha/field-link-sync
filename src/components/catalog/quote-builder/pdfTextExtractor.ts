@@ -106,37 +106,44 @@ export function mergeCurrencyWithPrices(items: ExtractedTextItem[]): ExtractedTe
   for (let i = 0; i < sorted.length; i++) {
     if (skip.has(i)) continue;
     const item = sorted[i];
-    // Match lone "R" currency symbol (trim handles trailing whitespace)
     const trimmed = item.text.trim();
     if (trimmed === "R" || trimmed === "R ") {
-      // Find the next item to the right on the same row
-      let bestJ = -1;
-      for (let j = i + 1; j < sorted.length; j++) {
-        if (Math.abs(sorted[j].y - item.y) > yThreshold) continue; // same row check
-        if (sorted[j].x < item.x + item.width - 2) continue; // must be to the right
-        // Check no other item sits between them horizontally on the same row
-        const gap = sorted[j].x - (item.x + item.width);
-        if (gap > item.width * 4) continue; // too far away
-        const nextText = sorted[j].text.trim();
-        // Must look like price digits: starts with digit, contains digits/spaces/commas/periods
-        if (!/^\d[\d\s,.]*$/.test(nextText)) continue;
-        // Must have comma/period OR be a multi-digit number (avoid "410" in R410 refrigerant)
-        if (!/[,.]/.test(nextText) && nextText.replace(/\s/g, "").length < 4) continue;
-        bestJ = j;
-        break;
+      // Multi-fragment merge: collect up to 3 numeric fragments to the right on same row
+      // Handles pdf.js splitting "R 1 000.00" into ["R", "1", "000.00"]
+      const fragments: number[] = [];
+      let lastRight = item.x + item.width;
+      for (let j = i + 1; j < sorted.length && fragments.length < 3; j++) {
+        if (skip.has(j)) continue;
+        if (Math.abs(sorted[j].y - item.y) > yThreshold) continue;
+        if (sorted[j].x < lastRight - 2) continue; // must be to the right
+        const gap = sorted[j].x - lastRight;
+        if (gap > avgHeight * 3) break; // too far away, stop looking
+        const fragText = sorted[j].text.trim();
+        // Must be numeric-ish fragment
+        if (!/^[\d\s,.]+$/.test(fragText)) break;
+        fragments.push(j);
+        lastRight = sorted[j].x + sorted[j].width;
       }
-      if (bestJ >= 0) {
-        const next = sorted[bestJ];
-        result.push({
-          text: "R" + next.text,
-          x: item.x,
-          y: item.y,
-          width: next.x + next.width - item.x,
-          height: Math.max(item.height, next.height),
-        });
-        skip.add(i);
-        skip.add(bestJ);
-        continue;
+      if (fragments.length > 0) {
+        // Build combined string: "R" + all fragment texts, remove spaces between digits
+        const combinedRaw = "R" + fragments.map(j => sorted[j].text.trim()).join(" ");
+        // Remove spaces between digits (e.g. "R1 000.00" → "R1000.00") but keep R prefix
+        const cleaned = "R" + combinedRaw.substring(1).replace(/(\d)\s+(\d)/g, "$1$2");
+        const price = detectPrice(cleaned);
+        if (price !== null && price > 0) {
+          const lastFrag = sorted[fragments[fragments.length - 1]];
+          console.log(`[pdfExtract] Merged ${fragments.length + 1} fragments: "${item.text}" + [${fragments.map(j => `"${sorted[j].text}"`).join(", ")}] → "${cleaned}" = R${price}`);
+          result.push({
+            text: cleaned,
+            x: item.x,
+            y: item.y,
+            width: lastFrag.x + lastFrag.width - item.x,
+            height: Math.max(item.height, ...fragments.map(j => sorted[j].height)),
+          });
+          skip.add(i);
+          fragments.forEach(j => skip.add(j));
+          continue;
+        }
       }
     }
     result.push(item);
@@ -542,7 +549,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 45; // v45: reduce dedup threshold 1.5→0.5, tighter anti-overlap gap 0.2→0.05
+let _extractionVersion = 46; // v46: multi-fragment price merging for split "R 1 000.00"
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
@@ -561,7 +568,7 @@ export async function extractAndMatchPage(
   try {
     const { items, pageWidth, pageHeight } = await extractTextItemsFromPdfPage(pdfUrl, pageNumber);
     // DEBUG 1: Total raw text items from pdf.js
-    console.log(`[PDF-DEBUG] Page ${pageNumber}: ${items.length} total raw text items from pdf.js, pageWidth=${pageWidth.toFixed(1)}, pageHeight=${pageHeight.toFixed(1)}`);
+    console.log(`[PDF-DEBUG] Page ${pageNumber}: ${items.length} total raw text items, supplierType="${supplierType || "NOT SET"}", supplierId="${supplierId || "none"}"`);
 
     // FALLBACK: If pdf.js returns 0 text items (scanned/image-based page),
     // return empty — the UI layer (VisualCatalogPanel) shows a banner instead
