@@ -401,7 +401,7 @@ export function matchTextRowsToProducts(
   if (items.length === 0 || pageHeight === 0) return [];
   const lookup = buildProductLookup(products);
   const { byCode, byName, byDescription } = lookup;
-  const mergedItems = mergeAdjacentPriceFragments(items, 3);
+  const mergedItems = mergeAdjacentPriceFragments(items, 3, pageWidth);
   // Adaptive Y-threshold
   const avgHeight = mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length || 10;
   const yThreshold = Math.max(avgHeight * 1.5, 8);
