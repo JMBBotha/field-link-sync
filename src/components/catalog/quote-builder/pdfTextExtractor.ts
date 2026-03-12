@@ -365,7 +365,8 @@ function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasMode
   if (/\bAR\d{4}\b/i.test(rowText)) return true;
 
   // Refrigerant type labels like "Samsung R410", "R32", "R290" — not prices
-  if (/\b(R410|R32|R290)\b/i.test(rowText) && detectedPrice < 1000) return true;
+  // Handle split PDF fragments: "R 410", "R  32", etc.
+  if (/\bR\s*(410|32|290)\b/i.test(rowText) && detectedPrice < 1000) return true;
 
   // Fundamental rule: no valid price → not a product
   if (detectedPrice == null || isNaN(detectedPrice) || detectedPrice <= 0) return true;
@@ -558,7 +559,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 48; // v48: right-side threshold 55%, filter AR model codes, refrigerant labels, month names
+let _extractionVersion = 49; // v49: fix split-fragment refrigerant matching (R 410 → R410)
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
