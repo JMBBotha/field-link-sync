@@ -619,7 +619,7 @@ export async function extractAndMatchPage(
     
     // DEBUG 2: Explicit R-prefixed items (pre-matchTextRows check)
     const preCheckExplicit = mergedItems.filter(
-      (item) => /R\s*\d/.test(item.text) && detectPrice(item.text) !== null && item.x / pageWidth > 0.4,
+      (item) => /R\s*\d/.test(item.text) && detectPrice(item.text) !== null && item.x / pageWidth > 0.55,
     );
     console.log(`[PDF-DEBUG] Page ${pageNumber}: STEP 1a - ${preCheckExplicit.length} R-prefixed price items with x > 40% pageWidth`);
     preCheckExplicit.slice(0, 10).forEach((item, idx) => {
