@@ -260,6 +260,9 @@ async function parsePDFWithFullPipeline(
     unit_type?: string | null; short_name?: string | null; brand?: string | null;
     product_category?: string | null; sold_in_length?: boolean; unit_length?: number | null;
     price_per_metre?: number | null;
+    row_bbox?: { x: number; y: number; width: number; height: number } | null;
+    price_bbox?: { x: number; y: number; width: number; height: number } | null;
+    page_number?: number | null;
   }> = [];
 
   // STAGE 1: Render PDF
