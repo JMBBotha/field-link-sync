@@ -399,13 +399,17 @@ function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasMode
 /**
  * PRICE-FIRST approach v39: column-based detection for dense table PDFs.
  * Combines R-prefixed prices with column-position-based numeric prices.
+ * supplierType: 'consumables' uses R1 min, 'ac_units'/default uses R50 min.
  */
 export function matchTextRowsToProducts(
   items: ExtractedTextItem[],
   pageWidth: number,
   pageHeight: number,
   products: PaletteProduct[],
+  supplierType?: string,
 ): ExtractedProductRegion[] {
+  const minPrice = supplierType === "consumables" ? 1 : 50;
+  console.log(`[pdfExtract] matchTextRows: supplierType=${supplierType || "unknown"}, minPrice=R${minPrice}`);
   if (items.length === 0 || pageHeight === 0) return [];
   const lookup = buildProductLookup(products);
   const { byCode, byName, byDescription } = lookup;
@@ -418,7 +422,7 @@ export function matchTextRowsToProducts(
     (item) => /R\s*\d/.test(item.text) && detectPrice(item.text) !== null && item.x / pageWidth > 0.4,
   );
   // STEP 1b: Column-based numeric prices (works for dense table PDFs like One Stop)
-  const columnPrices = findColumnPrices(mergedItems, pageWidth, pageHeight);
+  const columnPrices = findColumnPrices(mergedItems, pageWidth, pageHeight, minPrice);
   // Combine and deduplicate by position
   const seen = new Set<string>();
   const priceItems: ExtractedTextItem[] = [];
@@ -435,18 +439,14 @@ export function matchTextRowsToProducts(
   );
   if (priceItems.length === 0) return [];
   // STEP 2: Create one row per individual price item (no grouping).
-  // Previous grouping merged adjacent product rows into single blocks.
-  // Each price item gets its own row to ensure one icon per priced product row.
   const sortedPrices = [...priceItems].sort((a, b) => a.y - b.y);
   const priceRows: { items: ExtractedTextItem[] }[] = sortedPrices.map((p) => ({ items: [p] }));
   // Model code regex - broad enough for Samsung, Daikin, Midea
   const modelRegex = /^[A-Za-z0-9\-\/]{5,}$/;
   // STEP 3: For each price row, gather context and build a region
-  // IMPROVED MATCHING – TIGHT ROW + POSITION-AWARE + DEDUP
   let regions: ExtractedProductRegion[] = [];
   let skippedCount = { noPrice: 0, ghost: 0, outOfBounds: 0 };
   const assignedCodes = new Set<string>();
-  // Build a flat list of all product codes for candidate scanning
   const allProductCodes = [...byCode.keys()];
   for (const pRow of priceRows) {
     const rightmost = pRow.items[pRow.items.length - 1];
@@ -460,14 +460,14 @@ export function matchTextRowsToProducts(
         raw = raw.replace(/,/g, "");
       }
       const val = parseFloat(raw);
-      if (!isNaN(val) && val >= 50) detectedPrice = val;
+      if (!isNaN(val) && val >= minPrice) detectedPrice = val;
     }
     console.log(
       `[pdfExtract] STEP3 row: rightText="${rightmost.text}" x=${rightmost.x.toFixed(1)} xPct=${((rightmost.x / pageWidth) * 100).toFixed(1)}% detectedPrice=${detectedPrice}`,
     );
-    if (detectedPrice === null || detectedPrice < 50) {
+    if (detectedPrice === null || detectedPrice < minPrice) {
       skippedCount.noPrice++;
-      console.log(`[pdfExtract] Skipped noPrice: ${rightmost.text} at y=${rightmost.y}`);
+      console.log(`[pdfExtract] Skipped noPrice (min R${minPrice}): ${rightmost.text} at y=${rightmost.y}`);
       continue;
     }
     const rowAvgY = pRow.items.reduce((s, i) => s + i.y, 0) / pRow.items.length;
