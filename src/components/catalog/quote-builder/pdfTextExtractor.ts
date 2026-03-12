@@ -328,7 +328,7 @@ function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHei
     if (isNaN(val) || val < minPrice) continue;
     // Check if in price column or right side of page
     const inColumn = colRange && item.x >= colRange.minX && item.x <= colRange.maxX;
-    const inRightSide = item.x / pageWidth > 0.4;
+    const inRightSide = item.x / pageWidth > 0.55;
     if (inColumn || inRightSide) {
       candidates.push(item);
     }
