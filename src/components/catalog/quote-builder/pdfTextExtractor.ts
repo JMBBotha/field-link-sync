@@ -240,14 +240,16 @@ function isPriceItem(text: string): boolean {
  * Merge adjacent text items where "R" or "R<digits>" is followed by a numeric
  * continuation on the same Y-line.
  */
-function mergeAdjacentPriceFragments(items: ExtractedTextItem[], yThreshold: number): ExtractedTextItem[] {
+function mergeAdjacentPriceFragments(items: ExtractedTextItem[], yThreshold: number, pageWidth?: number): ExtractedTextItem[] {
+  const RIGHT_SIDE_THRESHOLD = 0.55;
   const merged: ExtractedTextItem[] = [];
   const used = new Set<number>();
   for (let i = 0; i < items.length; i++) {
     if (used.has(i)) continue;
     const item = items[i];
     const trimmed = item.text.trim();
-    if (/^R\d*$/i.test(trimmed) && !isPriceItem(item.text)) {
+    // Only merge R-prefixed fragments that are on the RIGHT side of the page
+    if (/^R\d*$/i.test(trimmed) && !isPriceItem(item.text) && (!pageWidth || (item.x / pageWidth) > RIGHT_SIDE_THRESHOLD)) {
       let bestJ = -1;
       let bestDist = Infinity;
       for (let j = 0; j < items.length; j++) {
