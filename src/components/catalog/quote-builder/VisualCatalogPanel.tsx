@@ -1219,22 +1219,36 @@ const LazyPdfPage = ({
           {/* Show overlays for ALL regions (matched + unmatched) — works with live extraction or fallback */}
           {overlayRegions.length > 0 && (
              <PdfPageOverlay
-               regions={overlayRegions}
-               baskets={baskets}
-               onAddProductToBasket={onAddProductToBasket}
-               basketProductCounts={basketProductCounts}
-               onProductClick={onProductClick}
-               onQuickAddProduct={onQuickAddProduct}
-               onToggleFavorite={onToggleFavorite}
-               onRemoveRegion={onRemoveRegion}
-               supplierName={supplierName}
-               onOpenWizard={onOpenWizard}
-               onHoverStart={onHoverStart}
-               onHoverMove={onHoverMove}
-               onHoverEnd={onHoverEnd}
-               pdfSelection={pdfSelection}
-               onOpenProductInfo={onProductInfoOpen}
-              />
+              regions={overlayRegions}
+              baskets={baskets}
+              onAddProductToBasket={onAddProductToBasket}
+              basketProductCounts={basketProductCounts}
+              onProductClick={onProductClick}
+              onQuickAddProduct={onQuickAddProduct}
+              onToggleFavorite={onToggleFavorite}
+              onRemoveRegion={onRemoveRegion}
+              supplierName={supplierName}
+              onOpenWizard={onOpenWizard}
+              onHoverStart={onHoverStart}
+              onHoverMove={onHoverMove}
+              onHoverEnd={onHoverEnd}
+              pdfSelection={pdfSelection}
+              onOpenProductInfo={onProductInfoOpen}
+             />
+          )}
+          {/* Banner for image-based/scanned pages where pdf.js text extraction returns 0 regions */}
+          {isVisible && !extracting && overlayRegions.length === 0 && pageIndex > 0 && activeProducts.length > 0 && (
+            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-20 flex justify-center pointer-events-none">
+              <div className="bg-primary/90 text-primary-foreground rounded-lg px-4 py-3 shadow-lg max-w-[80%] text-center pointer-events-auto">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <FileImage className="h-4 w-4" />
+                  <span className="font-semibold text-sm">Scanned Page — No Text Layer</span>
+                </div>
+                <p className="text-xs opacity-90">
+                  {activeProducts.length} products imported for this supplier. Use the <strong>Product Palette</strong> on the left to search and add them to your quote.
+                </p>
+              </div>
+            </div>
           )}
           {extracting && (
             <div className="absolute top-2 right-2 z-30 bg-black/50 text-white text-[9px] px-2 py-1 rounded flex items-center gap-1">
