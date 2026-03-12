@@ -1074,9 +1074,8 @@ const LazyPdfPage = ({
   }, [liveRegions, storedRegions, activeProducts, page.id, page.supplier_id, supplierName, totalPages, pageIndex]);
 
   // ─── OVERLAY REGIONS: prefer live extraction with cross-page dedup, else fallback ───
-  // Skip cover page (index 0) — every supplier PDF has a title/banner page with no product rows
+  // No longer skip pageIndex 0 unconditionally — some suppliers have products on page 1
   const overlayRegions: OverlayRegion[] = useMemo(() => {
-    if (pageIndex === 0) return [];
     const sourceRegions = liveRegions.length > 0 ? liveRegions : [];
     const result: OverlayRegion[] = [];
 
@@ -1237,7 +1236,7 @@ const LazyPdfPage = ({
              />
           )}
           {/* Banner for image-based/scanned pages where pdf.js text extraction returns 0 regions */}
-          {isVisible && !extracting && overlayRegions.length === 0 && pageIndex > 0 && activeProducts.length > 0 && (
+          {isVisible && !extracting && overlayRegions.length === 0 && activeProducts.length > 0 && (
             <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-20 flex justify-center pointer-events-none">
               <div className="bg-primary/90 text-primary-foreground rounded-lg px-4 py-3 shadow-lg max-w-[80%] text-center pointer-events-auto">
                 <div className="flex items-center justify-center gap-2 mb-1">
