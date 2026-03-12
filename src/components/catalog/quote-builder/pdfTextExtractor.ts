@@ -591,12 +591,14 @@ export async function extractAndMatchPage(
     // FALLBACK: If pdf.js returns 0 text items (scanned/image-based page),
     // use AI-provided bounding boxes from the database
     if (items.length === 0 && supplierId) {
-      console.log(`[PDF-DEBUG] Page ${pageNumber}: pdf.js returned 0 text items - using AI bbox fallback`);
-      const { data: dbProducts } = await (supabase.from("supplier_products") as any)
+      console.log(`[BBOX-FALLBACK] Page ${pageNumber}: pdf.js returned 0 text items, supplierId=${supplierId} - querying DB for AI bbox data`);
+      const { data: dbProducts, error: dbErr } = await (supabase.from("supplier_products") as any)
         .select("id, product_code, short_name, description, cost_price, cost_excl_vat, default_markup_percent, row_bbox, price_bbox, page_number")
         .eq("supplier_id", supplierId)
         .eq("page_number", pageNumber)
         .not("row_bbox", "is", null);
+      
+      console.log(`[BBOX-FALLBACK] supplierId=${supplierId}, page=${pageNumber}, products found with bbox=${dbProducts?.length ?? 0}, error=${dbErr?.message ?? 'none'}`);
 
       if (dbProducts?.length) {
         console.log(`[PDF-DEBUG] Page ${pageNumber}: Found ${dbProducts.length} AI-imported products with bbox data`);
