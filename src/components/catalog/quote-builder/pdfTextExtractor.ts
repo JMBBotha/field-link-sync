@@ -560,7 +560,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 49; // v49: fix split-fragment refrigerant matching (R 410 → R410)
+let _extractionVersion = 50; // v50: enforce right-side threshold in mergeCurrencyWithPrices to block left-side R-fragment merging
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
