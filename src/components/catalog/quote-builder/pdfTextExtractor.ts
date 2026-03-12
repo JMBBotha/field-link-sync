@@ -182,8 +182,8 @@ function detectAllPrices(text: string): number[] {
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
     const digits = m[1].replace(/[\s,.]/g, "");
-    if (digits.length >= 4) {
-      // Min 4 digits for validity
+    if (digits.length >= 3) {
+      // Min 3 digits to catch small prices like R1.50 (digits="150")
       const val = parseRawPrice(m[1]);
       if (val !== null) results.push(val);
     }
@@ -191,10 +191,16 @@ function detectAllPrices(text: string): number[] {
   const re2 = /R\s*([\d\s,]+[.,]\d{1,2})$/g;
   while ((m = re2.exec(text)) !== null) {
     const digits = m[1].replace(/[\s,.]/g, "");
-    if (digits.length >= 4) {
+    if (digits.length >= 3) {
       const val = parseRawPrice(m[1]);
       if (val !== null && !results.includes(val)) results.push(val);
     }
+  }
+  // Small prices with decimals: R1.50, R4.50, R11.00 (< 4 digits total)
+  const re4 = /R\s*(\d{1,3}[.,]\d{2})(?:\s|$|[^A-Za-z0-9])/g;
+  while ((m = re4.exec(text)) !== null) {
+    const val = parseRawPrice(m[1]);
+    if (val !== null && val > 0 && !results.includes(val)) results.push(val);
   }
   // Whole number prices: Require R prefix and >= 1000 (4 digits min)
   const re3 = /R\s*(\d[\d\s]*)(?![A-Za-z])/g;
@@ -294,16 +300,16 @@ function findPriceColumnRange(
  * or fallback to right-side heuristic (x > 40% of page width).
  * Updated: Capture standalone 4+ digit numbers in rightmost if no R prefix.
  */
-function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHeight: number): ExtractedTextItem[] {
+function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHeight: number, minPrice: number = 50): ExtractedTextItem[] {
   const colRange = findPriceColumnRange(items, pageWidth, pageHeight);
   const candidates: ExtractedTextItem[] = [];
   for (const item of items) {
     const t = item.text.trim();
     // Must be numeric-ish: digits with optional spaces/commas/periods
     if (!/^\d[\d\s,.]*$/.test(t)) continue;
-    // Must have at least 4 digits total for standalone (no R)
+    // Must have at least 3 digits total for standalone (no R)
     const digits = t.replace(/[\s,.]/g, "");
-    if (digits.length < 4) continue;
+    if (digits.length < 3) continue;
     // Parse as price value
     let raw = t.replace(/\s/g, "");
     if (/,\d{1,2}$/.test(raw) && !/\.\d/.test(raw)) {
@@ -312,7 +318,7 @@ function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHei
       raw = raw.replace(/,/g, "");
     }
     const val = parseFloat(raw);
-    if (isNaN(val) || val < 50) continue;
+    if (isNaN(val) || val < minPrice) continue;
     // Check if in price column or right side of page
     const inColumn = colRange && item.x >= colRange.minX && item.x <= colRange.maxX;
     const inRightSide = item.x / pageWidth > 0.4;
@@ -393,13 +399,17 @@ function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasMode
 /**
  * PRICE-FIRST approach v39: column-based detection for dense table PDFs.
  * Combines R-prefixed prices with column-position-based numeric prices.
+ * supplierType: 'consumables' uses R1 min, 'ac_units'/default uses R50 min.
  */
 export function matchTextRowsToProducts(
   items: ExtractedTextItem[],
   pageWidth: number,
   pageHeight: number,
   products: PaletteProduct[],
+  supplierType?: string,
 ): ExtractedProductRegion[] {
+  const minPrice = supplierType === "consumables" ? 1 : 50;
+  console.log(`[pdfExtract] matchTextRows: supplierType=${supplierType || "unknown"}, minPrice=R${minPrice}`);
   if (items.length === 0 || pageHeight === 0) return [];
   const lookup = buildProductLookup(products);
   const { byCode, byName, byDescription } = lookup;
@@ -412,7 +422,7 @@ export function matchTextRowsToProducts(
     (item) => /R\s*\d/.test(item.text) && detectPrice(item.text) !== null && item.x / pageWidth > 0.4,
   );
   // STEP 1b: Column-based numeric prices (works for dense table PDFs like One Stop)
-  const columnPrices = findColumnPrices(mergedItems, pageWidth, pageHeight);
+  const columnPrices = findColumnPrices(mergedItems, pageWidth, pageHeight, minPrice);
   // Combine and deduplicate by position
   const seen = new Set<string>();
   const priceItems: ExtractedTextItem[] = [];
@@ -429,18 +439,14 @@ export function matchTextRowsToProducts(
   );
   if (priceItems.length === 0) return [];
   // STEP 2: Create one row per individual price item (no grouping).
-  // Previous grouping merged adjacent product rows into single blocks.
-  // Each price item gets its own row to ensure one icon per priced product row.
   const sortedPrices = [...priceItems].sort((a, b) => a.y - b.y);
   const priceRows: { items: ExtractedTextItem[] }[] = sortedPrices.map((p) => ({ items: [p] }));
   // Model code regex - broad enough for Samsung, Daikin, Midea
   const modelRegex = /^[A-Za-z0-9\-\/]{5,}$/;
   // STEP 3: For each price row, gather context and build a region
-  // IMPROVED MATCHING – TIGHT ROW + POSITION-AWARE + DEDUP
   let regions: ExtractedProductRegion[] = [];
   let skippedCount = { noPrice: 0, ghost: 0, outOfBounds: 0 };
   const assignedCodes = new Set<string>();
-  // Build a flat list of all product codes for candidate scanning
   const allProductCodes = [...byCode.keys()];
   for (const pRow of priceRows) {
     const rightmost = pRow.items[pRow.items.length - 1];
@@ -454,14 +460,14 @@ export function matchTextRowsToProducts(
         raw = raw.replace(/,/g, "");
       }
       const val = parseFloat(raw);
-      if (!isNaN(val) && val >= 50) detectedPrice = val;
+      if (!isNaN(val) && val >= minPrice) detectedPrice = val;
     }
     console.log(
       `[pdfExtract] STEP3 row: rightText="${rightmost.text}" x=${rightmost.x.toFixed(1)} xPct=${((rightmost.x / pageWidth) * 100).toFixed(1)}% detectedPrice=${detectedPrice}`,
     );
-    if (detectedPrice === null || detectedPrice < 50) {
+    if (detectedPrice === null || detectedPrice < minPrice) {
       skippedCount.noPrice++;
-      console.log(`[pdfExtract] Skipped noPrice: ${rightmost.text} at y=${rightmost.y}`);
+      console.log(`[pdfExtract] Skipped noPrice (min R${minPrice}): ${rightmost.text} at y=${rightmost.y}`);
       continue;
     }
     const rowAvgY = pRow.items.reduce((s, i) => s + i.y, 0) / pRow.items.length;
@@ -578,6 +584,7 @@ export async function extractAndMatchPage(
   pageNumber: number,
   products: PaletteProduct[],
   supplierId?: string,
+  supplierType?: string,
 ): Promise<ExtractedProductRegion[]> {
   const cacheKey = `v${_extractionVersion}:${pdfUrl}:${pageNumber}:${products.length}`;
   if (extractionCache.has(cacheKey)) {
@@ -646,7 +653,7 @@ export async function extractAndMatchPage(
     const colRange = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
     console.log(`[PDF-DEBUG] Page ${pageNumber}: Price column header range = ${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : 'NOT FOUND'}`);
 
-    let regions = matchTextRowsToProducts(mergedItems, pageWidth, pageHeight, products);
+    let regions = matchTextRowsToProducts(mergedItems, pageWidth, pageHeight, products, supplierType);
     // DEBUG 4: Final regions count
     console.log(`[PDF-DEBUG] Page ${pageNumber}: STEP 3 - ${regions.length} regions created from matchTextRowsToProducts`);
     // New dedup: Sort by y_pct, if within 1.5%, keep priced one

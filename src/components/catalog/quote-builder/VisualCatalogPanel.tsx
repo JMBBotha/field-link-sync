@@ -179,13 +179,26 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     queryKey: ["visual-panel-supplier-names", supplierOptions],
     enabled: open && supplierOptions.length > 0,
     queryFn: async () => {
-      const { data } = await supabase.from("suppliers").select("id, name").in("id", supplierOptions);
+      const { data } = await supabase.from("suppliers").select("id, name, supplier_type").in("id", supplierOptions);
       const map: Record<string, string> = {};
       // Also map supplier_id text values (like "Daikin", "Samsung ") directly
       for (const opt of supplierOptions) {
         map[opt] = opt; // fallback to raw supplier_id text
       }
       (data || []).forEach((s: any) => { map[s.id] = s.name; });
+      return map;
+    },
+    staleTime: 60000,
+  });
+
+  // Separate map for supplier_type lookup
+  const { data: supplierTypeMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ["visual-panel-supplier-types", supplierOptions],
+    enabled: open && supplierOptions.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase.from("suppliers").select("id, supplier_type").in("id", supplierOptions);
+      const map: Record<string, string> = {};
+      (data || []).forEach((s: any) => { if (s.supplier_type) map[s.id] = s.supplier_type; });
       return map;
     },
     staleTime: 60000,
@@ -672,6 +685,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           pdfSelection={pdfSelection}
                           onProductInfoOpen={handleProductInfoOpen}
                           hdMode={hdMode}
+                          supplierType={supplierTypeMap[page.supplier_id]}
                           registerRef={(el) => {
                             if (el) pageRefs.current.set(idx, el);
                             else pageRefs.current.delete(idx);
@@ -822,6 +836,7 @@ interface LazyPdfPageProps {
   pdfSelection?: PdfSelectionHandlers;
   onProductInfoOpen?: (product: PaletteProduct) => void;
   hdMode?: boolean;
+  supplierType?: string;
 }
 
 const LazyPdfPage = ({
@@ -848,6 +863,7 @@ const LazyPdfPage = ({
   pdfSelection,
   onProductInfoOpen,
   hdMode,
+  supplierType,
 }: LazyPdfPageProps) => {
   const queryClient = useQueryClient();
   const divRef = useRef<HTMLDivElement | null>(null);
@@ -926,7 +942,7 @@ const LazyPdfPage = ({
         }
 
         // First pass: extract and match against existing non-archived products
-        const regions = await extractAndMatchPage(pdfUrl, page.page_number, activeProducts, page.supplier_id);
+        const regions = await extractAndMatchPage(pdfUrl, page.page_number, activeProducts, page.supplier_id, supplierType);
         const matched = regions.filter(r => r.matched);
         const unmatchedWithPrice = regions.filter(r => !r.matched && r.has_price && r.detected_price);
         
@@ -977,7 +993,7 @@ const LazyPdfPage = ({
               // Clear cache and re-extract with augmented product list so icons turn blue
               clearExtractionCache();
               const allProducts = [...activeProducts, ...newPaletteProducts];
-              const reMatched = await extractAndMatchPage(pdfUrl, page.page_number, allProducts, page.supplier_id);
+              const reMatched = await extractAndMatchPage(pdfUrl, page.page_number, allProducts, page.supplier_id, supplierType);
               
               // Invalidate the main products query so palette picks up new items
               queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
