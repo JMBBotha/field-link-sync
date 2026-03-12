@@ -228,6 +228,17 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
         }
       }
 
+      // Fallback: for real entries with 0 products by pdf_upload_id, count by supplier_id
+      const realEntries = pdfUploads.filter(p => !p.id.startsWith("spp-"));
+      for (const entry of realEntries) {
+        if (!counts[entry.id] && entry.supplier_id) {
+          const { count } = await (supabase.from("supplier_products") as any)
+            .select("id", { count: "exact", head: true })
+            .eq("supplier_id", entry.supplier_id);
+          counts[entry.id] = count || 0;
+        }
+      }
+
       // For synthetic entries, count products by supplier_id
       const syntheticEntries = pdfUploads.filter(p => p.id.startsWith("spp-"));
       for (const entry of syntheticEntries) {
