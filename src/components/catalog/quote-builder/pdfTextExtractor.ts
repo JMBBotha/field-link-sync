@@ -420,21 +420,17 @@ export function matchTextRowsToProducts(
     (item) => /R\s*\d/.test(item.text) && (item.x / pageWidth) > 0.55 && detectPrice(item.text) !== null,
   );
   if (debugPage6) {
-    console.log(`[pdfExtract][p6] explicitPriceItems count=${explicitPriceItems.length}`);
+    p6Debug += `\nexplicitPriceItems count=${explicitPriceItems.length}\n`;
     explicitPriceItems.forEach((item, idx) => {
-      console.log(
-        `[pdfExtract][p6] explicit[${idx}] text="${item.text}" x=${item.x.toFixed(1)} xPct=${((item.x / pageWidth) * 100).toFixed(2)}%`,
-      );
+      p6Debug += `  explicit[${idx}] "${item.text}" xPct=${((item.x / pageWidth) * 100).toFixed(2)}%\n`;
     });
   }
   // STEP 1b: Column-based numeric prices (works for dense table PDFs like One Stop)
   const columnPrices = findColumnPrices(mergedItems, pageWidth, pageHeight, minPrice);
   if (debugPage6) {
-    console.log(`[pdfExtract][p6] columnPrices count=${columnPrices.length}`);
+    p6Debug += `\ncolumnPrices count=${columnPrices.length}\n`;
     columnPrices.forEach((item, idx) => {
-      console.log(
-        `[pdfExtract][p6] column[${idx}] text="${item.text}" x=${item.x.toFixed(1)} xPct=${((item.x / pageWidth) * 100).toFixed(2)}%`,
-      );
+      p6Debug += `  column[${idx}] "${item.text}" xPct=${((item.x / pageWidth) * 100).toFixed(2)}%\n`;
     });
   }
   // Combine and deduplicate by position
@@ -448,11 +444,9 @@ export function matchTextRowsToProducts(
     }
   }
   if (debugPage6) {
-    console.log(`[pdfExtract][p6] deduped priceItems count=${priceItems.length}`);
+    p6Debug += `\ndeduped priceItems count=${priceItems.length}\n`;
     priceItems.forEach((item, idx) => {
-      console.log(
-        `[pdfExtract][p6] priceItem[${idx}] text="${item.text}" x=${item.x.toFixed(1)} xPct=${((item.x / pageWidth) * 100).toFixed(2)}%`,
-      );
+      p6Debug += `  price[${idx}] "${item.text}" xPct=${((item.x / pageWidth) * 100).toFixed(2)}%\n`;
     });
   }
   const colRange = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
