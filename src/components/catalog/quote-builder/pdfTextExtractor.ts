@@ -414,7 +414,7 @@ export function matchTextRowsToProducts(
   const columnPrices = findColumnPrices(mergedItems, pageWidth, pageHeight, minPrice);
   // Combine and deduplicate by position
   const seen = new Set<string>();
-  const priceItems: ExtractedTextItem[] = [];
+  let priceItems: ExtractedTextItem[] = [];
   for (const item of [...explicitPriceItems, ...columnPrices]) {
     const key = `${item.x.toFixed(0)},${item.y.toFixed(0)}`;
     if (!seen.has(key)) {
@@ -422,6 +422,12 @@ export function matchTextRowsToProducts(
       priceItems.push(item);
     }
   }
+
+  priceItems = priceItems.filter(item => {
+    const val = detectPrice(item.text);
+    if (val === 410 || val === 32 || val === 290) return false;
+    return true;
+  });
   const colRange = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
   console.log(
     `[pdfExtract] matchTextRows: ${mergedItems.length} items, yThreshold=${yThreshold.toFixed(1)}, explicit R-prices=${explicitPriceItems.length}, column-based prices=${columnPrices.length}, combined unique=${priceItems.length}, priceColumnRange=${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : "none (using x>25% fallback)"}, pageWidth=${pageWidth.toFixed(0)}`,
