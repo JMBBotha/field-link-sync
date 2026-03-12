@@ -395,6 +395,7 @@ export function matchTextRowsToProducts(
   pageHeight: number,
   products: PaletteProduct[],
   supplierType?: string,
+  pageIndex?: number,
 ): ExtractedProductRegion[] {
   const minPrice = 1; // Universal R1 floor — isHeaderOrNonProductRow handles TOC/header filtering
   console.log(`[pdfExtract] matchTextRows: supplierType=${supplierType || "unknown"}, minPrice=R${minPrice}`);
@@ -402,6 +403,16 @@ export function matchTextRowsToProducts(
   const lookup = buildProductLookup(products);
   const { byCode, byName, byDescription } = lookup;
   const mergedItems = mergeAdjacentPriceFragments(items, 3, pageWidth);
+  const debugPage6 = pageIndex === 5;
+  if (debugPage6) {
+    const mergedRWithDigits = mergedItems.filter((item) => /R\s*\d/.test(item.text));
+    console.log(`[pdfExtract][p6] mergedItems R+digit count=${mergedRWithDigits.length}`);
+    mergedRWithDigits.forEach((item, idx) => {
+      console.log(
+        `[pdfExtract][p6] mergedR[${idx}] text="${item.text}" x=${item.x.toFixed(1)} xPct=${((item.x / pageWidth) * 100).toFixed(2)}%`,
+      );
+    });
+  }
   // Adaptive Y-threshold
   const avgHeight = mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length || 10;
   const yThreshold = Math.max(avgHeight * 1.5, 8);
@@ -409,8 +420,24 @@ export function matchTextRowsToProducts(
   const explicitPriceItems = mergedItems.filter(
     (item) => /R\s*\d/.test(item.text) && (item.x / pageWidth) > 0.55 && detectPrice(item.text) !== null,
   );
+  if (debugPage6) {
+    console.log(`[pdfExtract][p6] explicitPriceItems count=${explicitPriceItems.length}`);
+    explicitPriceItems.forEach((item, idx) => {
+      console.log(
+        `[pdfExtract][p6] explicit[${idx}] text="${item.text}" x=${item.x.toFixed(1)} xPct=${((item.x / pageWidth) * 100).toFixed(2)}%`,
+      );
+    });
+  }
   // STEP 1b: Column-based numeric prices (works for dense table PDFs like One Stop)
   const columnPrices = findColumnPrices(mergedItems, pageWidth, pageHeight, minPrice);
+  if (debugPage6) {
+    console.log(`[pdfExtract][p6] columnPrices count=${columnPrices.length}`);
+    columnPrices.forEach((item, idx) => {
+      console.log(
+        `[pdfExtract][p6] column[${idx}] text="${item.text}" x=${item.x.toFixed(1)} xPct=${((item.x / pageWidth) * 100).toFixed(2)}%`,
+      );
+    });
+  }
   // Combine and deduplicate by position
   const seen = new Set<string>();
   const priceItems: ExtractedTextItem[] = [];
@@ -420,6 +447,14 @@ export function matchTextRowsToProducts(
       seen.add(key);
       priceItems.push(item);
     }
+  }
+  if (debugPage6) {
+    console.log(`[pdfExtract][p6] deduped priceItems count=${priceItems.length}`);
+    priceItems.forEach((item, idx) => {
+      console.log(
+        `[pdfExtract][p6] priceItem[${idx}] text="${item.text}" x=${item.x.toFixed(1)} xPct=${((item.x / pageWidth) * 100).toFixed(2)}%`,
+      );
+    });
   }
   const colRange = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
   console.log(
