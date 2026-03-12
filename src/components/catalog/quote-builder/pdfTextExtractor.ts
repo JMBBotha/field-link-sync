@@ -363,7 +363,7 @@ function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasMode
 
   // TOC detection: dotted leaders or trailing 1-2 digit page numbers
   if (/[.\s]{4,}\s*\d{1,2}/.test(rowText) || /^[\w\s-]+\s+[.\s]{4,}\s*\d+$/.test(rowText)) return true;
-  if (/\s*\d{1,2}$/.test(rowText) && detectedPrice < 100) return true;
+  if (/\s*\d{1,2}$/.test(rowText) && detectedPrice < 10 && !hasModel) return true;
 
   // Skip page headers/footers without model code
   if ((y_pct < 3 || y_pct > 97) && !hasModel) return true;
