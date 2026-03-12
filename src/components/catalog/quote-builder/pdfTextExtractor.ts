@@ -334,64 +334,32 @@ function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHei
  * Headers are typically in top 3% with no price or model codes.
  */
 function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasModel: boolean, y_pct: number): boolean {
-  // Skip empty or whitespace-only rows (strict: collapse all whitespace variants)
-  if (rowText.replace(/\s/g, "").length === 0) {
-    return true;
-  }
-
-  // Fundamental rule: Skip (no item, no blue rectangle) if no valid Rand value detected on the right-hand side
-  // (detectedPrice < 50 or NaN means no/low R amount was found/parsed)
-  if (detectedPrice < 50 || isNaN(detectedPrice)) {
-    return true;
-  }
-
-  // If price >= R50, always keep the row (to ensure items like controllers are not skipped by other filters)
-  if (detectedPrice >= 50) {
-    return false;
-  }
+  // Skip empty or whitespace-only rows
+  if (rowText.replace(/\s/g, "").length === 0) return true;
 
   const lower = rowText.toLowerCase();
 
-  // Additional TOC detection: Skip if line ends with optional space(s) followed by 1-2 digits (likely page number)
-  if (/\s*\d{1,2}$/.test(rowText)) {
-    return true;
-  }
+  // Skip header/date text regardless of price — these are NEVER products
+  if (/valid\s+from|pricelist|price\s+list/i.test(rowText)) return true;
+  // Standalone year (2019-2029) with no R-prefixed price is a date, not a product
+  if (/\b20[1-2]\d\b/.test(rowText) && !/R\s*\d/.test(rowText)) return true;
 
-  // TOC detection: Improved to handle multi-word entries, dots/spaces/unicode variations, and attached numbers
-  if (/[.\s]{4,}\s*\d{1,2}/.test(rowText) || /^[\w\s-]+\s+[.\s]{4,}\s*\d+$/.test(rowText)) {
-    return true;
-  }
-
-  // Skip page headers/footers in top 3% without model code
-  if (y_pct < 3 && !hasModel) {
-    return true;
-  }
-
-  // Skip page footers in bottom 3% without model code
-  if (y_pct > 97 && !hasModel) {
-    return true;
-  }
-
-  // Additional TOC detection: Skip if line ends with optional space(s) followed by 1-2 digits
-  if (/\s*\d{1,2}$/.test(rowText)) {
-    return true;
-  }
-
-  // Skip common non-product headers (only pure headers; removed broad keywords like 'notes', 'technical specifications', 'installation', 'maintenance' to avoid false positives on product descriptions)
+  // Skip common non-product headers
   const headerKeywords = [
-    "contents",
-    "table of contents",
-    "index",
-    "page",
-    "chapter",
-    "introduction",
-    "disclaimer",
-    "warranty",
-    "terms",
+    "contents", "table of contents", "index", "page", "chapter",
+    "introduction", "disclaimer", "warranty", "terms",
   ];
-  if (headerKeywords.some((kw) => lower.includes(kw))) {
-    return true;
-  }
+  if (headerKeywords.some((kw) => lower.includes(kw))) return true;
+
+  // Fundamental rule: no valid price → not a product
+  if (detectedPrice == null || isNaN(detectedPrice) || detectedPrice <= 0) return true;
+
+  // TOC detection: dotted leaders or trailing 1-2 digit page numbers
+  if (/[.\s]{4,}\s*\d{1,2}/.test(rowText) || /^[\w\s-]+\s+[.\s]{4,}\s*\d+$/.test(rowText)) return true;
+  if (/\s*\d{1,2}$/.test(rowText) && detectedPrice < 100) return true;
+
+  // Skip page headers/footers without model code
+  if ((y_pct < 3 || y_pct > 97) && !hasModel) return true;
 
   return false;
 }
