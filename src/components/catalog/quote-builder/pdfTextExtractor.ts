@@ -614,7 +614,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 52; // v52: enforce right-side >55% threshold in ALL code paths: explicitPriceItems, mergeAdjacentPriceFragments, mergeCurrencyWithPrices, and STEP 3 row loop
+let _extractionVersion = 53; // v53: add page-6 scoped debug logs in matchTextRowsToProducts for merged R-items, explicit/column/deduped price items, and STEP 3 row diagnostics
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
