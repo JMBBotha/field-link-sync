@@ -354,9 +354,18 @@ function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasMode
   // Skip common non-product headers
   const headerKeywords = [
     "contents", "table of contents", "index", "page", "chapter",
-    "introduction", "disclaimer", "warranty", "terms",
+    "introduction", "disclaimer", "warranty", "terms", "fourways",
   ];
   if (headerKeywords.some((kw) => lower.includes(kw))) return true;
+
+  // Month names in footers/headers (e.g. "Fourways January 2026")
+  if (/\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/i.test(rowText)) return true;
+
+  // Model codes like AR8500 where "R" is NOT a currency prefix
+  if (/\bAR\d{4}\b/i.test(rowText)) return true;
+
+  // Refrigerant type labels like "Samsung R410", "R32", "R290" — not prices
+  if (/\b(R410|R32|R290)\b/i.test(rowText) && detectedPrice < 1000) return true;
 
   // Fundamental rule: no valid price → not a product
   if (detectedPrice == null || isNaN(detectedPrice) || detectedPrice <= 0) return true;
