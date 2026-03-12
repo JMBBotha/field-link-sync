@@ -395,6 +395,7 @@ export function matchTextRowsToProducts(
   pageHeight: number,
   products: PaletteProduct[],
   supplierType?: string,
+  pageIndex?: number,
 ): ExtractedProductRegion[] {
   const minPrice = 1; // Universal R1 floor — isHeaderOrNonProductRow handles TOC/header filtering
   console.log(`[pdfExtract] matchTextRows: supplierType=${supplierType || "unknown"}, minPrice=R${minPrice}`);
@@ -402,6 +403,16 @@ export function matchTextRowsToProducts(
   const lookup = buildProductLookup(products);
   const { byCode, byName, byDescription } = lookup;
   const mergedItems = mergeAdjacentPriceFragments(items, 3, pageWidth);
+  const debugPage6 = pageIndex === 5;
+  if (debugPage6) {
+    const mergedRWithDigits = mergedItems.filter((item) => /R\s*\d/.test(item.text));
+    console.log(`[pdfExtract][p6] mergedItems R+digit count=${mergedRWithDigits.length}`);
+    mergedRWithDigits.forEach((item, idx) => {
+      console.log(
+        `[pdfExtract][p6] mergedR[${idx}] text="${item.text}" x=${item.x.toFixed(1)} xPct=${((item.x / pageWidth) * 100).toFixed(2)}%`,
+      );
+    });
+  }
   // Adaptive Y-threshold
   const avgHeight = mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length || 10;
   const yThreshold = Math.max(avgHeight * 1.5, 8);
@@ -409,8 +420,24 @@ export function matchTextRowsToProducts(
   const explicitPriceItems = mergedItems.filter(
     (item) => /R\s*\d/.test(item.text) && (item.x / pageWidth) > 0.55 && detectPrice(item.text) !== null,
   );
+  if (debugPage6) {
+    console.log(`[pdfExtract][p6] explicitPriceItems count=${explicitPriceItems.length}`);
+    explicitPriceItems.forEach((item, idx) => {
+      console.log(
+        `[pdfExtract][p6] explicit[${idx}] text="${item.text}" x=${item.x.toFixed(1)} xPct=${((item.x / pageWidth) * 100).toFixed(2)}%`,
+      );
+    });
+  }
   // STEP 1b: Column-based numeric prices (works for dense table PDFs like One Stop)
   const columnPrices = findColumnPrices(mergedItems, pageWidth, pageHeight, minPrice);
+  if (debugPage6) {
+    console.log(`[pdfExtract][p6] columnPrices count=${columnPrices.length}`);
+    columnPrices.forEach((item, idx) => {
+      console.log(
+        `[pdfExtract][p6] column[${idx}] text="${item.text}" x=${item.x.toFixed(1)} xPct=${((item.x / pageWidth) * 100).toFixed(2)}%`,
+      );
+    });
+  }
   // Combine and deduplicate by position
   const seen = new Set<string>();
   const priceItems: ExtractedTextItem[] = [];
@@ -420,6 +447,14 @@ export function matchTextRowsToProducts(
       seen.add(key);
       priceItems.push(item);
     }
+  }
+  if (debugPage6) {
+    console.log(`[pdfExtract][p6] deduped priceItems count=${priceItems.length}`);
+    priceItems.forEach((item, idx) => {
+      console.log(
+        `[pdfExtract][p6] priceItem[${idx}] text="${item.text}" x=${item.x.toFixed(1)} xPct=${((item.x / pageWidth) * 100).toFixed(2)}%`,
+      );
+    });
   }
   const colRange = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
   console.log(
@@ -438,13 +473,17 @@ export function matchTextRowsToProducts(
   const allProductCodes = [...byCode.keys()];
   for (const pRow of priceRows) {
     const rightmost = pRow.items[pRow.items.length - 1];
+    const rowAvgY = pRow.items.reduce((s, i) => s + i.y, 0) / pRow.items.length;
+    // Ghost filter: skip if in top 3% AND no model code nearby
+    const y_pct = (rowAvgY / pageHeight) * 100;
+    // TIGHT same-row context ONLY (no aboveItems, no wide band)
+    const tightBand = avgHeight * 0.6;
+    const contextItems = mergedItems.filter((it) => Math.abs(it.y - rowAvgY) <= tightBand);
+    const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
+    const rowText = contextItems.map((it) => it.text).join(" ");
+
     // FUNDAMENTAL RULE: Skip entire row if rightmost price item is on LEFT side of page
     const rightmostXPct = rightmost.x / pageWidth;
-    if (rightmostXPct <= 0.55) {
-      console.log(`[pdfExtract] BLOCKED left-side price row: text="${rightmost.text}" xPct=${(rightmostXPct * 100).toFixed(1)}% (must be >55%)`);
-      skippedCount.ghost++;
-      continue;
-    }
     // Try explicit R-prefixed price first, then raw numeric parse for column-based items
     let detectedPrice = detectPrice(rightmost.text);
     if (detectedPrice === null) {
@@ -457,6 +496,20 @@ export function matchTextRowsToProducts(
       const val = parseFloat(raw);
       if (!isNaN(val) && val >= minPrice) detectedPrice = val;
     }
+
+    const headerOrNonProduct = isHeaderOrNonProductRow(rowText, detectedPrice ?? NaN, hasModel, y_pct);
+
+    if (debugPage6) {
+      console.log(
+        `[pdfExtract][p6] STEP3 priceRow rowText="${rowText}" rightmost="${rightmost.text}" rightmostXPct=${(rightmostXPct * 100).toFixed(2)}% detectedPrice=${detectedPrice} isHeaderOrNonProductRow=${headerOrNonProduct}`,
+      );
+    }
+
+    if (rightmostXPct <= 0.55) {
+      console.log(`[pdfExtract] BLOCKED left-side price row: text="${rightmost.text}" xPct=${(rightmostXPct * 100).toFixed(1)}% (must be >55%)`);
+      skippedCount.ghost++;
+      continue;
+    }
     console.log(
       `[pdfExtract] STEP3 row: rightText="${rightmost.text}" x=${rightmost.x.toFixed(1)} xPct=${((rightmost.x / pageWidth) * 100).toFixed(1)}% detectedPrice=${detectedPrice}`,
     );
@@ -465,15 +518,7 @@ export function matchTextRowsToProducts(
       console.log(`[pdfExtract] Skipped noPrice (min R${minPrice}): ${rightmost.text} at y=${rightmost.y}`);
       continue;
     }
-    const rowAvgY = pRow.items.reduce((s, i) => s + i.y, 0) / pRow.items.length;
-    // Ghost filter: skip if in top 3% AND no model code nearby
-    const y_pct = (rowAvgY / pageHeight) * 100;
-    // TIGHT same-row context ONLY (no aboveItems, no wide band)
-    const tightBand = avgHeight * 0.6;
-    const contextItems = mergedItems.filter((it) => Math.abs(it.y - rowAvgY) <= tightBand);
-    const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
-    const rowText = contextItems.map((it) => it.text).join(" ");
-    if (isHeaderOrNonProductRow(rowText, detectedPrice, hasModel, y_pct)) {
+    if (headerOrNonProduct) {
       skippedCount.ghost++;
       console.log(
         `[pdfExtract] Skipped ghost: ${rowText} at y_pct=${y_pct.toFixed(1)}, detectedPrice=${detectedPrice}`,
@@ -569,7 +614,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 52; // v52: enforce right-side >55% threshold in ALL code paths: explicitPriceItems, mergeAdjacentPriceFragments, mergeCurrencyWithPrices, and STEP 3 row loop
+let _extractionVersion = 53; // v53: add page-6 scoped debug logs in matchTextRowsToProducts for merged R-items, explicit/column/deduped price items, and STEP 3 row diagnostics
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
@@ -648,7 +693,7 @@ export async function extractAndMatchPage(
     const colRange = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
     console.log(`[PDF-DEBUG] Page ${pageNumber}: Price column header range = ${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : 'NOT FOUND'}`);
 
-    let regions = matchTextRowsToProducts(mergedItems, pageWidth, pageHeight, products, supplierType);
+    let regions = matchTextRowsToProducts(mergedItems, pageWidth, pageHeight, products, supplierType, pageNumber - 1);
     // DEBUG 4: Final regions count
     console.log(`[PDF-DEBUG] Page ${pageNumber}: STEP 3 - ${regions.length} regions created from matchTextRowsToProducts`);
     // New dedup: Sort by y_pct, if within 1.5%, keep priced one
