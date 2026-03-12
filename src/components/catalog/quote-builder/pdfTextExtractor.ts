@@ -493,9 +493,8 @@ export function matchTextRowsToProducts(
     const headerOrNonProduct = isHeaderOrNonProductRow(rowText, detectedPrice ?? NaN, hasModel, y_pct);
 
     if (debugPage6) {
-      console.log(
-        `[pdfExtract][p6] STEP3 priceRow rowText="${rowText}" rightmost="${rightmost.text}" rightmostXPct=${(rightmostXPct * 100).toFixed(2)}% detectedPrice=${detectedPrice} isHeaderOrNonProductRow=${headerOrNonProduct}`,
-      );
+      const action = rightmostXPct <= 0.55 ? 'BLOCKED-LEFT' : (headerOrNonProduct ? 'BLOCKED-HEADER' : (detectedPrice === null || detectedPrice < minPrice ? 'BLOCKED-NOPRICE' : 'PASS'));
+      p6Debug += `\nSTEP3 [${action}] rightmost="${rightmost.text}" xPct=${(rightmostXPct * 100).toFixed(2)}% price=${detectedPrice} isHeader=${headerOrNonProduct}\n  rowText="${rowText.substring(0, 120)}"\n`;
     }
 
     if (rightmostXPct <= 0.55) {
