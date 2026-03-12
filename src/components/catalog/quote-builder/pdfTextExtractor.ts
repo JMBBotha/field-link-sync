@@ -365,11 +365,11 @@ function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasMode
   if (/\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/i.test(rowText)) return true;
 
   // Model codes like AR8500 where "R" is NOT a currency prefix
-  if (/\bAR\d{4}\b/i.test(rowText)) return true;
+  if (/\bAR\s*\d{4}\b/i.test(rowText)) return true;
 
   // Refrigerant type labels like "Samsung R410", "R32", "R290" — not prices
   // Handle split PDF fragments: "R 410", "R  32", etc.
-  if (/\bR\s*(410|32|290)\b/i.test(rowText) && detectedPrice < 1000) return true;
+  if (/\bR\s*(410|32|290)\b/i.test(rowText)) return true;
 
   // Fundamental rule: no valid price → not a product
   if (detectedPrice == null || isNaN(detectedPrice) || detectedPrice <= 0) return true;
@@ -574,7 +574,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 55; // v55: removed debug overlay, all Samsung fixes retained
+let _extractionVersion = 56; // v56: AR model space-tolerant, refrigerant filter unconditional
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
