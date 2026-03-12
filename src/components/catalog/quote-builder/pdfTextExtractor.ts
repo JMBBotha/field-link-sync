@@ -367,8 +367,8 @@ function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasMode
   // Model codes like AR8500 where "R" is NOT a currency prefix
   if (/\bAR\s*\d{4}\b/i.test(rowText)) return true;
 
-  // Refrigerant type labels like "Samsung R410", "R32", "R290" — not prices
-  // Handle split PDF fragments: "R 410", "R  32", etc.
+  // Refrigerant type labels like "Samsung R410", "R32", "R290" - always filter regardless of price
+
   if (/\bR\s*(410|32|290)\b/i.test(rowText)) return true;
 
   // Fundamental rule: no valid price → not a product
@@ -574,7 +574,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 58; // v58: cache bump
+let _extractionVersion = 59; // v59: cache bump
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
