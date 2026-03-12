@@ -410,12 +410,6 @@ export function matchTextRowsToProducts(
   const explicitPriceItems = mergedItems.filter(
     (item) => /R\s*\d/.test(item.text) && (item.x / pageWidth) > 0.55 && detectPrice(item.text) !== null,
   );
-  if (debugPage6) {
-    p6Debug += `\nexplicitPriceItems count=${explicitPriceItems.length}\n`;
-    explicitPriceItems.forEach((item, idx) => {
-      p6Debug += `  explicit[${idx}] "${item.text}" xPct=${((item.x / pageWidth) * 100).toFixed(2)}%\n`;
-    });
-  }
   // STEP 1b: Column-based numeric prices (works for dense table PDFs like One Stop)
   const columnPrices = findColumnPrices(mergedItems, pageWidth, pageHeight, minPrice);
   if (debugPage6) {
