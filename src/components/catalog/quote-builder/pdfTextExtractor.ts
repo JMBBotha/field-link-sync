@@ -589,60 +589,11 @@ export async function extractAndMatchPage(
     console.log(`[PDF-DEBUG] Page ${pageNumber}: ${items.length} total raw text items from pdf.js, pageWidth=${pageWidth.toFixed(1)}, pageHeight=${pageHeight.toFixed(1)}`);
 
     // FALLBACK: If pdf.js returns 0 text items (scanned/image-based page),
-    // use AI-provided bounding boxes from the database
-    if (items.length === 0 && supplierId) {
-      console.log(`[BBOX-FALLBACK] Page ${pageNumber}: pdf.js returned 0 text items, supplierId=${supplierId} - querying DB for AI bbox data`);
-      const { data: dbProducts, error: dbErr } = await (supabase.from("supplier_products") as any)
-        .select("id, product_code, short_name, description, cost_price, cost_excl_vat, default_markup_percent, row_bbox, price_bbox, page_number")
-        .eq("supplier_id", supplierId)
-        .eq("page_number", pageNumber)
-        .not("row_bbox", "is", null);
-      
-      console.log(`[BBOX-FALLBACK] supplierId=${supplierId}, page=${pageNumber}, products found with bbox=${dbProducts?.length ?? 0}, error=${dbErr?.message ?? 'none'}`);
-
-      if (dbProducts?.length) {
-        console.log(`[PDF-DEBUG] Page ${pageNumber}: Found ${dbProducts.length} AI-imported products with bbox data`);
-        const fallbackRegions: ExtractedProductRegion[] = [];
-        for (const dbProd of dbProducts) {
-          const bbox = dbProd.row_bbox as { x: number; y: number; width: number; height: number } | null;
-          if (!bbox || bbox.width <= 0 || bbox.height <= 0) continue;
-
-          // Try to match to a PaletteProduct
-          const matchedProduct = products.find(
-            (p) => p.id === dbProd.id || p.product_code === dbProd.product_code
-          ) || null;
-
-          const price = dbProd.cost_excl_vat || dbProd.cost_price || 0;
-
-          fallbackRegions.push({
-            product: matchedProduct,
-            product_code: dbProd.product_code || "",
-            label: dbProd.short_name || dbProd.description || dbProd.product_code || "",
-            x_pct: bbox.x * 100,
-            y_pct: bbox.y * 100,
-            w_pct: bbox.width * 100,
-            h_pct: bbox.height * 100,
-            matched: !!matchedProduct,
-            has_price: price > 0,
-            detected_price: price,
-          });
-        }
-
-        // Sort and anti-overlap
-        fallbackRegions.sort((a, b) => a.y_pct - b.y_pct);
-        for (let i = 0; i < fallbackRegions.length - 1; i++) {
-          const current = fallbackRegions[i];
-          const nextY = fallbackRegions[i + 1].y_pct;
-          const maxH = nextY - current.y_pct - 0.05;
-          if (current.h_pct > maxH) current.h_pct = maxH;
-        }
-
-        console.log(`[PDF-DEBUG] Page ${pageNumber}: AI bbox fallback produced ${fallbackRegions.length} regions (${fallbackRegions.filter(r => r.matched).length} matched)`);
-        extractionCache.set(cacheKey, fallbackRegions);
-        return fallbackRegions;
-      } else {
-        console.log(`[PDF-DEBUG] Page ${pageNumber}: No AI bbox products found in database for this page`);
-      }
+    // return empty — the UI layer (VisualCatalogPanel) shows a banner instead
+    if (items.length === 0) {
+      console.log(`[PDF-DEBUG] Page ${pageNumber}: pdf.js returned 0 text items (scanned/image page) - returning empty, UI will show banner`);
+      extractionCache.set(cacheKey, []);
+      return [];
     }
     
     // DEBUG 5: Log first 10 text items for page 1 to see what pdf.js extracts
