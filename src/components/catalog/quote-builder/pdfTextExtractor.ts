@@ -438,6 +438,13 @@ export function matchTextRowsToProducts(
   const allProductCodes = [...byCode.keys()];
   for (const pRow of priceRows) {
     const rightmost = pRow.items[pRow.items.length - 1];
+    // FUNDAMENTAL RULE: Skip entire row if rightmost price item is on LEFT side of page
+    const rightmostXPct = rightmost.x / pageWidth;
+    if (rightmostXPct <= 0.55) {
+      console.log(`[pdfExtract] BLOCKED left-side price row: text="${rightmost.text}" xPct=${(rightmostXPct * 100).toFixed(1)}% (must be >55%)`);
+      skippedCount.ghost++;
+      continue;
+    }
     // Try explicit R-prefixed price first, then raw numeric parse for column-based items
     let detectedPrice = detectPrice(rightmost.text);
     if (detectedPrice === null) {
