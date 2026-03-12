@@ -584,6 +584,7 @@ export async function extractAndMatchPage(
   pageNumber: number,
   products: PaletteProduct[],
   supplierId?: string,
+  supplierType?: string,
 ): Promise<ExtractedProductRegion[]> {
   const cacheKey = `v${_extractionVersion}:${pdfUrl}:${pageNumber}:${products.length}`;
   if (extractionCache.has(cacheKey)) {
