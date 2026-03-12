@@ -403,15 +403,6 @@ export function matchTextRowsToProducts(
   const lookup = buildProductLookup(products);
   const { byCode, byName, byDescription } = lookup;
   const mergedItems = mergeAdjacentPriceFragments(items, 3, pageWidth);
-  const debugPage6 = pageIndex === 5;
-  let p6Debug = debugPage6 ? '=== PAGE 6 DEBUG ===\n' : '';
-  if (debugPage6) {
-    const mergedRWithDigits = mergedItems.filter((item) => /R\s*\d/.test(item.text));
-    p6Debug += `mergedItems R+digit count=${mergedRWithDigits.length}\n`;
-    mergedRWithDigits.forEach((item, idx) => {
-      p6Debug += `  mergedR[${idx}] "${item.text}" x=${item.x.toFixed(1)} xPct=${((item.x / pageWidth) * 100).toFixed(2)}%\n`;
-    });
-  }
   // Adaptive Y-threshold
   const avgHeight = mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length || 10;
   const yThreshold = Math.max(avgHeight * 1.5, 8);
@@ -419,20 +410,8 @@ export function matchTextRowsToProducts(
   const explicitPriceItems = mergedItems.filter(
     (item) => /R\s*\d/.test(item.text) && (item.x / pageWidth) > 0.55 && detectPrice(item.text) !== null,
   );
-  if (debugPage6) {
-    p6Debug += `\nexplicitPriceItems count=${explicitPriceItems.length}\n`;
-    explicitPriceItems.forEach((item, idx) => {
-      p6Debug += `  explicit[${idx}] "${item.text}" xPct=${((item.x / pageWidth) * 100).toFixed(2)}%\n`;
-    });
-  }
   // STEP 1b: Column-based numeric prices (works for dense table PDFs like One Stop)
   const columnPrices = findColumnPrices(mergedItems, pageWidth, pageHeight, minPrice);
-  if (debugPage6) {
-    p6Debug += `\ncolumnPrices count=${columnPrices.length}\n`;
-    columnPrices.forEach((item, idx) => {
-      p6Debug += `  column[${idx}] "${item.text}" xPct=${((item.x / pageWidth) * 100).toFixed(2)}%\n`;
-    });
-  }
   // Combine and deduplicate by position
   const seen = new Set<string>();
   const priceItems: ExtractedTextItem[] = [];
@@ -442,12 +421,6 @@ export function matchTextRowsToProducts(
       seen.add(key);
       priceItems.push(item);
     }
-  }
-  if (debugPage6) {
-    p6Debug += `\ndeduped priceItems count=${priceItems.length}\n`;
-    priceItems.forEach((item, idx) => {
-      p6Debug += `  price[${idx}] "${item.text}" xPct=${((item.x / pageWidth) * 100).toFixed(2)}%\n`;
-    });
   }
   const colRange = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
   console.log(
@@ -491,11 +464,6 @@ export function matchTextRowsToProducts(
     }
 
     const headerOrNonProduct = isHeaderOrNonProductRow(rowText, detectedPrice ?? NaN, hasModel, y_pct);
-
-    if (debugPage6) {
-      const action = rightmostXPct <= 0.55 ? 'BLOCKED-LEFT' : (headerOrNonProduct ? 'BLOCKED-HEADER' : (detectedPrice === null || detectedPrice < minPrice ? 'BLOCKED-NOPRICE' : 'PASS'));
-      p6Debug += `\nSTEP3 [${action}] rightmost="${rightmost.text}" xPct=${(rightmostXPct * 100).toFixed(2)}% price=${detectedPrice} isHeader=${headerOrNonProduct}\n  rowText="${rowText.substring(0, 120)}"\n`;
-    }
 
     if (rightmostXPct <= 0.55) {
       console.log(`[pdfExtract] BLOCKED left-side price row: text="${rightmost.text}" xPct=${(rightmostXPct * 100).toFixed(1)}% (must be >55%)`);
@@ -598,20 +566,6 @@ export function matchTextRowsToProducts(
   console.log(
     `[pdfExtract] Row processing: ${priceRows.length} price rows → ${regions.length} regions. Skipped: noPrice=${skippedCount.noPrice}, ghost=${skippedCount.ghost}, outOfBounds=${skippedCount.outOfBounds}`,
   );
-  if (debugPage6) {
-    p6Debug += `\n=== RESULT: ${regions.length} regions, skipped: noPrice=${skippedCount.noPrice} ghost=${skippedCount.ghost} oob=${skippedCount.outOfBounds} ===\n`;
-    regions.forEach((r, i) => {
-      p6Debug += `  region[${i}] code="${r.product_code}" price=${r.detected_price} matched=${r.matched}\n`;
-    });
-    try {
-      const debugDiv = document.createElement('div');
-      debugDiv.id = 'pdf-debug-p6';
-      debugDiv.style.cssText = 'position:fixed;top:80px;left:10px;background:black;color:lime;padding:10px;z-index:99999;max-height:400px;overflow:auto;font-size:11px;white-space:pre;opacity:0.95;pointer-events:auto;border:2px solid lime;';
-      debugDiv.textContent = p6Debug;
-      document.getElementById('pdf-debug-p6')?.remove();
-      document.body.appendChild(debugDiv);
-    } catch (_) {}
-  }
   // Align all icons to a single X column
   if (regions.length > 0) {
     const maxX = Math.max(...regions.map((r) => r.x_pct));
@@ -620,7 +574,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 54; // v54: on-page debug overlay for page 6 diagnostics
+let _extractionVersion = 55; // v55: removed debug overlay, all Samsung fixes retained
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
