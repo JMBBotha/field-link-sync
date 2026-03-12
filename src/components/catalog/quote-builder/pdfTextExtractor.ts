@@ -549,7 +549,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 46; // v46: multi-fragment price merging for split "R 1 000.00"
+let _extractionVersion = 47; // v47: universal R1 floor, fix TOC filter killing consumables
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
