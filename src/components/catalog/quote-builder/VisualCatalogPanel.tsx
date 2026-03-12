@@ -613,7 +613,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
               <SelectTrigger className="h-7 w-32 text-[10px]"><SelectValue placeholder="All Suppliers" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Suppliers</SelectItem>
-                {supplierOptions.filter((s) => s && s.trim() !== '').map((s) => (<SelectItem key={s} value={s}>{supplierNameMap[s] || s}</SelectItem>))}
+                {supplierOptions.filter((s) => s && s.trim() !== '' && !UUID_PATTERN.test(supplierNameMap[s] || s)).map((s) => (<SelectItem key={s} value={s}>{supplierNameMap[s] || s}</SelectItem>))}
               </SelectContent>
             </Select>
 
