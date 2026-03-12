@@ -307,7 +307,7 @@ function findPriceColumnRange(
  * or fallback to right-side heuristic (x > 40% of page width).
  * Updated: Capture standalone 4+ digit numbers in rightmost if no R prefix.
  */
-function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHeight: number, minPrice: number = 50): ExtractedTextItem[] {
+function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHeight: number, minPrice: number = 1): ExtractedTextItem[] {
   const colRange = findPriceColumnRange(items, pageWidth, pageHeight);
   const candidates: ExtractedTextItem[] = [];
   for (const item of items) {
@@ -363,7 +363,7 @@ function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasMode
 
   // TOC detection: dotted leaders or trailing 1-2 digit page numbers
   if (/[.\s]{4,}\s*\d{1,2}/.test(rowText) || /^[\w\s-]+\s+[.\s]{4,}\s*\d+$/.test(rowText)) return true;
-  if (/\s*\d{1,2}$/.test(rowText) && detectedPrice < 100) return true;
+  if (/\s*\d{1,2}$/.test(rowText) && detectedPrice < 10 && !hasModel) return true;
 
   // Skip page headers/footers without model code
   if ((y_pct < 3 || y_pct > 97) && !hasModel) return true;
@@ -383,7 +383,7 @@ export function matchTextRowsToProducts(
   products: PaletteProduct[],
   supplierType?: string,
 ): ExtractedProductRegion[] {
-  const minPrice = supplierType === "consumables" ? 1 : 50;
+  const minPrice = 1; // Universal R1 floor — isHeaderOrNonProductRow handles TOC/header filtering
   console.log(`[pdfExtract] matchTextRows: supplierType=${supplierType || "unknown"}, minPrice=R${minPrice}`);
   if (items.length === 0 || pageHeight === 0) return [];
   const lookup = buildProductLookup(products);
@@ -549,7 +549,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 46; // v46: multi-fragment price merging for split "R 1 000.00"
+let _extractionVersion = 47; // v47: universal R1 floor, fix TOC filter killing consumables
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
