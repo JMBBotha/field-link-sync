@@ -578,7 +578,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 56; // v56: filter phone numbers & broaden AR model code pattern
+let _extractionVersion = 57; // v57: revert AR regex to \bAR\d{4}\b to allow AR18/AR09 product codes
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
