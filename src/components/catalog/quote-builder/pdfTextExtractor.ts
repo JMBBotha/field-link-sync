@@ -488,7 +488,7 @@ export function matchTextRowsToProducts(
     let detectedPrice = detectPrice(rightmost.text);
     if (detectedPrice === null) {
       let raw = rightmost.text.trim().replace(/\s/g, "");
-      if (/\,\d{1,2}$/.test(raw) && !/\.\d/.test(raw)) {
+      if (/,\d{1,2}$/.test(raw) && !/\.\d/.test(raw)) {
         raw = raw.replace(/,(?=\d{1,2}$)/, ".");
       } else {
         raw = raw.replace(/,/g, "");
