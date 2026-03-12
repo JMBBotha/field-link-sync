@@ -422,12 +422,6 @@ export function matchTextRowsToProducts(
       priceItems.push(item);
     }
   }
-  if (debugPage6) {
-    p6Debug += `\ndeduped priceItems count=${priceItems.length}\n`;
-    priceItems.forEach((item, idx) => {
-      p6Debug += `  price[${idx}] "${item.text}" xPct=${((item.x / pageWidth) * 100).toFixed(2)}%\n`;
-    });
-  }
   const colRange = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
   console.log(
     `[pdfExtract] matchTextRows: ${mergedItems.length} items, yThreshold=${yThreshold.toFixed(1)}, explicit R-prices=${explicitPriceItems.length}, column-based prices=${columnPrices.length}, combined unique=${priceItems.length}, priceColumnRange=${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : "none (using x>25% fallback)"}, pageWidth=${pageWidth.toFixed(0)}`,
