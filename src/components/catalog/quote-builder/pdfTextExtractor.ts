@@ -448,6 +448,8 @@ export function matchTextRowsToProducts(
     const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
     const rowText = contextItems.map((it) => it.text).join(" ");
 
+    if (/samsung.*r\s*410|r\s*410.*kw/i.test(rowText)) continue;
+
     // FUNDAMENTAL RULE: Skip entire row if rightmost price item is on LEFT side of page
     const rightmostXPct = rightmost.x / pageWidth;
     // Try explicit R-prefixed price first, then raw numeric parse for column-based items
@@ -574,7 +576,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 59; // v59: cache bump
+let _extractionVersion = 60; // v60: cache bump
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
