@@ -182,8 +182,8 @@ function detectAllPrices(text: string): number[] {
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
     const digits = m[1].replace(/[\s,.]/g, "");
-    if (digits.length >= 4) {
-      // Min 4 digits for validity
+    if (digits.length >= 3) {
+      // Min 3 digits to catch small prices like R1.50 (digits="150")
       const val = parseRawPrice(m[1]);
       if (val !== null) results.push(val);
     }
@@ -191,10 +191,16 @@ function detectAllPrices(text: string): number[] {
   const re2 = /R\s*([\d\s,]+[.,]\d{1,2})$/g;
   while ((m = re2.exec(text)) !== null) {
     const digits = m[1].replace(/[\s,.]/g, "");
-    if (digits.length >= 4) {
+    if (digits.length >= 3) {
       const val = parseRawPrice(m[1]);
       if (val !== null && !results.includes(val)) results.push(val);
     }
+  }
+  // Small prices with decimals: R1.50, R4.50, R11.00 (< 4 digits total)
+  const re4 = /R\s*(\d{1,3}[.,]\d{2})(?:\s|$|[^A-Za-z0-9])/g;
+  while ((m = re4.exec(text)) !== null) {
+    const val = parseRawPrice(m[1]);
+    if (val !== null && val > 0 && !results.includes(val)) results.push(val);
   }
   // Whole number prices: Require R prefix and >= 1000 (4 digits min)
   const re3 = /R\s*(\d[\d\s]*)(?![A-Za-z])/g;
