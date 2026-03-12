@@ -240,14 +240,16 @@ function isPriceItem(text: string): boolean {
  * Merge adjacent text items where "R" or "R<digits>" is followed by a numeric
  * continuation on the same Y-line.
  */
-function mergeAdjacentPriceFragments(items: ExtractedTextItem[], yThreshold: number): ExtractedTextItem[] {
+function mergeAdjacentPriceFragments(items: ExtractedTextItem[], yThreshold: number, pageWidth?: number): ExtractedTextItem[] {
+  const RIGHT_SIDE_THRESHOLD = 0.55;
   const merged: ExtractedTextItem[] = [];
   const used = new Set<number>();
   for (let i = 0; i < items.length; i++) {
     if (used.has(i)) continue;
     const item = items[i];
     const trimmed = item.text.trim();
-    if (/^R\d*$/i.test(trimmed) && !isPriceItem(item.text)) {
+    // Only merge R-prefixed fragments that are on the RIGHT side of the page
+    if (/^R\d*$/i.test(trimmed) && !isPriceItem(item.text) && (!pageWidth || (item.x / pageWidth) > RIGHT_SIDE_THRESHOLD)) {
       let bestJ = -1;
       let bestDist = Infinity;
       for (let j = 0; j < items.length; j++) {
@@ -399,7 +401,7 @@ export function matchTextRowsToProducts(
   if (items.length === 0 || pageHeight === 0) return [];
   const lookup = buildProductLookup(products);
   const { byCode, byName, byDescription } = lookup;
-  const mergedItems = mergeAdjacentPriceFragments(items, 3);
+  const mergedItems = mergeAdjacentPriceFragments(items, 3, pageWidth);
   // Adaptive Y-threshold
   const avgHeight = mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length || 10;
   const yThreshold = Math.max(avgHeight * 1.5, 8);
@@ -436,6 +438,13 @@ export function matchTextRowsToProducts(
   const allProductCodes = [...byCode.keys()];
   for (const pRow of priceRows) {
     const rightmost = pRow.items[pRow.items.length - 1];
+    // FUNDAMENTAL RULE: Skip entire row if rightmost price item is on LEFT side of page
+    const rightmostXPct = rightmost.x / pageWidth;
+    if (rightmostXPct <= 0.55) {
+      console.log(`[pdfExtract] BLOCKED left-side price row: text="${rightmost.text}" xPct=${(rightmostXPct * 100).toFixed(1)}% (must be >55%)`);
+      skippedCount.ghost++;
+      continue;
+    }
     // Try explicit R-prefixed price first, then raw numeric parse for column-based items
     let detectedPrice = detectPrice(rightmost.text);
     if (detectedPrice === null) {
@@ -560,7 +569,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 51; // v51: enforce right-side threshold directly in explicitPriceItems filter order
+let _extractionVersion = 52; // v52: enforce right-side >55% threshold in ALL code paths: explicitPriceItems, mergeAdjacentPriceFragments, mergeCurrencyWithPrices, and STEP 3 row loop
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
