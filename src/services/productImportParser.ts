@@ -260,6 +260,9 @@ async function parsePDFWithFullPipeline(
     unit_type?: string | null; short_name?: string | null; brand?: string | null;
     product_category?: string | null; sold_in_length?: boolean; unit_length?: number | null;
     price_per_metre?: number | null;
+    row_bbox?: { x: number; y: number; width: number; height: number } | null;
+    price_bbox?: { x: number; y: number; width: number; height: number } | null;
+    page_number?: number | null;
   }> = [];
 
   // STAGE 1: Render PDF
@@ -347,6 +350,10 @@ async function parsePDFWithFullPipeline(
             product_category: p.product_category || null,
             sold_in_length: p.sold_in_length || false, unit_length: p.unit_length || null,
             price_per_metre: p.price_per_metre || null,
+            // AI bounding box data for visual overlay fallback on scanned pages
+            row_bbox: p.rowBbox || p.row_bbox || null,
+            price_bbox: p.priceBbox || p.price_bbox || null,
+            page_number: p.pageNumber || p.page_number || null,
           });
           chunkAccepted++;
         } else {
@@ -483,6 +490,10 @@ async function parsePDFWithFullPipeline(
       sold_in_length: row.sold_in_length || false,
       unit_length: row.unit_length || null,
       price_per_metre: row.price_per_metre || null,
+      // AI bounding boxes for visual overlay on scanned pages
+      row_bbox: row.row_bbox || null,
+      price_bbox: row.price_bbox || null,
+      page_number: row.page_number || null,
     };
   });
 
