@@ -448,6 +448,8 @@ export function matchTextRowsToProducts(
     const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
     const rowText = contextItems.map((it) => it.text).join(" ");
 
+    if (/samsung.*r\s*410|r\s*410.*kw/i.test(rowText)) continue;
+
     // FUNDAMENTAL RULE: Skip entire row if rightmost price item is on LEFT side of page
     const rightmostXPct = rightmost.x / pageWidth;
     // Try explicit R-prefixed price first, then raw numeric parse for column-based items
