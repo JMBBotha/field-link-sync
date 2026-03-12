@@ -693,7 +693,7 @@ export async function extractAndMatchPage(
     const colRange = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
     console.log(`[PDF-DEBUG] Page ${pageNumber}: Price column header range = ${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : 'NOT FOUND'}`);
 
-    let regions = matchTextRowsToProducts(mergedItems, pageWidth, pageHeight, products, supplierType);
+    let regions = matchTextRowsToProducts(mergedItems, pageWidth, pageHeight, products, supplierType, pageNumber - 1);
     // DEBUG 4: Final regions count
     console.log(`[PDF-DEBUG] Page ${pageNumber}: STEP 3 - ${regions.length} regions created from matchTextRowsToProducts`);
     // New dedup: Sort by y_pct, if within 1.5%, keep priced one
