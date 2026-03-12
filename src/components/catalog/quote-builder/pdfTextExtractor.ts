@@ -320,6 +320,8 @@ function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHei
     // Must have at least 3 digits total for standalone (no R)
     const digits = t.replace(/[\s,.]/g, "");
     if (digits.length < 3) continue;
+    // Skip phone numbers: 10+ digit sequences or numbers starting with 0
+    if (digits.length >= 10 || /^0\d/.test(digits)) continue;
     // Parse as price value
     let raw = t.replace(/\s/g, "");
     if (/,\d{1,2}$/.test(raw) && !/\.\d/.test(raw)) {
@@ -329,6 +331,8 @@ function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHei
     }
     const val = parseFloat(raw);
     if (isNaN(val) || val < minPrice) continue;
+    // Sanity cap: no single product should exceed R999,999
+    if (val > 999999) continue;
     // Check if in price column or right side of page
     const inColumn = colRange && item.x >= colRange.minX && item.x <= colRange.maxX;
     const inRightSide = item.x / pageWidth > 0.55;
