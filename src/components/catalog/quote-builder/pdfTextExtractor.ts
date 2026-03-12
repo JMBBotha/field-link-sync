@@ -549,7 +549,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 45; // v45: reduce dedup threshold 1.5→0.5, tighter anti-overlap gap 0.2→0.05
+let _extractionVersion = 46; // v46: multi-fragment price merging for split "R 1 000.00"
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
