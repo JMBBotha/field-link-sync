@@ -328,7 +328,7 @@ function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHei
     if (isNaN(val) || val < minPrice) continue;
     // Check if in price column or right side of page
     const inColumn = colRange && item.x >= colRange.minX && item.x <= colRange.maxX;
-    const inRightSide = item.x / pageWidth > 0.4;
+    const inRightSide = item.x / pageWidth > 0.55;
     if (inColumn || inRightSide) {
       candidates.push(item);
     }
@@ -354,9 +354,18 @@ function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasMode
   // Skip common non-product headers
   const headerKeywords = [
     "contents", "table of contents", "index", "page", "chapter",
-    "introduction", "disclaimer", "warranty", "terms",
+    "introduction", "disclaimer", "warranty", "terms", "fourways",
   ];
   if (headerKeywords.some((kw) => lower.includes(kw))) return true;
+
+  // Month names in footers/headers (e.g. "Fourways January 2026")
+  if (/\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/i.test(rowText)) return true;
+
+  // Model codes like AR8500 where "R" is NOT a currency prefix
+  if (/\bAR\d{4}\b/i.test(rowText)) return true;
+
+  // Refrigerant type labels like "Samsung R410", "R32", "R290" — not prices
+  if (/\b(R410|R32|R290)\b/i.test(rowText) && detectedPrice < 1000) return true;
 
   // Fundamental rule: no valid price → not a product
   if (detectedPrice == null || isNaN(detectedPrice) || detectedPrice <= 0) return true;
@@ -394,7 +403,7 @@ export function matchTextRowsToProducts(
   const yThreshold = Math.max(avgHeight * 1.5, 8);
   // STEP 1a: Explicit R-prefixed prices (works for Samsung/Daikin/Midea)
   const explicitPriceItems = mergedItems.filter(
-    (item) => /R\s*\d/.test(item.text) && detectPrice(item.text) !== null && item.x / pageWidth > 0.4,
+    (item) => /R\s*\d/.test(item.text) && detectPrice(item.text) !== null && item.x / pageWidth > 0.55,
   );
   // STEP 1b: Column-based numeric prices (works for dense table PDFs like One Stop)
   const columnPrices = findColumnPrices(mergedItems, pageWidth, pageHeight, minPrice);
@@ -549,7 +558,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 47; // v47: universal R1 floor, fix TOC filter killing consumables
+let _extractionVersion = 48; // v48: right-side threshold 55%, filter AR model codes, refrigerant labels, month names
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
@@ -610,7 +619,7 @@ export async function extractAndMatchPage(
     
     // DEBUG 2: Explicit R-prefixed items (pre-matchTextRows check)
     const preCheckExplicit = mergedItems.filter(
-      (item) => /R\s*\d/.test(item.text) && detectPrice(item.text) !== null && item.x / pageWidth > 0.4,
+      (item) => /R\s*\d/.test(item.text) && detectPrice(item.text) !== null && item.x / pageWidth > 0.55,
     );
     console.log(`[PDF-DEBUG] Page ${pageNumber}: STEP 1a - ${preCheckExplicit.length} R-prefixed price items with x > 40% pageWidth`);
     preCheckExplicit.slice(0, 10).forEach((item, idx) => {
