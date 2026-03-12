@@ -473,6 +473,15 @@ export function matchTextRowsToProducts(
   const allProductCodes = [...byCode.keys()];
   for (const pRow of priceRows) {
     const rightmost = pRow.items[pRow.items.length - 1];
+    const rowAvgY = pRow.items.reduce((s, i) => s + i.y, 0) / pRow.items.length;
+    // Ghost filter: skip if in top 3% AND no model code nearby
+    const y_pct = (rowAvgY / pageHeight) * 100;
+    // TIGHT same-row context ONLY (no aboveItems, no wide band)
+    const tightBand = avgHeight * 0.6;
+    const contextItems = mergedItems.filter((it) => Math.abs(it.y - rowAvgY) <= tightBand);
+    const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
+    const rowText = contextItems.map((it) => it.text).join(" ");
+
     // FUNDAMENTAL RULE: Skip entire row if rightmost price item is on LEFT side of page
     const rightmostXPct = rightmost.x / pageWidth;
     if (rightmostXPct <= 0.55) {
