@@ -412,12 +412,6 @@ export function matchTextRowsToProducts(
   );
   // STEP 1b: Column-based numeric prices (works for dense table PDFs like One Stop)
   const columnPrices = findColumnPrices(mergedItems, pageWidth, pageHeight, minPrice);
-  if (debugPage6) {
-    p6Debug += `\ncolumnPrices count=${columnPrices.length}\n`;
-    columnPrices.forEach((item, idx) => {
-      p6Debug += `  column[${idx}] "${item.text}" xPct=${((item.x / pageWidth) * 100).toFixed(2)}%\n`;
-    });
-  }
   // Combine and deduplicate by position
   const seen = new Set<string>();
   const priceItems: ExtractedTextItem[] = [];
