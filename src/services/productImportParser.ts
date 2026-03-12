@@ -9,6 +9,20 @@ import { VAT_RATE, stripVat, applyDiscount, addVat } from "@/utils/pricing";
 import { supabase } from "@/integrations/supabase/client";
 import { renderPDFToImages } from "@/utils/pdfEnhancer";
 
+/** Strip non-numeric chars from AI values like "9000 BTU" → 9000 */
+function sanitizeInt(val: any): number | null {
+  if (val == null) return null;
+  if (typeof val === "number") return isNaN(val) ? null : Math.round(val);
+  const n = parseInt(String(val).replace(/[^0-9\-]/g, ""), 10);
+  return isNaN(n) ? null : n;
+}
+function sanitizeFloat(val: any): number | null {
+  if (val == null) return null;
+  if (typeof val === "number") return isNaN(val) ? null : val;
+  const n = parseFloat(String(val).replace(/[^0-9.\-]/g, ""));
+  return isNaN(n) ? null : n;
+}
+
 // ─── TYPES ───
 
 export interface SupplierPricingSettings {
@@ -477,12 +491,12 @@ async function parsePDFWithFullPipeline(
       vat_amount: r2(calc.selling_price * VAT_RATE),
       sell_price_incl_vat: calc.selling_price_incl_vat,
       // Specs
-      btu_rating: row.btu_rating || specs.btu_rating || null,
+      btu_rating: sanitizeInt(row.btu_rating || specs.btu_rating),
       pipe_size: row.pipe_size || specs.pipe_size || null,
       refrigerant_type: row.refrigerant_type || specs.refrigerant_type || null,
       phase: row.phase || specs.phase || null,
       speed_type: row.speed_type || specs.speed_type || null,
-      kw: row.kw || specs.kw || null,
+      kw: sanitizeFloat(row.kw || specs.kw),
       unit_type: row.unit_type || specs.unit_type || null,
       short_name: row.short_name || null,
       brand: row.brand || null,

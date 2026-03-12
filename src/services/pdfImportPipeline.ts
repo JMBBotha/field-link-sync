@@ -16,6 +16,20 @@ import {
 } from "@/config/pdfExtractionConfig";
 import type { ParsedProduct, ImportStage } from "@/services/productImportParser";
 
+/** Strip non-numeric chars from AI values like "9000 BTU" → 9000 */
+function sanitizeInt(val: any): number | null {
+  if (val == null) return null;
+  if (typeof val === "number") return isNaN(val) ? null : Math.round(val);
+  const n = parseInt(String(val).replace(/[^0-9\-]/g, ""), 10);
+  return isNaN(n) ? null : n;
+}
+function sanitizeFloat(val: any): number | null {
+  if (val == null) return null;
+  if (typeof val === "number") return isNaN(val) ? null : val;
+  const n = parseFloat(String(val).replace(/[^0-9.\-]/g, ""));
+  return isNaN(n) ? null : n;
+}
+
 // ─── TYPES ───
 
 export interface PipelineOptions {
@@ -225,11 +239,11 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
     brand: p.brand || supplierName || "",
     is_active: true,
     archived: false,
-    btu_rating: p.btu_rating || null,
+    btu_rating: sanitizeInt(p.btu_rating),
     pipe_size: p.pipe_size || null,
     refrigerant_type: p.refrigerant_type || null,
     phase: p.phase || null,
-    kw: p.kw || null,
+    kw: sanitizeFloat(p.kw),
     sold_in_length: p.sold_in_length || false,
     unit_length: p.unit_length || null,
     price_per_metre: p.price_per_metre || null,
