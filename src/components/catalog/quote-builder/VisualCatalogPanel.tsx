@@ -835,6 +835,7 @@ interface LazyPdfPageProps {
   pdfSelection?: PdfSelectionHandlers;
   onProductInfoOpen?: (product: PaletteProduct) => void;
   hdMode?: boolean;
+  supplierType?: string;
 }
 
 const LazyPdfPage = ({
