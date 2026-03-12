@@ -383,7 +383,7 @@ export function matchTextRowsToProducts(
   products: PaletteProduct[],
   supplierType?: string,
 ): ExtractedProductRegion[] {
-  const minPrice = supplierType === "consumables" ? 1 : 50;
+  const minPrice = 1; // Universal R1 floor — isHeaderOrNonProductRow handles TOC/header filtering
   console.log(`[pdfExtract] matchTextRows: supplierType=${supplierType || "unknown"}, minPrice=R${minPrice}`);
   if (items.length === 0 || pageHeight === 0) return [];
   const lookup = buildProductLookup(products);
