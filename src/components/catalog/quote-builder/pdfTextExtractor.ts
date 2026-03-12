@@ -465,11 +465,6 @@ export function matchTextRowsToProducts(
 
     const headerOrNonProduct = isHeaderOrNonProductRow(rowText, detectedPrice ?? NaN, hasModel, y_pct);
 
-    if (debugPage6) {
-      const action = rightmostXPct <= 0.55 ? 'BLOCKED-LEFT' : (headerOrNonProduct ? 'BLOCKED-HEADER' : (detectedPrice === null || detectedPrice < minPrice ? 'BLOCKED-NOPRICE' : 'PASS'));
-      p6Debug += `\nSTEP3 [${action}] rightmost="${rightmost.text}" xPct=${(rightmostXPct * 100).toFixed(2)}% price=${detectedPrice} isHeader=${headerOrNonProduct}\n  rowText="${rowText.substring(0, 120)}"\n`;
-    }
-
     if (rightmostXPct <= 0.55) {
       console.log(`[pdfExtract] BLOCKED left-side price row: text="${rightmost.text}" xPct=${(rightmostXPct * 100).toFixed(1)}% (must be >55%)`);
       skippedCount.ghost++;
