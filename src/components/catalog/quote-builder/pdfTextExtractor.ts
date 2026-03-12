@@ -368,8 +368,8 @@ function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasMode
   // Month names in footers/headers (e.g. "Fourways January 2026")
   if (/\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/i.test(rowText)) return true;
 
-  // Model codes like AR8500, AR18BSAAAWK, AR09BSHGAWK where "R" is NOT a currency prefix
-  if (/\bAR\d{2,}/i.test(rowText)) return true;
+  // Model codes like AR8500 where "R" is NOT a currency prefix
+  if (/\bAR\d{4}\b/i.test(rowText)) return true;
 
   // Refrigerant type labels like "Samsung R410", "R32", "R290" — not prices
   // Handle split PDF fragments: "R 410", "R  32", etc.
