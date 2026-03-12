@@ -300,16 +300,16 @@ function findPriceColumnRange(
  * or fallback to right-side heuristic (x > 40% of page width).
  * Updated: Capture standalone 4+ digit numbers in rightmost if no R prefix.
  */
-function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHeight: number): ExtractedTextItem[] {
+function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHeight: number, minPrice: number = 50): ExtractedTextItem[] {
   const colRange = findPriceColumnRange(items, pageWidth, pageHeight);
   const candidates: ExtractedTextItem[] = [];
   for (const item of items) {
     const t = item.text.trim();
     // Must be numeric-ish: digits with optional spaces/commas/periods
     if (!/^\d[\d\s,.]*$/.test(t)) continue;
-    // Must have at least 4 digits total for standalone (no R)
+    // Must have at least 3 digits total for standalone (no R)
     const digits = t.replace(/[\s,.]/g, "");
-    if (digits.length < 4) continue;
+    if (digits.length < 3) continue;
     // Parse as price value
     let raw = t.replace(/\s/g, "");
     if (/,\d{1,2}$/.test(raw) && !/\.\d/.test(raw)) {
@@ -318,7 +318,7 @@ function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHei
       raw = raw.replace(/,/g, "");
     }
     const val = parseFloat(raw);
-    if (isNaN(val) || val < 50) continue;
+    if (isNaN(val) || val < minPrice) continue;
     // Check if in price column or right side of page
     const inColumn = colRange && item.x >= colRange.minX && item.x <= colRange.maxX;
     const inRightSide = item.x / pageWidth > 0.4;
