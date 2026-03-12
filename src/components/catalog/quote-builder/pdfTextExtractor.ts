@@ -558,7 +558,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 47; // v47: universal R1 floor, fix TOC filter killing consumables
+let _extractionVersion = 48; // v48: right-side threshold 55%, filter AR model codes, refrigerant labels, month names
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
