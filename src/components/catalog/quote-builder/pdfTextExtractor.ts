@@ -574,7 +574,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 56; // v56: AR model space-tolerant, refrigerant filter unconditional
+let _extractionVersion = 57; // v57: cache bump
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
