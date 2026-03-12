@@ -484,22 +484,31 @@ export function matchTextRowsToProducts(
 
     // FUNDAMENTAL RULE: Skip entire row if rightmost price item is on LEFT side of page
     const rightmostXPct = rightmost.x / pageWidth;
-    if (rightmostXPct <= 0.55) {
-      console.log(`[pdfExtract] BLOCKED left-side price row: text="${rightmost.text}" xPct=${(rightmostXPct * 100).toFixed(1)}% (must be >55%)`);
-      skippedCount.ghost++;
-      continue;
-    }
     // Try explicit R-prefixed price first, then raw numeric parse for column-based items
     let detectedPrice = detectPrice(rightmost.text);
     if (detectedPrice === null) {
       let raw = rightmost.text.trim().replace(/\s/g, "");
-      if (/,\d{1,2}$/.test(raw) && !/\.\d/.test(raw)) {
+      if (/\,\d{1,2}$/.test(raw) && !/\.\d/.test(raw)) {
         raw = raw.replace(/,(?=\d{1,2}$)/, ".");
       } else {
         raw = raw.replace(/,/g, "");
       }
       const val = parseFloat(raw);
       if (!isNaN(val) && val >= minPrice) detectedPrice = val;
+    }
+
+    const headerOrNonProduct = isHeaderOrNonProductRow(rowText, detectedPrice ?? NaN, hasModel, y_pct);
+
+    if (debugPage6) {
+      console.log(
+        `[pdfExtract][p6] STEP3 priceRow rowText="${rowText}" rightmost="${rightmost.text}" rightmostXPct=${(rightmostXPct * 100).toFixed(2)}% detectedPrice=${detectedPrice} isHeaderOrNonProductRow=${headerOrNonProduct}`,
+      );
+    }
+
+    if (rightmostXPct <= 0.55) {
+      console.log(`[pdfExtract] BLOCKED left-side price row: text="${rightmost.text}" xPct=${(rightmostXPct * 100).toFixed(1)}% (must be >55%)`);
+      skippedCount.ghost++;
+      continue;
     }
     console.log(
       `[pdfExtract] STEP3 row: rightText="${rightmost.text}" x=${rightmost.x.toFixed(1)} xPct=${((rightmost.x / pageWidth) * 100).toFixed(1)}% detectedPrice=${detectedPrice}`,
@@ -509,15 +518,7 @@ export function matchTextRowsToProducts(
       console.log(`[pdfExtract] Skipped noPrice (min R${minPrice}): ${rightmost.text} at y=${rightmost.y}`);
       continue;
     }
-    const rowAvgY = pRow.items.reduce((s, i) => s + i.y, 0) / pRow.items.length;
-    // Ghost filter: skip if in top 3% AND no model code nearby
-    const y_pct = (rowAvgY / pageHeight) * 100;
-    // TIGHT same-row context ONLY (no aboveItems, no wide band)
-    const tightBand = avgHeight * 0.6;
-    const contextItems = mergedItems.filter((it) => Math.abs(it.y - rowAvgY) <= tightBand);
-    const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
-    const rowText = contextItems.map((it) => it.text).join(" ");
-    if (isHeaderOrNonProductRow(rowText, detectedPrice, hasModel, y_pct)) {
+    if (headerOrNonProduct) {
       skippedCount.ghost++;
       console.log(
         `[pdfExtract] Skipped ghost: ${rowText} at y_pct=${y_pct.toFixed(1)}, detectedPrice=${detectedPrice}`,
