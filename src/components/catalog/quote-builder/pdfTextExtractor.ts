@@ -320,6 +320,8 @@ function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHei
     // Must have at least 3 digits total for standalone (no R)
     const digits = t.replace(/[\s,.]/g, "");
     if (digits.length < 3) continue;
+    // Skip phone numbers: 10+ digit sequences or numbers starting with 0
+    if (digits.length >= 10 || /^0\d/.test(digits)) continue;
     // Parse as price value
     let raw = t.replace(/\s/g, "");
     if (/,\d{1,2}$/.test(raw) && !/\.\d/.test(raw)) {
@@ -329,6 +331,8 @@ function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHei
     }
     const val = parseFloat(raw);
     if (isNaN(val) || val < minPrice) continue;
+    // Sanity cap: no single product should exceed R999,999
+    if (val > 999999) continue;
     // Check if in price column or right side of page
     const inColumn = colRange && item.x >= colRange.minX && item.x <= colRange.maxX;
     const inRightSide = item.x / pageWidth > 0.55;
@@ -364,8 +368,8 @@ function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasMode
   // Month names in footers/headers (e.g. "Fourways January 2026")
   if (/\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/i.test(rowText)) return true;
 
-  // Model codes like AR8500 where "R" is NOT a currency prefix
-  if (/\bAR\d{4}\b/i.test(rowText)) return true;
+  // Model codes like AR8500, AR18BSAAAWK, AR09BSHGAWK where "R" is NOT a currency prefix
+  if (/\bAR\d{2,}/i.test(rowText)) return true;
 
   // Refrigerant type labels like "Samsung R410", "R32", "R290" — not prices
   // Handle split PDF fragments: "R 410", "R  32", etc.
@@ -574,7 +578,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 55; // v55: removed debug overlay, all Samsung fixes retained
+let _extractionVersion = 56; // v56: filter phone numbers & broaden AR model code pattern
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
