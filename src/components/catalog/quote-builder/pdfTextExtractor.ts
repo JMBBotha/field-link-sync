@@ -403,15 +403,6 @@ export function matchTextRowsToProducts(
   const lookup = buildProductLookup(products);
   const { byCode, byName, byDescription } = lookup;
   const mergedItems = mergeAdjacentPriceFragments(items, 3, pageWidth);
-  const debugPage6 = pageIndex === 5;
-  let p6Debug = debugPage6 ? '=== PAGE 6 DEBUG ===\n' : '';
-  if (debugPage6) {
-    const mergedRWithDigits = mergedItems.filter((item) => /R\s*\d/.test(item.text));
-    p6Debug += `mergedItems R+digit count=${mergedRWithDigits.length}\n`;
-    mergedRWithDigits.forEach((item, idx) => {
-      p6Debug += `  mergedR[${idx}] "${item.text}" x=${item.x.toFixed(1)} xPct=${((item.x / pageWidth) * 100).toFixed(2)}%\n`;
-    });
-  }
   // Adaptive Y-threshold
   const avgHeight = mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length || 10;
   const yThreshold = Math.max(avgHeight * 1.5, 8);
