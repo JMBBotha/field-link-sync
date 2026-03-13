@@ -611,7 +611,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
           category: p.category || "Uncategorized",
           cost_price: p.cost_price || 0,
           pipe_size: p.pipe_size || null,
-          btu_rating: p.btu_rating || null,
+          btu_rating: sanitizeInt(p.btu_rating),
           refrigerant_type: p.refrigerant_type || null,
           is_price_on_request: p.is_price_on_request || false,
           short_name: p.short_name || null,
