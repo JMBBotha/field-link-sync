@@ -533,7 +533,7 @@ export function matchTextRowsToProducts(
         }
       }
     }
-    if (!matched) {
+    if (!matched && hasModel) {
       for (const [desc, product] of byDescription) {
         if (desc.length >= 8 && matchTextLower.includes(desc)) {
           matched = product;
