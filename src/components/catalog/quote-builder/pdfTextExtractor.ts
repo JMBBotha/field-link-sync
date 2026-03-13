@@ -483,7 +483,7 @@ export function matchTextRowsToProducts(
     }
 
     // Skip samsung/R410 section headers ONLY when tight-band row looks like a header (no real price)
-    if (/samsung.*r\s*410|r\s*410.*kw/i.test(rowText)) continue;
+    if (/samsung.*r\s*410|r\s*410.*kw/i.test(rowText) && (detectedPrice === null || detectedPrice < 50)) continue;
 
     const headerOrNonProduct = isHeaderOrNonProductRow(rowText, detectedPrice ?? NaN, hasModel, y_pct);
 
