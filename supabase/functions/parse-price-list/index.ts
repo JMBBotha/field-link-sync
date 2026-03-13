@@ -96,8 +96,11 @@ Supplier name for context: ${supplier_name || "Unknown"}`
     // Extract BTU and refrigerant info from descriptions
     const enrichedProducts = products.map((p) => {
       const btuMatch = p.description.match(/(\d+)\s*(?:000)?\s*BTU/i);
-      const btu = btuMatch ? parseInt(btuMatch[1]) : null;
-      const finalBtu = btu && btu < 1000 ? btu * 1000 : btu;
+      let btu: number | null = btuMatch ? parseInt(btuMatch[1]) : null;
+      if (btu && btu < 1000) btu = btu * 1000;
+      // Sanitize btu_rating from AI - strip non-numeric chars
+      const rawBtu = p.cost_price != null ? btu : null;
+      const sanitizedBtu = rawBtu != null ? (isNaN(rawBtu) ? null : Math.round(rawBtu)) : null;
 
       const refrigerant = p.description.match(/R32|R410A|R22/i)?.[0]?.toUpperCase() || null;
 
