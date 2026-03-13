@@ -477,8 +477,8 @@ export function matchTextRowsToProducts(
 
     const headerOrNonProduct = isHeaderOrNonProductRow(rowText, detectedPrice ?? NaN, hasModel, y_pct);
 
-    // Check if nearby LEFT-side text contains refrigerant labels AND this row has no model code match
-    if (!hasModel && /\bR\s*(410|32|290)\b/i.test(nearbyLeftText) && nearbyItems.some((it) => /samsung|daikin|midea/i.test(it.text))) {
+    // Check if nearby LEFT-side text contains refrigerant labels AND tight-band has no RECOGNIZED product code
+    if (/\bR\s*(410|32|290)\b/i.test(nearbyLeftText) && nearbyItems.some((it) => /samsung|daikin|midea/i.test(it.text)) && !contextItems.some((it) => modelRegex.test(it.text.trim()) && byCode.has(it.text.trim().toLowerCase()))) {
       skippedCount.ghost++;
       continue;
     }
@@ -593,7 +593,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 69; // v69: refrigerant text only filters rows without model codes
+let _extractionVersion = 70; // v70: brand+refrigerant check uses recognized product codes instead of hasModel
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
