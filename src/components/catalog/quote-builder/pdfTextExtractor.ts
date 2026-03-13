@@ -683,7 +683,7 @@ export async function extractAndMatchPage(
       for (let j = 0; j < deduped.length; j++) {
         const existing = deduped[j];
         // Adaptive dedup threshold based on actual row height
-        const minDyForDedup = avgHeight * 0.25; // Reduced to avoid deduping real rows in dense tables
+        const minDyForDedup = avgHeight * 0.4;
         const adaptiveDedupThreshold = (minDyForDedup / pageHeight) * 100;
         if (Math.abs(current.y_pct - existing.y_pct) < adaptiveDedupThreshold) {
           // Keep the one with price (detected_price > 0)
