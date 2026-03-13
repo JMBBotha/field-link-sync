@@ -112,7 +112,7 @@ Supplier name for context: ${supplier_name || "Unknown"}`
         pipe_size: p.pipe_size || null,
         cost_price: p.cost_price || 0,
         is_price_on_request: p.is_price_on_request || false,
-        btu_rating: finalBtu,
+        btu_rating: sanitizedBtu,
         refrigerant_type: refrigerant,
         default_markup_percent: 30,
       };
