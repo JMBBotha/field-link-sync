@@ -96,7 +96,7 @@ export async function extractTextItemsFromPdfPage(
  * Handles table-layout PDFs where pdfjs-dist splits "R" and "172,79" into separate items.
  */
 export function mergeCurrencyWithPrices(items: ExtractedTextItem[], pageWidth?: number): ExtractedTextItem[] {
-  const RIGHT_SIDE_THRESHOLD = 0.55;
+  const RIGHT_SIDE_THRESHOLD = 0.40;
   // Sort by y then x
   const sorted = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
   const result: ExtractedTextItem[] = [];
@@ -241,7 +241,7 @@ function isPriceItem(text: string): boolean {
  * continuation on the same Y-line.
  */
 function mergeAdjacentPriceFragments(items: ExtractedTextItem[], yThreshold: number, pageWidth?: number): ExtractedTextItem[] {
-  const RIGHT_SIDE_THRESHOLD = 0.55;
+  const RIGHT_SIDE_THRESHOLD = 0.40;
   const merged: ExtractedTextItem[] = [];
   const used = new Set<number>();
   for (let i = 0; i < items.length; i++) {
@@ -420,7 +420,7 @@ export function matchTextRowsToProducts(
   const yThreshold = Math.max(avgHeight * 1.5, 8);
   // STEP 1a: Explicit R-prefixed prices (works for Samsung/Daikin/Midea)
   const explicitPriceItems = mergedItems.filter(
-    (item) => /R\s*\d/.test(item.text) && (item.x / pageWidth) > 0.55 && detectPrice(item.text) !== null,
+    (item) => /R\s*\d/.test(item.text) && (item.x / pageWidth) > 0.40 && detectPrice(item.text) !== null,
   );
   // STEP 1b: Column-based numeric prices (works for dense table PDFs like One Stop)
   const columnPrices = findColumnPrices(mergedItems, pageWidth, pageHeight, minPrice);
@@ -564,7 +564,7 @@ export function matchTextRowsToProducts(
         return codeMatch ? codeMatch[1] : rowText.trim().substring(0, 80) + `@${detectedPrice}`;
       })();
     const anchorHeight = rightmost.height;
-    const h_pct = Math.max((anchorHeight / pageHeight) * 100, 1.5);
+    const h_pct = Math.max((anchorHeight / pageHeight) * 100, 0.8);
     if (y_pct > 100 || h_pct > 5) {
       skippedCount.outOfBounds++;
       continue;
@@ -659,7 +659,7 @@ export async function extractAndMatchPage(
     
     // DEBUG 2: Explicit R-prefixed items (pre-matchTextRows check)
     const preCheckExplicit = mergedItems.filter(
-      (item) => /R\s*\d/.test(item.text) && detectPrice(item.text) !== null && item.x / pageWidth > 0.55,
+      (item) => /R\s*\d/.test(item.text) && detectPrice(item.text) !== null && item.x / pageWidth > 0.40,
     );
     console.log(`[PDF-DEBUG] Page ${pageNumber}: STEP 1a - ${preCheckExplicit.length} R-prefixed price items with x > 40% pageWidth`);
     preCheckExplicit.slice(0, 10).forEach((item, idx) => {
@@ -692,7 +692,7 @@ export async function extractAndMatchPage(
       for (let j = 0; j < deduped.length; j++) {
         const existing = deduped[j];
         // Adaptive dedup threshold based on actual row height
-        const minDyForDedup = avgHeight * 0.4;
+        const minDyForDedup = avgHeight * 0.15;
         const adaptiveDedupThreshold = (minDyForDedup / pageHeight) * 100;
         if (Math.abs(current.y_pct - existing.y_pct) < adaptiveDedupThreshold) {
           // Keep the one with price (detected_price > 0)
