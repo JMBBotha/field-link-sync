@@ -600,7 +600,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 66; // v66: visual debug for unmatched regions
+let _extractionVersion = 67; // v67: narrow heading zone to ±0.5×avgHeight
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
