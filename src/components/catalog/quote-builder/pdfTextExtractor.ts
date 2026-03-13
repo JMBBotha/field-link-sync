@@ -412,8 +412,8 @@ export function matchTextRowsToProducts(
     if (/\bR\s*(410|32|290)\b/i.test(item.text) && (item.x / pageWidth) < 0.55) {
       console.log(`[pdfExtract] HEADING ZONE: text="${item.text}" x=${item.x.toFixed(1)} xPct=${((item.x/pageWidth)*100).toFixed(1)}% y=${item.y.toFixed(1)} zone=[${(item.y - avgHeight*3).toFixed(1)}, ${(item.y + avgHeight*3).toFixed(1)}]`);
       headingExcludeYRanges.push({
-        minY: item.y - avgHeight * 3,
-        maxY: item.y + avgHeight * 3,
+        minY: item.y - avgHeight * 0.5,
+        maxY: item.y + avgHeight * 0.5,
       });
     }
   }
