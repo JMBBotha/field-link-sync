@@ -586,7 +586,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 61; // v61: cache bump
+let _extractionVersion = 62; // v62: wide context scan for refrigerant headings
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
