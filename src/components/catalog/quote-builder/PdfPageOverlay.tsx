@@ -201,33 +201,20 @@ const RegionBox = memo(
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
-      {/* Gradient overlay */}
+      {/* Gradient overlay with controls inside */}
         <div
-          className="absolute inset-0 transition-all duration-200 rounded-sm"
+          className="absolute inset-0 transition-all duration-200 rounded-sm flex items-center justify-end pr-2 gap-1 z-10"
           style={{
             background: hovered
-              ? "linear-gradient(to right, transparent, rgba(59,130,246,0.25))"
-              : "linear-gradient(to right, transparent, rgba(59,130,246,0.15))",
+              ? "linear-gradient(to right, transparent 30%, rgba(59,130,246,0.35))"
+              : "linear-gradient(to right, transparent 50%, rgba(59,130,246,0.2))",
           }}
-        />
-
-        {/* Click area for row */}
-        <div
-          className="absolute inset-0 cursor-pointer z-[5]"
-          style={{ right: 80 }}
-          onClick={onRowClick}
-        />
-
-        {/* Control group — INSIDE the region, pinned to right */}
-        <div
-          className="absolute z-10 flex items-center gap-1 bg-white/90 dark:bg-card/90 backdrop-blur-sm rounded-full px-2 py-1 shadow-sm pointer-events-auto"
-          style={{ right: 4, top: "50%", transform: "translateY(-50%)" }}
         >
           {/* Cart badge */}
           {basketCount > 0 && (
             <div className="relative shrink-0 mr-0.5">
-              <ShoppingCart className="h-3.5 w-3.5 text-primary" />
-              <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none">
+              <ShoppingCart className="h-3.5 w-3.5 text-white drop-shadow-sm" />
+              <span className="absolute -top-1.5 -right-1.5 bg-white text-primary text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none">
                 {basketCount}
               </span>
             </div>
@@ -235,7 +222,7 @@ const RegionBox = memo(
 
           {/* Three chevron arrows */}
           <span
-            className="text-primary font-bold text-xs shrink-0 transition-opacity duration-150 select-none"
+            className="font-bold text-xs shrink-0 transition-opacity duration-150 select-none text-white drop-shadow-sm"
             style={{ opacity: hovered ? 1 : 0.6, letterSpacing: -1 }}
           >
             &rsaquo;&rsaquo;&rsaquo;
@@ -249,24 +236,31 @@ const RegionBox = memo(
               onInfoClick();
             }}
           >
-            <Info className="h-3.5 w-3.5 text-primary opacity-70 hover:opacity-100 transition-opacity" />
+            <Info className="h-3.5 w-3.5 text-white drop-shadow-sm opacity-80 hover:opacity-100 transition-opacity" />
           </button>
 
           {/* Radio button */}
           <button
             className="flex items-center justify-center w-4 h-4 shrink-0 rounded-full border-2 transition-colors duration-150"
             style={{
-              borderColor: isSelected ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
-              backgroundColor: isSelected ? "hsl(var(--primary))" : "hsl(var(--background))",
+              borderColor: isSelected ? "white" : "rgba(255,255,255,0.7)",
+              backgroundColor: isSelected ? "white" : "transparent",
             }}
             onClick={(e) => {
               e.stopPropagation();
               onToggleSelect();
             }}
           >
-            {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" strokeWidth={3} />}
+            {isSelected && <Check className="h-2.5 w-2.5 text-blue-600" strokeWidth={3} />}
           </button>
         </div>
+
+        {/* Click area for row (behind controls) */}
+        <div
+          className="absolute inset-0 cursor-pointer z-[5]"
+          style={{ right: 80 }}
+          onClick={onRowClick}
+        />
 
         {/* Info popup card */}
         {showCard && <InfoCard region={region} showAbove={showAbove} />}
