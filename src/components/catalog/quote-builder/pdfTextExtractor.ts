@@ -600,7 +600,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 64; // v64: pre-scan heading exclude zones for refrigerant labels
+let _extractionVersion = 65; // v65: debug logging for heading zones
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
