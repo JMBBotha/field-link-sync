@@ -215,17 +215,17 @@ const RegionBox = memo(
             transition: "background 0.2s ease",
           }}
         />
-        {/* Control buttons - inside gradient area */}
+        {/* Control buttons - inside gradient area, above clickable zone */}
         <div
           style={{
             position: "absolute",
-            right: "2px",
+            right: "8px",
             top: "50%",
             transform: "translateY(-50%)",
             display: "flex",
             alignItems: "center",
             gap: "6px",
-            zIndex: 3,
+            zIndex: 10,
             pointerEvents: "none",
           }}
         >
@@ -316,7 +316,7 @@ const RegionBox = memo(
             bottom: 0,
             right: "64px",
             cursor: "pointer",
-            zIndex: 5,
+            zIndex: 4,
           }}
           onClick={onRowClick}
         />
