@@ -219,7 +219,7 @@ const RegionBox = memo(
         <div
           style={{
             position: "absolute",
-            right: "2px",
+            right: "8px",
             top: "50%",
             transform: "translateY(-50%)",
             display: "flex",
