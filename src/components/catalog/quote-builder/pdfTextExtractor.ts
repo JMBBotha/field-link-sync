@@ -367,9 +367,9 @@ function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasMode
   // Model codes like AR8500 where "R" is NOT a currency prefix
   if (/\bAR\s*\d{4}\b/i.test(rowText)) return true;
 
-  // Refrigerant type labels like "Samsung R410", "R32", "R290" - always filter regardless of price
-
-  if (/\bR\s*(410|32|290)\b/i.test(rowText) && !hasModel) return true;
+  // Refrigerant type labels like "Samsung R410", "R32", "R290" — only filter SHORT header-like rows
+  // with no significant price. Dense product rows in R32/R410 sections must NOT be filtered.
+  if (/\bR\s*(410|32|290)\b/i.test(rowText) && !hasModel && (detectedPrice < 50 || isNaN(detectedPrice))) return true;
 
   // Fundamental rule: no valid price → not a product
   if (detectedPrice == null || isNaN(detectedPrice) || detectedPrice <= 0) return true;
