@@ -449,7 +449,7 @@ export function matchTextRowsToProducts(
     // Ghost filter: skip if in top 3% AND no model code nearby
     const y_pct = (rowAvgY / pageHeight) * 100;
     // TIGHT same-row context ONLY (no aboveItems, no wide band)
-    const tightBand = avgHeight * 1.0; // Widened to capture spread items in commercial layouts
+    const tightBand = avgHeight * 0.6;
     const contextItems = mergedItems.filter((it) => Math.abs(it.y - rowAvgY) <= tightBand);
     const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
     const rowText = contextItems.map((it) => it.text).join(" ");
