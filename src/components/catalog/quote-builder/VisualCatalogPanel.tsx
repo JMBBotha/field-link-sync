@@ -527,7 +527,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
         {/* Quote Zones sidebar removed for cleaner PDF viewing experience */}
 
         {/* RIGHT: PDF Viewer */}
-        <div className="flex-1 flex flex-col overflow-visible">
+        <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/30 shrink-0">
             <div className="flex items-center gap-2 flex-1 min-w-0">
