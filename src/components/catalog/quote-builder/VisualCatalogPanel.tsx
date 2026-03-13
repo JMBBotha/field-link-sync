@@ -1213,6 +1213,11 @@ const LazyPdfPage = ({
             {totalRegions} items · {matchedCount} matched{unmatchedCount > 0 && <span className="text-orange-300"> · {unmatchedCount} new</span>}
           </span>
         )}
+        {isVisible && unmatchedCount > 0 && (
+          <span className="text-red-300 text-[8px] ml-1">
+            [{overlayRegions.filter(r => !r.product).map(r => (r.label || r.product_code || '?').substring(0, 80)).join(' | ')}]
+          </span>
+        )}
         {isVisible && starOverlays.length > 0 && (
           <span className="flex items-center gap-0.5 text-yellow-300">
             <Star className="h-2.5 w-2.5 fill-yellow-300" />
