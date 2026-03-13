@@ -453,12 +453,14 @@ export function matchTextRowsToProducts(
     const contextItems = mergedItems.filter((it) => Math.abs(it.y - rowAvgY) <= tightBand);
     const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
     const rowText = contextItems.map((it) => it.text).join(" ");
+    const looseRowText = pRow.items.map((it) => it.text).join(" ");
 
     // Wide scan ONLY for heading detection (not for product matching)
     const nearbyItems = mergedItems.filter((it) => Math.abs(it.y - rowAvgY) <= avgHeight * 8 && (it.x / pageWidth) < 0.5);
     const nearbyLeftText = nearbyItems.map((it) => it.text).join(" ");
 
     if (/samsung.*r\s*410|r\s*410.*kw/i.test(rowText) || /samsung.*r\s*410|r\s*410.*kw/i.test(nearbyLeftText)) continue;
+    if (/samsung.*r\s*410|r\s*410.*kw/i.test(looseRowText)) continue;
 
     // FUNDAMENTAL RULE: Skip entire row if rightmost price item is on LEFT side of page
     const rightmostXPct = rightmost.x / pageWidth;
