@@ -751,7 +751,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
           category: row.category || "General",
           cost_price: row.cost_price,
           pipe_size: row.pipe_size,
-          btu_rating: row.btu_rating,
+          btu_rating: sanitizeInt(row.btu_rating),
           refrigerant_type: row.refrigerant_type,
           is_price_on_request: row.is_price_on_request,
           default_markup_percent: aiMarkup,
