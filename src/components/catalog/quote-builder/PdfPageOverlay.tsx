@@ -2,7 +2,7 @@ import { memo, useState, useRef, useCallback, useEffect } from "react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
-import { ShoppingCart, Check, Sparkles, ChevronsRight, Info } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatRand } from "@/utils/formatRand";
 
