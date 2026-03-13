@@ -410,6 +410,7 @@ export function matchTextRowsToProducts(
   const headingExcludeYRanges: { minY: number; maxY: number }[] = [];
   for (const item of mergedItems) {
     if (/\bR\s*(410|32|290)\b/i.test(item.text) && (item.x / pageWidth) < 0.55) {
+      console.log(`[pdfExtract] HEADING ZONE: text="${item.text}" x=${item.x.toFixed(1)} xPct=${((item.x/pageWidth)*100).toFixed(1)}% y=${item.y.toFixed(1)} zone=[${(item.y - avgHeight*3).toFixed(1)}, ${(item.y + avgHeight*3).toFixed(1)}]`);
       headingExcludeYRanges.push({
         minY: item.y - avgHeight * 3,
         maxY: item.y + avgHeight * 3,
@@ -574,6 +575,7 @@ export function matchTextRowsToProducts(
     // Use ACTUAL price item coordinates for icon alignment (not hardcoded)
     const actualX_pct = (rightmost.x / pageWidth) * 100;
     const actualW_pct = Math.max((rightmost.width / pageWidth) * 100, 2);
+    console.log(`[pdfExtract] ADDING REGION: label="${rowText.trim().substring(0,200)}" price=${detectedPrice} matched=${!!matched} y_pct=${y_pct.toFixed(1)} code="${extractedCode}"`);
     regions.push({
       product: matched,
       product_code: extractedCode,
@@ -598,7 +600,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 64; // v64: pre-scan heading exclude zones for refrigerant labels
+let _extractionVersion = 65; // v65: debug logging for heading zones
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
