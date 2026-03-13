@@ -192,96 +192,127 @@ const RegionBox = memo(
     return (
       <div
         ref={rowRef}
-        className="absolute"
         style={{
-          left: "0%",
+          position: "absolute",
+          left: `${region.x_pct}%`,
           top: `${region.y_pct}%`,
-          width: "100%",
+          width: `${region.w_pct}%`,
           height: `${region.h_pct}%`,
+          zIndex: 10,
+          overflow: "visible",
+          background:
+            "linear-gradient(to right, transparent 0%, transparent 50%, rgba(37,99,235,0.5) 80%, rgba(37,99,235,0.7) 100%)",
         }}
         onMouseEnter={handleMouseEnter}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
-        {/* Gradient overlay with controls inside */}
         <div
-          className="absolute inset-0 transition-all duration-200 rounded-sm z-10"
           style={{
-            background:
-              "linear-gradient(to right, transparent 0%, transparent 60%, rgba(59,130,246,0.3) 80%, rgba(59,130,246,0.5) 100%)",
+            position: "absolute",
+            right: "2px",
+            top: "50%",
+            transform: "translateY(-50%)",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            zIndex: 20,
+            pointerEvents: "auto",
           }}
         >
-          <div
+          <span
             style={{
-              position: "absolute",
-              right: "4px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              display: "flex",
-              gap: "4px",
-              alignItems: "center",
-              zIndex: 20,
-              pointerEvents: "auto",
+              color: "#fff",
+              fontWeight: 900,
+              fontSize: "14px",
+              textShadow: "0 0 3px rgba(0,0,0,0.8)",
+              lineHeight: 1,
+              userSelect: "none",
             }}
           >
-            {/* Cart badge */}
-            {basketCount > 0 && (
-              <div className="relative shrink-0 mr-0.5">
-                <ShoppingCart size={12} style={{ color: "#fff", opacity: 1 }} />
-                <span
-                  className="absolute -top-1.5 -right-1.5 text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none"
-                  style={{ backgroundColor: "#fff", color: "#2563eb", opacity: 1 }}
-                >
-                  {basketCount}
-                </span>
-              </div>
-            )}
+            {'>>>'}
+          </span>
 
-            {/* Three chevron arrows */}
-            <span style={{ color: "#fff", fontSize: "12px", opacity: 1, letterSpacing: -1, lineHeight: 1 }}>
-              &rsaquo;&rsaquo;&rsaquo;
-            </span>
-
-            {/* Info icon */}
-            <button
-              className="flex items-center justify-center shrink-0 cursor-pointer"
-              style={{ width: 12, height: 12, opacity: 1 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onInfoClick();
-              }}
-            >
-              <Info size={12} style={{ color: "#fff", fontSize: "12px", opacity: 1 }} />
-            </button>
-
-            {/* Radio button */}
-            <button
-              className="flex items-center justify-center shrink-0 rounded-full border-2 transition-colors duration-150"
+          <button
+            type="button"
+            style={{
+              width: "16px",
+              height: "16px",
+              borderRadius: "9999px",
+              border: "1px solid rgba(255,255,255,0.95)",
+              background: "#fff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.45)",
+              cursor: "pointer",
+              padding: 0,
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onInfoClick();
+            }}
+          >
+            <span
               style={{
-                width: 12,
-                height: 12,
-                borderColor: "#fff",
-                backgroundColor: isSelected ? "rgba(255,255,255,0.28)" : "transparent",
-                opacity: 1,
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleSelect();
+                color: "#2563eb",
+                fontWeight: 800,
+                fontSize: "11px",
+                lineHeight: 1,
+                marginTop: "-1px",
               }}
             >
-              {isSelected && <Check size={10} style={{ color: "#fff", opacity: 1 }} strokeWidth={3} />}
-            </button>
-          </div>
+              i
+            </span>
+          </button>
+
+          <button
+            type="button"
+            style={{
+              width: "16px",
+              height: "16px",
+              borderRadius: "9999px",
+              border: "1px solid rgba(255,255,255,0.95)",
+              background: isSelected ? "#2563eb" : "#fff",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.45)",
+              cursor: "pointer",
+              padding: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSelect();
+            }}
+          >
+            {isSelected && (
+              <span
+                style={{
+                  width: "6px",
+                  height: "6px",
+                  borderRadius: "9999px",
+                  background: "#fff",
+                  display: "block",
+                }}
+              />
+            )}
+          </button>
         </div>
 
-        {/* Click area for row (behind controls) */}
         <div
-          className="absolute inset-0 cursor-pointer z-[5]"
-          style={{ right: 88 }}
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            right: "64px",
+            cursor: "pointer",
+            zIndex: 5,
+          }}
           onClick={onRowClick}
         />
 
-        {/* Info popup card */}
         {showCard && <InfoCard region={region} showAbove={showAbove} />}
       </div>
     );
