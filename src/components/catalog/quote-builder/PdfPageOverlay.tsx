@@ -224,13 +224,13 @@ const RegionBox = memo(
             style={{
               color: "#fff",
               fontWeight: 900,
-              fontSize: "10px",
+              fontSize: "8px",
               textShadow: "0 0 3px rgba(0,0,0,0.8)",
               lineHeight: 1,
               userSelect: "none",
             }}
           >
-            {'>>>'}
+            {'>>'}
           </span>
 
           <button
