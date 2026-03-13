@@ -406,18 +406,6 @@ export function matchTextRowsToProducts(
   // Adaptive Y-threshold
   const avgHeight = mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length || 10;
   const yThreshold = Math.max(avgHeight * 1.5, 8);
-  // PRE-SCAN: Find y-ranges of refrigerant/section headings to exclude
-  const headingExcludeYRanges: { minY: number; maxY: number }[] = [];
-  for (const item of mergedItems) {
-    if (/\bR\s*(410|32|290)\b/i.test(item.text) && (item.x / pageWidth) < 0.55) {
-      console.log(`[pdfExtract] HEADING ZONE: text="${item.text}" x=${item.x.toFixed(1)} xPct=${((item.x/pageWidth)*100).toFixed(1)}% y=${item.y.toFixed(1)} zone=[${(item.y - avgHeight*3).toFixed(1)}, ${(item.y + avgHeight*3).toFixed(1)}]`);
-      headingExcludeYRanges.push({
-        minY: item.y - avgHeight * 0.5,
-        maxY: item.y + avgHeight * 0.5,
-      });
-    }
-  }
-  console.log(`[pdfExtract] Found ${headingExcludeYRanges.length} heading exclude zones`);
   // STEP 1a: Explicit R-prefixed prices (works for Samsung/Daikin/Midea)
   const explicitPriceItems = mergedItems.filter(
     (item) => /R\s*\d/.test(item.text) && (item.x / pageWidth) > 0.55 && detectPrice(item.text) !== null,
@@ -458,9 +446,6 @@ export function matchTextRowsToProducts(
   for (const pRow of priceRows) {
     const rightmost = pRow.items[pRow.items.length - 1];
     const rowAvgY = pRow.items.reduce((s, i) => s + i.y, 0) / pRow.items.length;
-    // Skip if price falls within a heading exclude zone
-    const inHeadingZone = headingExcludeYRanges.some(z => rowAvgY >= z.minY && rowAvgY <= z.maxY);
-    if (inHeadingZone) { skippedCount.ghost++; console.log(`[pdfExtract] Skipped heading zone at y=${rowAvgY.toFixed(1)}`); continue; }
     // Ghost filter: skip if in top 3% AND no model code nearby
     const y_pct = (rowAvgY / pageHeight) * 100;
     // TIGHT same-row context ONLY (no aboveItems, no wide band)
@@ -469,7 +454,11 @@ export function matchTextRowsToProducts(
     const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
     const rowText = contextItems.map((it) => it.text).join(" ");
 
-    if (/samsung.*r\s*410|r\s*410.*kw/i.test(rowText)) continue;
+    // Wide scan ONLY for heading detection (not for product matching)
+    const nearbyItems = mergedItems.filter((it) => Math.abs(it.y - rowAvgY) <= avgHeight * 8 && (it.x / pageWidth) < 0.5);
+    const nearbyLeftText = nearbyItems.map((it) => it.text).join(" ");
+
+    if (/samsung.*r\s*410|r\s*410.*kw/i.test(rowText) || /samsung.*r\s*410|r\s*410.*kw/i.test(nearbyLeftText)) continue;
 
     // FUNDAMENTAL RULE: Skip entire row if rightmost price item is on LEFT side of page
     const rightmostXPct = rightmost.x / pageWidth;
@@ -488,7 +477,11 @@ export function matchTextRowsToProducts(
 
     const headerOrNonProduct = isHeaderOrNonProductRow(rowText, detectedPrice ?? NaN, hasModel, y_pct);
 
-    
+    // Check if nearby LEFT-side text contains refrigerant labels AND this row has no model code match
+    if (!hasModel && /\bR\s*(410|32|290)\b/i.test(nearbyLeftText) && nearbyItems.some((it) => /samsung|daikin|midea/i.test(it.text))) {
+      skippedCount.ghost++;
+      continue;
+    }
 
     if (rightmostXPct <= 0.55) {
       console.log(`[pdfExtract] BLOCKED left-side price row: text="${rightmost.text}" xPct=${(rightmostXPct * 100).toFixed(1)}% (must be >55%)`);
@@ -600,7 +593,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 67; // v67: narrow heading zone to ±0.5×avgHeight
+let _extractionVersion = 68; // v68: remove heading zones; use wide nearby-left scan only for refrigerant heading checks
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
