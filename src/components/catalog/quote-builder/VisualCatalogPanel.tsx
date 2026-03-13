@@ -634,7 +634,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
           </div>
 
           {/* Content: Continuous scroll */}
-          <div className="flex-1 overflow-visible flex relative">
+          <div className="flex-1 overflow-hidden flex relative">
             {pagesLoading ? (
               <div className="p-4 space-y-3 flex-1">
                 <Skeleton className="h-8 w-48" />
