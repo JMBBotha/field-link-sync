@@ -369,7 +369,7 @@ function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasMode
 
   // Refrigerant type labels like "Samsung R410", "R32", "R290" - always filter regardless of price
 
-  if (/\bR\s*(410|32|290)\b/i.test(rowText)) return true;
+  if (/\bR\s*(410|32|290)\b/i.test(rowText) && !hasModel) return true;
 
   // Fundamental rule: no valid price → not a product
   if (detectedPrice == null || isNaN(detectedPrice) || detectedPrice <= 0) return true;
