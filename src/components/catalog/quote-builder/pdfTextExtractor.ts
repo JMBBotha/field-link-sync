@@ -406,6 +406,17 @@ export function matchTextRowsToProducts(
   // Adaptive Y-threshold
   const avgHeight = mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length || 10;
   const yThreshold = Math.max(avgHeight * 1.5, 8);
+  // PRE-SCAN: Find y-ranges of refrigerant/section headings to exclude
+  const headingExcludeYRanges: { minY: number; maxY: number }[] = [];
+  for (const item of mergedItems) {
+    if (/\bR\s*(410|32|290)\b/i.test(item.text) && (item.x / pageWidth) < 0.55) {
+      headingExcludeYRanges.push({
+        minY: item.y - avgHeight * 3,
+        maxY: item.y + avgHeight * 3,
+      });
+    }
+  }
+  console.log(`[pdfExtract] Found ${headingExcludeYRanges.length} heading exclude zones`);
   // STEP 1a: Explicit R-prefixed prices (works for Samsung/Daikin/Midea)
   const explicitPriceItems = mergedItems.filter(
     (item) => /R\s*\d/.test(item.text) && (item.x / pageWidth) > 0.55 && detectPrice(item.text) !== null,
