@@ -316,7 +316,8 @@ const RegionBox = memo(
             bottom: 0,
             right: "64px",
             cursor: "pointer",
-            zIndex: 4,
+            zIndex: 1,
+            pointerEvents: "auto",
           }}
           onClick={onRowClick}
         />
