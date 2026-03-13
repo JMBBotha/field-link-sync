@@ -681,7 +681,10 @@ export async function extractAndMatchPage(
       let isDuplicate = false;
       for (let j = 0; j < deduped.length; j++) {
         const existing = deduped[j];
-        if (Math.abs(current.y_pct - existing.y_pct) < 0.5) {
+        // Adaptive dedup threshold based on actual row height
+        const minDyForDedup = avgHeight * 0.4;
+        const adaptiveDedupThreshold = (minDyForDedup / pageHeight) * 100;
+        if (Math.abs(current.y_pct - existing.y_pct) < adaptiveDedupThreshold) {
           // Keep the one with price (detected_price > 0)
           if (current.detected_price > 0 && existing.detected_price <= 0) {
             deduped[j] = current;
