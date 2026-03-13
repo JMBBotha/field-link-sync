@@ -477,8 +477,8 @@ export function matchTextRowsToProducts(
 
     const headerOrNonProduct = isHeaderOrNonProductRow(rowText, detectedPrice ?? NaN, hasModel, y_pct);
 
-    // Check if nearby LEFT-side text contains refrigerant labels AND this row has no model code match
-    if (!hasModel && /\bR\s*(410|32|290)\b/i.test(nearbyLeftText) && nearbyItems.some((it) => /samsung|daikin|midea/i.test(it.text))) {
+    // Check if nearby LEFT-side text contains refrigerant labels AND tight-band has no RECOGNIZED product code
+    if (/\bR\s*(410|32|290)\b/i.test(nearbyLeftText) && nearbyItems.some((it) => /samsung|daikin|midea/i.test(it.text)) && !contextItems.some((it) => modelRegex.test(it.text.trim()) && byCode.has(it.text.trim().toLowerCase()))) {
       skippedCount.ghost++;
       continue;
     }
