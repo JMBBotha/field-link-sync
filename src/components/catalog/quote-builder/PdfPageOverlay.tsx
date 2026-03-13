@@ -200,17 +200,27 @@ const RegionBox = memo(
           height: `${region.h_pct}%`,
           zIndex: 10,
           overflow: "visible",
-          background: isSelected
-            ? "linear-gradient(to right, transparent 0%, transparent 45%, rgba(34,197,94,0.15) 60%, rgba(34,197,94,0.4) 80%, rgba(34,197,94,0.7) 100%)"
-            : "linear-gradient(to right, transparent 0%, transparent 45%, rgba(37,99,235,0.15) 60%, rgba(37,99,235,0.4) 80%, rgba(37,99,235,0.7) 100%)",
-          borderRadius: "0 12px 12px 0",
-          paddingRight: "6px",
           boxSizing: "border-box",
         }}
         onMouseEnter={handleMouseEnter}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
+        {/* Gradient overlay — full width inner div */}
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: "100%",
+            height: "100%",
+            borderRadius: "0 12px 12px 0",
+            pointerEvents: "none",
+            background: isSelected
+              ? "linear-gradient(to right, transparent 0%, transparent 45%, rgba(34,197,94,0.15) 60%, rgba(34,197,94,0.4) 80%, rgba(34,197,94,0.7) 100%)"
+              : "linear-gradient(to right, transparent 0%, transparent 45%, rgba(37,99,235,0.15) 60%, rgba(37,99,235,0.4) 80%, rgba(37,99,235,0.7) 100%)",
+          }}
+        />
         <div
           style={{
             position: "absolute",
@@ -295,7 +305,7 @@ const RegionBox = memo(
                 width: "6px",
                 height: "6px",
                 borderRadius: "9999px",
-                background: isSelected ? "#22c55e" : "#3b82f6",
+                background: isSelected ? "#22c55e" : "#000",
                 display: "block",
               }}
             />
