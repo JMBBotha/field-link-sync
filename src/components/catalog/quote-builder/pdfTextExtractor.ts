@@ -477,7 +477,11 @@ export function matchTextRowsToProducts(
 
     const headerOrNonProduct = isHeaderOrNonProductRow(rowText, detectedPrice ?? NaN, hasModel, y_pct);
 
-    
+    // Check if nearby LEFT-side text contains refrigerant labels AND this row has no model code match
+    if (!hasModel && /\bR\s*(410|32|290)\b/i.test(nearbyLeftText) && nearbyItems.some((it) => /samsung|daikin|midea/i.test(it.text))) {
+      skippedCount.ghost++;
+      continue;
+    }
 
     if (rightmostXPct <= 0.55) {
       console.log(`[pdfExtract] BLOCKED left-side price row: text="${rightmost.text}" xPct=${(rightmostXPct * 100).toFixed(1)}% (must be >55%)`);
