@@ -131,6 +131,7 @@ const RegionBox = memo(
     isSelected,
     onToggleSelect,
     onRowClick,
+    onInfoClick,
     basketCount,
     onHoverStart,
     onHoverMove,
@@ -140,6 +141,7 @@ const RegionBox = memo(
     isSelected: boolean;
     onToggleSelect: () => void;
     onRowClick: () => void;
+    onInfoClick: () => void;
     basketCount: number;
     onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent) => void;
     onHoverMove?: (e: React.MouseEvent) => void;
@@ -199,30 +201,34 @@ const RegionBox = memo(
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
-        {/* Gradient overlay */}
+        {/* Gradient overlay — stops before the gutter */}
         <div
           className="absolute inset-0 transition-all duration-200 rounded-sm"
           style={{
+            right: 56,
             background: hovered
               ? "linear-gradient(to right, transparent, rgba(59,130,246,0.25))"
               : "linear-gradient(to right, transparent, rgba(59,130,246,0.15))",
           }}
         />
 
-        {/* Click area for row */}
+        {/* Click area for row (content area, excludes gutter) */}
         <div
           className="absolute inset-0 cursor-pointer z-[5]"
-          style={{ right: 80 }}
+          style={{ right: 56 }}
           onClick={onRowClick}
         />
 
-        {/* Right side: cart + info + radio + arrows */}
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1.5">
+        {/* Right gutter strip — fixed 56px, outside PDF content */}
+        <div
+          className="absolute top-0 bottom-0 z-10 flex items-center justify-end gap-1 pr-1"
+          style={{ right: 0, width: 56 }}
+        >
           {/* Cart icon with count badge */}
           {basketCount > 0 && (
-            <div className="relative">
-              <ShoppingCart className="h-4 w-4 text-blue-500" />
-              <span className="absolute -top-1.5 -right-1.5 bg-blue-500 text-white text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none">
+            <div className="relative shrink-0">
+              <ShoppingCart className="h-3.5 w-3.5 text-primary" />
+              <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none">
                 {basketCount}
               </span>
             </div>
@@ -230,37 +236,34 @@ const RegionBox = memo(
 
           {/* Info icon */}
           <button
-            className="flex items-center justify-center w-4 h-4 cursor-pointer"
+            className="flex items-center justify-center w-4 h-4 shrink-0 cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
-              onRowClick();
+              onInfoClick();
             }}
           >
-            <Info className="h-4 w-4 text-blue-500 opacity-70 hover:opacity-100 transition-opacity" />
+            <Info className="h-3.5 w-3.5 text-primary opacity-70 hover:opacity-100 transition-opacity" />
           </button>
 
           {/* Radio button */}
           <button
-            className="flex items-center justify-center w-4 h-4 rounded-full border-2 transition-colors duration-150"
+            className="flex items-center justify-center w-4 h-4 shrink-0 rounded-full border-2 transition-colors duration-150"
             style={{
-              borderColor: isSelected ? "rgb(59,130,246)" : "rgb(156,163,175)",
-              backgroundColor: isSelected ? "rgb(59,130,246)" : "white",
+              borderColor: isSelected ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
+              backgroundColor: isSelected ? "hsl(var(--primary))" : "hsl(var(--background))",
             }}
             onClick={(e) => {
               e.stopPropagation();
               onToggleSelect();
             }}
           >
-            {isSelected && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
+            {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" strokeWidth={3} />}
           </button>
 
           {/* Chevron arrows */}
           <ChevronsRight
-            className="h-4 w-4 transition-opacity duration-150"
-            style={{
-              color: "rgb(59,130,246)",
-              opacity: hovered ? 1 : 0.6,
-            }}
+            className="h-3.5 w-3.5 shrink-0 text-primary transition-opacity duration-150"
+            style={{ opacity: hovered ? 1 : 0.6 }}
           />
         </div>
 
@@ -274,6 +277,8 @@ RegionBox.displayName = "RegionBox";
 
 const PdfPageOverlay = ({
   regions,
+  baskets,
+  onAddProductToBasket,
   basketProductCounts,
   onOpenProductInfo,
   onQuickAddProduct,
@@ -297,6 +302,7 @@ const PdfPageOverlay = ({
 
   const toggleSelect = useCallback(
     (region: OverlayRegion) => {
+      // Radio = add to quote
       if (pdfSelection) {
         const alreadySelected = pdfSelection.selectedFromPdf.some(
           (s) => s.code === region.product_code
@@ -314,16 +320,21 @@ const PdfPageOverlay = ({
             markupPercent: (region.product as any)?.default_markup_percent,
           });
         }
-      } else {
-        setLocalSelected((prev) => {
-          const next = new Set(prev);
-          if (next.has(region.id)) next.delete(region.id);
-          else next.add(region.id);
-          return next;
-        });
+      } else if (region.product && onAddProductToBasket && baskets.length > 0) {
+        onAddProductToBasket(baskets[0].id, region.product);
+      } else if (onQuickAddProduct) {
+        onQuickAddProduct(region.label, region.product_code, region.detected_price ?? null);
       }
+
+      // Toggle local state too
+      setLocalSelected((prev) => {
+        const next = new Set(prev);
+        if (next.has(region.id)) next.delete(region.id);
+        else next.add(region.id);
+        return next;
+      });
     },
-    [pdfSelection]
+    [pdfSelection, onAddProductToBasket, onQuickAddProduct, baskets]
   );
 
   const handleRowClick = useCallback(
@@ -337,27 +348,39 @@ const PdfPageOverlay = ({
     [onOpenProductInfo, onQuickAddProduct]
   );
 
+  const handleInfoClick = useCallback(
+    (region: OverlayRegion) => {
+      if (region.product && onOpenProductInfo) {
+        onOpenProductInfo(region.product);
+      }
+    },
+    [onOpenProductInfo]
+  );
+
   if (regions.length === 0) return null;
 
   return (
     <>
-      {regions.map((region) => (
-        <RegionBox
-          key={region.id}
-          region={region}
-          isSelected={isSelected(region)}
-          onToggleSelect={() => toggleSelect(region)}
-          onRowClick={() => handleRowClick(region)}
-          basketCount={
-            basketProductCounts?.[region.product_code] ??
-            basketProductCounts?.[region.id] ??
-            0
-          }
-          onHoverStart={onHoverStart}
-          onHoverMove={onHoverMove}
-          onHoverEnd={onHoverEnd}
-        />
-      ))}
+      {regions.map((region) => {
+        const basketCount =
+          basketProductCounts?.[region.product_code] ??
+          basketProductCounts?.[region.id] ??
+          0;
+        return (
+          <RegionBox
+            key={region.id}
+            region={region}
+            isSelected={isSelected(region) || basketCount > 0}
+            onToggleSelect={() => toggleSelect(region)}
+            onRowClick={() => handleRowClick(region)}
+            onInfoClick={() => handleInfoClick(region)}
+            basketCount={basketCount}
+            onHoverStart={onHoverStart}
+            onHoverMove={onHoverMove}
+            onHoverEnd={onHoverEnd}
+          />
+        );
+      })}
     </>
   );
 };
