@@ -475,8 +475,8 @@ export function matchTextRowsToProducts(
 
     const headerOrNonProduct = isHeaderOrNonProductRow(rowText, detectedPrice ?? NaN, hasModel, y_pct);
 
-    if (rightmostXPct <= 0.55) {
-      console.log(`[pdfExtract] BLOCKED left-side price row: text="${rightmost.text}" xPct=${(rightmostXPct * 100).toFixed(1)}% (must be >55%)`);
+    if (rightmostXPct <= 0.45) {
+      console.log(`[pdfExtract] BLOCKED left-side price row: text="${rightmost.text}" xPct=${(rightmostXPct * 100).toFixed(1)}% (must be >45%)`);
       skippedCount.ghost++;
       continue;
     }
