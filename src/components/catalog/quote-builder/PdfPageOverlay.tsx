@@ -131,6 +131,7 @@ const RegionBox = memo(
     isSelected,
     onToggleSelect,
     onRowClick,
+    onInfoClick,
     basketCount,
     onHoverStart,
     onHoverMove,
@@ -140,6 +141,7 @@ const RegionBox = memo(
     isSelected: boolean;
     onToggleSelect: () => void;
     onRowClick: () => void;
+    onInfoClick: () => void;
     basketCount: number;
     onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent) => void;
     onHoverMove?: (e: React.MouseEvent) => void;
