@@ -454,7 +454,11 @@ export function matchTextRowsToProducts(
     const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
     const rowText = contextItems.map((it) => it.text).join(" ");
 
-    if (/samsung.*r\s*410|r\s*410.*kw/i.test(rowText)) continue;
+    // Wide scan ONLY for heading detection (not for product matching)
+    const nearbyItems = mergedItems.filter((it) => Math.abs(it.y - rowAvgY) <= avgHeight * 8 && (it.x / pageWidth) < 0.5);
+    const nearbyLeftText = nearbyItems.map((it) => it.text).join(" ");
+
+    if (/samsung.*r\s*410|r\s*410.*kw/i.test(rowText) || /samsung.*r\s*410|r\s*410.*kw/i.test(nearbyLeftText)) continue;
 
     // FUNDAMENTAL RULE: Skip entire row if rightmost price item is on LEFT side of page
     const rightmostXPct = rightmost.x / pageWidth;
