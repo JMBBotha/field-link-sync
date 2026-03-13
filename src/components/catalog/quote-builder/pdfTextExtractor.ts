@@ -457,6 +457,9 @@ export function matchTextRowsToProducts(
   for (const pRow of priceRows) {
     const rightmost = pRow.items[pRow.items.length - 1];
     const rowAvgY = pRow.items.reduce((s, i) => s + i.y, 0) / pRow.items.length;
+    // Skip if price falls within a heading exclude zone
+    const inHeadingZone = headingExcludeYRanges.some(z => rowAvgY >= z.minY && rowAvgY <= z.maxY);
+    if (inHeadingZone) { skippedCount.ghost++; console.log(`[pdfExtract] Skipped heading zone at y=${rowAvgY.toFixed(1)}`); continue; }
     // Ghost filter: skip if in top 3% AND no model code nearby
     const y_pct = (rowAvgY / pageHeight) * 100;
     // TIGHT same-row context ONLY (no aboveItems, no wide band)
@@ -464,10 +467,8 @@ export function matchTextRowsToProducts(
     const contextItems = mergedItems.filter((it) => Math.abs(it.y - rowAvgY) <= tightBand);
     const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
     const rowText = contextItems.map((it) => it.text).join(" ");
-    const wideContextItems = mergedItems.filter((it) => Math.abs(it.y - rowAvgY) <= avgHeight * 5.0);
-    const wideRowText = wideContextItems.map((it) => it.text).join(" ");
 
-    if (/samsung.*r\s*410|r\s*410.*kw/i.test(rowText) || /samsung.*r\s*410|r\s*410.*kw/i.test(wideRowText)) continue;
+    if (/samsung.*r\s*410|r\s*410.*kw/i.test(rowText)) continue;
 
     // FUNDAMENTAL RULE: Skip entire row if rightmost price item is on LEFT side of page
     const rightmostXPct = rightmost.x / pageWidth;
