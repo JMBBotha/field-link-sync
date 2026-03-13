@@ -298,8 +298,6 @@ const RegionBox = memo(
                 display: "block",
               }}
             />
-              />
-            )}
           </button>
         </div>
 
