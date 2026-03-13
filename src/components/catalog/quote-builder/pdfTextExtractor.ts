@@ -241,7 +241,7 @@ function isPriceItem(text: string): boolean {
  * continuation on the same Y-line.
  */
 function mergeAdjacentPriceFragments(items: ExtractedTextItem[], yThreshold: number, pageWidth?: number): ExtractedTextItem[] {
-  const RIGHT_SIDE_THRESHOLD = 0.45; // Lowered to capture One Stop Shop price column
+  const RIGHT_SIDE_THRESHOLD = 0.55;
   const merged: ExtractedTextItem[] = [];
   const used = new Set<number>();
   for (let i = 0; i < items.length; i++) {
