@@ -142,15 +142,16 @@ export async function autoCatalogFromRegions(
 
   // Look up brand discount from brand_discounts table
   let brandDiscountPercent = 20; // default 20%
-  const { data: discountData } = await supabase
-    .from("brand_discounts")
-    .select("discount_percentage")
+  let markupPercent = 20; // default
+  const { data: discountData } = await (supabase.from("brand_discounts") as any)
+    .select("discount_percentage, markup_percent")
     .ilike("brand", `%${brand}%`)
     .limit(1);
   if (discountData && discountData.length > 0) {
     brandDiscountPercent = discountData[0].discount_percentage;
+    markupPercent = discountData[0].markup_percent ?? 20;
   }
-  console.log(`[autoCatalog] Brand discount for "${brand}": ${brandDiscountPercent}%`);
+  console.log(`[autoCatalog] Brand discount for "${brand}": ${brandDiscountPercent}%, markup: ${markupPercent}%`);
 
   // Build candidate products
   const candidates: Array<{
@@ -245,7 +246,7 @@ export async function autoCatalogFromRegions(
         description: c.description,
         cost_price: costPrice,
         cost_excl_vat: costPrice,
-        default_markup_percent: 20,
+        default_markup_percent: markupPercent,
         brand,
         product_category: productCategory,
         category: productCategory,
