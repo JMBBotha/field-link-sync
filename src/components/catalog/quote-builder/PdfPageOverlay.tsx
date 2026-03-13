@@ -300,6 +300,7 @@ const PdfPageOverlay = ({
 
   const toggleSelect = useCallback(
     (region: OverlayRegion) => {
+      // Radio = add to quote
       if (pdfSelection) {
         const alreadySelected = pdfSelection.selectedFromPdf.some(
           (s) => s.code === region.product_code
@@ -317,16 +318,21 @@ const PdfPageOverlay = ({
             markupPercent: (region.product as any)?.default_markup_percent,
           });
         }
-      } else {
-        setLocalSelected((prev) => {
-          const next = new Set(prev);
-          if (next.has(region.id)) next.delete(region.id);
-          else next.add(region.id);
-          return next;
-        });
+      } else if (region.product && onAddProductToBasket && baskets.length > 0) {
+        onAddProductToBasket(baskets[0].id, region.product);
+      } else if (onQuickAddProduct) {
+        onQuickAddProduct(region.label, region.product_code, region.detected_price ?? null);
       }
+
+      // Toggle local state too
+      setLocalSelected((prev) => {
+        const next = new Set(prev);
+        if (next.has(region.id)) next.delete(region.id);
+        else next.add(region.id);
+        return next;
+      });
     },
-    [pdfSelection]
+    [pdfSelection, onAddProductToBasket, onQuickAddProduct, baskets]
   );
 
   const handleRowClick = useCallback(
@@ -340,27 +346,39 @@ const PdfPageOverlay = ({
     [onOpenProductInfo, onQuickAddProduct]
   );
 
+  const handleInfoClick = useCallback(
+    (region: OverlayRegion) => {
+      if (region.product && onOpenProductInfo) {
+        onOpenProductInfo(region.product);
+      }
+    },
+    [onOpenProductInfo]
+  );
+
   if (regions.length === 0) return null;
 
   return (
     <>
-      {regions.map((region) => (
-        <RegionBox
-          key={region.id}
-          region={region}
-          isSelected={isSelected(region)}
-          onToggleSelect={() => toggleSelect(region)}
-          onRowClick={() => handleRowClick(region)}
-          basketCount={
-            basketProductCounts?.[region.product_code] ??
-            basketProductCounts?.[region.id] ??
-            0
-          }
-          onHoverStart={onHoverStart}
-          onHoverMove={onHoverMove}
-          onHoverEnd={onHoverEnd}
-        />
-      ))}
+      {regions.map((region) => {
+        const basketCount =
+          basketProductCounts?.[region.product_code] ??
+          basketProductCounts?.[region.id] ??
+          0;
+        return (
+          <RegionBox
+            key={region.id}
+            region={region}
+            isSelected={isSelected(region) || basketCount > 0}
+            onToggleSelect={() => toggleSelect(region)}
+            onRowClick={() => handleRowClick(region)}
+            onInfoClick={() => handleInfoClick(region)}
+            basketCount={basketCount}
+            onHoverStart={onHoverStart}
+            onHoverMove={onHoverMove}
+            onHoverEnd={onHoverEnd}
+          />
+        );
+      })}
     </>
   );
 };
