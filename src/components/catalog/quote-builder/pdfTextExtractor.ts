@@ -521,7 +521,7 @@ export function matchTextRowsToProducts(
       }
     }
     // Fallback: try byName then byDescription (loose, but still row-scoped)
-    if (!matched) {
+    if (!matched && hasModel) {
       for (const [name, product] of byName) {
         if (name.length >= 5 && matchTextLower.includes(name)) {
           if (!assignedCodes.has(name)) {
