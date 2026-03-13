@@ -234,6 +234,12 @@ const RegionBox = memo(
             </div>
           )}
 
+          {/* Chevron arrows (first from PDF content side) */}
+          <ChevronsRight
+            className="h-3.5 w-3.5 shrink-0 text-primary transition-opacity duration-150"
+            style={{ opacity: hovered ? 1 : 0.6 }}
+          />
+
           {/* Info icon */}
           <button
             className="flex items-center justify-center w-4 h-4 shrink-0 cursor-pointer"
@@ -259,12 +265,6 @@ const RegionBox = memo(
           >
             {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" strokeWidth={3} />}
           </button>
-
-          {/* Chevron arrows */}
-          <ChevronsRight
-            className="h-3.5 w-3.5 shrink-0 text-primary transition-opacity duration-150"
-            style={{ opacity: hovered ? 1 : 0.6 }}
-          />
         </div>
 
         {/* Info popup card */}
