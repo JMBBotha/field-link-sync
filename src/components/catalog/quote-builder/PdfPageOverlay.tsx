@@ -219,14 +219,14 @@ const RegionBox = memo(
           onClick={onRowClick}
         />
 
-        {/* Right gutter strip — fixed 56px, outside PDF content */}
+        {/* Right gutter strip — unified control group */}
         <div
-          className="absolute top-0 bottom-0 z-10 flex items-center justify-end gap-1 pr-1"
-          style={{ right: 0, width: 56 }}
+          className="absolute top-0 bottom-0 z-10 flex items-center justify-center"
+          style={{ right: -72, width: 68 }}
         >
-          {/* Cart icon with count badge */}
+          {/* Cart badge (floats before group) */}
           {basketCount > 0 && (
-            <div className="relative shrink-0">
+            <div className="relative shrink-0 mr-1.5">
               <ShoppingCart className="h-3.5 w-3.5 text-primary" />
               <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none">
                 {basketCount}
@@ -234,37 +234,42 @@ const RegionBox = memo(
             </div>
           )}
 
-          {/* Chevron arrows (first from PDF content side) */}
-          <ChevronsRight
-            className="h-3.5 w-3.5 shrink-0 text-primary transition-opacity duration-150"
-            style={{ opacity: hovered ? 1 : 0.6 }}
-          />
+          {/* Unified group: >>> | info | radio */}
+          <div className="flex items-center" style={{ gap: 6 }}>
+            {/* Three chevron arrows */}
+            <span
+              className="text-primary font-bold text-xs shrink-0 transition-opacity duration-150 select-none"
+              style={{ opacity: hovered ? 1 : 0.6, letterSpacing: -1 }}
+            >
+              &rsaquo;&rsaquo;&rsaquo;
+            </span>
 
-          {/* Info icon */}
-          <button
-            className="flex items-center justify-center w-4 h-4 shrink-0 cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              onInfoClick();
-            }}
-          >
-            <Info className="h-3.5 w-3.5 text-primary opacity-70 hover:opacity-100 transition-opacity" />
-          </button>
+            {/* Info icon */}
+            <button
+              className="flex items-center justify-center w-4 h-4 shrink-0 cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                onInfoClick();
+              }}
+            >
+              <Info className="h-3.5 w-3.5 text-primary opacity-70 hover:opacity-100 transition-opacity" />
+            </button>
 
-          {/* Radio button */}
-          <button
-            className="flex items-center justify-center w-4 h-4 shrink-0 rounded-full border-2 transition-colors duration-150"
-            style={{
-              borderColor: isSelected ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
-              backgroundColor: isSelected ? "hsl(var(--primary))" : "hsl(var(--background))",
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleSelect();
-            }}
-          >
-            {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" strokeWidth={3} />}
-          </button>
+            {/* Radio button */}
+            <button
+              className="flex items-center justify-center w-4 h-4 shrink-0 rounded-full border-2 transition-colors duration-150"
+              style={{
+                borderColor: isSelected ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
+                backgroundColor: isSelected ? "hsl(var(--primary))" : "hsl(var(--background))",
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleSelect();
+              }}
+            >
+              {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" strokeWidth={3} />}
+            </button>
+          </div>
         </div>
 
         {/* Info popup card */}
