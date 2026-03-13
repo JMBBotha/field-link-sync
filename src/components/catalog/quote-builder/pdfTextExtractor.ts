@@ -598,7 +598,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 63; // v63: expanded wide context band for Samsung R410 heading detection
+let _extractionVersion = 64; // v64: pre-scan heading exclude zones for refrigerant labels
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
