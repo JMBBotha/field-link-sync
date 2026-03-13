@@ -593,7 +593,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 69; // v69: refrigerant text only filters rows without model codes
+let _extractionVersion = 70; // v70: brand+refrigerant check uses recognized product codes instead of hasModel
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
