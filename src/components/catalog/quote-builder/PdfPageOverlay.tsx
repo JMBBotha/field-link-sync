@@ -187,6 +187,8 @@ const RegionBox = memo(
       };
     }, []);
 
+    console.log('RegionBox rendered', region.id);
+
     return (
       <div
         ref={rowRef}
@@ -201,64 +203,81 @@ const RegionBox = memo(
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
-      {/* Gradient overlay with controls inside */}
+        {/* Gradient overlay with controls inside */}
         <div
-          className="absolute inset-0 transition-all duration-200 rounded-sm flex items-center justify-end pr-2 gap-1 z-10"
+          className="absolute inset-0 transition-all duration-200 rounded-sm z-10"
           style={{
-            background: hovered
-              ? "linear-gradient(to right, transparent 30%, rgba(59,130,246,0.35))"
-              : "linear-gradient(to right, transparent 50%, rgba(59,130,246,0.2))",
+            background:
+              "linear-gradient(to right, transparent 0%, transparent 60%, rgba(59,130,246,0.3) 80%, rgba(59,130,246,0.5) 100%)",
           }}
         >
-          {/* Cart badge */}
-          {basketCount > 0 && (
-            <div className="relative shrink-0 mr-0.5">
-              <ShoppingCart className="h-3.5 w-3.5 text-white drop-shadow-sm" />
-              <span className="absolute -top-1.5 -right-1.5 bg-white text-primary text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none">
-                {basketCount}
-              </span>
-            </div>
-          )}
-
-          {/* Three chevron arrows */}
-          <span
-            className="font-bold text-xs shrink-0 transition-opacity duration-150 select-none text-white drop-shadow-sm"
-            style={{ opacity: hovered ? 1 : 0.6, letterSpacing: -1 }}
-          >
-            &rsaquo;&rsaquo;&rsaquo;
-          </span>
-
-          {/* Info icon */}
-          <button
-            className="flex items-center justify-center w-4 h-4 shrink-0 cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              onInfoClick();
-            }}
-          >
-            <Info className="h-3.5 w-3.5 text-white drop-shadow-sm opacity-80 hover:opacity-100 transition-opacity" />
-          </button>
-
-          {/* Radio button */}
-          <button
-            className="flex items-center justify-center w-4 h-4 shrink-0 rounded-full border-2 transition-colors duration-150"
+          <div
             style={{
-              borderColor: isSelected ? "white" : "rgba(255,255,255,0.7)",
-              backgroundColor: isSelected ? "white" : "transparent",
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleSelect();
+              position: "absolute",
+              right: "4px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              display: "flex",
+              gap: "4px",
+              alignItems: "center",
+              zIndex: 20,
+              pointerEvents: "auto",
             }}
           >
-            {isSelected && <Check className="h-2.5 w-2.5 text-blue-600" strokeWidth={3} />}
-          </button>
+            {/* Cart badge */}
+            {basketCount > 0 && (
+              <div className="relative shrink-0 mr-0.5">
+                <ShoppingCart size={12} style={{ color: "#fff", opacity: 1 }} />
+                <span
+                  className="absolute -top-1.5 -right-1.5 text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none"
+                  style={{ backgroundColor: "#fff", color: "#2563eb", opacity: 1 }}
+                >
+                  {basketCount}
+                </span>
+              </div>
+            )}
+
+            {/* Three chevron arrows */}
+            <span style={{ color: "#fff", fontSize: "12px", opacity: 1, letterSpacing: -1, lineHeight: 1 }}>
+              &rsaquo;&rsaquo;&rsaquo;
+            </span>
+
+            {/* Info icon */}
+            <button
+              className="flex items-center justify-center shrink-0 cursor-pointer"
+              style={{ width: 12, height: 12, opacity: 1 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onInfoClick();
+              }}
+            >
+              <Info size={12} style={{ color: "#fff", fontSize: "12px", opacity: 1 }} />
+            </button>
+
+            {/* Radio button */}
+            <button
+              className="flex items-center justify-center shrink-0 rounded-full border-2 transition-colors duration-150"
+              style={{
+                width: 12,
+                height: 12,
+                borderColor: "#fff",
+                backgroundColor: isSelected ? "rgba(255,255,255,0.28)" : "transparent",
+                opacity: 1,
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleSelect();
+              }}
+            >
+              {isSelected && <Check size={10} style={{ color: "#fff", opacity: 1 }} strokeWidth={3} />}
+            </button>
+          </div>
         </div>
 
         {/* Click area for row (behind controls) */}
         <div
           className="absolute inset-0 cursor-pointer z-[5]"
-          style={{ right: 80 }}
+          style={{ right: 88 }}
           onClick={onRowClick}
         />
 
