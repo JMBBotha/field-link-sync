@@ -453,7 +453,7 @@ export function matchTextRowsToProducts(
     const contextItems = mergedItems.filter((it) => Math.abs(it.y - rowAvgY) <= tightBand);
     const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
     const rowText = contextItems.map((it) => it.text).join(" ");
-    const wideContextItems = mergedItems.filter((it) => Math.abs(it.y - rowAvgY) <= avgHeight * 2.5);
+    const wideContextItems = mergedItems.filter((it) => Math.abs(it.y - rowAvgY) <= avgHeight * 5.0);
     const wideRowText = wideContextItems.map((it) => it.text).join(" ");
 
     if (/samsung.*r\s*410|r\s*410.*kw/i.test(rowText) || /samsung.*r\s*410|r\s*410.*kw/i.test(wideRowText)) continue;
@@ -586,7 +586,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 62; // v62: wide context scan for refrigerant headings
+let _extractionVersion = 63; // v63: expanded wide context band for Samsung R410 heading detection
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
