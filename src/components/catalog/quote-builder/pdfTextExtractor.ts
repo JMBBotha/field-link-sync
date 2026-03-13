@@ -589,7 +589,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 72; // v72: fix dense PDF detection — remove overly aggressive nearbyLeftText guard, tighten refrigerant filter to require low price
+let _extractionVersion = 73; // v73: skip unmatched rows (ghost products), adaptive dedup threshold based on avgHeight
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
