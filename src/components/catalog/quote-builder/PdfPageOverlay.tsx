@@ -209,29 +209,14 @@ const RegionBox = memo(
           }}
         />
 
-        {/* Radio button — left side */}
-        <button
-          className="absolute left-2 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-4 h-4 rounded-full border-2 transition-colors duration-150"
-          style={{
-            borderColor: isSelected ? "rgb(59,130,246)" : "rgb(156,163,175)",
-            backgroundColor: isSelected ? "rgb(59,130,246)" : "white",
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleSelect();
-          }}
-        >
-          {isSelected && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
-        </button>
-
         {/* Click area for row */}
         <div
           className="absolute inset-0 cursor-pointer z-[5]"
-          style={{ left: 28 }}
+          style={{ right: 80 }}
           onClick={onRowClick}
         />
 
-        {/* Right side: cart + arrows */}
+        {/* Right side: cart + info + radio + arrows */}
         <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1.5">
           {/* Cart icon with count badge */}
           {basketCount > 0 && (
@@ -242,6 +227,32 @@ const RegionBox = memo(
               </span>
             </div>
           )}
+
+          {/* Info icon */}
+          <button
+            className="flex items-center justify-center w-4 h-4 cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRowClick();
+            }}
+          >
+            <Info className="h-4 w-4 text-blue-500 opacity-70 hover:opacity-100 transition-opacity" />
+          </button>
+
+          {/* Radio button */}
+          <button
+            className="flex items-center justify-center w-4 h-4 rounded-full border-2 transition-colors duration-150"
+            style={{
+              borderColor: isSelected ? "rgb(59,130,246)" : "rgb(156,163,175)",
+              backgroundColor: isSelected ? "rgb(59,130,246)" : "white",
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSelect();
+            }}
+          >
+            {isSelected && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
+          </button>
 
           {/* Chevron arrows */}
           <ChevronsRight
