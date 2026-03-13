@@ -201,32 +201,31 @@ const RegionBox = memo(
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
-        {/* Gradient overlay — stops before the gutter */}
+      {/* Gradient overlay */}
         <div
           className="absolute inset-0 transition-all duration-200 rounded-sm"
           style={{
-            right: 56,
             background: hovered
               ? "linear-gradient(to right, transparent, rgba(59,130,246,0.25))"
               : "linear-gradient(to right, transparent, rgba(59,130,246,0.15))",
           }}
         />
 
-        {/* Click area for row (content area, excludes gutter) */}
+        {/* Click area for row */}
         <div
           className="absolute inset-0 cursor-pointer z-[5]"
-          style={{ right: 56 }}
+          style={{ right: 80 }}
           onClick={onRowClick}
         />
 
-        {/* Right gutter strip — unified control group */}
+        {/* Control group — INSIDE the region, pinned to right */}
         <div
-          className="absolute top-0 bottom-0 z-10 flex items-center justify-center"
-          style={{ right: -72, width: 68 }}
+          className="absolute z-10 flex items-center gap-1 bg-white/90 dark:bg-card/90 backdrop-blur-sm rounded-full px-2 py-1 shadow-sm pointer-events-auto"
+          style={{ right: 4, top: "50%", transform: "translateY(-50%)" }}
         >
-          {/* Cart badge (floats before group) */}
+          {/* Cart badge */}
           {basketCount > 0 && (
-            <div className="relative shrink-0 mr-1.5">
+            <div className="relative shrink-0 mr-0.5">
               <ShoppingCart className="h-3.5 w-3.5 text-primary" />
               <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none">
                 {basketCount}
@@ -234,42 +233,39 @@ const RegionBox = memo(
             </div>
           )}
 
-          {/* Unified group: >>> | info | radio */}
-          <div className="flex items-center" style={{ gap: 6 }}>
-            {/* Three chevron arrows */}
-            <span
-              className="text-primary font-bold text-xs shrink-0 transition-opacity duration-150 select-none"
-              style={{ opacity: hovered ? 1 : 0.6, letterSpacing: -1 }}
-            >
-              &rsaquo;&rsaquo;&rsaquo;
-            </span>
+          {/* Three chevron arrows */}
+          <span
+            className="text-primary font-bold text-xs shrink-0 transition-opacity duration-150 select-none"
+            style={{ opacity: hovered ? 1 : 0.6, letterSpacing: -1 }}
+          >
+            &rsaquo;&rsaquo;&rsaquo;
+          </span>
 
-            {/* Info icon */}
-            <button
-              className="flex items-center justify-center w-4 h-4 shrink-0 cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                onInfoClick();
-              }}
-            >
-              <Info className="h-3.5 w-3.5 text-primary opacity-70 hover:opacity-100 transition-opacity" />
-            </button>
+          {/* Info icon */}
+          <button
+            className="flex items-center justify-center w-4 h-4 shrink-0 cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              onInfoClick();
+            }}
+          >
+            <Info className="h-3.5 w-3.5 text-primary opacity-70 hover:opacity-100 transition-opacity" />
+          </button>
 
-            {/* Radio button */}
-            <button
-              className="flex items-center justify-center w-4 h-4 shrink-0 rounded-full border-2 transition-colors duration-150"
-              style={{
-                borderColor: isSelected ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
-                backgroundColor: isSelected ? "hsl(var(--primary))" : "hsl(var(--background))",
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleSelect();
-              }}
-            >
-              {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" strokeWidth={3} />}
-            </button>
-          </div>
+          {/* Radio button */}
+          <button
+            className="flex items-center justify-center w-4 h-4 shrink-0 rounded-full border-2 transition-colors duration-150"
+            style={{
+              borderColor: isSelected ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
+              backgroundColor: isSelected ? "hsl(var(--primary))" : "hsl(var(--background))",
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSelect();
+            }}
+          >
+            {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" strokeWidth={3} />}
+          </button>
         </div>
 
         {/* Info popup card */}
