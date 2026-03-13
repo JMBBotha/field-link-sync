@@ -349,6 +349,9 @@ function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasMode
   // Skip empty or whitespace-only rows
   if (rowText.replace(/\s/g, "").length === 0) return true;
 
+  // Dotted leaders (4+ consecutive dots) → TOC or index line, never a product
+  if (/\.{4,}/.test(rowText)) return true;
+
   const lower = rowText.toLowerCase();
 
   // Skip header/date text regardless of price — these are NEVER products
@@ -402,6 +405,13 @@ export function matchTextRowsToProducts(
   const minPrice = 1; // Universal R1 floor — isHeaderOrNonProductRow handles TOC/header filtering
   console.log(`[pdfExtract] matchTextRows: supplierType=${supplierType || "unknown"}, minPrice=R${minPrice}`);
   if (items.length === 0 || pageHeight === 0) return [];
+
+  // TOC page detection: if page text contains "Contents" and dotted leaders, skip entire page
+  const allText = items.map(i => i.text).join(" ");
+  if (/contents/i.test(allText) && /\.{4,}/.test(allText)) {
+    console.log(`[pdfExtract] Skipping TOC page (contains "Contents" + dotted leaders)`);
+    return [];
+  }
   const lookup = buildProductLookup(products);
   const { byCode, byName, byDescription } = lookup;
   const mergedItems = mergeAdjacentPriceFragments(items, 3, pageWidth);
