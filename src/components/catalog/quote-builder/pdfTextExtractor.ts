@@ -560,6 +560,10 @@ export function matchTextRowsToProducts(
     // Use ACTUAL price item coordinates for icon alignment (not hardcoded)
     const actualX_pct = (rightmost.x / pageWidth) * 100;
     const actualW_pct = Math.max((rightmost.width / pageWidth) * 100, 2);
+    if (matched === null) {
+      console.log(`[pdfExtract] Skipped unmatched row (no product found): "${rowText.trim().substring(0,100)}" price=${detectedPrice}`);
+      continue;
+    }
     console.log(`[pdfExtract] ADDING REGION: label="${rowText.trim().substring(0,200)}" price=${detectedPrice} matched=${!!matched} y_pct=${y_pct.toFixed(1)} code="${extractedCode}"`);
     regions.push({
       product: matched,
@@ -585,7 +589,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 72; // v72: fix dense PDF detection — remove overly aggressive nearbyLeftText guard, tighten refrigerant filter to require low price
+let _extractionVersion = 73; // v73: skip unmatched rows (ghost products), adaptive dedup threshold based on avgHeight
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
@@ -667,8 +671,9 @@ export async function extractAndMatchPage(
     let regions = matchTextRowsToProducts(mergedItems, pageWidth, pageHeight, products, supplierType, pageNumber - 1);
     // DEBUG 4: Final regions count
     console.log(`[PDF-DEBUG] Page ${pageNumber}: STEP 3 - ${regions.length} regions created from matchTextRowsToProducts`);
-    // New dedup: Sort by y_pct, if within 1.5%, keep priced one
+    // New dedup: Sort by y_pct, if within adaptive threshold, keep priced one
     regions = regions.sort((a, b) => a.y_pct - b.y_pct);
+    const avgHeight = mergedItems.length > 0 ? mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length : 10;
     const deduped = [];
     let ghostsRemoved = 0;
     let overlapsFixed = 0;
@@ -677,7 +682,10 @@ export async function extractAndMatchPage(
       let isDuplicate = false;
       for (let j = 0; j < deduped.length; j++) {
         const existing = deduped[j];
-        if (Math.abs(current.y_pct - existing.y_pct) < 0.5) {
+        // Adaptive dedup threshold based on actual row height
+        const minDyForDedup = avgHeight * 0.4;
+        const adaptiveDedupThreshold = (minDyForDedup / pageHeight) * 100;
+        if (Math.abs(current.y_pct - existing.y_pct) < adaptiveDedupThreshold) {
           // Keep the one with price (detected_price > 0)
           if (current.detected_price > 0 && existing.detected_price <= 0) {
             deduped[j] = current;
