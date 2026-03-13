@@ -585,7 +585,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 70; // v70: brand+refrigerant check uses recognized product codes instead of hasModel
+let _extractionVersion = 72; // v72: fix dense PDF detection — remove overly aggressive nearbyLeftText guard, tighten refrigerant filter to require low price
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
