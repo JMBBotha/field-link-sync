@@ -156,30 +156,22 @@ const RegionBox = memo(
     const handleMouseEnter = useCallback(
       (e: React.MouseEvent) => {
         setHovered(true);
-        onHoverStart?.(region.product, e);
-        // Determine if card should show above or below
         if (rowRef.current) {
           const rect = rowRef.current.getBoundingClientRect();
           setShowAbove(rect.top > 200);
         }
         hoverTimer.current = setTimeout(() => setShowCard(true), 300);
       },
-      [region.product, onHoverStart]
+      []
     );
 
-    const handleMouseMove = useCallback(
-      (e: React.MouseEvent) => {
-        onHoverMove?.(e);
-      },
-      [onHoverMove]
-    );
+    const handleMouseMove = useCallback(() => {}, []);
 
     const handleMouseLeave = useCallback(() => {
       setHovered(false);
       setShowCard(false);
       if (hoverTimer.current) clearTimeout(hoverTimer.current);
-      onHoverEnd?.();
-    }, [onHoverEnd]);
+    }, []);
 
     useEffect(() => {
       return () => {
