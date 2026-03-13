@@ -96,7 +96,7 @@ export async function extractTextItemsFromPdfPage(
  * Handles table-layout PDFs where pdfjs-dist splits "R" and "172,79" into separate items.
  */
 export function mergeCurrencyWithPrices(items: ExtractedTextItem[], pageWidth?: number): ExtractedTextItem[] {
-  const RIGHT_SIDE_THRESHOLD = 0.55;
+  const RIGHT_SIDE_THRESHOLD = 0.45; // Lowered to capture One Stop Shop price column
   // Sort by y then x
   const sorted = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
   const result: ExtractedTextItem[] = [];
