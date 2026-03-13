@@ -1,0 +1,1 @@
+ALTER TABLE brand_discounts ADD COLUMN markup_percent numeric DEFAULT 20;
