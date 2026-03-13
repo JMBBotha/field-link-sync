@@ -671,8 +671,9 @@ export async function extractAndMatchPage(
     let regions = matchTextRowsToProducts(mergedItems, pageWidth, pageHeight, products, supplierType, pageNumber - 1);
     // DEBUG 4: Final regions count
     console.log(`[PDF-DEBUG] Page ${pageNumber}: STEP 3 - ${regions.length} regions created from matchTextRowsToProducts`);
-    // New dedup: Sort by y_pct, if within 1.5%, keep priced one
+    // New dedup: Sort by y_pct, if within adaptive threshold, keep priced one
     regions = regions.sort((a, b) => a.y_pct - b.y_pct);
+    const avgHeight = mergedItems.length > 0 ? mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length : 10;
     const deduped = [];
     let ghostsRemoved = 0;
     let overlapsFixed = 0;
