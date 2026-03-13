@@ -196,7 +196,7 @@ const RegionBox = memo(
           position: "absolute",
           left: `${region.x_pct}%`,
           top: `${region.y_pct}%`,
-          width: `calc(${region.w_pct}% + 6px)`,
+          width: `${region.w_pct}%`,
           height: `${region.h_pct}%`,
           zIndex: 10,
           overflow: "visible",
@@ -206,7 +206,6 @@ const RegionBox = memo(
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
-        {/* Gradient overlay — full width inner div */}
         <div
           style={{
             position: "absolute",
@@ -215,10 +214,12 @@ const RegionBox = memo(
             width: "100%",
             height: "100%",
             borderRadius: "0 12px 12px 0",
-            pointerEvents: "none",
             background: isSelected
               ? "linear-gradient(to right, transparent 0%, transparent 45%, rgba(34,197,94,0.15) 60%, rgba(34,197,94,0.4) 80%, rgba(34,197,94,0.7) 100%)"
               : "linear-gradient(to right, transparent 0%, transparent 45%, rgba(37,99,235,0.15) 60%, rgba(37,99,235,0.4) 80%, rgba(37,99,235,0.7) 100%)",
+            pointerEvents: "none",
+            zIndex: 1,
+            transition: "background 0.2s ease",
           }}
         />
         <div
