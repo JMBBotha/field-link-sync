@@ -572,10 +572,7 @@ export function matchTextRowsToProducts(
     // Use ACTUAL price item coordinates for icon alignment (not hardcoded)
     const actualX_pct = (rightmost.x / pageWidth) * 100;
     const actualW_pct = Math.max((rightmost.width / pageWidth) * 100, 2);
-    if (matched === null) {
-      console.log(`[pdfExtract] Skipped unmatched row (no product found): "${rowText.trim().substring(0,100)}" price=${detectedPrice}`);
-      continue;
-    }
+    // Allow unmatched rows through — they appear as blue "new" rectangles
     console.log(`[pdfExtract] ADDING REGION: label="${rowText.trim().substring(0,200)}" price=${detectedPrice} matched=${!!matched} y_pct=${y_pct.toFixed(1)} code="${extractedCode}"`);
     regions.push({
       product: matched,
