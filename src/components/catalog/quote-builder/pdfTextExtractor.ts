@@ -329,6 +329,8 @@ function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHei
     }
     const val = parseFloat(raw);
     if (isNaN(val) || val < minPrice) continue;
+    const excludedVals = [32, 290, 410];
+    if (excludedVals.includes(val)) continue;
     // Check if in price column or right side of page
     const inColumn = colRange && item.x >= colRange.minX && item.x <= colRange.maxX;
     const inRightSide = item.x / pageWidth > 0.40; // Lower for column-based prices to capture One Stop Shop
