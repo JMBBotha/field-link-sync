@@ -349,6 +349,9 @@ function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasMode
   // Skip empty or whitespace-only rows
   if (rowText.replace(/\s/g, "").length === 0) return true;
 
+  // Dotted leaders (4+ consecutive dots) → TOC or index line, never a product
+  if (/\.{4,}/.test(rowText)) return true;
+
   const lower = rowText.toLowerCase();
 
   // Skip header/date text regardless of price — these are NEVER products
