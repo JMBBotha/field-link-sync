@@ -14,6 +14,20 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import PriceConfigPanel, { calculatePrices, type PriceConfig } from "./PriceConfigPanel";
 
+/** Strip non-numeric chars from AI values like "9000 BTU" → 9000 */
+function sanitizeInt(val: any): number | null {
+  if (val == null) return null;
+  if (typeof val === "number") return isNaN(val) ? null : Math.round(val);
+  const n = parseInt(String(val).replace(/[^0-9-]/g, ""));
+  return isNaN(n) ? null : n;
+}
+function sanitizeFloat(val: any): number | null {
+  if (val == null) return null;
+  if (typeof val === "number") return isNaN(val) ? null : val;
+  const n = parseFloat(String(val).replace(/[^0-9.\-]/g, ""));
+  return isNaN(n) ? null : n;
+}
+
 /** Only allow worded column headers — exclude raw R-amounts */
 function isWordedColumnHeader(text: string): boolean {
   const trimmed = (text || "").trim();
@@ -597,7 +611,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
           category: p.category || "Uncategorized",
           cost_price: p.cost_price || 0,
           pipe_size: p.pipe_size || null,
-          btu_rating: p.btu_rating || null,
+          btu_rating: sanitizeInt(p.btu_rating),
           refrigerant_type: p.refrigerant_type || null,
           is_price_on_request: p.is_price_on_request || false,
           short_name: p.short_name || null,
@@ -673,7 +687,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         category: p.category || "Uncategorized",
         cost_price: calculated.trueCost,
         pipe_size: p.pipe_size || null,
-        btu_rating: p.btu_rating || null,
+        btu_rating: sanitizeInt(p.btu_rating),
         refrigerant_type: p.refrigerant_type || null,
         is_price_on_request: rawPrice <= 0,
         short_name: p.short_name || null,
@@ -737,7 +751,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
           category: row.category || "General",
           cost_price: row.cost_price,
           pipe_size: row.pipe_size,
-          btu_rating: row.btu_rating,
+          btu_rating: sanitizeInt(row.btu_rating),
           refrigerant_type: row.refrigerant_type,
           is_price_on_request: row.is_price_on_request,
           default_markup_percent: aiMarkup,
