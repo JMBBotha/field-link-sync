@@ -215,7 +215,7 @@ const RegionBox = memo(
             transition: "background 0.2s ease",
           }}
         />
-        {/* Control buttons - inside gradient area */}
+        {/* Control buttons - inside gradient area, above clickable zone */}
         <div
           style={{
             position: "absolute",
@@ -225,7 +225,7 @@ const RegionBox = memo(
             display: "flex",
             alignItems: "center",
             gap: "6px",
-            zIndex: 3,
+            zIndex: 10,
             pointerEvents: "none",
           }}
         >
