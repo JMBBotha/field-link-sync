@@ -367,9 +367,9 @@ function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasMode
   // Model codes like AR8500 where "R" is NOT a currency prefix
   if (/\bAR\s*\d{4}\b/i.test(rowText)) return true;
 
-  // Refrigerant type labels like "Samsung R410", "R32", "R290" - always filter regardless of price
-
-  if (/\bR\s*(410|32|290)\b/i.test(rowText) && !hasModel) return true;
+  // Refrigerant type labels like "Samsung R410", "R32", "R290" — only filter SHORT header-like rows
+  // with no significant price. Dense product rows in R32/R410 sections must NOT be filtered.
+  if (/\bR\s*(410|32|290)\b/i.test(rowText) && !hasModel && (detectedPrice < 50 || isNaN(detectedPrice))) return true;
 
   // Fundamental rule: no valid price → not a product
   if (detectedPrice == null || isNaN(detectedPrice) || detectedPrice <= 0) return true;
@@ -455,13 +455,6 @@ export function matchTextRowsToProducts(
     const rowText = contextItems.map((it) => it.text).join(" ");
     const looseRowText = pRow.items.map((it) => it.text).join(" ");
 
-    // Wide scan ONLY for heading detection (not for product matching)
-    const nearbyItems = mergedItems.filter((it) => Math.abs(it.y - rowAvgY) <= avgHeight * 8 && (it.x / pageWidth) < 0.5);
-    const nearbyLeftText = nearbyItems.map((it) => it.text).join(" ");
-
-    if (/samsung.*r\s*410|r\s*410.*kw/i.test(rowText) || /samsung.*r\s*410|r\s*410.*kw/i.test(nearbyLeftText)) continue;
-    if (/samsung.*r\s*410|r\s*410.*kw/i.test(looseRowText)) continue;
-
     // FUNDAMENTAL RULE: Skip entire row if rightmost price item is on LEFT side of page
     const rightmostXPct = rightmost.x / pageWidth;
     // Try explicit R-prefixed price first, then raw numeric parse for column-based items
@@ -477,13 +470,10 @@ export function matchTextRowsToProducts(
       if (!isNaN(val) && val >= minPrice) detectedPrice = val;
     }
 
-    const headerOrNonProduct = isHeaderOrNonProductRow(rowText, detectedPrice ?? NaN, hasModel, y_pct);
+    // Skip samsung/R410 section headers ONLY when tight-band row looks like a header (no real price)
+    if (/samsung.*r\s*410|r\s*410.*kw/i.test(rowText) && (detectedPrice === null || detectedPrice < 50)) continue;
 
-    // Check if nearby LEFT-side text contains refrigerant labels AND tight-band has no RECOGNIZED product code
-    if (/\bR\s*(410|32|290)\b/i.test(nearbyLeftText) && nearbyItems.some((it) => /samsung|daikin|midea/i.test(it.text)) && !contextItems.some((it) => modelRegex.test(it.text.trim()) && byCode.has(it.text.trim().toLowerCase()))) {
-      skippedCount.ghost++;
-      continue;
-    }
+    const headerOrNonProduct = isHeaderOrNonProductRow(rowText, detectedPrice ?? NaN, hasModel, y_pct);
 
     if (rightmostXPct <= 0.55) {
       console.log(`[pdfExtract] BLOCKED left-side price row: text="${rightmost.text}" xPct=${(rightmostXPct * 100).toFixed(1)}% (must be >55%)`);
@@ -595,7 +585,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 70; // v70: brand+refrigerant check uses recognized product codes instead of hasModel
+let _extractionVersion = 72; // v72: fix dense PDF detection — remove overly aggressive nearbyLeftText guard, tighten refrigerant filter to require low price
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
