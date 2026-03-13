@@ -564,7 +564,7 @@ export function matchTextRowsToProducts(
         return codeMatch ? codeMatch[1] : rowText.trim().substring(0, 80) + `@${detectedPrice}`;
       })();
     const anchorHeight = rightmost.height;
-    const h_pct = Math.max((anchorHeight / pageHeight) * 100, 1.5);
+    const h_pct = Math.max((anchorHeight / pageHeight) * 100, 0.8);
     if (y_pct > 100 || h_pct > 5) {
       skippedCount.outOfBounds++;
       continue;
