@@ -295,7 +295,7 @@ const RegionBox = memo(
                 width: "6px",
                 height: "6px",
                 borderRadius: "9999px",
-                background: isSelected ? "#22c55e" : "#3b82f6",
+                background: isSelected ? "#22c55e" : "#000",
                 display: "block",
               }}
             />
