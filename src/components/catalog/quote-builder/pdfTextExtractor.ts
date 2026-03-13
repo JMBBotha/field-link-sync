@@ -593,7 +593,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 67; // v67: narrow heading zone to ±0.5×avgHeight
+let _extractionVersion = 68; // v68: remove heading zones; use wide nearby-left scan only for refrigerant heading checks
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
