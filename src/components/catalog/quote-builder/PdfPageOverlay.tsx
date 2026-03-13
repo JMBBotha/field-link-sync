@@ -272,11 +272,11 @@ const RegionBox = memo(
           <button
             type="button"
             style={{
-              width: "16px",
-              height: "16px",
+              width: "14px",
+              height: "14px",
               borderRadius: "9999px",
-              border: "1px solid rgba(255,255,255,0.95)",
-              background: isSelected ? "#2563eb" : "#fff",
+              border: "2px solid rgba(255,255,255,0.95)",
+              background: "#fff",
               boxShadow: "0 1px 4px rgba(0,0,0,0.45)",
               cursor: "pointer",
               padding: 0,
@@ -289,17 +289,15 @@ const RegionBox = memo(
               onToggleSelect();
             }}
           >
-            {isSelected && (
-              <span
-                style={{
-                  width: "6px",
-                  height: "6px",
-                  borderRadius: "9999px",
-                  background: "#fff",
-                  display: "block",
-                }}
-              />
-            )}
+            <span
+              style={{
+                width: "6px",
+                height: "6px",
+                borderRadius: "9999px",
+                background: isSelected ? "#22c55e" : "#3b82f6",
+                display: "block",
+              }}
+            />
           </button>
         </div>
 
