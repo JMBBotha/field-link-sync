@@ -453,7 +453,7 @@ export function matchTextRowsToProducts(
     const contextItems = mergedItems.filter((it) => Math.abs(it.y - rowAvgY) <= tightBand);
     const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
     const rowText = contextItems.map((it) => it.text).join(" ");
-    const wideContextItems = mergedItems.filter((it) => Math.abs(it.y - rowAvgY) <= avgHeight * 2.5);
+    const wideContextItems = mergedItems.filter((it) => Math.abs(it.y - rowAvgY) <= avgHeight * 5.0);
     const wideRowText = wideContextItems.map((it) => it.text).join(" ");
 
     if (/samsung.*r\s*410|r\s*410.*kw/i.test(rowText) || /samsung.*r\s*410|r\s*410.*kw/i.test(wideRowText)) continue;
