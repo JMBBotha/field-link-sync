@@ -617,10 +617,11 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 75; // v75: revert 0.45/tightBand/dedup regressions, keep hasModel gate, add 0.40 for column prices only
+let _extractionVersion = 76; // v76 LOCKED — do not modify thresholds or logic
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
+ * ⚠️ LOCKED — see file header. Do not modify extraction logic.
  */
 export async function extractAndMatchPage(
   pdfUrl: string,
