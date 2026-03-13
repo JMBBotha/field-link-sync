@@ -198,22 +198,24 @@ const RegionBox = memo(
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
+        {/* Gradient overlay - 45% width anchored to right */}
         <div
           style={{
             position: "absolute",
-            left: 0,
+            right: 0,
             top: 0,
-            width: "100%",
+            width: "45%",
             height: "100%",
-            borderRadius: "0 12px 12px 0",
+            borderRadius: "8px 0 0 8px",
             background: isSelected
-              ? "linear-gradient(to right, transparent 0%, transparent 45%, rgba(34,197,94,0.15) 60%, rgba(34,197,94,0.4) 80%, rgba(34,197,94,0.7) 100%)"
-              : "linear-gradient(to right, transparent 0%, transparent 45%, rgba(37,99,235,0.15) 60%, rgba(37,99,235,0.4) 80%, rgba(37,99,235,0.7) 100%)",
+              ? "linear-gradient(to right, rgba(34,197,94,0), rgba(34,197,94,0.5))"
+              : "linear-gradient(to right, rgba(59,130,246,0), rgba(59,130,246,0.45))",
             pointerEvents: "none",
-            zIndex: 1,
+            zIndex: 2,
             transition: "background 0.2s ease",
           }}
         />
+        {/* Control buttons - inside gradient area */}
         <div
           style={{
             position: "absolute",
@@ -223,8 +225,8 @@ const RegionBox = memo(
             display: "flex",
             alignItems: "center",
             gap: "6px",
-            zIndex: 20,
-            pointerEvents: "auto",
+            zIndex: 3,
+            pointerEvents: "none",
           }}
         >
           <span
@@ -235,11 +237,11 @@ const RegionBox = memo(
               textShadow: "0 0 3px rgba(0,0,0,0.8)",
               lineHeight: 1,
               userSelect: "none",
+              pointerEvents: "none",
             }}
           >
             {'>>'}
           </span>
-
           <button
             type="button"
             style={{
@@ -254,6 +256,7 @@ const RegionBox = memo(
               boxShadow: "0 1px 4px rgba(0,0,0,0.45)",
               cursor: "pointer",
               padding: 0,
+              pointerEvents: "auto",
             }}
             onClick={(e) => {
               e.stopPropagation();
@@ -272,7 +275,6 @@ const RegionBox = memo(
               i
             </span>
           </button>
-
           <button
             type="button"
             style={{
@@ -287,6 +289,7 @@ const RegionBox = memo(
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              pointerEvents: "auto",
             }}
             onClick={(e) => {
               e.stopPropagation();
