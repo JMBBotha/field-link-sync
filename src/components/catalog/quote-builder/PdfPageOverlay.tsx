@@ -201,7 +201,7 @@ const RegionBox = memo(
           zIndex: 10,
           overflow: "visible",
           background:
-            "linear-gradient(to right, transparent 0%, transparent 50%, rgba(37,99,235,0.5) 80%, rgba(37,99,235,0.7) 100%)",
+            "linear-gradient(to right, transparent 0%, transparent 45%, rgba(37,99,235,0.15) 60%, rgba(37,99,235,0.4) 80%, rgba(37,99,235,0.7) 100%)",
           borderRadius: "0 12px 12px 0",
           paddingRight: "6px",
           boxSizing: "border-box",
