@@ -226,14 +226,14 @@ const RegionBox = memo(
             alignItems: "center",
             gap: "6px",
             zIndex: 10,
-            pointerEvents: "none",
+            pointerEvents: "auto",
           }}
         >
           <span
             style={{
               color: "#fff",
               fontWeight: 900,
-              fontSize: "8px",
+              fontSize: "10px",
               textShadow: "0 0 3px rgba(0,0,0,0.8)",
               lineHeight: 1,
               userSelect: "none",
