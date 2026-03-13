@@ -196,12 +196,15 @@ const RegionBox = memo(
           position: "absolute",
           left: `${region.x_pct}%`,
           top: `${region.y_pct}%`,
-          width: `${region.w_pct}%`,
+          width: `calc(${region.w_pct}% + 6px)`,
           height: `${region.h_pct}%`,
           zIndex: 10,
           overflow: "visible",
           background:
             "linear-gradient(to right, transparent 0%, transparent 50%, rgba(37,99,235,0.5) 80%, rgba(37,99,235,0.7) 100%)",
+          borderRadius: "0 12px 12px 0",
+          paddingRight: "6px",
+          boxSizing: "border-box",
         }}
         onMouseEnter={handleMouseEnter}
         onMouseMove={handleMouseMove}
