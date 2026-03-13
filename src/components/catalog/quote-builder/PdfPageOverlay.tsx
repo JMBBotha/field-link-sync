@@ -277,6 +277,8 @@ RegionBox.displayName = "RegionBox";
 
 const PdfPageOverlay = ({
   regions,
+  baskets,
+  onAddProductToBasket,
   basketProductCounts,
   onOpenProductInfo,
   onQuickAddProduct,
