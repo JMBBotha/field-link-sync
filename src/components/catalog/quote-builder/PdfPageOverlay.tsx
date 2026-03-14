@@ -63,8 +63,21 @@ const RegionBox = memo(({
 
   const handleInfoClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (region.product && onOpenProductInfo) {
+    if (!onOpenProductInfo) return;
+    if (region.product) {
       onOpenProductInfo(region.product);
+    } else {
+      // Construct a minimal product from region data for unmatched items
+      const fallback: PaletteProduct = {
+        id: region.id,
+        product_code: region.product_code,
+        name: region.label,
+        price: region.detected_price ?? 0,
+        supplier_id: "",
+        category: null,
+        brand: null,
+      };
+      onOpenProductInfo(fallback);
     }
   };
 
