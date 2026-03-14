@@ -153,6 +153,8 @@ const RegionBox = memo(({
         {/* Info button */}
         <button
           onClick={handleInfoClick}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
           className="flex items-center justify-center rounded-full transition-colors hover:scale-110"
           title="Product info"
         >
