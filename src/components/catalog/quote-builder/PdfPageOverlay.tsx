@@ -1,5 +1,5 @@
 import { memo, useState } from "react";
-import { Info, Circle, CheckCircle2 } from "lucide-react";
+import { Info, Circle, CheckCircle2, Dot } from "lucide-react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
