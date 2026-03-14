@@ -634,14 +634,14 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
           </div>
 
           {/* Content: Continuous scroll */}
-          <div className="flex-1 overflow-hidden flex relative">
+          <div className="flex-1 min-h-0 overflow-hidden relative">
             {pagesLoading ? (
-              <div className="p-4 space-y-3 flex-1">
+              <div className="p-4 space-y-3">
                 <Skeleton className="h-8 w-48" />
                 <Skeleton className="h-[60vh] w-full" />
               </div>
             ) : pages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center flex-1 text-center text-muted-foreground">
+              <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
                 <FileImage className="h-12 w-12 mb-3 opacity-40" />
                 <p className="text-sm font-medium">No Visual Catalog Pages</p>
                 <p className="text-xs mt-1 max-w-[250px]">Import a supplier PDF via the Catalog → Import tab to populate the visual catalog.</p>
@@ -651,7 +651,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                 {/* Scrollable PDF container with all pages stacked */}
                 <div
                   ref={scrollContainerRef}
-                  className="flex-1 overflow-auto"
+                  className="absolute inset-0 overflow-auto"
                   style={{
                     scrollBehavior: "smooth",
                     WebkitOverflowScrolling: "touch",
