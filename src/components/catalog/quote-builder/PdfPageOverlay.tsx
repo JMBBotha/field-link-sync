@@ -1,7 +1,9 @@
-import { memo } from "react";
+import { memo, useState } from "react";
+import { Info, Circle, CheckCircle2 } from "lucide-react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
+
 export interface OverlayRegion {
   id: string;
   x_pct: number;
@@ -15,6 +17,7 @@ export interface OverlayRegion {
   detected_price?: number | null;
   matched?: boolean;
 }
+
 interface PdfPageOverlayProps {
   regions: OverlayRegion[];
   baskets: Basket[];
@@ -32,27 +35,115 @@ interface PdfPageOverlayProps {
   pdfSelection?: PdfSelectionHandlers;
   onOpenProductInfo?: (product: PaletteProduct) => void;
 }
-const RegionBox = memo(({ region }: { region: OverlayRegion }) => (
-  <div
-    className="absolute border-2 border-primary pointer-events-none"
-    style={{
-      left: `0%`, // Span full width starting from left edge
-      top: `${region.y_pct}%`,
-      width: `100%`, // Full width of the row
-      height: `${region.h_pct}%`,
-    }}
-    title={`${region.label} (${region.product_code})`}
-  />
-));
+
+const RegionBox = memo(({
+  region,
+  onOpenProductInfo,
+  onAddProductToBasket,
+  baskets,
+}: {
+  region: OverlayRegion;
+  onOpenProductInfo?: (product: PaletteProduct) => void;
+  onAddProductToBasket?: (basketId: string, product: PaletteProduct) => void;
+  baskets: Basket[];
+}) => {
+  const [selected, setSelected] = useState(false);
+
+  const handleRadioClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (region.product && baskets.length > 0 && onAddProductToBasket) {
+      onAddProductToBasket(baskets[0].id, region.product);
+      setSelected(true);
+    }
+  };
+
+  const handleInfoClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (region.product && onOpenProductInfo) {
+      onOpenProductInfo(region.product);
+    }
+  };
+
+  return (
+    <div
+      className="absolute"
+      style={{
+        left: "0%",
+        top: `${region.y_pct}%`,
+        /* Extend past the image into the 88px right padding via calc */
+        width: "calc(100% + 88px)",
+        height: `${region.h_pct}%`,
+        overflow: "visible",
+      }}
+      title={`${region.label} (${region.product_code})`}
+    >
+      {/* Grey-to-blue gradient with pill-shaped right end */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: "linear-gradient(to right, transparent 0%, transparent 40%, hsl(var(--muted) / 0.3) 55%, hsl(var(--primary) / 0.25) 80%, hsl(var(--primary) / 0.45) 100%)",
+          borderRadius: "0 9999px 9999px 0",
+        }}
+      />
+
+      {/* Buttons container — positioned in the right padding area, vertically centered */}
+      <div
+        className="absolute flex flex-col items-center justify-center gap-0.5"
+        style={{
+          right: "8px",
+          top: "50%",
+          transform: "translateY(-50%)",
+        }}
+      >
+        {/* Radio / select button */}
+        <button
+          onClick={handleRadioClick}
+          className="flex items-center justify-center rounded-full transition-colors hover:scale-110"
+          title={selected ? "Added to quote" : "Add to quote"}
+        >
+          {selected ? (
+            <CheckCircle2 className="h-5 w-5 text-green-500" />
+          ) : (
+            <Circle className="h-5 w-5 text-primary opacity-70 hover:opacity-100" />
+          )}
+        </button>
+
+        {/* Info button */}
+        {region.product && (
+          <button
+            onClick={handleInfoClick}
+            className="flex items-center justify-center rounded-full transition-colors hover:scale-110"
+            title="Product info"
+          >
+            <Info className="h-4 w-4 text-primary opacity-70 hover:opacity-100" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+});
 RegionBox.displayName = "RegionBox";
-const PdfPageOverlay = ({ regions }: PdfPageOverlayProps) => {
+
+const PdfPageOverlay = ({
+  regions,
+  baskets,
+  onAddProductToBasket,
+  onOpenProductInfo,
+}: PdfPageOverlayProps) => {
   if (regions.length === 0) return null;
   return (
     <>
       {regions.map((region) => (
-        <RegionBox key={region.id} region={region} />
+        <RegionBox
+          key={region.id}
+          region={region}
+          onOpenProductInfo={onOpenProductInfo}
+          onAddProductToBasket={onAddProductToBasket}
+          baskets={baskets}
+        />
       ))}
     </>
   );
 };
+
 export default PdfPageOverlay;
