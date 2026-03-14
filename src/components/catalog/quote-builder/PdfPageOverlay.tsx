@@ -100,15 +100,13 @@ const RegionBox = memo(({
         }}
       >
         {/* Info button */}
-        {region.product && (
-          <button
-            onClick={handleInfoClick}
-            className="flex items-center justify-center rounded-full transition-colors hover:scale-110"
-            title="Product info"
-          >
-            <Info className="h-4 w-4 text-primary opacity-70 hover:opacity-100" />
-          </button>
-        )}
+        <button
+          onClick={handleInfoClick}
+          className="flex items-center justify-center rounded-full transition-colors hover:scale-110"
+          title="Product info"
+        >
+          <Info className="h-4 w-4 text-primary opacity-70 hover:opacity-100" />
+        </button>
 
         {/* Radio / select button */}
         <button
