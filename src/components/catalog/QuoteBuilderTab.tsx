@@ -519,10 +519,20 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     const overId = String(over.id);
 
     // Check if dropped on a wizard area target
-    if (overId.startsWith("wizard-area-") && areaDropProductToArea) {
+    if (overId.startsWith("wizard-area-")) {
       const areaId = overId.replace("wizard-area-", "");
+
+      // Handle bundle drop on wizard area
+      const bundleData = (active.data.current as any)?.bundle;
+      if (bundleData && areaDropBundleToArea) {
+        areaDropBundleToArea(areaId, bundleData);
+        toast({ title: `Added bundle "${bundleData.name}" to area` });
+        return;
+      }
+
+      // Handle product drop on wizard area
       const product = (active.data.current as any)?.product as PaletteProduct | undefined;
-      if (product) {
+      if (product && areaDropProductToArea) {
         areaDropProductToArea(areaId, product);
         toast({ title: `Added ${product.short_name || product.product_code} to area` });
       }
