@@ -561,7 +561,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     addProductToBasket(targetBasket.id, product);
     const displayName = product.short_name || product.product_code;
     toast({ title: `Added ${displayName} to ${targetBasket.name}` });
-  }, [baskets, addProductToBasket, addBundleToBasket, areaDropProductToArea]);
+  }, [baskets, addProductToBasket, addBundleToBasket, areaDropProductToArea, areaDropBundleToArea]);
 
   const handleRemoveItem = useCallback((basketId: string, instanceId: string) => {
     setBaskets((prev) =>
