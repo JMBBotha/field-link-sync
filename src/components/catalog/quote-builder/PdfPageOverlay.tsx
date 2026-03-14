@@ -87,8 +87,8 @@ const RegionBox = memo(({
   const selectionCode = getSelectionCode(productForState);
 
   const isSelectedInPdf = !!pdfSelection?.selectedFromPdf.some((item) => item.code === selectionCode);
-  const isSelectedInQuote = !!basketProductCounts?.[productForState.id];
-  const isSelected = isSelectedInPdf || isSelectedInQuote;
+  // When pdfSelection is available, use it as the single source of truth for selection state
+  const isSelected = pdfSelection ? isSelectedInPdf : !!basketProductCounts?.[productForState.id];
 
   const handleRadioClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -108,7 +108,7 @@ const RegionBox = memo(({
       });
     }
 
-    if (!alreadySelectedInPdf && !isSelectedInQuote && baskets.length > 0 && onAddProductToBasket) {
+    if (!alreadySelectedInPdf && baskets.length > 0 && onAddProductToBasket) {
       onAddProductToBasket(baskets[0].id, product);
     }
   };
