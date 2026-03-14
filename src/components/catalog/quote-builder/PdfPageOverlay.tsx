@@ -102,7 +102,7 @@ const RegionBox = memo(({
           title={selected ? "Added to quote" : "Add to quote"}
         >
           {selected ? (
-            <CheckCircle2 className="h-5 w-5 text-green-500" />
+            <CheckCircle2 className="h-5 w-5" style={{ color: "hsl(var(--success))" }} />
           ) : (
             <Circle className="h-5 w-5 text-primary opacity-70 hover:opacity-100" />
           )}
