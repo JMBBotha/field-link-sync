@@ -49,14 +49,46 @@ const RegionBox = memo(({
 }) => {
   const [selected, setSelected] = useState(false);
 
+  const getProductOrFallback = (): PaletteProduct | null => {
+    if (region.product) return region.product;
+    // Construct a fallback product from region data for unmatched items
+    return {
+      id: region.id,
+      product_code: region.product_code,
+      short_name: region.label,
+      brand: "",
+      product_category: "",
+      category: "",
+      cost_excl_vat: region.detected_price ?? 0,
+      cost_incl_vat: region.detected_price ?? 0,
+      cost_price: region.detected_price ?? 0,
+      selling_price: region.detected_price ?? 0,
+      default_markup_percent: 0,
+      description: region.label,
+      is_pinned: false,
+      pin_order: null,
+      supplier_name: "",
+      supplier_type: "",
+      price_per_metre: null,
+      sold_in_length: false,
+      unit_length: null,
+      pipe_size: null,
+      is_material_favorite: false,
+      pack_qty: null,
+      supplier_discount_percent: null,
+      markup_percent: null,
+    } as PaletteProduct;
+  };
+
   const handleRadioClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (selected) {
       setSelected(false);
       return;
     }
-    if (region.product && baskets.length > 0 && onAddProductToBasket) {
-      onAddProductToBasket(baskets[0].id, region.product);
+    const product = getProductOrFallback();
+    if (product && baskets.length > 0 && onAddProductToBasket) {
+      onAddProductToBasket(baskets[0].id, product);
       setSelected(true);
     }
   };
