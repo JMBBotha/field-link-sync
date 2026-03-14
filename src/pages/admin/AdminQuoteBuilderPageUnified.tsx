@@ -416,6 +416,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
                     onAreasChange={setWizardAreas}
                     onAddProductRef={areaAddProductRef}
                     onDropProductToAreaRef={areaDropProductToAreaRef}
+                    onDropBundleToAreaRef={areaDropBundleToAreaRef}
                     onAddAreaRef={areaAddZoneRef}
                     onApplyTemplateRef={areaApplyTemplateRef}
                     onClearAllRef={areaClearAllRef}
