@@ -259,56 +259,13 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
 
   const DRAFT_KEY = "quote-builder-draft";
   const [showRecovery, setShowRecovery] = useState(false);
-  const [recoveredDraft, setRecoveredDraft] = useState<Basket[] | null>(null);
+  const [recoveredDraft, setRecoveredDraft] = useState<{ baskets: Basket[]; selectedFromPdf: PdfSelectedProduct[] } | null>(null);
 
   const [baskets, setBaskets] = useState<Basket[]>(() => {
     return [{ id: "basket-1", name: "Zone 1", items: [] }];
   });
 
-  // Draft recovery on mount
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0 && parsed.some((b: any) => b.items?.length > 0)) {
-          setRecoveredDraft(parsed);
-          setShowRecovery(true);
-        }
-      }
-    } catch { /* ignore corrupt data */ }
-  }, []);
-
-  // Auto-save every 30s
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (baskets.some(b => b.items.length > 0)) {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(baskets));
-      }
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [baskets]);
-
-  // Save on key mutations (debounced via state change)
-  useEffect(() => {
-    if (baskets.some(b => b.items.length > 0)) {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(baskets));
-    }
-  }, [baskets]);
-  const [activeProduct, setActiveProduct] = useState<PaletteProduct | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [acModalOpen, setAcModalOpen] = useState(false);
-  const [acModalProduct, setAcModalProduct] = useState<PaletteProduct | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [visualPanelOpen, setVisualPanelOpen] = useState(false);
-  const [wizardOpen, setWizardOpen] = useState(false);
-  const [wizardTriggerItem, setWizardTriggerItem] = useState<WizardTriggerItem | null>(null);
-  const [summaryCollapsed, setSummaryCollapsed] = useState(false);
-  const [mobileTab, setMobileTab] = useState<"palette" | "canvas">("palette");
-  const [floatingPanelOpen, setFloatingPanelOpen] = useState(false);
-
-  // PDF selection state (shared with VisualCatalogPanel)
+  // PDF selection state (shared with Visual Catalog and Product Palette)
   const [selectedFromPdf, setSelectedFromPdf] = useState<PdfSelectedProduct[]>([]);
 
   const handleSelectProduct = useCallback((product: Pick<PdfSelectedProduct, "code" | "description" | "price"> & Partial<Pick<PdfSelectedProduct, "costPrice" | "markupPercent">>) => {
@@ -321,6 +278,77 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
   const updateSelectedItem = useCallback((code: string, updates: Partial<Pick<PdfSelectedProduct, "quantity" | "unitType" | "costPrice" | "markupPercent" | "price">>) => {
     setSelectedFromPdf((prev) => prev.map((item) => (item.code === code ? { ...item, ...updates } : item)));
   }, []);
+
+  const persistDraft = useCallback(() => {
+    const hasBasketItems = baskets.some((basket) => basket.items.length > 0);
+    const hasSelectedPdfItems = selectedFromPdf.length > 0;
+
+    if (!hasBasketItems && !hasSelectedPdfItems) {
+      localStorage.removeItem(DRAFT_KEY);
+      return;
+    }
+
+    localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({
+        version: 1,
+        baskets,
+        selectedFromPdf,
+      })
+    );
+  }, [baskets, selectedFromPdf]);
+
+  // Draft recovery on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw);
+      const draft = Array.isArray(parsed)
+        ? { baskets: parsed as Basket[], selectedFromPdf: [] as PdfSelectedProduct[] }
+        : {
+            baskets: Array.isArray(parsed?.baskets) ? (parsed.baskets as Basket[]) : [],
+            selectedFromPdf: Array.isArray(parsed?.selectedFromPdf) ? (parsed.selectedFromPdf as PdfSelectedProduct[]) : [],
+          };
+
+      const hasBasketItems = draft.baskets.some((basket) => basket.items?.length > 0);
+      const hasSelectedPdfItems = draft.selectedFromPdf.length > 0;
+
+      if (hasBasketItems || hasSelectedPdfItems) {
+        setRecoveredDraft(draft);
+        setShowRecovery(true);
+      }
+    } catch {
+      /* ignore corrupt data */
+    }
+  }, []);
+
+  // Auto-save every 30s
+  useEffect(() => {
+    const interval = setInterval(() => {
+      persistDraft();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [persistDraft]);
+
+  // Save on key mutations
+  useEffect(() => {
+    persistDraft();
+  }, [persistDraft]);
+
+  const [activeProduct, setActiveProduct] = useState<PaletteProduct | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [acModalOpen, setAcModalOpen] = useState(false);
+  const [acModalProduct, setAcModalProduct] = useState<PaletteProduct | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [visualPanelOpen, setVisualPanelOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardTriggerItem, setWizardTriggerItem] = useState<WizardTriggerItem | null>(null);
+  const [summaryCollapsed, setSummaryCollapsed] = useState(false);
+  const [mobileTab, setMobileTab] = useState<"palette" | "canvas">("palette");
+  const [floatingPanelOpen, setFloatingPanelOpen] = useState(false);
 
   const scrollToCanvas = useCallback(() => {
     if (isMobile) setMobileTab("canvas");
