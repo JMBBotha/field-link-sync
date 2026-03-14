@@ -121,30 +121,6 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
     toast.success(`Added ${product.short_name || product.product_code} to ${areas[0]?.name || "Additional Items/Services"}`);
   }, [areas]);
 
-  // Drop a product into a specific area by ID (used by DnD from palette)
-  const handleDropProductToArea = useCallback((areaId: string, product: PaletteProduct) => {
-    const isAC = product.product_category === "Air Conditioning" || (product.category || "").toLowerCase().includes("air conditioning");
-    setAreas((prev) => {
-      return prev.map((a) => {
-        if (a.id !== areaId) return a;
-        if (isAC) {
-          const btu = detectBTU(product);
-          const newUnit: AreaACUnit = { id: crypto.randomUUID(), product, btu, quantity: 1 };
-          return { ...a, acUnits: [newUnit] };
-        } else {
-          const existing = a.consumables.find((c) => c.product.id === product.id);
-          if (existing) {
-            return { ...a, consumables: a.consumables.map((c) => c.product.id === product.id ? { ...c, quantity: c.quantity + 1 } : c) };
-          }
-          const newConsumable: AreaConsumable = { id: crypto.randomUUID(), product, quantity: 1 };
-          return { ...a, consumables: [...a.consumables, newConsumable] };
-        }
-      });
-    });
-    const targetArea = areas.find((a) => a.id === areaId);
-    toast.success(`Added ${product.short_name || product.product_code} to ${targetArea?.name || "area"}`);
-  }, [areas]);
-
   // Drop a bundle into a specific area by ID (used by DnD from palette)
   const handleDropBundleToArea = useCallback((areaId: string, bundle: any) => {
     setAreas((prev) => {
