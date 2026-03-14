@@ -697,6 +697,15 @@ const ProductPalette = ({
             <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">
               {pdfSelection.selectedFromPdf.length}
             </Badge>
+            {pdfSelection.selectedFromPdf.length > 0 && (
+              <button
+                onClick={() => pdfSelection.setSelectedFromPdf([])}
+                className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+                title="Clear all selected items"
+              >
+                Clear all
+              </button>
+            )}
             <button
               onClick={() => onPopOutSelected?.()}
               className="ml-auto text-muted-foreground hover:text-primary"

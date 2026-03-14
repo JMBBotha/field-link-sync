@@ -630,6 +630,18 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
               </SelectContent>
             </Select>
 
+            {pdfSelection && pdfSelection.selectedFromPdf.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-[10px] shrink-0"
+                onClick={() => pdfSelection.setSelectedFromPdf([])}
+                title="Clear all selected items"
+              >
+                Clear selected ({pdfSelection.selectedFromPdf.length})
+              </Button>
+            )}
+
             <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}><X className="h-4 w-4" /></Button>
           </div>
 
