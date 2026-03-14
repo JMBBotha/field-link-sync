@@ -196,8 +196,36 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
         };
       });
     });
+    // Switch to AC Units step so user can see the dropped items
+    setCurrentStep(1);
     const targetArea = areas.find((a) => a.id === areaId);
     toast.success(`Applied "${bundle.name}" to ${targetArea?.name || "area"}`);
+  }, [areas]);
+
+  // Drop a product into a specific area — also switch to AC Units step
+  const handleDropProductToArea = useCallback((areaId: string, product: PaletteProduct) => {
+    const isAC = product.product_category === "Air Conditioning" || (product.category || "").toLowerCase().includes("air conditioning");
+    setAreas((prev) => {
+      return prev.map((a) => {
+        if (a.id !== areaId) return a;
+        if (isAC) {
+          const btu = detectBTU(product);
+          const newUnit: AreaACUnit = { id: crypto.randomUUID(), product, btu, quantity: 1 };
+          return { ...a, acUnits: [newUnit] };
+        } else {
+          const existing = a.consumables.find((c) => c.product.id === product.id);
+          if (existing) {
+            return { ...a, consumables: a.consumables.map((c) => c.product.id === product.id ? { ...c, quantity: c.quantity + 1 } : c) };
+          }
+          const newConsumable: AreaConsumable = { id: crypto.randomUUID(), product, quantity: 1 };
+          return { ...a, consumables: [...a.consumables, newConsumable] };
+        }
+      });
+    });
+    // Switch to AC Units step so user can see the dropped items
+    setCurrentStep(1);
+    const targetArea = areas.find((a) => a.id === areaId);
+    toast.success(`Added ${product.short_name || product.product_code} to ${targetArea?.name || "area"}`);
   }, [areas]);
 
   // Add a new area from the header button
