@@ -51,6 +51,10 @@ const RegionBox = memo(({
 
   const handleRadioClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (selected) {
+      setSelected(false);
+      return;
+    }
     if (region.product && baskets.length > 0 && onAddProductToBasket) {
       onAddProductToBasket(baskets[0].id, region.product);
       setSelected(true);
