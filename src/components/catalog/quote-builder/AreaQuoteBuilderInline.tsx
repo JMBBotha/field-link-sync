@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { hapticTap } from "@/lib/haptics";
 import type { PaletteProduct, Basket, BasketItem } from "../QuoteBuilderTab";
-import type { QuoteArea, AreaACUnit, AreaConsumable } from "./quoteWizardTypes";
+import type { QuoteArea, AreaACUnit, AreaConsumable, AreaMaterial } from "./quoteWizardTypes";
 import { WIZARD_STEPS, computeAreaSubtotal, createEmptyArea, detectBTU } from "./quoteWizardTypes";
 import AreaDefinitionStep from "./wizard/AreaDefinitionStep";
 import ACSelectionStep from "./wizard/ACSelectionStep";
@@ -37,6 +37,8 @@ interface Props {
   onAddProductRef?: React.MutableRefObject<((product: PaletteProduct) => void) | null>;
   /** Ref that parent can use to drop a product into a specific area by id */
   onDropProductToAreaRef?: React.MutableRefObject<((areaId: string, product: PaletteProduct) => void) | null>;
+  /** Ref that parent can use to drop a bundle into a specific area by id */
+  onDropBundleToAreaRef?: React.MutableRefObject<((areaId: string, bundle: any) => void) | null>;
   /** Ref that parent can use to add a new area */
   onAddAreaRef?: React.MutableRefObject<(() => void) | null>;
   /** Ref that parent can use to apply a template (replaces all areas) */
@@ -68,7 +70,7 @@ function clearDraftStorage() {
   try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch { /* ignore */ }
 }
 
-export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPdfSearch, onAreasChange, onAddProductRef, onDropProductToAreaRef, onAddAreaRef, onApplyTemplateRef, onClearAllRef, pdfSelection }: Props) {
+export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPdfSearch, onAreasChange, onAddProductRef, onDropProductToAreaRef, onDropBundleToAreaRef, onAddAreaRef, onApplyTemplateRef, onClearAllRef, pdfSelection }: Props) {
   const [currentStep, setCurrentStep] = useState(0);
   const [areas, setAreas] = useState<QuoteArea[]>(() => {
     const draft = loadDraftFromStorage();
@@ -143,6 +145,61 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
     toast.success(`Added ${product.short_name || product.product_code} to ${targetArea?.name || "area"}`);
   }, [areas]);
 
+  // Drop a bundle into a specific area by ID (used by DnD from palette)
+  const handleDropBundleToArea = useCallback((areaId: string, bundle: any) => {
+    setAreas((prev) => {
+      return prev.map((a) => {
+        if (a.id !== areaId) return a;
+
+        // Remove previously applied bundle items
+        const cleanMaterials = (a.materials || []).filter((m) => !(m as any).fromBundle);
+        const cleanConsumables = (a.consumables || []).filter((c) => !(c as any).fromBundle);
+
+        const newMaterials: AreaMaterial[] = [];
+        const newConsumables: AreaConsumable[] = [];
+
+        for (const item of bundle.items || []) {
+          if (item.is_optional) continue;
+          const product = item.product || item.supplier_product;
+          if (!product) continue;
+
+          if (item.is_length_item) {
+            const costPerMeter = product.price_per_metre || product.selling_price || product.cost_incl_vat || 0;
+            const length = item.length_metres || 3;
+            newMaterials.push({
+              id: crypto.randomUUID(),
+              product,
+              defaultLength: length,
+              adjustedLength: length,
+              costPerMeter,
+              totalCost: costPerMeter * length,
+              pricingMode: "length",
+              unitQuantity: 1,
+              fromBundle: true,
+            } as AreaMaterial & { fromBundle: boolean });
+          } else {
+            newConsumables.push({
+              id: crypto.randomUUID(),
+              product,
+              quantity: item.quantity || 1,
+              isSuggested: false,
+              fromBundle: true,
+            } as AreaConsumable & { fromBundle: boolean });
+          }
+        }
+
+        return {
+          ...a,
+          appliedBundleId: bundle.id,
+          materials: [...cleanMaterials, ...newMaterials],
+          consumables: [...cleanConsumables, ...newConsumables],
+        };
+      });
+    });
+    const targetArea = areas.find((a) => a.id === areaId);
+    toast.success(`Applied "${bundle.name}" to ${targetArea?.name || "area"}`);
+  }, [areas]);
+
   // Add a new area from the header button
   const handleAddArea = useCallback(() => {
     const newName = `Room ${areas.length + 1}`;
@@ -168,17 +225,19 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
   useEffect(() => {
     if (onAddProductRef) onAddProductRef.current = handleExternalProductAdd;
     if (onDropProductToAreaRef) onDropProductToAreaRef.current = handleDropProductToArea;
+    if (onDropBundleToAreaRef) onDropBundleToAreaRef.current = handleDropBundleToArea;
     if (onAddAreaRef) onAddAreaRef.current = handleAddArea;
     if (onApplyTemplateRef) onApplyTemplateRef.current = handleApplyTemplate;
     if (onClearAllRef) onClearAllRef.current = handleClearAll;
     return () => {
       if (onAddProductRef) onAddProductRef.current = null;
       if (onDropProductToAreaRef) onDropProductToAreaRef.current = null;
+      if (onDropBundleToAreaRef) onDropBundleToAreaRef.current = null;
       if (onAddAreaRef) onAddAreaRef.current = null;
       if (onApplyTemplateRef) onApplyTemplateRef.current = null;
       if (onClearAllRef) onClearAllRef.current = null;
     };
-  }, [onAddProductRef, onDropProductToAreaRef, onAddAreaRef, onApplyTemplateRef, onClearAllRef, handleExternalProductAdd, handleDropProductToArea, handleAddArea, handleApplyTemplate, handleClearAll]);
+  }, [onAddProductRef, onDropProductToAreaRef, onDropBundleToAreaRef, onAddAreaRef, onApplyTemplateRef, onClearAllRef, handleExternalProductAdd, handleDropProductToArea, handleDropBundleToArea, handleAddArea, handleApplyTemplate, handleClearAll]);
 
   const handleSaveDraft = useCallback(() => {
     saveDraftToStorage(areas, currentStep);

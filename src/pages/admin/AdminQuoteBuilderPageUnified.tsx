@@ -242,6 +242,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   // Refs to the inline builder's methods
   const areaAddProductRef = useRef<((product: PaletteProduct) => void) | null>(null);
   const areaDropProductToAreaRef = useRef<((areaId: string, product: PaletteProduct) => void) | null>(null);
+  const areaDropBundleToAreaRef = useRef<((areaId: string, bundle: any) => void) | null>(null);
   const areaAddZoneRef = useRef<(() => void) | null>(null);
   const areaApplyTemplateRef = useRef<((zoneNames: string[]) => void) | null>(null);
   const areaClearAllRef = useRef<(() => void) | null>(null);
@@ -415,6 +416,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
                     onAreasChange={setWizardAreas}
                     onAddProductRef={areaAddProductRef}
                     onDropProductToAreaRef={areaDropProductToAreaRef}
+                    onDropBundleToAreaRef={areaDropBundleToAreaRef}
                     onAddAreaRef={areaAddZoneRef}
                     onApplyTemplateRef={areaApplyTemplateRef}
                     onClearAllRef={areaClearAllRef}
@@ -426,6 +428,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
                 areaClearAll={() => areaClearAllRef.current?.()}
                 areaCount={wizardAreas.length}
                 areaDropProductToArea={(areaId, product) => areaDropProductToAreaRef.current?.(areaId, product)}
+                areaDropBundleToArea={(areaId, bundle) => areaDropBundleToAreaRef.current?.(areaId, bundle)}
               />
             </div>
             <div className="w-[320px] shrink-0 border-l overflow-y-auto p-3 mx-[5px] my-[4px] bg-transparent">

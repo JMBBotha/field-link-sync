@@ -195,9 +195,11 @@ interface QuoteBuilderTabProps {
   areaCount?: number;
   /** Ref-based handler to drop a product into a specific wizard area */
   areaDropProductToArea?: (areaId: string, product: PaletteProduct) => void;
+  /** Ref-based handler to drop a bundle into a specific wizard area */
+  areaDropBundleToArea?: (areaId: string, bundle: any) => void;
 }
 
-const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, areaBuilderNode, areaAddZone, areaApplyTemplate, areaClearAll, areaCount, areaDropProductToArea }: QuoteBuilderTabProps = {}) => {
+const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, areaBuilderNode, areaAddZone, areaApplyTemplate, areaClearAll, areaCount, areaDropProductToArea, areaDropBundleToArea }: QuoteBuilderTabProps = {}) => {
   const [baskets, setBasketsInternal] = useState<Basket[]>([
   { id: "basket-1", name: "Zone 1", items: [] }]
   );
@@ -517,10 +519,20 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     const overId = String(over.id);
 
     // Check if dropped on a wizard area target
-    if (overId.startsWith("wizard-area-") && areaDropProductToArea) {
+    if (overId.startsWith("wizard-area-")) {
       const areaId = overId.replace("wizard-area-", "");
+
+      // Handle bundle drop on wizard area
+      const bundleData = (active.data.current as any)?.bundle;
+      if (bundleData && areaDropBundleToArea) {
+        areaDropBundleToArea(areaId, bundleData);
+        toast({ title: `Added bundle "${bundleData.name}" to area` });
+        return;
+      }
+
+      // Handle product drop on wizard area
       const product = (active.data.current as any)?.product as PaletteProduct | undefined;
-      if (product) {
+      if (product && areaDropProductToArea) {
         areaDropProductToArea(areaId, product);
         toast({ title: `Added ${product.short_name || product.product_code} to area` });
       }
@@ -549,7 +561,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     addProductToBasket(targetBasket.id, product);
     const displayName = product.short_name || product.product_code;
     toast({ title: `Added ${displayName} to ${targetBasket.name}` });
-  }, [baskets, addProductToBasket, addBundleToBasket, areaDropProductToArea]);
+  }, [baskets, addProductToBasket, addBundleToBasket, areaDropProductToArea, areaDropBundleToArea]);
 
   const handleRemoveItem = useCallback((basketId: string, instanceId: string) => {
     setBaskets((prev) =>
