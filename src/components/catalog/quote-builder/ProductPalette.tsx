@@ -715,7 +715,16 @@ const ProductPalette = ({
                 <div className="max-h-64 overflow-y-auto space-y-1.5">
                    {pdfSelection.selectedFromPdf.map((item) => (
                     <div key={item.code} className="bg-muted/50 p-2 rounded-md space-y-1">
-                      <p className="text-[11px] font-medium text-foreground truncate">{item.code}</p>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => pdfSelection.handleSelectProduct(item)}
+                          className="shrink-0 flex items-center justify-center rounded-full transition-colors hover:scale-110"
+                          title="Unselect item"
+                        >
+                          <CheckCircle2 className="h-4 w-4" style={{ color: "hsl(var(--success))" }} />
+                        </button>
+                        <p className="text-[11px] font-medium text-foreground truncate flex-1">{item.code}</p>
+                      </div>
                       <p className="text-[10px] text-muted-foreground truncate">{item.description}</p>
                       {(item.costPrice != null || item.markupPercent != null) && (
                         <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
