@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { calcSellingPrice } from "@/utils/pricing";
-import { X, GripVertical, Minus, Maximize2, ChevronUp, ChevronDown } from "lucide-react";
+import { X, GripVertical, Minus, Maximize2, ChevronUp, ChevronDown, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -73,13 +73,16 @@ const FloatingSelectedItems = ({ pdfSelection, onClose }: FloatingSelectedItemsP
             items.map((item) => (
               <div key={item.code} className="bg-muted/50 p-2 rounded-md space-y-1">
                 <div className="flex items-center justify-between">
-                  <p className="text-[11px] font-medium text-foreground truncate flex-1">{item.code}</p>
-                  <button
-                    onClick={() => pdfSelection.handleSelectProduct(item)}
-                    className="text-muted-foreground hover:text-destructive ml-1"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <button
+                      onClick={() => pdfSelection.handleSelectProduct(item)}
+                      className="shrink-0 flex items-center justify-center rounded-full transition-colors hover:scale-110"
+                      title="Unselect item"
+                    >
+                      <CheckCircle2 className="h-4 w-4" style={{ color: "hsl(var(--success))" }} />
+                    </button>
+                    <p className="text-[11px] font-medium text-foreground truncate flex-1">{item.code}</p>
+                  </div>
                 </div>
                 <p className="text-[10px] text-muted-foreground truncate">{item.description}</p>
                 {/* Cost & Markup row with adjustment controls */}
