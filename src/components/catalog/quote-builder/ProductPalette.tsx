@@ -484,7 +484,155 @@ function DraggableProductCard({
   );
 }
 
-const ProductPalette = ({
+/** Convert a PdfSelectedProduct into a PaletteProduct for drag-and-drop */
+function pdfItemToPaletteProduct(item: import("@/types/pdfSelection").PdfSelectedProduct): PaletteProduct {
+  const price = parseFloat(item.price) || 0;
+  return {
+    id: `pdf-${item.code}`,
+    product_code: item.code,
+    short_name: item.description || item.code,
+    brand: "",
+    product_category: "",
+    category: "",
+    cost_excl_vat: item.costPrice ?? price,
+    cost_incl_vat: price,
+    cost_price: item.costPrice ?? price,
+    selling_price: price,
+    default_markup_percent: item.markupPercent ?? 0,
+    description: item.description || item.code,
+    is_pinned: false,
+    pin_order: null,
+    supplier_name: "",
+    supplier_type: "",
+    price_per_metre: null,
+    sold_in_length: false,
+    unit_length: null,
+    pipe_size: null,
+    is_material_favorite: false,
+    pack_qty: null,
+    supplier_discount_percent: null,
+    markup_percent: item.markupPercent ?? null,
+  };
+}
+
+function DraggableSelectedItem({
+  item,
+  pdfSelection,
+  baskets,
+  onAddProductToBasket,
+}: {
+  item: import("@/types/pdfSelection").PdfSelectedProduct;
+  pdfSelection: PdfSelectionHandlers;
+  baskets?: Basket[];
+  onAddProductToBasket?: (basketId: string, product: PaletteProduct) => void;
+}) {
+  const product = useMemo(() => pdfItemToPaletteProduct(item), [item]);
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `selected-pdf-${item.code}`,
+    data: { product },
+  });
+
+  const handleClick = useCallback(() => {
+    if (!baskets || baskets.length === 0 || !onAddProductToBasket) return;
+    onAddProductToBasket(baskets[0].id, product);
+  }, [baskets, onAddProductToBasket, product]);
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      style={{ touchAction: "none" }}
+      className={`bg-muted/50 p-2 rounded-md space-y-1 cursor-grab active:cursor-grabbing transition-all hover:shadow-md hover:border-primary/20 border border-transparent ${
+        isDragging ? "opacity-40 scale-95 shadow-lg" : ""
+      }`}
+      onClick={handleClick}
+    >
+      <div className="flex items-center gap-1.5">
+        <GripVertical className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+        <button
+          onClick={(e) => { e.stopPropagation(); pdfSelection.handleSelectProduct(item); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="shrink-0 flex items-center justify-center rounded-full transition-colors hover:scale-110"
+          title="Unselect item"
+        >
+          <CheckCircle2 className="h-4 w-4" style={{ color: "hsl(var(--success))" }} />
+        </button>
+        <p className="text-[11px] font-medium text-foreground truncate flex-1">{item.code}</p>
+      </div>
+      <p className="text-[10px] text-muted-foreground truncate">{item.description}</p>
+      {(item.costPrice != null || item.markupPercent != null) && (
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+          {item.costPrice != null && (
+            <span>Cost: <span className="font-mono font-medium text-foreground">R{Number(item.costPrice).toFixed(2)}</span></span>
+          )}
+          {item.markupPercent != null && item.costPrice != null && (
+            <div className="flex items-center gap-0.5">
+              <span>M/Up:</span>
+              <button
+                className="h-4 w-4 rounded border border-input flex items-center justify-center hover:bg-accent"
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const cost = Number(item.costPrice);
+                  const newMu = Math.max(0, (item.markupPercent || 0) - 5);
+                  const newP = Math.round(cost * (1 + newMu / 100) * 100) / 100;
+                  pdfSelection.updateSelectedItem(item.code, { markupPercent: newMu, price: String(newP) });
+                }}
+              >
+                <ChevronDown className="h-2.5 w-2.5" />
+              </button>
+              <span className="font-mono font-semibold text-primary min-w-[28px] text-center">{Number(item.markupPercent).toFixed(0)}%</span>
+              <button
+                className="h-4 w-4 rounded border border-input flex items-center justify-center hover:bg-accent"
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const cost = Number(item.costPrice);
+                  const newMu = (item.markupPercent || 0) + 5;
+                  const newP = Math.round(cost * (1 + newMu / 100) * 100) / 100;
+                  pdfSelection.updateSelectedItem(item.code, { markupPercent: newMu, price: String(newP) });
+                }}
+              >
+                <ChevronUp className="h-2.5 w-2.5" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      <div className="flex items-center gap-1.5">
+        <select
+          value={item.unitType}
+          onChange={(e) => pdfSelection.updateSelectedItem(item.code, { unitType: e.target.value })}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="h-6 text-[10px] rounded border border-input bg-background px-1"
+        >
+          <option value="units">Units</option>
+          <option value="meters">Meters</option>
+        </select>
+        <Input
+          type="number"
+          min={0.1}
+          step={0.1}
+          value={item.quantity}
+          onChange={(e) => pdfSelection.updateSelectedItem(item.code, { quantity: Math.max(0.1, Number(e.target.value)) })}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="h-6 w-16 text-[10px] px-1"
+        />
+        <span className="text-[10px] font-medium text-foreground ml-auto">
+          R{((parseFloat(item.price) || 0) * item.quantity).toFixed(2)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+
   products,
   isLoading,
   searchQuery,
