@@ -543,6 +543,24 @@ export default function ACSelectionStep({ areas, onAreasChange, products, bundle
     );
   }, [areas, onAreasChange]);
 
+  const handleRemoveConsumable = useCallback((areaId: string, consumableId: string) => {
+    onAreasChange(
+      areas.map((a) => {
+        if (a.id !== areaId) return a;
+        return { ...a, consumables: a.consumables.filter((c) => c.id !== consumableId) };
+      })
+    );
+  }, [areas, onAreasChange]);
+
+  const handleRemoveMaterial = useCallback((areaId: string, materialId: string) => {
+    onAreasChange(
+      areas.map((a) => {
+        if (a.id !== areaId) return a;
+        return { ...a, materials: a.materials.filter((m) => m.id !== materialId) };
+      })
+    );
+  }, [areas, onAreasChange]);
+
   const handleApplyBundle = useCallback((areaId: string, bundle: PaletteBundle, overrides: Record<string, { qty: number; mode: "unit" | "length" }>) => {
     onAreasChange(
       areas.map((a) => {
@@ -630,6 +648,8 @@ export default function ACSelectionStep({ areas, onAreasChange, products, bundle
             acProducts={acProducts}
             onSelect={handleSelect}
             onRemove={handleRemove}
+            onRemoveConsumable={handleRemoveConsumable}
+            onRemoveMaterial={handleRemoveMaterial}
             suggestedBundle={areaBundleSuggestions[area.id]}
             onApplyBundle={handleApplyBundle}
             onDismissBundle={handleDismissBundle}
