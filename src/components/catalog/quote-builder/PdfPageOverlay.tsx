@@ -79,7 +79,9 @@ const RegionBox = memo(({
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: "linear-gradient(to right, transparent 0%, transparent 40%, hsl(var(--muted) / 0.3) 55%, hsl(var(--primary) / 0.25) 80%, hsl(var(--primary) / 0.45) 100%)",
+          background: selected
+            ? "linear-gradient(to right, transparent 0%, transparent 40%, hsl(var(--success) / 0.15) 55%, hsl(var(--success) / 0.25) 80%, hsl(var(--success) / 0.45) 100%)"
+            : "linear-gradient(to right, transparent 0%, transparent 40%, hsl(var(--muted) / 0.3) 55%, hsl(var(--primary) / 0.25) 80%, hsl(var(--primary) / 0.45) 100%)",
           borderRadius: "0 9999px 9999px 0",
         }}
       />
