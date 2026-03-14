@@ -55,6 +55,15 @@ const FloatingSelectedItems = ({ pdfSelection, onClose }: FloatingSelectedItemsP
         <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 bg-primary-foreground/20 text-primary-foreground border-0">
           {items.length}
         </Badge>
+        {items.length > 0 && (
+          <button
+            onClick={() => pdfSelection.setSelectedFromPdf([])}
+            className="text-[10px] font-medium text-primary-foreground/70 hover:text-primary-foreground"
+            title="Clear all selected items"
+          >
+            Clear
+          </button>
+        )}
         <button onClick={() => setMinimized(!minimized)} className="text-primary-foreground/70 hover:text-primary-foreground">
           {minimized ? <Maximize2 className="h-3.5 w-3.5" /> : <Minus className="h-3.5 w-3.5" />}
         </button>
