@@ -113,7 +113,7 @@ const RegionBox = memo(({
           {selected ? (
             <CheckCircle2 className="h-5 w-5" style={{ color: "hsl(var(--success))" }} />
           ) : (
-            <Circle className="h-5 w-5 text-primary opacity-70 hover:opacity-100" />
+            <CircleDot className="h-5 w-5 text-muted-foreground opacity-70 hover:opacity-100" />
           )}
         </button>
       </div>
