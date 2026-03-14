@@ -206,6 +206,8 @@ function AreaUnitSelector({
   acProducts,
   onSelect,
   onRemove,
+  onRemoveConsumable,
+  onRemoveMaterial,
   suggestedBundle,
   onApplyBundle,
   onDismissBundle,
@@ -214,6 +216,8 @@ function AreaUnitSelector({
   acProducts: PaletteProduct[];
   onSelect: (areaId: string, product: PaletteProduct) => void;
   onRemove: (areaId: string, idx: number) => void;
+  onRemoveConsumable: (areaId: string, consumableId: string) => void;
+  onRemoveMaterial: (areaId: string, materialId: string) => void;
   suggestedBundle?: PaletteBundle | null;
   onApplyBundle: (areaId: string, bundle: PaletteBundle, overrides: Record<string, { qty: number; mode: "unit" | "length" }>) => void;
   onDismissBundle: (areaId: string) => void;
@@ -241,6 +245,17 @@ function AreaUnitSelector({
   }, [acProducts, debouncedQuery]);
 
   const selectedUnit = area.acUnits[0] || null;
+  const totalExtras = (area.consumables?.length || 0) + (area.materials?.length || 0);
+
+  // Auto-expand when items are added
+  const [expanded, setExpanded] = useState(totalExtras > 0);
+  const prevExtrasRef = useRef(totalExtras);
+  useEffect(() => {
+    if (totalExtras > prevExtrasRef.current) {
+      setExpanded(true);
+    }
+    prevExtrasRef.current = totalExtras;
+  }, [totalExtras]);
 
   const { setNodeRef, isOver } = useDroppable({
     id: `wizard-area-${area.id}`,
@@ -270,6 +285,17 @@ function AreaUnitSelector({
               <Check className="h-3 w-3" />
               Unit selected
             </Badge>
+          )}
+          {totalExtras > 0 && (
+            <button
+              type="button"
+              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent transition-colors"
+              onClick={() => setExpanded((e) => !e)}
+            >
+              <Wrench className="h-3 w-3" />
+              {totalExtras} item{totalExtras !== 1 ? "s" : ""}
+              {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </button>
           )}
         </div>
       </div>
@@ -302,6 +328,55 @@ function AreaUnitSelector({
           >
             <X className="h-3.5 w-3.5 text-destructive" />
           </button>
+        </div>
+      )}
+
+      {/* Consumables & Materials (expanded section) */}
+      {expanded && totalExtras > 0 && (
+        <div className="space-y-1 rounded-lg border border-border/50 bg-muted/20 p-2">
+          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+            Materials & Consumables
+          </div>
+          {(area.materials || []).map((m) => (
+            <div key={m.id} className="flex items-center gap-2 rounded border border-border/40 bg-background/60 px-2 py-1.5 text-xs">
+              <Ruler className="h-3 w-3 text-muted-foreground shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="font-medium truncate">{getProductDisplayName(m.product) || m.product.product_code}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  {m.pricingMode === "length" ? `${m.adjustedLength}m @ R${m.costPerMeter.toFixed(2)}/m` : `×${m.unitQuantity}`}
+                </div>
+              </div>
+              <span className="text-[10px] font-medium shrink-0">
+                {formatZAR(m.pricingMode === "length" ? m.totalCost : (m.product.selling_price || 0) * m.unitQuantity)}
+              </span>
+              <button
+                className="h-5 w-5 rounded-full flex items-center justify-center hover:bg-destructive/20 shrink-0"
+                onClick={() => onRemoveMaterial(area.id, m.id)}
+              >
+                <X className="h-3 w-3 text-destructive" />
+              </button>
+            </div>
+          ))}
+          {(area.consumables || []).map((c) => (
+            <div key={c.id} className="flex items-center gap-2 rounded border border-border/40 bg-background/60 px-2 py-1.5 text-xs">
+              <Package className="h-3 w-3 text-muted-foreground shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="font-medium truncate">{getProductDisplayName(c.product) || c.product.product_code}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  ×{c.quantity} {c.isSuggested && <span className="text-primary">(auto)</span>}
+                </div>
+              </div>
+              <span className="text-[10px] font-medium shrink-0">
+                {formatZAR((c.product.selling_price || c.product.cost_incl_vat || 0) * c.quantity)}
+              </span>
+              <button
+                className="h-5 w-5 rounded-full flex items-center justify-center hover:bg-destructive/20 shrink-0"
+                onClick={() => onRemoveConsumable(area.id, c.id)}
+              >
+                <X className="h-3 w-3 text-destructive" />
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
