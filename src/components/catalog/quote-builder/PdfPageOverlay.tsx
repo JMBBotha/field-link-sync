@@ -164,6 +164,8 @@ const RegionBox = memo(({
         {/* Radio / select button */}
         <button
           onClick={handleRadioClick}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
           className="flex items-center justify-center rounded-full transition-colors hover:scale-110"
           title={isSelected ? "Added to quote" : "Add to quote"}
         >
