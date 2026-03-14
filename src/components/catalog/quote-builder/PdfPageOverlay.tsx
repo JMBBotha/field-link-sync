@@ -1,5 +1,5 @@
-import { memo, useState } from "react";
-import { Info, Circle, CheckCircle2, Dot } from "lucide-react";
+import { memo } from "react";
+import { Info, Circle, CheckCircle2 } from "lucide-react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
@@ -36,68 +36,87 @@ interface PdfPageOverlayProps {
   onOpenProductInfo?: (product: PaletteProduct) => void;
 }
 
+const buildFallbackProduct = (region: OverlayRegion): PaletteProduct => ({
+  id: region.id,
+  product_code: region.product_code || region.id,
+  short_name: region.label || region.product_code || "PDF Item",
+  brand: "",
+  product_category: "",
+  category: "",
+  cost_excl_vat: region.detected_price ?? 0,
+  cost_incl_vat: region.detected_price ?? 0,
+  cost_price: region.detected_price ?? 0,
+  selling_price: region.detected_price ?? 0,
+  default_markup_percent: 0,
+  description: region.label || region.product_code || "PDF Item",
+  is_pinned: false,
+  pin_order: null,
+  supplier_name: "",
+  supplier_type: "",
+  price_per_metre: null,
+  sold_in_length: false,
+  unit_length: null,
+  pipe_size: null,
+  is_material_favorite: false,
+  pack_qty: null,
+  supplier_discount_percent: null,
+  markup_percent: null,
+});
+
 const RegionBox = memo(({
   region,
   onOpenProductInfo,
   onAddProductToBasket,
   baskets,
+  basketProductCounts,
+  pdfSelection,
 }: {
   region: OverlayRegion;
   onOpenProductInfo?: (product: PaletteProduct) => void;
   onAddProductToBasket?: (basketId: string, product: PaletteProduct) => void;
   baskets: Basket[];
+  basketProductCounts?: Record<string, number>;
+  pdfSelection?: PdfSelectionHandlers;
 }) => {
-  const [selected, setSelected] = useState(false);
+  const getProductOrFallback = (): PaletteProduct => region.product ?? buildFallbackProduct(region);
 
-  const getProductOrFallback = (): PaletteProduct | null => {
-    if (region.product) return region.product;
-    // Construct a fallback product from region data for unmatched items
-    return {
-      id: region.id,
-      product_code: region.product_code,
-      short_name: region.label,
-      brand: "",
-      product_category: "",
-      category: "",
-      cost_excl_vat: region.detected_price ?? 0,
-      cost_incl_vat: region.detected_price ?? 0,
-      cost_price: region.detected_price ?? 0,
-      selling_price: region.detected_price ?? 0,
-      default_markup_percent: 0,
-      description: region.label,
-      is_pinned: false,
-      pin_order: null,
-      supplier_name: "",
-      supplier_type: "",
-      price_per_metre: null,
-      sold_in_length: false,
-      unit_length: null,
-      pipe_size: null,
-      is_material_favorite: false,
-      pack_qty: null,
-      supplier_discount_percent: null,
-      markup_percent: null,
-    } as PaletteProduct;
-  };
+  const getSelectionCode = (product: PaletteProduct): string =>
+    region.product_code || product.product_code || product.id;
+
+  const productForState = getProductOrFallback();
+  const selectionCode = getSelectionCode(productForState);
+
+  const isSelectedInPdf = !!pdfSelection?.selectedFromPdf.some((item) => item.code === selectionCode);
+  const isSelectedInQuote = !!basketProductCounts?.[productForState.id];
+  const isSelected = isSelectedInPdf || isSelectedInQuote;
 
   const handleRadioClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (selected) {
-      setSelected(false);
-      return;
-    }
+
     const product = getProductOrFallback();
-    if (product && baskets.length > 0 && onAddProductToBasket) {
+    const code = getSelectionCode(product);
+    const alreadySelectedInPdf = !!pdfSelection?.selectedFromPdf.some((item) => item.code === code);
+
+    if (pdfSelection) {
+      const displayPrice = product.selling_price || product.cost_incl_vat || region.detected_price || 0;
+      pdfSelection.handleSelectProduct({
+        code,
+        description: product.short_name || product.description || region.label || code,
+        price: String(displayPrice),
+        costPrice: product.cost_excl_vat || product.cost_price || undefined,
+        markupPercent: product.default_markup_percent ?? product.markup_percent ?? undefined,
+      });
+    }
+
+    if (!alreadySelectedInPdf && !isSelectedInQuote && baskets.length > 0 && onAddProductToBasket) {
       onAddProductToBasket(baskets[0].id, product);
-      setSelected(true);
     }
   };
 
   const handleInfoClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!onOpenProductInfo) return;
-    const product = getProductOrFallback();
-    if (product) onOpenProductInfo(product);
+    onOpenProductInfo(getProductOrFallback());
   };
 
   return (
@@ -115,7 +134,7 @@ const RegionBox = memo(({
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: selected
+          background: isSelected
             ? "linear-gradient(to right, transparent 0%, transparent 40%, hsl(var(--success) / 0.15) 55%, hsl(var(--success) / 0.25) 80%, hsl(var(--success) / 0.45) 100%)"
             : "linear-gradient(to right, transparent 0%, transparent 40%, hsl(var(--muted) / 0.3) 55%, hsl(var(--primary) / 0.25) 80%, hsl(var(--primary) / 0.45) 100%)",
           borderRadius: "0 9999px 9999px 0",
@@ -134,6 +153,8 @@ const RegionBox = memo(({
         {/* Info button */}
         <button
           onClick={handleInfoClick}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
           className="flex items-center justify-center rounded-full transition-colors hover:scale-110"
           title="Product info"
         >
@@ -143,10 +164,12 @@ const RegionBox = memo(({
         {/* Radio / select button */}
         <button
           onClick={handleRadioClick}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
           className="flex items-center justify-center rounded-full transition-colors hover:scale-110"
-          title={selected ? "Added to quote" : "Add to quote"}
+          title={isSelected ? "Added to quote" : "Add to quote"}
         >
-          {selected ? (
+          {isSelected ? (
             <CheckCircle2 className="h-5 w-5" style={{ color: "hsl(var(--success))" }} />
           ) : (
             <span className="relative flex items-center justify-center h-5 w-5">
@@ -165,6 +188,8 @@ const PdfPageOverlay = ({
   regions,
   baskets,
   onAddProductToBasket,
+  basketProductCounts,
+  pdfSelection,
   onOpenProductInfo,
 }: PdfPageOverlayProps) => {
   if (regions.length === 0) return null;
@@ -177,6 +202,8 @@ const PdfPageOverlay = ({
           onOpenProductInfo={onOpenProductInfo}
           onAddProductToBasket={onAddProductToBasket}
           baskets={baskets}
+          basketProductCounts={basketProductCounts}
+          pdfSelection={pdfSelection}
         />
       ))}
     </>
