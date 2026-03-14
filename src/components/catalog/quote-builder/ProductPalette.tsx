@@ -632,7 +632,7 @@ function DraggableSelectedItem({
   );
 }
 
-
+const ProductPalette = ({
   products,
   isLoading,
   searchQuery,
