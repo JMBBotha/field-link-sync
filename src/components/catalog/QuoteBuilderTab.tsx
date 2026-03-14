@@ -195,9 +195,11 @@ interface QuoteBuilderTabProps {
   areaCount?: number;
   /** Ref-based handler to drop a product into a specific wizard area */
   areaDropProductToArea?: (areaId: string, product: PaletteProduct) => void;
+  /** Ref-based handler to drop a bundle into a specific wizard area */
+  areaDropBundleToArea?: (areaId: string, bundle: any) => void;
 }
 
-const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, areaBuilderNode, areaAddZone, areaApplyTemplate, areaClearAll, areaCount, areaDropProductToArea }: QuoteBuilderTabProps = {}) => {
+const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, areaBuilderNode, areaAddZone, areaApplyTemplate, areaClearAll, areaCount, areaDropProductToArea, areaDropBundleToArea }: QuoteBuilderTabProps = {}) => {
   const [baskets, setBasketsInternal] = useState<Basket[]>([
   { id: "basket-1", name: "Zone 1", items: [] }]
   );
