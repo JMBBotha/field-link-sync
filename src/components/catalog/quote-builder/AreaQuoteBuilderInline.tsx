@@ -237,7 +237,7 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
       if (onApplyTemplateRef) onApplyTemplateRef.current = null;
       if (onClearAllRef) onClearAllRef.current = null;
     };
-  }, [onAddProductRef, onDropProductToAreaRef, onAddAreaRef, onApplyTemplateRef, onClearAllRef, handleExternalProductAdd, handleDropProductToArea, handleAddArea, handleApplyTemplate, handleClearAll]);
+  }, [onAddProductRef, onDropProductToAreaRef, onDropBundleToAreaRef, onAddAreaRef, onApplyTemplateRef, onClearAllRef, handleExternalProductAdd, handleDropProductToArea, handleDropBundleToArea, handleAddArea, handleApplyTemplate, handleClearAll]);
 
   const handleSaveDraft = useCallback(() => {
     saveDraftToStorage(areas, currentStep);
