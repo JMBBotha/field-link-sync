@@ -108,7 +108,7 @@ const RegionBox = memo(({
       });
     }
 
-    if (!alreadySelectedInPdf && !isSelectedInQuote && baskets.length > 0 && onAddProductToBasket) {
+    if (!alreadySelectedInPdf && baskets.length > 0 && onAddProductToBasket) {
       onAddProductToBasket(baskets[0].id, product);
     }
   };
