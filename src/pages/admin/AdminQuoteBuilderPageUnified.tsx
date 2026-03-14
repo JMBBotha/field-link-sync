@@ -242,6 +242,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   // Refs to the inline builder's methods
   const areaAddProductRef = useRef<((product: PaletteProduct) => void) | null>(null);
   const areaDropProductToAreaRef = useRef<((areaId: string, product: PaletteProduct) => void) | null>(null);
+  const areaDropBundleToAreaRef = useRef<((areaId: string, bundle: any) => void) | null>(null);
   const areaAddZoneRef = useRef<(() => void) | null>(null);
   const areaApplyTemplateRef = useRef<((zoneNames: string[]) => void) | null>(null);
   const areaClearAllRef = useRef<(() => void) | null>(null);
