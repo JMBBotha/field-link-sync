@@ -70,10 +70,8 @@ const RegionBox = memo(({
       style={{
         left: "0%",
         top: `${region.y_pct}%`,
-        /* Extend past the image into the 88px right padding via calc */
-        width: "calc(100% + 88px)",
+        width: "100%",
         height: `${region.h_pct}%`,
-        overflow: "visible",
       }}
       title={`${region.label} (${region.product_code})`}
     >
@@ -86,15 +84,26 @@ const RegionBox = memo(({
         }}
       />
 
-      {/* Buttons container — positioned in the right padding area, vertically centered */}
+      {/* Buttons — inside the page, pinned to right edge, vertically centered */}
       <div
-        className="absolute flex flex-col items-center justify-center gap-0.5"
+        className="absolute flex items-center gap-1"
         style={{
-          right: "8px",
+          right: "6px",
           top: "50%",
           transform: "translateY(-50%)",
         }}
       >
+        {/* Info button */}
+        {region.product && (
+          <button
+            onClick={handleInfoClick}
+            className="flex items-center justify-center rounded-full transition-colors hover:scale-110"
+            title="Product info"
+          >
+            <Info className="h-4 w-4 text-primary opacity-70 hover:opacity-100" />
+          </button>
+        )}
+
         {/* Radio / select button */}
         <button
           onClick={handleRadioClick}
@@ -107,17 +116,6 @@ const RegionBox = memo(({
             <Circle className="h-5 w-5 text-primary opacity-70 hover:opacity-100" />
           )}
         </button>
-
-        {/* Info button */}
-        {region.product && (
-          <button
-            onClick={handleInfoClick}
-            className="flex items-center justify-center rounded-full transition-colors hover:scale-110"
-            title="Product info"
-          >
-            <Info className="h-4 w-4 text-primary opacity-70 hover:opacity-100" />
-          </button>
-        )}
       </div>
     </div>
   );
