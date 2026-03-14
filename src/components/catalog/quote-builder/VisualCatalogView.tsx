@@ -250,7 +250,7 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
                     return (
                       <div
                         key={page.id}
-                        className="rounded-lg border bg-card shadow-sm overflow-visible"
+                        className="rounded-lg border bg-card shadow-sm overflow-hidden"
                       >
                         {/* Page header */}
                         <div className="flex items-center justify-between px-2 py-1.5 border-b bg-muted/30">

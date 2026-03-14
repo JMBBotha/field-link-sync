@@ -156,22 +156,30 @@ const RegionBox = memo(
     const handleMouseEnter = useCallback(
       (e: React.MouseEvent) => {
         setHovered(true);
+        onHoverStart?.(region.product, e);
+        // Determine if card should show above or below
         if (rowRef.current) {
           const rect = rowRef.current.getBoundingClientRect();
           setShowAbove(rect.top > 200);
         }
         hoverTimer.current = setTimeout(() => setShowCard(true), 300);
       },
-      []
+      [region.product, onHoverStart]
     );
 
-    const handleMouseMove = useCallback(() => {}, []);
+    const handleMouseMove = useCallback(
+      (e: React.MouseEvent) => {
+        onHoverMove?.(e);
+      },
+      [onHoverMove]
+    );
 
     const handleMouseLeave = useCallback(() => {
       setHovered(false);
       setShowCard(false);
       if (hoverTimer.current) clearTimeout(hoverTimer.current);
-    }, []);
+      onHoverEnd?.();
+    }, [onHoverEnd]);
 
     useEffect(() => {
       return () => {
@@ -192,40 +200,23 @@ const RegionBox = memo(
           height: `${region.h_pct}%`,
           zIndex: 10,
           overflow: "visible",
-          boxSizing: "border-box",
+          background:
+            "linear-gradient(to right, transparent 0%, transparent 50%, rgba(37,99,235,0.5) 80%, rgba(37,99,235,0.7) 100%)",
         }}
         onMouseEnter={handleMouseEnter}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
-        {/* Gradient overlay - 45% width anchored to right */}
         <div
           style={{
             position: "absolute",
-            right: 0,
-            top: 0,
-            width: "45%",
-            height: "100%",
-            borderRadius: "8px 0 0 8px",
-            background: isSelected
-              ? "linear-gradient(to right, rgba(34,197,94,0), rgba(34,197,94,0.5))"
-              : "linear-gradient(to right, rgba(59,130,246,0), rgba(59,130,246,0.45))",
-            pointerEvents: "none",
-            zIndex: 2,
-            transition: "background 0.2s ease",
-          }}
-        />
-        {/* Control buttons - inside gradient area, above clickable zone */}
-        <div
-          style={{
-            position: "absolute",
-            right: "8px",
+            right: "2px",
             top: "50%",
             transform: "translateY(-50%)",
             display: "flex",
             alignItems: "center",
             gap: "6px",
-            zIndex: 10,
+            zIndex: 20,
             pointerEvents: "auto",
           }}
         >
@@ -233,15 +224,15 @@ const RegionBox = memo(
             style={{
               color: "#fff",
               fontWeight: 900,
-              fontSize: "10px",
+              fontSize: "14px",
               textShadow: "0 0 3px rgba(0,0,0,0.8)",
               lineHeight: 1,
               userSelect: "none",
-              pointerEvents: "none",
             }}
           >
-            {'>>'}
+            {'>>>'}
           </span>
+
           <button
             type="button"
             style={{
@@ -256,7 +247,6 @@ const RegionBox = memo(
               boxShadow: "0 1px 4px rgba(0,0,0,0.45)",
               cursor: "pointer",
               padding: 0,
-              pointerEvents: "auto",
             }}
             onClick={(e) => {
               e.stopPropagation();
@@ -275,36 +265,38 @@ const RegionBox = memo(
               i
             </span>
           </button>
+
           <button
             type="button"
             style={{
-              width: "14px",
-              height: "14px",
+              width: "16px",
+              height: "16px",
               borderRadius: "9999px",
-              border: "2px solid rgba(255,255,255,0.95)",
-              background: "#fff",
+              border: "1px solid rgba(255,255,255,0.95)",
+              background: isSelected ? "#2563eb" : "#fff",
               boxShadow: "0 1px 4px rgba(0,0,0,0.45)",
               cursor: "pointer",
               padding: 0,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              pointerEvents: "auto",
             }}
             onClick={(e) => {
               e.stopPropagation();
               onToggleSelect();
             }}
           >
-            <span
-              style={{
-                width: "6px",
-                height: "6px",
-                borderRadius: "9999px",
-                background: isSelected ? "#22c55e" : "#000",
-                display: "block",
-              }}
-            />
+            {isSelected && (
+              <span
+                style={{
+                  width: "6px",
+                  height: "6px",
+                  borderRadius: "9999px",
+                  background: "#fff",
+                  display: "block",
+                }}
+              />
+            )}
           </button>
         </div>
 
@@ -316,8 +308,7 @@ const RegionBox = memo(
             bottom: 0,
             right: "64px",
             cursor: "pointer",
-            zIndex: 1,
-            pointerEvents: "auto",
+            zIndex: 5,
           }}
           onClick={onRowClick}
         />

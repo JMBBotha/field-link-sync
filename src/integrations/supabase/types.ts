@@ -146,21 +146,18 @@ export type Database = {
           brand: string
           discount_percentage: number
           id: string
-          markup_percent: number | null
         }
         Insert: {
           applied_at?: string
           brand: string
           discount_percentage?: number
           id?: string
-          markup_percent?: number | null
         }
         Update: {
           applied_at?: string
           brand?: string
           discount_percentage?: number
           id?: string
-          markup_percent?: number | null
         }
         Relationships: []
       }
