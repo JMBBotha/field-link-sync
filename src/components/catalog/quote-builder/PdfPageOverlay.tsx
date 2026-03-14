@@ -96,38 +96,8 @@ const RegionBox = memo(({
   const handleInfoClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!onOpenProductInfo) return;
-    if (region.product) {
-      onOpenProductInfo(region.product);
-    } else {
-      // Construct a minimal product from region data for unmatched items
-      const fallback = {
-        id: region.id,
-        product_code: region.product_code,
-        short_name: region.label,
-        brand: "",
-        product_category: "",
-        category: "",
-        cost_excl_vat: region.detected_price ?? 0,
-        cost_incl_vat: region.detected_price ?? 0,
-        cost_price: region.detected_price ?? 0,
-        selling_price: region.detected_price ?? 0,
-        default_markup_percent: 0,
-        description: region.label,
-        is_pinned: false,
-        pin_order: null,
-        supplier_name: "",
-        supplier_type: "",
-        price_per_metre: null,
-        sold_in_length: false,
-        unit_length: null,
-        pipe_size: null,
-        is_material_favorite: false,
-        pack_qty: null,
-        supplier_discount_percent: null,
-        markup_percent: null,
-      } as PaletteProduct;
-      onOpenProductInfo(fallback);
-    }
+    const product = getProductOrFallback();
+    if (product) onOpenProductInfo(product);
   };
 
   return (
