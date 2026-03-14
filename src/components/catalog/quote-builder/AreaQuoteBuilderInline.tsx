@@ -37,6 +37,8 @@ interface Props {
   onAddProductRef?: React.MutableRefObject<((product: PaletteProduct) => void) | null>;
   /** Ref that parent can use to drop a product into a specific area by id */
   onDropProductToAreaRef?: React.MutableRefObject<((areaId: string, product: PaletteProduct) => void) | null>;
+  /** Ref that parent can use to drop a bundle into a specific area by id */
+  onDropBundleToAreaRef?: React.MutableRefObject<((areaId: string, bundle: any) => void) | null>;
   /** Ref that parent can use to add a new area */
   onAddAreaRef?: React.MutableRefObject<(() => void) | null>;
   /** Ref that parent can use to apply a template (replaces all areas) */
