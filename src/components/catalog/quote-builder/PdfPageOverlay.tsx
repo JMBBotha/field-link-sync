@@ -88,7 +88,7 @@ const RegionBox = memo(({
       <div
         className="absolute flex items-center gap-1"
         style={{
-          right: "6px",
+          right: "21px",
           top: "50%",
           transform: "translateY(-50%)",
         }}
