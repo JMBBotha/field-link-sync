@@ -1,5 +1,5 @@
 import { memo, useState } from "react";
-import { Info, Circle, CheckCircle2 } from "lucide-react";
+import { Info, Circle, CheckCircle2, Dot } from "lucide-react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
@@ -113,7 +113,10 @@ const RegionBox = memo(({
           {selected ? (
             <CheckCircle2 className="h-5 w-5" style={{ color: "hsl(var(--success))" }} />
           ) : (
-            <Circle className="h-5 w-5 text-primary opacity-70 hover:opacity-100" />
+            <span className="relative flex items-center justify-center h-5 w-5">
+              <Circle className="h-5 w-5 text-muted-foreground opacity-70" />
+              <span className="absolute h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />
+            </span>
           )}
         </button>
       </div>
