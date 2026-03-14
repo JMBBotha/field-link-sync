@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { hapticTap } from "@/lib/haptics";
 import type { PaletteProduct, Basket, BasketItem } from "../QuoteBuilderTab";
-import type { QuoteArea, AreaACUnit, AreaConsumable } from "./quoteWizardTypes";
+import type { QuoteArea, AreaACUnit, AreaConsumable, AreaMaterial } from "./quoteWizardTypes";
 import { WIZARD_STEPS, computeAreaSubtotal, createEmptyArea, detectBTU } from "./quoteWizardTypes";
 import AreaDefinitionStep from "./wizard/AreaDefinitionStep";
 import ACSelectionStep from "./wizard/ACSelectionStep";
