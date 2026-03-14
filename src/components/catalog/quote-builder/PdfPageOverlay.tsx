@@ -117,7 +117,7 @@ const RegionBox = memo(({
           ) : (
             <span className="relative flex items-center justify-center h-5 w-5">
               <Circle className="h-5 w-5 text-muted-foreground opacity-70" />
-              <span className="absolute h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />
+              <span className="absolute h-2.5 w-2.5 rounded-full bg-muted-foreground/80" />
             </span>
           )}
         </button>
