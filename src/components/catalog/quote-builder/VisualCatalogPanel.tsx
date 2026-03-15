@@ -1271,6 +1271,8 @@ const LazyPdfPage = ({
             pdfStoragePath={page.pdf_storage_path}
             isVisible={isVisible}
             showPills={showPills}
+            totalPages={totalPages}
+            pageIndex={pageIndex}
           />
 
           {/* Show overlays for ALL regions (matched + unmatched) — works with live extraction or fallback */}
