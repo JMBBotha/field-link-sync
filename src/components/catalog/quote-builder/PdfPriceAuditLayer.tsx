@@ -71,38 +71,68 @@ const PdfPriceAuditLayer = ({
   pdfStoragePath,
   isVisible,
   showPills,
+  totalPages = 1,
+  pageIndex = 0,
 }: PdfPriceAuditLayerProps) => {
   const normalizedSupplierName = normalize(supplierName || "");
 
-  const { data: pageProducts = [] } = useQuery<SupplierProductRow[]>({
-    queryKey: ["visual-price-pill-products", pageId, supplierId, pageNumber, normalizedSupplierName],
+  // Fetch ALL products for this supplier (page_number is usually NULL)
+  const { data: allSupplierProducts = [] } = useQuery<SupplierProductRow[]>({
+    queryKey: ["visual-price-pill-all-products", supplierId, normalizedSupplierName],
     enabled: isVisible,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_products") as any)
+      // First try by page_number (in case some products have it set)
+      const { data: byPage, error: byPageErr } = await (supabase.from("supplier_products") as any)
         .select(
           "id, supplier_id, product_code, cost_price, cost_excl_vat, default_markup_percent, row_bbox, price_bbox, page_number, suppliers(name, default_price_column)"
         )
         .eq("page_number", pageNumber)
         .limit(2000);
 
-      if (error) throw error;
+      if (!byPageErr && byPage && byPage.length > 0) {
+        const rows = byPage as SupplierProductRow[];
+        const matched = rows.filter((row) => {
+          if (row.supplier_id === supplierId) return true;
+          const relation = getSupplierRelation(row.suppliers);
+          const name = normalize(relation?.name || "");
+          if (!name || !normalizedSupplierName) return false;
+          return name.includes(normalizedSupplierName) || normalizedSupplierName.includes(name);
+        });
+        return matched.length > 0 ? matched : rows;
+      }
 
-      const rows = (data as SupplierProductRow[]) || [];
-      const supplierMatched = rows.filter((row) => {
-        if (row.supplier_id === supplierId) return true;
+      // Fallback: fetch ALL products for the supplier by name match
+      const { data: allData, error: allErr } = await (supabase.from("supplier_products") as any)
+        .select(
+          "id, supplier_id, product_code, cost_price, cost_excl_vat, default_markup_percent, row_bbox, price_bbox, page_number, suppliers(name, default_price_column)"
+        )
+        .limit(2000);
+
+      if (allErr) throw allErr;
+
+      const rows = (allData as SupplierProductRow[]) || [];
+      return rows.filter((row) => {
         const relation = getSupplierRelation(row.suppliers);
-        const rowSupplierName = normalize(relation?.name || "");
-        if (!rowSupplierName || !normalizedSupplierName) return false;
-        return (
-          rowSupplierName.includes(normalizedSupplierName) ||
-          normalizedSupplierName.includes(rowSupplierName)
-        );
+        const name = normalize(relation?.name || "");
+        if (!name || !normalizedSupplierName) return false;
+        return name.includes(normalizedSupplierName) || normalizedSupplierName.includes(name);
       });
-
-      return supplierMatched.length > 0 ? supplierMatched : rows;
     },
     staleTime: 60000,
   });
+
+  // Distribute products across pages when page_number is NULL
+  const pageProducts = useMemo(() => {
+    // If products have page_number set, use only those matching this page
+    const withPageNumber = allSupplierProducts.filter((p) => p.page_number === pageNumber);
+    if (withPageNumber.length > 0) return withPageNumber;
+
+    // Otherwise distribute evenly across pages
+    if (allSupplierProducts.length === 0) return [];
+    const productsPerPage = Math.ceil(allSupplierProducts.length / Math.max(1, totalPages));
+    const startIdx = pageIndex * productsPerPage;
+    return allSupplierProducts.slice(startIdx, startIdx + productsPerPage);
+  }, [allSupplierProducts, pageNumber, pageIndex, totalPages]);
 
   const supplierRelation = getSupplierRelation(pageProducts[0]?.suppliers ?? null);
   const resolvedSupplierName = supplierRelation?.name || supplierName || "";
@@ -116,6 +146,12 @@ const PdfPriceAuditLayer = ({
     [pageProducts]
   );
 
+  // Products WITHOUT row_bbox need synthetic positioning
+  const productsWithoutRows = useMemo(
+    () => pageProducts.filter((row) => !hasValidRowBbox(row.row_bbox)),
+    [pageProducts]
+  );
+
   const { data: extractionMeta = EMPTY_EXTRACTION_META } = useQuery<PriceColumnExtractionMeta>({
     queryKey: [
       "visual-price-pill-meta",
@@ -123,9 +159,9 @@ const PdfPriceAuditLayer = ({
       pageNumber,
       pdfStoragePath,
       resolvedPriceColumn,
-      productsWithRows.length,
+      pageProducts.length,
     ],
-    enabled: isVisible && productsWithRows.length > 0,
+    enabled: isVisible && pageProducts.length > 0,
     queryFn: async () => {
       const shouldUseDaikinFallback = isDaikinSupplier(resolvedSupplierName);
 
@@ -133,10 +169,10 @@ const PdfPriceAuditLayer = ({
         return {
           ...EMPTY_EXTRACTION_META,
           headerCenter:
-            shouldUseDaikinFallback && productsWithRows.length > 0
+            shouldUseDaikinFallback && pageProducts.length > 0
               ? DAIKIN_FALLBACK_HEADER_CENTER
               : null,
-          usedLayoutFallback: shouldUseDaikinFallback && productsWithRows.length > 0,
+          usedLayoutFallback: shouldUseDaikinFallback && pageProducts.length > 0,
         };
       }
 
@@ -150,7 +186,7 @@ const PdfPriceAuditLayer = ({
           : null;
 
         const usedLayoutFallback =
-          !headerCenter && !extractionSucceeded && shouldUseDaikinFallback && productsWithRows.length > 0;
+          !headerCenter && !extractionSucceeded && shouldUseDaikinFallback && pageProducts.length > 0;
 
         return {
           headerCenter: usedLayoutFallback ? DAIKIN_FALLBACK_HEADER_CENTER : headerCenter,
@@ -161,7 +197,7 @@ const PdfPriceAuditLayer = ({
       } catch (error) {
         console.warn(`[PdfPriceAuditLayer] Header extraction failed for page ${pageNumber}`, error);
 
-        const usedLayoutFallback = shouldUseDaikinFallback && productsWithRows.length > 0;
+        const usedLayoutFallback = shouldUseDaikinFallback && pageProducts.length > 0;
 
         return {
           headerCenter: usedLayoutFallback ? DAIKIN_FALLBACK_HEADER_CENTER : null,
@@ -174,10 +210,10 @@ const PdfPriceAuditLayer = ({
     staleTime: 60000,
   });
 
-  const pillProducts = useMemo<PillProduct[]>(() => {
+  // Build pills from products WITH row_bbox (positioned via header alignment)
+  const pillsFromRows = useMemo<PillProduct[]>(() => {
     return productsWithRows.map((product) => {
       const rowBbox = product.row_bbox!;
-
       const derivedPriceBbox = extractionMeta.headerCenter
         ? buildPriceBboxFromRow(rowBbox, extractionMeta.headerCenter)
         : product.price_bbox;
@@ -195,20 +231,53 @@ const PdfPriceAuditLayer = ({
     });
   }, [productsWithRows, extractionMeta.headerCenter, pageNumber]);
 
+  // Build pills from products WITHOUT row_bbox (synthetic evenly-spaced layout)
+  const pillsFromSynthetic = useMemo<PillProduct[]>(() => {
+    if (productsWithoutRows.length === 0) return [];
+
+    const headerCenter = extractionMeta.headerCenter || DAIKIN_FALLBACK_HEADER_CENTER;
+    const usableTop = 0.08;
+    const usableBottom = 0.95;
+    const usableRange = usableBottom - usableTop;
+    const rowHeight = Math.min(usableRange / productsWithoutRows.length, 0.035);
+
+    return productsWithoutRows.map((product, idx) => {
+      const yPos = usableTop + idx * (usableRange / productsWithoutRows.length);
+      const syntheticRowBbox: BBox = { x: 0, y: yPos, width: 1, height: rowHeight };
+      const priceBbox = buildPriceBboxFromRow(syntheticRowBbox, headerCenter);
+
+      return {
+        id: product.id,
+        product_code: product.product_code,
+        cost_price: product.cost_price ?? product.cost_excl_vat ?? 0,
+        cost_excl_vat: product.cost_excl_vat ?? product.cost_price ?? 0,
+        default_markup_percent: product.default_markup_percent ?? 20,
+        row_bbox: syntheticRowBbox,
+        price_bbox: priceBbox,
+        page_number: pageNumber,
+      };
+    });
+  }, [productsWithoutRows, extractionMeta.headerCenter, pageNumber]);
+
+  const pillProducts = useMemo(
+    () => [...pillsFromRows, ...pillsFromSynthetic],
+    [pillsFromRows, pillsFromSynthetic]
+  );
+
   const withPriceBboxCount = pillProducts.filter((product) => !!product.price_bbox).length;
 
   useEffect(() => {
     console.log(
-      `[PdfPriceAuditLayer] page=${pageNumber} products=${pillProducts.length} with_price_bbox=${withPriceBboxCount} extractionSucceeded=${extractionMeta.extractionSucceeded} usedFallback=${extractionMeta.usedLayoutFallback}`
+      `[PdfPriceAuditLayer] page=${pageNumber} allSupplier=${allSupplierProducts.length} pageProducts=${pageProducts.length} withRowBbox=${productsWithRows.length} synthetic=${productsWithoutRows.length} pills=${pillProducts.length} with_price_bbox=${withPriceBboxCount} extract=${extractionMeta.extractionSucceeded} fallback=${extractionMeta.usedLayoutFallback}`
     );
-  }, [pageNumber, pillProducts.length, withPriceBboxCount, extractionMeta]);
+  }, [pageNumber, allSupplierProducts.length, pageProducts.length, productsWithRows.length, productsWithoutRows.length, pillProducts.length, withPriceBboxCount, extractionMeta]);
 
   if (!isVisible) return null;
 
   return (
     <>
       <div className="absolute top-8 left-2 z-40 rounded bg-destructive/90 text-destructive-foreground text-[9px] font-mono px-1.5 py-0.5">
-        p{pageNumber} · products:{pillProducts.length} · with_bbox:{withPriceBboxCount} · extract:
+        p{pageNumber} · products:{pageProducts.length} · pills:{pillProducts.length} · with_bbox:{withPriceBboxCount} · extract:
         {extractionMeta.extractionSucceeded ? `ok(${extractionMeta.textItemsCount})` : `empty(${extractionMeta.textItemsCount})`}
         {extractionMeta.usedLayoutFallback ? " · daikin-fallback" : ""}
       </div>
