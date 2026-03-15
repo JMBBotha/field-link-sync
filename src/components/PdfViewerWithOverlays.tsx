@@ -135,30 +135,50 @@ function enrichMissingPriceBboxes(
   }
 
   return products.map((p) => {
-    if (p.price_bbox) return p;
     if (!p.row_bbox || p.page_number == null) return p;
 
     const headerCenter = pageHeaderCenters[p.page_number];
-    let centerX = headerCenter?.centerX;
-    let width = headerCenter?.width;
-
     const siblings = (byPage[p.page_number] || []).filter((s) => s.price_bbox);
 
-    if (!Number.isFinite(centerX)) {
-      if (siblings.length === 0) return p;
-      const siblingCenters = siblings
-        .map((s) => s.price_bbox!.center_x ?? s.price_bbox!.x + s.price_bbox!.width / 2)
-        .sort((a, b) => a - b);
-      centerX = siblingCenters[Math.floor(siblingCenters.length / 2)];
+    let centerX = headerCenter?.centerX;
+    let width = headerCenter?.width || p.price_bbox?.width;
+
+    if (Number.isFinite(centerX)) {
+      if (!width || width <= 0) {
+        if (siblings.length > 0) {
+          const siblingWidths = siblings.map((s) => s.price_bbox!.width).sort((a, b) => a - b);
+          width = siblingWidths[Math.floor(siblingWidths.length / 2)];
+        } else {
+          width = 0.12;
+        }
+      }
+
+      const safeWidth = Math.min(0.25, Math.max(0.05, width));
+      const safeCenter = Math.min(1, Math.max(0, centerX!));
+
+      return {
+        ...p,
+        price_bbox: {
+          x: Math.max(0, Math.min(1 - safeWidth, safeCenter - safeWidth / 2)),
+          y: p.row_bbox.y,
+          width: safeWidth,
+          height: p.row_bbox.height,
+          center_x: safeCenter,
+        },
+      };
     }
 
+    if (p.price_bbox) return p;
+
+    if (siblings.length === 0) return p;
+    const siblingCenters = siblings
+      .map((s) => s.price_bbox!.center_x ?? s.price_bbox!.x + s.price_bbox!.width / 2)
+      .sort((a, b) => a - b);
+    centerX = siblingCenters[Math.floor(siblingCenters.length / 2)];
+
     if (!width || width <= 0) {
-      if (siblings.length > 0) {
-        const siblingWidths = siblings.map((s) => s.price_bbox!.width).sort((a, b) => a - b);
-        width = siblingWidths[Math.floor(siblingWidths.length / 2)];
-      } else {
-        width = 0.12;
-      }
+      const siblingWidths = siblings.map((s) => s.price_bbox!.width).sort((a, b) => a - b);
+      width = siblingWidths[Math.floor(siblingWidths.length / 2)] || 0.12;
     }
 
     const safeWidth = Math.min(0.25, Math.max(0.05, width));
