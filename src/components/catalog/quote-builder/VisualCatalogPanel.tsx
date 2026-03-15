@@ -28,6 +28,7 @@ import FallbackProductPanel from "./FallbackProductPanel";
 import PdfLinkButton from "./PdfLinkButton";
 import PdfMagnifier from "./PdfMagnifier";
 import CompactZonesSidebar from "./CompactZonesSidebar";
+import PdfPriceColumnPill from "./PdfPriceColumnPill";
 import EnhancedProductPopup from "./EnhancedProductPopup";
 import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
 
