@@ -1,4 +1,4 @@
-import { memo, useRef } from "react";
+import { memo } from "react";
 import { Info, Circle, CheckCircle2 } from "lucide-react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";

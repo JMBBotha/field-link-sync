@@ -129,7 +129,7 @@ const EnhancedProductPopup = ({
     const content = (
       <div
         ref={popupRef}
-        className="fixed pointer-events-none z-[9999] bg-popover border rounded-xl shadow-2xl w-[340px] max-w-[90vw] p-4 animate-in fade-in zoom-in-95 duration-150"
+        className="fixed pointer-events-none z-[9999] bg-popover border rounded-lg shadow-lg w-[260px] max-w-[80vw] p-2.5 animate-in fade-in zoom-in-95 duration-100"
         style={{ top: `${pos.top}px`, left: `${pos.left}px` }}
       >
         <div className="space-y-1.5">
