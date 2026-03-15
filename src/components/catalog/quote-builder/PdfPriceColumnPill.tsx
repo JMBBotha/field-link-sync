@@ -93,9 +93,9 @@ const PdfPriceColumnPill = memo(({ supplierName, pdfStoragePath, pageNumber }: P
     <div
       className="absolute z-20 pointer-events-none"
       style={{
-        left: `${xPct}%`,
+        right: "21px",
         top: `${PILL_Y_PCT}%`,
-        transform: "translateX(-50%)",
+        transform: "translateY(-50%)",
       }}
     >
       <div
