@@ -93,6 +93,7 @@ brand: detect from product name/code (Samsung=AR*, Alliance=FOUR*/ALL*, Midea, D
 shortName: BRAND BTU/kW ABBREV format (e.g. "Samsung 9K INV MW")
 
 Prices: ZAR format "R 7 700,00" = 7700. Use rightmost NETT/COST column preferentially.
+For Daikin price lists: prefer the "WEBSHOP PRICE" column as the primary cost column, NOT "RRP" or "INSTALLER PRICE" or "WEBSHOP CAMPAIGN PRICE".
 
 SECTION HEADER DETECTION: Rows like "AR3000 Non-Inverter" or "Midwall Split Systems" with NO price are section headers — SKIP them entirely.
 Document title/date rows like "CPT ONLY ONE STOP SHOP - PRICELIST NO.17 VALID FROM 13 NOVEMBER 2025" are NOT products — SKIP them.
