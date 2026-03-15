@@ -63,6 +63,22 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
     },
   });
 
+  // Check for existing PDF in storage for re-parse
+  const { data: storedPdfPath } = useQuery({
+    queryKey: ["supplier-stored-pdf", supplierId],
+    queryFn: async () => {
+      const { data: files } = await supabase.storage
+        .from("supplier-pdfs")
+        .list(supplierId, { limit: 1, sortBy: { column: "created_at", order: "desc" } });
+      if (files && files.length > 0) {
+        return `${supplierId}/${files[0].name}`;
+      }
+      return null;
+    },
+  });
+
+  const [reparseLoading, setReparseLoading] = useState(false);
+
   const { data: lastImport } = useQuery({
     queryKey: ["supplier-last-import", supplierId],
     queryFn: async () => {
