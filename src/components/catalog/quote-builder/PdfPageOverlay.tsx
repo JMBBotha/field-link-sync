@@ -209,6 +209,8 @@ const PdfPageOverlay = ({
   basketProductCounts,
   pdfSelection,
   onOpenProductInfo,
+  onHoverStart,
+  onHoverEnd,
 }: PdfPageOverlayProps) => {
   if (regions.length === 0) return null;
   return (
@@ -222,6 +224,8 @@ const PdfPageOverlay = ({
           baskets={baskets}
           basketProductCounts={basketProductCounts}
           pdfSelection={pdfSelection}
+          onHoverStart={onHoverStart}
+          onHoverEnd={onHoverEnd}
         />
       ))}
     </>
