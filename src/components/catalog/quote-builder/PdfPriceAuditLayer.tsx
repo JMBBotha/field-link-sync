@@ -39,6 +39,8 @@ interface PdfPriceAuditLayerProps {
   pdfStoragePath: string | null;
   isVisible: boolean;
   showPills: boolean;
+  totalPages?: number;
+  pageIndex?: number;
 }
 
 const EMPTY_EXTRACTION_META: PriceColumnExtractionMeta = {
