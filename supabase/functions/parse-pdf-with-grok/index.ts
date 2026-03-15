@@ -93,6 +93,7 @@ brand: detect from product name/code (Samsung=AR*, Alliance=FOUR*/ALL*, Midea, D
 shortName: BRAND BTU/kW ABBREV format (e.g. "Samsung 9K INV MW")
 
 Prices: ZAR format "R 7 700,00" = 7700. Use rightmost NETT/COST column preferentially.
+For Daikin price lists: prefer the "WEBSHOP PRICE" column as the primary cost column, NOT "RRP" or "INSTALLER PRICE" or "WEBSHOP CAMPAIGN PRICE".
 
 SECTION HEADER DETECTION: Rows like "AR3000 Non-Inverter" or "Midwall Split Systems" with NO price are section headers — SKIP them entirely.
 Document title/date rows like "CPT ONLY ONE STOP SHOP - PRICELIST NO.17 VALID FROM 13 NOVEMBER 2025" are NOT products — SKIP them.
@@ -131,6 +132,13 @@ function pickBestPrice(prices: Record<string, number>): { price: number; columnN
   const exclPatterns = [/EXCL/i, /EX\s*VAT/i, /\bCOST\b/i, /\bNET\b/i, /DEALER/i, /TRADE/i];
   for (const pattern of exclPatterns) {
     const match = entries.find(([col]) => pattern.test(col));
+    if (match) return { price: match[1], columnName: match[0], isInclVat: false };
+  }
+
+  // Webshop price priority (e.g. Daikin) — prefer WEBSHOP PRICE over CAMPAIGN/RRP
+  const webshopPatterns = [/WEBSHOP.*PRICE/i, /\bWEBSHOP\b/i];
+  for (const pattern of webshopPatterns) {
+    const match = entries.find(([col]) => pattern.test(col) && !/CAMPAIGN/i.test(col));
     if (match) return { price: match[1], columnName: match[0], isInclVat: false };
   }
 
