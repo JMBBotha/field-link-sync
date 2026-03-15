@@ -691,7 +691,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           scrollContainerRef={scrollContainerRef}
                           onCategoriesDetected={handlePageCategories}
                           totalPages={pages.length}
-                          supplierName={currentSupplierName}
+                          supplierName={supplierNameMap[page.supplier_id] || page.supplier_id}
                           onOpenWizard={onOpenWizard}
                           onHoverStart={handleHoverStart}
                           onHoverMove={handleHoverMove}
@@ -700,6 +700,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           onProductInfoOpen={handleProductInfoOpen}
                           hdMode={hdMode}
                           supplierType={supplierTypeMap[page.supplier_id]}
+                          showPills={showPills}
                           registerRef={(el) => {
                             if (el) pageRefs.current.set(idx, el);
                             else pageRefs.current.delete(idx);
