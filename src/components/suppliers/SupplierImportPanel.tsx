@@ -77,6 +77,7 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
     },
   });
 
+  const [reparseLoading, setReparseLoading] = useState(false);
   const [pendingReparse, setPendingReparse] = useState(false);
 
   const { data: lastImport } = useQuery({
