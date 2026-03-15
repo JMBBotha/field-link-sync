@@ -24,6 +24,7 @@ import PdfPageOverlay from "./PdfPageOverlay";
 import type { OverlayRegion } from "./PdfPageOverlay";
 import { extractAndMatchPage, clearExtractionCache } from "./pdfTextExtractor";
 import { autoCatalogFromRegions } from "./pdfAutoCatalog";
+import PdfPriceAuditLayer from "./PdfPriceAuditLayer";
 import FallbackProductPanel from "./FallbackProductPanel";
 import PdfLinkButton from "./PdfLinkButton";
 import PdfMagnifier from "./PdfMagnifier";
