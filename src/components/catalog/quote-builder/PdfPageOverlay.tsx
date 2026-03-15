@@ -123,26 +123,15 @@ const RegionBox = memo(({
     onOpenProductInfo(getProductOrFallback());
   };
 
-  const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleMouseEnter = () => {
-    hoverTimeout.current = setTimeout(() => {
-      if (onOpenProductInfo) onOpenProductInfo(getProductOrFallback());
-    }, 400);
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    if (onHoverStart) onHoverStart(getProductOrFallback(), e);
   };
 
   const handleMouseLeave = () => {
-    if (hoverTimeout.current) {
-      clearTimeout(hoverTimeout.current);
-      hoverTimeout.current = null;
-    }
+    if (onHoverEnd) onHoverEnd();
   };
 
   const handleRowClick = () => {
-    if (hoverTimeout.current) {
-      clearTimeout(hoverTimeout.current);
-      hoverTimeout.current = null;
-    }
     if (onOpenProductInfo) onOpenProductInfo(getProductOrFallback());
   };
 
