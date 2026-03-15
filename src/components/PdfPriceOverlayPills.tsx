@@ -42,11 +42,19 @@ const PdfPriceOverlayPills: React.FC<PdfPriceOverlayPillsProps> = ({
   showPills,
   priceColumnLabel,
 }) => {
+  const pageProducts = products.filter((p) => p.page_number === pageIndex + 1);
+
+  React.useEffect(() => {
+    const withPriceBbox = pageProducts.filter((p) => !!p.price_bbox).length;
+    const withoutPriceBbox = pageProducts.length - withPriceBbox;
+    console.log(
+      `[PdfPriceOverlayPills] page=${pageIndex + 1} products=${pageProducts.length} with_price_bbox=${withPriceBbox} without_price_bbox=${withoutPriceBbox}`
+    );
+  }, [pageIndex, pageProducts]);
+
   if (!showPills || !containerWidth || !containerHeight) return null;
 
-  const pageProducts = products.filter(
-    (p) => p.page_number === pageIndex + 1 && p.price_bbox
-  );
+  const pageProductsWithPrice = pageProducts.filter((p) => !!p.price_bbox);
 
   return (
     <>
