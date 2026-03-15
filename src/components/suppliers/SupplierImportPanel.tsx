@@ -398,8 +398,8 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
               if (pendingFile) {
                 runAnalysis(pendingFile);
                 setPendingFile(null);
-              } else if ((window as any).__pendingReparse) {
-                delete (window as any).__pendingReparse;
+              } else if (pendingReparse) {
+                setPendingReparse(false);
                 handleReparse();
               }
             }}>
