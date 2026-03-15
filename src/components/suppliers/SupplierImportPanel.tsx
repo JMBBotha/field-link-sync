@@ -399,6 +399,9 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
               if (pendingFile) {
                 runAnalysis(pendingFile);
                 setPendingFile(null);
+              } else if ((window as any).__pendingReparse) {
+                delete (window as any).__pendingReparse;
+                handleReparse();
               }
             }}>
               Continue — Clean & Import
