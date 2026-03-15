@@ -1,9 +1,9 @@
 /**
- * PdfPriceColumnPill — renders a green pill badge at the top of the PDF page
- * highlighting the supplier's target price column (e.g. "Webshop Price" for Daikin).
+ * PdfPriceColumnPill — renders a green pill badge aligned with the detected
+ * price-column header on each supplier's PDF page.
  *
- * Uses live text extraction to find the header position, with a fallback x-coordinate.
- * Caches detected x-position per supplier so all pages align consistently.
+ * Each page independently detects its header position via text extraction,
+ * since column layouts vary between PDFs. Falls back to a configured x-coordinate.
  */
 
 import { useState, useEffect, memo } from "react";
@@ -16,33 +16,22 @@ interface PdfPriceColumnPillProps {
   pageNumber: number;
 }
 
-// ─── Cross-page cache: ensures all pages for the same supplier use the same x ───
-const supplierXCache = new Map<string, number>();
-
-const PILL_Y_PCT = 0.8; // Fixed y-position near top of every page (percentage)
+interface PillPos {
+  xPct: number;  // center-x as page-width percentage
+  yPct: number;  // top of pill as page-height percentage
+}
 
 const PdfPriceColumnPill = memo(({ supplierName, pdfStoragePath, pageNumber }: PdfPriceColumnPillProps) => {
-  const [xPct, setXPct] = useState<number | null>(null);
-
+  const [pos, setPos] = useState<PillPos | null>(null);
   const config = getSupplierPriceColumnConfig(supplierName);
-  const cacheKey = (supplierName || "").toLowerCase().trim();
 
   useEffect(() => {
     if (!config) return;
-
-    // If we already have a cached x for this supplier, use it immediately
-    const cached = supplierXCache.get(cacheKey);
-    if (cached !== undefined) {
-      setXPct(cached);
-      return;
-    }
-
     let cancelled = false;
 
     async function detect() {
       if (!config) return;
 
-      // Try live text extraction to find the header
       if (pdfStoragePath) {
         try {
           let pdfUrl = pdfStoragePath;
@@ -54,48 +43,46 @@ const PdfPriceColumnPill = memo(({ supplierName, pdfStoragePath, pageNumber }: P
             }
           } catch { /* use raw URL */ }
 
-          const { items, pageWidth } = await extractTextItemsFromPdfPage(pdfUrl, pageNumber);
-
+          const { items, pageWidth, pageHeight } = await extractTextItemsFromPdfPage(pdfUrl, pageNumber);
           if (pdfUrl !== pdfStoragePath) URL.revokeObjectURL(pdfUrl);
           if (cancelled) return;
 
-          // Search for header text matching any pattern
+          // Find the FIRST text item matching any configured pattern
           for (const pattern of config.patterns) {
             for (const item of items) {
               if (pattern.test(item.text)) {
-                const centerX = ((item.x + item.width / 2) / pageWidth) * 100;
-                supplierXCache.set(cacheKey, centerX);
-                setXPct(centerX);
+                const cx = ((item.x + item.width / 2) / pageWidth) * 100;
+                // Place pill just above the header text
+                const ty = Math.max(((item.y - 2) / pageHeight) * 100, 0.3);
+                setPos({ xPct: cx, yPct: ty });
                 return;
               }
             }
           }
         } catch (err) {
-          console.warn("[PdfPriceColumnPill] Text extraction failed, using fallback:", err);
+          console.warn("[PdfPriceColumnPill] extraction failed, using fallback:", err);
         }
       }
 
-      // Fallback: use configured default x position
+      // Fallback x from config
       if (!cancelled && config.fallbackX) {
-        const fallback = config.fallbackX * 100;
-        supplierXCache.set(cacheKey, fallback);
-        setXPct(fallback);
+        setPos({ xPct: config.fallbackX * 100, yPct: 1 });
       }
     }
 
     detect();
     return () => { cancelled = true; };
-  }, [cacheKey, pdfStoragePath, pageNumber, config]);
+  }, [supplierName, pdfStoragePath, pageNumber, config]);
 
-  if (!config || xPct === null) return null;
+  if (!config || !pos) return null;
 
   return (
     <div
       className="absolute z-20 pointer-events-none"
       style={{
-        right: "21px",
-        top: `${PILL_Y_PCT}%`,
-        transform: "translateY(-50%)",
+        left: `${pos.xPct}%`,
+        top: `${pos.yPct}%`,
+        transform: "translateX(-50%)",
       }}
     >
       <div
