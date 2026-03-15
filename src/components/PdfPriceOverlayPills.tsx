@@ -21,6 +21,10 @@ interface PdfPriceOverlayPillsProps {
   products: PillProduct[];
   pageIndex: number;
   showPills: boolean;
+  /** kept for backward compatibility */
+  containerWidth?: number;
+  /** kept for backward compatibility */
+  containerHeight?: number;
   /** Resolved column name for display in tooltip */
   priceColumnLabel?: string;
 }
