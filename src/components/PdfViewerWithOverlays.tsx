@@ -232,6 +232,14 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
             onLoad={updateDimensions}
           />
 
+          <PdfPriceOverlayPills
+            products={products}
+            pageIndex={pageIdx}
+            containerWidth={dimensions[pageIdx]?.w || 0}
+            containerHeight={dimensions[pageIdx]?.h || 0}
+            showPills={showPills}
+          />
+
           {productsForPage(pageIdx).map((product) => {
             const dim = dimensions[pageIdx];
             if (!dim || !product.row_bbox || !product.price_bbox) return null;
