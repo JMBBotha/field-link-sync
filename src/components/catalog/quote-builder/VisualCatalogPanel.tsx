@@ -747,6 +747,15 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                 >
                   <Plus className="h-5 w-5" />
                 </Button>
+
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="absolute bottom-4 right-4 z-[70] h-10 px-4 font-semibold shadow-xl"
+                  onClick={() => setShowPills((value) => !value)}
+                >
+                  {showPills ? "Hide Pills" : "Show Pills"}
+                </Button>
               </>
             )}
           </div>
