@@ -132,7 +132,7 @@ const EnhancedProductPopup = ({
         className="fixed pointer-events-none z-[9999] bg-popover border rounded-lg shadow-lg w-[260px] max-w-[80vw] p-2.5 animate-in fade-in zoom-in-95 duration-100"
         style={{ top: `${pos.top}px`, left: `${pos.left}px` }}
       >
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           <div className="flex items-start gap-2">
             <div className={`shrink-0 rounded-lg p-1.5 ${getCategoryBg(product.product_category)}`}>
               {getCategoryIcon(product.product_category, "h-4 w-4")}
