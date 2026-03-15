@@ -134,6 +134,13 @@ function pickBestPrice(prices: Record<string, number>): { price: number; columnN
     if (match) return { price: match[1], columnName: match[0], isInclVat: false };
   }
 
+  // Webshop price priority (e.g. Daikin) — prefer WEBSHOP PRICE over CAMPAIGN/RRP
+  const webshopPatterns = [/WEBSHOP.*PRICE/i, /\bWEBSHOP\b/i];
+  for (const pattern of webshopPatterns) {
+    const match = entries.find(([col]) => pattern.test(col) && !/CAMPAIGN/i.test(col));
+    if (match) return { price: match[1], columnName: match[0], isInclVat: false };
+  }
+
   const inclIdx = entries.findIndex(([col]) => /INCL|INC\b|INCLUDING/i.test(col.toUpperCase()));
   if (inclIdx !== -1 && entries.length > 1) {
     const exclEntry = entries.find((_, idx) => idx !== inclIdx);
