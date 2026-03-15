@@ -15,10 +15,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, CircleDot, ChevronLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
+import { ShoppingCart, CircleDot, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatRand } from "@/utils/formatRand";
 import PdfPriceOverlayPills from "@/components/PdfPriceOverlayPills";
 import { resolveBaseColumn } from "@/config/supplierPriceColumns";
+import { extractTextItemsFromPdfPage } from "@/components/catalog/quote-builder/pdfTextExtractor";
 
 interface BBox {
   x: number;
