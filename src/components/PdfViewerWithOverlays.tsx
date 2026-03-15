@@ -197,26 +197,28 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
         .eq("id", supplierId)
         .maybeSingle();
 
-      if (supplierRow) {
-        const col = resolveBaseColumn(supplierRow.name, supplierRow.default_price_column);
-        setPriceColumnLabel(col);
-      }
+      const resolvedPriceColumn = resolveBaseColumn(
+        supplierRow?.name || "",
+        supplierRow?.default_price_column || null
+      );
+      setPriceColumnLabel(resolvedPriceColumn);
 
       // Try to load page images from supplier_pdf_pages table first
       const { data: pageRows } = await (supabase.from("supplier_pdf_pages") as any)
-        .select("page_image_url, page_number")
+        .select("id, page_image_url, page_number, pdf_storage_path")
         .eq("supplier_id", supplierId)
         .order("page_number", { ascending: true });
 
-      if (pageRows?.length) {
-        const urls = pageRows
-          .map((r: any) => r.page_image_url)
-          .filter((u: string | null) => !!u);
-        if (urls.length > 0) setPages(urls);
+      const typedPageRows = ((pageRows || []) as SupplierPdfPageRow[]).filter(
+        (row) => !!row.page_image_url
+      );
+
+      if (typedPageRows.length) {
+        setPages(typedPageRows.map((r) => r.page_image_url));
       }
 
       // Fallback: list from storage directly
-      if (!pageRows?.length) {
+      if (!typedPageRows.length) {
         const folderPath = uploadId ? `${supplierId}/${uploadId}` : `${supplierId}`;
         const { data: folders } = await supabase.storage
           .from("supplier-pdf-pages")
@@ -250,6 +252,43 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
         if (allUrls.length > 0) setPages(allUrls);
       }
 
+      const pageHeaderCenters: Record<number, HeaderCenter> = {};
+      if (typedPageRows.length > 0 && resolvedPriceColumn) {
+        const extractedPageCenters = await Promise.all(
+          typedPageRows.map(async (pageRow) => {
+            if (!pageRow.pdf_storage_path) return null;
+            try {
+              const extracted = await extractTextItemsFromPdfPage(
+                pageRow.pdf_storage_path,
+                pageRow.page_number
+              );
+              const headerCenter = findHeaderCenterForPage(
+                extracted.items,
+                extracted.pageWidth,
+                resolvedPriceColumn
+              );
+              if (!headerCenter) return null;
+              return { pageNumber: pageRow.page_number, headerCenter };
+            } catch (error) {
+              console.warn(
+                `[PdfViewerWithOverlays] Unable to derive header center for page ${pageRow.page_number}`,
+                error
+              );
+              return null;
+            }
+          })
+        );
+
+        extractedPageCenters.forEach((item) => {
+          if (!item) return;
+          pageHeaderCenters[item.pageNumber] = item.headerCenter;
+        });
+
+        console.log(
+          `[PdfViewerWithOverlays] Derived header centers for ${Object.keys(pageHeaderCenters).length}/${typedPageRows.length} pages using "${resolvedPriceColumn}"`
+        );
+      }
+
       // Products with bbox data — include rows with row_bbox OR price_bbox
       const { data } = await (supabase.from("supplier_products") as any)
         .select(
@@ -259,8 +298,7 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
         .not("page_number", "is", null);
 
       const raw = (data as OverlayProduct[]) || [];
-      // Enrich products that have row_bbox but no price_bbox
-      setProducts(enrichMissingPriceBboxes(raw));
+      setProducts(enrichMissingPriceBboxes(raw, pageHeaderCenters));
     }
 
     loadData();
