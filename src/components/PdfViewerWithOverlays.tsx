@@ -185,7 +185,7 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
   const [selectedProduct, setSelectedProduct] = useState<OverlayProduct | null>(null);
   const [dimensions, setDimensions] = useState<Record<number, { w: number; h: number }>>({});
   const containerRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [showPills, setShowPills] = useState(false);
+  const [showPills, setShowPills] = useState(true);
   const [priceColumnLabel, setPriceColumnLabel] = useState<string>("");
 
   // Load page images + products + supplier info
