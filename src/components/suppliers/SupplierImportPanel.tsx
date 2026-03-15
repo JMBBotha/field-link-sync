@@ -158,6 +158,25 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
     }
   }, [supplierId, toast]);
 
+  const handleReparse = useCallback(async () => {
+    if (!storedPdfPath) return;
+    setReparseLoading(true);
+    try {
+      const { data: blob, error } = await supabase.storage
+        .from("supplier-pdfs")
+        .download(storedPdfPath);
+      if (error || !blob) throw new Error(error?.message || "Failed to download PDF from storage");
+      const fileName = storedPdfPath.split("/").pop() || "stored.pdf";
+      const file = new File([blob], fileName, { type: "application/pdf" });
+      await runAnalysis(file);
+    } catch (err: any) {
+      console.error("[Re-parse] Failed:", err);
+      toast({ title: "Re-parse failed", description: err.message, variant: "destructive" });
+    } finally {
+      setReparseLoading(false);
+    }
+  }, [storedPdfPath, runAnalysis, toast]);
+
   const handleConfirm = useCallback(async (products: ParsedProduct[]) => {
     setImportConfirming(true);
     try {
