@@ -51,12 +51,83 @@ interface PdfViewerWithOverlaysProps {
 const RIGHT_THRESHOLD = 0.7;
 const CENTER_TOLERANCE = 0.01;
 
+interface SupplierPdfPageRow {
+  id: string;
+  page_number: number;
+  page_image_url: string;
+  pdf_storage_path: string | null;
+}
+
+interface HeaderCenter {
+  centerX: number;
+  width: number;
+}
+
+function normalizeHeaderText(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function findHeaderCenterForPage(
+  items: Awaited<ReturnType<typeof extractTextItemsFromPdfPage>>["items"],
+  pageWidth: number,
+  targetHeader: string
+): HeaderCenter | null {
+  const normalizedTarget = normalizeHeaderText(targetHeader);
+  if (!normalizedTarget || !items.length || !pageWidth) return null;
+
+  const targetTokens = normalizedTarget.split(" ").filter((token) => token.length >= 2);
+  const sorted = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
+
+  const lines: Array<{ y: number; items: typeof items }> = [];
+  sorted.forEach((item) => {
+    const existing = lines.find((line) => Math.abs(line.y - item.y) <= Math.max(8, item.height));
+    if (existing) {
+      existing.items.push(item);
+      return;
+    }
+    lines.push({ y: item.y, items: [item] });
+  });
+
+  for (const line of lines.sort((a, b) => a.y - b.y)) {
+    const lineItems = [...line.items].sort((a, b) => a.x - b.x);
+    const lineText = normalizeHeaderText(lineItems.map((item) => item.text).join(" "));
+    const matchesHeader =
+      lineText.includes(normalizedTarget) ||
+      targetTokens.every((token) => lineText.includes(token));
+
+    if (!matchesHeader) continue;
+
+    const matchedItems = lineItems.filter((item) => {
+      const itemText = normalizeHeaderText(item.text);
+      if (!itemText) return false;
+      return (
+        normalizedTarget.includes(itemText) ||
+        itemText.includes(normalizedTarget) ||
+        targetTokens.some((token) => itemText.includes(token) || token.includes(itemText))
+      );
+    });
+
+    const sourceItems = matchedItems.length > 0 ? matchedItems : lineItems;
+    const minX = Math.min(...sourceItems.map((item) => item.x));
+    const maxX = Math.max(...sourceItems.map((item) => item.x + item.width));
+
+    return {
+      centerX: ((minX + maxX) / 2) / pageWidth,
+      width: Math.max(0.08, (maxX - minX) / pageWidth),
+    };
+  }
+
+  return null;
+}
+
 /**
  * Derive price_bbox for products that have row_bbox but no price_bbox,
- * using a median center_x from sibling products that DO have price_bbox.
+ * using page header centers first, then sibling median as fallback.
  */
-function enrichMissingPriceBboxes(products: OverlayProduct[]): OverlayProduct[] {
-  // Group products by page
+function enrichMissingPriceBboxes(
+  products: OverlayProduct[],
+  pageHeaderCenters: Record<number, HeaderCenter>
+): OverlayProduct[] {
   const byPage: Record<number, OverlayProduct[]> = {};
   for (const p of products) {
     if (p.page_number == null) continue;
@@ -64,30 +135,41 @@ function enrichMissingPriceBboxes(products: OverlayProduct[]): OverlayProduct[] 
   }
 
   return products.map((p) => {
-    // Already has price_bbox — keep it
     if (p.price_bbox) return p;
-    // No row_bbox to derive from
     if (!p.row_bbox || p.page_number == null) return p;
 
+    const headerCenter = pageHeaderCenters[p.page_number];
+    let centerX = headerCenter?.centerX;
+    let width = headerCenter?.width;
+
     const siblings = (byPage[p.page_number] || []).filter((s) => s.price_bbox);
-    if (siblings.length === 0) return p;
 
-    // Use median center_x from siblings
-    const centers = siblings
-      .map((s) => s.price_bbox!.center_x ?? s.price_bbox!.x + s.price_bbox!.width / 2)
-      .sort((a, b) => a - b);
-    const medianCenter = centers[Math.floor(centers.length / 2)];
+    if (!Number.isFinite(centerX)) {
+      if (siblings.length === 0) return p;
+      const siblingCenters = siblings
+        .map((s) => s.price_bbox!.center_x ?? s.price_bbox!.x + s.price_bbox!.width / 2)
+        .sort((a, b) => a - b);
+      centerX = siblingCenters[Math.floor(siblingCenters.length / 2)];
+    }
 
-    // Use median width from siblings
-    const widths = siblings.map((s) => s.price_bbox!.width).sort((a, b) => a - b);
-    const medianWidth = widths[Math.floor(widths.length / 2)];
+    if (!width || width <= 0) {
+      if (siblings.length > 0) {
+        const siblingWidths = siblings.map((s) => s.price_bbox!.width).sort((a, b) => a - b);
+        width = siblingWidths[Math.floor(siblingWidths.length / 2)];
+      } else {
+        width = 0.12;
+      }
+    }
+
+    const safeWidth = Math.min(0.25, Math.max(0.05, width));
+    const safeCenter = Math.min(1, Math.max(0, centerX!));
 
     const derived: BBox = {
-      x: medianCenter - medianWidth / 2,
+      x: Math.max(0, Math.min(1 - safeWidth, safeCenter - safeWidth / 2)),
       y: p.row_bbox.y,
-      width: medianWidth,
+      width: safeWidth,
       height: p.row_bbox.height,
-      center_x: medianCenter,
+      center_x: safeCenter,
     };
 
     return { ...p, price_bbox: derived };
