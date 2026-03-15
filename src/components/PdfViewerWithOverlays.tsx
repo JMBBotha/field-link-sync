@@ -15,10 +15,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, CircleDot, ChevronLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
+import { ShoppingCart, CircleDot, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatRand } from "@/utils/formatRand";
 import PdfPriceOverlayPills from "@/components/PdfPriceOverlayPills";
 import { resolveBaseColumn } from "@/config/supplierPriceColumns";
+import { extractTextItemsFromPdfPage } from "@/components/catalog/quote-builder/pdfTextExtractor";
 
 interface BBox {
   x: number;
@@ -50,12 +51,83 @@ interface PdfViewerWithOverlaysProps {
 const RIGHT_THRESHOLD = 0.7;
 const CENTER_TOLERANCE = 0.01;
 
+interface SupplierPdfPageRow {
+  id: string;
+  page_number: number;
+  page_image_url: string;
+  pdf_storage_path: string | null;
+}
+
+interface HeaderCenter {
+  centerX: number;
+  width: number;
+}
+
+function normalizeHeaderText(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function findHeaderCenterForPage(
+  items: Awaited<ReturnType<typeof extractTextItemsFromPdfPage>>["items"],
+  pageWidth: number,
+  targetHeader: string
+): HeaderCenter | null {
+  const normalizedTarget = normalizeHeaderText(targetHeader);
+  if (!normalizedTarget || !items.length || !pageWidth) return null;
+
+  const targetTokens = normalizedTarget.split(" ").filter((token) => token.length >= 2);
+  const sorted = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
+
+  const lines: Array<{ y: number; items: typeof items }> = [];
+  sorted.forEach((item) => {
+    const existing = lines.find((line) => Math.abs(line.y - item.y) <= Math.max(8, item.height));
+    if (existing) {
+      existing.items.push(item);
+      return;
+    }
+    lines.push({ y: item.y, items: [item] });
+  });
+
+  for (const line of lines.sort((a, b) => a.y - b.y)) {
+    const lineItems = [...line.items].sort((a, b) => a.x - b.x);
+    const lineText = normalizeHeaderText(lineItems.map((item) => item.text).join(" "));
+    const matchesHeader =
+      lineText.includes(normalizedTarget) ||
+      targetTokens.every((token) => lineText.includes(token));
+
+    if (!matchesHeader) continue;
+
+    const matchedItems = lineItems.filter((item) => {
+      const itemText = normalizeHeaderText(item.text);
+      if (!itemText) return false;
+      return (
+        normalizedTarget.includes(itemText) ||
+        itemText.includes(normalizedTarget) ||
+        targetTokens.some((token) => itemText.includes(token) || token.includes(itemText))
+      );
+    });
+
+    const sourceItems = matchedItems.length > 0 ? matchedItems : lineItems;
+    const minX = Math.min(...sourceItems.map((item) => item.x));
+    const maxX = Math.max(...sourceItems.map((item) => item.x + item.width));
+
+    return {
+      centerX: ((minX + maxX) / 2) / pageWidth,
+      width: Math.max(0.08, (maxX - minX) / pageWidth),
+    };
+  }
+
+  return null;
+}
+
 /**
- * Derive price_bbox for products that have row_bbox but no price_bbox,
- * using a median center_x from sibling products that DO have price_bbox.
+ * Derive/normalize price_bbox per row using page header centers first,
+ * then sibling median as fallback when header centers are unavailable.
  */
-function enrichMissingPriceBboxes(products: OverlayProduct[]): OverlayProduct[] {
-  // Group products by page
+function enrichMissingPriceBboxes(
+  products: OverlayProduct[],
+  pageHeaderCenters: Record<number, HeaderCenter>
+): OverlayProduct[] {
   const byPage: Record<number, OverlayProduct[]> = {};
   for (const p of products) {
     if (p.page_number == null) continue;
@@ -63,30 +135,61 @@ function enrichMissingPriceBboxes(products: OverlayProduct[]): OverlayProduct[] 
   }
 
   return products.map((p) => {
-    // Already has price_bbox — keep it
-    if (p.price_bbox) return p;
-    // No row_bbox to derive from
     if (!p.row_bbox || p.page_number == null) return p;
 
+    const headerCenter = pageHeaderCenters[p.page_number];
     const siblings = (byPage[p.page_number] || []).filter((s) => s.price_bbox);
-    if (siblings.length === 0) return p;
 
-    // Use median center_x from siblings
-    const centers = siblings
+    let centerX = headerCenter?.centerX;
+    let width = headerCenter?.width || p.price_bbox?.width;
+
+    if (Number.isFinite(centerX)) {
+      if (!width || width <= 0) {
+        if (siblings.length > 0) {
+          const siblingWidths = siblings.map((s) => s.price_bbox!.width).sort((a, b) => a - b);
+          width = siblingWidths[Math.floor(siblingWidths.length / 2)];
+        } else {
+          width = 0.12;
+        }
+      }
+
+      const safeWidth = Math.min(0.25, Math.max(0.05, width));
+      const safeCenter = Math.min(1, Math.max(0, centerX!));
+
+      return {
+        ...p,
+        price_bbox: {
+          x: Math.max(0, Math.min(1 - safeWidth, safeCenter - safeWidth / 2)),
+          y: p.row_bbox.y,
+          width: safeWidth,
+          height: p.row_bbox.height,
+          center_x: safeCenter,
+        },
+      };
+    }
+
+    if (p.price_bbox) return p;
+
+    if (siblings.length === 0) return p;
+    const siblingCenters = siblings
       .map((s) => s.price_bbox!.center_x ?? s.price_bbox!.x + s.price_bbox!.width / 2)
       .sort((a, b) => a - b);
-    const medianCenter = centers[Math.floor(centers.length / 2)];
+    centerX = siblingCenters[Math.floor(siblingCenters.length / 2)];
 
-    // Use median width from siblings
-    const widths = siblings.map((s) => s.price_bbox!.width).sort((a, b) => a - b);
-    const medianWidth = widths[Math.floor(widths.length / 2)];
+    if (!width || width <= 0) {
+      const siblingWidths = siblings.map((s) => s.price_bbox!.width).sort((a, b) => a - b);
+      width = siblingWidths[Math.floor(siblingWidths.length / 2)] || 0.12;
+    }
+
+    const safeWidth = Math.min(0.25, Math.max(0.05, width));
+    const safeCenter = Math.min(1, Math.max(0, centerX!));
 
     const derived: BBox = {
-      x: medianCenter - medianWidth / 2,
+      x: Math.max(0, Math.min(1 - safeWidth, safeCenter - safeWidth / 2)),
       y: p.row_bbox.y,
-      width: medianWidth,
+      width: safeWidth,
       height: p.row_bbox.height,
-      center_x: medianCenter,
+      center_x: safeCenter,
     };
 
     return { ...p, price_bbox: derived };
@@ -102,7 +205,7 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
   const [selectedProduct, setSelectedProduct] = useState<OverlayProduct | null>(null);
   const [dimensions, setDimensions] = useState<Record<number, { w: number; h: number }>>({});
   const containerRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [showPills, setShowPills] = useState(false);
+  const [showPills, setShowPills] = useState(true);
   const [priceColumnLabel, setPriceColumnLabel] = useState<string>("");
 
   // Load page images + products + supplier info
@@ -114,26 +217,28 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
         .eq("id", supplierId)
         .maybeSingle();
 
-      if (supplierRow) {
-        const col = resolveBaseColumn(supplierRow.name, supplierRow.default_price_column);
-        setPriceColumnLabel(col);
-      }
+      const resolvedPriceColumn = resolveBaseColumn(
+        supplierRow?.name || "",
+        supplierRow?.default_price_column || null
+      );
+      setPriceColumnLabel(resolvedPriceColumn);
 
       // Try to load page images from supplier_pdf_pages table first
       const { data: pageRows } = await (supabase.from("supplier_pdf_pages") as any)
-        .select("page_image_url, page_number")
+        .select("id, page_image_url, page_number, pdf_storage_path")
         .eq("supplier_id", supplierId)
         .order("page_number", { ascending: true });
 
-      if (pageRows?.length) {
-        const urls = pageRows
-          .map((r: any) => r.page_image_url)
-          .filter((u: string | null) => !!u);
-        if (urls.length > 0) setPages(urls);
+      const typedPageRows = ((pageRows || []) as SupplierPdfPageRow[]).filter(
+        (row) => !!row.page_image_url
+      );
+
+      if (typedPageRows.length) {
+        setPages(typedPageRows.map((r) => r.page_image_url));
       }
 
       // Fallback: list from storage directly
-      if (!pageRows?.length) {
+      if (!typedPageRows.length) {
         const folderPath = uploadId ? `${supplierId}/${uploadId}` : `${supplierId}`;
         const { data: folders } = await supabase.storage
           .from("supplier-pdf-pages")
@@ -167,6 +272,43 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
         if (allUrls.length > 0) setPages(allUrls);
       }
 
+      const pageHeaderCenters: Record<number, HeaderCenter> = {};
+      if (typedPageRows.length > 0 && resolvedPriceColumn) {
+        const extractedPageCenters = await Promise.all(
+          typedPageRows.map(async (pageRow) => {
+            if (!pageRow.pdf_storage_path) return null;
+            try {
+              const extracted = await extractTextItemsFromPdfPage(
+                pageRow.pdf_storage_path,
+                pageRow.page_number
+              );
+              const headerCenter = findHeaderCenterForPage(
+                extracted.items,
+                extracted.pageWidth,
+                resolvedPriceColumn
+              );
+              if (!headerCenter) return null;
+              return { pageNumber: pageRow.page_number, headerCenter };
+            } catch (error) {
+              console.warn(
+                `[PdfViewerWithOverlays] Unable to derive header center for page ${pageRow.page_number}`,
+                error
+              );
+              return null;
+            }
+          })
+        );
+
+        extractedPageCenters.forEach((item) => {
+          if (!item) return;
+          pageHeaderCenters[item.pageNumber] = item.headerCenter;
+        });
+
+        console.log(
+          `[PdfViewerWithOverlays] Derived header centers for ${Object.keys(pageHeaderCenters).length}/${typedPageRows.length} pages using "${resolvedPriceColumn}"`
+        );
+      }
+
       // Products with bbox data — include rows with row_bbox OR price_bbox
       const { data } = await (supabase.from("supplier_products") as any)
         .select(
@@ -176,8 +318,7 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
         .not("page_number", "is", null);
 
       const raw = (data as OverlayProduct[]) || [];
-      // Enrich products that have row_bbox but no price_bbox
-      setProducts(enrichMissingPriceBboxes(raw));
+      setProducts(enrichMissingPriceBboxes(raw, pageHeaderCenters));
     }
 
     loadData();
@@ -263,20 +404,19 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
 
   return (
     <div className="space-y-2">
-      <div className="flex justify-end gap-2 items-center">
+      <div className="sticky top-0 z-20 flex justify-end gap-2 items-center bg-background/95 backdrop-blur px-1 py-1 border-b">
         {priceColumnLabel && (
           <span className="text-xs text-muted-foreground">
             Column: <span className="font-medium text-foreground">{priceColumnLabel}</span>
           </span>
         )}
         <Button
-          variant="outline"
+          variant={showPills ? "default" : "outline"}
           size="sm"
           onClick={() => setShowPills((v) => !v)}
-          className="gap-1.5"
+          className="min-w-[110px]"
         >
-          {showPills ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          {showPills ? "Hide Pricing Pills" : "Show Pricing Pills"}
+          {showPills ? "Hide Pills" : "Show Pills"}
         </Button>
       </div>
       {pages.map((pageUrl, pageIdx) => (
