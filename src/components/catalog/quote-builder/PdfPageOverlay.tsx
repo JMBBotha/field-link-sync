@@ -1,4 +1,4 @@
-import { memo, useRef } from "react";
+import { memo } from "react";
 import { Info, Circle, CheckCircle2 } from "lucide-react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
@@ -70,6 +70,8 @@ const RegionBox = memo(({
   baskets,
   basketProductCounts,
   pdfSelection,
+  onHoverStart,
+  onHoverEnd,
 }: {
   region: OverlayRegion;
   onOpenProductInfo?: (product: PaletteProduct) => void;
@@ -77,6 +79,8 @@ const RegionBox = memo(({
   baskets: Basket[];
   basketProductCounts?: Record<string, number>;
   pdfSelection?: PdfSelectionHandlers;
+  onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent) => void;
+  onHoverEnd?: () => void;
 }) => {
   const getProductOrFallback = (): PaletteProduct => region.product ?? buildFallbackProduct(region);
 
@@ -119,26 +123,15 @@ const RegionBox = memo(({
     onOpenProductInfo(getProductOrFallback());
   };
 
-  const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleMouseEnter = () => {
-    hoverTimeout.current = setTimeout(() => {
-      if (onOpenProductInfo) onOpenProductInfo(getProductOrFallback());
-    }, 400);
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    if (onHoverStart) onHoverStart(getProductOrFallback(), e);
   };
 
   const handleMouseLeave = () => {
-    if (hoverTimeout.current) {
-      clearTimeout(hoverTimeout.current);
-      hoverTimeout.current = null;
-    }
+    if (onHoverEnd) onHoverEnd();
   };
 
   const handleRowClick = () => {
-    if (hoverTimeout.current) {
-      clearTimeout(hoverTimeout.current);
-      hoverTimeout.current = null;
-    }
     if (onOpenProductInfo) onOpenProductInfo(getProductOrFallback());
   };
 
@@ -216,6 +209,8 @@ const PdfPageOverlay = ({
   basketProductCounts,
   pdfSelection,
   onOpenProductInfo,
+  onHoverStart,
+  onHoverEnd,
 }: PdfPageOverlayProps) => {
   if (regions.length === 0) return null;
   return (
@@ -229,6 +224,8 @@ const PdfPageOverlay = ({
           baskets={baskets}
           basketProductCounts={basketProductCounts}
           pdfSelection={pdfSelection}
+          onHoverStart={onHoverStart}
+          onHoverEnd={onHoverEnd}
         />
       ))}
     </>
