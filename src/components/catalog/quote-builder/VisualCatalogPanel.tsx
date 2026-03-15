@@ -24,6 +24,7 @@ import PdfPageOverlay from "./PdfPageOverlay";
 import type { OverlayRegion } from "./PdfPageOverlay";
 import { extractAndMatchPage, clearExtractionCache } from "./pdfTextExtractor";
 import { autoCatalogFromRegions } from "./pdfAutoCatalog";
+import PdfPriceAuditLayer from "./PdfPriceAuditLayer";
 import FallbackProductPanel from "./FallbackProductPanel";
 import PdfLinkButton from "./PdfLinkButton";
 import PdfMagnifier from "./PdfMagnifier";
@@ -72,6 +73,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const [visiblePageIndex, setVisiblePageIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [loupeActive, setLoupeActive] = useState(false);
+  const [showPills, setShowPills] = useState(true);
   const pdfAreaRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -689,7 +691,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           scrollContainerRef={scrollContainerRef}
                           onCategoriesDetected={handlePageCategories}
                           totalPages={pages.length}
-                          supplierName={currentSupplierName}
+                          supplierName={supplierNameMap[page.supplier_id] || page.supplier_id}
                           onOpenWizard={onOpenWizard}
                           onHoverStart={handleHoverStart}
                           onHoverMove={handleHoverMove}
@@ -698,6 +700,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           onProductInfoOpen={handleProductInfoOpen}
                           hdMode={hdMode}
                           supplierType={supplierTypeMap[page.supplier_id]}
+                          showPills={showPills}
                           registerRef={(el) => {
                             if (el) pageRefs.current.set(idx, el);
                             else pageRefs.current.delete(idx);
@@ -743,6 +746,15 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                   title="Add product manually"
                 >
                   <Plus className="h-5 w-5" />
+                </Button>
+
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="absolute bottom-4 right-4 z-[70] h-10 px-4 font-semibold shadow-xl"
+                  onClick={() => setShowPills((value) => !value)}
+                >
+                  {showPills ? "Hide Pills" : "Show Pills"}
                 </Button>
               </>
             )}
@@ -849,6 +861,7 @@ interface LazyPdfPageProps {
   onProductInfoOpen?: (product: PaletteProduct) => void;
   hdMode?: boolean;
   supplierType?: string;
+  showPills: boolean;
 }
 
 const LazyPdfPage = ({
@@ -876,6 +889,7 @@ const LazyPdfPage = ({
   onProductInfoOpen,
   hdMode,
   supplierType,
+  showPills,
 }: LazyPdfPageProps) => {
   const queryClient = useQueryClient();
   const divRef = useRef<HTMLDivElement | null>(null);
@@ -1248,6 +1262,17 @@ const LazyPdfPage = ({
             draggable={false}
             style={hdMode ? { imageRendering: "high-quality" as any } : undefined}
           />
+
+          <PdfPriceAuditLayer
+            pageId={page.id}
+            pageNumber={page.page_number}
+            supplierId={page.supplier_id}
+            supplierName={supplierName}
+            pdfStoragePath={page.pdf_storage_path}
+            isVisible={isVisible}
+            showPills={showPills}
+          />
+
           {/* Show overlays for ALL regions (matched + unmatched) — works with live extraction or fallback */}
           {overlayRegions.length > 0 && (
              <PdfPageOverlay
