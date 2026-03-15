@@ -3,6 +3,7 @@
  * highlighting the supplier's target price column (e.g. "Webshop Price" for Daikin).
  *
  * Uses live text extraction to find the header position, with a fallback x-coordinate.
+ * Caches detected x-position per supplier so all pages align consistently.
  */
 
 import { useState, useEffect, memo } from "react";
@@ -15,19 +16,26 @@ interface PdfPriceColumnPillProps {
   pageNumber: number;
 }
 
-interface PillPosition {
-  xPct: number; // center x as percentage (0–100)
-  yPct: number; // y position as percentage
-  label: string;
-}
+// ─── Cross-page cache: ensures all pages for the same supplier use the same x ───
+const supplierXCache = new Map<string, number>();
+
+const PILL_Y_PCT = 0.8; // Fixed y-position near top of every page (percentage)
 
 const PdfPriceColumnPill = memo(({ supplierName, pdfStoragePath, pageNumber }: PdfPriceColumnPillProps) => {
-  const [pill, setPill] = useState<PillPosition | null>(null);
+  const [xPct, setXPct] = useState<number | null>(null);
 
   const config = getSupplierPriceColumnConfig(supplierName);
+  const cacheKey = (supplierName || "").toLowerCase().trim();
 
   useEffect(() => {
     if (!config) return;
+
+    // If we already have a cached x for this supplier, use it immediately
+    const cached = supplierXCache.get(cacheKey);
+    if (cached !== undefined) {
+      setXPct(cached);
+      return;
+    }
 
     let cancelled = false;
 
@@ -46,20 +54,18 @@ const PdfPriceColumnPill = memo(({ supplierName, pdfStoragePath, pageNumber }: P
             }
           } catch { /* use raw URL */ }
 
-          const { items, pageWidth, pageHeight } = await extractTextItemsFromPdfPage(pdfUrl, pageNumber);
+          const { items, pageWidth } = await extractTextItemsFromPdfPage(pdfUrl, pageNumber);
 
           if (pdfUrl !== pdfStoragePath) URL.revokeObjectURL(pdfUrl);
-
           if (cancelled) return;
 
           // Search for header text matching any pattern
           for (const pattern of config.patterns) {
             for (const item of items) {
               if (pattern.test(item.text)) {
-                // Found the header — position pill at its center
-                const centerXPct = ((item.x + item.width / 2) / pageWidth) * 100;
-                const yPct = (item.y / pageHeight) * 100;
-                setPill({ xPct: centerXPct, yPct: Math.max(yPct - 0.5, 0.5), label: config.label });
+                const centerX = ((item.x + item.width / 2) / pageWidth) * 100;
+                supplierXCache.set(cacheKey, centerX);
+                setXPct(centerX);
                 return;
               }
             }
@@ -71,34 +77,38 @@ const PdfPriceColumnPill = memo(({ supplierName, pdfStoragePath, pageNumber }: P
 
       // Fallback: use configured default x position
       if (!cancelled && config.fallbackX) {
-        setPill({ xPct: config.fallbackX * 100, yPct: 1.5, label: config.label });
+        const fallback = config.fallbackX * 100;
+        supplierXCache.set(cacheKey, fallback);
+        setXPct(fallback);
       }
     }
 
     detect();
     return () => { cancelled = true; };
-  }, [supplierName, pdfStoragePath, pageNumber, config]);
+  }, [cacheKey, pdfStoragePath, pageNumber, config]);
 
-  if (!pill) return null;
+  if (!config || xPct === null) return null;
 
   return (
     <div
       className="absolute z-20 pointer-events-none"
       style={{
-        left: `${pill.xPct}%`,
-        top: `${pill.yPct}%`,
+        left: `${xPct}%`,
+        top: `${PILL_Y_PCT}%`,
         transform: "translateX(-50%)",
       }}
     >
       <div
-        className="px-2 py-0.5 rounded-full text-[9px] font-semibold whitespace-nowrap shadow-sm border pointer-events-auto"
+        className="flex items-center justify-center h-5 px-2.5 rounded-full text-[9px] font-bold whitespace-nowrap shadow-sm border"
         style={{
           background: "hsl(var(--success) / 0.15)",
-          borderColor: "hsl(var(--success) / 0.4)",
+          borderColor: "hsl(var(--success) / 0.5)",
           color: "hsl(var(--success))",
+          minWidth: "72px",
+          letterSpacing: "0.02em",
         }}
       >
-        {pill.label}
+        {config.label}
       </div>
     </div>
   );
