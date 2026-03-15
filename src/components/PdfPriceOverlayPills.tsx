@@ -24,6 +24,8 @@ interface PdfPriceOverlayPillsProps {
   containerWidth: number;
   containerHeight: number;
   showPills: boolean;
+  /** Resolved column name for display in tooltip */
+  priceColumnLabel?: string;
 }
 
 const PILL_HEIGHT = 20;
@@ -38,6 +40,7 @@ const PdfPriceOverlayPills: React.FC<PdfPriceOverlayPillsProps> = ({
   containerWidth,
   containerHeight,
   showPills,
+  priceColumnLabel,
 }) => {
   if (!showPills || !containerWidth || !containerHeight) return null;
 
@@ -61,7 +64,7 @@ const PdfPriceOverlayPills: React.FC<PdfPriceOverlayPillsProps> = ({
 
         const pills = [
           { label: formatRand(sellingPrice), border: "hsl(var(--primary))", title: "Sales Price" },
-          { label: formatRand(cost), border: "hsl(142 71% 45%)", title: "Cost" },
+          { label: formatRand(cost), border: "hsl(142 71% 45%)", title: priceColumnLabel || "Cost" },
           { label: `${discountPct.toFixed(1)}%`, border: "hsl(25 95% 53%)", title: "Discount" },
           { label: `${markup}%`, border: "hsl(270 60% 55%)", title: "Markup" },
         ];

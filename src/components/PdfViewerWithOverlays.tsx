@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { ShoppingCart, CircleDot, ChevronLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
 import { formatRand } from "@/utils/formatRand";
 import PdfPriceOverlayPills from "@/components/PdfPriceOverlayPills";
+import { resolveBaseColumn } from "@/config/supplierPriceColumns";
 
 interface BBox {
   x: number;
@@ -49,6 +50,49 @@ interface PdfViewerWithOverlaysProps {
 const RIGHT_THRESHOLD = 0.7;
 const CENTER_TOLERANCE = 0.01;
 
+/**
+ * Derive price_bbox for products that have row_bbox but no price_bbox,
+ * using a median center_x from sibling products that DO have price_bbox.
+ */
+function enrichMissingPriceBboxes(products: OverlayProduct[]): OverlayProduct[] {
+  // Group products by page
+  const byPage: Record<number, OverlayProduct[]> = {};
+  for (const p of products) {
+    if (p.page_number == null) continue;
+    (byPage[p.page_number] ??= []).push(p);
+  }
+
+  return products.map((p) => {
+    // Already has price_bbox — keep it
+    if (p.price_bbox) return p;
+    // No row_bbox to derive from
+    if (!p.row_bbox || p.page_number == null) return p;
+
+    const siblings = (byPage[p.page_number] || []).filter((s) => s.price_bbox);
+    if (siblings.length === 0) return p;
+
+    // Use median center_x from siblings
+    const centers = siblings
+      .map((s) => s.price_bbox!.center_x ?? s.price_bbox!.x + s.price_bbox!.width / 2)
+      .sort((a, b) => a - b);
+    const medianCenter = centers[Math.floor(centers.length / 2)];
+
+    // Use median width from siblings
+    const widths = siblings.map((s) => s.price_bbox!.width).sort((a, b) => a - b);
+    const medianWidth = widths[Math.floor(widths.length / 2)];
+
+    const derived: BBox = {
+      x: medianCenter - medianWidth / 2,
+      y: p.row_bbox.y,
+      width: medianWidth,
+      height: p.row_bbox.height,
+      center_x: medianCenter,
+    };
+
+    return { ...p, price_bbox: derived };
+  });
+}
+
 const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
   supplierId,
   uploadId,
@@ -59,10 +103,22 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
   const [dimensions, setDimensions] = useState<Record<number, { w: number; h: number }>>({});
   const containerRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [showPills, setShowPills] = useState(false);
+  const [priceColumnLabel, setPriceColumnLabel] = useState<string>("");
 
-  // Load page images + products
+  // Load page images + products + supplier info
   useEffect(() => {
     async function loadData() {
+      // Fetch supplier info for price column resolution
+      const { data: supplierRow } = await (supabase.from("suppliers") as any)
+        .select("name, default_price_column")
+        .eq("id", supplierId)
+        .maybeSingle();
+
+      if (supplierRow) {
+        const col = resolveBaseColumn(supplierRow.name, supplierRow.default_price_column);
+        setPriceColumnLabel(col);
+      }
+
       // Try to load page images from supplier_pdf_pages table first
       const { data: pageRows } = await (supabase.from("supplier_pdf_pages") as any)
         .select("page_image_url, page_number")
@@ -111,16 +167,17 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
         if (allUrls.length > 0) setPages(allUrls);
       }
 
-      // Products with bbox data
+      // Products with bbox data — include rows with row_bbox OR price_bbox
       const { data } = await (supabase.from("supplier_products") as any)
         .select(
           "id, product_code, short_name, description, cost_price, cost_excl_vat, default_markup_percent, supplier_discount_percent, row_bbox, price_bbox, page_number"
         )
         .eq("supplier_id", supplierId)
-        .not("page_number", "is", null)
-        .not("price_bbox", "is", null);
+        .not("page_number", "is", null);
 
-      setProducts((data as OverlayProduct[]) || []);
+      const raw = (data as OverlayProduct[]) || [];
+      // Enrich products that have row_bbox but no price_bbox
+      setProducts(enrichMissingPriceBboxes(raw));
     }
 
     loadData();
@@ -206,7 +263,12 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
 
   return (
     <div className="space-y-2">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2 items-center">
+        {priceColumnLabel && (
+          <span className="text-xs text-muted-foreground">
+            Column: <span className="font-medium text-foreground">{priceColumnLabel}</span>
+          </span>
+        )}
         <Button
           variant="outline"
           size="sm"
@@ -238,6 +300,7 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
             containerWidth={dimensions[pageIdx]?.w || 0}
             containerHeight={dimensions[pageIdx]?.h || 0}
             showPills={showPills}
+            priceColumnLabel={priceColumnLabel}
           />
 
           {productsForPage(pageIdx).map((product) => {
@@ -309,7 +372,7 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
             <DialogTitle>Product Details</DialogTitle>
           </DialogHeader>
           {selectedProduct && (
-            <ProductPopupContent product={selectedProduct} />
+            <ProductPopupContent product={selectedProduct} priceColumnLabel={priceColumnLabel} />
           )}
           <Button
             variant="outline"
@@ -324,7 +387,7 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
   );
 };
 
-function ProductPopupContent({ product }: { product: OverlayProduct }) {
+function ProductPopupContent({ product, priceColumnLabel }: { product: OverlayProduct; priceColumnLabel?: string }) {
   const costExVat = product.cost_excl_vat || product.cost_price || 0;
   const markup = product.default_markup_percent || 20;
   const ourCost = costExVat * (1 + markup / 100);
@@ -341,7 +404,7 @@ function ProductPopupContent({ product }: { product: OverlayProduct }) {
       </div>
       <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border">
         <div>
-          <p className="text-xs text-muted-foreground">Supplier Cost (ex-VAT)</p>
+          <p className="text-xs text-muted-foreground">{priceColumnLabel || "Supplier Cost"} (ex-VAT)</p>
           <p className="font-semibold">{formatRand(costExVat)}</p>
         </div>
         <div>
