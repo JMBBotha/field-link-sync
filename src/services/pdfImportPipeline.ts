@@ -118,17 +118,20 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
   console.log(`[Pipeline] Step 3: Validating ${products.length} products...`);
   const validProducts: ParsedProduct[] = [];
   let skipped = 0;
-  const seenCodes = new Set<string>();
+  const seenCodes = new Map<string, number>();
 
   for (const p of products) {
     // Duplicate detection — warn but don't throw; append suffix to keep both rows
     const code = (p.model_number || "").trim().toUpperCase();
     if (code && seenCodes.has(code)) {
-      const dedupCode = `${code}-DUP${seenCodes.size}`;
+      const count = (seenCodes.get(code) || 1) + 1;
+      seenCodes.set(code, count);
+      const dedupCode = `${code}-DUP${count}`;
       warnings.push(`Duplicate product_code "${code}" — renamed to "${dedupCode}"`);
       p.model_number = dedupCode;
+    } else if (code) {
+      seenCodes.set(code, 1);
     }
-    if (code) seenCodes.add(code);
 
     const error = validateProduct({
       product_code: p.model_number,
