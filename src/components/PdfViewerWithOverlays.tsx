@@ -15,8 +15,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, CircleDot, ChevronLeft, ChevronRight } from "lucide-react";
+import { ShoppingCart, CircleDot, ChevronLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
 import { formatRand } from "@/utils/formatRand";
+import PdfPriceOverlayPills from "@/components/PdfPriceOverlayPills";
 
 interface BBox {
   x: number;
@@ -57,6 +58,7 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
   const [selectedProduct, setSelectedProduct] = useState<OverlayProduct | null>(null);
   const [dimensions, setDimensions] = useState<Record<number, { w: number; h: number }>>({});
   const containerRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [showPills, setShowPills] = useState(false);
 
   // Load page images + products
   useEffect(() => {
@@ -204,6 +206,17 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
 
   return (
     <div className="space-y-2">
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowPills((v) => !v)}
+          className="gap-1.5"
+        >
+          {showPills ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {showPills ? "Hide Pricing Pills" : "Show Pricing Pills"}
+        </Button>
+      </div>
       {pages.map((pageUrl, pageIdx) => (
         <div
           key={pageIdx}
@@ -217,6 +230,14 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
             alt={`Page ${pageIdx + 1}`}
             className="w-full h-auto block"
             onLoad={updateDimensions}
+          />
+
+          <PdfPriceOverlayPills
+            products={products}
+            pageIndex={pageIdx}
+            containerWidth={dimensions[pageIdx]?.w || 0}
+            containerHeight={dimensions[pageIdx]?.h || 0}
+            showPills={showPills}
           />
 
           {productsForPage(pageIdx).map((product) => {
