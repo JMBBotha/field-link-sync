@@ -206,6 +206,17 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
 
   return (
     <div className="space-y-2">
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowPills((v) => !v)}
+          className="gap-1.5"
+        >
+          {showPills ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {showPills ? "Hide Pricing Pills" : "Show Pricing Pills"}
+        </Button>
+      </div>
       {pages.map((pageUrl, pageIdx) => (
         <div
           key={pageIdx}
