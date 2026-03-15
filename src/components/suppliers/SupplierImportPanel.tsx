@@ -346,10 +346,8 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
                   onClick={() => {
                     if (activeProductCount > 0) {
                       setPendingFile(null);
+                      setPendingReparse(true);
                       setShowCleanConfirm(true);
-                      // Store a flag to trigger reparse after confirm
-                      pendingFileRef.current = null;
-                      (window as any).__pendingReparse = true;
                     } else {
                       handleReparse();
                     }
