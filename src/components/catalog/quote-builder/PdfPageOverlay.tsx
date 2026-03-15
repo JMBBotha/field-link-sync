@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useRef } from "react";
 import { Info, Circle, CheckCircle2 } from "lucide-react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
@@ -119,10 +119,27 @@ const RegionBox = memo(({
     onOpenProductInfo(getProductOrFallback());
   };
 
-  const handleRowClick = () => {
-    if (onOpenProductInfo) {
-      onOpenProductInfo(getProductOrFallback());
+  const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMouseEnter = () => {
+    hoverTimeout.current = setTimeout(() => {
+      if (onOpenProductInfo) onOpenProductInfo(getProductOrFallback());
+    }, 400);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimeout.current) {
+      clearTimeout(hoverTimeout.current);
+      hoverTimeout.current = null;
     }
+  };
+
+  const handleRowClick = () => {
+    if (hoverTimeout.current) {
+      clearTimeout(hoverTimeout.current);
+      hoverTimeout.current = null;
+    }
+    if (onOpenProductInfo) onOpenProductInfo(getProductOrFallback());
   };
 
   return (
@@ -134,7 +151,8 @@ const RegionBox = memo(({
         width: "100%",
         height: `${region.h_pct}%`,
       }}
-      title={`${region.label} (${region.product_code})`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       onClick={handleRowClick}
     >
       {/* Grey-to-blue gradient with pill-shaped right end */}
