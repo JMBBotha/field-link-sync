@@ -28,6 +28,7 @@ import FallbackProductPanel from "./FallbackProductPanel";
 import PdfLinkButton from "./PdfLinkButton";
 import PdfMagnifier from "./PdfMagnifier";
 import CompactZonesSidebar from "./CompactZonesSidebar";
+import PdfPriceColumnPill from "./PdfPriceColumnPill";
 import EnhancedProductPopup from "./EnhancedProductPopup";
 import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
 
@@ -1248,7 +1249,12 @@ const LazyPdfPage = ({
             draggable={false}
             style={hdMode ? { imageRendering: "high-quality" as any } : undefined}
           />
-          {/* Show overlays for ALL regions (matched + unmatched) — works with live extraction or fallback */}
+          {/* Green pill highlighting the target price column for this supplier */}
+          <PdfPriceColumnPill
+            supplierName={supplierName || page.supplier_id}
+            pdfStoragePath={page.pdf_storage_path}
+            pageNumber={page.page_number}
+          />
           {overlayRegions.length > 0 && (
              <PdfPageOverlay
               regions={overlayRegions}
