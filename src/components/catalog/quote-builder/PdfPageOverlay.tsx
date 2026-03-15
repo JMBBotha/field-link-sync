@@ -119,9 +119,15 @@ const RegionBox = memo(({
     onOpenProductInfo(getProductOrFallback());
   };
 
+  const handleRowClick = () => {
+    if (onOpenProductInfo) {
+      onOpenProductInfo(getProductOrFallback());
+    }
+  };
+
   return (
     <div
-      className="absolute"
+      className="absolute cursor-pointer"
       style={{
         left: "0%",
         top: `${region.y_pct}%`,
@@ -129,6 +135,7 @@ const RegionBox = memo(({
         height: `${region.h_pct}%`,
       }}
       title={`${region.label} (${region.product_code})`}
+      onClick={handleRowClick}
     >
       {/* Grey-to-blue gradient with pill-shaped right end */}
       <div
