@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Loader2, Sparkles, AlertTriangle } from "lucide-react";
+import { Upload, Loader2, Sparkles, AlertTriangle, RotateCcw } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -62,6 +62,23 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
       return count || 0;
     },
   });
+
+  // Check for existing PDF in storage for re-parse
+  const { data: storedPdfPath } = useQuery({
+    queryKey: ["supplier-stored-pdf", supplierId],
+    queryFn: async () => {
+      const { data: files } = await supabase.storage
+        .from("supplier-pdfs")
+        .list(supplierId, { limit: 1, sortBy: { column: "created_at", order: "desc" } });
+      if (files && files.length > 0) {
+        return `${supplierId}/${files[0].name}`;
+      }
+      return null;
+    },
+  });
+
+  const [reparseLoading, setReparseLoading] = useState(false);
+  const [pendingReparse, setPendingReparse] = useState(false);
 
   const { data: lastImport } = useQuery({
     queryKey: ["supplier-last-import", supplierId],
@@ -141,6 +158,25 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
       setImportStage(null);
     }
   }, [supplierId, toast]);
+
+  const handleReparse = useCallback(async () => {
+    if (!storedPdfPath) return;
+    setReparseLoading(true);
+    try {
+      const { data: blob, error } = await supabase.storage
+        .from("supplier-pdfs")
+        .download(storedPdfPath);
+      if (error || !blob) throw new Error(error?.message || "Failed to download PDF from storage");
+      const fileName = storedPdfPath.split("/").pop() || "stored.pdf";
+      const file = new File([blob], fileName, { type: "application/pdf" });
+      await runAnalysis(file);
+    } catch (err: any) {
+      console.error("[Re-parse] Failed:", err);
+      toast({ title: "Re-parse failed", description: err.message, variant: "destructive" });
+    } finally {
+      setReparseLoading(false);
+    }
+  }, [storedPdfPath, runAnalysis, toast]);
 
   const handleConfirm = useCallback(async (products: ParsedProduct[]) => {
     setImportConfirming(true);
@@ -303,6 +339,27 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
                 )}
               </div>
 
+              {storedPdfPath && !importAnalysing && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (activeProductCount > 0) {
+                      setPendingFile(null);
+                      setPendingReparse(true);
+                      setShowCleanConfirm(true);
+                    } else {
+                      handleReparse();
+                    }
+                  }}
+                  disabled={reparseLoading}
+                  className="gap-1.5"
+                >
+                  {reparseLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                  Re-parse existing PDF with AI
+                </Button>
+              )}
+
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 <span>Products: <strong>{activeProductCount}</strong></span>
                 <span>PDFs: <strong>{pdfCount}</strong></span>
@@ -341,6 +398,9 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
               if (pendingFile) {
                 runAnalysis(pendingFile);
                 setPendingFile(null);
+              } else if (pendingReparse) {
+                setPendingReparse(false);
+                handleReparse();
               }
             }}>
               Continue — Clean & Import
