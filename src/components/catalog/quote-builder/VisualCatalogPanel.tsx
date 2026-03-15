@@ -861,6 +861,7 @@ interface LazyPdfPageProps {
   onProductInfoOpen?: (product: PaletteProduct) => void;
   hdMode?: boolean;
   supplierType?: string;
+  showPills: boolean;
 }
 
 const LazyPdfPage = ({
