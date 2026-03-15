@@ -1262,6 +1262,17 @@ const LazyPdfPage = ({
             draggable={false}
             style={hdMode ? { imageRendering: "high-quality" as any } : undefined}
           />
+
+          <PdfPriceAuditLayer
+            pageId={page.id}
+            pageNumber={page.page_number}
+            supplierId={page.supplier_id}
+            supplierName={supplierName}
+            pdfStoragePath={page.pdf_storage_path}
+            isVisible={isVisible}
+            showPills={showPills}
+          />
+
           {/* Show overlays for ALL regions (matched + unmatched) — works with live extraction or fallback */}
           {overlayRegions.length > 0 && (
              <PdfPageOverlay
