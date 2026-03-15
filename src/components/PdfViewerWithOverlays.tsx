@@ -384,7 +384,7 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
 
   return (
     <div className="space-y-2">
-      <div className="flex justify-end gap-2 items-center">
+      <div className="sticky top-0 z-20 flex justify-end gap-2 items-center bg-background/95 backdrop-blur px-1 py-1 border-b">
         {priceColumnLabel && (
           <span className="text-xs text-muted-foreground">
             Column: <span className="font-medium text-foreground">{priceColumnLabel}</span>
