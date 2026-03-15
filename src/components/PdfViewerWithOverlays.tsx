@@ -121,8 +121,8 @@ function findHeaderCenterForPage(
 }
 
 /**
- * Derive price_bbox for products that have row_bbox but no price_bbox,
- * using page header centers first, then sibling median as fallback.
+ * Derive/normalize price_bbox per row using page header centers first,
+ * then sibling median as fallback when header centers are unavailable.
  */
 function enrichMissingPriceBboxes(
   products: OverlayProduct[],
