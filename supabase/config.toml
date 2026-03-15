@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.test-ping]
 verify_jwt = false
+
+[functions.parse-pdf-with-grok]
+verify_jwt = false
