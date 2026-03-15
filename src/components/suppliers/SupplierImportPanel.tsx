@@ -338,6 +338,29 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
                 )}
               </div>
 
+              {storedPdfPath && !importAnalysing && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (activeProductCount > 0) {
+                      setPendingFile(null);
+                      setShowCleanConfirm(true);
+                      // Store a flag to trigger reparse after confirm
+                      pendingFileRef.current = null;
+                      (window as any).__pendingReparse = true;
+                    } else {
+                      handleReparse();
+                    }
+                  }}
+                  disabled={reparseLoading}
+                  className="gap-1.5"
+                >
+                  {reparseLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                  Re-parse existing PDF with AI
+                </Button>
+              )}
+
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 <span>Products: <strong>{activeProductCount}</strong></span>
                 <span>PDFs: <strong>{pdfCount}</strong></span>
