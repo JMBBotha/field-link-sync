@@ -58,7 +58,7 @@ const PdfPriceOverlayPills: React.FC<PdfPriceOverlayPillsProps> = ({
 
   return (
     <>
-      {pageProducts.map((product) => {
+      {pageProductsWithPrice.map((product) => {
         const pb = product.price_bbox!;
         const centerX = (pb.center_x ?? pb.x + pb.width / 2) * containerWidth;
         const baseY = pb.y * containerHeight;
