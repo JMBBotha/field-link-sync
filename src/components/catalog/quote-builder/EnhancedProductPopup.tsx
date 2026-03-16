@@ -58,7 +58,7 @@ const EnhancedProductPopup = ({
 
   const effectiveMarkup = markupOverride ?? product.markup_percent ?? 20;
   const pricing = useMemo(() => getProductPricing({ ...product, markup_percent: effectiveMarkup }), [product, effectiveMarkup]);
-  const price = pricing.sellingPrice || product.cost_incl_vat || 0;
+  
   const inQuoteQty = basketProductCounts[product.id] || 0;
 
   // Position near cursor, clamped to viewport
