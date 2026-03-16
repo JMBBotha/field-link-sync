@@ -17,7 +17,18 @@ interface AreaQuoteSummaryProps {
 }
 
 const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
-  const [markupPercent, setMarkupPercent] = useState(25);
+  // Derive initial markup from the first AC unit's product default_markup_percent
+  const defaultMarkup = useMemo(() => {
+    for (const a of areas) {
+      if (a.acUnits[0]?.product) {
+        const m = (a.acUnits[0].product as any).default_markup_percent ?? (a.acUnits[0].product as any).markup_percent;
+        if (m != null && m > 0) return m;
+      }
+    }
+    return 25;
+  }, []);
+
+  const [markupPercent, setMarkupPercent] = useState(defaultMarkup);
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
 
   const toggleArea = (name: string) => {

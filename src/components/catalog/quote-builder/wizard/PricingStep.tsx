@@ -202,8 +202,21 @@ function EditBundleDialog({
   );
 }
 
+/** Read the product's own markup, falling back to 20% */
+function getProductMarkup(product: any): number {
+  return product?.default_markup_percent ?? product?.markup_percent ?? 20;
+}
+
 export default function PricingStep({ areas, onAreasChange }: Props) {
-  const [globalMarkup, setGlobalMarkup] = useState(30);
+  // Derive initial global markup from the first AC unit's product markup
+  const defaultMarkup = useMemo(() => {
+    for (const a of areas) {
+      if (a.acUnits[0]?.product) return getProductMarkup(a.acUnits[0].product);
+    }
+    return 30;
+  }, []);
+
+  const [globalMarkup, setGlobalMarkup] = useState(defaultMarkup);
   const [pdfReady, setPdfReady] = useState(false);
   const [sending, setSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
@@ -212,7 +225,8 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
   const [areaPricing, setAreaPricing] = useState<Record<string, AreaPricing>>(() => {
     const init: Record<string, AreaPricing> = {};
     for (const a of areas) {
-      init[a.id] = { areaId: a.id, quantity: a.acUnits[0]?.quantity || 1, markupPercent: 30 };
+      const productMarkup = a.acUnits[0]?.product ? getProductMarkup(a.acUnits[0].product) : defaultMarkup;
+      init[a.id] = { areaId: a.id, quantity: a.acUnits[0]?.quantity || 1, markupPercent: productMarkup };
     }
     return init;
   });
