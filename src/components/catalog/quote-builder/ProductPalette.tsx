@@ -331,9 +331,16 @@ function DraggableProductCard({
                       <HighlightText text={product.product_code} searchTerm={searchTerm} />
                     </p>
                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                      <span className="text-xs font-bold text-foreground">
-                        {price > 0 ? `R${price.toLocaleString("en-ZA")}` : "POR"}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-foreground">
+                          {price > 0 ? `R${price.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "POR"}
+                        </span>
+                        {price > 0 && (
+                          <span className="text-[9px] text-muted-foreground">
+                            R{(price * 1.15).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} incl
+                          </span>
+                        )}
+                      </div>
                       {product.sold_in_length && product.price_per_metre && (
                         <Badge
                           variant="outline"
@@ -353,14 +360,11 @@ function DraggableProductCard({
                           Used {usageCount}x
                         </Badge>
                       )}
-                      {product.selling_price > 0 && product.cost_price > 0 && (() => {
-                        const bakedMarkup = ((product.selling_price / product.cost_price) - 1) * 100;
-                        return (
-                          <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 text-primary">
-                            {bakedMarkup.toFixed(0)}% M/Up
-                          </Badge>
-                        );
-                      })()}
+                      {markupPct > 0 && (
+                        <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 text-primary">
+                          {markupPct.toFixed(0)}% M/Up
+                        </Badge>
+                      )}
                     </div>
                   </div>
                   <div className="flex flex-col items-center gap-1 shrink-0">
