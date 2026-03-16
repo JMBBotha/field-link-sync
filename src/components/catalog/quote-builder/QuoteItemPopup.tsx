@@ -141,11 +141,27 @@ const QuoteItemPopup = memo(({ open, onClose, onAdd, prefill, supplierName }: Qu
           </div>
 
           {/* Line total preview */}
-          <div className="flex items-center justify-between pt-2 border-t">
-            <span className="text-xs text-muted-foreground">Line Total</span>
-            <span className="text-sm font-bold text-foreground">
-              R{((parseFloat(unitPrice) || 0) * (parseFloat(quantity) || 1)).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
-            </span>
+          <div className="flex flex-col gap-1 pt-2 border-t">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Line Total (excl VAT)</span>
+              <span className="text-sm font-bold text-foreground">
+                R{((parseFloat(unitPrice) || 0) * (parseFloat(quantity) || 1)).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Line Total (incl 15% VAT)</span>
+              <span className="text-xs font-semibold text-muted-foreground">
+                R{((parseFloat(unitPrice) || 0) * (parseFloat(quantity) || 1) * 1.15).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+            {prefill?.product_id && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Markup</span>
+                <span className="text-xs font-semibold text-primary">
+                  {(prefill as any)?.default_markup_percent ?? (prefill as any)?.markup_percent ?? "—"}%
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
