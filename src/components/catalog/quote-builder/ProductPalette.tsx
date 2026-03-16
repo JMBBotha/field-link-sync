@@ -269,6 +269,8 @@ function DraggableProductCard({
     }
   }, [isDragging]);
 
+  const costPrice = product.cost_price || product.cost_excl_vat || 0;
+  const markupPct = product.default_markup_percent ?? product.markup_percent ?? 20;
   const price = product.selling_price || product.cost_incl_vat || 0;
   const catBg = getCategoryBg(product.product_category);
 
@@ -329,9 +331,16 @@ function DraggableProductCard({
                       <HighlightText text={product.product_code} searchTerm={searchTerm} />
                     </p>
                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                      <span className="text-xs font-bold text-foreground">
-                        {price > 0 ? `R${price.toLocaleString("en-ZA")}` : "POR"}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-foreground">
+                          {price > 0 ? `R${price.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "POR"}
+                        </span>
+                        {price > 0 && (
+                          <span className="text-[9px] text-muted-foreground">
+                            R{(price * 1.15).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} incl
+                          </span>
+                        )}
+                      </div>
                       {product.sold_in_length && product.price_per_metre && (
                         <Badge
                           variant="outline"
@@ -351,14 +360,11 @@ function DraggableProductCard({
                           Used {usageCount}x
                         </Badge>
                       )}
-                      {product.selling_price > 0 && product.cost_price > 0 && (() => {
-                        const bakedMarkup = ((product.selling_price / product.cost_price) - 1) * 100;
-                        return (
-                          <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 text-primary">
-                            {bakedMarkup.toFixed(0)}% M/Up
-                          </Badge>
-                        );
-                      })()}
+                      {markupPct > 0 && (
+                        <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 text-primary">
+                          {markupPct.toFixed(0)}% M/Up
+                        </Badge>
+                      )}
                     </div>
                   </div>
                   <div className="flex flex-col items-center gap-1 shrink-0">
@@ -402,27 +408,30 @@ function DraggableProductCard({
                 </div>
                 <p className="font-mono font-medium text-primary/80">{product.product_code}</p>
                 {(() => {
-                  const costPrice = (product as any).discounted_cost ?? product.cost_price ?? product.cost_excl_vat ?? 0;
-                  const sellPrice = product.selling_price ?? 0;
-                  const bakedMarkup = costPrice > 0 ? ((sellPrice / costPrice) - 1) * 100 : 0;
+                  const cp = (product as any).discounted_cost ?? product.cost_price ?? product.cost_excl_vat ?? 0;
+                  const sp = product.selling_price ?? 0;
+                  const spInclVat = sp * 1.15;
+                  const bakedMarkup = cp > 0 ? ((sp / cp) - 1) * 100 : (product.default_markup_percent ?? product.markup_percent ?? 0);
                   return (
                     <>
                       <div className="flex justify-between">
-                        <span>Buy Price (discounted)</span>
-                        <span className="font-medium">R{costPrice.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span>Cost (excl VAT)</span>
+                        <span className="font-medium">R{cp.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Selling Price</span>
-                        <span className="font-bold">R{sellPrice.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span>Selling (excl VAT)</span>
+                        <span className="font-bold">R{sp.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
-                      {costPrice > 0 && (
-                        <div className="flex items-center justify-between pt-1 border-t">
-                          <span className="text-muted-foreground">Markup</span>
-                          <span className="font-mono font-bold text-primary">
-                            {bakedMarkup.toFixed(1)}%
-                          </span>
-                        </div>
-                      )}
+                      <div className="flex justify-between">
+                        <span>Selling (incl VAT)</span>
+                        <span className="font-semibold text-muted-foreground">R{spInclVat.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex items-center justify-between pt-1 border-t">
+                        <span className="text-muted-foreground">Markup</span>
+                        <span className="font-mono font-bold text-primary">
+                          {bakedMarkup.toFixed(1)}%
+                        </span>
+                      </div>
                     </>
                   );
                 })()}
