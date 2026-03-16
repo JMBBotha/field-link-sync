@@ -213,7 +213,7 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
     for (const a of areas) {
       if (a.acUnits[0]?.product) return getProductMarkup(a.acUnits[0].product);
     }
-    return 30;
+    return 35;
   }, []);
 
   const [globalMarkup, setGlobalMarkup] = useState(defaultMarkup);
