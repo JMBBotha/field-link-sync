@@ -21,11 +21,11 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
   const defaultMarkup = useMemo(() => {
     for (const a of areas) {
       if (a.acUnits[0]?.product) {
-        const m = (a.acUnits[0].product as any).default_markup_percent ?? (a.acUnits[0].product as any).markup_percent;
+        const m = (a.acUnits[0].product as any).default_markup_percent;
         if (m != null && m > 0) return m;
       }
     }
-    return 25;
+    return 35;
   }, [areas]);
 
   const [markupPercent, setMarkupPercent] = useState(defaultMarkup);
