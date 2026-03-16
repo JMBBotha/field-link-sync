@@ -458,9 +458,17 @@ function AreaUnitSelector({
                         {p.short_name || p.product_code} · {btu.toLocaleString()} BTU{p.pipe_size ? ` · ${p.pipe_size}` : ""}
                       </div>
                     </div>
-                    <span className="font-medium shrink-0">
-                      {formatZAR(p.selling_price || p.cost_incl_vat || 0)}
-                    </span>
+                    {(() => {
+                      const cost = p.cost_price || p.cost_excl_vat || (p.cost_incl_vat ? stripVat(p.cost_incl_vat) : 0);
+                      const mk = (p as any).default_markup_percent ?? 35;
+                      const pr = getProductPricing(cost, mk);
+                      return (
+                        <div className="flex flex-col items-end shrink-0">
+                          <span className="font-medium">R{pr.sellingPrice.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="text-[9px] text-muted-foreground">{mk}% M/Up</span>
+                        </div>
+                      );
+                    })()}
                   </button>
                   <ProductInfoDialog product={p} />
                 </div>
