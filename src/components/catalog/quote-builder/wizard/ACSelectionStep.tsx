@@ -302,27 +302,41 @@ function AreaUnitSelector({
       </div>
 
       {/* Currently selected unit */}
-      {selectedUnit && (
+      {selectedUnit && (() => {
+        const p = selectedUnit.product;
+        const cost = p.cost_price || p.cost_excl_vat || (p.cost_incl_vat ? stripVat(p.cost_incl_vat) : 0);
+        const mkup = (p as any).default_markup_percent ?? 35;
+        const pricing = getProductPricing(cost, mkup);
+        return (
         <div className="flex items-center gap-2.5 rounded-lg border border-green-500/30 bg-green-500/5 px-3 py-2.5 text-xs">
-          <ProductThumb product={selectedUnit.product} />
+          <ProductThumb product={p} />
           <Check className="h-3.5 w-3.5 text-green-600 shrink-0" />
-          <PinnedStar pinned={!!(selectedUnit.product as any).is_pinned} />
+          <PinnedStar pinned={!!(p as any).is_pinned} />
           <div className="flex-1 min-w-0">
-            <div className="font-medium truncate">{selectedUnit.product.product_code}</div>
+            <div className="font-medium truncate">{p.product_code}</div>
             <div className="text-muted-foreground flex gap-1 flex-wrap">
-              <span className="truncate">{selectedUnit.product.short_name || selectedUnit.product.product_code}</span>
+              <span className="truncate">{p.short_name || p.product_code}</span>
               <span>·</span>
               <span>{selectedUnit.btu.toLocaleString()} BTU</span>
-              {selectedUnit.product.pipe_size && (<><span>·</span><span>{selectedUnit.product.pipe_size}</span></>)}
+              {p.pipe_size && (<><span>·</span><span>{p.pipe_size}</span></>)}
               <Badge variant="outline" className="text-[10px] px-1 py-0">
                 Bracket: {getBracketSize(selectedUnit.btu)}
               </Badge>
             </div>
           </div>
-          <span className="text-xs font-medium shrink-0">
-            {formatZAR(selectedUnit.product.selling_price || selectedUnit.product.cost_incl_vat || 0)}
-          </span>
-          <ProductInfoDialog product={selectedUnit.product} />
+          <div className="flex flex-col items-end shrink-0 gap-0.5">
+            <span className="text-xs font-bold">
+              R{pricing.sellingPrice.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+            <span className="text-[9px] text-muted-foreground">
+              R{pricing.sellingPriceInclVat.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} incl
+            </span>
+            <Badge variant="secondary" className="text-[9px] px-1 py-0 gap-0.5">
+              <TrendingUp className="h-2.5 w-2.5" />
+              {mkup}% M/Up
+            </Badge>
+          </div>
+          <ProductInfoDialog product={p} />
           <button
             className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-destructive/20 shrink-0 min-h-[24px] min-w-[24px]"
             onClick={() => onRemove(area.id, 0)}
@@ -330,7 +344,8 @@ function AreaUnitSelector({
             <X className="h-3.5 w-3.5 text-destructive" />
           </button>
         </div>
-      )}
+        );
+      })()}
 
       {/* Consumables & Materials (expanded section) */}
       {expanded && totalExtras > 0 && (
