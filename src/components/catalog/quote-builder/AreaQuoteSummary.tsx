@@ -109,7 +109,7 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
   }, [areas, markupPercent]);
 
   const fmt = (n: number) =>
-    n.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    r2(n).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   if (breakdown.areaRows.length === 0) {
     return (
