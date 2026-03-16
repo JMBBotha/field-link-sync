@@ -32,7 +32,7 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
   const prevDefaultRef = useRef(defaultMarkup);
   // Update markup when product data first becomes available
   useEffect(() => {
-    if (defaultMarkup !== prevDefaultRef.current && prevDefaultRef.current === 25) {
+    if (defaultMarkup !== prevDefaultRef.current && prevDefaultRef.current === 35) {
       setMarkupPercent(defaultMarkup);
       prevDefaultRef.current = defaultMarkup;
     }
