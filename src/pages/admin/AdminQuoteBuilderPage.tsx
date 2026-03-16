@@ -185,15 +185,15 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
               </div>
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Subtotal (excl. VAT)</span>
-                <span>R{splitVatFromTotal(summary.grandTotal).subtotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</span>
+                <span>R{subtotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>VAT (15%)</span>
-                <span>R{splitVatFromTotal(summary.grandTotal).vat.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</span>
+                <span>R{vatAmount.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="border-t border-border/60 pt-2 flex justify-between text-sm font-bold text-foreground">
                 <span>Grand Total</span>
-                <span>R{summary.grandTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</span>
+                <span>R{grandTotalInclVat.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</span>
               </div>
             </div>
           </>
