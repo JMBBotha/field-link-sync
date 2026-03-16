@@ -232,9 +232,7 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
   const rows = validProducts.map((p) => {
     const markupPct = p.default_markup_percent || p.markup_percent || PRICING_RULES.defaultMarkupPercent;
     const costPrice = p.cost_price;
-    // Compute selling_price = cost * (1 + markup/100) so quote builder has it
-    const sellingPrice = Math.round(costPrice * (1 + markupPct / 100) * 100) / 100;
-    const sellingPriceInclVat = Math.round(sellingPrice * 1.15 * 100) / 100;
+    // selling_price is a generated column — do NOT insert it
     return {
       supplier_id: supplierId,
       product_code: p.model_number || "UNKNOWN",
