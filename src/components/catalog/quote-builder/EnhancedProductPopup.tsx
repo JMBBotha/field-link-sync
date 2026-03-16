@@ -145,14 +145,26 @@ const EnhancedProductPopup = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-base font-bold text-foreground">
-              R{safeNum(price).toLocaleString("en-ZA")}
-            </span>
+            <div className="flex flex-col">
+              <span className="text-base font-bold text-foreground">
+                R{safeNum(pricing.sellingPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[9px] font-normal text-muted-foreground">excl</span>
+              </span>
+              <span className="text-[10px] text-muted-foreground">
+                R{safeNum(pricing.sellingPriceInclVat).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[9px]">incl VAT</span>
+              </span>
+            </div>
             {product.sold_in_length && product.price_per_metre && (
               <span className="text-[10px] text-orange-600 font-medium border border-orange-400/40 rounded px-1">
                 R{product.price_per_metre.toFixed(2)}/m
               </span>
             )}
+          </div>
+          {/* Always show markup in hover mode */}
+          <div className="flex items-center gap-2 text-[10px]">
+            {(product.cost_price || product.cost_excl_vat || 0) > 0 && (
+              <span className="text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{safeNum(pricing.costExclVat).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
+            )}
+            <span className="text-muted-foreground">M/Up: <span className="font-mono font-semibold text-primary">{pricing.markupPercent.toFixed(1)}%</span></span>
           </div>
           {/* Markup display */}
           {(product.cost_price || product.cost_excl_vat || 0) > 0 && (() => {
