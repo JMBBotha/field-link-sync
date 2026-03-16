@@ -44,10 +44,11 @@ const QuoteSummaryPanel = ({ baskets, onGenerateQuote }: QuoteSummaryPanelProps)
       });
     });
 
-    const { subtotal, vat } = splitVatFromTotal(grandTotal);
+    const subtotal = r2(grandTotal);
+    const vat = r2(grandTotal * VAT_RATE);
     const markup = totalCost > 0 ? ((grandTotal - totalCost) / totalCost) * 100 : 0;
 
-    return { subtotal, vat, grandTotal, markup };
+    return { subtotal, vat, grandTotal: r2(subtotal + vat), markup };
   }, [baskets]);
 
   const markupCapped = Math.min(summary.markup, 55);
