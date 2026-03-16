@@ -133,9 +133,10 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
       }));
       const { data, error } = await (supabase.from("quotes") as any).insert({
         sales_engineer_id: userId, status: "draft",
-        subtotal: splitVatFromTotal(summary.grandTotal).subtotal, vat_rate: VAT_RATE,
-        vat_amount: splitVatFromTotal(summary.grandTotal).vat,
-        total: summary.grandTotal, notes: quoteName, visual_sections: zonesData,
+        subtotal,
+        vat_rate: VAT_RATE,
+        vat_amount: vatAmount,
+        total: grandTotalInclVat,
         ...(selectedClientId ? { customer_id: selectedClientId.startsWith("lead-") ? null : selectedClientId } : {}),
         ...(selectedClient ? { customer_name: selectedClient.name } : {}),
       }).select("id").single();
