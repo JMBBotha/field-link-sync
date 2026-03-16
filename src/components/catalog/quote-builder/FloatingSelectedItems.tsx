@@ -171,9 +171,15 @@ const FloatingSelectedItems = ({ pdfSelection, onClose }: FloatingSelectedItemsP
 
       {/* Total footer */}
       {!minimized && items.length > 0 && (
-        <div className="border-t px-3 py-2 flex items-center justify-between">
-          <span className="text-[11px] font-medium text-muted-foreground">Total</span>
-          <span className="text-sm font-bold text-foreground">R{total.toFixed(2)}</span>
+        <div className="border-t px-3 py-2 space-y-0.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium text-muted-foreground">Total (excl VAT)</span>
+            <span className="text-sm font-bold text-foreground">R{total.toFixed(2)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-muted-foreground">Total (incl VAT)</span>
+            <span className="text-xs font-semibold text-muted-foreground">R{(total * 1.15).toFixed(2)}</span>
+          </div>
         </div>
       )}
 
