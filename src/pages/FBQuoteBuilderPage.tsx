@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
-import { splitVatFromTotal, VAT_RATE } from "@/utils/pricing";
+import { r2, VAT_RATE } from "@/utils/pricing";
 import { useNavigate } from "react-router-dom";
 import {
   Search, Wand2, ChevronUp, ChevronDown, ArrowLeft, FileDown, Save,
@@ -103,6 +103,10 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
     return { totalItems, totalQty, grandTotal, zoneBreakdown };
   }, [baskets]);
 
+  const subtotal = r2(summary.grandTotal);
+  const vatAmount = r2(summary.grandTotal * VAT_RATE);
+  const grandTotalInclVat = r2(subtotal + vatAmount);
+
   const handleExportPDF = () => {
     try {
       generateQuoteBuilderPDF(baskets, quoteName || "Quote");
@@ -131,9 +135,10 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
       }));
       const { data, error } = await (supabase.from("quotes") as any).insert({
         sales_engineer_id: userId, status: "draft",
-        subtotal: splitVatFromTotal(summary.grandTotal).subtotal, vat_rate: VAT_RATE,
-        vat_amount: splitVatFromTotal(summary.grandTotal).vat,
-        total: summary.grandTotal, notes: quoteName, visual_sections: zonesData,
+        subtotal,
+        vat_rate: VAT_RATE,
+        vat_amount: vatAmount,
+        total: grandTotalInclVat, notes: quoteName, visual_sections: zonesData,
       }).select("id").single();
       if (error) throw error;
       setSavedId(data.id);
@@ -175,15 +180,15 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
               </div>
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Subtotal (excl. VAT)</span>
-                <span>R{splitVatFromTotal(summary.grandTotal).subtotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</span>
+                <span>R{subtotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>VAT (15%)</span>
-                <span>R{splitVatFromTotal(summary.grandTotal).vat.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</span>
+                <span>R{vatAmount.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="border-t border-border/60 pt-2 flex justify-between text-sm font-bold text-foreground">
                 <span>Grand Total</span>
-                <span>R{summary.grandTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</span>
+                <span>R{grandTotalInclVat.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</span>
               </div>
             </div>
           </>
