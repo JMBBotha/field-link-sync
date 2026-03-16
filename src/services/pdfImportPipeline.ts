@@ -229,32 +229,43 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
 
   // ── STEP 4: INSERT products ──
   console.log(`[Pipeline] Step 4: Inserting ${validProducts.length} products...`);
-  const rows = validProducts.map((p) => ({
-    supplier_id: supplierId,
-    product_code: p.model_number || "UNKNOWN",
-    short_name: p.short_name || (p.description || "").substring(0, 80),
-    description: p.description || "",
-    category: p.category || "Uncategorized",
-    product_category: p.product_category || p.category || "Uncategorized",
-    cost_price: p.cost_price,
-    cost_excl_vat: p.cost_price,
-    default_markup_percent: p.default_markup_percent || p.markup_percent || PRICING_RULES.defaultMarkupPercent,
-    brand: p.brand || supplierName || "",
-    is_active: true,
-    archived: false,
-    btu_rating: sanitizeInt(p.btu_rating),
-    pipe_size: p.pipe_size || null,
-    refrigerant_type: p.refrigerant_type || null,
-    phase: p.phase || null,
-    kw: sanitizeFloat(p.kw),
-    sold_in_length: p.sold_in_length || false,
-    unit_length: p.unit_length || null,
-    price_per_metre: p.price_per_metre || null,
-    row_bbox: p.row_bbox || null,
-    price_bbox: p.price_bbox || null,
-    page_number: p.page_number || null,
-    ...(pdfUploadId ? { pdf_upload_id: pdfUploadId } : {}),
-  }));
+  const rows = validProducts.map((p) => {
+    const markupPct = p.default_markup_percent || p.markup_percent || PRICING_RULES.defaultMarkupPercent;
+    const costPrice = p.cost_price;
+    // Compute selling_price = cost * (1 + markup/100) so quote builder has it
+    const sellingPrice = Math.round(costPrice * (1 + markupPct / 100) * 100) / 100;
+    const sellingPriceInclVat = Math.round(sellingPrice * 1.15 * 100) / 100;
+    return {
+      supplier_id: supplierId,
+      product_code: p.model_number || "UNKNOWN",
+      short_name: p.short_name || (p.description || "").substring(0, 80),
+      description: p.description || "",
+      category: p.category || "Uncategorized",
+      product_category: p.product_category || p.category || "Uncategorized",
+      cost_price: costPrice,
+      cost_excl_vat: costPrice,
+      selling_price: sellingPrice,
+      sell_price_incl_vat: sellingPriceInclVat,
+      default_markup_percent: markupPct,
+      supplier_discount_percent: p.supplier_discount_percent || 0,
+      markup_percent: markupPct,
+      brand: p.brand || supplierName || "",
+      is_active: true,
+      archived: false,
+      btu_rating: sanitizeInt(p.btu_rating),
+      pipe_size: p.pipe_size || null,
+      refrigerant_type: p.refrigerant_type || null,
+      phase: p.phase || null,
+      kw: sanitizeFloat(p.kw),
+      sold_in_length: p.sold_in_length || false,
+      unit_length: p.unit_length || null,
+      price_per_metre: p.price_per_metre || null,
+      row_bbox: p.row_bbox || null,
+      price_bbox: p.price_bbox || null,
+      page_number: p.page_number || null,
+      ...(pdfUploadId ? { pdf_upload_id: pdfUploadId } : {}),
+    };
+  });
 
   // Final filter: remove any rows with empty product_code
   const cleanRows = rows.filter((r) => r.product_code && r.product_code !== "UNKNOWN" && r.product_code.length >= VALIDATION_RULES.minProductCodeLength);
