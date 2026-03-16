@@ -286,7 +286,6 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
     const basicRows = cleanRows.map((r) => {
       const markupPct = r.default_markup_percent || PRICING_RULES.defaultMarkupPercent;
       const cost = r.cost_price || 0;
-      const sell = Math.round(cost * (1 + markupPct / 100) * 100) / 100;
       return {
         supplier_id: r.supplier_id,
         product_code: r.product_code,
@@ -296,7 +295,8 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
         brand: r.brand,
         cost_price: cost,
         cost_excl_vat: cost,
-        selling_price: sell,
+        default_markup_percent: markupPct,
+        supplier_discount_percent: r.supplier_discount_percent || 0,
         default_markup_percent: markupPct,
         supplier_discount_percent: r.supplier_discount_percent || 0,
         is_active: true,
