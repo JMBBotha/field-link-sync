@@ -3,7 +3,7 @@
  * Shows per-area cost breakdown with itemized counts, markup slider, profit, and grand total.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { VAT_RATE } from "@/utils/pricing";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
