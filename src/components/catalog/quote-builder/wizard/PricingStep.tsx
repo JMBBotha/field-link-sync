@@ -202,9 +202,9 @@ function EditBundleDialog({
   );
 }
 
-/** Read the product's own markup, falling back to 20% */
+/** Read the product's own markup, falling back to 35% */
 function getProductMarkup(product: any): number {
-  return product?.default_markup_percent ?? product?.markup_percent ?? 20;
+  return product?.default_markup_percent ?? 35;
 }
 
 export default function PricingStep({ areas, onAreasChange }: Props) {

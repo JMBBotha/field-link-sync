@@ -140,17 +140,24 @@ export async function autoCatalogFromRegions(
   // Extract brand from supplier name
   const brand = supplierText.trim().replace(/\s+$/, "");
 
-  // Look up brand discount from brand_discounts table
-  let brandDiscountPercent = 20; // default 20%
-  const { data: discountData } = await supabase
-    .from("brand_discounts")
-    .select("discount_percentage")
-    .ilike("brand", `%${brand}%`)
+  // Look up discount and markup from the suppliers table
+  let supplierDiscountPercent = 0;
+  let supplierMarkupPercent = 35; // default 35%
+  const { data: supplierData } = await (supabase.from("suppliers") as any)
+    .select("discount_percent, apply_discount, default_markup_percent")
+    .eq("id", supplierUuid)
     .limit(1);
-  if (discountData && discountData.length > 0) {
-    brandDiscountPercent = discountData[0].discount_percentage;
+  if (supplierData && supplierData.length > 0) {
+    const row = supplierData[0];
+    // Only apply discount if the apply_discount toggle is true
+    if (row.apply_discount && row.discount_percent != null) {
+      supplierDiscountPercent = row.discount_percent;
+    }
+    if (row.default_markup_percent != null) {
+      supplierMarkupPercent = row.default_markup_percent;
+    }
   }
-  console.log(`[autoCatalog] Brand discount for "${brand}": ${brandDiscountPercent}%`);
+  console.log(`[autoCatalog] Supplier discount for "${brand}": ${supplierDiscountPercent}%, markup: ${supplierMarkupPercent}%`);
 
   // Build candidate products
   const candidates: Array<{
@@ -236,11 +243,9 @@ export async function autoCatalogFromRegions(
   for (let i = 0; i < toInsert.length; i += batchSize) {
     const batch = toInsert.slice(i, i + batchSize).map(c => {
       const rawExclVat = c.price;
-      // cost_price = discounted buy price (discount already baked in at import)
-      const costPrice = Math.round(rawExclVat * (1 - brandDiscountPercent / 100) * 100) / 100;
-      // Compute selling_price so quote builder components get the right value
-      const markupPct = 20;
-      const sellingPrice = Math.round(costPrice * (1 + markupPct / 100) * 100) / 100;
+      // cost_price = discounted buy price (discount applied if supplier toggle is on)
+      const costPrice = Math.round(rawExclVat * (1 - supplierDiscountPercent / 100) * 100) / 100;
+      const markupPct = supplierMarkupPercent;
       return {
         supplier_id: supplierUuid,
         product_code: c.sku,
@@ -250,7 +255,7 @@ export async function autoCatalogFromRegions(
         cost_excl_vat: costPrice,
         
         default_markup_percent: markupPct,
-        supplier_discount_percent: brandDiscountPercent,
+        supplier_discount_percent: supplierDiscountPercent,
         brand,
         product_category: productCategory,
         category: productCategory,

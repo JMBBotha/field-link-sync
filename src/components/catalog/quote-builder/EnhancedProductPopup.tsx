@@ -1,24 +1,24 @@
 import { useState, useMemo, useCallback, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Minus, Star, ShoppingBag, X, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Minus, Star, ShoppingBag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getCategoryIcon, getCategoryBg } from "./ProductPalette";
 import { getProductDisplayName } from "./productDisplayUtils";
-import { calcSellingPrice } from "@/utils/pricing";
+import { getProductPricing, stripVat } from "@/utils/pricing";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
-function getProductPricing(product: PaletteProduct) {
+function getPopupPricing(product: PaletteProduct) {
   const cost = product.cost_price || product.cost_excl_vat || 0;
-  const markup = product.default_markup_percent ?? product.markup_percent ?? 20;
+  const markup = product.default_markup_percent ?? 35;
   if (cost <= 0) {
-    const fallbackPrice = product.cost_incl_vat || product.selling_price || 0;
-    return { costExclVat: 0, discountedCost: 0, markupPercent: markup, sellingPrice: fallbackPrice, sellingPriceInclVat: fallbackPrice, supplierDiscountPercent: 0 };
+    // Fallback: if we only have an incl-VAT price, strip VAT first
+    const fallbackRaw = product.cost_incl_vat || 0;
+    const fallbackCost = fallbackRaw > 0 ? stripVat(fallbackRaw) : 0;
+    return getProductPricing(fallbackCost, markup);
   }
-  const { sellingExclVat, sellingInclVat } = calcSellingPrice(cost, markup);
-  const safe = (n: number) => (isFinite(n) && !isNaN(n) ? n : 0);
-  return { costExclVat: cost, discountedCost: cost, markupPercent: markup, sellingPrice: safe(sellingExclVat), sellingPriceInclVat: safe(sellingInclVat), supplierDiscountPercent: 0 };
+  return getProductPricing(cost, markup);
 }
 
 interface EnhancedProductPopupProps {
@@ -52,12 +52,10 @@ const EnhancedProductPopup = ({
 }: EnhancedProductPopupProps) => {
   const safeNum = (n: number) => (isFinite(n) && !isNaN(n) ? n : 0);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
-  const [markupOverride, setMarkupOverride] = useState<number | null>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
-  const effectiveMarkup = markupOverride ?? product.markup_percent ?? 20;
-  const pricing = useMemo(() => getProductPricing({ ...product, markup_percent: effectiveMarkup }), [product, effectiveMarkup]);
+  const pricing = useMemo(() => getPopupPricing(product), [product]);
   
   const inQuoteQty = basketProductCounts[product.id] || 0;
 
@@ -159,13 +157,18 @@ const EnhancedProductPopup = ({
               </span>
             )}
           </div>
-          {/* Always show markup in hover mode */}
-          <div className="flex items-center gap-2 text-[10px]">
-            {(product.cost_price || product.cost_excl_vat || 0) > 0 && (
-              <span className="text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{safeNum(pricing.costExclVat).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
+          {/* Always show cost, markup %, markup amount in hover mode */}
+          <div className="flex items-center gap-2 text-[10px] flex-wrap">
+            {pricing.costPrice > 0 && (
+              <span className="text-muted-foreground">Cost Price (excl VAT): <span className="font-mono font-medium text-foreground">R{safeNum(pricing.costPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
             )}
             <span className="text-muted-foreground">M/Up: <span className="font-mono font-semibold text-primary">{pricing.markupPercent.toFixed(1)}%</span></span>
           </div>
+          {pricing.profit > 0 && (
+            <div className="text-[10px] text-muted-foreground">
+              Markup Amount: <span className="font-mono font-medium text-accent-foreground">R{safeNum(pricing.profit).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+          )}
           {product.brand && (
             <p className="text-xs text-muted-foreground">{product.brand}</p>
           )}
@@ -182,7 +185,7 @@ const EnhancedProductPopup = ({
     return createPortal(content, document.body);
   }
 
-  // ── Click mode: full interactive popup with backdrop & zones ──
+  // ── Click mode: full interactive popup with backdrop & zones ── READ-ONLY pricing
   return (
     <div
       className="fixed inset-0 z-[60]"
@@ -208,7 +211,7 @@ const EnhancedProductPopup = ({
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <div className="flex flex-col">
                 <span className="text-sm font-bold text-foreground">
-                  R{safeNum(pricing.sellingPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[9px] font-normal text-muted-foreground">excl VAT</span>
+                  Sell Price (excl VAT): R{safeNum(pricing.sellingPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
                 <span className="text-[10px] text-muted-foreground">
                   R{safeNum(pricing.sellingPriceInclVat).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[9px]">incl VAT</span>
@@ -228,41 +231,16 @@ const EnhancedProductPopup = ({
                 </Badge>
               )}
             </div>
-            {/* Markup row with +/- controls — always visible */}
-            <div className="flex items-center gap-2 mt-1.5">
-              <span className="text-[10px] text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{safeNum(pricing.costExclVat).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
-              <span className="text-[10px] text-muted-foreground">M/Up:</span>
-              <div className="flex items-center gap-0.5">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-5 w-5"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMarkupOverride(Math.max(0, effectiveMarkup - 5));
-                  }}
-                >
-                  <ChevronDown className="h-3 w-3" />
-                </Button>
-                <span className="text-[11px] font-mono font-semibold text-primary min-w-[40px] text-center">
-                  {pricing.markupPercent.toFixed(1)}%
-                </span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-5 w-5"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMarkupOverride(effectiveMarkup + 5);
-                  }}
-                >
-                  <ChevronUp className="h-3 w-3" />
-                </Button>
-              </div>
-              <span className="text-[10px] font-mono text-foreground ml-auto">
-                → R{safeNum(pricing.sellingPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} excl
-              </span>
+            {/* Read-only pricing info */}
+            <div className="flex items-center gap-3 mt-1.5 flex-wrap text-[10px]">
+              <span className="text-muted-foreground">Cost Price (excl VAT): <span className="font-mono font-medium text-foreground">R{safeNum(pricing.costPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
+              <span className="text-muted-foreground">M/Up: <span className="font-mono font-semibold text-primary">{pricing.markupPercent.toFixed(1)}%</span></span>
             </div>
+            {pricing.profit > 0 && (
+              <div className="text-[10px] text-muted-foreground mt-0.5">
+                Markup Amount (R value): <span className="font-mono font-medium text-accent-foreground">R{safeNum(pricing.profit).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            )}
           </div>
           <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
             <X className="h-4 w-4" />

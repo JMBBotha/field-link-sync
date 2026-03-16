@@ -3,8 +3,8 @@
  * 
  * 3 fields on supplier_products:
  *   cost_price      — what we pay (excl VAT), after any trade discount
- *   default_markup_percent — our markup (e.g. 20, 30)
- *   selling_price   — DB GENERATED: cost_price × (1 + markup/100), excl VAT
+ *   default_markup_percent — our markup (e.g. 20, 30, 35)
+ *   selling_price   — NOT STORED; computed on-the-fly: cost_price × (1 + markup/100), excl VAT
  * 
  * VAT is only added at display/invoice time.
  */
@@ -13,7 +13,7 @@
 export const VAT_RATE = 0.15;
 
 /** Round to 2 decimals */
-const r2 = (n: number) => Math.round(n * 100) / 100;
+export const r2 = (n: number) => Math.round(n * 100) / 100;
 
 // ─── THE ONE PRICING FUNCTION ───
 
@@ -35,7 +35,7 @@ export interface ProductPricing {
   vatAmount: number;
 }
 
-export function getProductPricing(costPrice: number, markupPercent: number = 20): ProductPricing {
+export function getProductPricing(costPrice: number, markupPercent: number = 35): ProductPricing {
   const { sellingExclVat, vatAmount, sellingInclVat } = calcSellingPrice(costPrice, markupPercent);
   return {
     costPrice,
@@ -97,9 +97,10 @@ export interface PricingResult {
 export function calculatePricing(
   costPrice: number,
   discountPercent: number = 0,
-  markupPercent: number = 20
+  markupPercent: number = 35
 ): PricingResult {
-  const discountedCost = r2(costPrice * (1 - discountPercent / 100));
+  // Discount already baked into cost_price at import — do NOT re-apply
+  const discountedCost = costPrice;
   const { sellingExclVat, sellingInclVat } = calcSellingPrice(discountedCost, markupPercent);
   return {
     costExclVat: costPrice,
