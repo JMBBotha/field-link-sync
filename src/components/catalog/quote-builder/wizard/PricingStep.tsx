@@ -202,8 +202,21 @@ function EditBundleDialog({
   );
 }
 
+/** Read the product's own markup, falling back to 20% */
+function getProductMarkup(product: any): number {
+  return product?.default_markup_percent ?? product?.markup_percent ?? 20;
+}
+
 export default function PricingStep({ areas, onAreasChange }: Props) {
-  const [globalMarkup, setGlobalMarkup] = useState(30);
+  // Derive initial global markup from the first AC unit's product markup
+  const defaultMarkup = useMemo(() => {
+    for (const a of areas) {
+      if (a.acUnits[0]?.product) return getProductMarkup(a.acUnits[0].product);
+    }
+    return 30;
+  }, []);
+
+  const [globalMarkup, setGlobalMarkup] = useState(defaultMarkup);
   const [pdfReady, setPdfReady] = useState(false);
   const [sending, setSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
@@ -212,7 +225,8 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
   const [areaPricing, setAreaPricing] = useState<Record<string, AreaPricing>>(() => {
     const init: Record<string, AreaPricing> = {};
     for (const a of areas) {
-      init[a.id] = { areaId: a.id, quantity: a.acUnits[0]?.quantity || 1, markupPercent: 30 };
+      const productMarkup = a.acUnits[0]?.product ? getProductMarkup(a.acUnits[0].product) : defaultMarkup;
+      init[a.id] = { areaId: a.id, quantity: a.acUnits[0]?.quantity || 1, markupPercent: productMarkup };
     }
     return init;
   });
@@ -257,16 +271,42 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
     return area.materials.length > 0 || (area.consumables?.length ?? 0) > 0 || area.brackets.length > 0;
   }, []);
 
-  // Compute totals
+  // Compute totals — include sub-items (materials, consumables, brackets)
   const lineItems = useMemo(() => {
+    const getCost = (p: any) => {
+      if (p?.cost_price > 0) return p.cost_price;
+      if (p?.cost_excl_vat > 0) return p.cost_excl_vat;
+      return p?.selling_price || p?.price_per_metre || 0;
+    };
+
     return areas.map((area) => {
       const unit = area.acUnits[0];
-      if (!unit) return { area, costPrice: 0, quantity: 1, markup: 0, sellingPrice: 0, lineTotal: 0 };
+      if (!unit) return { area, costPrice: 0, quantity: 1, markup: 0, sellingPrice: 0, lineTotal: 0, subItemsTotal: 0 };
       const pricing = getPricing(area.id);
-      const costPrice = unit.product.cost_price || unit.product.cost_excl_vat || 0;
+      const costPrice = getCost(unit.product);
       const { sellingExclVat } = calcSellingPrice(costPrice, pricing.markupPercent);
-      const lineTotal = sellingExclVat * pricing.quantity;
-      return { area, costPrice, quantity: pricing.quantity, markup: pricing.markupPercent, sellingPrice: sellingExclVat, lineTotal };
+      const acLineTotal = sellingExclVat * pricing.quantity;
+
+      // Sub-items: materials, consumables, brackets (apply same markup)
+      let subItemsCost = 0;
+      for (const mat of area.materials) {
+        if (mat.pricingMode === "unit") {
+          subItemsCost += getCost(mat.product) * mat.unitQuantity;
+        } else {
+          const perM = mat.costPerMeter || getCost(mat.product);
+          subItemsCost += mat.totalCost || perM * mat.adjustedLength;
+        }
+      }
+      for (const cons of (area.consumables ?? [])) {
+        subItemsCost += getCost(cons.product) * cons.quantity;
+      }
+      for (const br of area.brackets) {
+        subItemsCost += br.price * br.quantity;
+      }
+      const { sellingExclVat: subSell } = calcSellingPrice(subItemsCost, pricing.markupPercent);
+      const lineTotal = acLineTotal + subSell;
+
+      return { area, costPrice, quantity: pricing.quantity, markup: pricing.markupPercent, sellingPrice: sellingExclVat, lineTotal, subItemsTotal: subSell };
     });
   }, [areas, areaPricing, globalMarkup]);
 

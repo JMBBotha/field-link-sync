@@ -3,7 +3,7 @@
  * Shows per-area cost breakdown with itemized counts, markup slider, profit, and grand total.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { VAT_RATE } from "@/utils/pricing";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
@@ -17,7 +17,27 @@ interface AreaQuoteSummaryProps {
 }
 
 const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
-  const [markupPercent, setMarkupPercent] = useState(25);
+  // Derive initial markup from the first AC unit's product default_markup_percent
+  const defaultMarkup = useMemo(() => {
+    for (const a of areas) {
+      if (a.acUnits[0]?.product) {
+        const m = (a.acUnits[0].product as any).default_markup_percent ?? (a.acUnits[0].product as any).markup_percent;
+        if (m != null && m > 0) return m;
+      }
+    }
+    return 25;
+  }, [areas]);
+
+  const [markupPercent, setMarkupPercent] = useState(defaultMarkup);
+  const prevDefaultRef = useRef(defaultMarkup);
+  // Update markup when product data first becomes available
+  useEffect(() => {
+    if (defaultMarkup !== prevDefaultRef.current && prevDefaultRef.current === 25) {
+      setMarkupPercent(defaultMarkup);
+      prevDefaultRef.current = defaultMarkup;
+    }
+  }, [defaultMarkup]);
+
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
 
   const toggleArea = (name: string) => {
