@@ -202,9 +202,9 @@ function EditBundleDialog({
   );
 }
 
-/** Read the product's own markup, falling back to 20% */
+/** Read the product's own markup, falling back to 35% */
 function getProductMarkup(product: any): number {
-  return product?.default_markup_percent ?? product?.markup_percent ?? 20;
+  return product?.default_markup_percent ?? 35;
 }
 
 export default function PricingStep({ areas, onAreasChange }: Props) {
@@ -213,7 +213,7 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
     for (const a of areas) {
       if (a.acUnits[0]?.product) return getProductMarkup(a.acUnits[0].product);
     }
-    return 30;
+    return 35;
   }, []);
 
   const [globalMarkup, setGlobalMarkup] = useState(defaultMarkup);
@@ -276,7 +276,7 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
     const getCost = (p: any) => {
       if (p?.cost_price > 0) return p.cost_price;
       if (p?.cost_excl_vat > 0) return p.cost_excl_vat;
-      return p?.selling_price || p?.price_per_metre || 0;
+      return 0;
     };
 
     return areas.map((area) => {

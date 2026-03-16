@@ -4,7 +4,7 @@
  */
 
 import { useMemo, useState, useEffect, useRef } from "react";
-import { VAT_RATE } from "@/utils/pricing";
+import { calcSellingPrice, r2, VAT_RATE } from "@/utils/pricing";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
@@ -21,18 +21,18 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
   const defaultMarkup = useMemo(() => {
     for (const a of areas) {
       if (a.acUnits[0]?.product) {
-        const m = (a.acUnits[0].product as any).default_markup_percent ?? (a.acUnits[0].product as any).markup_percent;
+        const m = (a.acUnits[0].product as any).default_markup_percent;
         if (m != null && m > 0) return m;
       }
     }
-    return 25;
+    return 35;
   }, [areas]);
 
   const [markupPercent, setMarkupPercent] = useState(defaultMarkup);
   const prevDefaultRef = useRef(defaultMarkup);
   // Update markup when product data first becomes available
   useEffect(() => {
-    if (defaultMarkup !== prevDefaultRef.current && prevDefaultRef.current === 25) {
+    if (defaultMarkup !== prevDefaultRef.current && prevDefaultRef.current === 35) {
       setMarkupPercent(defaultMarkup);
       prevDefaultRef.current = defaultMarkup;
     }
@@ -53,7 +53,7 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
     const getCost = (p: any) => {
       if (p?.cost_price > 0) return p.cost_price;
       if (p?.cost_excl_vat > 0) return p.cost_excl_vat;
-      return p?.selling_price || p?.price_per_metre || 0;
+      return 0;
     };
 
     const areaRows = areas
@@ -109,7 +109,7 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
   }, [areas, markupPercent]);
 
   const fmt = (n: number) =>
-    n.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    r2(n).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   if (breakdown.areaRows.length === 0) {
     return (
