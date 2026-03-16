@@ -154,9 +154,14 @@ const FloatingSelectedItems = ({ pdfSelection, onClose }: FloatingSelectedItemsP
                     onChange={(e) => pdfSelection.updateSelectedItem(item.code, { quantity: Math.max(0.1, Number(e.target.value)) })}
                     className="h-6 w-16 text-[10px] px-1"
                   />
-                  <span className="text-[10px] font-medium text-foreground ml-auto">
-                    R{((parseFloat(item.price) || 0) * item.quantity).toFixed(2)}
-                  </span>
+                  <div className="flex flex-col items-end ml-auto">
+                    <span className="text-[10px] font-medium text-foreground">
+                      R{((parseFloat(item.price) || 0) * item.quantity).toFixed(2)} <span className="text-[8px] text-muted-foreground">excl</span>
+                    </span>
+                    <span className="text-[9px] text-muted-foreground">
+                      R{((parseFloat(item.price) || 0) * item.quantity * 1.15).toFixed(2)} incl
+                    </span>
+                  </div>
                 </div>
               </div>
             ))
