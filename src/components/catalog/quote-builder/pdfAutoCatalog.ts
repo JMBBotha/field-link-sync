@@ -238,6 +238,9 @@ export async function autoCatalogFromRegions(
       const rawExclVat = c.price;
       // cost_price = discounted buy price (discount already baked in at import)
       const costPrice = Math.round(rawExclVat * (1 - brandDiscountPercent / 100) * 100) / 100;
+      // Compute selling_price so quote builder components get the right value
+      const markupPct = 20;
+      const sellingPrice = Math.round(costPrice * (1 + markupPct / 100) * 100) / 100;
       return {
         supplier_id: supplierUuid,
         product_code: c.sku,
@@ -245,7 +248,9 @@ export async function autoCatalogFromRegions(
         description: c.description,
         cost_price: costPrice,
         cost_excl_vat: costPrice,
-        default_markup_percent: 20,
+        selling_price: sellingPrice,
+        default_markup_percent: markupPct,
+        supplier_discount_percent: brandDiscountPercent,
         brand,
         product_category: productCategory,
         category: productCategory,
