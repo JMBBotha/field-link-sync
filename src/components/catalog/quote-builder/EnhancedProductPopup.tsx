@@ -205,10 +205,15 @@ const EnhancedProductPopup = ({
               {getProductDisplayName(product)}
             </p>
             <p className="text-xs font-mono text-primary/80 mt-0.5">{product.product_code}</p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-sm font-bold text-foreground">
-                R{safeNum(price).toLocaleString("en-ZA")}
-              </span>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-foreground">
+                  R{safeNum(pricing.sellingPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[9px] font-normal text-muted-foreground">excl VAT</span>
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  R{safeNum(pricing.sellingPriceInclVat).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[9px]">incl VAT</span>
+                </span>
+              </div>
               {product.sold_in_length && product.price_per_metre && (
                 <Badge variant="outline" className="text-[9px] px-1 py-0 border-orange-400/40 text-orange-600">
                   R{product.price_per_metre.toFixed(2)}/m
@@ -223,46 +228,41 @@ const EnhancedProductPopup = ({
                 </Badge>
               )}
             </div>
-            {/* Markup row with +/- controls */}
-            {(product.cost_price || product.cost_excl_vat || 0) > 0 && (() => {
-              const p = getProductPricing(product);
-              return (
-              <div className="flex items-center gap-2 mt-1.5">
-                <span className="text-[10px] text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{safeNum(p.discountedCost).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
-                <span className="text-[10px] text-muted-foreground">M/Up:</span>
-                <div className="flex items-center gap-0.5">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-5 w-5"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMarkupOverride(Math.max(0, effectiveMarkup - 5));
-                    }}
-                  >
-                    <ChevronDown className="h-3 w-3" />
-                  </Button>
-                  <span className="text-[11px] font-mono font-semibold text-primary min-w-[40px] text-center">
-                    {pricing.markupPercent.toFixed(1)}%
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-5 w-5"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMarkupOverride(effectiveMarkup + 5);
-                    }}
-                  >
-                    <ChevronUp className="h-3 w-3" />
-                  </Button>
-                </div>
-                <span className="text-[10px] font-mono text-foreground ml-auto">
-                  → R{safeNum(pricing.sellingPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {/* Markup row with +/- controls — always visible */}
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className="text-[10px] text-muted-foreground">Cost: <span className="font-mono font-medium text-foreground">R{safeNum(pricing.costExclVat).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
+              <span className="text-[10px] text-muted-foreground">M/Up:</span>
+              <div className="flex items-center gap-0.5">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-5 w-5"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMarkupOverride(Math.max(0, effectiveMarkup - 5));
+                  }}
+                >
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+                <span className="text-[11px] font-mono font-semibold text-primary min-w-[40px] text-center">
+                  {pricing.markupPercent.toFixed(1)}%
                 </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-5 w-5"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMarkupOverride(effectiveMarkup + 5);
+                  }}
+                >
+                  <ChevronUp className="h-3 w-3" />
+                </Button>
               </div>
-              );
-            })()}
+              <span className="text-[10px] font-mono text-foreground ml-auto">
+                → R{safeNum(pricing.sellingPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} excl
+              </span>
+            </div>
           </div>
           <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
             <X className="h-4 w-4" />
