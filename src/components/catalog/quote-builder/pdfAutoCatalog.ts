@@ -248,7 +248,7 @@ export async function autoCatalogFromRegions(
         description: c.description,
         cost_price: costPrice,
         cost_excl_vat: costPrice,
-        selling_price: sellingPrice,
+        
         default_markup_percent: markupPct,
         supplier_discount_percent: brandDiscountPercent,
         brand,
