@@ -53,7 +53,7 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
     const getCost = (p: any) => {
       if (p?.cost_price > 0) return p.cost_price;
       if (p?.cost_excl_vat > 0) return p.cost_excl_vat;
-      return p?.selling_price || p?.price_per_metre || 0;
+      return 0;
     };
 
     const areaRows = areas
