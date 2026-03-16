@@ -3,7 +3,7 @@ import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatRand } from "@/utils/formatRand";
-import { splitVatFromTotal } from "@/utils/pricing";
+import { r2, VAT_RATE } from "@/utils/pricing";
 import type { Basket } from "../QuoteBuilderTab";
 import { getEffectiveUnitPrices } from "../QuoteBuilderTab";
 
