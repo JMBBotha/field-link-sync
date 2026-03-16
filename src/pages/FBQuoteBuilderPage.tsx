@@ -103,6 +103,10 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
     return { totalItems, totalQty, grandTotal, zoneBreakdown };
   }, [baskets]);
 
+  const subtotal = r2(summary.grandTotal);
+  const vatAmount = r2(summary.grandTotal * VAT_RATE);
+  const grandTotalInclVat = r2(subtotal + vatAmount);
+
   const handleExportPDF = () => {
     try {
       generateQuoteBuilderPDF(baskets, quoteName || "Quote");
