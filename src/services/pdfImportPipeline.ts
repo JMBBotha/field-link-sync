@@ -297,8 +297,6 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
         cost_excl_vat: cost,
         default_markup_percent: markupPct,
         supplier_discount_percent: r.supplier_discount_percent || 0,
-        default_markup_percent: markupPct,
-        supplier_discount_percent: r.supplier_discount_percent || 0,
         is_active: true,
         archived: false,
       };
