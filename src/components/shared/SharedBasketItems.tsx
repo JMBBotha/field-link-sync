@@ -219,6 +219,7 @@ export function RegularItemCard({
       <div className="min-w-0 flex-1">
         <p className="font-medium truncate flex items-center gap-1">
           <span className="truncate">{getProductDisplayName(item.product)}</span>
+          <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up</Badge>
           <ProductInfoDialog product={item.product} />
         </p>
         <div className="flex items-center gap-1.5">

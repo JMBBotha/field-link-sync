@@ -100,10 +100,11 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
     const totalCost = areaRows.reduce((s, r) => s + r.cost, 0);
     const totalItems = areaRows.reduce((s, r) => s + r.totalItems, 0);
     const totalAreas = areaRows.length;
-    const markupAmount = totalCost * (markupPercent / 100);
-    const sellPrice = totalCost + markupAmount;
-    const vatAmount = sellPrice * VAT_RATE;
-    const grandTotal = sellPrice + vatAmount;
+    const { sellingExclVat, vatAmount: vat, sellingInclVat } = calcSellingPrice(totalCost, markupPercent);
+    const markupAmount = r2(sellingExclVat - totalCost);
+    const sellPrice = sellingExclVat;
+    const vatAmount = vat;
+    const grandTotal = sellingInclVat;
 
     return { areaRows, totalCost, totalItems, totalAreas, markupAmount, sellPrice, vatAmount, grandTotal };
   }, [areas, markupPercent]);
