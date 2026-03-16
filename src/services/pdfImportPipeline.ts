@@ -244,8 +244,6 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
       product_category: p.product_category || p.category || "Uncategorized",
       cost_price: costPrice,
       cost_excl_vat: costPrice,
-      selling_price: sellingPrice,
-      sell_price_incl_vat: sellingPriceInclVat,
       default_markup_percent: markupPct,
       supplier_discount_percent: p.supplier_discount_percent || 0,
       markup_percent: markupPct,
