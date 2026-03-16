@@ -287,19 +287,26 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
     insertedCount = 0;
 
     // Fallback: only guaranteed-safe columns
-    const basicRows = cleanRows.map((r) => ({
-      supplier_id: r.supplier_id,
-      product_code: r.product_code,
-      short_name: r.short_name,
-      description: r.description,
-      category: r.category,
-      brand: r.brand,
-      cost_price: r.cost_price || 0,
-      cost_excl_vat: r.cost_excl_vat || 0,
-      default_markup_percent: r.default_markup_percent || PRICING_RULES.defaultMarkupPercent,
-      is_active: true,
-      archived: false,
-    }));
+    const basicRows = cleanRows.map((r) => {
+      const markupPct = r.default_markup_percent || PRICING_RULES.defaultMarkupPercent;
+      const cost = r.cost_price || 0;
+      const sell = Math.round(cost * (1 + markupPct / 100) * 100) / 100;
+      return {
+        supplier_id: r.supplier_id,
+        product_code: r.product_code,
+        short_name: r.short_name,
+        description: r.description,
+        category: r.category,
+        brand: r.brand,
+        cost_price: cost,
+        cost_excl_vat: cost,
+        selling_price: sell,
+        default_markup_percent: markupPct,
+        supplier_discount_percent: r.supplier_discount_percent || 0,
+        is_active: true,
+        archived: false,
+      };
+    });
 
     for (let i = 0; i < basicRows.length; i += 50) {
       const batch = basicRows.slice(i, i + 50);
