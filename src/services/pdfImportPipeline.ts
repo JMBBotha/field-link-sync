@@ -232,9 +232,7 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
   const rows = validProducts.map((p) => {
     const markupPct = p.default_markup_percent || p.markup_percent || PRICING_RULES.defaultMarkupPercent;
     const costPrice = p.cost_price;
-    // Compute selling_price = cost * (1 + markup/100) so quote builder has it
-    const sellingPrice = Math.round(costPrice * (1 + markupPct / 100) * 100) / 100;
-    const sellingPriceInclVat = Math.round(sellingPrice * 1.15 * 100) / 100;
+    // selling_price is a generated column — do NOT insert it
     return {
       supplier_id: supplierId,
       product_code: p.model_number || "UNKNOWN",
@@ -244,8 +242,6 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
       product_category: p.product_category || p.category || "Uncategorized",
       cost_price: costPrice,
       cost_excl_vat: costPrice,
-      selling_price: sellingPrice,
-      sell_price_incl_vat: sellingPriceInclVat,
       default_markup_percent: markupPct,
       supplier_discount_percent: p.supplier_discount_percent || 0,
       markup_percent: markupPct,
@@ -290,7 +286,6 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
     const basicRows = cleanRows.map((r) => {
       const markupPct = r.default_markup_percent || PRICING_RULES.defaultMarkupPercent;
       const cost = r.cost_price || 0;
-      const sell = Math.round(cost * (1 + markupPct / 100) * 100) / 100;
       return {
         supplier_id: r.supplier_id,
         product_code: r.product_code,
@@ -300,7 +295,6 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
         brand: r.brand,
         cost_price: cost,
         cost_excl_vat: cost,
-        selling_price: sell,
         default_markup_percent: markupPct,
         supplier_discount_percent: r.supplier_discount_percent || 0,
         is_active: true,
