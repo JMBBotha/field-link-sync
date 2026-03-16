@@ -144,7 +144,7 @@ export function RegularItemCard({
 }: SharedBasketItemProps) {
   const isLengthItem = item.product.sold_in_length && !!item.product.price_per_metre;
   const [markupAdj, setMarkupAdj] = useState(0);
-  const baseMarkup = (item.product as any).markup_percent ?? 20;
+  const baseMarkup = (item.product as any).default_markup_percent ?? 35;
   const effectiveMarkup = baseMarkup + markupAdj;
 
   const { unitSell: rawUnitSell, isPackItem, packQty } = getEffectiveUnitPrices(item.product);
@@ -166,6 +166,7 @@ export function RegularItemCard({
       <div className="flex items-center gap-1 rounded border bg-background px-1 py-0.5 text-[10px]">
         <div className="min-w-0 flex-1 truncate font-medium flex items-center gap-0.5">
           <span className="truncate">{getProductDisplayName(item.product)}</span>
+          <Badge variant="outline" className="text-[7px] px-1 py-0 h-3 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up</Badge>
           <ProductInfoDialog product={item.product} />
         </div>
         {isLengthItem ? (
@@ -218,6 +219,7 @@ export function RegularItemCard({
       <div className="min-w-0 flex-1">
         <p className="font-medium truncate flex items-center gap-1">
           <span className="truncate">{getProductDisplayName(item.product)}</span>
+          <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up</Badge>
           <ProductInfoDialog product={item.product} />
         </p>
         <div className="flex items-center gap-1.5">
