@@ -26,9 +26,18 @@ const AreaQuoteSummary = ({ areas }: AreaQuoteSummaryProps) => {
       }
     }
     return 25;
-  }, []);
+  }, [areas]);
 
   const [markupPercent, setMarkupPercent] = useState(defaultMarkup);
+  const prevDefaultRef = useRef(defaultMarkup);
+  // Update markup when product data first becomes available
+  useEffect(() => {
+    if (defaultMarkup !== prevDefaultRef.current && prevDefaultRef.current === 25) {
+      setMarkupPercent(defaultMarkup);
+      prevDefaultRef.current = defaultMarkup;
+    }
+  }, [defaultMarkup]);
+
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
 
   const toggleArea = (name: string) => {
