@@ -2,30 +2,22 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
- * vapi-server-event
- * 
- * Receives ALL Vapi server events (status-update, end-of-call-report,
- * tool-calls, etc). We only act on "end-of-call-report" — everything
- * else gets a 200 OK and is ignored.
- * 
- * This replaces Lindy as the lead creation trigger. When a call ends,
- * Vapi sends the full transcript + call data here INSTANTLY.
- * 
- * Vapi payload format:
- * {
- *   "message": {
- *     "type": "end-of-call-report",
- *     "endedReason": "hangup",
- *     "call": { id, phoneNumber, customer, startedAt, endedAt, ... },
- *     "artifact": {
- *       "recording": { url, ... },
- *       "transcript": "AI: ...\nUser: ...",
- *       "messages": [{ role, message }, ...]
- *     }
- *   }
- * }
- * 
- * Also handles "tool-calls" for the lookup_caller function.
+ * vapi-server-event v2.0
+ *
+ * THE SINGLE ENTRY POINT for all Vapi events. This replaces Lindy entirely.
+ *
+ * Handles:
+ * 1. tool-calls → forwards lookup_caller to the lookup-caller function
+ * 2. end-of-call-report → creates lead in FieldLink Sync + sends WhatsApp confirmation
+ * 3. All other events → acknowledged with 200 OK
+ *
+ * Flow:
+ *   Call comes in → Vapi answers (Mandy/Claude) → captures details
+ *   → Call ends → Vapi sends end-of-call-report HERE
+ *   → We create customer + lead → send WhatsApp confirmation → done
+ *
+ * No more Lindy. No more notification queue auth issues.
+ * Direct Twilio WhatsApp send from this server function.
  */
 
 const corsHeaders = {
@@ -33,7 +25,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key",
 };
 
-// Normalize SA phone numbers to +27 format
+// ─── Helpers ───────────────────────────────────────────────
+
 function normalizePhone(phone: string): string {
   if (!phone) return "";
   let digits = phone.replace(/\D/g, "");
@@ -45,7 +38,6 @@ function normalizePhone(phone: string): string {
   return "+" + digits;
 }
 
-// Map priority
 function mapPriority(urgency?: string): string {
   switch (urgency?.toLowerCase()) {
     case "emergency": return "high";
@@ -54,7 +46,6 @@ function mapPriority(urgency?: string): string {
   }
 }
 
-// Extract service type from transcript
 function detectServiceType(transcript: string): string {
   const lower = transcript.toLowerCase();
   if (lower.includes("install") || lower.includes("new aircon") || lower.includes("new air con") || lower.includes("new unit")) return "New Installation";
@@ -64,26 +55,131 @@ function detectServiceType(transcript: string): string {
   return "General Inquiry";
 }
 
-// Extract caller name from messages (look for when user gives name)
-function extractCallerName(messages: any[]): string | null {
-  for (const msg of messages) {
-    if (msg.role === "user") {
-      // Look for "my name is X" or "it's X" or "I'm X" patterns
-      const text = msg.message || msg.content || "";
-      const nameMatch = text.match(/(?:my name is|i'm|i am|this is|it's)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
-      if (nameMatch) return nameMatch[1].trim();
-    }
-  }
-  return null;
+function detectUrgency(transcript: string): string {
+  const lower = transcript.toLowerCase();
+  if (lower.includes("emergency") || lower.includes("urgent") || lower.includes("immediately") || lower.includes("asap")) return "emergency";
+  if (lower.includes("urgent") || lower.includes("soon") || lower.includes("today")) return "urgent";
+  return "normal";
 }
 
-// Check if call was too short to be a real lead (hangups, spam)
+// Extract caller info from Vapi's structured analysis or transcript
+function extractCallerInfo(messages: any[], analysis?: any): {
+  name: string | null;
+  address: string | null;
+  phone_spoken: string | null;
+} {
+  let name: string | null = null;
+  let address: string | null = null;
+  let phone_spoken: string | null = null;
+
+  // Try structured analysis first (from Claude's tool use / structured data)
+  if (analysis?.structuredData) {
+    const sd = analysis.structuredData;
+    name = sd.caller_name || sd.name || null;
+    address = sd.address || sd.caller_address || null;
+  }
+
+  // Fallback: extract from messages
+  for (const msg of messages) {
+    if (msg.role === "user") {
+      const text = msg.message || msg.content || "";
+
+      // Name patterns
+      if (!name) {
+        const nameMatch = text.match(/(?:my name is|i'm|i am|this is|it's|naam is)\s+([A-Z][a-z]+(?:\s+(?:van\s+)?[A-Z][a-z]+)?)/i);
+        if (nameMatch) name = nameMatch[1].trim();
+      }
+
+      // Address patterns (SA-style: number + street, or suburb mentions)
+      if (!address) {
+        const addressMatch = text.match(/(\d+\s+[A-Za-z]+\s+(?:street|road|drive|avenue|lane|crescent|close|way|straat|weg|laan)(?:,?\s+[A-Za-z\s]+)?)/i);
+        if (addressMatch) address = addressMatch[1].trim();
+
+        // Also check for suburb mentions
+        const suburbMatch = text.match(/(?:in|at|from|near)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})(?:\s|,|$)/);
+        if (!address && suburbMatch) address = suburbMatch[1].trim();
+      }
+
+      // Phone number patterns
+      if (!phone_spoken) {
+        const phoneMatch = text.match(/(\+?(?:27|0)\s*\d[\d\s-]{7,12})/);
+        if (phoneMatch) phone_spoken = phoneMatch[1].replace(/[\s-]/g, "");
+      }
+    }
+  }
+
+  return { name, address, phone_spoken };
+}
+
 function isValidLead(durationSeconds: number, messages: any[]): boolean {
   if (durationSeconds < 15) return false;
-  // Count user messages (not system/assistant)
   const userMessages = messages.filter((m: any) => m.role === "user");
   return userMessages.length >= 1;
 }
+
+// ─── WhatsApp via Twilio ───────────────────────────────────
+
+async function sendWhatsAppConfirmation(
+  phone: string,
+  customerName: string,
+  serviceType: string,
+  leadId: string,
+): Promise<{ success: boolean; error?: string }> {
+  const twilioSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+  const twilioAuth = Deno.env.get("TWILIO_AUTH_TOKEN");
+  const twilioWhatsApp = Deno.env.get("TWILIO_WHATSAPP_NUMBER");
+
+  if (!twilioSid || !twilioAuth || !twilioWhatsApp) {
+    console.warn("[vapi-server-event] Twilio not configured — skipping WhatsApp");
+    return { success: false, error: "Twilio credentials not configured" };
+  }
+
+  const firstName = customerName.split(" ")[0] || "there";
+  const normalizedPhone = phone.replace(/\D/g, "");
+
+  // Message body — friendly, asks for address confirmation
+  const body = [
+    `Hi ${firstName}! 👋 Thanks for calling 0800BeCool.`,
+    ``,
+    `We've received your ${serviceType.toLowerCase()} request and a technician will be assigned shortly.`,
+    ``,
+    `Could you please confirm your address so we can get someone to you as quickly as possible?`,
+    `Just reply with your street address and suburb. 🏠`,
+    ``,
+    `Ref: #${leadId.slice(0, 8)}`,
+  ].join("\n");
+
+  try {
+    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
+    const response = await fetch(twilioUrl, {
+      method: "POST",
+      headers: {
+        "Authorization": `Basic ${btoa(`${twilioSid}:${twilioAuth}`)}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        From: `whatsapp:${twilioWhatsApp}`,
+        To: `whatsapp:+${normalizedPhone}`,
+        Body: body,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      console.log(`[vapi-server-event] WhatsApp sent to +${normalizedPhone}, SID: ${result.sid}`);
+      return { success: true };
+    } else {
+      console.error(`[vapi-server-event] WhatsApp failed:`, result.message);
+      return { success: false, error: result.message || `HTTP ${response.status}` };
+    }
+  } catch (err: any) {
+    console.error(`[vapi-server-event] WhatsApp exception:`, err);
+    return { success: false, error: err.message };
+  }
+}
+
+// ─── Main Handler ──────────────────────────────────────────
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -101,154 +197,221 @@ serve(async (req) => {
     const body = await req.json();
     const messageType = body?.message?.type;
 
-    console.log(`[vapi-server-event] Received event: ${messageType}`);
+    console.log(`[vapi-server-event] Event: ${messageType}`);
 
-    // --- Handle tool-calls (for lookup_caller) ---
+    // ─── Handle tool-calls (lookup_caller) ───
     if (messageType === "tool-calls") {
-      const toolCalls = body.message.toolCallList || body.message.toolWithToolCallList || [];
-      
-      for (const toolCall of toolCalls) {
-        const name = toolCall.name || toolCall.function?.name;
+      const toolCallList = body.message.toolCallList || body.message.toolWithToolCallList || [];
+
+      const results: any[] = [];
+
+      for (const toolCall of toolCallList) {
+        const fn = toolCall.function || toolCall;
+        const name = fn.name || "";
+
         if (name === "lookup_caller") {
-          const params = toolCall.parameters || toolCall.function?.parameters || {};
-          const phoneNumber = params.phone_number;
+          const params = fn.parameters || {};
+          const phoneNumber = params.phone_number || "";
+
+          console.log(`[vapi-server-event] lookup_caller for: ${phoneNumber}`);
 
           // Forward to lookup-caller function
           const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
           const apiKey = Deno.env.get("VAPI_WEBHOOK_SECRET")!;
 
-          const lookupResponse = await fetch(
-            `${supabaseUrl}/functions/v1/lookup-caller`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "x-api-key": apiKey,
-              },
-              body: JSON.stringify({ phone_number: phoneNumber }),
-            }
-          );
+          try {
+            const lookupResponse = await fetch(
+              `${supabaseUrl}/functions/v1/lookup-caller`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "x-api-key": apiKey,
+                },
+                body: JSON.stringify({ phone_number: phoneNumber }),
+              }
+            );
 
-          const lookupResult = await lookupResponse.json();
+            const lookupResult = await lookupResponse.json();
 
-          return new Response(JSON.stringify({
-            results: [{
-              toolCallId: toolCall.id || toolCall.toolCall?.id,
-              result: lookupResult.result || "No customer found. Treat as new caller.",
-            }],
-          }), {
-            status: 200,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            results.push({
+              toolCallId: toolCall.id || toolCall.toolCallId,
+              result: lookupResult.result || "No customer found. Treat as new caller and ask for their name.",
+            });
+          } catch (lookupErr: any) {
+            console.error("[vapi-server-event] lookup_caller error:", lookupErr);
+            results.push({
+              toolCallId: toolCall.id || toolCall.toolCallId,
+              result: "Error looking up caller. Treat as new caller and ask for their name.",
+            });
+          }
+        } else {
+          // Unknown tool — return empty result
+          results.push({
+            toolCallId: toolCall.id || toolCall.toolCallId,
+            result: "Tool not recognized.",
           });
         }
       }
 
-      // Unknown tool call — return empty
-      return new Response(JSON.stringify({ results: [] }), {
+      return new Response(JSON.stringify({ results }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // --- Only process end-of-call-report ---
-    if (messageType !== "end-of-call-report") {
-      // Acknowledge all other events (status-update, hang, etc.)
-      return new Response(JSON.stringify({ ok: true }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // ─── Handle end-of-call-report ───
+    if (messageType === "end-of-call-report") {
+      const call = body.message.call || {};
+      const artifact = body.message.artifact || {};
+      const analysis = body.message.analysis || call.analysis || {};
+      const endedReason = body.message.endedReason || "unknown";
+      const summary = body.message.summary || analysis.summary || "";
+      const transcript = artifact.transcript || "";
+      const messages = artifact.messages || [];
+      const recordingUrl = artifact.recording?.url || artifact.recordingUrl || "";
 
-    // --- Process end-of-call-report ---
-    const call = body.message.call || {};
-    const artifact = body.message.artifact || {};
-    const endedReason = body.message.endedReason || "unknown";
-    const summary = body.message.summary || call.analysis?.summary || "";
-    const transcript = artifact.transcript || "";
-    const messages = artifact.messages || [];
-    const recordingUrl = artifact.recording?.url || artifact.recordingUrl || "";
+      // Get caller phone
+      const customerPhone = call.customer?.number || "";
+      const callerPhone = normalizePhone(customerPhone);
 
-    // Get caller phone from Vapi call object
-    const customerPhone = call.customer?.number || "";
-    const callerPhone = normalizePhone(customerPhone);
+      if (!callerPhone) {
+        console.log("[vapi-server-event] No caller phone — skipping");
+        return new Response(JSON.stringify({ ok: true, skipped: "no phone" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
-    if (!callerPhone) {
-      console.log("[vapi-server-event] No caller phone number — skipping");
-      return new Response(JSON.stringify({ ok: true, skipped: "no phone number" }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+      // Calculate duration
+      const startedAt = call.startedAt ? new Date(call.startedAt).getTime() : 0;
+      const endedAt = call.endedAt ? new Date(call.endedAt).getTime() : Date.now();
+      const durationSeconds = startedAt ? Math.round((endedAt - startedAt) / 1000) : 0;
 
-    // Calculate duration
-    const startedAt = call.startedAt ? new Date(call.startedAt).getTime() : 0;
-    const endedAt = call.endedAt ? new Date(call.endedAt).getTime() : Date.now();
-    const durationSeconds = startedAt ? Math.round((endedAt - startedAt) / 1000) : 0;
+      // Skip short calls
+      if (!isValidLead(durationSeconds, messages)) {
+        console.log(`[vapi-server-event] Short call (${durationSeconds}s) — skipping`);
+        return new Response(JSON.stringify({
+          ok: true,
+          skipped: "too short",
+          duration: durationSeconds,
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
-    // Check if this is a real lead (not a hangup or spam)
-    if (!isValidLead(durationSeconds, messages)) {
-      console.log(`[vapi-server-event] Short call (${durationSeconds}s) — skipping lead creation`);
+      // Extract info from conversation
+      const callerInfo = extractCallerInfo(messages, analysis);
+      const callerName = callerInfo.name || "Unknown Caller";
+      const serviceType = detectServiceType(transcript);
+      const urgency = detectUrgency(transcript);
+
+      console.log(`[vapi-server-event] Lead: ${callerName} (${callerPhone}), ${serviceType}, ${urgency}, ${durationSeconds}s`);
+
+      // ─── Create customer + lead via receive-vapi-lead ───
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const apiKey = Deno.env.get("VAPI_WEBHOOK_SECRET")!;
+
+      const leadPayload = {
+        caller_name: callerName,
+        caller_phone: callerPhone,
+        caller_id_phone: callerPhone,
+        service_type: serviceType,
+        address: callerInfo.address || undefined,
+        notes: [
+          summary || `Call transcript (${durationSeconds}s):`,
+          transcript.slice(0, 2000),
+          "",
+          `Ended reason: ${endedReason}`,
+          callerInfo.address ? `Address mentioned: ${callerInfo.address}` : "",
+        ].filter(Boolean).join("\n"),
+        urgency,
+        call_duration_seconds: durationSeconds,
+        call_recording_url: recordingUrl,
+        vapi_call_id: call.id || "",
+        source: "vapi_direct",
+        whatsapp_consent: true,
+      };
+
+      let leadResult: any = {};
+      try {
+        const leadResponse = await fetch(
+          `${supabaseUrl}/functions/v1/receive-vapi-lead`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-api-key": apiKey,
+            },
+            body: JSON.stringify(leadPayload),
+          }
+        );
+        leadResult = await leadResponse.json();
+        console.log(`[vapi-server-event] Lead result:`, JSON.stringify(leadResult));
+      } catch (leadErr: any) {
+        console.error("[vapi-server-event] Lead creation error:", leadErr);
+        leadResult = { success: false, error: leadErr.message };
+      }
+
+      // ─── Send WhatsApp confirmation DIRECTLY (no queue) ───
+      let whatsappResult = { success: false, error: "skipped" };
+
+      if (leadResult.success && leadResult.lead_id && durationSeconds > 15) {
+        whatsappResult = await sendWhatsAppConfirmation(
+          callerPhone,
+          callerName,
+          serviceType,
+          leadResult.lead_id,
+        );
+
+        // Also log the WhatsApp attempt in the notification_logs table
+        try {
+          const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+          const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+          await supabase.from("notification_logs").insert({
+            customer_id: leadResult.customer_id,
+            notification_type: "lead_confirmation",
+            channel: "whatsapp",
+            recipient: callerPhone,
+            status: whatsappResult.success ? "sent" : "failed",
+            error_message: whatsappResult.error || null,
+          }).then(({ error }) => {
+            if (error) console.warn("[vapi-server-event] notification_logs insert error:", error);
+          });
+        } catch (logErr) {
+          console.warn("[vapi-server-event] Could not log notification:", logErr);
+        }
+      }
+
       return new Response(JSON.stringify({
         ok: true,
-        skipped: "call too short or no user interaction",
-        duration_seconds: durationSeconds,
+        event: "end-of-call-report",
+        lead: leadResult,
+        whatsapp: whatsappResult,
+        caller: {
+          name: callerName,
+          phone: callerPhone,
+          service: serviceType,
+          urgency,
+          duration_seconds: durationSeconds,
+        },
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Extract info from the conversation
-    const callerName = extractCallerName(messages) || "Unknown Caller";
-    const serviceType = detectServiceType(transcript);
-
-    console.log(`[vapi-server-event] Processing lead: ${callerName} (${callerPhone}), ${serviceType}, ${durationSeconds}s`);
-
-    // --- Forward to receive-vapi-lead for actual lead creation ---
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const apiKey = Deno.env.get("VAPI_WEBHOOK_SECRET")!;
-
-    const leadPayload = {
-      caller_name: callerName,
-      caller_phone: callerPhone,
-      caller_id_phone: callerPhone,
-      service_type: serviceType,
-      notes: summary || `Call transcript (${durationSeconds}s):\n${transcript.slice(0, 2000)}`,
-      urgency: "normal",
-      call_duration_seconds: durationSeconds,
-      call_recording_url: recordingUrl,
-      vapi_call_id: call.id || "",
-      source: "vapi_direct",
-      whatsapp_consent: true, // Default to true for real conversations
-    };
-
-    const leadResponse = await fetch(
-      `${supabaseUrl}/functions/v1/receive-vapi-lead`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-        },
-        body: JSON.stringify(leadPayload),
-      }
-    );
-
-    const leadResult = await leadResponse.json();
-    console.log(`[vapi-server-event] Lead result:`, JSON.stringify(leadResult));
-
-    return new Response(JSON.stringify({
-      ok: true,
-      event: "end-of-call-report",
-      lead: leadResult,
-    }), {
+    // ─── All other events → 200 OK ───
+    return new Response(JSON.stringify({ ok: true, event: messageType }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
   } catch (error: any) {
     console.error("[vapi-server-event] Error:", error);
-    // Always return 200 to Vapi so it doesn't retry
+    // Always return 200 to Vapi
     return new Response(JSON.stringify({ ok: true, error: error.message }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
