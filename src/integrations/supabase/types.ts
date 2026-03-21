@@ -2693,17 +2693,25 @@ export type Database = {
           full_name: string
           home_base_lat: number | null
           home_base_lng: number | null
+          home_lat: number | null
+          home_lng: number | null
+          home_radius_m: number | null
           id: string
           jobs_limit: number
           last_availability_update: string | null
           location_tracking_enabled: boolean | null
+          max_travel_km: number | null
           onboarding_completed: boolean
           phone: string | null
+          skills: string[] | null
           stripe_customer_id: string | null
           subscription_plan: string
           subscription_status: string
           trial_ends_at: string | null
           updated_at: string | null
+          workshop_address: string | null
+          workshop_lat: number | null
+          workshop_lng: number | null
         }
         Insert: {
           availability_status?: string | null
@@ -2713,17 +2721,25 @@ export type Database = {
           full_name: string
           home_base_lat?: number | null
           home_base_lng?: number | null
+          home_lat?: number | null
+          home_lng?: number | null
+          home_radius_m?: number | null
           id: string
           jobs_limit?: number
           last_availability_update?: string | null
           location_tracking_enabled?: boolean | null
+          max_travel_km?: number | null
           onboarding_completed?: boolean
           phone?: string | null
+          skills?: string[] | null
           stripe_customer_id?: string | null
           subscription_plan?: string
           subscription_status?: string
           trial_ends_at?: string | null
           updated_at?: string | null
+          workshop_address?: string | null
+          workshop_lat?: number | null
+          workshop_lng?: number | null
         }
         Update: {
           availability_status?: string | null
@@ -2733,17 +2749,25 @@ export type Database = {
           full_name?: string
           home_base_lat?: number | null
           home_base_lng?: number | null
+          home_lat?: number | null
+          home_lng?: number | null
+          home_radius_m?: number | null
           id?: string
           jobs_limit?: number
           last_availability_update?: string | null
           location_tracking_enabled?: boolean | null
+          max_travel_km?: number | null
           onboarding_completed?: boolean
           phone?: string | null
+          skills?: string[] | null
           stripe_customer_id?: string | null
           subscription_plan?: string
           subscription_status?: string
           trial_ends_at?: string | null
           updated_at?: string | null
+          workshop_address?: string | null
+          workshop_lat?: number | null
+          workshop_lng?: number | null
         }
         Relationships: [
           {
