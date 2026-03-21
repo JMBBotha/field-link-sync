@@ -38,3 +38,9 @@ verify_jwt = false
 
 [functions.parse-pdf-with-grok]
 verify_jwt = false
+
+[functions.receive-vapi-lead]
+verify_jwt = false
+
+[functions.lookup-caller]
+verify_jwt = false
