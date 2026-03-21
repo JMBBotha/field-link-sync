@@ -2043,6 +2043,8 @@ export type Database = {
           actual_start_time: string | null
           agreement_id: string | null
           assigned_agent_id: string | null
+          assignment_method: string | null
+          assignment_score: number | null
           broadcast_radius_km: number | null
           completed_at: string | null
           created_at: string | null
@@ -2057,6 +2059,7 @@ export type Database = {
           latitude: number
           longitude: number
           notes: string | null
+          offer_count: number | null
           priority: string
           scheduled_date: string | null
           scheduled_time: string | null
@@ -2070,6 +2073,8 @@ export type Database = {
           actual_start_time?: string | null
           agreement_id?: string | null
           assigned_agent_id?: string | null
+          assignment_method?: string | null
+          assignment_score?: number | null
           broadcast_radius_km?: number | null
           completed_at?: string | null
           created_at?: string | null
@@ -2084,6 +2089,7 @@ export type Database = {
           latitude: number
           longitude: number
           notes?: string | null
+          offer_count?: number | null
           priority?: string
           scheduled_date?: string | null
           scheduled_time?: string | null
@@ -2097,6 +2103,8 @@ export type Database = {
           actual_start_time?: string | null
           agreement_id?: string | null
           assigned_agent_id?: string | null
+          assignment_method?: string | null
+          assignment_score?: number | null
           broadcast_radius_km?: number | null
           completed_at?: string | null
           created_at?: string | null
@@ -2111,6 +2119,7 @@ export type Database = {
           latitude?: number
           longitude?: number
           notes?: string | null
+          offer_count?: number | null
           priority?: string
           scheduled_date?: string | null
           scheduled_time?: string | null
@@ -4322,6 +4331,8 @@ export type Database = {
           actual_start_time: string | null
           agreement_id: string | null
           assigned_agent_id: string | null
+          assignment_method: string | null
+          assignment_score: number | null
           broadcast_radius_km: number | null
           completed_at: string | null
           created_at: string | null
@@ -4336,6 +4347,7 @@ export type Database = {
           latitude: number
           longitude: number
           notes: string | null
+          offer_count: number | null
           priority: string
           scheduled_date: string | null
           scheduled_time: string | null
