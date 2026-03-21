@@ -66,7 +66,7 @@ interface LeadDetailSheetProps {
   onAccept: (leadId: string) => Promise<void>;
   onStart: (leadId: string, durationMinutes: number) => Promise<void>;
   onComplete: (leadId: string, equipmentId?: string | null) => Promise<void>;
-  onRelease: (leadId: string) => Promise<void>;
+  onRelease: (leadId: string) => void | Promise<void>;
   currentUserId?: string;
   loadingAction: string | null;
   onLeadUpdated?: () => void;

@@ -355,7 +355,7 @@ serve(async (req) => {
       }
 
       // ─── Send WhatsApp confirmation DIRECTLY (no queue) ───
-      let whatsappResult = { success: false, error: "skipped" };
+      let whatsappResult: { success: boolean; error?: string } = { success: false, error: "skipped" };
 
       if (leadResult.success && leadResult.lead_id && durationSeconds > 15) {
         whatsappResult = await sendWhatsAppConfirmation(
