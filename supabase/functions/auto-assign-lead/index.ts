@@ -2,21 +2,23 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
- * auto-assign-lead
+ * auto-assign-lead v2 — BROADCAST MODEL
  *
- * Called after a lead is created (by receive-vapi-lead or manually).
- * Finds the best available agent using the dispatch scoring function
- * and assigns them. Then notifies the agent via WhatsApp/SMS.
+ * Instead of picking one agent, this broadcasts the lead to ALL nearby
+ * available agents. First to accept wins. The rest get expired.
  *
- * Can be called:
- *   1. Directly via HTTP POST with { lead_id }
- *   2. Via Supabase database webhook on leads INSERT
- *   3. From receive-vapi-lead after creating a lead
+ * Flow:
+ *   1. Lead created with coordinates
+ *   2. This function broadcasts to all agents within radius
+ *   3. Each agent gets a WhatsApp + in-app notification
+ *   4. Agent taps "Accept" in the app → accept_lead() RPC
+ *   5. All other offers expire
+ *   6. If agent drops/releases → release_lead() RPC → back to pool + admin alert
  *
  * POST body:
  * {
  *   lead_id: string (required)
- *   force_agent_id?: string  // Skip scoring, assign to this specific agent
+ *   radius_km?: number (default 30)
  * }
  */
 
@@ -25,22 +27,62 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key",
 };
 
+function normalizePhone(phone: string): string {
+  if (!phone) return "";
+  let digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("0") && digits.length === 10) {
+    digits = "27" + digits.slice(1);
+  } else if (!digits.startsWith("27") && digits.length === 9) {
+    digits = "27" + digits;
+  }
+  return "+" + digits;
+}
+
+async function sendWhatsApp(
+  phone: string,
+  body: string,
+): Promise<boolean> {
+  const twilioSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+  const twilioAuth = Deno.env.get("TWILIO_AUTH_TOKEN");
+  const twilioWhatsApp = Deno.env.get("TWILIO_WHATSAPP_NUMBER");
+
+  if (!twilioSid || !twilioAuth || !twilioWhatsApp) return false;
+
+  const normalized = normalizePhone(phone);
+  const digits = normalized.replace(/\D/g, "");
+
+  try {
+    const response = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Basic ${btoa(`${twilioSid}:${twilioAuth}`)}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          From: `whatsapp:${twilioWhatsApp}`,
+          To: `whatsapp:+${digits}`,
+          Body: body,
+        }),
+      }
+    );
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Auth: accept either service role or webhook secret
+    // Auth
     const apiKey = req.headers.get("x-api-key");
     const expectedKey = Deno.env.get("VAPI_WEBHOOK_SECRET");
-    const authHeader = req.headers.get("Authorization");
-
-    // Allow service-to-service calls (from other edge functions) via x-api-key
-    // or authenticated user calls via Bearer token
-    const isServiceCall = apiKey && expectedKey && apiKey === expectedKey;
-
-    if (!isServiceCall && !authHeader?.startsWith("Bearer ")) {
+    if (!expectedKey || apiKey !== expectedKey) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -52,7 +94,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await req.json();
-    const { lead_id, force_agent_id } = body;
+    const { lead_id, radius_km = 30 } = body;
 
     if (!lead_id) {
       return new Response(JSON.stringify({ error: "lead_id is required" }), {
@@ -61,7 +103,7 @@ serve(async (req) => {
       });
     }
 
-    // Get the lead details
+    // Get lead details for the notification message
     const { data: lead, error: leadError } = await supabase
       .from("leads")
       .select("id, customer_name, customer_phone, customer_address, service_type, priority, status, latitude, longitude, assigned_agent_id, scheduled_date")
@@ -69,18 +111,17 @@ serve(async (req) => {
       .single();
 
     if (leadError || !lead) {
-      return new Response(JSON.stringify({ error: "Lead not found", detail: leadError?.message }), {
+      return new Response(JSON.stringify({ error: "Lead not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Skip if already assigned
-    if (lead.assigned_agent_id && !force_agent_id) {
+    // Skip if already accepted
+    if (lead.assigned_agent_id) {
       return new Response(JSON.stringify({
         success: true,
         message: "Lead already assigned",
-        agent_id: lead.assigned_agent_id,
         skipped: true,
       }), {
         status: 200,
@@ -88,12 +129,11 @@ serve(async (req) => {
       });
     }
 
-    // Skip if lead has no coordinates (address not confirmed yet)
-    if ((!lead.latitude || lead.latitude === 0) && !force_agent_id) {
-      console.log(`[auto-assign] Lead ${lead_id} has no coordinates — skipping auto-assign`);
+    // Skip if no coordinates
+    if (!lead.latitude || lead.latitude === 0) {
       return new Response(JSON.stringify({
         success: true,
-        message: "Lead has no coordinates yet — will auto-assign when address is confirmed",
+        message: "Lead has no coordinates — will broadcast when address confirmed",
         skipped: true,
       }), {
         status: 200,
@@ -101,201 +141,117 @@ serve(async (req) => {
       });
     }
 
-    let assignedAgentId: string | null = null;
-    let assignedAgentName: string | null = null;
-    let assignmentMethod = "manual";
-    let distanceKm: number | null = null;
-    let score: number | null = null;
+    // ─── Broadcast to nearby agents ───
+    console.log(`[broadcast] Lead ${lead_id}: broadcasting within ${radius_km}km`);
 
-    if (force_agent_id) {
-      // Direct assignment
-      const { data: agent } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .eq("id", force_agent_id)
-        .single();
+    const { data: offers, error: broadcastError } = await supabase
+      .rpc("broadcast_lead_to_agents", {
+        p_lead_id: lead_id,
+        p_radius_km: radius_km,
+      });
 
-      assignedAgentId = force_agent_id;
-      assignedAgentName = agent?.full_name || "Unknown";
-      assignmentMethod = "manual";
-    } else {
-      // Auto-assign using dispatch scoring
-      const urgency = lead.priority === "high" ? "urgent" : "normal";
-
-      const { data: candidates, error: dispatchError } = await supabase
-        .rpc("find_best_agent", {
-          p_lead_lat: lead.latitude,
-          p_lead_lng: lead.longitude,
-          p_urgency: urgency,
-          p_service_type: lead.service_type,
-          p_scheduled_date: lead.scheduled_date || null,
-          p_exclude_agent_ids: [],
-        });
-
-      if (dispatchError) {
-        console.error("[auto-assign] Dispatch scoring error:", dispatchError);
-        return new Response(JSON.stringify({
-          success: false,
-          error: "Dispatch scoring failed",
-          detail: dispatchError.message,
-        }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      if (!candidates || candidates.length === 0) {
-        console.log("[auto-assign] No available agents found");
-        return new Response(JSON.stringify({
-          success: true,
-          message: "No available agents found — lead remains unassigned",
-          candidates: 0,
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Pick the top candidate
-      const best = candidates[0];
-      assignedAgentId = best.agent_id;
-      assignedAgentName = best.agent_name;
-      assignmentMethod = best.assignment_method;
-      distanceKm = best.distance_km;
-      score = best.score;
-
-      console.log(`[auto-assign] Best agent: ${assignedAgentName} (${distanceKm?.toFixed(1)}km, method: ${assignmentMethod})`);
-    }
-
-    // Update the lead with the assignment
-    const { error: updateError } = await supabase
-      .from("leads")
-      .update({
-        assigned_agent_id: assignedAgentId,
-        assignment_method: assignmentMethod,
-        assignment_score: score,
-        status: "accepted",  // Move from pending to accepted
-      })
-      .eq("id", lead_id);
-
-    if (updateError) {
-      console.error("[auto-assign] Update error:", updateError);
+    if (broadcastError) {
+      console.error("[broadcast] Error:", broadcastError);
       return new Response(JSON.stringify({
         success: false,
-        error: "Failed to update lead",
-        detail: updateError.message,
+        error: "Broadcast failed",
+        detail: broadcastError.message,
       }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Log the assignment in audit_log
-    await supabase.from("audit_log").insert({
-      table_name: "leads",
-      record_id: lead_id,
-      action: "auto_assign",
-      new_data: {
-        agent_id: assignedAgentId,
-        agent_name: assignedAgentName,
-        method: assignmentMethod,
-        distance_km: distanceKm,
-        score,
-      },
-    }).then(({ error }) => {
-      if (error) console.warn("[auto-assign] Audit log error:", error);
-    });
+    const offerCount = offers?.length || 0;
+    console.log(`[broadcast] ${offerCount} agents notified`);
 
-    // ─── Notify the assigned agent ───
-    let notificationSent = false;
+    // Update lead with offer count
+    await supabase
+      .from("leads")
+      .update({
+        offer_count: offerCount,
+        broadcast_radius_km: radius_km,
+        assignment_method: "broadcast",
+      })
+      .eq("id", lead_id);
 
-    if (assignedAgentId) {
-      // Get agent's phone number
+    // ─── Notify each agent ───
+    const isUrgent = lead.priority === "high";
+    const scheduledText = lead.scheduled_date
+      ? `Scheduled: ${lead.scheduled_date}`
+      : "ASAP";
+
+    let notificationsSent = 0;
+
+    for (const offer of (offers || [])) {
+      const distText = offer.distance_km
+        ? `${offer.distance_km.toFixed(1)}km away`
+        : "";
+
+      // WhatsApp notification
+      const msgBody = [
+        isUrgent ? `🚨 URGENT lead nearby!` : `🔔 New lead available!`,
+        ``,
+        `Customer: ${lead.customer_name || "New customer"}`,
+        `Service: ${lead.service_type || "General"}`,
+        lead.customer_address ? `Area: ${lead.customer_address}` : "",
+        distText ? `Distance: ${distText}` : "",
+        `When: ${scheduledText}`,
+        ``,
+        `Open FieldLink Sync to accept this lead.`,
+        `First to accept gets it!`,
+      ].filter(Boolean).join("\n");
+
+      // Get agent phone
       const { data: agentProfile } = await supabase
         .from("profiles")
-        .select("phone, full_name")
-        .eq("id", assignedAgentId)
+        .select("phone")
+        .eq("id", offer.agent_id)
         .single();
 
       if (agentProfile?.phone) {
-        const twilioSid = Deno.env.get("TWILIO_ACCOUNT_SID");
-        const twilioAuth = Deno.env.get("TWILIO_AUTH_TOKEN");
-        const twilioWhatsApp = Deno.env.get("TWILIO_WHATSAPP_NUMBER");
-
-        if (twilioSid && twilioAuth && twilioWhatsApp) {
-          const phoneDigits = agentProfile.phone.replace(/\D/g, "");
-          const normalizedPhone = phoneDigits.startsWith("0")
-            ? "27" + phoneDigits.slice(1)
-            : phoneDigits.startsWith("27") ? phoneDigits : "27" + phoneDigits;
-
-          const msgBody = [
-            `🔔 New lead assigned to you!`,
-            ``,
-            `Customer: ${lead.customer_name}`,
-            `Service: ${lead.service_type || "General"}`,
-            `Priority: ${lead.priority || "medium"}`,
-            lead.customer_address ? `Address: ${lead.customer_address}` : "",
-            distanceKm ? `Distance: ${distanceKm.toFixed(1)}km from you` : "",
-            ``,
-            `Open FieldLink Sync to accept or reassign.`,
-          ].filter(Boolean).join("\n");
-
-          try {
-            const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
-            const response = await fetch(twilioUrl, {
-              method: "POST",
-              headers: {
-                "Authorization": `Basic ${btoa(`${twilioSid}:${twilioAuth}`)}`,
-                "Content-Type": "application/x-www-form-urlencoded",
-              },
-              body: new URLSearchParams({
-                From: `whatsapp:${twilioWhatsApp}`,
-                To: `whatsapp:+${normalizedPhone}`,
-                Body: msgBody,
-              }),
-            });
-
-            if (response.ok) {
-              notificationSent = true;
-              console.log(`[auto-assign] Agent notified via WhatsApp: +${normalizedPhone}`);
-            } else {
-              const err = await response.json();
-              console.warn(`[auto-assign] WhatsApp notification failed:`, err.message);
-            }
-          } catch (notifErr: any) {
-            console.warn(`[auto-assign] Notification error:`, notifErr.message);
-          }
-        }
+        const sent = await sendWhatsApp(agentProfile.phone, msgBody);
+        if (sent) notificationsSent++;
       }
 
-      // Also create an in-app notification
+      // In-app notification (always)
       await supabase.from("notifications").insert({
-        user_id: assignedAgentId,
-        title: "New Lead Assigned",
-        message: `${lead.customer_name} — ${lead.service_type || "General inquiry"}. ${distanceKm ? distanceKm.toFixed(1) + "km away." : ""}`,
-        type: "lead_assignment",
-        data: { lead_id, distance_km: distanceKm },
-      }).then(({ error }) => {
-        if (error) console.warn("[auto-assign] Notification insert error:", error);
+        user_id: offer.agent_id,
+        title: isUrgent ? "🚨 Urgent Lead Nearby" : "New Lead Available",
+        message: `${lead.customer_name || "Customer"} — ${lead.service_type || "General"}. ${distText}. Tap to accept.`,
+        type: "lead_offer",
+        data: {
+          lead_id,
+          distance_km: offer.distance_km,
+          offer_method: offer.offer_method,
+        },
+      });
+    }
+
+    // If no agents found, alert admin
+    if (offerCount === 0) {
+      await supabase.from("admin_alerts").insert({
+        alert_type: "no_agents_available",
+        severity: "warning",
+        title: "No agents available for lead",
+        message: `Lead for ${lead.customer_name || "Unknown"} (${lead.service_type || "General"}) — no agents found within ${radius_km}km. Manual assignment needed.`,
+        data: { lead_id, radius_km },
       });
     }
 
     return new Response(JSON.stringify({
       success: true,
       lead_id,
-      agent_id: assignedAgentId,
-      agent_name: assignedAgentName,
-      assignment_method: assignmentMethod,
-      distance_km: distanceKm,
-      score,
-      notification_sent: notificationSent,
+      agents_notified: offerCount,
+      whatsapp_sent: notificationsSent,
+      radius_km,
     }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
   } catch (error: any) {
-    console.error("[auto-assign] Error:", error);
+    console.error("[broadcast] Error:", error);
     return new Response(JSON.stringify({
       success: false,
       error: error.message,
