@@ -13,6 +13,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import logo from "@/assets/logo.png";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import LeadDetailSheet from "@/components/LeadDetailSheet";
 import LeadCardProgress from "@/components/LeadCardProgress";
 import AvailabilityIndicator from "@/components/AvailabilityIndicator";
@@ -154,6 +156,9 @@ const FieldAgent = () => {
   // Completed jobs filter
   const completedJobsFilter = useCompletedJobsFilter();
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+  const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
+  const [releaseLeadId, setReleaseLeadId] = useState<string | null>(null);
+  const [releaseReason, setReleaseReason] = useState('');
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const subscription = useSubscription();
@@ -538,14 +543,20 @@ const FieldAgent = () => {
   };
 
   // Release lead back to available pool - Now uses offline-first approach
-  const handleReleaseLead = async (leadId: string) => {
-    setLoadingAction('release');
+  const handleReleaseLead = (leadId: string) => {
+    setReleaseLeadId(leadId);
+    setReleaseReason('');
+    setReleaseDialogOpen(true);
+  };
 
+  const confirmReleaseLead = async () => {
+    if (!releaseLeadId) return;
+    setLoadingAction('release');
     try {
-      await offlineLeads.releaseLead(leadId);
+      await offlineLeads.releaseLead(releaseLeadId, releaseReason || 'No reason provided');
       setDetailSheetOpen(false);
       setMobileTab('available');
-
+      setReleaseDialogOpen(false);
       toast({
         title: "Lead Released",
         description: isOnline ? "Lead is now available for other agents" : "Saved offline - will sync when connected",
@@ -1954,6 +1965,45 @@ const FieldAgent = () => {
           onOpenChange={setShowUpgradeModal}
           reason={subscription.isExpired ? "trial_expired" : "limit_reached"}
         />
+
+        {/* Release Lead Reason Dialog */}
+        <Dialog open={releaseDialogOpen} onOpenChange={setReleaseDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Release Lead</DialogTitle>
+              <DialogDescription>
+                Please provide a reason for releasing this lead. This will be logged and reviewed by admin.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                {['Too far away', 'Schedule conflict', 'Not my skill set', 'Customer request'].map((reason) => (
+                  <Button
+                    key={reason}
+                    variant={releaseReason === reason ? "default" : "outline"}
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => setReleaseReason(reason)}
+                  >
+                    {reason}
+                  </Button>
+                ))}
+              </div>
+              <Textarea
+                placeholder="Or type your own reason..."
+                value={releaseReason}
+                onChange={(e) => setReleaseReason(e.target.value)}
+                rows={2}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setReleaseDialogOpen(false)}>Cancel</Button>
+              <Button variant="destructive" onClick={confirmReleaseLead} disabled={!!loadingAction}>
+                {loadingAction === 'release' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Release Lead'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Fixed Bottom Navigation - Mobile Only */}
         {isMobile && (

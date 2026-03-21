@@ -67,6 +67,50 @@ serve(async (req: Request) => {
       const from = message.from;
       const text = message.text.body.trim().toLowerCase();
 
+      // Check if this is an address reply for a pending lead (before quote flow)
+      const webhookSecret = Deno.env.get("VAPI_WEBHOOK_SECRET");
+
+      if (webhookSecret) {
+        // Check if there's a pending lead for this phone number
+        const normalizedFrom = from.startsWith("27") ? "+" + from : "+27" + from.replace(/^0/, "");
+        const { data: pendingLead } = await supabase
+          .from("leads")
+          .select("id, customer_address")
+          .eq("customer_phone", normalizedFrom)
+          .in("status", ["pending", "new"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        // If there's a pending lead with no confirmed address, route to address handler
+        if (pendingLead && (!pendingLead.customer_address || pendingLead.customer_address.includes("pending"))) {
+          try {
+            const addressResponse = await fetch(
+              `${supabaseUrl}/functions/v1/handle-whatsapp-address-reply`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "x-api-key": webhookSecret,
+                },
+                body: JSON.stringify({
+                  customer_phone: normalizedFrom,
+                  message_body: message.text.body.trim(),  // Use original case, not lowercased
+                  lead_id: pendingLead.id,
+                }),
+              }
+            );
+            const result = await addressResponse.json();
+            console.log("[whatsapp-quote-bot] Address reply handled:", result);
+            // Don't enter the quote builder flow — this was an address confirmation
+            return new Response("Address handled", { status: 200, headers: corsHeaders });
+          } catch (err) {
+            console.error("[whatsapp-quote-bot] Address handler error:", err);
+            // Fall through to normal quote flow
+          }
+        }
+      }
+
       if (!stateStore[from]) {
         stateStore[from] = { step: 0, qty: 1, price: 0, total: 0 };
       }

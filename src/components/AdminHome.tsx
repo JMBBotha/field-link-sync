@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, FileText, BarChart3, ClipboardList, AlertTriangle, CheckCircle2, Clock, DollarSign, Users, Wrench } from "lucide-react";
+import AdminAlertsPanel from "@/components/AdminAlertsPanel";
 import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
 import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
 import KpiDetailDialog from "@/components/admin/KpiDetailDialog";
@@ -177,6 +178,9 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
 
       {/* Completed Leads */}
       <CompletedLeadsList />
+
+      {/* Admin Alerts */}
+      <AdminAlertsPanel />
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Sync Conflicts */}

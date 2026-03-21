@@ -132,15 +132,34 @@ export function useOfflineLeads(
   const acceptLead = useCallback(async (leadId: string) => {
     if (!userId) return false;
 
+    // Optimistic update for immediate UI feedback
     const updates = {
       assigned_agent_id: userId,
       status: 'accepted',
       accepted_at: new Date().toISOString(),
     };
-
     await updateLeadOptimistic(leadId, updates);
+
+    // Call the RPC which handles lead_offers, expires other agents' offers, etc.
+    if (isOnline) {
+      const { data, error } = await supabase.rpc('accept_lead', {
+        p_lead_id: leadId,
+        p_agent_id: userId,
+      });
+      if (error) {
+        console.error('accept_lead RPC error:', error);
+        // If RPC fails (e.g. already accepted by someone else), refresh
+        fetchAndCacheLeads();
+        throw new Error((data as any)?.error || error.message || 'Failed to accept lead');
+      }
+      if (data && !(data as any).success) {
+        // Someone else got it first — refresh
+        fetchAndCacheLeads();
+        throw new Error((data as any).error || 'Lead already taken');
+      }
+    }
     return true;
-  }, [userId, updateLeadOptimistic]);
+  }, [userId, updateLeadOptimistic, isOnline, supabase, fetchAndCacheLeads]);
 
   // Start a job
   const startJob = useCallback(async (leadId: string) => {
@@ -165,16 +184,30 @@ export function useOfflineLeads(
   }, [updateLeadOptimistic]);
 
   // Release a lead
-  const releaseLead = useCallback(async (leadId: string) => {
+  const releaseLead = useCallback(async (leadId: string, reason?: string) => {
+    if (!userId) return false;
+
+    // Optimistic update
     const updates = {
       status: 'pending',
       assigned_agent_id: null,
       accepted_at: null,
     };
-
     await updateLeadOptimistic(leadId, updates as any);
+
+    // Call the RPC which logs the release and alerts admin
+    if (isOnline) {
+      const { error } = await supabase.rpc('release_lead', {
+        p_lead_id: leadId,
+        p_agent_id: userId,
+        p_reason: reason || 'No reason provided',
+      });
+      if (error) {
+        console.error('release_lead RPC error:', error);
+      }
+    }
     return true;
-  }, [updateLeadOptimistic]);
+  }, [userId, updateLeadOptimistic, isOnline, supabase]);
 
   // Subscribe to real-time updates when online
   const subscribeToLeads = useCallback(() => {
