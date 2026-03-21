@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, MapPin, User } from "lucide-react";
+import { LayoutDashboard, Briefcase, MapPin, User, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FieldAgentBottomNavProps {
@@ -9,6 +9,7 @@ interface FieldAgentBottomNavProps {
 const tabs = [
   { id: "available", label: "Home", icon: LayoutDashboard },
   { id: "active", label: "My Jobs", icon: Briefcase },
+  { id: "quote", label: "Quote", icon: FileText },
   { id: "map", label: "Map", icon: MapPin },
   { id: "profile", label: "Profile", icon: User },
 ];

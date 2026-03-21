@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, LogOut, MapPin, Navigation, ChevronUp, ChevronDown, List, Clock, Loader2, Map, Timer, AlertCircle, RefreshCw, Home, CheckCircle2, FileText, CloudOff } from "lucide-react";
+import { ArrowLeft, LogOut, MapPin, Navigation, ChevronUp, ChevronDown, List, Clock, Loader2, Map, Timer, AlertCircle, RefreshCw, Home, CheckCircle2, FileText, CloudOff, Calculator } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1126,6 +1126,10 @@ const FieldAgent = () => {
               <ArrowLeft className="h-4 w-4 text-white" />
               Dashboard
             </Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/field/quote-builder")} className="hidden md:flex gap-1 text-white hover:bg-white/20">
+              <Calculator className="h-4 w-4 text-white" />
+              Quote Builder
+            </Button>
             <div className="hidden md:block h-6 w-px bg-white/30" />
             <div className="flex flex-col">
               <span className="font-semibold text-sm text-white">Field Agent</span>
@@ -2010,7 +2014,9 @@ const FieldAgent = () => {
           <FieldAgentBottomNav
             activeTab={showMapOnMobile ? "map" : mobileTab === "available" ? "available" : mobileTab === "active" ? "active" : "profile"}
             onTabChange={(tab) => {
-              if (tab === "map") {
+              if (tab === "quote") {
+                navigate("/field/quote-builder");
+              } else if (tab === "map") {
                 setShowMapOnMobile(true);
                 setMobileSheetOpen(false);
               } else if (tab === "profile") {

@@ -15,8 +15,10 @@ import {
   useSensor, useSensors,
   type DragStartEvent, type DragEndEvent,
 } from "@dnd-kit/core";
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
+import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
+import { useQuoteBuilderFavorites } from "@/hooks/useQuoteBuilderFavorites";
 import ProductPalette from "@/components/catalog/quote-builder/ProductPalette";
 import { pushRecentProduct } from "@/components/catalog/quote-builder/ProductPalette";
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
@@ -255,7 +257,6 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const canvasRef = useRef<HTMLDivElement>(null);
-  const queryClient = useQueryClient();
   const { usageMap, trackUsage } = useProductUsageStats();
   // Always call the hook (Rules of Hooks) — returns safe defaults when no provider
   const { company, companyId } = useCompany();
@@ -359,88 +360,10 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
     if (isMobile) setMobileTab("canvas");
   }, [isMobile]);
 
-  // ─── Fetch products ───
-  const { data: products = [], isLoading } = useQuery({
-    queryKey: ["quote-builder-products"],
-    queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_products") as any)
-        .select("id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, suggested_consumables, pack_qty, supplier_discount_percent, markup_percent, suppliers(name, supplier_type)")
-        .or("archived.is.null,archived.eq.false")
-        .order("is_pinned", { ascending: false })
-        .order("pin_order", { ascending: true, nullsFirst: false })
-        .limit(2000);
-      if (error) throw error;
-      return (data || []).map((p: any) => ({
-        ...p,
-        product_category: p.product_category || p.category || "",
-        supplier_name: p.suppliers?.name || "",
-        supplier_type: p.suppliers?.supplier_type || "both",
-        price_per_metre: p.price_per_metre || null,
-        sold_in_length: p.sold_in_length || false,
-        unit_length: p.unit_length || null,
-        pipe_size: p.pipe_size || null,
-        is_material_favorite: p.is_material_favorite || false,
-        pack_qty: p.pack_qty || null,
-        supplier_discount_percent: p.supplier_discount_percent ?? null,
-        markup_percent: p.markup_percent ?? 20,
-      })) as PaletteProduct[];
-    },
-    staleTime: 60000,
-  });
-
-  const favorites = useMemo(() => new Set(products.filter(p => p.is_pinned).map(p => p.id)), [products]);
-  const togglePinMutation = useMutation({
-    mutationFn: async (productId: string) => {
-      const currentlyPinned = products.find(p => p.id === productId)?.is_pinned ?? false;
-      const pinOrder = currentlyPinned ? 0 : Math.floor(Date.now() / 1000) % 2000000000;
-      const { error } = await (supabase.from("supplier_products") as any)
-        .update({ is_pinned: !currentlyPinned, pin_order: pinOrder } as any).eq("id", productId);
-      if (error) throw error;
-    },
-    onMutate: async (productId) => {
-      await queryClient.cancelQueries({ queryKey: ["quote-builder-products"] });
-      queryClient.setQueryData<PaletteProduct[]>(["quote-builder-products"], (old) =>
-        old?.map((p) => p.id === productId ? { ...p, is_pinned: !p.is_pinned } : p)
-      );
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
-      queryClient.invalidateQueries({ queryKey: ["supplier-products-all"] });
-    },
-  });
-  const toggleFavorite = useCallback((id: string) => togglePinMutation.mutate(id), [togglePinMutation]);
-
-  // ─── Fetch bundles ───
-  const { data: bundles = [], isLoading: bundlesLoading } = useQuery<PaletteBundle[]>({
-    queryKey: ["quote-builder-bundles"],
-    queryFn: async () => {
-      const { data: bundleData, error: bErr } = await supabase
-        .from("installation_bundles")
-        .select("id, name, description, bundle_type, min_btu, max_btu, compatible_brands, is_favorite")
-        .eq("is_active", true).order("name");
-      if (bErr) throw bErr;
-      if (!bundleData || bundleData.length === 0) return [];
-      const { data: itemsData, error: iErr } = await (supabase.from("bundle_items") as any)
-        .select("id, bundle_id, supplier_product_id, quantity, length_metres, is_length_item, is_optional, sort_order, supplier_products(id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, suppliers(name))")
-        .order("sort_order");
-      if (iErr) throw iErr;
-      const itemsByBundle: Record<string, any[]> = {};
-      (itemsData || []).forEach((item: any) => {
-        if (!itemsByBundle[item.bundle_id]) itemsByBundle[item.bundle_id] = [];
-        const sp = item.supplier_products;
-        itemsByBundle[item.bundle_id].push({
-          id: item.id, supplier_product_id: item.supplier_product_id,
-          quantity: item.quantity, length_metres: item.length_metres,
-          is_length_item: item.is_length_item, is_optional: item.is_optional || false,
-          product: sp ? { ...sp, product_category: sp.product_category || sp.category || "",
-            supplier_name: sp.suppliers?.name || "", price_per_metre: sp.price_per_metre || null,
-            sold_in_length: sp.sold_in_length || false, unit_length: sp.unit_length || null } : null,
-        });
-      });
-      return bundleData.map((b) => ({ ...b, items: itemsByBundle[b.id] || [] }));
-    },
-    staleTime: 60000,
-  });
+  // ─── Shared data hooks ───
+  const { products, isLoading } = useQuoteBuilderProducts();
+  const { bundles, bundlesLoading } = useQuoteBuilderBundles();
+  const { favorites, toggleFavorite } = useQuoteBuilderFavorites(products);
 
   // ─── Brand & Type Inference ───
   const inferredBrand = useMemo(() => {
