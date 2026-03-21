@@ -47,3 +47,9 @@ verify_jwt = false
 
 [functions.vapi-server-event]
 verify_jwt = false
+
+[functions.auto-assign-lead]
+verify_jwt = false
+
+[functions.handle-whatsapp-address-reply]
+verify_jwt = false

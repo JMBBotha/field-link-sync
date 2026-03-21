@@ -142,7 +142,7 @@ export function useOfflineLeads(
 
     // Call the RPC which handles lead_offers, expires other agents' offers, etc.
     if (isOnline) {
-      const { data, error } = await supabase.rpc('accept_lead', {
+      const { data, error } = await supabase.rpc('accept_lead' as any, {
         p_lead_id: leadId,
         p_agent_id: userId,
       });
@@ -197,7 +197,7 @@ export function useOfflineLeads(
 
     // Call the RPC which logs the release and alerts admin
     if (isOnline) {
-      const { error } = await supabase.rpc('release_lead', {
+      const { error } = await supabase.rpc('release_lead' as any, {
         p_lead_id: leadId,
         p_agent_id: userId,
         p_reason: reason || 'No reason provided',
