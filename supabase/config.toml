@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.lookup-caller]
 verify_jwt = false
+
+[functions.vapi-server-event]
+verify_jwt = false
