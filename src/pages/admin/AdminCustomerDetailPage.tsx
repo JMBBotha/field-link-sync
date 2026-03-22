@@ -135,6 +135,23 @@ const AdminCustomerDetailPage = () => {
     }
   };
 
+  const handleDeleteCustomer = async () => {
+    if (!id) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase.from("customers").delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Customer Deleted ✅" });
+      queryClient.invalidateQueries({ queryKey: ["all-customers"] });
+      queryClient.invalidateQueries({ queryKey: ["unified-clients"] });
+      navigate("/admin/customers");
+    } catch (err: any) {
+      toast({ title: "Delete Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // Filter jobs
   const filteredJobs = jobs.filter((j) => {
     if (yearFilter !== "all") {
