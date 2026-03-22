@@ -12,12 +12,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
   User, Building2, Phone, Mail, MapPin, ArrowLeft, Edit2, Plus,
-  Wrench, FileCheck, Calendar, Star, Loader2,
+  Wrench, FileCheck, Calendar, Star, Loader2, Trash2,
 } from "lucide-react";
 
 const AdminCustomerDetailPage = () => {
@@ -30,6 +35,7 @@ const AdminCustomerDetailPage = () => {
   const [showUnitDialog, setShowUnitDialog] = useState(false);
   const [unitForm, setUnitForm] = useState({ label: "", full_address: "", notes: "" });
   const [savingUnit, setSavingUnit] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Fetch customer
   const { data: customer, isLoading } = useQuery({
@@ -129,6 +135,23 @@ const AdminCustomerDetailPage = () => {
     }
   };
 
+  const handleDeleteCustomer = async () => {
+    if (!id) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase.from("customers").delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Customer Deleted ✅" });
+      queryClient.invalidateQueries({ queryKey: ["all-customers"] });
+      queryClient.invalidateQueries({ queryKey: ["unified-clients"] });
+      navigate("/admin/customers");
+    } catch (err: any) {
+      toast({ title: "Delete Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // Filter jobs
   const filteredJobs = jobs.filter((j) => {
     if (yearFilter !== "all") {
@@ -177,9 +200,33 @@ const AdminCustomerDetailPage = () => {
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-5xl mx-auto">
       {/* Back */}
-      <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1">
-        <ArrowLeft className="h-4 w-4" /> Back
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1">
+          <ArrowLeft className="h-4 w-4" /> Back
+        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" size="sm" className="gap-1">
+              <Trash2 className="h-4 w-4" /> Delete Customer
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this customer?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently remove the customer record. Linked leads, quotes, and invoices will remain but lose the customer link. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteCustomer} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
 
       {/* Header */}
       <Card>
