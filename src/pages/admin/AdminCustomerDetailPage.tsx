@@ -35,6 +35,7 @@ const AdminCustomerDetailPage = () => {
   const [showUnitDialog, setShowUnitDialog] = useState(false);
   const [unitForm, setUnitForm] = useState({ label: "", full_address: "", notes: "" });
   const [savingUnit, setSavingUnit] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Fetch customer
   const { data: customer, isLoading } = useQuery({
