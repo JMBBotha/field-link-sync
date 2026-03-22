@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
   User, Building2, Phone, Mail, MapPin, ArrowLeft, Edit2, Plus,
-  Wrench, FileCheck, Calendar, Star, Loader2,
+  Wrench, FileCheck, Calendar, Star, Loader2, Trash2,
 } from "lucide-react";
 
 const AdminCustomerDetailPage = () => {
