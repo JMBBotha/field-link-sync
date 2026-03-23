@@ -1,6 +1,25 @@
 import jsPDF from "jspdf";
 import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
-import logoImg from "@/assets/logo.png";
+import logoAssetUrl from "@/assets/logo.png";
+
+/* ─── Load image as base64 data URL for jsPDF ─── */
+async function loadImageAsDataUrl(src: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("No canvas context"));
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
+    img.src = src;
+  });
+}
 
 /* ─── South African Rand formatter ─── */
 const fmtZAR = (n: number): string => {
@@ -25,6 +44,7 @@ interface DocumentPdfOptions {
   companyName: string;
   companyAddress?: string;
   vatNumber?: string;
+  logoUrl?: string | null;
   customerName: string;
   customerAddress?: string;
   customerEmail?: string;
@@ -72,13 +92,20 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
   /* ═══════════════════════════════════════════════
    *  2. HEADER: Logo left + Company info right
    * ═══════════════════════════════════════════════ */
-  // Embed the actual logo image (842×316 original, ~2.67:1 aspect)
-  const logoWmm = 50;   // width in mm
-  const logoHmm = 50 / 2.67;  // maintain aspect ratio ≈ 18.7mm
+  const logoWmm = 50;
+  const logoHmm = 50 / 2.67; // aspect ratio of logo.png (842×316)
+  let logoLoaded = false;
   try {
-    doc.addImage(logoImg, "PNG", ml, y - 4, logoWmm, logoHmm);
-  } catch {
-    // Fallback to text if image fails
+    const imgSrc = opts.logoUrl || logoAssetUrl;
+    console.log("[PDF] Loading logo from:", imgSrc);
+    const dataUrl = await loadImageAsDataUrl(imgSrc);
+    doc.addImage(dataUrl, "PNG", ml, y - 4, logoWmm, logoHmm);
+    logoLoaded = true;
+    console.log("[PDF] Logo embedded successfully");
+  } catch (e) {
+    console.warn("[PDF] Logo load failed, using text fallback:", e);
+  }
+  if (!logoLoaded) {
     doc.setFontSize(20);
     doc.setFont("helvetica", "bold");
     setTxt(doc, DARK);
