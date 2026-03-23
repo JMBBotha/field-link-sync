@@ -96,11 +96,11 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
-  const ml = 14;
-  const mr = 14;
+  const ml = 10;
+  const mr = 10;
   const cw = pw - ml - mr;
   const rightEdge = pw - mr;
-  let y = 12;
+  let y = 10;
 
   /* ═══════════════════════════════════════════════
    *  1. HEADER – White background, logo LEFT, company info RIGHT
