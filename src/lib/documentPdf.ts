@@ -79,17 +79,55 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
   const logoWmm = 50;
   const logoHmm = 50 / 2.67; // aspect ratio of logo.png (842×316)
   let logoLoaded = false;
+
+  // 1) Try exact same URL strategy used by QuoteBuilder UI (company logo URL)
+  // 2) Fallback to local asset absolute URL
+  // 3) Final fallback: embedded base64 logo (always works)
   try {
-    const imgSrc = opts.logoUrl || logoAssetUrl;
-    console.log("[PDF] Loading logo from:", imgSrc);
-    const dataUrl = await loadImageAsDataUrl(imgSrc);
-    doc.addImage(dataUrl, "PNG", ml, y - 4, logoWmm, logoHmm);
-    logoLoaded = true;
-    console.log("[PDF] Logo embedded successfully");
+    const resolvedAssetUrl = new URL(logoAssetUrl, window.location.origin).href;
+    const preferredLogoUrl = opts.logoUrl ? new URL(opts.logoUrl, window.location.origin).href : resolvedAssetUrl;
+
+    console.log("[PDF] Preferred logo URL:", preferredLogoUrl);
+
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    const loaded = await new Promise<boolean>((resolve) => {
+      img.onload = () => resolve(true);
+      img.onerror = () => resolve(false);
+      img.src = preferredLogoUrl;
+    });
+
+    if (loaded) {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+        const dataUrl = canvas.toDataURL("image/png");
+        doc.addImage(dataUrl, "PNG", ml, y - 4, logoWmm, logoHmm);
+        logoLoaded = true;
+        console.log("[PDF] Logo embedded from URL successfully");
+      }
+    } else {
+      console.warn("[PDF] URL logo failed to load:", preferredLogoUrl);
+    }
   } catch (e) {
-    console.warn("[PDF] Logo load failed, using text fallback:", e);
+    console.warn("[PDF] URL logo pipeline failed:", e);
   }
+
   if (!logoLoaded) {
+    try {
+      doc.addImage(EMBEDDED_LOGO_DATA_URL, "PNG", ml, y - 4, logoWmm, logoHmm);
+      logoLoaded = true;
+      console.log("[PDF] Embedded base64 logo used");
+    } catch (e) {
+      console.warn("[PDF] Embedded base64 logo failed:", e);
+    }
+  }
+
+  if (!logoLoaded) {
+    // Final text fallback (should almost never happen)
     doc.setFontSize(20);
     doc.setFont("helvetica", "bold");
     setTxt(doc, DARK);
