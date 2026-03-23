@@ -1,8 +1,22 @@
 import jsPDF from "jspdf";
 import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
+/* ─── South African Rand formatter ─── */
+const fmtZAR = (n: number): string => {
+  const parts = n.toFixed(2).split(".");
+  const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return `R ${intPart},${parts[1]}`;
+};
+
+/* ─── Brand colours (HSL converted to RGB for jsPDF) ─── */
+const BLUE = { r: 0, g: 119, b: 182 };        // #0077B6 – primary brand
+const BLUE_DARK = { r: 44, g: 62, b: 107 };    // #2c3e6b – dark navy
+const AMBER = { r: 245, g: 158, b: 11 };       // #F59E0B – orange accent
+const AMBER_LIGHT = { r: 255, g: 237, b: 204 };// light amber tint
+const GRAY_LIGHT = { r: 248, g: 248, b: 248 };
+const GRAY_MID = { r: 120, g: 120, b: 120 };
+const DARK = { r: 33, g: 33, b: 33 };
+const WHITE = { r: 255, g: 255, b: 255 };
 
 interface DocumentPdfOptions {
   docType: "Invoice" | "Quote" | "Proposal";
@@ -23,142 +37,377 @@ interface DocumentPdfOptions {
   total: number;
   notes?: string;
   terms?: string;
+  reference?: string;
   brochures?: BrochureAttachment[];
+}
+
+/* ─── Helper: set colour from object ─── */
+function setFill(doc: jsPDF, c: { r: number; g: number; b: number }) {
+  doc.setFillColor(c.r, c.g, c.b);
+}
+function setTxt(doc: jsPDF, c: { r: number; g: number; b: number }) {
+  doc.setTextColor(c.r, c.g, c.b);
 }
 
 export async function generateDocumentPdf(opts: DocumentPdfOptions) {
   const doc = new jsPDF();
-  const pw = doc.internal.pageSize.getWidth();
-  let y = 15;
+  const pw = doc.internal.pageSize.getWidth();   // 210
+  const ph = doc.internal.pageSize.getHeight();   // 297
+  const ml = 14;   // left margin
+  const mr = 14;   // right margin
+  const cw = pw - ml - mr;                       // content width
+  let y = 0;
 
-  // Yellow accent stripe
-  doc.setFillColor(245, 158, 11);
-  doc.rect(0, 0, pw, 6, "F");
+  /* ═══════════════════════════════════════════════
+   *  1. AMBER GRADIENT BANNER (top stripe)
+   * ═══════════════════════════════════════════════ */
+  setFill(doc, AMBER);
+  doc.rect(0, 0, pw, 8, "F");
+  // Lighter gradient bar just below
+  setFill(doc, { r: 251, g: 191, b: 36 });
+  doc.rect(0, 8, pw, 2, "F");
+  y = 18;
 
-  // Logo text
-  y = 20;
-  doc.setFontSize(18);
+  /* ═══════════════════════════════════════════════
+   *  2. HEADER: Logo left + Company info right
+   * ═══════════════════════════════════════════════ */
+  // Logo text (0800 BeCool)
+  doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(33, 33, 33);
-  doc.text("0800", 14, y);
-  doc.setTextColor(37, 99, 235);
-  doc.text("BeCool", 14 + doc.getTextWidth("0800") + 1, y);
+  setTxt(doc, DARK);
+  doc.text("0800", ml, y);
+  const logoW = doc.getTextWidth("0800");
+  setTxt(doc, BLUE);
+  doc.text("BeCool", ml + logoW + 1.5, y);
 
-  // Company info
-  doc.setFontSize(9);
-  doc.setTextColor(100, 100, 100);
-  y += 7;
-  doc.text(opts.companyName, 14, y);
-  if (opts.companyAddress) { y += 4; doc.text(opts.companyAddress, 14, y); }
-  if (opts.vatNumber) { y += 4; doc.text(`VAT: ${opts.vatNumber}`, 14, y); }
-
-  // Doc type + number on right
-  doc.setFontSize(14);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(33, 33, 33);
-  doc.text(`${opts.docType} ${opts.docNumber}`, pw - 14, 20, { align: "right" });
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(100, 100, 100);
-  doc.text(`Date: ${opts.issueDate}`, pw - 14, 27, { align: "right" });
-  if (opts.dueDate) doc.text(`Due: ${opts.dueDate}`, pw - 14, 31, { align: "right" });
-
-  // Billed To
-  y += 10;
-  doc.setFontSize(8);
-  doc.setTextColor(120, 120, 120);
-  doc.text("BILLED TO", 14, y);
+  // Tagline
   y += 5;
-  doc.setFontSize(10);
-  doc.setTextColor(33, 33, 33);
-  doc.setFont("helvetica", "bold");
-  doc.text(opts.customerName, 14, y);
+  doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(100, 100, 100);
-  if (opts.customerAddress) { y += 5; doc.text(opts.customerAddress, 14, y); }
-  if (opts.customerEmail) { y += 4; doc.text(opts.customerEmail, 14, y); }
+  setTxt(doc, GRAY_MID);
+  doc.text("AC Super Service — Professional HVAC Solutions", ml, y);
 
-  // Line items table header
-  y += 12;
-  doc.setFillColor(245, 245, 245);
-  doc.rect(14, y - 4, pw - 28, 8, "F");
+  // Right column: Company identity
+  const rx = pw - mr;
+  let ry = 14;
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  setTxt(doc, DARK);
+  doc.text(`CT - ${opts.companyName || "0800-BE-COOL AC Super Service"}`, rx, ry, { align: "right" });
+  ry += 4;
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.setTextColor(80, 80, 80);
-  doc.setFont("helvetica", "bold");
-  doc.text("Description", 16, y);
-  doc.text("Rate", 120, y, { align: "right" });
-  doc.text("Qty", 138, y, { align: "right" });
-  if (opts.lineItems.some(i => i.markup)) doc.text("Markup", 155, y, { align: "right" });
-  doc.text("Total", pw - 16, y, { align: "right" });
+  setTxt(doc, GRAY_MID);
+  if (opts.vatNumber) {
+    doc.text(`VAT ${opts.vatNumber}`, rx, ry, { align: "right" });
+    ry += 3.5;
+  }
+  // Address lines
+  const addressLines = opts.companyAddress
+    ? opts.companyAddress.split(",").map((s) => s.trim())
+    : ["6 Aviation Cress", "Airport City", "Cape Town", "7100"];
+  addressLines.forEach((line) => {
+    doc.text(line, rx, ry, { align: "right" });
+    ry += 3.5;
+  });
 
-  // Items
+  /* Divider line */
+  y = Math.max(y, ry) + 4;
+  doc.setDrawColor(BLUE_DARK.r, BLUE_DARK.g, BLUE_DARK.b);
+  doc.setLineWidth(0.6);
+  doc.line(ml, y, pw - mr, y);
+  y += 8;
+
+  /* ═══════════════════════════════════════════════
+   *  3. QUOTE INFO – 4-column grid
+   * ═══════════════════════════════════════════════ */
+  const colW = cw / 4;
+  const col1 = ml;
+  const col2 = ml + colW;
+  const col3 = ml + colW * 2;
+  const col4 = ml + colW * 3;
+
+  const labelStyle = () => {
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "bold");
+    setTxt(doc, GRAY_MID);
+  };
+  const valueStyle = () => {
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    setTxt(doc, DARK);
+  };
+
+  // Row 1
+  const row1y = y;
+  labelStyle();
+  doc.text("BILLED TO", col1, row1y);
+  doc.text("DATE OF ISSUE", col2, row1y);
+  doc.text(`${opts.docType.toUpperCase()} NUMBER`, col3, row1y);
+  doc.text("QUOTED AMOUNT (ZAR)", col4, row1y);
+
+  // Values
+  const valY = row1y + 5;
+  valueStyle();
+  doc.text(opts.customerName || "—", col1, valY);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(33, 33, 33);
-  y += 6;
-  for (const item of opts.lineItems) {
-    if (y > 270) { doc.addPage(); y = 20; }
-    doc.text(item.description.substring(0, 55), 16, y);
-    doc.text(fmt(item.rate), 120, y, { align: "right" });
-    doc.text(String(item.quantity), 138, y, { align: "right" });
-    if (item.markup) doc.text(`${item.markup}%`, 155, y, { align: "right" });
-    doc.text(fmt(item.amount), pw - 16, y, { align: "right" });
-    y += 6;
+  doc.setFontSize(8);
+  setTxt(doc, GRAY_MID);
+  if (opts.customerAddress) {
+    const addrLines = doc.splitTextToSize(opts.customerAddress, colW - 4);
+    doc.text(addrLines, col1, valY + 4);
+  }
+  if (opts.customerEmail) {
+    const emailY = valY + 4 + (opts.customerAddress ? doc.splitTextToSize(opts.customerAddress, colW - 4).length * 3.5 : 0);
+    doc.text(opts.customerEmail, col1, emailY);
   }
 
-  // Divider
-  y += 2;
-  doc.setDrawColor(200, 200, 200);
-  doc.line(100, y, pw - 14, y);
-  y += 6;
+  valueStyle();
+  doc.text(opts.issueDate || "—", col2, valY);
 
-  // Totals
-  const totalsX = pw - 16;
-  const labelsX = 110;
+  doc.text(opts.docNumber || "DRAFT", col3, valY);
+
+  // Large blue total
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "bold");
+  setTxt(doc, BLUE);
+  doc.text(fmtZAR(opts.total), col4, valY);
+
+  // Row 2: Valid Until + Reference
+  const row2y = valY + 12;
+  labelStyle();
+  doc.text("VALID UNTIL", col2, row2y);
+  doc.text("REFERENCE / PO#", col3, row2y);
+  valueStyle();
+  doc.setFontSize(8);
+  doc.text(opts.dueDate || "—", col2, row2y + 4);
+  doc.text(opts.reference || "—", col3, row2y + 4);
+
+  y = row2y + 12;
+
+  /* Dark divider */
+  doc.setDrawColor(BLUE_DARK.r, BLUE_DARK.g, BLUE_DARK.b);
+  doc.setLineWidth(0.8);
+  doc.line(ml, y, pw - mr, y);
+  y += 8;
+
+  /* ═══════════════════════════════════════════════
+   *  4. LINE ITEMS TABLE
+   * ═══════════════════════════════════════════════ */
+  const hasMarkup = opts.lineItems.some((i) => i.markup && i.markup > 0);
+
+  // Column positions
+  const descX = ml + 2;
+  const costX = ml + cw * 0.52;
+  const qtyX = ml + cw * 0.62;
+  const markupX = ml + cw * 0.73;
+  const totalX = pw - mr - 2;
+
+  // Header row
+  setFill(doc, GRAY_LIGHT);
+  doc.rect(ml, y - 4, cw, 7, "F");
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  setTxt(doc, GRAY_MID);
+  doc.text("DESCRIPTION", descX, y);
+  doc.text("COST", costX, y, { align: "right" });
+  doc.text("QTY", qtyX, y, { align: "right" });
+  if (hasMarkup) doc.text("MARKUP%", markupX, y, { align: "right" });
+  doc.text("TOTAL", totalX, y, { align: "right" });
+  y += 7;
+
+  // Draw bottom border of header
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.3);
+  doc.line(ml, y - 3, pw - mr, y - 3);
+
+  // Rows
+  doc.setFontSize(8.5);
+  doc.setFont("helvetica", "normal");
+  setTxt(doc, DARK);
+
+  opts.lineItems.forEach((item, idx) => {
+    if (!item.description) return;
+    if (y > ph - 45) { doc.addPage(); y = 20; }
+
+    // Alternating background
+    if (idx % 2 === 0) {
+      setFill(doc, { r: 252, g: 252, b: 252 });
+      doc.rect(ml, y - 3.5, cw, 7, "F");
+    }
+
+    // Description (truncate to fit)
+    const maxDescW = (cw * 0.48) - 4;
+    let desc = item.description;
+    while (doc.getTextWidth(desc) > maxDescW && desc.length > 3) {
+      desc = desc.slice(0, -1);
+    }
+    if (desc.length < item.description.length) desc += "…";
+
+    setTxt(doc, DARK);
+    doc.text(desc, descX, y);
+    doc.text(fmtZAR(item.rate), costX, y, { align: "right" });
+    doc.text(String(item.quantity), qtyX, y, { align: "right" });
+    if (hasMarkup) {
+      doc.text(item.markup ? `${item.markup}%` : "—", markupX, y, { align: "right" });
+    }
+    doc.setFont("helvetica", "bold");
+    doc.text(fmtZAR(item.amount), totalX, y, { align: "right" });
+    doc.setFont("helvetica", "normal");
+
+    // Row separator
+    y += 7;
+    doc.setDrawColor(235, 235, 235);
+    doc.setLineWidth(0.2);
+    doc.line(ml, y - 3, pw - mr, y - 3);
+  });
+
+  y += 4;
+
+  /* ═══════════════════════════════════════════════
+   *  5. TOTALS SECTION
+   * ═══════════════════════════════════════════════ */
+  if (y > ph - 60) { doc.addPage(); y = 20; }
+
+  const totalsLabelX = pw - mr - 80;
+
   doc.setFontSize(9);
-  doc.text("Subtotal", labelsX, y);
-  doc.text(fmt(opts.subtotal), totalsX, y, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  setTxt(doc, GRAY_MID);
+  doc.text("Subtotal", totalsLabelX, y);
+  setTxt(doc, DARK);
+  doc.text(fmtZAR(opts.subtotal), totalX, y, { align: "right" });
   y += 5;
+
   if (opts.discountAmount && opts.discountAmount > 0) {
-    doc.text("Discount", labelsX, y);
-    doc.text(`-${fmt(opts.discountAmount)}`, totalsX, y, { align: "right" });
+    setTxt(doc, GRAY_MID);
+    doc.text("Discount", totalsLabelX, y);
+    setTxt(doc, DARK);
+    doc.text(`-${fmtZAR(opts.discountAmount)}`, totalX, y, { align: "right" });
     y += 5;
   }
-  doc.text(`VAT (${opts.taxRate}%)`, labelsX, y);
-  doc.text(fmt(opts.taxAmount), totalsX, y, { align: "right" });
+
+  setTxt(doc, GRAY_MID);
+  doc.text(`VAT (${opts.taxRate}%)`, totalsLabelX, y);
+  setTxt(doc, DARK);
+  doc.text(fmtZAR(opts.taxAmount), totalX, y, { align: "right" });
   y += 6;
+
+  // Orange total bar
+  const totalBarW = 90;
+  const totalBarX = pw - mr - totalBarW;
+  setFill(doc, AMBER);
+  doc.roundedRect(totalBarX, y - 4.5, totalBarW, 10, 2, 2, "F");
+  doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setFillColor(245, 158, 11);
-  doc.rect(labelsX - 2, y - 5, pw - labelsX - 12, 9, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.text("Total (ZAR)", labelsX, y);
-  doc.text(fmt(opts.total), totalsX, y, { align: "right" });
+  setTxt(doc, WHITE);
+  doc.text("Total (ZAR)", totalBarX + 4, y + 1.5);
+  doc.text(fmtZAR(opts.total), pw - mr - 3, y + 1.5, { align: "right" });
 
-  // Notes / Terms
-  doc.setTextColor(33, 33, 33);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  y += 14;
+  y += 18;
+
+  /* ═══════════════════════════════════════════════
+   *  6. NOTES
+   * ═══════════════════════════════════════════════ */
   if (opts.notes) {
+    if (y > ph - 40) { doc.addPage(); y = 20; }
+    doc.setFontSize(7);
     doc.setFont("helvetica", "bold");
-    doc.text("Notes", 14, y);
-    doc.setFont("helvetica", "normal");
+    setTxt(doc, GRAY_MID);
+    doc.text("NOTES", ml, y);
     y += 4;
-    const lines = doc.splitTextToSize(opts.notes, pw - 28);
-    doc.text(lines, 14, y);
-    y += lines.length * 4 + 4;
-  }
-  if (opts.terms) {
-    doc.setFont("helvetica", "bold");
-    doc.text("Terms", 14, y);
     doc.setFont("helvetica", "normal");
-    y += 4;
-    const lines = doc.splitTextToSize(opts.terms, pw - 28);
-    doc.text(lines, 14, y);
+    doc.setFontSize(8);
+    setTxt(doc, DARK);
+    const noteLines = doc.splitTextToSize(opts.notes, cw);
+    doc.text(noteLines, ml, y);
+    y += noteLines.length * 3.5 + 6;
   }
 
+  /* ═══════════════════════════════════════════════
+   *  7. TERMS & CONDITIONS
+   * ═══════════════════════════════════════════════ */
+  if (y > ph - 50) { doc.addPage(); y = 20; }
+  doc.setDrawColor(210, 210, 210);
+  doc.setLineWidth(0.3);
+  doc.line(ml, y, pw - mr, y);
+  y += 6;
+
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  setTxt(doc, BLUE);
+  doc.text("Terms & Conditions", ml, y);
+  y += 5;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  setTxt(doc, GRAY_MID);
+
+  const defaultTerms = [
+    "1. This quotation is valid for 30 days from the date of issue.",
+    "2. A 50% deposit is required upon acceptance to secure scheduling.",
+    "3. All equipment carries a 12-month warranty on parts and labour from date of installation.",
+    "4. Installation completed within 5–10 business days of deposit confirmation, subject to stock.",
+    "5. Customer is responsible for providing adequate electrical supply per unit specifications.",
+    "6. This quote excludes structural modifications or electrical upgrades unless explicitly stated.",
+    "7. Payment terms: Net 30 days from invoice date. Late payments attract 2% monthly interest.",
+    "8. A cancellation fee of 15% of total quoted amount applies after acceptance.",
+    "9. Prices are quoted in South African Rand (ZAR) and include VAT at 15% as shown.",
+    "10. Additional work not covered in this quotation will be quoted separately.",
+  ];
+
+  const termsToUse = opts.terms ? opts.terms.split("\n").filter(Boolean) : defaultTerms;
+  termsToUse.forEach((t) => {
+    if (y > ph - 18) { doc.addPage(); y = 20; }
+    doc.text(t, ml, y);
+    y += 3.5;
+  });
+
+  /* ═══════════════════════════════════════════════
+   *  8. BANKING DETAILS
+   * ═══════════════════════════════════════════════ */
+  y += 4;
+  if (y > ph - 30) { doc.addPage(); y = 20; }
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  setTxt(doc, BLUE);
+  doc.text("Banking Details", ml, y);
+  y += 4;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  setTxt(doc, GRAY_MID);
+  const bankLines = [
+    "Bank: First National Bank (FNB)",
+    "Account Name: 0800-BE-COOL AC Super Service",
+    "Account Number: 62 XXX XXX XXX",
+    "Branch Code: 250 655",
+    "Reference: " + (opts.docNumber || "Quote"),
+  ];
+  bankLines.forEach((l) => {
+    doc.text(l, ml, y);
+    y += 3.5;
+  });
+
+  /* ═══════════════════════════════════════════════
+   *  9. FOOTER (fixed on every page)
+   * ═══════════════════════════════════════════════ */
+  const pageCount = doc.getNumberOfPages();
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p);
+    // Bottom amber stripe
+    setFill(doc, AMBER);
+    doc.rect(0, ph - 10, pw, 10, "F");
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    setTxt(doc, WHITE);
+    doc.text("0800-BE-COOL! AC Super Service", ml, ph - 4);
+    doc.text("info@0800becool.co.za · 0800 23 2665", pw / 2, ph - 4, { align: "center" });
+    doc.text("www.0800becool.co.za", pw - mr, ph - 4, { align: "right" });
+  }
+
+  /* ═══════════════════════════════════════════════
+   *  10. OUTPUT: merge brochures or save
+   * ═══════════════════════════════════════════════ */
   if (opts.brochures && opts.brochures.length > 0) {
     const quoteBytes = doc.output("arraybuffer");
     const merged = await assembleQuoteWithBrochures({
