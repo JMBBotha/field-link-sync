@@ -216,7 +216,7 @@ export default function AreaDefinitionStep({ areas, onAreasChange }: Props) {
                 <ChevronDown className="h-3 w-3 ml-0.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52">
+            <DropdownMenuContent align="start" className="w-52 z-[70]">
               {categoryLabel && (
                 <>
                   <DropdownMenuLabel className="text-[10px] text-muted-foreground">
