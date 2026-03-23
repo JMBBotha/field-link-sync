@@ -1,6 +1,5 @@
 import jsPDF from "jspdf";
 import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
-import logoAssetUrl from "@/assets/logo.png";
 import { EMBEDDED_LOGO_DATA_URL } from "./embeddedLogoDataUrl";
 
 /* ─── South African Rand formatter ─── */
@@ -10,12 +9,11 @@ const fmtZAR = (n: number): string => {
   return `R ${intPart},${parts[1]}`;
 };
 
-/* ─── Brand colours (HSL converted to RGB for jsPDF) ─── */
-const BLUE = { r: 0, g: 119, b: 182 };          // #0077B6 – primary brand
-const BLUE_DARK = { r: 30, g: 58, b: 95 };      // #1E3A5F – sidebar/nav navy
-const AMBER = { r: 245, g: 158, b: 11 };        // #F59E0B – total row accent only
-const GRAY_LIGHT = { r: 248, g: 248, b: 248 };
-const GRAY_MID = { r: 120, g: 120, b: 120 };
+/* ─── Brand colours ─── */
+const BLUE = { r: 0, g: 119, b: 182 };
+const NAVY = { r: 30, g: 58, b: 95 };
+const AMBER = { r: 245, g: 158, b: 11 };
+const GRAY = { r: 120, g: 120, b: 120 };
 const DARK = { r: 33, g: 33, b: 33 };
 const WHITE = { r: 255, g: 255, b: 255 };
 
@@ -43,354 +41,323 @@ interface DocumentPdfOptions {
   brochures?: BrochureAttachment[];
 }
 
-/* ─── Helper: set colour from object ─── */
-function setFill(doc: jsPDF, c: { r: number; g: number; b: number }) {
-  doc.setFillColor(c.r, c.g, c.b);
+function fill(doc: jsPDF, c: { r: number; g: number; b: number }) { doc.setFillColor(c.r, c.g, c.b); }
+function txt(doc: jsPDF, c: { r: number; g: number; b: number }) { doc.setTextColor(c.r, c.g, c.b); }
+
+/* ─── Load logo: try dynamic URL, then embedded base64 ─── */
+async function loadLogoDataUrl(dynamicUrl?: string | null): Promise<string> {
+  // Try dynamic company logo URL first
+  if (dynamicUrl) {
+    try {
+      const url = dynamicUrl.startsWith("http") ? dynamicUrl : new URL(dynamicUrl, window.location.origin).href;
+      const dataUrl = await imgToDataUrl(url);
+      if (dataUrl) return dataUrl;
+    } catch { /* fall through */ }
+  }
+  // Always-works fallback: embedded base64
+  return EMBEDDED_LOGO_DATA_URL;
 }
-function setTxt(doc: jsPDF, c: { r: number; g: number; b: number }) {
-  doc.setTextColor(c.r, c.g, c.b);
+
+function imgToDataUrl(src: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const c = document.createElement("canvas");
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        const ctx = c.getContext("2d");
+        if (!ctx) { resolve(null); return; }
+        ctx.drawImage(img, 0, 0);
+        resolve(c.toDataURL("image/png"));
+      } catch { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+/* ─── Gradient line helper (simulates blue→transparent with strips) ─── */
+function drawGradientLine(doc: jsPDF, x: number, y: number, w: number) {
+  // 3 strips from solid navy to lighter to very light
+  doc.setDrawColor(NAVY.r, NAVY.g, NAVY.b);
+  doc.setLineWidth(0.8);
+  doc.line(x, y, x + w * 0.5, y);
+  doc.setDrawColor(BLUE.r, BLUE.g, BLUE.b);
+  doc.setLineWidth(0.5);
+  doc.line(x + w * 0.5, y, x + w * 0.8, y);
+  doc.setDrawColor(180, 200, 220);
+  doc.setLineWidth(0.3);
+  doc.line(x + w * 0.8, y, x + w, y);
 }
 
 export async function generateDocumentPdf(opts: DocumentPdfOptions) {
   const doc = new jsPDF();
-  const pw = doc.internal.pageSize.getWidth();   // 210
-  const ph = doc.internal.pageSize.getHeight();   // 297
-  const ml = 14;   // left margin
-  const mr = 14;   // right margin
-  const cw = pw - ml - mr;                       // content width
-  let y = 0;
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+  const ml = 14;
+  const mr = 14;
+  const cw = pw - ml - mr;
+  const rightEdge = pw - mr;
+  let y = 12;
 
   /* ═══════════════════════════════════════════════
-   *  1. BLUE GRADIENT BANNER (top stripe)
+   *  1. HEADER – White background, logo LEFT, company info RIGHT
+   *     NO colored banner. Matches on-screen exactly.
    * ═══════════════════════════════════════════════ */
-  setFill(doc, BLUE_DARK);
-  doc.rect(0, 0, pw, 7, "F");
-  // Lighter blue-grey bar just below
-  setFill(doc, BLUE);
-  doc.rect(0, 7, pw, 2, "F");
-  // Subtle grey fade
-  setFill(doc, { r: 220, g: 225, b: 235 });
-  doc.rect(0, 9, pw, 1, "F");
-  y = 18;
+  const logoDataUrl = await loadLogoDataUrl(opts.logoUrl);
 
-  /* ═══════════════════════════════════════════════
-   *  2. HEADER: Logo left + Company info right
-   * ═══════════════════════════════════════════════ */
-  const logoWmm = 50;
-  const logoHmm = 50 / 2.67; // aspect ratio of logo.png (842×316)
-  let logoLoaded = false;
-
-  // 1) Try exact same URL strategy used by QuoteBuilder UI (company logo URL)
-  // 2) Fallback to local asset absolute URL
-  // 3) Final fallback: embedded base64 logo (always works)
+  // Logo: large, ~63mm wide × ~24mm tall (842×316 aspect = 2.67:1)
+  const logoW = 63;
+  const logoH = logoW / 2.67;
   try {
-    const resolvedAssetUrl = new URL(logoAssetUrl, window.location.origin).href;
-    const preferredLogoUrl = opts.logoUrl ? new URL(opts.logoUrl, window.location.origin).href : resolvedAssetUrl;
-
-    console.log("[PDF] Preferred logo URL:", preferredLogoUrl);
-
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    const loaded = await new Promise<boolean>((resolve) => {
-      img.onload = () => resolve(true);
-      img.onerror = () => resolve(false);
-      img.src = preferredLogoUrl;
-    });
-
-    if (loaded) {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.drawImage(img, 0, 0);
-        const dataUrl = canvas.toDataURL("image/png");
-        doc.addImage(dataUrl, "PNG", ml, y - 4, logoWmm, logoHmm);
-        logoLoaded = true;
-        console.log("[PDF] Logo embedded from URL successfully");
-      }
-    } else {
-      console.warn("[PDF] URL logo failed to load:", preferredLogoUrl);
-    }
-  } catch (e) {
-    console.warn("[PDF] URL logo pipeline failed:", e);
-  }
-
-  if (!logoLoaded) {
-    try {
-      doc.addImage(EMBEDDED_LOGO_DATA_URL, "PNG", ml, y - 4, logoWmm, logoHmm);
-      logoLoaded = true;
-      console.log("[PDF] Embedded base64 logo used");
-    } catch (e) {
-      console.warn("[PDF] Embedded base64 logo failed:", e);
-    }
-  }
-
-  if (!logoLoaded) {
-    // Final text fallback (should almost never happen)
-    doc.setFontSize(20);
+    doc.addImage(logoDataUrl, "PNG", ml, y, logoW, logoH);
+  } catch {
+    // Text fallback
+    doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
-    setTxt(doc, DARK);
-    doc.text("0800", ml, y);
-    setTxt(doc, BLUE);
-    doc.text("BeCool", ml + doc.getTextWidth("0800") + 1.5, y);
+    txt(doc, NAVY);
+    doc.text("0800-BE-COOL!", ml, y + 12);
+    doc.setFontSize(9);
+    doc.text("AC SUPER SERVICE", ml, y + 18);
   }
 
-  // Right column: Company identity
-  const rx = pw - mr;
-  let ry = 14;
+  // Company details – right-aligned, top-aligned with logo
+  let ry = y + 2;
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
-  setTxt(doc, DARK);
-  doc.text(`CT - ${opts.companyName || "0800-BE-COOL AC Super Service"}`, rx, ry, { align: "right" });
+  txt(doc, DARK);
+  doc.text(`CT - ${opts.companyName || "0800-BE-COOL AC Super Service"}`, rightEdge, ry, { align: "right" });
+  if (opts.vatNumber) {
+    ry += 4;
+    doc.text(`VAT ${opts.vatNumber}`, rightEdge, ry, { align: "right" });
+  }
   ry += 4;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  setTxt(doc, GRAY_MID);
-  if (opts.vatNumber) {
-    doc.text(`VAT ${opts.vatNumber}`, rx, ry, { align: "right" });
-    ry += 3.5;
-  }
-  // Address lines
+  txt(doc, GRAY);
   const addressLines = opts.companyAddress
     ? opts.companyAddress.split(",").map((s) => s.trim())
     : ["6 Aviation Cress", "Airport City", "Cape Town", "7100"];
   addressLines.forEach((line) => {
-    doc.text(line, rx, ry, { align: "right" });
+    doc.text(line, rightEdge, ry, { align: "right" });
     ry += 3.5;
   });
 
-  /* Divider line */
-  y = Math.max(y, ry) + 4;
-  doc.setDrawColor(BLUE_DARK.r, BLUE_DARK.g, BLUE_DARK.b);
-  doc.setLineWidth(0.6);
-  doc.line(ml, y, pw - mr, y);
+  /* ─── Gradient divider ─── */
+  y = Math.max(y + logoH + 4, ry + 2);
+  drawGradientLine(doc, ml, y, cw);
   y += 8;
 
   /* ═══════════════════════════════════════════════
-   *  3. QUOTE INFO – 4-column grid
+   *  2. INFO GRID – 4 columns, matching on-screen
    * ═══════════════════════════════════════════════ */
   const colW = cw / 4;
-  const col1 = ml;
-  const col2 = ml + colW;
-  const col3 = ml + colW * 2;
-  const col4 = ml + colW * 3;
+  const c1 = ml, c2 = ml + colW, c3 = ml + colW * 2, c4 = ml + colW * 3;
 
-  const labelStyle = () => {
-    doc.setFontSize(6.5);
-    doc.setFont("helvetica", "bold");
-    setTxt(doc, GRAY_MID);
-  };
-  const valueStyle = () => {
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    setTxt(doc, DARK);
-  };
+  const lbl = () => { doc.setFontSize(6.5); doc.setFont("helvetica", "bold"); txt(doc, GRAY); };
+  const val = () => { doc.setFontSize(9); doc.setFont("helvetica", "bold"); txt(doc, DARK); };
 
-  // Row 1
-  const row1y = y;
-  labelStyle();
-  doc.text("BILLED TO", col1, row1y);
-  doc.text("DATE OF ISSUE", col2, row1y);
-  doc.text(`${opts.docType.toUpperCase()} NUMBER`, col3, row1y);
-  doc.text("QUOTED AMOUNT (ZAR)", col4, row1y);
+  // Row 1 labels
+  lbl();
+  doc.text("BILLED TO", c1, y);
+  doc.text("DATE OF ISSUE", c2, y);
+  doc.text(`${opts.docType.toUpperCase()} NUMBER`, c3, y);
+  doc.text("QUOTED AMOUNT (ZAR)", c4, y);
 
-  // Values
-  const valY = row1y + 5;
-  valueStyle();
-  doc.text(opts.customerName || "—", col1, valY);
+  // Row 1 values
+  const vy = y + 5;
+  val();
+  doc.text(opts.customerName || "—", c1, vy);
+
+  // Customer address/email below name
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  setTxt(doc, GRAY_MID);
+  doc.setFontSize(7.5);
+  txt(doc, GRAY);
+  let custY = vy + 4;
   if (opts.customerAddress) {
-    const addrLines = doc.splitTextToSize(opts.customerAddress, colW - 4);
-    doc.text(addrLines, col1, valY + 4);
+    const al = doc.splitTextToSize(opts.customerAddress, colW - 4);
+    doc.text(al, c1, custY);
+    custY += al.length * 3.2;
   }
   if (opts.customerEmail) {
-    const emailY = valY + 4 + (opts.customerAddress ? doc.splitTextToSize(opts.customerAddress, colW - 4).length * 3.5 : 0);
-    doc.text(opts.customerEmail, col1, emailY);
+    doc.text(opts.customerEmail, c1, custY);
   }
 
-  valueStyle();
-  doc.text(opts.issueDate || "—", col2, valY);
+  val();
+  doc.text(opts.issueDate || "—", c2, vy);
+  doc.text(opts.docNumber || "DRAFT", c3, vy);
 
-  doc.text(opts.docNumber || "DRAFT", col3, valY);
-
-  // Large blue total
-  doc.setFontSize(16);
+  // Large orange quoted amount
+  doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  setTxt(doc, BLUE);
-  doc.text(fmtZAR(opts.total), col4, valY);
+  txt(doc, AMBER);
+  doc.text(fmtZAR(opts.total), c4, vy);
 
   // Row 2: Valid Until + Reference
-  const row2y = valY + 12;
-  labelStyle();
-  doc.text("VALID UNTIL", col2, row2y);
-  doc.text("REFERENCE / PO#", col3, row2y);
-  valueStyle();
+  const r2y = vy + 14;
+  lbl();
+  doc.text("VALID UNTIL", c2, r2y);
+  doc.text("REFERENCE / PO#", c3, r2y);
+  val();
   doc.setFontSize(8);
-  doc.text(opts.dueDate || "—", col2, row2y + 4);
-  doc.text(opts.reference || "—", col3, row2y + 4);
+  doc.text(opts.dueDate || "—", c2, r2y + 4);
+  doc.text(opts.reference || "—", c3, r2y + 4);
 
-  y = row2y + 12;
+  y = r2y + 10;
 
-  /* Dark divider */
-  doc.setDrawColor(BLUE_DARK.r, BLUE_DARK.g, BLUE_DARK.b);
-  doc.setLineWidth(0.8);
-  doc.line(ml, y, pw - mr, y);
+  /* ─── Gradient divider ─── */
+  drawGradientLine(doc, ml, y, cw);
   y += 8;
 
   /* ═══════════════════════════════════════════════
-   *  4. LINE ITEMS TABLE
+   *  3. LINE ITEMS TABLE
    * ═══════════════════════════════════════════════ */
   const hasMarkup = opts.lineItems.some((i) => i.markup && i.markup > 0);
+  const dX = ml + 2;
+  const cstX = hasMarkup ? ml + cw * 0.50 : ml + cw * 0.55;
+  const qX = hasMarkup ? ml + cw * 0.62 : ml + cw * 0.68;
+  const mX = ml + cw * 0.75;
+  const tX = rightEdge - 2;
 
-  // Column positions
-  const descX = ml + 2;
-  const costX = ml + cw * 0.52;
-  const qtyX = ml + cw * 0.62;
-  const markupX = ml + cw * 0.73;
-  const totalX = pw - mr - 2;
-
-  // Header row
-  setFill(doc, GRAY_LIGHT);
+  // Table header
+  fill(doc, { r: 240, g: 243, b: 248 });
   doc.rect(ml, y - 4, cw, 7, "F");
   doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
-  setTxt(doc, GRAY_MID);
-  doc.text("DESCRIPTION", descX, y);
-  doc.text("COST", costX, y, { align: "right" });
-  doc.text("QTY", qtyX, y, { align: "right" });
-  if (hasMarkup) doc.text("MARKUP%", markupX, y, { align: "right" });
-  doc.text("TOTAL", totalX, y, { align: "right" });
-  y += 7;
+  txt(doc, NAVY);
+  doc.text("DESCRIPTION", dX, y);
+  doc.text("COST", cstX, y, { align: "right" });
+  doc.text("QTY", qX, y, { align: "right" });
+  if (hasMarkup) doc.text("MARKUP%", mX, y, { align: "right" });
+  doc.text("TOTAL", tX, y, { align: "right" });
 
-  // Draw bottom border of header
-  doc.setDrawColor(200, 200, 200);
+  y += 3;
+  doc.setDrawColor(NAVY.r, NAVY.g, NAVY.b);
   doc.setLineWidth(0.3);
-  doc.line(ml, y - 3, pw - mr, y - 3);
+  doc.line(ml, y, rightEdge, y);
+  y += 4;
 
   // Rows
   doc.setFontSize(8.5);
   doc.setFont("helvetica", "normal");
-  setTxt(doc, DARK);
 
   opts.lineItems.forEach((item, idx) => {
     if (!item.description) return;
-    if (y > ph - 45) { doc.addPage(); y = 20; }
+    if (y > ph - 40) { doc.addPage(); y = 20; }
 
-    // Alternating background
+    // Alternating row bg
     if (idx % 2 === 0) {
-      setFill(doc, { r: 252, g: 252, b: 252 });
+      fill(doc, { r: 250, g: 251, b: 253 });
       doc.rect(ml, y - 3.5, cw, 7, "F");
     }
 
-    // Description (truncate to fit)
-    const maxDescW = (cw * 0.48) - 4;
+    // Description – smart truncation
+    const maxW = (hasMarkup ? cw * 0.46 : cw * 0.50) - 4;
     let desc = item.description;
-    while (doc.getTextWidth(desc) > maxDescW && desc.length > 3) {
-      desc = desc.slice(0, -1);
-    }
+    while (doc.getTextWidth(desc) > maxW && desc.length > 3) desc = desc.slice(0, -1);
     if (desc.length < item.description.length) desc += "…";
 
-    setTxt(doc, DARK);
-    doc.text(desc, descX, y);
-    doc.text(fmtZAR(item.rate), costX, y, { align: "right" });
-    doc.text(String(item.quantity), qtyX, y, { align: "right" });
-    if (hasMarkup) {
-      doc.text(item.markup ? `${item.markup}%` : "—", markupX, y, { align: "right" });
-    }
+    txt(doc, DARK);
+    doc.text(desc, dX, y);
+    doc.text(fmtZAR(item.rate), cstX, y, { align: "right" });
+    doc.text(String(item.quantity), qX, y, { align: "right" });
+    if (hasMarkup) doc.text(item.markup ? `${item.markup}%` : "—", mX, y, { align: "right" });
     doc.setFont("helvetica", "bold");
-    doc.text(fmtZAR(item.amount), totalX, y, { align: "right" });
+    doc.text(fmtZAR(item.amount), tX, y, { align: "right" });
     doc.setFont("helvetica", "normal");
 
-    // Row separator
     y += 7;
-    doc.setDrawColor(235, 235, 235);
-    doc.setLineWidth(0.2);
-    doc.line(ml, y - 3, pw - mr, y - 3);
+    doc.setDrawColor(230, 230, 230);
+    doc.setLineWidth(0.15);
+    doc.line(ml, y - 3, rightEdge, y - 3);
   });
 
   y += 4;
 
   /* ═══════════════════════════════════════════════
-   *  5. TOTALS SECTION
+   *  4. TOTALS
    * ═══════════════════════════════════════════════ */
-  if (y > ph - 60) { doc.addPage(); y = 20; }
+  if (y > ph - 55) { doc.addPage(); y = 20; }
 
-  const totalsLabelX = pw - mr - 80;
+  // Thin separator
+  doc.setDrawColor(210, 210, 210);
+  doc.setLineWidth(0.2);
+  doc.line(rightEdge - 85, y, rightEdge, y);
+  y += 5;
 
+  const tlX = rightEdge - 82;
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  setTxt(doc, GRAY_MID);
-  doc.text("Subtotal", totalsLabelX, y);
-  setTxt(doc, DARK);
-  doc.text(fmtZAR(opts.subtotal), totalX, y, { align: "right" });
+  txt(doc, GRAY);
+  doc.text("Subtotal", tlX, y);
+  txt(doc, DARK);
+  doc.text(fmtZAR(opts.subtotal), tX, y, { align: "right" });
   y += 5;
 
   if (opts.discountAmount && opts.discountAmount > 0) {
-    setTxt(doc, GRAY_MID);
-    doc.text("Discount", totalsLabelX, y);
-    setTxt(doc, DARK);
-    doc.text(`-${fmtZAR(opts.discountAmount)}`, totalX, y, { align: "right" });
+    txt(doc, GRAY);
+    doc.text("Discount", tlX, y);
+    txt(doc, DARK);
+    doc.text(`-${fmtZAR(opts.discountAmount)}`, tX, y, { align: "right" });
     y += 5;
   }
 
-  setTxt(doc, GRAY_MID);
-  doc.text(`VAT (${opts.taxRate}%)`, totalsLabelX, y);
-  setTxt(doc, DARK);
-  doc.text(fmtZAR(opts.taxAmount), totalX, y, { align: "right" });
+  txt(doc, GRAY);
+  doc.text(`VAT (${opts.taxRate}%)`, tlX, y);
+  txt(doc, DARK);
+  doc.text(fmtZAR(opts.taxAmount), tX, y, { align: "right" });
   y += 6;
 
-  // Orange total bar
-  const totalBarW = 90;
-  const totalBarX = pw - mr - totalBarW;
-  setFill(doc, AMBER);
-  doc.roundedRect(totalBarX, y - 4.5, totalBarW, 10, 2, 2, "F");
+  // Amber total bar – only place with amber/orange
+  const tbW = 90;
+  const tbX = rightEdge - tbW;
+  fill(doc, AMBER);
+  doc.roundedRect(tbX, y - 4.5, tbW, 10, 2, 2, "F");
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  setTxt(doc, WHITE);
-  doc.text("Total (ZAR)", totalBarX + 4, y + 1.5);
-  doc.text(fmtZAR(opts.total), pw - mr - 3, y + 1.5, { align: "right" });
-
+  txt(doc, WHITE);
+  doc.text("Total (ZAR)", tbX + 4, y + 1.5);
+  doc.text(fmtZAR(opts.total), rightEdge - 3, y + 1.5, { align: "right" });
   y += 18;
 
   /* ═══════════════════════════════════════════════
-   *  6. NOTES
+   *  5. NOTES
    * ═══════════════════════════════════════════════ */
   if (opts.notes) {
-    if (y > ph - 40) { doc.addPage(); y = 20; }
+    if (y > ph - 35) { doc.addPage(); y = 20; }
     doc.setFontSize(7);
     doc.setFont("helvetica", "bold");
-    setTxt(doc, GRAY_MID);
+    txt(doc, GRAY);
     doc.text("NOTES", ml, y);
     y += 4;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    setTxt(doc, DARK);
-    const noteLines = doc.splitTextToSize(opts.notes, cw);
-    doc.text(noteLines, ml, y);
-    y += noteLines.length * 3.5 + 6;
+    txt(doc, DARK);
+    const nl = doc.splitTextToSize(opts.notes, cw);
+    doc.text(nl, ml, y);
+    y += nl.length * 3.5 + 6;
   }
 
   /* ═══════════════════════════════════════════════
-   *  7. TERMS & CONDITIONS
+   *  6. TERMS & CONDITIONS
    * ═══════════════════════════════════════════════ */
   if (y > ph - 50) { doc.addPage(); y = 20; }
   doc.setDrawColor(210, 210, 210);
   doc.setLineWidth(0.3);
-  doc.line(ml, y, pw - mr, y);
+  doc.line(ml, y, rightEdge, y);
   y += 6;
 
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
-  setTxt(doc, BLUE);
+  txt(doc, BLUE);
   doc.text("Terms & Conditions", ml, y);
   y += 5;
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
-  setTxt(doc, GRAY_MID);
+  txt(doc, GRAY);
 
   const defaultTerms = [
     "1. This quotation is valid for 30 days from the date of issue.",
@@ -405,59 +372,56 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
     "10. Additional work not covered in this quotation will be quoted separately.",
   ];
 
-  const termsToUse = opts.terms ? opts.terms.split("\n").filter(Boolean) : defaultTerms;
-  termsToUse.forEach((t) => {
+  const terms = opts.terms ? opts.terms.split("\n").filter(Boolean) : defaultTerms;
+  terms.forEach((t) => {
     if (y > ph - 18) { doc.addPage(); y = 20; }
     doc.text(t, ml, y);
     y += 3.5;
   });
 
   /* ═══════════════════════════════════════════════
-   *  8. BANKING DETAILS
+   *  7. BANKING DETAILS
    * ═══════════════════════════════════════════════ */
   y += 4;
   if (y > ph - 30) { doc.addPage(); y = 20; }
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
-  setTxt(doc, BLUE);
+  txt(doc, BLUE);
   doc.text("Banking Details", ml, y);
   y += 4;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
-  setTxt(doc, GRAY_MID);
-  const bankLines = [
-    "Bank: First National Bank (FNB)",
-    "Account Name: 0800-BE-COOL AC Super Service",
-    "Account Number: 62 XXX XXX XXX",
-    "Branch Code: 250 655",
-    "Reference: " + (opts.docNumber || "Quote"),
-  ];
-  bankLines.forEach((l) => {
-    doc.text(l, ml, y);
-    y += 3.5;
-  });
+  txt(doc, GRAY);
+  ["Bank: First National Bank (FNB)",
+   "Account Name: 0800-BE-COOL AC Super Service",
+   "Account Number: 62 XXX XXX XXX",
+   "Branch Code: 250 655",
+   `Reference: ${opts.docNumber || "Quote"}`
+  ].forEach((l) => { doc.text(l, ml, y); y += 3.5; });
 
   /* ═══════════════════════════════════════════════
-   *  9. FOOTER (fixed on every page)
+   *  8. FOOTER – subtle blue-grey bar on every page
    * ═══════════════════════════════════════════════ */
-  const pageCount = doc.getNumberOfPages();
-  for (let p = 1; p <= pageCount; p++) {
+  const pages = doc.getNumberOfPages();
+  for (let p = 1; p <= pages; p++) {
     doc.setPage(p);
-    // Bottom blue stripe with grey gradient
-    setFill(doc, { r: 220, g: 225, b: 235 });
-    doc.rect(0, ph - 12, pw, 2, "F");
-    setFill(doc, BLUE_DARK);
-    doc.rect(0, ph - 10, pw, 10, "F");
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "bold");
-    setTxt(doc, WHITE);
-    doc.text("0800-BE-COOL! AC Super Service", ml, ph - 4);
-    doc.text("info@0800becool.co.za · 0800 23 2665", pw / 2, ph - 4, { align: "center" });
-    doc.text("www.0800becool.co.za", pw - mr, ph - 4, { align: "right" });
+    // Light grey-blue footer
+    fill(doc, { r: 235, g: 240, b: 248 });
+    doc.rect(0, ph - 12, pw, 12, "F");
+    // Navy bottom edge
+    fill(doc, NAVY);
+    doc.rect(0, ph - 3, pw, 3, "F");
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "normal");
+    txt(doc, NAVY);
+    doc.text("0800-BE-COOL! AC Super Service", ml, ph - 6);
+    txt(doc, GRAY);
+    doc.text("info@0800becool.co.za · 0800 23 2665", pw / 2, ph - 6, { align: "center" });
+    doc.text("www.0800becool.co.za", rightEdge, ph - 6, { align: "right" });
   }
 
   /* ═══════════════════════════════════════════════
-   *  10. OUTPUT: merge brochures or save
+   *  9. OUTPUT – merge brochures or save directly
    * ═══════════════════════════════════════════════ */
   if (opts.brochures && opts.brochures.length > 0) {
     const quoteBytes = doc.output("arraybuffer");
