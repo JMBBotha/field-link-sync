@@ -861,14 +861,32 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
           let brochures: { id: string; name: string; file_url: string }[] = [];
           if (productIds.length > 0) {
             try {
+              // Get product codes for selected products
+              const { data: selectedProducts } = await supabase
+                .from("supplier_products")
+                .select("id, product_code")
+                .in("id", productIds);
+              const productCodes = (selectedProducts || []).map((p: any) => (p.product_code || "").toUpperCase());
+
+              // Get all active brochures
               const { data } = await supabase
                 .from("product_brochures" as any)
-                .select("id, name, file_url, linked_product_ids")
+                .select("id, name, file_url, linked_product_ids, model_match_prefixes")
                 .eq("is_active", true);
               const allBrochures = (data || []) as any[];
-              const matched = allBrochures.filter((b: any) =>
-                (b.linked_product_ids || []).some((lpId: string) => productIds.includes(lpId))
-              );
+
+              // Match by linked_product_ids OR by model_match_prefixes against product codes
+              const matched = allBrochures.filter((b: any) => {
+                // Direct link match
+                const hasDirectLink = (b.linked_product_ids || []).some((lpId: string) => productIds.includes(lpId));
+                if (hasDirectLink) return true;
+                // Prefix match: check if any product code starts with any brochure prefix
+                const prefixes: string[] = (b.model_match_prefixes || []).map((p: string) => p.toUpperCase());
+                return prefixes.length > 0 && productCodes.some((code: string) =>
+                  prefixes.some((prefix: string) => code.startsWith(prefix))
+                );
+              });
+
               brochures = matched
                 .filter((b: any) => b.file_url && !b.file_url.startsWith("placeholder"))
                 .map((b: any) => ({
