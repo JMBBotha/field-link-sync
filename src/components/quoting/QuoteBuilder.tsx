@@ -15,9 +15,7 @@ import UnsavedQuoteDialog from "@/components/shared/UnsavedQuoteDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import BeCoolLogo from "@/components/shared/BeCoolLogo";
 import DocumentHeader from "@/components/shared/DocumentHeader";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
-import { assembleQuoteWithBrochures, type BrochureAttachment } from "@/lib/pdfMerger";
+import { generateDocumentPdf } from "@/lib/documentPdf";
 import { DEFAULT_TERMS } from "@/lib/defaultTerms";
 
 /* ────────── Types ────────── */
@@ -132,7 +130,6 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
   const [attachments, setAttachments] = useState<{ name: string; url: string; path: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const quoteCardRef = useRef<HTMLDivElement>(null);
 
   /* ─── Zustand store ─── */
   const { isDirty, setDraft, setDirty, clearDraft } = useQuoteSessionStore();
@@ -640,7 +637,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       </div>
 
       {/* ── A4 Card ── */}
-      <div ref={quoteCardRef} className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
+      <div className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
         {/* ── HEADER ROW ── */}
         <DocumentHeader
           logoUrl={logoUrl}
@@ -858,94 +855,12 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       {/* ── Bottom action bar ── */}
       <div className="sticky bottom-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2">
         <Button variant="outline" size="sm" onClick={async () => {
-          if (!quoteCardRef.current) return;
-          const card = quoteCardRef.current;
-
-          // 1. Hide edit-only controls
-          const editEls = card.querySelectorAll<HTMLElement>(
-            'button, input, select, textarea, [data-pdf-hide], .group-hover\\:opacity-100'
-          );
-          const origStyles: { el: HTMLElement; display: string }[] = [];
-          editEls.forEach((el) => {
-            // Keep static display text (not interactive)
-            const tag = el.tagName.toLowerCase();
-            if (tag === 'button' || tag === 'input' || tag === 'select' || tag === 'textarea') {
-              origStyles.push({ el, display: el.style.display });
-              el.style.display = 'none';
-            }
-          });
-
-          // 2. Temporarily remove shadow/border for clean capture
-          const origShadow = card.style.boxShadow;
-          const origBorder = card.style.border;
-          const origBorderRadius = card.style.borderRadius;
-          card.style.boxShadow = 'none';
-          card.style.border = 'none';
-          card.style.borderRadius = '0';
-
           try {
-            // 3. Capture with html2canvas
-            const canvas = await html2canvas(card, {
-              scale: 2,
-              useCORS: true,
-              allowTaint: true,
-              backgroundColor: '#ffffff',
-              logging: false,
-            });
-
-            // 4. Create PDF from canvas
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
-            const imgW = canvas.width;
-            const imgH = canvas.height;
-
-            // A4 dimensions in mm
-            const pdfW = 210;
-            const pdfH = 297;
-            const margin = 10;
-            const contentW = pdfW - margin * 2;
-            const contentH = (imgH / imgW) * contentW;
-
-            const doc = new jsPDF({
-              orientation: contentH > pdfH - margin * 2 ? 'portrait' : 'portrait',
-              unit: 'mm',
-              format: 'a4',
-            });
-
-            // If content is taller than one page, split across pages
-            const maxH = pdfH - margin * 2;
-            if (contentH <= maxH) {
-              doc.addImage(imgData, 'JPEG', margin, margin, contentW, contentH);
-            } else {
-              // Multi-page: slice the canvas image
-              let remainH = contentH;
-              let srcY = 0;
-              let pageNum = 0;
-              while (remainH > 0) {
-                if (pageNum > 0) doc.addPage();
-                const sliceH = Math.min(maxH, remainH);
-                // Calculate source slice in canvas pixels
-                const srcSliceH = (sliceH / contentH) * imgH;
-                // Create a sliced canvas
-                const sliceCanvas = document.createElement('canvas');
-                sliceCanvas.width = imgW;
-                sliceCanvas.height = Math.round(srcSliceH);
-                const ctx = sliceCanvas.getContext('2d');
-                if (ctx) {
-                  ctx.drawImage(canvas, 0, Math.round(srcY), imgW, Math.round(srcSliceH), 0, 0, imgW, Math.round(srcSliceH));
-                  const sliceImg = sliceCanvas.toDataURL('image/jpeg', 0.95);
-                  doc.addImage(sliceImg, 'JPEG', margin, margin, contentW, sliceH);
-                }
-                srcY += srcSliceH;
-                remainH -= sliceH;
-                pageNum++;
-              }
-            }
-
-            // 5. Fetch and append brochure PDFs
+            // Fetch brochures linked to selected products
             const productIds = lineItems
               .map((i) => i.product_id)
               .filter((id): id is string => !!id);
-            let brochures: BrochureAttachment[] = [];
+            let brochures: { id: string; name: string; file_url: string }[] = [];
             if (productIds.length > 0) {
               try {
                 const { data: selectedProducts } = await supabase
@@ -977,35 +892,18 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
                 console.warn("Failed to fetch brochures for PDF:", e);
               }
             }
-
-            // 6. Merge brochures or save directly
-            const docNumber = quoteNumber || "DRAFT";
-            if (brochures.length > 0) {
-              const quoteBytes = doc.output("arraybuffer");
-              const merged = await assembleQuoteWithBrochures({
-                mainQuotePdfBytes: new Uint8Array(quoteBytes),
-                brochures,
-                quoteNumber: docNumber,
-              });
-              const blob = new Blob([new Uint8Array(merged)], { type: "application/pdf" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = `Quote-${docNumber}.pdf`;
-              a.click();
-              URL.revokeObjectURL(url);
-            } else {
-              doc.save(`Quote-${docNumber}.pdf`);
-            }
+            await generateDocumentPdf({
+              docType: "Quote", docNumber: quoteNumber || "DRAFT", companyName: companySettings.company_name || "Your Company",
+              companyAddress: companySettings.physical_address || "", vatNumber: companySettings.vat_number || "",
+              logoUrl,
+              customerName, customerAddress, customerEmail, issueDate, dueDate: validUntil,
+              lineItems: lineItems.filter(i => i.description), subtotal, discountAmount, taxRate, taxAmount, total, notes, terms, reference,
+              brochures,
+            });
+            toast({ title: "PDF Downloaded", description: "Your quote PDF has been generated." });
           } catch (err) {
-            console.error("PDF capture failed:", err);
-            toast({ title: "PDF Error", description: "Failed to generate PDF. Please try again.", variant: "destructive" });
-          } finally {
-            // 7. Restore edit controls
-            origStyles.forEach(({ el, display }) => { el.style.display = display; });
-            card.style.boxShadow = origShadow;
-            card.style.border = origBorder;
-            card.style.borderRadius = origBorderRadius;
+            console.error("PDF generation failed:", err);
+            toast({ title: "PDF Error", description: String(err), variant: "destructive" });
           }
         }}>
           <FileDown className="h-4 w-4 mr-1" />PDF
