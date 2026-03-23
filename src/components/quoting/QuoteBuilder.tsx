@@ -620,6 +620,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
       await generateDocumentPdf({
         docType: "Quote",
+        captureSelector: '[data-pdf-capture-root="quote"]',
         docNumber: quoteNumber || "DRAFT",
         companyName: companySettings.company_name || "Your Company",
         companyAddress: companySettings.physical_address || "",
@@ -670,7 +671,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       />
 
       {/* ── Top bar ── */}
-      <div className="sticky top-0 z-40 bg-background border-b px-4 py-3 flex items-center justify-between">
+      <div data-pdf-hide className="sticky top-0 z-40 bg-background border-b px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-bold text-foreground">{quoteId ? "Edit Quote" : "New Quote"}</h1>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={exitGuard.requestExit}>
@@ -718,7 +719,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       {/* ── Scrollable content area ── */}
       <div className="flex-1 overflow-auto">
       {/* ── A4 Card ── */}
-      <div className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
+      <div data-pdf-capture-root="quote" className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
         {/* ── HEADER ROW ── */}
         <DocumentHeader
           logoUrl={logoUrl}
@@ -818,7 +819,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
             <div>Description</div>
             <div className="text-right">Cost</div>
             <div className="text-right">Qty</div>
-            <div className="text-right">Markup%</div>
+            <div data-pdf-hide-markup className="text-right">Markup%</div>
             <div className="text-right">Total</div>
             <div />
           </div>
@@ -830,7 +831,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
               </div>
               <div><GhostInput type="number" min="0" step="0.01" className="text-right" value={item.rate || ""} onChange={(e) => updateLineItem(idx, "rate", e.target.value)} placeholder="0.00" /></div>
               <div><GhostInput type="number" min="0" step="1" className="text-right" value={item.quantity || ""} onChange={(e) => updateLineItem(idx, "quantity", e.target.value)} placeholder="1" /></div>
-              <div><GhostInput type="number" min="0" step="1" className="text-right" value={item.markup || ""} onChange={(e) => updateLineItem(idx, "markup", e.target.value)} placeholder="0" /></div>
+              <div data-pdf-hide-markup><GhostInput type="number" min="0" step="1" className="text-right" value={item.markup || ""} onChange={(e) => updateLineItem(idx, "markup", e.target.value)} placeholder="0" /></div>
               <div className="text-right text-sm font-medium py-1.5 px-2">{formatCurrency(item.amount)}</div>
               <div className="flex justify-center">
                 <button onClick={() => removeLineItem(idx)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"><X className="h-4 w-4" /></button>
@@ -935,7 +936,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       </div>{/* end scrollable content area */}
 
       {/* ── Bottom action bar — outside scroll container ── */}
-      <div className="shrink-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2">
+      <div data-pdf-hide className="shrink-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2">
         <Button variant="outline" size="sm" type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); console.log("PDF button clicked"); void handleGeneratePdf(); }}>
           <FileDown className="h-4 w-4 mr-1" />PDF
         </Button>
