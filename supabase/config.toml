@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.handle-whatsapp-address-reply]
 verify_jwt = false
+
+[functions.parse-brochure-grok]
+verify_jwt = false

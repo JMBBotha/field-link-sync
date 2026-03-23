@@ -52,6 +52,7 @@ interface ParsedRow {
   matchedId: string | null;
   matchedName: string | null;
   productSearchQuery: string;
+  provider?: "G" | "X";
 }
 
 interface BulkBrochureUploadProps {
@@ -221,7 +222,16 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
       5
     );
 
-    // Phase 2: AI parse (max 3 concurrent)
+    // Phase 2: AI parse with dual-provider round-robin (even=Gemini, odd=Grok), 3 per provider
+    const parseWithProvider = async (base64: string, fileName: string, provider: "G" | "X") => {
+      const fnName = provider === "G" ? "parse-brochure-pdf" : "parse-brochure-grok";
+      const { data, error } = await supabase.functions.invoke(fnName, {
+        body: { pdfBase64: base64, fileName },
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    };
+
     await pooledMap(
       initialRows,
       async (_, idx) => {
@@ -243,11 +253,19 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
             new Uint8Array(buf).reduce((data, byte) => data + String.fromCharCode(byte), "")
           );
 
-          const { data, error } = await supabase.functions.invoke("parse-brochure-pdf", {
-            body: { pdfBase64: base64, fileName: files[idx].name },
-          });
+          // Round-robin: even=Gemini(G), odd=Grok(X)
+          const primaryProvider: "G" | "X" = idx % 2 === 0 ? "G" : "X";
+          const fallbackProvider: "G" | "X" = primaryProvider === "G" ? "X" : "G";
+          let data: any;
+          let usedProvider = primaryProvider;
 
-          if (error) throw new Error(error.message);
+          try {
+            data = await parseWithProvider(base64, files[idx].name, primaryProvider);
+          } catch (primaryErr: any) {
+            console.warn(`Primary provider ${primaryProvider} failed for ${files[idx].name}, trying ${fallbackProvider}:`, primaryErr.message);
+            usedProvider = fallbackProvider;
+            data = await parseWithProvider(base64, files[idx].name, fallbackProvider);
+          }
 
           const snippets: string[] = (data.candidate_model_snippets || []).map((p: string) => p.trim().toUpperCase()).filter(Boolean);
           const parsedCategory = data.category || "Residential Wall-Mount";
@@ -283,6 +301,7 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
             linkedProductIds: autoLinked,
             matchedId: match?.id || null,
             matchedName: match?.name || null,
+            provider: usedProvider,
           });
         } catch (err: any) {
           console.warn("AI parse failed for", files[idx].name, err);
@@ -291,13 +310,14 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
             category: "Residential Wall-Mount",
             candidateSnippets: [],
             errorMsg: "AI parse failed - please link products manually",
+            provider: undefined,
           });
         }
 
         completed++;
         setProgress(Math.round((completed / totalSteps) * 100));
       },
-      3
+      6
     );
 
     setPhase("review");
@@ -684,19 +704,32 @@ function BulkUploadRow({
 
       {/* Status */}
       <TableCell>
-        {row.status === "error" ? (
-          <span className="flex items-center gap-1 text-destructive text-xs">
-            <AlertCircle className="h-3 w-3" /> Error
-          </span>
-        ) : row.matchedId ? (
-          <span className="text-xs text-amber-600" title={`Will update: ${row.matchedName}`}>
-            Update: {row.matchedName?.slice(0, 14)}…
-          </span>
-        ) : (
-          <span className="flex items-center gap-1 text-xs text-green-600">
-            <Check className="h-3 w-3" /> New
-          </span>
-        )}
+        <div className="flex items-center gap-1">
+          {row.provider && (
+            <Badge
+              variant="outline"
+              className={`text-[7px] px-1 py-0 font-mono ${
+                row.provider === "G" ? "border-blue-400 text-blue-600" : "border-orange-400 text-orange-600"
+              }`}
+              title={row.provider === "G" ? "Parsed by Gemini" : "Parsed by Grok"}
+            >
+              {row.provider}
+            </Badge>
+          )}
+          {row.status === "error" ? (
+            <span className="flex items-center gap-1 text-destructive text-xs">
+              <AlertCircle className="h-3 w-3" /> Error
+            </span>
+          ) : row.matchedId ? (
+            <span className="text-xs text-amber-600" title={`Will update: ${row.matchedName}`}>
+              Update: {row.matchedName?.slice(0, 14)}…
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 text-xs text-green-600">
+              <Check className="h-3 w-3" /> New
+            </span>
+          )}
+        </div>
       </TableCell>
     </TableRow>
   );
