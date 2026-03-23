@@ -96,11 +96,11 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
-  const ml = 14;
-  const mr = 14;
+  const ml = 10;
+  const mr = 10;
   const cw = pw - ml - mr;
   const rightEdge = pw - mr;
-  let y = 12;
+  let y = 10;
 
   /* ═══════════════════════════════════════════════
    *  1. HEADER – White background, logo LEFT, company info RIGHT
@@ -415,11 +415,18 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
     "Thank you for considering MassAir Ind cc for your air conditioning needs.",
   ];
 
-  const terms = opts.terms ? opts.terms.split("\n").filter(Boolean) : defaultTerms;
-  terms.forEach((t) => {
+  // Always print the default terms (ignore opts.terms to guarantee they appear)
+  const termsToRender = defaultTerms;
+  termsToRender.forEach((t) => {
     if (y > ph - 18) { doc.addPage(); y = 20; }
-    doc.text(t, ml, y);
-    y += 3.5;
+    if (t === "") { y += 2; return; }
+    // Wrap long lines
+    const wrapped = doc.splitTextToSize(t, cw);
+    wrapped.forEach((line: string) => {
+      if (y > ph - 18) { doc.addPage(); y = 20; }
+      doc.text(line, ml, y);
+      y += 3.5;
+    });
   });
 
   /* Banking details now included in Terms & Conditions above */
