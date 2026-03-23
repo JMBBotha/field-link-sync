@@ -576,8 +576,6 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
     : "CO";
 
   const handleGeneratePdf = async () => {
-    alert("PDF clicked");
-
     try {
       const productIds = lineItems
         .map((i) => i.product_id)
