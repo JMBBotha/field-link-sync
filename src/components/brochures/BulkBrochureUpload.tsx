@@ -704,19 +704,32 @@ function BulkUploadRow({
 
       {/* Status */}
       <TableCell>
-        {row.status === "error" ? (
-          <span className="flex items-center gap-1 text-destructive text-xs">
-            <AlertCircle className="h-3 w-3" /> Error
-          </span>
-        ) : row.matchedId ? (
-          <span className="text-xs text-amber-600" title={`Will update: ${row.matchedName}`}>
-            Update: {row.matchedName?.slice(0, 14)}…
-          </span>
-        ) : (
-          <span className="flex items-center gap-1 text-xs text-green-600">
-            <Check className="h-3 w-3" /> New
-          </span>
-        )}
+        <div className="flex items-center gap-1">
+          {row.provider && (
+            <Badge
+              variant="outline"
+              className={`text-[7px] px-1 py-0 font-mono ${
+                row.provider === "G" ? "border-blue-400 text-blue-600" : "border-orange-400 text-orange-600"
+              }`}
+              title={row.provider === "G" ? "Parsed by Gemini" : "Parsed by Grok"}
+            >
+              {row.provider}
+            </Badge>
+          )}
+          {row.status === "error" ? (
+            <span className="flex items-center gap-1 text-destructive text-xs">
+              <AlertCircle className="h-3 w-3" /> Error
+            </span>
+          ) : row.matchedId ? (
+            <span className="text-xs text-amber-600" title={`Will update: ${row.matchedName}`}>
+              Update: {row.matchedName?.slice(0, 14)}…
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 text-xs text-green-600">
+              <Check className="h-3 w-3" /> New
+            </span>
+          )}
+        </div>
       </TableCell>
     </TableRow>
   );
