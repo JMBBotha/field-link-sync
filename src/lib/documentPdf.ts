@@ -92,13 +92,20 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
   /* ═══════════════════════════════════════════════
    *  2. HEADER: Logo left + Company info right
    * ═══════════════════════════════════════════════ */
-  // Embed the actual logo image (842×316 original, ~2.67:1 aspect)
-  const logoWmm = 50;   // width in mm
-  const logoHmm = 50 / 2.67;  // maintain aspect ratio ≈ 18.7mm
+  const logoWmm = 50;
+  const logoHmm = 50 / 2.67; // aspect ratio of logo.png (842×316)
+  let logoLoaded = false;
   try {
-    doc.addImage(logoImg, "PNG", ml, y - 4, logoWmm, logoHmm);
-  } catch {
-    // Fallback to text if image fails
+    const imgSrc = opts.logoUrl || logoAssetUrl;
+    console.log("[PDF] Loading logo from:", imgSrc);
+    const dataUrl = await loadImageAsDataUrl(imgSrc);
+    doc.addImage(dataUrl, "PNG", ml, y - 4, logoWmm, logoHmm);
+    logoLoaded = true;
+    console.log("[PDF] Logo embedded successfully");
+  } catch (e) {
+    console.warn("[PDF] Logo load failed, using text fallback:", e);
+  }
+  if (!logoLoaded) {
     doc.setFontSize(20);
     doc.setFont("helvetica", "bold");
     setTxt(doc, DARK);
