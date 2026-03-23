@@ -52,6 +52,7 @@ interface ParsedRow {
   matchedId: string | null;
   matchedName: string | null;
   productSearchQuery: string;
+  provider?: "G" | "X";
 }
 
 interface BulkBrochureUploadProps {
