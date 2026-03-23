@@ -44,6 +44,7 @@ interface DocumentPdfOptions {
   companyName: string;
   companyAddress?: string;
   vatNumber?: string;
+  logoUrl?: string | null;
   customerName: string;
   customerAddress?: string;
   customerEmail?: string;
