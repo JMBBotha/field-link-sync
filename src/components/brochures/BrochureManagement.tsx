@@ -416,19 +416,27 @@ const BrochureManagement = () => {
           <div className="flex-1 min-h-0 p-2">
             {previewPdf?.loading ? (
               <div className="h-[80vh] w-full grid place-items-center text-sm text-muted-foreground">Loading PDF...</div>
+            ) : previewPdf?.pageImages?.length ? (
+              <div className="h-[80vh] overflow-y-auto space-y-3 pr-1">
+                {previewPdf.pageImages.map((src, idx) => (
+                  <img
+                    key={`${previewPdf.name}-${idx}`}
+                    src={src}
+                    alt={`${previewPdf.name} page ${idx + 1}`}
+                    loading="lazy"
+                    className="w-full h-auto rounded border"
+                  />
+                ))}
+              </div>
             ) : previewPdf ? (
-              <object
-                data={previewPdf.blobUrl || previewPdf.url}
-                type="application/pdf"
-                className="w-full h-[80vh] rounded"
-              >
-                <p className="text-center py-8 text-muted-foreground">
+              <div className="h-[80vh] w-full grid place-items-center text-sm text-muted-foreground text-center px-4">
+                <p>
                   {previewPdf.error || "PDF cannot be displayed."}{" "}
                   <a href={previewPdf.url} target="_blank" rel="noopener noreferrer" className="text-primary underline">
                     Open directly
                   </a>
                 </p>
-              </object>
+              </div>
             ) : null}
           </div>
         </DialogContent>
