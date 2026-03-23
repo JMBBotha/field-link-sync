@@ -213,14 +213,18 @@ const BrochureManagement = () => {
                     ))}
                   </div>
                 )}
-                <a
-                  href={getPublicUrl(b.file_url)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-primary hover:underline"
-                >
-                  View PDF →
-                </a>
+                {b.file_url && !b.file_url.startsWith("placeholder") ? (
+                  <a
+                    href={getPublicUrl(b.file_url)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline"
+                  >
+                    View PDF →
+                  </a>
+                ) : (
+                  <span className="text-xs text-muted-foreground italic">No PDF uploaded</span>
+                )}
               </CardContent>
             </Card>
           ))}
