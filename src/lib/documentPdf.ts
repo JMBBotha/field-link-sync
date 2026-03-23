@@ -199,8 +199,8 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
 
   y = r2y + 10;
 
-  /* ─── Gradient divider ─── */
-  drawGradientLine(doc, ml, y, cw);
+  /* ─── Divider ─── */
+  drawDividerLine(doc, ml, y, cw);
   y += 8;
 
   /* ═══════════════════════════════════════════════
