@@ -11,10 +11,9 @@ const fmtZAR = (n: number): string => {
 };
 
 /* ─── Brand colours (HSL converted to RGB for jsPDF) ─── */
-const BLUE = { r: 0, g: 119, b: 182 };        // #0077B6 – primary brand
-const BLUE_DARK = { r: 44, g: 62, b: 107 };    // #2c3e6b – dark navy
-const AMBER = { r: 245, g: 158, b: 11 };       // #F59E0B – orange accent
-const AMBER_LIGHT = { r: 255, g: 237, b: 204 };// light amber tint
+const BLUE = { r: 0, g: 119, b: 182 };          // #0077B6 – primary brand
+const BLUE_DARK = { r: 30, g: 58, b: 95 };      // #1E3A5F – sidebar/nav navy
+const AMBER = { r: 245, g: 158, b: 11 };        // #F59E0B – total row accent only
 const GRAY_LIGHT = { r: 248, g: 248, b: 248 };
 const GRAY_MID = { r: 120, g: 120, b: 120 };
 const DARK = { r: 33, g: 33, b: 33 };
