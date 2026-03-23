@@ -2648,6 +2648,54 @@ export type Database = {
           },
         ]
       }
+      product_brochures: {
+        Row: {
+          brand: string
+          category: string | null
+          created_at: string | null
+          file_name: string
+          file_url: string
+          id: string
+          is_active: boolean | null
+          model_match_prefixes: string[]
+          name: string
+          page_count: number | null
+          product_family_id: string | null
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          brand: string
+          category?: string | null
+          created_at?: string | null
+          file_name: string
+          file_url: string
+          id?: string
+          is_active?: boolean | null
+          model_match_prefixes?: string[]
+          name: string
+          page_count?: number | null
+          product_family_id?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          brand?: string
+          category?: string | null
+          created_at?: string | null
+          file_name?: string
+          file_url?: string
+          id?: string
+          is_active?: boolean | null
+          model_match_prefixes?: string[]
+          name?: string
+          page_count?: number | null
+          product_family_id?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       product_favorites: {
         Row: {
           created_at: string
@@ -3106,6 +3154,48 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "quote_attachments_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_brochures: {
+        Row: {
+          brochure_id: string
+          created_at: string | null
+          id: string
+          is_auto_matched: boolean | null
+          quote_id: string
+          sort_order: number | null
+        }
+        Insert: {
+          brochure_id: string
+          created_at?: string | null
+          id?: string
+          is_auto_matched?: boolean | null
+          quote_id: string
+          sort_order?: number | null
+        }
+        Update: {
+          brochure_id?: string
+          created_at?: string | null
+          id?: string
+          is_auto_matched?: boolean | null
+          quote_id?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_brochures_brochure_id_fkey"
+            columns: ["brochure_id"]
+            isOneToOne: false
+            referencedRelation: "product_brochures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_brochures_quote_id_fkey"
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
