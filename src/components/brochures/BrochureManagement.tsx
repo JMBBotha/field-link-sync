@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Upload, FileText, X, Trash2, Sparkles } from "lucide-react";
+import { Plus, Upload, FileText, X, Trash2, Sparkles, Download, ExternalLink } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import BulkBrochureUpload from "./BulkBrochureUpload";
 import { getPageCount } from "@/lib/pdfMerger";
