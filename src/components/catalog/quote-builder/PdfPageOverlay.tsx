@@ -71,6 +71,7 @@ const RegionBox = memo(({
   basketProductCounts,
   pdfSelection,
   onHoverStart,
+  onHoverMove,
   onHoverEnd,
 }: {
   region: OverlayRegion;
@@ -80,6 +81,7 @@ const RegionBox = memo(({
   basketProductCounts?: Record<string, number>;
   pdfSelection?: PdfSelectionHandlers;
   onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent) => void;
+  onHoverMove?: (e: React.MouseEvent) => void;
   onHoverEnd?: () => void;
 }) => {
   const getProductOrFallback = (): PaletteProduct => region.product ?? buildFallbackProduct(region);
