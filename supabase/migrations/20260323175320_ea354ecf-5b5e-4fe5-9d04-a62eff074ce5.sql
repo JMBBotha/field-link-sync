@@ -1,0 +1,2 @@
+ALTER TABLE product_brochures ADD COLUMN IF NOT EXISTS linked_product_ids UUID[] DEFAULT '{}';
+CREATE INDEX IF NOT EXISTS idx_brochures_linked_products ON product_brochures USING GIN (linked_product_ids);
