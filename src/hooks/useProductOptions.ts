@@ -9,6 +9,7 @@ export interface ProductOption {
   category: string;
   isFavorite: boolean;
   source: "template" | "product";
+  productCode?: string;
 }
 
 const isAcCategory = (cat: string) => {
