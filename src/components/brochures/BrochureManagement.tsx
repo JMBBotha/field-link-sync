@@ -215,14 +215,12 @@ const BrochureManagement = () => {
                   </div>
                 )}
                 {b.file_url && !b.file_url.startsWith("placeholder") ? (
-                  <a
-                    href={getPublicUrl(b.file_url)}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => setPreviewUrl(getPublicUrl(b.file_url))}
                     className="text-xs text-primary hover:underline"
                   >
                     View PDF →
-                  </a>
+                  </button>
                 ) : (
                   <span className="text-xs text-muted-foreground italic">No PDF uploaded</span>
                 )}
