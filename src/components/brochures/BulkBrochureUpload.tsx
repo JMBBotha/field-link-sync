@@ -222,7 +222,16 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
       5
     );
 
-    // Phase 2: AI parse (max 3 concurrent)
+    // Phase 2: AI parse with dual-provider round-robin (even=Gemini, odd=Grok), 3 per provider
+    const parseWithProvider = async (base64: string, fileName: string, provider: "G" | "X") => {
+      const fnName = provider === "G" ? "parse-brochure-pdf" : "parse-brochure-grok";
+      const { data, error } = await supabase.functions.invoke(fnName, {
+        body: { pdfBase64: base64, fileName },
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    };
+
     await pooledMap(
       initialRows,
       async (_, idx) => {
@@ -244,11 +253,19 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
             new Uint8Array(buf).reduce((data, byte) => data + String.fromCharCode(byte), "")
           );
 
-          const { data, error } = await supabase.functions.invoke("parse-brochure-pdf", {
-            body: { pdfBase64: base64, fileName: files[idx].name },
-          });
+          // Round-robin: even=Gemini(G), odd=Grok(X)
+          const primaryProvider: "G" | "X" = idx % 2 === 0 ? "G" : "X";
+          const fallbackProvider: "G" | "X" = primaryProvider === "G" ? "X" : "G";
+          let data: any;
+          let usedProvider = primaryProvider;
 
-          if (error) throw new Error(error.message);
+          try {
+            data = await parseWithProvider(base64, files[idx].name, primaryProvider);
+          } catch (primaryErr: any) {
+            console.warn(`Primary provider ${primaryProvider} failed for ${files[idx].name}, trying ${fallbackProvider}:`, primaryErr.message);
+            usedProvider = fallbackProvider;
+            data = await parseWithProvider(base64, files[idx].name, fallbackProvider);
+          }
 
           const snippets: string[] = (data.candidate_model_snippets || []).map((p: string) => p.trim().toUpperCase()).filter(Boolean);
           const parsedCategory = data.category || "Residential Wall-Mount";
@@ -284,6 +301,7 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
             linkedProductIds: autoLinked,
             matchedId: match?.id || null,
             matchedName: match?.name || null,
+            provider: usedProvider,
           });
         } catch (err: any) {
           console.warn("AI parse failed for", files[idx].name, err);
@@ -292,13 +310,14 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
             category: "Residential Wall-Mount",
             candidateSnippets: [],
             errorMsg: "AI parse failed - please link products manually",
+            provider: undefined,
           });
         }
 
         completed++;
         setProgress(Math.round((completed / totalSteps) * 100));
       },
-      3
+      6
     );
 
     setPhase("review");
