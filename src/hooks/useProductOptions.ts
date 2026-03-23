@@ -9,6 +9,7 @@ export interface ProductOption {
   category: string;
   isFavorite: boolean;
   source: "template" | "product";
+  productCode?: string;
 }
 
 const isAcCategory = (cat: string) => {
@@ -33,7 +34,8 @@ export const filterProductOptions = (options: ProductOption[], query: string) =>
   return options.filter(
     (o) =>
       o.name.toLowerCase().includes(q) ||
-      (o.description && o.description.toLowerCase().includes(q))
+      (o.description && o.description.toLowerCase().includes(q)) ||
+      (o.productCode && o.productCode.toLowerCase().includes(q))
   );
 };
 
@@ -51,7 +53,7 @@ export function useProductOptions() {
         .order("name"),
       supabase
         .from("supplier_products")
-        .select("id, short_name, description, cost_price, category, is_pinned")
+        .select("id, product_code, short_name, description, cost_price, category, is_pinned")
         .eq("is_active", true)
         .order("is_pinned", { ascending: false })
         .order("description"),
@@ -76,6 +78,7 @@ export function useProductOptions() {
           category: p.category,
           isFavorite: p.is_pinned ?? false,
           source: "product" as const,
+          productCode: p.product_code || "",
         })),
       ];
       setAllOptions(sortProductOptions(merged));
