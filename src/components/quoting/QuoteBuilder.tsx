@@ -421,6 +421,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       markup: 0,
       amount: opt.rate,
       service_id: opt.source === "template" ? opt.id : null,
+      product_id: opt.source === "product" ? opt.id : null,
     };
     setLineItems(items);
   };
