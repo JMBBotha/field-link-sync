@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import { assembleQuoteWithBrochures } from "./pdfMerger";
+import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -23,7 +23,7 @@ interface DocumentPdfOptions {
   total: number;
   notes?: string;
   terms?: string;
-  brochureUrls?: string[];
+  brochures?: BrochureAttachment[];
 }
 
 export async function generateDocumentPdf(opts: DocumentPdfOptions) {
@@ -159,9 +159,13 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
     doc.text(lines, 14, y);
   }
 
-  if (opts.brochureUrls && opts.brochureUrls.length > 0) {
+  if (opts.brochures && opts.brochures.length > 0) {
     const quoteBytes = doc.output("arraybuffer");
-    const merged = await assembleQuoteWithBrochures(new Uint8Array(quoteBytes), opts.brochureUrls);
+    const merged = await assembleQuoteWithBrochures({
+      mainQuotePdfBytes: new Uint8Array(quoteBytes),
+      brochures: opts.brochures,
+      quoteNumber: opts.docNumber,
+    });
     const blob = new Blob([new Uint8Array(merged)], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

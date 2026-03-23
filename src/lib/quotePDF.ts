@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import { assembleQuoteWithBrochures } from "./pdfMerger";
+import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
 
 interface QuoteLineItem {
   description: string;
@@ -198,11 +198,15 @@ export const generateQuotePDF = (quote: QuoteData): jsPDF => {
   return doc;
 };
 
-export const downloadQuotePDF = async (quote: QuoteData, brochureUrls?: string[]) => {
+export const downloadQuotePDF = async (quote: QuoteData, brochures?: BrochureAttachment[]) => {
   const doc = generateQuotePDF(quote);
-  if (brochureUrls && brochureUrls.length > 0) {
+  if (brochures && brochures.length > 0) {
     const quoteBytes = doc.output("arraybuffer");
-    const merged = await assembleQuoteWithBrochures(new Uint8Array(quoteBytes), brochureUrls);
+    const merged = await assembleQuoteWithBrochures({
+      mainQuotePdfBytes: new Uint8Array(quoteBytes),
+      brochures,
+      quoteNumber: quote.quote_number,
+    });
     const blob = new Blob([new Uint8Array(merged)], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
