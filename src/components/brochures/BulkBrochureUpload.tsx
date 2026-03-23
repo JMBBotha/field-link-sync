@@ -52,7 +52,7 @@ interface ParsedRow {
   matchedId: string | null;
   matchedName: string | null;
   productSearchQuery: string;
-  provider?: "G" | "X";
+  provider?: "gemini" | "grok";
 }
 
 interface BulkBrochureUploadProps {
@@ -223,9 +223,8 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
     );
 
     // Phase 2: AI parse with dual-provider round-robin (even=Gemini, odd=Grok), 3 per provider
-    const parseWithProvider = async (base64: string, fileName: string, provider: "G" | "X") => {
-      const fnName = provider === "G" ? "parse-brochure-pdf" : "parse-brochure-grok";
-      const { data, error } = await supabase.functions.invoke(fnName, {
+    const invokeParser = async (functionName: "parse-brochure-pdf" | "parse-brochure-grok", base64: string, fileName: string) => {
+      const { data, error } = await supabase.functions.invoke(functionName, {
         body: { pdfBase64: base64, fileName },
       });
       if (error) throw new Error(error.message);
@@ -253,18 +252,25 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
             new Uint8Array(buf).reduce((data, byte) => data + String.fromCharCode(byte), "")
           );
 
-          // Round-robin: even=Gemini(G), odd=Grok(X)
-          const primaryProvider: "G" | "X" = idx % 2 === 0 ? "G" : "X";
-          const fallbackProvider: "G" | "X" = primaryProvider === "G" ? "X" : "G";
+          // Round-robin: even=gemini, odd=grok
+          const provider: "gemini" | "grok" = idx % 2 === 0 ? "gemini" : "grok";
+          const functionName = provider === "gemini" ? "parse-brochure-pdf" : "parse-brochure-grok";
+          const fallbackProvider: "gemini" | "grok" =
+            provider === "gemini" ? "grok" : "gemini";
+          const fallbackFunctionName =
+            fallbackProvider === "gemini" ? "parse-brochure-pdf" : "parse-brochure-grok";
           let data: any;
-          let usedProvider = primaryProvider;
+          let usedProvider = provider;
 
           try {
-            data = await parseWithProvider(base64, files[idx].name, primaryProvider);
+            data = await invokeParser(functionName, base64, files[idx].name);
           } catch (primaryErr: any) {
-            console.warn(`Primary provider ${primaryProvider} failed for ${files[idx].name}, trying ${fallbackProvider}:`, primaryErr.message);
+            console.warn(
+              `Primary provider ${provider} failed for ${files[idx].name}, trying ${fallbackProvider}:`,
+              primaryErr.message
+            );
             usedProvider = fallbackProvider;
-            data = await parseWithProvider(base64, files[idx].name, fallbackProvider);
+            data = await invokeParser(fallbackFunctionName, base64, files[idx].name);
           }
 
           const snippets: string[] = (data.candidate_model_snippets || []).map((p: string) => p.trim().toUpperCase()).filter(Boolean);
@@ -709,11 +715,11 @@ function BulkUploadRow({
             <Badge
               variant="outline"
               className={`text-[7px] px-1 py-0 font-mono ${
-                row.provider === "G" ? "border-blue-400 text-blue-600" : "border-orange-400 text-orange-600"
+                row.provider === "gemini" ? "border-blue-400 text-blue-600" : "border-orange-400 text-orange-600"
               }`}
-              title={row.provider === "G" ? "Parsed by Gemini" : "Parsed by Grok"}
+              title={row.provider === "gemini" ? "Parsed by Gemini" : "Parsed by Grok"}
             >
-              {row.provider}
+              {row.provider === "gemini" ? "G" : "X"}
             </Badge>
           )}
           {row.status === "error" ? (
