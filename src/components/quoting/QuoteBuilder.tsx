@@ -577,6 +577,9 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
   const handleGeneratePdf = async () => {
     try {
+      alert("PDF generation starting");
+      console.log("PDF button clicked");
+
       const productIds = lineItems
         .map((i) => i.product_id)
         .filter((id): id is string => !!id);
@@ -645,7 +648,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
       toast({ title: "PDF Downloaded", description: "Your quote PDF has been generated." });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : JSON.stringify(err);
+      const message = err instanceof Error ? err.message : String(err);
       console.error("PDF generation failed:", err);
       toast({
         title: "PDF Error",
@@ -937,7 +940,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
       {/* ── Bottom action bar — outside scroll container ── */}
       <div data-pdf-hide className="shrink-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2">
-        <Button variant="outline" size="sm" type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); console.log("PDF button clicked"); void handleGeneratePdf(); }}>
+        <Button variant="outline" size="sm" type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); void handleGeneratePdf(); }}>
           <FileDown className="h-4 w-4 mr-1" />PDF
         </Button>
         <Button variant="outline" size="sm" onClick={() => toast({ title: "Email placeholder", description: "Email sending will be connected soon." })} disabled={!canSave}>
