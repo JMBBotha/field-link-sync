@@ -34,7 +34,8 @@ export const filterProductOptions = (options: ProductOption[], query: string) =>
   return options.filter(
     (o) =>
       o.name.toLowerCase().includes(q) ||
-      (o.description && o.description.toLowerCase().includes(q))
+      (o.description && o.description.toLowerCase().includes(q)) ||
+      (o.productCode && o.productCode.toLowerCase().includes(q))
   );
 };
 
