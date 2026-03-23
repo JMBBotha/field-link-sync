@@ -159,5 +159,17 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
     doc.text(lines, 14, y);
   }
 
-  doc.save(`${opts.docType}-${opts.docNumber}.pdf`);
+  if (opts.brochureUrls && opts.brochureUrls.length > 0) {
+    const quoteBytes = doc.output("arraybuffer");
+    const merged = await assembleQuoteWithBrochures(new Uint8Array(quoteBytes), opts.brochureUrls);
+    const blob = new Blob([new Uint8Array(merged)], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${opts.docType}-${opts.docNumber}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } else {
+    doc.save(`${opts.docType}-${opts.docNumber}.pdf`);
+  }
 }
