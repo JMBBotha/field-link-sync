@@ -417,14 +417,14 @@ const BrochureManagement = () => {
             {previewPdf?.loading ? (
               <div className="h-[80vh] w-full grid place-items-center text-sm text-muted-foreground">Loading PDF...</div>
             ) : previewPdf?.pageImages?.length ? (
-              <div className="h-[80vh] overflow-y-auto space-y-3 pr-1">
+              <div className="h-[80vh] overflow-y-auto space-y-2 pr-1" style={{ willChange: "transform", contain: "layout style" }}>
                 {previewPdf.pageImages.map((src, idx) => (
                   <img
                     key={`${previewPdf.name}-${idx}`}
                     src={src}
                     alt={`${previewPdf.name} page ${idx + 1}`}
-                    loading="lazy"
                     className="w-full h-auto rounded border"
+                    decoding="async"
                   />
                 ))}
               </div>
