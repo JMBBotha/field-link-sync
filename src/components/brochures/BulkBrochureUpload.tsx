@@ -251,7 +251,14 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
 
           const snippets: string[] = (data.candidate_model_snippets || []).map((p: string) => p.trim().toUpperCase()).filter(Boolean);
           const parsedCategory = data.category || "Residential Wall-Mount";
-          const parsedBrand = data.brand || "Samsung";
+          const fileNameLower = files[idx].name.toLowerCase();
+          let parsedBrand = data.brand || "Samsung";
+
+          // Client-side filename override for brand correction
+          if (fileNameLower.includes("alliance")) parsedBrand = "Alliance";
+          if (fileNameLower.includes("comfee")) parsedBrand = "Comfee";
+          if (fileNameLower.includes("samsung")) parsedBrand = "Samsung";
+
           const parsedName = data.product_name || files[idx].name.replace(".pdf", "");
 
           // Auto-link products whose product_code matches any snippet
