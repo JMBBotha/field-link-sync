@@ -15,9 +15,7 @@ import UnsavedQuoteDialog from "@/components/shared/UnsavedQuoteDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import BeCoolLogo from "@/components/shared/BeCoolLogo";
 import DocumentHeader from "@/components/shared/DocumentHeader";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
-import { assembleQuoteWithBrochures, type BrochureAttachment } from "@/lib/pdfMerger";
+import { generateDocumentPdf } from "@/lib/documentPdf";
 import { DEFAULT_TERMS } from "@/lib/defaultTerms";
 
 /* ────────── Types ────────── */
