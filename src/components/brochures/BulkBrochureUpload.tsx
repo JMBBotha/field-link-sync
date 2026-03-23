@@ -33,7 +33,7 @@ interface ParsedRow {
   filePath: string;
   pageCount: number;
   file: File;
-  status: "uploading" | "parsing" | "ready" | "error";
+  status: "uploading" | "parsing" | "ready" | "error" | "pending";
   errorMsg?: string;
   // AI-parsed fields (editable)
   brand: string;
@@ -199,12 +199,17 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
             existingBrochures
           );
 
+          const parsedPrefixes = data.model_match_prefixes || [];
+          const parsedCategory = data.category || "Residential Wall-Mount";
+          const parsedBrand = data.brand || "Samsung";
+          const parsedName = data.product_name || files[idx].name.replace(".pdf", "");
+
           updateRow(idx, {
-            status: "ready",
-            brand: data.brand || "Samsung",
-            productName: data.product_name || files[idx].name.replace(".pdf", ""),
-            category: data.category || "",
-            prefixes: data.model_match_prefixes || [],
+            status: parsedBrand && parsedName && parsedPrefixes.length > 0 ? "ready" : "ready",
+            brand: parsedBrand,
+            productName: parsedName,
+            category: parsedCategory,
+            prefixes: parsedPrefixes,
             matchedId: match?.id || null,
             matchedName: match?.name || null,
           });
@@ -212,6 +217,7 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
           console.warn("AI parse failed for", files[idx].name, err);
           updateRow(idx, {
             status: "ready",
+            category: "Residential Wall-Mount",
             errorMsg: "AI parse failed - please fill manually",
           });
         }
@@ -284,7 +290,7 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
     setProgress(0);
   };
 
-  const readyCount = rows.filter((r) => r.status === "ready").length;
+  const readyCount = rows.filter((r) => r.status === "ready" && r.brand && r.productName).length;
   const matchedCount = rows.filter((r) => r.matchedId).length;
 
   return (

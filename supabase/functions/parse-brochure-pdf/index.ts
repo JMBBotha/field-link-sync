@@ -30,14 +30,15 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an HVAC product expert. Analyze the provided product brochure PDF and extract structured information. Return the result using the extract_brochure_info tool.
+    const systemPrompt = `You are an HVAC product expert. Analyze this product brochure PDF and extract structured information using the extract_brochure_info tool.
 
-Rules:
+CRITICAL RULES:
 - brand MUST be exactly one of: Samsung, Alliance, Comfee
-- category MUST be exactly one of: Residential Wall-Mount, Commercial Wall-Mount, Commercial Cassette, Commercial Ducted, Commercial Underceiling
+- category MUST be exactly one of: Residential Wall-Mount, Commercial Wall-Mount, Commercial Cassette, Commercial Ducted, Commercial Underceiling. If unsure, default to "Residential Wall-Mount".
 - product_name should be a clean marketing name like "Samsung AR9500 2.0 WindFree"
-- model_match_prefixes should be uppercase model code prefixes found in spec tables (e.g. AR12BSAA, AC026TNXD)
-- Extract ALL distinct model prefixes you can find in the document`;
+- model_match_prefixes: Extract ALL model numbers, part numbers, and SKU codes found ANYWHERE in the document. HVAC brochures list multiple BTU/kW sizes on ONE brochure. Look for alphanumeric codes following patterns like XX00XXXX (e.g. AR09BSHC, AR12BSHC, AR18BSHC, AR24BSHC, AC026TNXD, FOUS09, FOUSI12-R32). Each size variant is a separate prefix. Return ALL unique model number prefixes found as uppercase strings. One brochure = one product family covering multiple capacities.
+- Search specification tables, model comparison charts, ordering information, and footnotes for model codes
+- Return at minimum 1 model prefix. If you find full model numbers like AR09BSHCAWKNFA, use the significant prefix portion (e.g. AR09BSHC)`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -62,7 +63,7 @@ Rules:
                 },
                 {
                   type: "text",
-                  text: "Analyze this HVAC product brochure PDF and extract the brand, product name, category, and all model code prefixes.",
+                  text: "Analyze this HVAC product brochure PDF. Extract the brand, product name, category, and ALL model number prefixes. Look carefully in spec tables, model comparison charts, and ordering info for alphanumeric model codes. Each BTU/kW size variant has its own model number - list them ALL.",
                 },
               ],
             },
