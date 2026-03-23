@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Upload, Loader2, Check, AlertCircle, Sparkles } from "lucide-react";
+import { Upload, Loader2, Check, AlertCircle, Sparkles, X, Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { getPageCount } from "@/lib/pdfMerger";
 
@@ -35,14 +35,13 @@ interface ParsedRow {
   file: File;
   status: "uploading" | "parsing" | "ready" | "error" | "pending";
   errorMsg?: string;
-  // AI-parsed fields (editable)
   brand: string;
   productName: string;
   category: string;
   prefixes: string[];
-  // Match info
   matchedId: string | null;
   matchedName: string | null;
+  newPrefixInput: string;
 }
 
 interface BulkBrochureUploadProps {
@@ -52,11 +51,19 @@ interface BulkBrochureUploadProps {
   onComplete: () => void;
 }
 
+/** Extract model-like prefixes from a string (filename or product name) */
+function extractFallbackPrefixes(text: string): string[] {
+  const patterns = text.match(/AR\d{2,4}[A-Z]?|AF\d{2,4}|AC\d{2,4}|FOU[A-Z]{1,2}\d{0,2}|FCMF|FCMI/gi);
+  if (patterns && patterns.length > 0) {
+    return [...new Set(patterns.map((p) => p.toUpperCase()))];
+  }
+  return [];
+}
+
 function fuzzyMatch(
   parsed: { productName: string; prefixes: string[] },
   existing: ExistingBrochure[]
 ): { id: string; name: string } | null {
-  // Check prefix overlap first
   for (const ex of existing) {
     const overlap = parsed.prefixes.some((p) =>
       ex.model_match_prefixes.some(
@@ -67,7 +74,6 @@ function fuzzyMatch(
     );
     if (overlap) return { id: ex.id, name: ex.name };
   }
-  // Check name similarity
   const normalName = parsed.productName.toLowerCase().replace(/[^a-z0-9]/g, "");
   for (const ex of existing) {
     const exName = ex.name.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -78,7 +84,6 @@ function fuzzyMatch(
   return null;
 }
 
-// Process max N concurrent promises
 async function pooledMap<T, R>(
   items: T[],
   fn: (item: T, idx: number) => Promise<R>,
@@ -102,6 +107,15 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
   const [phase, setPhase] = useState<"select" | "processing" | "review" | "saving">("select");
   const [progress, setProgress] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [allKnownPrefixes, setAllKnownPrefixes] = useState<string[]>([]);
+
+  // Load all known prefixes from existing brochures on mount
+  useEffect(() => {
+    if (!open) return;
+    const prefixSet = new Set<string>();
+    existingBrochures.forEach((b) => b.model_match_prefixes.forEach((p) => prefixSet.add(p.toUpperCase())));
+    setAllKnownPrefixes(Array.from(prefixSet).sort());
+  }, [open, existingBrochures]);
 
   const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || []);
@@ -118,24 +132,25 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
       filePath: "",
       pageCount: 1,
       file: f,
-      status: "uploading",
+      status: "uploading" as const,
       brand: "Samsung",
       productName: f.name.replace(".pdf", ""),
       category: "",
       prefixes: [],
       matchedId: null,
       matchedName: null,
+      newPrefixInput: "",
     }));
     setRows([...initialRows]);
 
-    const totalSteps = files.length * 2; // upload + parse
+    const totalSteps = files.length * 2;
     let completed = 0;
 
     const updateRow = (idx: number, updates: Partial<ParsedRow>) => {
       setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, ...updates } : r)));
     };
 
-    // Phase 1: Upload all files to storage
+    // Phase 1: Upload all files
     await pooledMap(
       files,
       async (file, idx) => {
@@ -164,11 +179,10 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
       5
     );
 
-    // Phase 2: AI parse each uploaded file (max 5 concurrent)
+    // Phase 2: AI parse (max 3 concurrent)
     await pooledMap(
       initialRows,
       async (_, idx) => {
-        // Re-read current state
         let currentRow: ParsedRow | undefined;
         setRows((prev) => {
           currentRow = prev[idx];
@@ -182,7 +196,6 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
         }
 
         try {
-          // Read file as base64
           const buf = await files[idx].arrayBuffer();
           const base64 = btoa(
             new Uint8Array(buf).reduce((data, byte) => data + String.fromCharCode(byte), "")
@@ -194,18 +207,25 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
 
           if (error) throw new Error(error.message);
 
-          const match = fuzzyMatch(
-            { productName: data.product_name || "", prefixes: data.model_match_prefixes || [] },
-            existingBrochures
-          );
-
-          const parsedPrefixes = data.model_match_prefixes || [];
+          let parsedPrefixes: string[] = (data.model_match_prefixes || []).map((p: string) => p.trim().toUpperCase()).filter(Boolean);
           const parsedCategory = data.category || "Residential Wall-Mount";
           const parsedBrand = data.brand || "Samsung";
           const parsedName = data.product_name || files[idx].name.replace(".pdf", "");
 
+          // FIX 2: Smart fallback if AI returned no prefixes
+          if (parsedPrefixes.length === 0) {
+            const fromName = extractFallbackPrefixes(parsedName);
+            const fromFile = extractFallbackPrefixes(files[idx].name);
+            parsedPrefixes = [...new Set([...fromName, ...fromFile])];
+          }
+
+          const match = fuzzyMatch(
+            { productName: parsedName, prefixes: parsedPrefixes },
+            existingBrochures
+          );
+
           updateRow(idx, {
-            status: parsedBrand && parsedName && parsedPrefixes.length > 0 ? "ready" : "ready",
+            status: "ready",
             brand: parsedBrand,
             productName: parsedName,
             category: parsedCategory,
@@ -215,9 +235,12 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
           });
         } catch (err: any) {
           console.warn("AI parse failed for", files[idx].name, err);
+          // Still set ready with fallback prefixes from filename
+          const fallbackPrefixes = extractFallbackPrefixes(files[idx].name);
           updateRow(idx, {
             status: "ready",
             category: "Residential Wall-Mount",
+            prefixes: fallbackPrefixes,
             errorMsg: "AI parse failed - please fill manually",
           });
         }
@@ -235,6 +258,28 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
     setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, [field]: value } : r)));
   };
 
+  const addPrefix = (idx: number, prefix: string) => {
+    const clean = prefix.trim().toUpperCase();
+    if (!clean) return;
+    setRows((prev) =>
+      prev.map((r, i) =>
+        i === idx && !r.prefixes.includes(clean)
+          ? { ...r, prefixes: [...r.prefixes, clean], newPrefixInput: "" }
+          : i === idx
+          ? { ...r, newPrefixInput: "" }
+          : r
+      )
+    );
+  };
+
+  const removePrefix = (idx: number, prefix: string) => {
+    setRows((prev) =>
+      prev.map((r, i) =>
+        i === idx ? { ...r, prefixes: r.prefixes.filter((p) => p !== prefix) } : r
+      )
+    );
+  };
+
   const handleConfirmSave = async () => {
     setSaving(true);
     let saved = 0;
@@ -242,6 +287,8 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
 
     for (const row of rows) {
       if (row.status === "error" || !row.filePath) continue;
+      // FIX 3: Only require brand + productName
+      if (!row.brand || !row.productName) continue;
 
       try {
         const record = {
@@ -256,14 +303,12 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
         } as any;
 
         if (row.matchedId) {
-          // Update existing
           const { error } = await supabase
             .from("product_brochures" as any)
             .update(record)
             .eq("id", row.matchedId);
           if (error) throw error;
         } else {
-          // Insert new
           const { error } = await supabase
             .from("product_brochures" as any)
             .insert(record);
@@ -283,15 +328,31 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
     });
     onComplete();
     onOpenChange(false);
-    // Reset
     setFiles([]);
     setRows([]);
     setPhase("select");
     setProgress(0);
   };
 
+  // FIX 3: Ready = brand AND productName exist (prefixes optional)
   const readyCount = rows.filter((r) => r.status === "ready" && r.brand && r.productName).length;
   const matchedCount = rows.filter((r) => r.matchedId).length;
+
+  // Compute suggestion prefixes per row (from known prefixes not already added)
+  const getSuggestions = (row: ParsedRow): string[] => {
+    const rowPrefixSet = new Set(row.prefixes);
+    // Filter known prefixes that could be relevant (same brand or matching patterns in name)
+    return allKnownPrefixes
+      .filter((p) => !rowPrefixSet.has(p))
+      .filter((p) => {
+        // Show prefixes from same brand's existing brochures
+        const fromSameBrand = existingBrochures.some(
+          (b) => b.brand === row.brand && b.model_match_prefixes.includes(p)
+        );
+        return fromSameBrand;
+      })
+      .slice(0, 12);
+  };
 
   return (
     <Dialog
@@ -306,7 +367,7 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
         onOpenChange(v);
       }}
     >
-      <DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-5xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
@@ -321,20 +382,11 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
             </p>
             <div>
               <Label>PDF Files</Label>
-              <Input
-                type="file"
-                accept="application/pdf"
-                multiple
-                onChange={handleFilesSelected}
-              />
+              <Input type="file" accept="application/pdf" multiple onChange={handleFilesSelected} />
             </div>
-            {files.length > 0 && (
-              <p className="text-sm">{files.length} file(s) selected</p>
-            )}
+            {files.length > 0 && <p className="text-sm">{files.length} file(s) selected</p>}
             <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button onClick={startProcessing} disabled={files.length === 0}>
                 <Upload className="h-4 w-4 mr-1" /> Upload & Analyze
               </Button>
@@ -375,110 +427,141 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[140px]">File</TableHead>
-                    <TableHead className="w-[100px]">Brand</TableHead>
-                    <TableHead>Product Name</TableHead>
-                    <TableHead className="w-[160px]">Category</TableHead>
+                    <TableHead className="w-[130px]">File</TableHead>
+                    <TableHead className="w-[90px]">Brand</TableHead>
+                    <TableHead className="w-[160px]">Product Name</TableHead>
+                    <TableHead className="w-[150px]">Category</TableHead>
                     <TableHead>Model Prefixes</TableHead>
-                    <TableHead className="w-[130px]">Status</TableHead>
+                    <TableHead className="w-[120px]">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map((row, idx) => (
-                    <TableRow key={idx} className={row.status === "error" ? "bg-destructive/5" : ""}>
-                      <TableCell className="text-xs font-mono truncate max-w-[140px]" title={row.fileName}>
-                        {row.fileName}
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={row.brand}
-                          onValueChange={(v) => updateRowField(idx, "brand", v)}
-                        >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {BRANDS.map((b) => (
-                              <SelectItem key={b} value={b}>
-                                {b}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          className="h-8 text-xs"
-                          value={row.productName}
-                          onChange={(e) => updateRowField(idx, "productName", e.target.value)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={row.category || "none"}
-                          onValueChange={(v) =>
-                            updateRowField(idx, "category", v === "none" ? "" : v)
-                          }
-                        >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="—" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">—</SelectItem>
-                            {CATEGORIES.map((c) => (
-                              <SelectItem key={c} value={c}>
-                                {c}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          className="h-8 text-xs font-mono"
-                          value={row.prefixes.join(", ")}
-                          onChange={(e) =>
-                            updateRowField(
-                              idx,
-                              "prefixes",
-                              e.target.value
-                                .split(",")
-                                .map((p) => p.trim().toUpperCase())
-                                .filter(Boolean)
-                            )
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {row.status === "error" ? (
-                          <span className="flex items-center gap-1 text-destructive text-xs">
-                            <AlertCircle className="h-3 w-3" /> Error
-                          </span>
-                        ) : row.matchedId ? (
-                          <span className="text-xs text-amber-600" title={`Will update: ${row.matchedName}`}>
-                            Matched: {row.matchedName?.slice(0, 20)}…
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-xs text-green-600">
-                            <Check className="h-3 w-3" /> New
-                          </span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {rows.map((row, idx) => {
+                    const suggestions = getSuggestions(row);
+                    return (
+                      <TableRow key={idx} className={row.status === "error" ? "bg-destructive/5" : ""}>
+                        <TableCell className="text-xs font-mono truncate max-w-[130px]" title={row.fileName}>
+                          {row.fileName}
+                        </TableCell>
+                        <TableCell>
+                          <Select value={row.brand} onValueChange={(v) => updateRowField(idx, "brand", v)}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {BRANDS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            className="h-8 text-xs"
+                            value={row.productName}
+                            onChange={(e) => updateRowField(idx, "productName", e.target.value)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Select
+                            value={row.category || "none"}
+                            onValueChange={(v) => updateRowField(idx, "category", v === "none" ? "" : v)}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="—" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">—</SelectItem>
+                              {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1.5">
+                            {/* Current prefixes with remove buttons */}
+                            <div className="flex flex-wrap gap-1">
+                              {row.prefixes.map((p) => (
+                                <Badge
+                                  key={p}
+                                  variant="outline"
+                                  className="text-[9px] font-mono gap-0.5 pr-0.5 cursor-default"
+                                >
+                                  {p}
+                                  <button
+                                    onClick={() => removePrefix(idx, p)}
+                                    className="ml-0.5 rounded-full hover:bg-destructive/20 p-0.5"
+                                  >
+                                    <X className="h-2.5 w-2.5" />
+                                  </button>
+                                </Badge>
+                              ))}
+                            </div>
+                            {/* Add prefix input */}
+                            <div className="flex items-center gap-1">
+                              <Input
+                                className="h-6 text-[10px] font-mono flex-1 min-w-[60px]"
+                                placeholder="Add prefix..."
+                                value={row.newPrefixInput || ""}
+                                onChange={(e) => updateRowField(idx, "newPrefixInput", e.target.value.toUpperCase())}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === ",") {
+                                    e.preventDefault();
+                                    addPrefix(idx, row.newPrefixInput || "");
+                                  }
+                                }}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => addPrefix(idx, row.newPrefixInput || "")}
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            {/* Suggestions from existing brochures */}
+                            {suggestions.length > 0 && (
+                              <div className="flex flex-wrap gap-0.5">
+                                <span className="text-[8px] text-muted-foreground mr-0.5">Suggest:</span>
+                                {suggestions.slice(0, 6).map((s) => (
+                                  <Badge
+                                    key={s}
+                                    variant="secondary"
+                                    className="text-[8px] font-mono cursor-pointer hover:bg-primary/20"
+                                    onClick={() => addPrefix(idx, s)}
+                                  >
+                                    +{s}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {row.status === "error" ? (
+                            <span className="flex items-center gap-1 text-destructive text-xs">
+                              <AlertCircle className="h-3 w-3" /> Error
+                            </span>
+                          ) : row.matchedId ? (
+                            <span className="text-xs text-amber-600" title={`Will update: ${row.matchedName}`}>
+                              Matched: {row.matchedName?.slice(0, 18)}…
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-xs text-green-600">
+                              <Check className="h-3 w-3" /> New
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button onClick={handleConfirmSave} disabled={saving || readyCount === 0}>
                 {saving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Saving...
-                  </>
+                  <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Saving...</>
                 ) : (
                   `Confirm & Save ${readyCount} Brochures`
                 )}

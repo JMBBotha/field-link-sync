@@ -30,15 +30,23 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an HVAC product expert. Analyze this product brochure PDF and extract structured information using the extract_brochure_info tool.
+    const systemPrompt = `You are an expert Samsung HVAC technician. This is a 3-page product brochure for ONE product family.
 
-CRITICAL RULES:
-- brand MUST be exactly one of: Samsung, Alliance, Comfee
-- category MUST be exactly one of: Residential Wall-Mount, Commercial Wall-Mount, Commercial Cassette, Commercial Ducted, Commercial Underceiling. If unsure, default to "Residential Wall-Mount".
-- product_name should be a clean marketing name like "Samsung AR9500 2.0 WindFree"
-- model_match_prefixes: Extract ALL model numbers, part numbers, and SKU codes found ANYWHERE in the document. HVAC brochures list multiple BTU/kW sizes on ONE brochure. Look for alphanumeric codes following patterns like XX00XXXX (e.g. AR09BSHC, AR12BSHC, AR18BSHC, AR24BSHC, AC026TNXD, FOUS09, FOUSI12-R32). Each size variant is a separate prefix. Return ALL unique model number prefixes found as uppercase strings. One brochure = one product family covering multiple capacities.
-- Search specification tables, model comparison charts, ordering information, and footnotes for model codes
-- Return at minimum 1 model prefix. If you find full model numbers like AR09BSHCAWKNFA, use the significant prefix portion (e.g. AR09BSHC)`;
+Extract EXACTLY:
+- brand (Samsung / Alliance / Comfee)
+- product_name (clean marketing name, e.g. 'AR6500 WindFree', 'AR80 Series', 'Alliance Emerald R32')
+- category (one of: Residential Wall-Mount, Commercial Wall-Mount, Commercial Cassette, Commercial Ducted, Commercial Underceiling. If unsure, default to "Residential Wall-Mount")
+- model_match_prefixes (MOST IMPORTANT):
+  * Scan EVERY model code in tables, specs, features, ordering info, or text
+  * Extract 3-8 unique uppercase prefixes that would match quote line items
+  * Look for alphanumeric codes following patterns like AR09BSHC, AC026TNXD, FOUS09, FOUSI12-R32
+  * Each BTU/kW size variant has its own model number - list them ALL
+  * If a series name appears (e.g. AR6500 WindFree), include both the series prefix (AR6500) and individual size variants (AR09, AR12, AR18, AR24)
+  * ALWAYS return at least one prefix - never return empty array
+  * HVAC brochures ALWAYS list multiple model variants in spec tables - FIND THEM
+  * Search specification tables, model comparison charts, ordering information, and footnotes for model codes
+
+Be aggressive - extract every model code you can find.`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -63,7 +71,7 @@ CRITICAL RULES:
                 },
                 {
                   type: "text",
-                  text: "Analyze this HVAC product brochure PDF. Extract the brand, product name, category, and ALL model number prefixes. Look carefully in spec tables, model comparison charts, and ordering info for alphanumeric model codes. Each BTU/kW size variant has its own model number - list them ALL.",
+                  text: "Analyze this HVAC product brochure PDF. Extract the brand, product name, category, and ALL model number prefixes. Look carefully in spec tables, model comparison charts, and ordering info for alphanumeric model codes. Each BTU/kW size variant has its own model number - list them ALL. Return at least 1 prefix.",
                 },
               ],
             },
@@ -86,7 +94,7 @@ CRITICAL RULES:
                     product_name: {
                       type: "string",
                       description:
-                        "Clean marketing product name, e.g. 'Samsung AR9500 2.0 WindFree'",
+                        "Clean marketing product name, e.g. 'AR6500 WindFree', 'AR80 Series'",
                     },
                     category: {
                       type: "string",
@@ -103,7 +111,7 @@ CRITICAL RULES:
                       type: "array",
                       items: { type: "string" },
                       description:
-                        "Array of uppercase model code prefixes found in the brochure",
+                        "Array of 3-8 uppercase model code prefixes found in the brochure. MUST contain at least 1 item.",
                     },
                   },
                   required: [
