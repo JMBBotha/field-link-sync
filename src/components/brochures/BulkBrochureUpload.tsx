@@ -148,6 +148,7 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
       const { data, error } = await (supabase.from("supplier_products") as any)
         .select("id, product_code, short_name, brand")
         .or("archived.is.null,archived.eq.false")
+        .not("product_code", "like", "BRAC%")
         .order("product_code")
         .limit(2000);
       if (!error && data) {
