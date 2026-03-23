@@ -71,6 +71,7 @@ const RegionBox = memo(({
   basketProductCounts,
   pdfSelection,
   onHoverStart,
+  onHoverMove,
   onHoverEnd,
 }: {
   region: OverlayRegion;
@@ -80,6 +81,7 @@ const RegionBox = memo(({
   basketProductCounts?: Record<string, number>;
   pdfSelection?: PdfSelectionHandlers;
   onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent) => void;
+  onHoverMove?: (e: React.MouseEvent) => void;
   onHoverEnd?: () => void;
 }) => {
   const getProductOrFallback = (): PaletteProduct => region.product ?? buildFallbackProduct(region);
@@ -127,6 +129,10 @@ const RegionBox = memo(({
     if (onHoverStart) onHoverStart(getProductOrFallback(), e);
   };
 
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (onHoverMove) onHoverMove(e);
+  };
+
   const handleMouseLeave = () => {
     if (onHoverEnd) onHoverEnd();
   };
@@ -145,6 +151,7 @@ const RegionBox = memo(({
         height: `${region.h_pct}%`,
       }}
       onMouseEnter={handleMouseEnter}
+      onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       onClick={handleRowClick}
     >
@@ -210,6 +217,7 @@ const PdfPageOverlay = ({
   pdfSelection,
   onOpenProductInfo,
   onHoverStart,
+  onHoverMove,
   onHoverEnd,
 }: PdfPageOverlayProps) => {
   if (regions.length === 0) return null;
@@ -225,6 +233,7 @@ const PdfPageOverlay = ({
           basketProductCounts={basketProductCounts}
           pdfSelection={pdfSelection}
           onHoverStart={onHoverStart}
+          onHoverMove={onHoverMove}
           onHoverEnd={onHoverEnd}
         />
       ))}
