@@ -151,9 +151,14 @@ const BrochureManagement = () => {
         <p className="text-sm text-muted-foreground">
           Manage PDF brochures that auto-attach to quotes based on model code matching.
         </p>
-        <Button onClick={() => setShowDialog(true)} size="sm">
-          <Plus className="h-4 w-4 mr-1" /> Upload Brochure
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowBulkDialog(true)} size="sm">
+            <Sparkles className="h-4 w-4 mr-1" /> Bulk Upload (AI)
+          </Button>
+          <Button onClick={() => setShowDialog(true)} size="sm">
+            <Plus className="h-4 w-4 mr-1" /> Upload Brochure
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
