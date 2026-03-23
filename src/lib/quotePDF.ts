@@ -203,7 +203,7 @@ export const downloadQuotePDF = async (quote: QuoteData, brochureUrls?: string[]
   if (brochureUrls && brochureUrls.length > 0) {
     const quoteBytes = doc.output("arraybuffer");
     const merged = await assembleQuoteWithBrochures(new Uint8Array(quoteBytes), brochureUrls);
-    const blob = new Blob([merged], { type: "application/pdf" });
+    const blob = new Blob([merged.buffer], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
