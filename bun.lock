@@ -63,6 +63,7 @@
         "fake-indexeddb": "^6.2.5",
         "framer-motion": "^12.34.0",
         "fuse.js": "^7.1.0",
+        "html2canvas": "^1.4.1",
         "input-otp": "^1.4.2",
         "jsdom": "^20.0.3",
         "jspdf": "^4.1.0",
