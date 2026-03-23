@@ -422,25 +422,7 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
     y += 3.5;
   });
 
-  /* ═══════════════════════════════════════════════
-   *  7. BANKING DETAILS
-   * ═══════════════════════════════════════════════ */
-  y += 4;
-  if (y > ph - 30) { doc.addPage(); y = 20; }
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  txt(doc, BLUE);
-  doc.text("Banking Details", ml, y);
-  y += 4;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  txt(doc, GRAY);
-  ["Bank: First National Bank (FNB)",
-   "Account Name: 0800-BE-COOL AC Super Service",
-   "Account Number: 62 XXX XXX XXX",
-   "Branch Code: 250 655",
-   `Reference: ${opts.docNumber || "Quote"}`
-  ].forEach((l) => { doc.text(l, ml, y); y += 3.5; });
+  /* Banking details now included in Terms & Conditions above */
 
   /* ═══════════════════════════════════════════════
    *  8. FOOTER – subtle blue-grey bar on every page
