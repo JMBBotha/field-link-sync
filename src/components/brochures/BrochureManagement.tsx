@@ -286,28 +286,6 @@ const BrochureManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog open={!!previewUrl} onOpenChange={() => setPreviewUrl(null)}>
-        <DialogContent className="max-w-4xl w-[95vw] h-[90vh] flex flex-col p-0">
-          <DialogHeader className="flex flex-row items-center justify-between px-4 pt-4 pb-2">
-            <DialogTitle>PDF Preview</DialogTitle>
-            {previewUrl && (
-              <a
-                href={previewUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-primary hover:underline mr-8"
-              >
-                Open in new tab ↗
-              </a>
-            )}
-          </DialogHeader>
-          <div className="flex-1 min-h-0 px-4 pb-4">
-            {previewUrl && (
-              <iframe src={previewUrl} className="w-full h-full rounded border" title="PDF Preview" />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
       <BulkBrochureUpload
         open={showBulkDialog}
         onOpenChange={setShowBulkDialog}
