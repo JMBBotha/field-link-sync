@@ -78,18 +78,11 @@ function imgToDataUrl(src: string): Promise<string | null> {
   });
 }
 
-/* ─── Gradient line helper (simulates blue→transparent with strips) ─── */
+/* ─── Clean single divider line ─── */
 function drawGradientLine(doc: jsPDF, x: number, y: number, w: number) {
-  // 3 strips from solid navy to lighter to very light
-  doc.setDrawColor(NAVY.r, NAVY.g, NAVY.b);
-  doc.setLineWidth(0.8);
-  doc.line(x, y, x + w * 0.5, y);
-  doc.setDrawColor(BLUE.r, BLUE.g, BLUE.b);
+  doc.setDrawColor(100, 140, 180);
   doc.setLineWidth(0.5);
-  doc.line(x + w * 0.5, y, x + w * 0.8, y);
-  doc.setDrawColor(180, 200, 220);
-  doc.setLineWidth(0.3);
-  doc.line(x + w * 0.8, y, x + w, y);
+  doc.line(x, y, x + w, y);
 }
 
 export async function generateDocumentPdf(opts: DocumentPdfOptions) {
@@ -417,9 +410,10 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
 
   // Use provided terms if available, otherwise fall back to hardcoded defaults
   const termsToRender = opts.terms ? opts.terms.split('\n') : defaultTerms;
+  const termsCw = pw - ml - mr; // explicit content width for wrapping
   termsToRender.forEach((t) => {
     if (t === "") { y += 2; return; }
-    const wrapped = doc.splitTextToSize(t, cw);
+    const wrapped: string[] = doc.splitTextToSize(t, termsCw);
     for (let wi = 0; wi < wrapped.length; wi++) {
       if (y > ph - 18) { doc.addPage(); y = 20; }
       doc.text(wrapped[wi], ml, y);
