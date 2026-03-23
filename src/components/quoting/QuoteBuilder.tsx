@@ -576,86 +576,8 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
     : "CO";
 
   const handleGeneratePdf = async () => {
-    try {
-      alert("PDF generation starting");
-      console.log("PDF button clicked");
-
-      const productIds = lineItems
-        .map((i) => i.product_id)
-        .filter((id): id is string => !!id);
-
-      let brochures: { id: string; name: string; file_url: string }[] = [];
-      if (productIds.length > 0) {
-        try {
-          const { data: selectedProducts } = await supabase
-            .from("supplier_products")
-            .select("id, product_code")
-            .in("id", productIds);
-
-          const productCodes = (selectedProducts || []).map((p: any) => (p.product_code || "").toUpperCase());
-
-          const { data } = await supabase
-            .from("product_brochures" as any)
-            .select("id, name, file_url, linked_product_ids, model_match_prefixes")
-            .eq("is_active", true);
-
-          const allBrochures = (data || []) as any[];
-          const matched = allBrochures.filter((b: any) => {
-            const hasDirectLink = (b.linked_product_ids || []).some((lpId: string) => productIds.includes(lpId));
-            if (hasDirectLink) return true;
-            const prefixes: string[] = (b.model_match_prefixes || []).map((p: string) => p.toUpperCase());
-            return prefixes.length > 0 && productCodes.some((code: string) =>
-              prefixes.some((prefix: string) => code.startsWith(prefix))
-            );
-          });
-
-          brochures = matched
-            .filter((b: any) => b.file_url && !b.file_url.startsWith("placeholder"))
-            .map((b: any) => ({
-              id: b.id,
-              name: b.name,
-              file_url: supabase.storage.from("product-brochures").getPublicUrl(b.file_url).data.publicUrl,
-            }));
-        } catch (e) {
-          console.warn("Failed to fetch brochures for PDF:", e);
-        }
-      }
-
-      await generateDocumentPdf({
-        docType: "Quote",
-        captureSelector: '[data-pdf-capture-root="quote"]',
-        docNumber: quoteNumber || "DRAFT",
-        companyName: companySettings.company_name || "Your Company",
-        companyAddress: companySettings.physical_address || "",
-        vatNumber: companySettings.vat_number || "",
-        logoUrl,
-        customerName,
-        customerAddress,
-        customerEmail,
-        issueDate,
-        dueDate: validUntil,
-        lineItems: lineItems.filter((i) => i.description),
-        subtotal,
-        discountAmount,
-        taxRate,
-        taxAmount,
-        total,
-        notes,
-        terms,
-        reference,
-        brochures,
-      });
-
-      toast({ title: "PDF Downloaded", description: "Your quote PDF has been generated." });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error("PDF generation failed:", err);
-      toast({
-        title: "PDF Error",
-        description: message || "Unknown PDF generation error",
-        variant: "destructive",
-      });
-    }
+    alert("test");
+    window.print();
   };
 
   /* ─── Render ─── */
