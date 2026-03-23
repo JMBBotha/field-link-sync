@@ -418,15 +418,13 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
   // Use provided terms if available, otherwise fall back to hardcoded defaults
   const termsToRender = opts.terms ? opts.terms.split('\n') : defaultTerms;
   termsToRender.forEach((t) => {
-    if (y > ph - 18) { doc.addPage(); y = 20; }
     if (t === "") { y += 2; return; }
-    // Wrap long lines
     const wrapped = doc.splitTextToSize(t, cw);
-    wrapped.forEach((line: string) => {
+    for (let wi = 0; wi < wrapped.length; wi++) {
       if (y > ph - 18) { doc.addPage(); y = 20; }
-      doc.text(line, ml, y);
+      doc.text(wrapped[wi], ml, y);
       y += 3.5;
-    });
+    }
   });
 
   /* Banking details now included in Terms & Conditions above */
