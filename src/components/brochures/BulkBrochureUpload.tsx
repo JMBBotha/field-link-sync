@@ -290,7 +290,7 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
     setProgress(0);
   };
 
-  const readyCount = rows.filter((r) => r.status === "ready").length;
+  const readyCount = rows.filter((r) => r.status === "ready" && r.brand && r.productName).length;
   const matchedCount = rows.filter((r) => r.matchedId).length;
 
   return (

@@ -63,7 +63,7 @@ CRITICAL RULES:
                 },
                 {
                   type: "text",
-                  text: "Analyze this HVAC product brochure PDF and extract the brand, product name, category, and all model code prefixes.",
+                  text: "Analyze this HVAC product brochure PDF. Extract the brand, product name, category, and ALL model number prefixes. Look carefully in spec tables, model comparison charts, and ordering info for alphanumeric model codes. Each BTU/kW size variant has its own model number - list them ALL.",
                 },
               ],
             },
