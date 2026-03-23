@@ -216,7 +216,11 @@ const BrochureManagement = () => {
                 )}
                 {b.file_url && !b.file_url.startsWith("placeholder") ? (
                   <button
-                    onClick={() => window.open(getPublicUrl(b.file_url), '_blank')}
+                    onClick={() => {
+                      const url = getPublicUrl(b.file_url);
+                      const popup = window.open(url, "_blank", "noopener,noreferrer");
+                      if (!popup) window.location.assign(url);
+                    }}
                     className="text-xs text-primary hover:underline"
                   >
                     View PDF →
