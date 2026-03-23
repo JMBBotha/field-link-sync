@@ -141,6 +141,11 @@ const QuoteSummaryPanel = ({ baskets, onGenerateQuote, quoteId }: QuoteSummaryPa
         </div>
       </div>
 
+      {/* Brochures section */}
+      <div className="border-t border-border pt-3">
+        <QuoteBrochureSection quoteId={quoteId} lineItemModelCodes={lineItemModelCodes} />
+      </div>
+
       {/* Generate Quote button */}
       <Button
         className="w-full h-11 text-sm font-semibold gap-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-gray-900"
