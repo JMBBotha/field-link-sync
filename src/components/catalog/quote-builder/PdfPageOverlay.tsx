@@ -233,6 +233,7 @@ const PdfPageOverlay = ({
           basketProductCounts={basketProductCounts}
           pdfSelection={pdfSelection}
           onHoverStart={onHoverStart}
+          onHoverMove={onHoverMove}
           onHoverEnd={onHoverEnd}
         />
       ))}
