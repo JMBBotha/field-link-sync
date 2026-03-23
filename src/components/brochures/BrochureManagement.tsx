@@ -43,6 +43,36 @@ const brandColor: Record<string, string> = {
   Comfee: "bg-orange-100 text-orange-700 border-orange-300",
 };
 
+const renderPdfToImages = async (arrayBuffer: ArrayBuffer): Promise<string[]> => {
+  const pdfjsLib = await import("pdfjs-dist");
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+  const pdf = await pdfjsLib
+    .getDocument({
+      data: arrayBuffer,
+      cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
+      cMapPacked: true,
+    })
+    .promise;
+
+  const images: string[] = [];
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const page = await pdf.getPage(pageNum);
+    const viewport = page.getViewport({ scale: 1.35 });
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) continue;
+
+    canvas.width = Math.floor(viewport.width);
+    canvas.height = Math.floor(viewport.height);
+
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    images.push(canvas.toDataURL("image/png"));
+  }
+
+  return images;
+};
+
 const BrochureManagement = () => {
   const queryClient = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
@@ -51,6 +81,7 @@ const BrochureManagement = () => {
     url: string;
     name: string;
     blobUrl?: string;
+    pageImages?: string[];
     loading?: boolean;
     error?: string;
   } | null>(null);
@@ -174,7 +205,23 @@ const BrochureManagement = () => {
 
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
-      setPreviewPdf({ url, name: brochure.name, blobUrl, loading: false });
+      const arrayBuffer = await blob.arrayBuffer();
+
+      let pageImages: string[] = [];
+      try {
+        pageImages = await renderPdfToImages(arrayBuffer);
+      } catch (err) {
+        console.warn("Failed to render inline PDF pages", err);
+      }
+
+      setPreviewPdf({
+        url,
+        name: brochure.name,
+        blobUrl,
+        pageImages,
+        loading: false,
+        error: pageImages.length ? undefined : "Inline preview is unavailable. Use New tab or Download.",
+      });
     } catch {
       setPreviewPdf({
         url,
@@ -369,19 +416,27 @@ const BrochureManagement = () => {
           <div className="flex-1 min-h-0 p-2">
             {previewPdf?.loading ? (
               <div className="h-[80vh] w-full grid place-items-center text-sm text-muted-foreground">Loading PDF...</div>
+            ) : previewPdf?.pageImages?.length ? (
+              <div className="h-[80vh] overflow-y-auto space-y-3 pr-1">
+                {previewPdf.pageImages.map((src, idx) => (
+                  <img
+                    key={`${previewPdf.name}-${idx}`}
+                    src={src}
+                    alt={`${previewPdf.name} page ${idx + 1}`}
+                    loading="lazy"
+                    className="w-full h-auto rounded border"
+                  />
+                ))}
+              </div>
             ) : previewPdf ? (
-              <object
-                data={previewPdf.blobUrl || previewPdf.url}
-                type="application/pdf"
-                className="w-full h-[80vh] rounded"
-              >
-                <p className="text-center py-8 text-muted-foreground">
+              <div className="h-[80vh] w-full grid place-items-center text-sm text-muted-foreground text-center px-4">
+                <p>
                   {previewPdf.error || "PDF cannot be displayed."}{" "}
                   <a href={previewPdf.url} target="_blank" rel="noopener noreferrer" className="text-primary underline">
                     Open directly
                   </a>
                 </p>
-              </object>
+              </div>
             ) : null}
           </div>
         </DialogContent>
