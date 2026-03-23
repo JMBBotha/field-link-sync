@@ -30,13 +30,17 @@ const sortProductOptions = (options: ProductOption[]) =>
 
 export const filterProductOptions = (options: ProductOption[], query: string) => {
   if (!query) return options.slice(0, 8);
-  const q = query.toLowerCase();
-  return options.filter(
-    (o) =>
-      o.name.toLowerCase().includes(q) ||
-      (o.description && o.description.toLowerCase().includes(q)) ||
-      (o.productCode && o.productCode.toLowerCase().includes(q))
-  );
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return options.slice(0, 8);
+  return options.filter((o) => {
+    const blob = [
+      o.name,
+      o.description || "",
+      o.productCode || "",
+      o.category || "",
+    ].join(" ").toLowerCase();
+    return words.every((w) => blob.includes(w));
+  });
 };
 
 export { isAcCategory };
