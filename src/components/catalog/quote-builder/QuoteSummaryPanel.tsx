@@ -6,13 +6,15 @@ import { formatRand } from "@/utils/formatRand";
 import { r2, VAT_RATE } from "@/utils/pricing";
 import type { Basket } from "../QuoteBuilderTab";
 import { getEffectiveUnitPrices } from "../QuoteBuilderTab";
+import QuoteBrochureSection from "@/components/brochures/QuoteBrochureSection";
 
 interface QuoteSummaryPanelProps {
   baskets: Basket[];
   onGenerateQuote?: () => void;
+  quoteId?: string | null;
 }
 
-const QuoteSummaryPanel = ({ baskets, onGenerateQuote }: QuoteSummaryPanelProps) => {
+const QuoteSummaryPanel = ({ baskets, onGenerateQuote, quoteId }: QuoteSummaryPanelProps) => {
   const summary = useMemo(() => {
     let grandTotal = 0;
     let totalCost = 0;
@@ -49,6 +51,22 @@ const QuoteSummaryPanel = ({ baskets, onGenerateQuote }: QuoteSummaryPanelProps)
     const markup = totalCost > 0 ? ((grandTotal - totalCost) / totalCost) * 100 : 0;
 
     return { subtotal, vat, grandTotal: r2(subtotal + vat), markup };
+  }, [baskets]);
+
+  // Extract model codes from basket items for brochure matching
+  const lineItemModelCodes = useMemo(() => {
+    const codes: string[] = [];
+    baskets.forEach((b) => {
+      b.items.forEach((i) => {
+        if (i.product.product_code) codes.push(i.product.product_code);
+        if (i.bundleItems) {
+          i.bundleItems.forEach((bi) => {
+            if (bi.product.product_code) codes.push(bi.product.product_code);
+          });
+        }
+      });
+    });
+    return codes;
   }, [baskets]);
 
   const markupCapped = Math.min(summary.markup, 55);
@@ -121,6 +139,11 @@ const QuoteSummaryPanel = ({ baskets, onGenerateQuote }: QuoteSummaryPanelProps)
           <span className="ml-[35%]">25%</span>
           <span>50%+</span>
         </div>
+      </div>
+
+      {/* Brochures section */}
+      <div className="border-t border-border pt-3">
+        <QuoteBrochureSection quoteId={quoteId} lineItemModelCodes={lineItemModelCodes} />
       </div>
 
       {/* Generate Quote button */}

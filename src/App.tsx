@@ -104,7 +104,7 @@ const App = () => (
                 <Route path="dispatch" element={<AdminDispatchPage />} />
                 <Route path="schedule" element={<ScheduleCalendar />} />
                 <Route path="quotes" element={<AdminQuotesPage />} />
-                <Route path="proposals" element={<AdminProposalsPage />} />
+                <Route path="templates" element={<AdminProposalsPage />} />
                 <Route path="invoices" element={<AdminInvoicesPage />} />
                 <Route path="invoices/templates" element={<AdminInvoiceTemplatesPage />} />
                 <Route path="agreements" element={<ServiceAgreements />} />
@@ -162,8 +162,9 @@ const App = () => (
               <Route path="/invoices/:id" element={<Navigate to="/admin/invoices" replace />} />
               <Route path="/quotes" element={<Navigate to="/admin/quotes" replace />} />
               <Route path="/quotes/:id" element={<Navigate to="/admin/quotes" replace />} />
-              <Route path="/proposals" element={<Navigate to="/admin/proposals" replace />} />
-              <Route path="/proposals/:id" element={<Navigate to="/admin/proposals" replace />} />
+              <Route path="/proposals" element={<Navigate to="/admin/templates" replace />} />
+              <Route path="/proposals/:id" element={<Navigate to="/admin/templates" replace />} />
+              <Route path="/admin/proposals" element={<Navigate to="/admin/templates" replace />} />
               <Route path="/map" element={<Navigate to="/admin/map" replace />} />
               <Route path="/schedule" element={<Navigate to="/admin/schedule" replace />} />
               <Route path="/inventory" element={<Navigate to="/admin/inventory" replace />} />

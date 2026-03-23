@@ -53,7 +53,7 @@ const AdminLayout = () => {
     "/admin/dispatch": "Dispatch Board",
     "/admin/schedule": "Schedule",
     "/admin/quotes": "Quotes",
-    "/admin/proposals": "Proposals",
+    "/admin/templates": "Templates",
     "/admin/invoices": "Invoices",
     "/admin/agreements": "Agreements",
     "/admin/catalog": "Product Catalog",
