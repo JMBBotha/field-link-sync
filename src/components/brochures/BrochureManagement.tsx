@@ -333,10 +333,15 @@ const BrochureManagement = () => {
       </Dialog>
 
       {/* PDF Preview Dialog */}
-      <Dialog open={!!previewPdf} onOpenChange={() => setPreviewPdf(null)}>
+      <Dialog
+        open={!!previewPdf}
+        onOpenChange={(open) => {
+          if (!open) closePreview();
+        }}
+      >
         <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
           <div className="flex items-center justify-between px-4 py-3 border-b">
-            <DialogTitle className="text-sm font-semibold truncate max-w-[50%]">
+            <DialogTitle className="text-sm font-semibold truncate max-w-[42%]">
               {previewPdf?.name}
             </DialogTitle>
             <div className="flex items-center gap-2 mr-8">
@@ -355,23 +360,29 @@ const BrochureManagement = () => {
               >
                 <ExternalLink className="h-3.5 w-3.5" /> New tab
               </a>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={closePreview}>
+                <X className="h-4 w-4" />
+              </Button>
             </div>
           </div>
+
           <div className="flex-1 min-h-0 p-2">
-            {previewPdf && (
+            {previewPdf?.loading ? (
+              <div className="h-[80vh] w-full grid place-items-center text-sm text-muted-foreground">Loading PDF...</div>
+            ) : previewPdf ? (
               <object
-                data={previewPdf.url}
+                data={previewPdf.blobUrl || previewPdf.url}
                 type="application/pdf"
-                className="w-full h-full rounded"
+                className="w-full h-[80vh] rounded"
               >
                 <p className="text-center py-8 text-muted-foreground">
-                  PDF cannot be displayed.{" "}
+                  {previewPdf.error || "PDF cannot be displayed."}{" "}
                   <a href={previewPdf.url} target="_blank" rel="noopener noreferrer" className="text-primary underline">
                     Open directly
                   </a>
                 </p>
               </object>
-            )}
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>
