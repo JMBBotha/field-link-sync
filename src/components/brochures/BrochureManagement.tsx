@@ -153,6 +153,44 @@ const BrochureManagement = () => {
     return data.publicUrl;
   };
 
+  const closePreview = useCallback(() => {
+    setPreviewPdf((prev) => {
+      if (prev?.blobUrl) URL.revokeObjectURL(prev.blobUrl);
+      return null;
+    });
+  }, []);
+
+  const openPreview = useCallback(async (brochure: Brochure) => {
+    const url = getPublicUrl(brochure.file_url);
+
+    setPreviewPdf((prev) => {
+      if (prev?.blobUrl) URL.revokeObjectURL(prev.blobUrl);
+      return { url, name: brochure.name, loading: true };
+    });
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to load PDF");
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      setPreviewPdf({ url, name: brochure.name, blobUrl, loading: false });
+    } catch {
+      setPreviewPdf({
+        url,
+        name: brochure.name,
+        loading: false,
+        error: "Inline preview is unavailable. Use New tab or Download.",
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (previewPdf?.blobUrl) URL.revokeObjectURL(previewPdf.blobUrl);
+    };
+  }, [previewPdf?.blobUrl]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
