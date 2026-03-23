@@ -129,6 +129,10 @@ const RegionBox = memo(({
     if (onHoverStart) onHoverStart(getProductOrFallback(), e);
   };
 
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (onHoverMove) onHoverMove(e);
+  };
+
   const handleMouseLeave = () => {
     if (onHoverEnd) onHoverEnd();
   };
