@@ -47,6 +47,7 @@ const BrochureManagement = () => {
   const queryClient = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
   const [showBulkDialog, setShowBulkDialog] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [formName, setFormName] = useState("");
   const [formBrand, setFormBrand] = useState("Samsung");
   const [formCategory, setFormCategory] = useState("");
