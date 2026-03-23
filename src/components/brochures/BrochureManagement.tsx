@@ -283,6 +283,17 @@ const BrochureManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <BulkBrochureUpload
+        open={showBulkDialog}
+        onOpenChange={setShowBulkDialog}
+        existingBrochures={brochures.map((b) => ({
+          id: b.id,
+          name: b.name,
+          brand: b.brand,
+          model_match_prefixes: b.model_match_prefixes,
+        }))}
+        onComplete={() => queryClient.invalidateQueries({ queryKey: ["product-brochures"] })}
+      />
     </div>
   );
 };
