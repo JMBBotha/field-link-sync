@@ -18,6 +18,7 @@ import DocumentHeader from "@/components/shared/DocumentHeader";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { assembleQuoteWithBrochures, type BrochureAttachment } from "@/lib/pdfMerger";
+import { DEFAULT_TERMS } from "@/lib/defaultTerms";
 
 /* ────────── Types ────────── */
 
