@@ -656,7 +656,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
   /* ─── Render ─── */
   return (
-    <div className="min-h-screen bg-muted/40">
+    <div className="flex flex-col h-full min-h-screen bg-muted/40">
       {/* Exit guard modal */}
       <UnsavedQuoteDialog
         open={exitGuard.showModal}
@@ -715,6 +715,8 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         </div>
       </div>
 
+      {/* ── Scrollable content area ── */}
+      <div className="flex-1 overflow-auto">
       {/* ── A4 Card ── */}
       <div className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
         {/* ── HEADER ROW ── */}
@@ -930,10 +932,11 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
           </label>
         </div>
       </div>
+      </div>{/* end scrollable content area */}
 
-      {/* ── Bottom action bar ── */}
-      <div className="sticky bottom-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2">
-        <Button variant="outline" size="sm" type="button" data-pdf-action="generate" onClick={() => { void handleGeneratePdf(); }}>
+      {/* ── Bottom action bar — outside scroll container ── */}
+      <div className="shrink-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2">
+        <Button variant="outline" size="sm" type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); console.log("PDF button clicked"); void handleGeneratePdf(); }}>
           <FileDown className="h-4 w-4 mr-1" />PDF
         </Button>
         <Button variant="outline" size="sm" onClick={() => toast({ title: "Email placeholder", description: "Email sending will be connected soon." })} disabled={!canSave}>
