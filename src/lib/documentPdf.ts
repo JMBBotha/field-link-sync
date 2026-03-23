@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
+import logoImg from "@/assets/logo.png";
 
 /* ─── South African Rand formatter ─── */
 const fmtZAR = (n: number): string => {
