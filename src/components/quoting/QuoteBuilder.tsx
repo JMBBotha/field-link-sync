@@ -122,7 +122,10 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
   // Notes / Terms
   const [notes, setNotes] = useState("");
-  const [terms, setTerms] = useState("");
+  const [terms, setTerms] = useState(() => {
+    // Load default terms
+    return DEFAULT_TERMS;
+  });
 
   // Attachments
   const [attachments, setAttachments] = useState<{ name: string; url: string; path: string }[]>([]);
