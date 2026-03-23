@@ -58,7 +58,7 @@ const renderPdfToImages = async (arrayBuffer: ArrayBuffer): Promise<string[]> =>
   const images: string[] = [];
   for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
     const page = await pdf.getPage(pageNum);
-    const viewport = page.getViewport({ scale: 1.35 });
+    const viewport = page.getViewport({ scale: 1.5 });
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     if (!ctx) continue;
@@ -67,7 +67,7 @@ const renderPdfToImages = async (arrayBuffer: ArrayBuffer): Promise<string[]> =>
     canvas.height = Math.floor(viewport.height);
 
     await page.render({ canvasContext: ctx, viewport }).promise;
-    images.push(canvas.toDataURL("image/png"));
+    images.push(canvas.toDataURL("image/jpeg", 0.85));
   }
 
   return images;
