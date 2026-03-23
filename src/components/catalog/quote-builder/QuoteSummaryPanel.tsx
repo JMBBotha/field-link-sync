@@ -6,10 +6,12 @@ import { formatRand } from "@/utils/formatRand";
 import { r2, VAT_RATE } from "@/utils/pricing";
 import type { Basket } from "../QuoteBuilderTab";
 import { getEffectiveUnitPrices } from "../QuoteBuilderTab";
+import QuoteBrochureSection from "@/components/brochures/QuoteBrochureSection";
 
 interface QuoteSummaryPanelProps {
   baskets: Basket[];
   onGenerateQuote?: () => void;
+  quoteId?: string | null;
 }
 
 const QuoteSummaryPanel = ({ baskets, onGenerateQuote }: QuoteSummaryPanelProps) => {
