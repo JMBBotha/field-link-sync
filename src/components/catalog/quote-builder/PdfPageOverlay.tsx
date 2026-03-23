@@ -1,5 +1,5 @@
-import { memo } from "react";
-import { Info, Circle, CheckCircle2 } from "lucide-react";
+import { memo, useRef, useCallback } from "react";
+import { Info, Circle, CheckCircle2, Star } from "lucide-react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
@@ -34,6 +34,7 @@ interface PdfPageOverlayProps {
   onHoverEnd?: () => void;
   pdfSelection?: PdfSelectionHandlers;
   onOpenProductInfo?: (product: PaletteProduct) => void;
+  favoriteIds?: Set<string>;
 }
 
 const buildFallbackProduct = (region: OverlayRegion): PaletteProduct => ({
@@ -67,22 +68,26 @@ const RegionBox = memo(({
   region,
   onOpenProductInfo,
   onAddProductToBasket,
+  onToggleFavorite,
   baskets,
   basketProductCounts,
   pdfSelection,
   onHoverStart,
   onHoverMove,
   onHoverEnd,
+  isFavorite,
 }: {
   region: OverlayRegion;
   onOpenProductInfo?: (product: PaletteProduct) => void;
   onAddProductToBasket?: (basketId: string, product: PaletteProduct) => void;
+  onToggleFavorite?: (product: PaletteProduct) => void;
   baskets: Basket[];
   basketProductCounts?: Record<string, number>;
   pdfSelection?: PdfSelectionHandlers;
   onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent) => void;
   onHoverMove?: (e: React.MouseEvent) => void;
   onHoverEnd?: () => void;
+  isFavorite: boolean;
 }) => {
   const getProductOrFallback = (): PaletteProduct => region.product ?? buildFallbackProduct(region);
 
@@ -93,11 +98,22 @@ const RegionBox = memo(({
   const selectionCode = getSelectionCode(productForState);
 
   const isSelectedInPdf = !!pdfSelection?.selectedFromPdf.some((item) => item.code === selectionCode);
-  // When pdfSelection is available, use it as the single source of truth for selection state
   const isSelected = pdfSelection ? isSelectedInPdf : !!basketProductCounts?.[productForState.id];
 
-  const handleRadioClick = (e: React.MouseEvent) => {
+  // Double-click detection for favorite toggle
+  const lastClickRef = useRef<number>(0);
+
+  const handleRadioClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+
+    const now = Date.now();
+    const isDoubleClick = now - lastClickRef.current < 400;
+    lastClickRef.current = now;
+
+    if (isDoubleClick && onToggleFavorite) {
+      onToggleFavorite(getProductOrFallback());
+      return;
+    }
 
     const product = getProductOrFallback();
     const code = getSelectionCode(product);
@@ -117,7 +133,7 @@ const RegionBox = memo(({
     if (!alreadySelectedInPdf && baskets.length > 0 && onAddProductToBasket) {
       onAddProductToBasket(baskets[0].id, product);
     }
-  };
+  }, [pdfSelection, baskets, onAddProductToBasket, onToggleFavorite, region]);
 
   const handleInfoClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -141,6 +157,17 @@ const RegionBox = memo(({
     if (onOpenProductInfo) onOpenProductInfo(getProductOrFallback());
   };
 
+  // Determine gradient based on state priority: favorite > selected > default
+  const getGradient = () => {
+    if (isFavorite) {
+      return "linear-gradient(to right, transparent 0%, transparent 30%, hsl(45 93% 58% / 0.12) 50%, hsl(45 93% 58% / 0.22) 75%, hsl(45 93% 58% / 0.38) 100%)";
+    }
+    if (isSelected) {
+      return "linear-gradient(to right, transparent 0%, transparent 40%, hsl(var(--success) / 0.15) 55%, hsl(var(--success) / 0.25) 80%, hsl(var(--success) / 0.45) 100%)";
+    }
+    return "linear-gradient(to right, transparent 0%, transparent 40%, hsl(var(--muted) / 0.3) 55%, hsl(var(--primary) / 0.25) 80%, hsl(var(--primary) / 0.45) 100%)";
+  };
+
   return (
     <div
       className="absolute cursor-pointer"
@@ -155,18 +182,26 @@ const RegionBox = memo(({
       onMouseLeave={handleMouseLeave}
       onClick={handleRowClick}
     >
-      {/* Grey-to-blue gradient with pill-shaped right end */}
+      {/* Gradient highlight */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: isSelected
-            ? "linear-gradient(to right, transparent 0%, transparent 40%, hsl(var(--success) / 0.15) 55%, hsl(var(--success) / 0.25) 80%, hsl(var(--success) / 0.45) 100%)"
-            : "linear-gradient(to right, transparent 0%, transparent 40%, hsl(var(--muted) / 0.3) 55%, hsl(var(--primary) / 0.25) 80%, hsl(var(--primary) / 0.45) 100%)",
+          background: getGradient(),
           borderRadius: "0 9999px 9999px 0",
         }}
       />
 
-      {/* Buttons — inside the page, pinned to right edge, vertically centered */}
+      {/* Favorite star badge — top-left of the row */}
+      {isFavorite && (
+        <div
+          className="absolute pointer-events-none"
+          style={{ left: "4px", top: "50%", transform: "translateY(-50%)" }}
+        >
+          <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-500 drop-shadow-sm" />
+        </div>
+      )}
+
+      {/* Buttons — pinned to right edge */}
       <div
         className="absolute flex items-center gap-1"
         style={{
@@ -186,16 +221,16 @@ const RegionBox = memo(({
           <Info className="h-4 w-4 text-primary opacity-70 hover:opacity-100" />
         </button>
 
-        {/* Radio / select button */}
+        {/* Radio / select button — double-click to favorite */}
         <button
           onClick={handleRadioClick}
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           className="flex items-center justify-center rounded-full transition-colors hover:scale-110"
-          title={isSelected ? "Added to quote" : "Add to quote"}
+          title={isFavorite ? "★ Favorite (double-click to unfavorite)" : isSelected ? "Added to quote (double-click to favorite)" : "Add to quote (double-click to favorite)"}
         >
           {isSelected ? (
-            <CheckCircle2 className="h-5 w-5" style={{ color: "hsl(var(--success))" }} />
+            <CheckCircle2 className="h-5 w-5" style={{ color: isFavorite ? "hsl(45 93% 47%)" : "hsl(var(--success))" }} />
           ) : (
             <span className="relative flex items-center justify-center h-5 w-5">
               <Circle className="h-5 w-5 text-muted-foreground opacity-70" />
@@ -216,27 +251,34 @@ const PdfPageOverlay = ({
   basketProductCounts,
   pdfSelection,
   onOpenProductInfo,
+  onToggleFavorite,
   onHoverStart,
   onHoverMove,
   onHoverEnd,
+  favoriteIds,
 }: PdfPageOverlayProps) => {
   if (regions.length === 0) return null;
   return (
     <>
-      {regions.map((region) => (
-        <RegionBox
-          key={region.id}
-          region={region}
-          onOpenProductInfo={onOpenProductInfo}
-          onAddProductToBasket={onAddProductToBasket}
-          baskets={baskets}
-          basketProductCounts={basketProductCounts}
-          pdfSelection={pdfSelection}
-          onHoverStart={onHoverStart}
-          onHoverMove={onHoverMove}
-          onHoverEnd={onHoverEnd}
-        />
-      ))}
+      {regions.map((region) => {
+        const productId = region.product?.id || region.id;
+        return (
+          <RegionBox
+            key={region.id}
+            region={region}
+            onOpenProductInfo={onOpenProductInfo}
+            onAddProductToBasket={onAddProductToBasket}
+            onToggleFavorite={onToggleFavorite}
+            baskets={baskets}
+            basketProductCounts={basketProductCounts}
+            pdfSelection={pdfSelection}
+            onHoverStart={onHoverStart}
+            onHoverMove={onHoverMove}
+            onHoverEnd={onHoverEnd}
+            isFavorite={!!favoriteIds?.has(productId)}
+          />
+        );
+      })}
     </>
   );
 };
