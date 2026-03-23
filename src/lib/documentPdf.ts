@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import { assembleQuoteWithBrochures } from "./pdfMerger";
+import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
