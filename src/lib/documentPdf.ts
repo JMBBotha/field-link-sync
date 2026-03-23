@@ -424,8 +424,10 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
   const pageCount = doc.getNumberOfPages();
   for (let p = 1; p <= pageCount; p++) {
     doc.setPage(p);
-    // Bottom amber stripe
-    setFill(doc, AMBER);
+    // Bottom blue stripe with grey gradient
+    setFill(doc, { r: 220, g: 225, b: 235 });
+    doc.rect(0, ph - 12, pw, 2, "F");
+    setFill(doc, BLUE_DARK);
     doc.rect(0, ph - 10, pw, 10, "F");
     doc.setFontSize(7);
     doc.setFont("helvetica", "bold");
