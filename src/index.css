@@ -317,3 +317,18 @@ All colors MUST be HSL.
 .pdf-capture-mode [data-pdf-capture-root] [data-pdf-hide-markup] {
   display: none !important;
 }
+/* Show static text values during capture even though inputs are hidden */
+.pdf-capture-mode [data-pdf-capture-root] p,
+.pdf-capture-mode [data-pdf-capture-root] span,
+.pdf-capture-mode [data-pdf-capture-root] div,
+.pdf-capture-mode [data-pdf-capture-root] h1,
+.pdf-capture-mode [data-pdf-capture-root] h2,
+.pdf-capture-mode [data-pdf-capture-root] h3,
+.pdf-capture-mode [data-pdf-capture-root] img,
+.pdf-capture-mode [data-pdf-capture-root] label {
+  display: revert;
+}
+/* Ensure the delete X column is hidden */
+.pdf-capture-mode [data-pdf-capture-root] .group > div:last-child button {
+  display: none !important;
+}

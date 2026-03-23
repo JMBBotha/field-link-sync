@@ -591,7 +591,17 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       document.body.classList.add('pdf-capture-mode');
       await new Promise(r => setTimeout(r, 300));
 
-      const canvas = await html2canvas(captureRoot as HTMLElement, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      const el = captureRoot as HTMLElement;
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        windowWidth: 1200,
+        width: el.scrollWidth,
+        height: el.scrollHeight,
+        scrollX: 0,
+        scrollY: -window.scrollY,
+      });
       console.log('Canvas captured', canvas.width, canvas.height);
 
       document.body.classList.remove('pdf-capture-mode');
@@ -600,9 +610,63 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       const jsPDF = (await import('jspdf')).default;
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pdfPageHeight = pdf.internal.pageSize.getHeight();
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+      const margin = 5;
+      const usableWidth = pdfWidth - margin * 2;
+      const usableHeight = pdfPageHeight - margin * 2;
+      const scaledHeight = (canvas.height * usableWidth) / canvas.width;
 
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      // Multi-page: slice captured image across A4 pages
+      if (scaledHeight <= usableHeight) {
+        pdf.addImage(imgData, 'PNG', margin, margin, usableWidth, scaledHeight);
+      } else {
+        let remainingHeight = scaledHeight;
+        let sourceY = 0;
+        let page = 0;
+        while (remainingHeight > 0) {
+          if (page > 0) pdf.addPage();
+          const sliceHeight = Math.min(usableHeight, remainingHeight);
+          // We use a temporary canvas to slice the portion we need
+          const sliceCanvas = document.createElement('canvas');
+          const sourceSliceH = (sliceHeight / scaledHeight) * canvas.height;
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = sourceSliceH;
+          const ctx = sliceCanvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceSliceH, 0, 0, canvas.width, sourceSliceH);
+          }
+          const sliceData = sliceCanvas.toDataURL('image/png');
+          pdf.addImage(sliceData, 'PNG', margin, margin, usableWidth, sliceHeight);
+          sourceY += sourceSliceH;
+          remainingHeight -= sliceHeight;
+          page++;
+        }
+      }
+
+      // Append Terms & Conditions pages
+      const { DEFAULT_TERMS: terms } = await import('@/lib/defaultTerms');
+      pdf.addPage();
+      const ml = 15;
+      const cw = pdfWidth - ml * 2;
+      const bottomLimit = pdfPageHeight - 15;
+      let y = 20;
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(12);
+      pdf.text('Terms & Conditions', ml, y);
+      y += 8;
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      for (const line of terms.split('\n')) {
+        if (!line.trim()) { y += 3; if (y > bottomLimit) { pdf.addPage(); y = 20; } continue; }
+        const wrapped: string[] = pdf.splitTextToSize(line, cw);
+        for (const w of wrapped) {
+          if (y > bottomLimit) { pdf.addPage(); y = 20; }
+          pdf.text(w, ml, y);
+          y += 4.5;
+        }
+      }
+
       pdf.save(`Quote-${quoteNumber || 'draft'}.pdf`);
       toast({ title: "PDF Downloaded", description: "Your quote PDF has been generated." });
     } catch (err: any) {
@@ -695,7 +759,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
                   <p className="text-sm font-semibold text-foreground">{customerName}</p>
                   {customerAddress && <p className="text-xs text-muted-foreground">{customerAddress}</p>}
                   {customerEmail && <p className="text-xs text-muted-foreground">{customerEmail}</p>}
-                  <button onClick={() => setShowCustomerPicker(true)} className="text-[11px] text-primary hover:underline mt-1">Change</button>
+                  <button data-pdf-hide onClick={() => setShowCustomerPicker(true)} className="text-[11px] text-primary hover:underline mt-1">Change</button>
                 </div>
               ) : (
                 <div className="space-y-1">
@@ -796,7 +860,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
             </div>
           ))}
 
-          <button onClick={addLineItem} className="w-full text-left px-2 py-2.5 text-sm text-primary hover:bg-primary/5 rounded mt-1 flex items-center gap-1.5 transition-colors">
+          <button data-pdf-hide onClick={addLineItem} className="w-full text-left px-2 py-2.5 text-sm text-primary hover:bg-primary/5 rounded mt-1 flex items-center gap-1.5 transition-colors">
             <Plus className="h-4 w-4" /> Add a Line
           </button>
         </div>
@@ -811,7 +875,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
               <span>{formatCurrency(subtotal)}</span>
             </div>
             {!showDiscount ? (
-              <button onClick={() => setShowDiscount(true)} className="text-sm text-primary hover:underline">+ Add a Discount</button>
+              <button data-pdf-hide onClick={() => setShowDiscount(true)} className="text-sm text-primary hover:underline">+ Add a Discount</button>
             ) : (
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Discount</span>
@@ -839,7 +903,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
         {/* ── LINK TO JOB ── */}
         <div>
-          <button className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" onClick={() => setShowLinks(!showLinks)}>
+          <button data-pdf-hide className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" onClick={() => setShowLinks(!showLinks)}>
             {showLinks ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             Link to Job
           </button>
