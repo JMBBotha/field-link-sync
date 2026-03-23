@@ -137,9 +137,9 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
     ry += 3.5;
   });
 
-  /* ─── Gradient divider ─── */
+  /* ─── Divider ─── */
   y = Math.max(y + logoH + 4, ry + 2);
-  drawGradientLine(doc, ml, y, cw);
+  drawDividerLine(doc, ml, y, cw);
   y += 8;
 
   /* ═══════════════════════════════════════════════
