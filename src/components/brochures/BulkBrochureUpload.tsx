@@ -217,6 +217,7 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
           console.warn("AI parse failed for", files[idx].name, err);
           updateRow(idx, {
             status: "ready",
+            category: "Residential Wall-Mount",
             errorMsg: "AI parse failed - please fill manually",
           });
         }
