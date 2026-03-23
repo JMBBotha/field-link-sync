@@ -18,6 +18,7 @@ import DocumentHeader from "@/components/shared/DocumentHeader";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { assembleQuoteWithBrochures, type BrochureAttachment } from "@/lib/pdfMerger";
+import { DEFAULT_TERMS } from "@/lib/defaultTerms";
 
 /* ────────── Types ────────── */
 
@@ -122,7 +123,10 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
   // Notes / Terms
   const [notes, setNotes] = useState("");
-  const [terms, setTerms] = useState("");
+  const [terms, setTerms] = useState(() => {
+    // Load default terms
+    return DEFAULT_TERMS;
+  });
 
   // Attachments
   const [attachments, setAttachments] = useState<{ name: string; url: string; path: string }[]>([]);

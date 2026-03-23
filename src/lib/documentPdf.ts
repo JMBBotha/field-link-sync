@@ -360,16 +360,18 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
   txt(doc, GRAY);
 
   const defaultTerms = [
-    "1. This quotation is valid for 30 days from the date of issue.",
-    "2. A 50% deposit is required upon acceptance to secure scheduling.",
-    "3. All equipment carries a 12-month warranty on parts and labour from date of installation.",
-    "4. Installation completed within 5–10 business days of deposit confirmation, subject to stock.",
-    "5. Customer is responsible for providing adequate electrical supply per unit specifications.",
-    "6. This quote excludes structural modifications or electrical upgrades unless explicitly stated.",
-    "7. Payment terms: Net 30 days from invoice date. Late payments attract 2% monthly interest.",
-    "8. A cancellation fee of 15% of total quoted amount applies after acceptance.",
-    "9. Prices are quoted in South African Rand (ZAR) and include VAT at 15% as shown.",
-    "10. Additional work not covered in this quotation will be quoted separately.",
+    "MassAir Ind cc – Terms and Conditions for Quotations and Air Conditioning Services",
+    "",
+    "1. Scope of Work",
+    "1.1 Upon your acceptance of this quotation (by payment of the deposit or full unit cost as specified), MassAir Ind cc agrees to supply and install the air conditioning equipment and perform the services detailed in the quotation.",
+    "1.2 All work will be carried out by qualified, experienced technicians in a professional manner, in compliance with relevant industry standards, safety regulations, and manufacturer guidelines.",
+    "",
+    "2. Pricing and Payment Terms",
+    "2.1 To secure the best pricing and confirm your order, the full cost of the air conditioning unit(s) is payable upfront upon acceptance of this quotation. The balance for installation and any additional services is due upon satisfactory completion of the project.",
+    "2.2 All products supplied by MassAir Ind cc carry the manufacturer's warranty as detailed in Section 5, plus our workmanship warranty.",
+    "2.3 Unless alternative payment arrangements are agreed in writing by management, the client is responsible for all payments.",
+    "2.4 Ownership of all goods and equipment remains with MassAir Ind cc until payment is received in full.",
+    "2.5 Prices are valid for 30 days from the date of the quotation unless otherwise stated.",
   ];
 
   const terms = opts.terms ? opts.terms.split("\n").filter(Boolean) : defaultTerms;
