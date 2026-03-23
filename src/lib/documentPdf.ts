@@ -23,9 +23,10 @@ interface DocumentPdfOptions {
   total: number;
   notes?: string;
   terms?: string;
+  brochureUrls?: string[];
 }
 
-export function generateDocumentPdf(opts: DocumentPdfOptions) {
+export async function generateDocumentPdf(opts: DocumentPdfOptions) {
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
   let y = 15;
