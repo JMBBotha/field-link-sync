@@ -81,6 +81,7 @@ const BrochureManagement = () => {
     url: string;
     name: string;
     blobUrl?: string;
+    pageImages?: string[];
     loading?: boolean;
     error?: string;
   } | null>(null);
