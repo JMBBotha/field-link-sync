@@ -47,6 +47,7 @@ const BrochureManagement = () => {
   const queryClient = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
   const [showBulkDialog, setShowBulkDialog] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [formName, setFormName] = useState("");
   const [formBrand, setFormBrand] = useState("Samsung");
   const [formCategory, setFormCategory] = useState("");
@@ -214,14 +215,12 @@ const BrochureManagement = () => {
                   </div>
                 )}
                 {b.file_url && !b.file_url.startsWith("placeholder") ? (
-                  <a
-                    href={getPublicUrl(b.file_url)}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => setPreviewUrl(getPublicUrl(b.file_url))}
                     className="text-xs text-primary hover:underline"
                   >
                     View PDF →
-                  </a>
+                  </button>
                 ) : (
                   <span className="text-xs text-muted-foreground italic">No PDF uploaded</span>
                 )}
@@ -285,6 +284,28 @@ const BrochureManagement = () => {
               {uploading ? "Uploading..." : "Upload"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!previewUrl} onOpenChange={() => setPreviewUrl(null)}>
+        <DialogContent className="max-w-4xl w-[95vw] h-[90vh] flex flex-col p-0">
+          <DialogHeader className="flex flex-row items-center justify-between px-4 pt-4 pb-2">
+            <DialogTitle>PDF Preview</DialogTitle>
+            {previewUrl && (
+              <a
+                href={previewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary hover:underline mr-8"
+              >
+                Open in new tab ↗
+              </a>
+            )}
+          </DialogHeader>
+          <div className="flex-1 min-h-0 px-4 pb-4">
+            {previewUrl && (
+              <iframe src={previewUrl} className="w-full h-full rounded border" title="PDF Preview" />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
       <BulkBrochureUpload
