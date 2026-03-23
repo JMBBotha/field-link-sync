@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
+import logoImg from "@/assets/logo.png";
 
 /* ─── South African Rand formatter ─── */
 const fmtZAR = (n: number): string => {
@@ -71,21 +72,20 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
   /* ═══════════════════════════════════════════════
    *  2. HEADER: Logo left + Company info right
    * ═══════════════════════════════════════════════ */
-  // Logo text (0800 BeCool)
-  doc.setFontSize(20);
-  doc.setFont("helvetica", "bold");
-  setTxt(doc, DARK);
-  doc.text("0800", ml, y);
-  const logoW = doc.getTextWidth("0800");
-  setTxt(doc, BLUE);
-  doc.text("BeCool", ml + logoW + 1.5, y);
-
-  // Tagline
-  y += 5;
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "normal");
-  setTxt(doc, GRAY_MID);
-  doc.text("AC Super Service — Professional HVAC Solutions", ml, y);
+  // Embed the actual logo image (842×316 original, ~2.67:1 aspect)
+  const logoWmm = 50;   // width in mm
+  const logoHmm = 50 / 2.67;  // maintain aspect ratio ≈ 18.7mm
+  try {
+    doc.addImage(logoImg, "PNG", ml, y - 4, logoWmm, logoHmm);
+  } catch {
+    // Fallback to text if image fails
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    setTxt(doc, DARK);
+    doc.text("0800", ml, y);
+    setTxt(doc, BLUE);
+    doc.text("BeCool", ml + doc.getTextWidth("0800") + 1.5, y);
+  }
 
   // Right column: Company identity
   const rx = pw - mr;
