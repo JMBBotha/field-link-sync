@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Upload, FileText, X, Trash2, Sparkles } from "lucide-react";
+import { Plus, Upload, FileText, X, Trash2, Sparkles, Download, ExternalLink } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import BulkBrochureUpload from "./BulkBrochureUpload";
 import { getPageCount } from "@/lib/pdfMerger";
@@ -47,6 +47,7 @@ const BrochureManagement = () => {
   const queryClient = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
   const [showBulkDialog, setShowBulkDialog] = useState(false);
+  const [previewPdf, setPreviewPdf] = useState<{ url: string; name: string } | null>(null);
   
   const [formName, setFormName] = useState("");
   const [formBrand, setFormBrand] = useState("Samsung");
@@ -215,14 +216,12 @@ const BrochureManagement = () => {
                   </div>
                 )}
                 {b.file_url && !b.file_url.startsWith("placeholder") ? (
-                  <a
-                    href={getPublicUrl(b.file_url)}
-                    target="_self"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => setPreviewPdf({ url: getPublicUrl(b.file_url), name: b.name })}
                     className="text-xs text-primary hover:underline"
                   >
                     View PDF →
-                  </a>
+                  </button>
                 ) : (
                   <span className="text-xs text-muted-foreground italic">No PDF uploaded</span>
                 )}
@@ -288,6 +287,51 @@ const BrochureManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* PDF Preview Dialog */}
+      <Dialog open={!!previewPdf} onOpenChange={() => setPreviewPdf(null)}>
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
+          <div className="flex items-center justify-between px-4 py-3 border-b">
+            <DialogTitle className="text-sm font-semibold truncate max-w-[50%]">
+              {previewPdf?.name}
+            </DialogTitle>
+            <div className="flex items-center gap-2 mr-8">
+              <a
+                href={previewPdf?.url}
+                download
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <Download className="h-3.5 w-3.5" /> Download
+              </a>
+              <a
+                href={previewPdf?.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <ExternalLink className="h-3.5 w-3.5" /> New tab
+              </a>
+            </div>
+          </div>
+          <div className="flex-1 min-h-0 p-2">
+            {previewPdf && (
+              <object
+                data={previewPdf.url}
+                type="application/pdf"
+                className="w-full h-full rounded"
+              >
+                <p className="text-center py-8 text-muted-foreground">
+                  PDF cannot be displayed.{" "}
+                  <a href={previewPdf.url} target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                    Open directly
+                  </a>
+                </p>
+              </object>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <BulkBrochureUpload
         open={showBulkDialog}
         onOpenChange={setShowBulkDialog}
