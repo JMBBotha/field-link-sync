@@ -850,15 +850,42 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
       {/* ── Bottom action bar ── */}
       <div className="sticky bottom-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2">
-        <Button variant="outline" size="sm" onClick={() => {
+        <Button variant="outline" size="sm" onClick={async () => {
           if (!canSave) {
             toast({ title: "No client assigned", description: "Assign a client for the final PDF with quote number.", variant: "destructive" });
+          }
+          // Fetch brochures linked to selected products
+          const productIds = lineItems
+            .map((i) => i.product_id)
+            .filter((id): id is string => !!id);
+          let brochures: { id: string; name: string; file_url: string }[] = [];
+          if (productIds.length > 0) {
+            try {
+              const { data } = await supabase
+                .from("product_brochures" as any)
+                .select("id, name, file_url, linked_product_ids")
+                .eq("is_active", true);
+              const allBrochures = (data || []) as any[];
+              const matched = allBrochures.filter((b: any) =>
+                (b.linked_product_ids || []).some((lpId: string) => productIds.includes(lpId))
+              );
+              brochures = matched
+                .filter((b: any) => b.file_url && !b.file_url.startsWith("placeholder"))
+                .map((b: any) => ({
+                  id: b.id,
+                  name: b.name,
+                  file_url: supabase.storage.from("product-brochures").getPublicUrl(b.file_url).data.publicUrl,
+                }));
+            } catch (e) {
+              console.warn("Failed to fetch brochures for PDF:", e);
+            }
           }
           generateDocumentPdf({
             docType: "Quote", docNumber: quoteNumber || "DRAFT", companyName: companySettings.company_name || "Your Company",
             companyAddress: companySettings.physical_address || "", vatNumber: companySettings.vat_number || "",
             customerName, customerAddress, customerEmail, issueDate, dueDate: validUntil,
             lineItems: lineItems.filter(i => i.description), subtotal, discountAmount, taxRate, taxAmount, total, notes, terms,
+            brochures,
           });
         }}>
           <FileDown className="h-4 w-4 mr-1" />PDF
