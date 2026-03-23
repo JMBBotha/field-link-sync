@@ -9,8 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Upload, FileText, X, Trash2 } from "lucide-react";
+import { Plus, Upload, FileText, X, Trash2, Sparkles } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import BulkBrochureUpload from "./BulkBrochureUpload";
 import { getPageCount } from "@/lib/pdfMerger";
 
 interface Brochure {
@@ -45,6 +46,7 @@ const brandColor: Record<string, string> = {
 const BrochureManagement = () => {
   const queryClient = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
+  const [showBulkDialog, setShowBulkDialog] = useState(false);
   const [formName, setFormName] = useState("");
   const [formBrand, setFormBrand] = useState("Samsung");
   const [formCategory, setFormCategory] = useState("");
@@ -149,9 +151,14 @@ const BrochureManagement = () => {
         <p className="text-sm text-muted-foreground">
           Manage PDF brochures that auto-attach to quotes based on model code matching.
         </p>
-        <Button onClick={() => setShowDialog(true)} size="sm">
-          <Plus className="h-4 w-4 mr-1" /> Upload Brochure
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowBulkDialog(true)} size="sm">
+            <Sparkles className="h-4 w-4 mr-1" /> Bulk Upload (AI)
+          </Button>
+          <Button onClick={() => setShowDialog(true)} size="sm">
+            <Plus className="h-4 w-4 mr-1" /> Upload Brochure
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -276,6 +283,17 @@ const BrochureManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <BulkBrochureUpload
+        open={showBulkDialog}
+        onOpenChange={setShowBulkDialog}
+        existingBrochures={brochures.map((b) => ({
+          id: b.id,
+          name: b.name,
+          brand: b.brand,
+          model_match_prefixes: b.model_match_prefixes,
+        }))}
+        onComplete={() => queryClient.invalidateQueries({ queryKey: ["product-brochures"] })}
+      />
     </div>
   );
 };
