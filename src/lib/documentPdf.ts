@@ -78,9 +78,8 @@ function imgToDataUrl(src: string): Promise<string | null> {
   });
 }
 
-/* ─── Clean single divider line ─── */
-function drawGradientLine(doc: jsPDF, x: number, y: number, w: number) {
-  doc.setDrawColor(100, 140, 180);
+function drawDividerLine(doc: jsPDF, x: number, y: number, w: number) {
+  doc.setDrawColor(0, 119, 182);
   doc.setLineWidth(0.5);
   doc.line(x, y, x + w, y);
 }
@@ -138,9 +137,9 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
     ry += 3.5;
   });
 
-  /* ─── Gradient divider ─── */
+  /* ─── Divider ─── */
   y = Math.max(y + logoH + 4, ry + 2);
-  drawGradientLine(doc, ml, y, cw);
+  drawDividerLine(doc, ml, y, cw);
   y += 8;
 
   /* ═══════════════════════════════════════════════
@@ -200,8 +199,8 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
 
   y = r2y + 10;
 
-  /* ─── Gradient divider ─── */
-  drawGradientLine(doc, ml, y, cw);
+  /* ─── Divider ─── */
+  drawDividerLine(doc, ml, y, cw);
   y += 8;
 
   /* ═══════════════════════════════════════════════
@@ -409,14 +408,17 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
   ];
 
   // Use provided terms if available, otherwise fall back to hardcoded defaults
-  const termsToRender = opts.terms ? opts.terms.split('\n') : defaultTerms;
-  const termsCw = pw - ml - mr; // explicit content width for wrapping
-  termsToRender.forEach((t) => {
-    if (t === "") { y += 2; return; }
-    const wrapped: string[] = doc.splitTextToSize(t, termsCw);
-    for (let wi = 0; wi < wrapped.length; wi++) {
+  const termsToRender = opts.terms ? opts.terms.split("\n") : defaultTerms;
+  termsToRender.forEach((line) => {
+    if (line === "") {
+      y += 2;
+      return;
+    }
+
+    const wrapped = doc.splitTextToSize(line, cw);
+    for (let i = 0; i < wrapped.length; i++) {
       if (y > ph - 18) { doc.addPage(); y = 20; }
-      doc.text(wrapped[wi], ml, y);
+      doc.text(wrapped[i], ml, y);
       y += 3.5;
     }
   });
