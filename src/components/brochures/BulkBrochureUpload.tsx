@@ -717,9 +717,9 @@ function BulkUploadRow({
             <Badge
               variant="outline"
               className={`text-[7px] px-1 py-0 font-mono ${
-                row.provider === "G" ? "border-blue-400 text-blue-600" : "border-orange-400 text-orange-600"
+                row.provider === "gemini" ? "border-blue-400 text-blue-600" : "border-orange-400 text-orange-600"
               }`}
-              title={row.provider === "G" ? "Parsed by Gemini" : "Parsed by Grok"}
+              title={row.provider === "gemini" ? "Parsed by Gemini" : "Parsed by Grok"}
             >
               {row.provider === "gemini" ? "G" : "X"}
             </Badge>
