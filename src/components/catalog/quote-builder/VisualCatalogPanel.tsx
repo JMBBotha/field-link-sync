@@ -1266,6 +1266,7 @@ const LazyPdfPage = ({
               onHoverEnd={onHoverEnd}
               pdfSelection={pdfSelection}
               onOpenProductInfo={onProductInfoOpen}
+              favoriteIds={favoriteIds}
              />
           )}
           {/* Banner for image-based/scanned pages where pdf.js text extraction returns 0 regions */}
