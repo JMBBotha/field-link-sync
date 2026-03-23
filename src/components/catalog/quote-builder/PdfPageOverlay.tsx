@@ -151,6 +151,7 @@ const RegionBox = memo(({
         height: `${region.h_pct}%`,
       }}
       onMouseEnter={handleMouseEnter}
+      onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       onClick={handleRowClick}
     >
