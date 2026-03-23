@@ -223,12 +223,7 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
     );
 
     // Phase 2: AI parse with dual-provider round-robin (even=Gemini, odd=Grok), 3 per provider
-    const parseWithProvider = async (
-      base64: string,
-      fileName: string,
-      provider: "gemini" | "grok"
-    ) => {
-      const functionName = provider === "gemini" ? "parse-brochure-pdf" : "parse-brochure-grok";
+    const invokeParser = async (functionName: "parse-brochure-pdf" | "parse-brochure-grok", base64: string, fileName: string) => {
       const { data, error } = await supabase.functions.invoke(functionName, {
         body: { pdfBase64: base64, fileName },
       });
@@ -258,21 +253,24 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
           );
 
           // Round-robin: even=gemini, odd=grok
-          const primaryProvider: "gemini" | "grok" = idx % 2 === 0 ? "gemini" : "grok";
+          const provider: "gemini" | "grok" = idx % 2 === 0 ? "gemini" : "grok";
+          const functionName = provider === "gemini" ? "parse-brochure-pdf" : "parse-brochure-grok";
           const fallbackProvider: "gemini" | "grok" =
-            primaryProvider === "gemini" ? "grok" : "gemini";
+            provider === "gemini" ? "grok" : "gemini";
+          const fallbackFunctionName =
+            fallbackProvider === "gemini" ? "parse-brochure-pdf" : "parse-brochure-grok";
           let data: any;
-          let usedProvider = primaryProvider;
+          let usedProvider = provider;
 
           try {
-            data = await parseWithProvider(base64, files[idx].name, primaryProvider);
+            data = await invokeParser(functionName, base64, files[idx].name);
           } catch (primaryErr: any) {
             console.warn(
-              `Primary provider ${primaryProvider} failed for ${files[idx].name}, trying ${fallbackProvider}:`,
+              `Primary provider ${provider} failed for ${files[idx].name}, trying ${fallbackProvider}:`,
               primaryErr.message
             );
             usedProvider = fallbackProvider;
-            data = await parseWithProvider(base64, files[idx].name, fallbackProvider);
+            data = await invokeParser(fallbackFunctionName, base64, files[idx].name);
           }
 
           const snippets: string[] = (data.candidate_model_snippets || []).map((p: string) => p.trim().toUpperCase()).filter(Boolean);
