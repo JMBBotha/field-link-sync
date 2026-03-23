@@ -128,6 +128,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
   const [attachments, setAttachments] = useState<{ name: string; url: string; path: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const quoteCardRef = useRef<HTMLDivElement>(null);
 
   /* ─── Zustand store ─── */
   const { isDirty, setDraft, setDirty, clearDraft } = useQuoteSessionStore();
