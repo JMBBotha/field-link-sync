@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import {
   type ProductOption,
   isAcCategory,
@@ -15,6 +16,26 @@ interface ProductSearchDropdownProps {
   className?: string;
 }
 
+/* ── Highlight helper ── */
+function HighlightText({ text, query }: { text: string; query: string }) {
+  if (!query || query.length < 2) return <>{text}</>;
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const parts = text.split(new RegExp(`(${escapedQuery})`, "gi"));
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === query.toLowerCase() ? (
+          <mark key={i} className="bg-yellow-200 dark:bg-yellow-700/60 text-inherit rounded-sm px-0.5">
+            {part}
+          </mark>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </>
+  );
+}
+
 const ProductSearchDropdown = ({
   value,
   allOptions,
@@ -25,23 +46,28 @@ const ProductSearchDropdown = ({
 }: ProductSearchDropdownProps) => {
   const [suggestions, setSuggestions] = useState<ProductOption[]>([]);
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   const showSuggestions = useCallback(
-    (query: string) => {
-      setSuggestions(filterProductOptions(allOptions, query));
+    (q: string) => {
+      setQuery(q);
+      setSuggestions(filterProductOptions(allOptions, q));
       setOpen(true);
     },
     [allOptions]
   );
 
-  const starredAc = suggestions.filter(
+  const starredAc = useMemo(() => suggestions.filter(
     (s) => s.isFavorite && isAcCategory(s.category)
-  );
-  const services = suggestions.filter((s) => s.source === "template");
-  const products = suggestions.filter(
+  ), [suggestions]);
+  const services = useMemo(() => suggestions.filter((s) => s.source === "template"), [suggestions]);
+  const products = useMemo(() => suggestions.filter(
     (s) => s.source === "product" && !(s.isFavorite && isAcCategory(s.category))
-  );
+  ), [suggestions]);
+
+  const formatPrice = (n: number) =>
+    `R ${n.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const renderRow = (o: ProductOption) => (
     <button
@@ -51,20 +77,45 @@ const ProductSearchDropdown = ({
         onSelect(o);
         setOpen(false);
       }}
-      className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+      className="w-full text-left px-3 py-2.5 hover:bg-accent/60 transition-colors border-b border-border/40 last:border-0 group"
     >
-      <div className="flex justify-between items-center gap-2">
-        <span className="flex-1 min-w-0 truncate">
+      <div className="flex items-start gap-2.5">
+        {/* Left: product info */}
+        <div className="flex-1 min-w-0 space-y-0.5">
           {o.productCode && (
-            <span className="text-[10px] font-mono text-muted-foreground mr-1.5">[{o.productCode}]</span>
+            <div className="font-mono text-[11px] font-semibold text-foreground/80">
+              <HighlightText text={o.productCode} query={query} />
+            </div>
           )}
-          {o.name} {o.isFavorite ? "⭐" : ""}
-        </span>
-        <span className="text-[10px] text-muted-foreground shrink-0">{o.category}</span>
-        <span className="text-xs font-medium shrink-0">R {o.rate.toFixed(2)}</span>
+          <div className="text-sm text-foreground leading-snug">
+            <HighlightText text={o.name} query={query} />
+            {o.isFavorite && <span className="ml-1">⭐</span>}
+          </div>
+        </div>
+        {/* Right: category + price */}
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 font-normal text-muted-foreground border-border/60">
+            {o.category}
+          </Badge>
+          <span className="text-xs font-semibold text-foreground tabular-nums">
+            {formatPrice(o.rate)}
+          </span>
+        </div>
       </div>
     </button>
   );
+
+  const renderSection = (label: string, items: ProductOption[]) => {
+    if (items.length === 0) return null;
+    return (
+      <>
+        <div className="sticky top-0 z-10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/50 backdrop-blur-sm border-b border-border/30">
+          {label}
+        </div>
+        {items.map(renderRow)}
+      </>
+    );
+  };
 
   return (
     <div className="relative">
@@ -87,31 +138,13 @@ const ProductSearchDropdown = ({
         )}
       />
       {open && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 z-50 w-80 mt-1 bg-popover border rounded-lg shadow-lg max-h-64 overflow-y-auto">
-          {starredAc.length > 0 && (
-            <>
-              <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30">
-                ★ Starred AC Units
-              </div>
-              {starredAc.map(renderRow)}
-            </>
-          )}
-          {services.length > 0 && (
-            <>
-              <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30">
-                Services
-              </div>
-              {services.map(renderRow)}
-            </>
-          )}
-          {products.length > 0 && (
-            <>
-              <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30">
-                Products
-              </div>
-              {products.map(renderRow)}
-            </>
-          )}
+        <div
+          className="absolute top-full left-0 z-50 mt-1 bg-popover border border-border rounded-lg shadow-xl max-h-80 overflow-y-auto"
+          style={{ width: "min(460px, calc(100vw - 2rem))" }}
+        >
+          {renderSection("★ Starred AC Units", starredAc)}
+          {renderSection("Services", services)}
+          {renderSection("Products", products)}
         </div>
       )}
     </div>
