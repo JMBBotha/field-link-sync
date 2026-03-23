@@ -52,7 +52,7 @@ interface ParsedRow {
   matchedId: string | null;
   matchedName: string | null;
   productSearchQuery: string;
-  provider?: "G" | "X";
+  provider?: "gemini" | "grok";
 }
 
 interface BulkBrochureUploadProps {
@@ -223,9 +223,13 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
     );
 
     // Phase 2: AI parse with dual-provider round-robin (even=Gemini, odd=Grok), 3 per provider
-    const parseWithProvider = async (base64: string, fileName: string, provider: "G" | "X") => {
-      const fnName = provider === "G" ? "parse-brochure-pdf" : "parse-brochure-grok";
-      const { data, error } = await supabase.functions.invoke(fnName, {
+    const parseWithProvider = async (
+      base64: string,
+      fileName: string,
+      provider: "gemini" | "grok"
+    ) => {
+      const functionName = provider === "gemini" ? "parse-brochure-pdf" : "parse-brochure-grok";
+      const { data, error } = await supabase.functions.invoke(functionName, {
         body: { pdfBase64: base64, fileName },
       });
       if (error) throw new Error(error.message);
@@ -253,16 +257,20 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
             new Uint8Array(buf).reduce((data, byte) => data + String.fromCharCode(byte), "")
           );
 
-          // Round-robin: even=Gemini(G), odd=Grok(X)
-          const primaryProvider: "G" | "X" = idx % 2 === 0 ? "G" : "X";
-          const fallbackProvider: "G" | "X" = primaryProvider === "G" ? "X" : "G";
+          // Round-robin: even=gemini, odd=grok
+          const primaryProvider: "gemini" | "grok" = idx % 2 === 0 ? "gemini" : "grok";
+          const fallbackProvider: "gemini" | "grok" =
+            primaryProvider === "gemini" ? "grok" : "gemini";
           let data: any;
           let usedProvider = primaryProvider;
 
           try {
             data = await parseWithProvider(base64, files[idx].name, primaryProvider);
           } catch (primaryErr: any) {
-            console.warn(`Primary provider ${primaryProvider} failed for ${files[idx].name}, trying ${fallbackProvider}:`, primaryErr.message);
+            console.warn(
+              `Primary provider ${primaryProvider} failed for ${files[idx].name}, trying ${fallbackProvider}:`,
+              primaryErr.message
+            );
             usedProvider = fallbackProvider;
             data = await parseWithProvider(base64, files[idx].name, fallbackProvider);
           }
@@ -713,7 +721,7 @@ function BulkUploadRow({
               }`}
               title={row.provider === "G" ? "Parsed by Gemini" : "Parsed by Grok"}
             >
-              {row.provider}
+              {row.provider === "gemini" ? "G" : "X"}
             </Badge>
           )}
           {row.status === "error" ? (
