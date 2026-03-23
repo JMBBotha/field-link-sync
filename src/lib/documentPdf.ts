@@ -372,6 +372,21 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
     "2.3 Unless alternative payment arrangements are agreed in writing by management, the client is responsible for all payments.",
     "2.4 Ownership of all goods and equipment remains with MassAir Ind cc until payment is received in full.",
     "2.5 Prices are valid for 30 days from the date of the quotation unless otherwise stated.",
+    "",
+    "3. Electrical Requirements",
+    "3.1 Unless explicitly included in the quotation, electrical work (including connection to the distribution board/DB board) is excluded.",
+    "3.2 A suitable electrical point (plug or isolator) must be provided by the client within 1.5 meters of the outdoor unit location.",
+    "For units 24,000 BTU to 60,000 BTU: A dedicated electrical circuit and isolator are required.",
+    "For units 9,000 BTU to 18,000 BTU: A standard plug point is sufficient, provided it meets load requirements.",
+    "",
+    "4. Building and Structural Work",
+    "4.1 Unless specifically itemized in the quotation, all building-related work is excluded.",
+    "4.2 Such work can be quoted separately if required.",
+    "",
+    "5. Warranty",
+    "5.1 Standard warranty: 2 years on all moving parts and a 3-year manufacturer's warranty on the compressor.",
+    "5.2 Extended compressor warranty: When you enter into our recommended service contract, the compressor warranty is extended to 5 years.",
+    "5.3 Warranty applies only to new equipment supplied and installed by MassAir Ind cc.",
   ];
 
   const terms = opts.terms ? opts.terms.split("\n").filter(Boolean) : defaultTerms;
