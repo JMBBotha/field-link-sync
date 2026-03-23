@@ -147,7 +147,8 @@ function appendTermsPages(doc: jsPDF, termsText: string) {
 }
 
 function downloadPdfBlob(pdfBytes: Uint8Array, fileName: string) {
-  const blob = new Blob([pdfBytes], { type: "application/pdf" });
+  const normalizedBytes = new Uint8Array(pdfBytes);
+  const blob = new Blob([normalizedBytes], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
