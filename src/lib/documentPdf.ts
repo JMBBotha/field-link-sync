@@ -387,6 +387,32 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
     "5.1 Standard warranty: 2 years on all moving parts and a 3-year manufacturer's warranty on the compressor.",
     "5.2 Extended compressor warranty: When you enter into our recommended service contract, the compressor warranty is extended to 5 years.",
     "5.3 Warranty applies only to new equipment supplied and installed by MassAir Ind cc.",
+    "",
+    "6. Banking Details",
+    "Account Name: MASSAIR IND CC",
+    "Bank: FNB",
+    "Account Type: Cheque Account",
+    "Account Number: 62326769075",
+    "Branch Code: 250 655",
+    "",
+    "7. Deposit / Payment Reference",
+    "Please use the Proposal/Quotation number as the payment reference.",
+    "",
+    "8. Confidentiality",
+    "We value your privacy. All information provided will be treated as confidential.",
+    "",
+    "9. Termination",
+    "Either party may terminate by providing written notice. Outstanding payments for goods supplied and services rendered remain due.",
+    "",
+    "10. Dispute Resolution",
+    "Both parties agree to first attempt resolution through good-faith discussions.",
+    "",
+    "Important: The Value of Regular Air Conditioning Servicing",
+    "Regular maintenance is essential for optimal performance, energy efficiency, and longevity.",
+    "Residential units: At least once a year (ideally before peak season).",
+    "Commercial units: Every 6 months.",
+    "",
+    "Thank you for considering MassAir Ind cc for your air conditioning needs.",
   ];
 
   const terms = opts.terms ? opts.terms.split("\n").filter(Boolean) : defaultTerms;
@@ -396,25 +422,7 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
     y += 3.5;
   });
 
-  /* ═══════════════════════════════════════════════
-   *  7. BANKING DETAILS
-   * ═══════════════════════════════════════════════ */
-  y += 4;
-  if (y > ph - 30) { doc.addPage(); y = 20; }
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  txt(doc, BLUE);
-  doc.text("Banking Details", ml, y);
-  y += 4;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  txt(doc, GRAY);
-  ["Bank: First National Bank (FNB)",
-   "Account Name: 0800-BE-COOL AC Super Service",
-   "Account Number: 62 XXX XXX XXX",
-   "Branch Code: 250 655",
-   `Reference: ${opts.docNumber || "Quote"}`
-  ].forEach((l) => { doc.text(l, ml, y); y += 3.5; });
+  /* Banking details now included in Terms & Conditions above */
 
   /* ═══════════════════════════════════════════════
    *  8. FOOTER – subtle blue-grey bar on every page

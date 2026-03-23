@@ -40,4 +40,39 @@ For units 9,000 BTU to 18,000 BTU: A standard plug point is sufficient, provided
 
 5.2 Extended compressor warranty: When you enter into our recommended service contract, the compressor warranty is extended to 5 years. In the event of compressor failure during this period, we will supply and install the replacement compressor free of charge (labor and part).
 
-5.3 Warranty applies only to new equipment supplied and installed by MassAir Ind cc. It excludes failures due to misuse, neglect, improper maintenance, or third-party interference.`;
+5.3 Warranty applies only to new equipment supplied and installed by MassAir Ind cc. It excludes failures due to misuse, neglect, improper maintenance, or third-party interference.
+
+6. Banking Details
+
+Account Name: MASSAIR IND CC
+Bank: FNB
+Account Type: Cheque Account
+Account Number: 62326769075
+Branch Code: 250 655
+
+7. Deposit / Payment Reference
+
+Please use the Proposal/Quotation number (found at the top of the document) as the payment reference.
+
+8. Confidentiality
+
+We value your privacy. All information provided by you will be treated as confidential and used solely for the purpose of delivering our services.
+
+9. Termination
+
+Either party may terminate this agreement by providing written notice to the other. Upon termination, you agree to settle any outstanding payments for goods supplied and services already rendered.
+
+10. Dispute Resolution
+
+In the event of any dispute, both parties agree to first attempt resolution through good-faith discussions.
+
+Important Information: The Value of Regular Air Conditioning Servicing
+
+Regular maintenance is essential for optimal performance, energy efficiency, and longevity of your system. Neglecting servicing can lead to reduced cooling/heating efficiency, higher energy consumption, and potential breakdowns.
+
+Recommended Servicing Schedule:
+
+Residential units: At least once a year (ideally before peak season).
+Commercial units: Every 6 months.
+
+Thank you for considering MassAir Ind cc for your air conditioning needs.`;
