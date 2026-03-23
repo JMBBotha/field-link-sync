@@ -26,6 +26,7 @@ interface LineItem {
   markup?: number;
   amount: number;
   service_id?: string | null;
+  product_id?: string | null;
 }
 
 interface Customer {
