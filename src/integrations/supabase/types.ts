@@ -2657,6 +2657,7 @@ export type Database = {
           file_url: string
           id: string
           is_active: boolean | null
+          linked_product_ids: string[] | null
           model_match_prefixes: string[]
           name: string
           page_count: number | null
@@ -2672,6 +2673,7 @@ export type Database = {
           file_url: string
           id?: string
           is_active?: boolean | null
+          linked_product_ids?: string[] | null
           model_match_prefixes?: string[]
           name: string
           page_count?: number | null
@@ -2687,6 +2689,7 @@ export type Database = {
           file_url?: string
           id?: string
           is_active?: boolean | null
+          linked_product_ids?: string[] | null
           model_match_prefixes?: string[]
           name?: string
           page_count?: number | null

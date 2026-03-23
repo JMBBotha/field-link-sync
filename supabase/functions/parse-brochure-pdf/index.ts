@@ -30,23 +30,12 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an expert Samsung HVAC technician. This is a 3-page product brochure for ONE product family.
+    const systemPrompt = `You are an HVAC expert. Analyze this brochure PDF. Extract:
 
-Extract EXACTLY:
-- brand (Samsung / Alliance / Comfee)
-- product_name (clean marketing name, e.g. 'AR6500 WindFree', 'AR80 Series', 'Alliance Emerald R32')
-- category (one of: Residential Wall-Mount, Commercial Wall-Mount, Commercial Cassette, Commercial Ducted, Commercial Underceiling. If unsure, default to "Residential Wall-Mount")
-- model_match_prefixes (MOST IMPORTANT):
-  * Scan EVERY model code in tables, specs, features, ordering info, or text
-  * Extract 3-8 unique uppercase prefixes that would match quote line items
-  * Look for alphanumeric codes following patterns like AR09BSHC, AC026TNXD, FOUS09, FOUSI12-R32
-  * Each BTU/kW size variant has its own model number - list them ALL
-  * If a series name appears (e.g. AR6500 WindFree), include both the series prefix (AR6500) and individual size variants (AR09, AR12, AR18, AR24)
-  * ALWAYS return at least one prefix - never return empty array
-  * HVAC brochures ALWAYS list multiple model variants in spec tables - FIND THEM
-  * Search specification tables, model comparison charts, ordering information, and footnotes for model codes
-
-Be aggressive - extract every model code you can find.`;
+- brand: Exactly one of Samsung, Alliance, or Comfee. Look at logos carefully - Alliance is NOT Samsung. If unsure default to Samsung.
+- product_name: Clean marketing name e.g. 'AR6500 WindFree', 'AR80 Series', 'Alliance Emerald R32'
+- category: One of Residential Wall-Mount, Commercial Wall-Mount, Commercial Cassette, Commercial Ducted, Commercial Underceiling. Default to "Residential Wall-Mount" if unsure.
+- candidate_model_snippets: EVERY model code or prefix found in the PDF. These are alphanumeric codes like AR09BSHC, AR12BSHC, AC026RN1D, FOUS09, FOUSI12-R32, FCMI-09. Search spec tables, model comparison charts, ordering info, footnotes. Return 5-15 entries. Each BTU/kW size variant has its own model number - list them ALL. NEVER return empty array.`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -71,7 +60,7 @@ Be aggressive - extract every model code you can find.`;
                 },
                 {
                   type: "text",
-                  text: "Analyze this HVAC product brochure PDF. Extract the brand, product name, category, and ALL model number prefixes. Look carefully in spec tables, model comparison charts, and ordering info for alphanumeric model codes. Each BTU/kW size variant has its own model number - list them ALL. Return at least 1 prefix.",
+                  text: "Analyze this HVAC product brochure PDF. Extract brand, product name, category, and ALL model codes/numbers found anywhere in the document. Return 5-15 candidate_model_snippets.",
                 },
               ],
             },
@@ -94,7 +83,7 @@ Be aggressive - extract every model code you can find.`;
                     product_name: {
                       type: "string",
                       description:
-                        "Clean marketing product name, e.g. 'AR6500 WindFree', 'AR80 Series'",
+                        "Clean marketing product name",
                     },
                     category: {
                       type: "string",
@@ -107,18 +96,18 @@ Be aggressive - extract every model code you can find.`;
                       ],
                       description: "Product category",
                     },
-                    model_match_prefixes: {
+                    candidate_model_snippets: {
                       type: "array",
                       items: { type: "string" },
                       description:
-                        "Array of 3-8 uppercase model code prefixes found in the brochure. MUST contain at least 1 item.",
+                        "Array of 5-15 model codes/numbers found in the brochure. These are hints for matching to real products in the database.",
                     },
                   },
                   required: [
                     "brand",
                     "product_name",
                     "category",
-                    "model_match_prefixes",
+                    "candidate_model_snippets",
                   ],
                   additionalProperties: false,
                 },
@@ -181,8 +170,8 @@ Be aggressive - extract every model code you can find.`;
 
     const parsed = JSON.parse(toolCall.function.arguments);
 
-    // Normalize prefixes
-    parsed.model_match_prefixes = (parsed.model_match_prefixes || []).map(
+    // Normalize snippets
+    parsed.candidate_model_snippets = (parsed.candidate_model_snippets || []).map(
       (p: string) => p.trim().toUpperCase()
     ).filter(Boolean);
 
