@@ -576,8 +576,40 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
     : "CO";
 
   const handleGeneratePdf = async () => {
-    alert("test");
-    window.print();
+    try {
+      console.log('Starting PDF generation');
+      const html2canvas = (await import('html2canvas')).default;
+      console.log('html2canvas loaded');
+
+      const captureRoot = document.querySelector('[data-pdf-capture-root="quote"]');
+      if (!captureRoot) {
+        toast({ title: "PDF Error", description: "Could not find quote element to capture", variant: "destructive" });
+        return;
+      }
+      console.log('Capture root found');
+
+      document.body.classList.add('pdf-capture-mode');
+      await new Promise(r => setTimeout(r, 300));
+
+      const canvas = await html2canvas(captureRoot as HTMLElement, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      console.log('Canvas captured', canvas.width, canvas.height);
+
+      document.body.classList.remove('pdf-capture-mode');
+
+      const imgData = canvas.toDataURL('image/png');
+      const jsPDF = (await import('jspdf')).default;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Quote-${quoteNumber || 'draft'}.pdf`);
+      toast({ title: "PDF Downloaded", description: "Your quote PDF has been generated." });
+    } catch (err: any) {
+      document.body.classList.remove('pdf-capture-mode');
+      console.error('PDF generation error:', err);
+      toast({ title: "PDF Error", description: `${err?.message || err}`, variant: "destructive" });
+    }
   };
 
   /* ─── Render ─── */
