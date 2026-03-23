@@ -205,7 +205,23 @@ const BrochureManagement = () => {
 
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
-      setPreviewPdf({ url, name: brochure.name, blobUrl, loading: false });
+      const arrayBuffer = await blob.arrayBuffer();
+
+      let pageImages: string[] = [];
+      try {
+        pageImages = await renderPdfToImages(arrayBuffer);
+      } catch (err) {
+        console.warn("Failed to render inline PDF pages", err);
+      }
+
+      setPreviewPdf({
+        url,
+        name: brochure.name,
+        blobUrl,
+        pageImages,
+        loading: false,
+        error: pageImages.length ? undefined : "Inline preview is unavailable. Use New tab or Download.",
+      });
     } catch {
       setPreviewPdf({
         url,
