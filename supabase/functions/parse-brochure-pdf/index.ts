@@ -11,7 +11,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
 
   try {
-    const { pdfBase64 } = await req.json();
+    const { pdfBase64, fileName } = await req.json();
     if (!pdfBase64) {
       return new Response(JSON.stringify({ error: "pdfBase64 is required" }), {
         status: 400,
