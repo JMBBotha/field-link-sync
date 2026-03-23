@@ -78,6 +78,7 @@ export function useProductOptions() {
           category: p.category,
           isFavorite: p.is_pinned ?? false,
           source: "product" as const,
+          productCode: p.product_code || "",
         })),
       ];
       setAllOptions(sortProductOptions(merged));

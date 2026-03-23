@@ -53,12 +53,15 @@ const ProductSearchDropdown = ({
       }}
       className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
     >
-      <div className="flex justify-between items-center">
-        <span>
+      <div className="flex justify-between items-center gap-2">
+        <span className="flex-1 min-w-0 truncate">
+          {o.productCode && (
+            <span className="text-[10px] font-mono text-muted-foreground mr-1.5">[{o.productCode}]</span>
+          )}
           {o.name} {o.isFavorite ? "⭐" : ""}
         </span>
-        <span className="text-xs text-muted-foreground">{o.category}</span>
-        <span className="text-xs font-medium">R {o.rate.toFixed(2)}</span>
+        <span className="text-[10px] text-muted-foreground shrink-0">{o.category}</span>
+        <span className="text-xs font-medium shrink-0">R {o.rate.toFixed(2)}</span>
       </div>
     </button>
   );
