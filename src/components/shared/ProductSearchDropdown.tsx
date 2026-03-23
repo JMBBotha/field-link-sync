@@ -27,7 +27,7 @@ function HighlightText({ text, query }: { text: string; query: string }) {
   return (
     <>
       {parts.map((part, i) =>
-        pattern.test(part) ? (
+        words.some((w) => part.toLowerCase() === w.toLowerCase()) ? (
           <mark key={i} className="bg-yellow-200 dark:bg-yellow-700/60 text-inherit rounded-sm px-0.5">
             {part}
           </mark>
