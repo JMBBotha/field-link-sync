@@ -14,7 +14,7 @@ interface QuoteSummaryPanelProps {
   quoteId?: string | null;
 }
 
-const QuoteSummaryPanel = ({ baskets, onGenerateQuote }: QuoteSummaryPanelProps) => {
+const QuoteSummaryPanel = ({ baskets, onGenerateQuote, quoteId }: QuoteSummaryPanelProps) => {
   const summary = useMemo(() => {
     let grandTotal = 0;
     let totalCost = 0;
