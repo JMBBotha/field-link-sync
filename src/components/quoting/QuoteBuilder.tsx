@@ -940,7 +940,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
       {/* ── Bottom action bar — outside scroll container ── */}
       <div data-pdf-hide className="shrink-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2">
-        <Button variant="outline" size="sm" type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); void handleGeneratePdf(); }}>
+        <Button variant="outline" size="sm" type="button" onClick={handleGeneratePdf}>
           <FileDown className="h-4 w-4 mr-1" />PDF
         </Button>
         <Button variant="outline" size="sm" onClick={() => toast({ title: "Email placeholder", description: "Email sending will be connected soon." })} disabled={!canSave}>
