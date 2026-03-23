@@ -80,13 +80,16 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
   let y = 0;
 
   /* ═══════════════════════════════════════════════
-   *  1. AMBER GRADIENT BANNER (top stripe)
+   *  1. BLUE GRADIENT BANNER (top stripe)
    * ═══════════════════════════════════════════════ */
-  setFill(doc, AMBER);
-  doc.rect(0, 0, pw, 8, "F");
-  // Lighter gradient bar just below
-  setFill(doc, { r: 251, g: 191, b: 36 });
-  doc.rect(0, 8, pw, 2, "F");
+  setFill(doc, BLUE_DARK);
+  doc.rect(0, 0, pw, 7, "F");
+  // Lighter blue-grey bar just below
+  setFill(doc, BLUE);
+  doc.rect(0, 7, pw, 2, "F");
+  // Subtle grey fade
+  setFill(doc, { r: 220, g: 225, b: 235 });
+  doc.rect(0, 9, pw, 1, "F");
   y = 18;
 
   /* ═══════════════════════════════════════════════
