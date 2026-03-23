@@ -19,12 +19,15 @@ interface ProductSearchDropdownProps {
 /* ── Highlight helper ── */
 function HighlightText({ text, query }: { text: string; query: string }) {
   if (!query || query.length < 2) return <>{text}</>;
-  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const parts = text.split(new RegExp(`(${escapedQuery})`, "gi"));
+  const words = query.split(/\s+/).filter((w) => w.length >= 2);
+  if (words.length === 0) return <>{text}</>;
+  const escapedWords = words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const pattern = new RegExp(`(${escapedWords.join("|")})`, "gi");
+  const parts = text.split(pattern);
   return (
     <>
       {parts.map((part, i) =>
-        part.toLowerCase() === query.toLowerCase() ? (
+        pattern.test(part) ? (
           <mark key={i} className="bg-yellow-200 dark:bg-yellow-700/60 text-inherit rounded-sm px-0.5">
             {part}
           </mark>
