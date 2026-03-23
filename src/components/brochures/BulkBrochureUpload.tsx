@@ -244,7 +244,7 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
           );
 
           const { data, error } = await supabase.functions.invoke("parse-brochure-pdf", {
-            body: { pdfBase64: base64 },
+            body: { pdfBase64: base64, fileName: files[idx].name },
           });
 
           if (error) throw new Error(error.message);
