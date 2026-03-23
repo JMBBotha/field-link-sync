@@ -304,3 +304,16 @@ All colors MUST be HSL.
     margin: 1.5cm;
   }
 }
+
+/* ── PDF capture mode: hide interactive controls during screenshot ── */
+.pdf-capture-mode [data-pdf-hide] {
+  display: none !important;
+}
+.pdf-capture-mode [data-pdf-capture-root] button,
+.pdf-capture-mode [data-pdf-capture-root] input,
+.pdf-capture-mode [data-pdf-capture-root] select,
+.pdf-capture-mode [data-pdf-capture-root] textarea,
+.pdf-capture-mode [data-pdf-capture-root] a[href],
+.pdf-capture-mode [data-pdf-capture-root] [data-pdf-hide-markup] {
+  display: none !important;
+}
