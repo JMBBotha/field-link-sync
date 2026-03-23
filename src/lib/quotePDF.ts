@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import { assembleQuoteWithBrochures } from "./pdfMerger";
+import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
 
 interface QuoteLineItem {
   description: string;
