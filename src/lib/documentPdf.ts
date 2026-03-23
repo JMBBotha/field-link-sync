@@ -415,8 +415,8 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
     "Thank you for considering MassAir Ind cc for your air conditioning needs.",
   ];
 
-  // Always print the default terms (ignore opts.terms to guarantee they appear)
-  const termsToRender = defaultTerms;
+  // Use provided terms if available, otherwise fall back to hardcoded defaults
+  const termsToRender = opts.terms ? opts.terms.split('\n') : defaultTerms;
   termsToRender.forEach((t) => {
     if (y > ph - 18) { doc.addPage(); y = 20; }
     if (t === "") { y += 2; return; }
