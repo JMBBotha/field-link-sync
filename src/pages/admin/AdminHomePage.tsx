@@ -14,7 +14,7 @@ const AdminHomePage = () => {
     dispatch: "/admin/dispatch",
     schedule: "/admin/schedule",
     quotes: "/admin/quotes",
-    proposals: "/admin/proposals",
+    proposals: "/admin/templates",
     invoices: "/admin/invoices",
     agreements: "/admin/agreements",
     inventory: "/admin/inventory",

@@ -162,8 +162,9 @@ const App = () => (
               <Route path="/invoices/:id" element={<Navigate to="/admin/invoices" replace />} />
               <Route path="/quotes" element={<Navigate to="/admin/quotes" replace />} />
               <Route path="/quotes/:id" element={<Navigate to="/admin/quotes" replace />} />
-              <Route path="/proposals" element={<Navigate to="/admin/proposals" replace />} />
-              <Route path="/proposals/:id" element={<Navigate to="/admin/proposals" replace />} />
+              <Route path="/proposals" element={<Navigate to="/admin/templates" replace />} />
+              <Route path="/proposals/:id" element={<Navigate to="/admin/templates" replace />} />
+              <Route path="/admin/proposals" element={<Navigate to="/admin/templates" replace />} />
               <Route path="/map" element={<Navigate to="/admin/map" replace />} />
               <Route path="/schedule" element={<Navigate to="/admin/schedule" replace />} />
               <Route path="/inventory" element={<Navigate to="/admin/inventory" replace />} />
