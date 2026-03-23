@@ -78,9 +78,8 @@ function imgToDataUrl(src: string): Promise<string | null> {
   });
 }
 
-/* ─── Clean single divider line ─── */
-function drawGradientLine(doc: jsPDF, x: number, y: number, w: number) {
-  doc.setDrawColor(100, 140, 180);
+function drawDividerLine(doc: jsPDF, x: number, y: number, w: number) {
+  doc.setDrawColor(0, 119, 182);
   doc.setLineWidth(0.5);
   doc.line(x, y, x + w, y);
 }
