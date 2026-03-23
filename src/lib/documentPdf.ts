@@ -108,8 +108,8 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
    * ═══════════════════════════════════════════════ */
   const logoDataUrl = await loadLogoDataUrl(opts.logoUrl);
 
-  // Logo: large, ~63mm wide × ~24mm tall (842×316 aspect = 2.67:1)
-  const logoW = 63;
+  // Logo: large, ~78mm wide × ~29mm tall (842×316 aspect = 2.67:1)
+  const logoW = 78;
   const logoH = logoW / 2.67;
   try {
     doc.addImage(logoDataUrl, "PNG", ml, y, logoW, logoH);
