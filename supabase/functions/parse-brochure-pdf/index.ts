@@ -11,7 +11,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
 
   try {
-    const { pdfBase64 } = await req.json();
+    const { pdfBase64, fileName } = await req.json();
     if (!pdfBase64) {
       return new Response(JSON.stringify({ error: "pdfBase64 is required" }), {
         status: 400,
@@ -30,12 +30,18 @@ serve(async (req) => {
       );
     }
 
+    const fileNameHint = fileName ? `\nThe file is named: "${fileName}". Use this as an additional hint for brand detection.` : "";
+
     const systemPrompt = `You are an HVAC expert. Analyze this brochure PDF. Extract:
 
-- brand: Exactly one of Samsung, Alliance, or Comfee. Look at logos carefully - Alliance is NOT Samsung. If unsure default to Samsung.
+- brand: Exactly one of Samsung, Alliance, or Comfee. CRITICAL BRAND RULES:
+  * Look at logos carefully: Samsung logo is blue, Alliance logo is green, Comfee logo is red/orange.
+  * Alliance is NOT Samsung. They are different brands. If you see a green logo or "Alliance" text, the brand is Alliance.
+  * Check the fileName parameter for brand hints (e.g. "Alliance_..." means Alliance).
+  * NEVER guess Samsung for Alliance or Comfee brochures.
 - product_name: Clean marketing name e.g. 'AR6500 WindFree', 'AR80 Series', 'Alliance Emerald R32'
 - category: One of Residential Wall-Mount, Commercial Wall-Mount, Commercial Cassette, Commercial Ducted, Commercial Underceiling. Default to "Residential Wall-Mount" if unsure.
-- candidate_model_snippets: EVERY model code or prefix found in the PDF. These are alphanumeric codes like AR09BSHC, AR12BSHC, AC026RN1D, FOUS09, FOUSI12-R32, FCMI-09. Search spec tables, model comparison charts, ordering info, footnotes. Return 5-15 entries. Each BTU/kW size variant has its own model number - list them ALL. NEVER return empty array.`;
+- candidate_model_snippets: EVERY model code or prefix found in the PDF. These are alphanumeric codes like AR09BSHC, AR12BSHC, AC026RN1D, FOUS09, FOUSI12-R32, FCMI-09. Search spec tables, model comparison charts, ordering info, footnotes. Return 5-15 entries. Each BTU/kW size variant has its own model number - list them ALL. NEVER return empty array.${fileNameHint}`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",

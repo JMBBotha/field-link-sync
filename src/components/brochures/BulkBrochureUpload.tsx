@@ -113,12 +113,21 @@ async function pooledMap<T, R>(
   return results;
 }
 
-/** Check if a product_code matches any of the AI candidate snippets */
+/** Check if a product_code matches any of the AI candidate snippets (fuzzy 6-8 char) */
 function productMatchesSnippets(productCode: string, snippets: string[]): boolean {
   const upper = productCode.toUpperCase().trim();
+  if (!upper || snippets.length === 0) return false;
+  const code8 = upper.slice(0, 8);
   return snippets.some((s) => {
     const su = s.toUpperCase().trim();
-    return upper.startsWith(su) || upper.includes(su) || su.startsWith(upper.slice(0, 4));
+    if (!su) return false;
+    // Direct contains in either direction
+    if (upper.includes(su) || su.includes(code8)) return true;
+    // Fuzzy: first 6 chars of snippet matches anywhere in code or vice-versa
+    const snip6 = su.slice(0, 6);
+    if (snip6.length >= 4 && upper.includes(snip6)) return true;
+    if (code8.length >= 4 && su.includes(code8.slice(0, 6))) return true;
+    return false;
   });
 }
 
@@ -139,6 +148,7 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
       const { data, error } = await (supabase.from("supplier_products") as any)
         .select("id, product_code, short_name, brand")
         .or("archived.is.null,archived.eq.false")
+        .not("product_code", "like", "BRAC%")
         .order("product_code")
         .limit(2000);
       if (!error && data) {
@@ -234,7 +244,7 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
           );
 
           const { data, error } = await supabase.functions.invoke("parse-brochure-pdf", {
-            body: { pdfBase64: base64 },
+            body: { pdfBase64: base64, fileName: files[idx].name },
           });
 
           if (error) throw new Error(error.message);
