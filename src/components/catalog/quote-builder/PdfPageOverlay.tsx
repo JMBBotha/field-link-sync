@@ -217,6 +217,7 @@ const PdfPageOverlay = ({
   pdfSelection,
   onOpenProductInfo,
   onHoverStart,
+  onHoverMove,
   onHoverEnd,
 }: PdfPageOverlayProps) => {
   if (regions.length === 0) return null;
