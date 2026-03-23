@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import { assembleQuoteWithBrochures } from "./pdfMerger";
 
 interface QuoteLineItem {
   description: string;
