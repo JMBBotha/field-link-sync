@@ -53,6 +53,22 @@ const QuoteSummaryPanel = ({ baskets, onGenerateQuote, quoteId }: QuoteSummaryPa
     return { subtotal, vat, grandTotal: r2(subtotal + vat), markup };
   }, [baskets]);
 
+  // Extract model codes from basket items for brochure matching
+  const lineItemModelCodes = useMemo(() => {
+    const codes: string[] = [];
+    baskets.forEach((b) => {
+      b.items.forEach((i) => {
+        if (i.product.product_code) codes.push(i.product.product_code);
+        if (i.bundleItems) {
+          i.bundleItems.forEach((bi) => {
+            if (bi.product.product_code) codes.push(bi.product.product_code);
+          });
+        }
+      });
+    });
+    return codes;
+  }, [baskets]);
+
   const markupCapped = Math.min(summary.markup, 55);
   const markupPercent = Math.max(0, (markupCapped / 55) * 100);
 
