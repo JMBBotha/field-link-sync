@@ -199,12 +199,17 @@ const BulkBrochureUpload = ({ open, onOpenChange, existingBrochures, onComplete 
             existingBrochures
           );
 
+          const parsedPrefixes = data.model_match_prefixes || [];
+          const parsedCategory = data.category || "Residential Wall-Mount";
+          const parsedBrand = data.brand || "Samsung";
+          const parsedName = data.product_name || files[idx].name.replace(".pdf", "");
+
           updateRow(idx, {
-            status: "ready",
-            brand: data.brand || "Samsung",
-            productName: data.product_name || files[idx].name.replace(".pdf", ""),
-            category: data.category || "",
-            prefixes: data.model_match_prefixes || [],
+            status: parsedBrand && parsedName && parsedPrefixes.length > 0 ? "ready" : "ready",
+            brand: parsedBrand,
+            productName: parsedName,
+            category: parsedCategory,
+            prefixes: parsedPrefixes,
             matchedId: match?.id || null,
             matchedName: match?.name || null,
           });
