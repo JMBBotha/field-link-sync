@@ -104,7 +104,7 @@ const App = () => (
                 <Route path="dispatch" element={<AdminDispatchPage />} />
                 <Route path="schedule" element={<ScheduleCalendar />} />
                 <Route path="quotes" element={<AdminQuotesPage />} />
-                <Route path="proposals" element={<AdminProposalsPage />} />
+                <Route path="templates" element={<AdminProposalsPage />} />
                 <Route path="invoices" element={<AdminInvoicesPage />} />
                 <Route path="invoices/templates" element={<AdminInvoiceTemplatesPage />} />
                 <Route path="agreements" element={<ServiceAgreements />} />
