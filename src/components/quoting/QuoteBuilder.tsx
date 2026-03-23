@@ -902,7 +902,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
             docType: "Quote", docNumber: quoteNumber || "DRAFT", companyName: companySettings.company_name || "Your Company",
             companyAddress: companySettings.physical_address || "", vatNumber: companySettings.vat_number || "",
             customerName, customerAddress, customerEmail, issueDate, dueDate: validUntil,
-            lineItems: lineItems.filter(i => i.description), subtotal, discountAmount, taxRate, taxAmount, total, notes, terms,
+            lineItems: lineItems.filter(i => i.description), subtotal, discountAmount, taxRate, taxAmount, total, notes, terms, reference,
             brochures,
           });
         }}>
