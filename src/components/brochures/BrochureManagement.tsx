@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,13 @@ const BrochureManagement = () => {
   const queryClient = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
   const [showBulkDialog, setShowBulkDialog] = useState(false);
-  const [previewPdf, setPreviewPdf] = useState<{ url: string; name: string } | null>(null);
+  const [previewPdf, setPreviewPdf] = useState<{
+    url: string;
+    name: string;
+    blobUrl?: string;
+    loading?: boolean;
+    error?: string;
+  } | null>(null);
   
   const [formName, setFormName] = useState("");
   const [formBrand, setFormBrand] = useState("Samsung");
@@ -147,6 +153,44 @@ const BrochureManagement = () => {
     return data.publicUrl;
   };
 
+  const closePreview = useCallback(() => {
+    setPreviewPdf((prev) => {
+      if (prev?.blobUrl) URL.revokeObjectURL(prev.blobUrl);
+      return null;
+    });
+  }, []);
+
+  const openPreview = useCallback(async (brochure: Brochure) => {
+    const url = getPublicUrl(brochure.file_url);
+
+    setPreviewPdf((prev) => {
+      if (prev?.blobUrl) URL.revokeObjectURL(prev.blobUrl);
+      return { url, name: brochure.name, loading: true };
+    });
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to load PDF");
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      setPreviewPdf({ url, name: brochure.name, blobUrl, loading: false });
+    } catch {
+      setPreviewPdf({
+        url,
+        name: brochure.name,
+        loading: false,
+        error: "Inline preview is unavailable. Use New tab or Download.",
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (previewPdf?.blobUrl) URL.revokeObjectURL(previewPdf.blobUrl);
+    };
+  }, [previewPdf?.blobUrl]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -217,7 +261,7 @@ const BrochureManagement = () => {
                 )}
                 {b.file_url && !b.file_url.startsWith("placeholder") ? (
                   <button
-                    onClick={() => setPreviewPdf({ url: getPublicUrl(b.file_url), name: b.name })}
+                    onClick={() => openPreview(b)}
                     className="text-xs text-primary hover:underline"
                   >
                     View PDF →
@@ -289,10 +333,15 @@ const BrochureManagement = () => {
       </Dialog>
 
       {/* PDF Preview Dialog */}
-      <Dialog open={!!previewPdf} onOpenChange={() => setPreviewPdf(null)}>
+      <Dialog
+        open={!!previewPdf}
+        onOpenChange={(open) => {
+          if (!open) closePreview();
+        }}
+      >
         <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
           <div className="flex items-center justify-between px-4 py-3 border-b">
-            <DialogTitle className="text-sm font-semibold truncate max-w-[50%]">
+            <DialogTitle className="text-sm font-semibold truncate max-w-[42%]">
               {previewPdf?.name}
             </DialogTitle>
             <div className="flex items-center gap-2 mr-8">
@@ -311,23 +360,29 @@ const BrochureManagement = () => {
               >
                 <ExternalLink className="h-3.5 w-3.5" /> New tab
               </a>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={closePreview}>
+                <X className="h-4 w-4" />
+              </Button>
             </div>
           </div>
+
           <div className="flex-1 min-h-0 p-2">
-            {previewPdf && (
+            {previewPdf?.loading ? (
+              <div className="h-[80vh] w-full grid place-items-center text-sm text-muted-foreground">Loading PDF...</div>
+            ) : previewPdf ? (
               <object
-                data={previewPdf.url}
+                data={previewPdf.blobUrl || previewPdf.url}
                 type="application/pdf"
-                className="w-full h-full rounded"
+                className="w-full h-[80vh] rounded"
               >
                 <p className="text-center py-8 text-muted-foreground">
-                  PDF cannot be displayed.{" "}
+                  {previewPdf.error || "PDF cannot be displayed."}{" "}
                   <a href={previewPdf.url} target="_blank" rel="noopener noreferrer" className="text-primary underline">
                     Open directly
                   </a>
                 </p>
               </object>
-            )}
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>
