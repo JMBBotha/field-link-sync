@@ -96,8 +96,8 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
-  const ml = 10;
-  const mr = 10;
+  const ml = 15;
+  const mr = 15;
   const cw = pw - ml - mr;
   const rightEdge = pw - mr;
   let y = 10;
