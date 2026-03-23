@@ -33,7 +33,7 @@ interface ParsedRow {
   filePath: string;
   pageCount: number;
   file: File;
-  status: "uploading" | "parsing" | "ready" | "error";
+  status: "uploading" | "parsing" | "ready" | "error" | "pending";
   errorMsg?: string;
   // AI-parsed fields (editable)
   brand: string;
