@@ -42,7 +42,7 @@ function resolveCaptureElement(opts: DocumentPdfOptions): HTMLElement {
     if (found) return found;
   }
 
-  throw new Error("Could not find the quote container to capture.");
+  throw new Error(`Could not find capture element. Tried selectors: ${selectors.join(", ")}`);
 }
 
 function enableCaptureMode() {
