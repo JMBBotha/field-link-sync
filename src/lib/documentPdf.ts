@@ -23,7 +23,7 @@ interface DocumentPdfOptions {
   total: number;
   notes?: string;
   terms?: string;
-  brochureUrls?: string[];
+  brochures?: BrochureAttachment[];
 }
 
 export async function generateDocumentPdf(opts: DocumentPdfOptions) {
