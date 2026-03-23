@@ -415,11 +415,18 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
     "Thank you for considering MassAir Ind cc for your air conditioning needs.",
   ];
 
-  const terms = opts.terms ? opts.terms.split("\n").filter(Boolean) : defaultTerms;
-  terms.forEach((t) => {
+  // Always print the default terms (ignore opts.terms to guarantee they appear)
+  const termsToRender = defaultTerms;
+  termsToRender.forEach((t) => {
     if (y > ph - 18) { doc.addPage(); y = 20; }
-    doc.text(t, ml, y);
-    y += 3.5;
+    if (t === "") { y += 2; return; }
+    // Wrap long lines
+    const wrapped = doc.splitTextToSize(t, cw);
+    wrapped.forEach((line: string) => {
+      if (y > ph - 18) { doc.addPage(); y = 20; }
+      doc.text(line, ml, y);
+      y += 3.5;
+    });
   });
 
   /* Banking details now included in Terms & Conditions above */
