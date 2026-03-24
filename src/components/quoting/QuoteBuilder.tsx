@@ -733,7 +733,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         });
 
         // Download merged PDF
-        const blob = new Blob([merged], { type: 'application/pdf' });
+        const blob = new Blob([new Uint8Array(merged)], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
