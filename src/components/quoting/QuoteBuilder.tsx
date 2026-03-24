@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Plus, X, Loader2, Search, ChevronDown, ChevronUp, Paperclip, Upload, FileDown, Send, BookOpen, Check } from "lucide-react";
+import { pdf } from "@react-pdf/renderer";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +16,8 @@ import UnsavedQuoteDialog from "@/components/shared/UnsavedQuoteDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import BeCoolLogo from "@/components/shared/BeCoolLogo";
 import DocumentHeader from "@/components/shared/DocumentHeader";
+import QuotePDFDocument, { type QuotePDFData } from "@/components/QuotePDFDocument";
+import { assembleQuoteWithBrochures } from "@/lib/pdfMerger";
 import { DEFAULT_TERMS } from "@/lib/defaultTerms";
 
 /* ────────── Types ────────── */
@@ -635,16 +638,10 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
   const handleGeneratePdf = async () => {
     try {
-      const [{ pdf }, { default: QuotePDFDocument }, { assembleQuoteWithBrochures }] = await Promise.all([
-        import("@react-pdf/renderer"),
-        import("@/components/QuotePDFDocument"),
-        import("@/lib/pdfMerger"),
-      ]);
-
       const finalQuoteNumber = quoteNumber || "QUOTE";
 
       // Build QuotePDFData from current state
-      const pdfData = {
+      const pdfData: QuotePDFData = {
         quoteNumber: finalQuoteNumber,
         date: issueDate,
         validUntil,
