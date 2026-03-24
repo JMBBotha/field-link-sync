@@ -667,8 +667,84 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         }
       }
 
-      pdf.save(`Quote-${quoteNumber || 'draft'}.pdf`);
-      toast({ title: "PDF Downloaded", description: "Your quote PDF has been generated." });
+      // ── Brochure merge ──
+      const fileName = `Quote-${quoteNumber || 'draft'}.pdf`;
+      const productIds = lineItems.map(i => i.product_id).filter(Boolean) as string[];
+      const descriptions = lineItems.map(i => i.description).filter(Boolean);
+
+      let matchedBrochures: { id: string; name: string; file_url: string }[] = [];
+      if (productIds.length > 0 || descriptions.length > 0) {
+        try {
+          const { data: brochures } = await supabase
+            .from("product_brochures" as any)
+            .select("id, name, file_url, linked_product_ids, model_match_prefixes")
+            .eq("is_active", true)
+            .order("sort_order");
+
+          if (brochures && brochures.length > 0) {
+            const seen = new Set<string>();
+            for (const b of brochures as any[]) {
+              if (seen.has(b.id)) continue;
+              // Match by linked_product_ids
+              const linked: string[] = b.linked_product_ids || [];
+              if (linked.some((lid: string) => productIds.includes(lid))) {
+                seen.add(b.id);
+                matchedBrochures.push({ id: b.id, name: b.name, file_url: b.file_url });
+                continue;
+              }
+              // Match by model_match_prefixes against descriptions
+              const prefixes: string[] = b.model_match_prefixes || [];
+              if (prefixes.length > 0) {
+                const hit = descriptions.some(desc => {
+                  const upper = desc.toUpperCase();
+                  return prefixes.some((p: string) => upper.includes(p.toUpperCase().trim()));
+                });
+                if (hit) {
+                  seen.add(b.id);
+                  matchedBrochures.push({ id: b.id, name: b.name, file_url: b.file_url });
+                }
+              }
+            }
+          }
+          console.log(`Matched ${matchedBrochures.length} brochures`);
+        } catch (e) {
+          console.warn('Brochure matching failed, generating PDF without brochures:', e);
+        }
+      }
+
+      if (matchedBrochures.length > 0) {
+        // Merge quote+terms with brochure PDFs using pdf-lib
+        const quoteBytes = new Uint8Array(pdf.output('arraybuffer'));
+        const { assembleQuoteWithBrochures } = await import('@/lib/pdfMerger');
+
+        const brochureAttachments = matchedBrochures.map(b => {
+          let url = b.file_url;
+          if (!url.startsWith('http')) {
+            const { data } = supabase.storage.from('product-brochures').getPublicUrl(url);
+            url = data.publicUrl;
+          }
+          return { id: b.id, name: b.name, file_url: url };
+        });
+
+        const merged = await assembleQuoteWithBrochures({
+          mainQuotePdfBytes: quoteBytes,
+          brochures: brochureAttachments,
+          quoteNumber: quoteNumber || 'draft',
+        });
+
+        // Download merged PDF
+        const blob = new Blob([merged], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast({ title: "PDF Downloaded", description: `Quote PDF with ${matchedBrochures.length} brochure(s) attached.` });
+      } else {
+        pdf.save(fileName);
+        toast({ title: "PDF Downloaded", description: "Your quote PDF has been generated." });
+      }
     } catch (err: any) {
       document.body.classList.remove('pdf-capture-mode');
       console.error('PDF generation error:', err);
