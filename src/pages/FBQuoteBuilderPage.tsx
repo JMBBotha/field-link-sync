@@ -33,7 +33,7 @@ import type { WizardTriggerItem } from "@/components/catalog/quote-builder/Quote
 import { toast } from "@/hooks/use-toast";
 import { useProductUsageStats } from "@/hooks/useProductUsageStats";
 import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
-import { generateQuoteBuilderPDF } from "@/lib/quoteBuilderPDF";
+
 import { getProductDisplayName } from "@/components/catalog/quote-builder/productDisplayUtils";
 import type { PaletteProduct, BasketItem, Basket } from "@/components/catalog/QuoteBuilderTab";
 import { computeBundlePricing } from "@/components/catalog/quote-builder/BundleItemsPopover";
@@ -110,10 +110,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
   const grandTotalInclVat = r2(subtotal + vatAmount);
 
   const handleExportPDF = () => {
-    try {
-      generateQuoteBuilderPDF(baskets, quoteName || "Quote");
-      toast({ title: "PDF downloaded" });
-    } catch { toast({ title: "Failed to generate PDF", variant: "destructive" }); }
+    toast({ title: "Use the Quote Builder preview to download PDF" });
   };
 
   const handleSave = async () => {
