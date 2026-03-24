@@ -99,13 +99,13 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
   doc.line(margin, 18, pageWidth - margin, 18);
 
   termsBlocks.forEach((block) => {
-    if (y > doc.internal.pageSize.getHeight() - 70) {
+    if (y > doc.internal.pageSize.getHeight() - 40) {
       addTermsFooter(doc);
       doc.addPage();
       doc.setDrawColor(...BLUE);
       doc.setLineWidth(2.5);
       doc.line(margin, 18, pageWidth - margin, 18);
-      y = 42;
+      y = 30;
     }
 
     switch (block.type) {
