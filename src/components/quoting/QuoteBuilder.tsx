@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Plus, X, Loader2, Search, ChevronDown, ChevronUp, Paperclip, Upload, FileDown, Send, BookOpen, Check } from "lucide-react";
-import { pdf } from "@react-pdf/renderer";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,8 +15,7 @@ import UnsavedQuoteDialog from "@/components/shared/UnsavedQuoteDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import BeCoolLogo from "@/components/shared/BeCoolLogo";
 import DocumentHeader from "@/components/shared/DocumentHeader";
-import QuotePDFDocument, { type QuotePDFData } from "@/components/QuotePDFDocument";
-import { assembleQuoteWithBrochures } from "@/lib/pdfMerger";
+import { generateDocumentPdf } from "@/lib/documentPdf";
 import { DEFAULT_TERMS } from "@/lib/defaultTerms";
 
 /* ────────── Types ────────── */
@@ -638,75 +636,40 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
   const handleGeneratePdf = async () => {
     try {
-      const finalQuoteNumber = quoteNumber || "QUOTE";
+      const brochureAttachments = selectedBrochures.map((brochure) => {
+        let url = brochure.file_url;
+        if (!url.startsWith("http")) {
+          const { data } = supabase.storage.from("product-brochures").getPublicUrl(url);
+          url = data.publicUrl;
+        }
+        return { id: brochure.id, name: brochure.name, file_url: url };
+      });
 
-      // Build QuotePDFData from current state
-      const pdfData: QuotePDFData = {
-        quoteNumber: finalQuoteNumber,
-        date: issueDate,
-        validUntil,
-        clientName: customerName,
-        clientEmail: customerEmail,
-        items: lineItems
-          .filter((item) => item.description.trim())
-          .map((item) => ({
-            areaName: item.description,
-            unitName: "",
-            btu: 0,
-            quantity: item.quantity,
-            unitPrice: item.rate,
-            markupPercent: item.markup || 0,
-            lineTotal: item.amount,
-          })),
+      await generateDocumentPdf({
+        docType: "Quote",
+        docNumber: quoteNumber || "QUOTE",
+        companyName: companySettings.company_name || "0800-BE-COOL!",
+        logoUrl: logoUrl,
+        customerName: customerName,
+        customerEmail: customerEmail,
+        issueDate,
+        dueDate: validUntil,
+        lineItems: lineItems.filter((i) => i.description.trim()).map((i) => ({
+          description: i.description,
+          quantity: i.quantity,
+          rate: i.rate,
+          markup: i.markup,
+          amount: i.amount,
+        })),
         subtotal: taxableAmount,
-        vatRate: taxRate / 100,
-        vatAmount: taxAmount,
+        taxRate,
+        taxAmount,
         total,
-        logoUrl,
-      };
+        terms: terms || undefined,
+        brochures: brochureAttachments.length > 0 ? brochureAttachments : undefined,
+      });
 
-      const blob = await pdf(<QuotePDFDocument data={pdfData} />).toBlob();
-      const pdfBytes = new Uint8Array(await blob.arrayBuffer());
-
-      const fileName = `${finalQuoteNumber}.pdf`;
-
-      if (selectedBrochures.length > 0) {
-        const brochureAttachments = selectedBrochures.map((brochure) => {
-          let url = brochure.file_url;
-          if (!url.startsWith("http")) {
-            const { data } = supabase.storage.from("product-brochures").getPublicUrl(url);
-            url = data.publicUrl;
-          }
-          return { id: brochure.id, name: brochure.name, file_url: url };
-        });
-
-        const mergedPdfBytes = await assembleQuoteWithBrochures({
-          mainQuotePdfBytes: pdfBytes,
-          brochures: brochureAttachments,
-          quoteNumber: finalQuoteNumber,
-        });
-
-        const mergedBlob = new Blob([new Uint8Array(mergedPdfBytes)], { type: "application/pdf" });
-        const url = URL.createObjectURL(mergedBlob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      } else {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      }
-
-      toast({ title: "PDF Downloaded", description: `${fileName} with ${selectedBrochures.length} brochure(s) attached.` });
+      toast({ title: "PDF Downloaded" });
     } catch (err: any) {
       console.error("PDF generation error:", err);
       toast({ title: "PDF Error", description: err?.message || "PDF generation failed.", variant: "destructive" });

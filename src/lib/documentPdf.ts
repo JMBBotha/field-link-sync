@@ -1,10 +1,4 @@
-import { createElement, type ReactElement } from "react";
 import jsPDF from "jspdf";
-import { pdf } from "@react-pdf/renderer";
-import QuotePDFDocument, {
-  type QuotePDFData,
-  type QuotePDFLineItem,
-} from "@/components/QuotePDFDocument";
 import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
 import { TERMS_BLOCKS } from "./defaultTerms";
 
@@ -73,17 +67,48 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
   const pageHeight = doc.internal.pageSize.getHeight();
   const marginLeft = 20;
   const marginRight = 20;
-  const topMargin = 25;
-  const bottomLimit = pageHeight - 20;
+  const topMargin = 30;
+  const bottomLimit = pageHeight - 30;
   const contentWidth = pageWidth - marginLeft - marginRight;
   const centerX = pageWidth / 2;
 
-  doc.addPage();
+  const ACCENT_R = 14, ACCENT_G = 165, ACCENT_B = 233;
+  const DARK_R = 17, DARK_G = 24, DARK_B = 39;
+  const GRAY_R = 107, GRAY_G = 114, GRAY_B = 128;
+
+  let pageCount = 0;
+
+  const startNewPage = () => {
+    doc.addPage();
+    pageCount++;
+    // Blue accent line at top
+    doc.setDrawColor(ACCENT_R, ACCENT_G, ACCENT_B);
+    doc.setLineWidth(1.5);
+    doc.line(marginLeft, 15, pageWidth - marginRight, 15);
+    // Header text
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(ACCENT_R, ACCENT_G, ACCENT_B);
+    doc.text("0800-BE-COOL! AC Super Service", marginLeft, 12);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("Terms & Conditions", pageWidth - marginRight, 12, { align: "right" });
+    // Footer
+    doc.setDrawColor(ACCENT_R, ACCENT_G, ACCENT_B);
+    doc.setLineWidth(0.5);
+    doc.line(marginLeft, pageHeight - 18, pageWidth - marginRight, pageHeight - 18);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(GRAY_R, GRAY_G, GRAY_B);
+    doc.text("0800-BE-COOL AC Super Service  |  www.0800becool.co.za  |  info@0800becool.co.za  |  0800 23 2665", centerX, pageHeight - 13, { align: "center" });
+  };
+
+  startNewPage();
   let y = topMargin;
 
   const ensureSpace = (needed: number) => {
     if (y + needed > bottomLimit) {
-      doc.addPage();
+      startNewPage();
       y = topMargin;
     }
   };
@@ -103,6 +128,7 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
     switch (block.type) {
       case "title":
         ensureSpace(8);
+        doc.setTextColor(ACCENT_R, ACCENT_G, ACCENT_B);
         renderWrappedCentered(block.text, 11, "bold", 5.5);
         y += 3;
         break;
@@ -110,18 +136,21 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
       case "heading":
         ensureSpace(10);
         y += 3;
+        doc.setTextColor(ACCENT_R, ACCENT_G, ACCENT_B);
         renderWrappedCentered(block.text, 10, "bold", 5);
         y += 2;
         break;
 
       case "paragraph":
         ensureSpace(5);
+        doc.setTextColor(DARK_R, DARK_G, DARK_B);
         renderWrappedCentered(block.text, 9, "normal", 4.5);
         y += 2;
         break;
 
       case "bullet": {
         ensureSpace(5);
+        doc.setTextColor(DARK_R, DARK_G, DARK_B);
         const bulletText = `•   ${block.text}`;
         renderWrappedCentered(bulletText, 9, "normal", 4.5);
         y += 1;
@@ -130,6 +159,7 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
 
       case "banking":
         ensureSpace(5.5);
+        doc.setTextColor(DARK_R, DARK_G, DARK_B);
         renderWrappedCentered(block.text, 9, "bold", 5);
         break;
 
@@ -138,38 +168,6 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
         break;
     }
   }
-}
-
-function toQuotePdfLineItem(item: DocumentPdfOptions["lineItems"][number]): QuotePDFLineItem {
-  return {
-    areaName: item.description,
-    unitName: "",
-    btu: 0,
-    quantity: item.quantity,
-    unitPrice: item.rate,
-    markupPercent: item.markup ?? 0,
-    lineTotal: item.amount,
-    subItems: [],
-  };
-}
-
-function buildQuotePdfData(opts: DocumentPdfOptions): QuotePDFData {
-  const discountAmount = opts.discountAmount ?? 0;
-  const subtotalExVat = Math.max(0, opts.subtotal - discountAmount);
-
-  return {
-    quoteNumber: opts.docNumber || "QUOTE",
-    date: opts.issueDate,
-    validUntil: opts.dueDate || opts.issueDate,
-    clientName: opts.customerName,
-    clientEmail: opts.customerEmail || "",
-    items: opts.lineItems.filter((item) => item.description.trim()).map(toQuotePdfLineItem),
-    subtotal: subtotalExVat,
-    vatRate: opts.taxRate / 100,
-    vatAmount: opts.taxAmount,
-    total: opts.total,
-    logoUrl: opts.logoUrl || null,
-  };
 }
 
 function downloadPdfBlob(pdfBytes: Uint8Array, fileName: string) {
@@ -191,27 +189,6 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
 
   try {
     const fileName = `${opts.docType}-${opts.docNumber || "DRAFT"}.pdf`;
-
-    if (opts.docType === "Quote") {
-      const quoteData = buildQuotePdfData(opts);
-      const documentElement = createElement(QuotePDFDocument, { data: quoteData }) as unknown as ReactElement;
-      const blob = await pdf(documentElement).toBlob();
-      const mainQuotePdfBytes = new Uint8Array(await blob.arrayBuffer());
-
-      if (opts.brochures && opts.brochures.length > 0) {
-        const merged = await assembleQuoteWithBrochures({
-          mainQuotePdfBytes,
-          brochures: opts.brochures,
-          quoteNumber: opts.docNumber,
-        });
-
-        downloadPdfBlob(new Uint8Array(merged), fileName);
-        return;
-      }
-
-      downloadPdfBlob(mainQuotePdfBytes, fileName);
-      return;
-    }
 
     const captureElement = resolveCaptureElement(opts);
 
