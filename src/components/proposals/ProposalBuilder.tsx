@@ -805,34 +805,45 @@ const ProposalBuilder = ({
       </div>
 
       {/* ── Bottom action bar ── */}
-      <div className="sticky bottom-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          data-testid="proposal-pdf-button"
-          onPointerDown={() => window.alert("[PDF Debug] Pointer down on ProposalBuilder PDF button")}
-          onClick={async (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            window.alert("[PDF Debug] onClick reached in ProposalBuilder PDF button");
+      <div
+        className="sticky bottom-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2"
+        onClickCapture={async (event) => {
+          const target = (event.target as HTMLElement).closest('[data-pdf-trigger="proposal"]');
+          if (!target) return;
 
-            try {
-              await generateDocumentPdf({
-                docType: "Proposal", docNumber: proposalNumber, companyName: companySettings.company_name || "Your Company",
-                companyAddress: companySettings.physical_address || "", vatNumber: companySettings.vat_number || "",
-                customerName, customerAddress, customerEmail, issueDate, dueDate,
-                lineItems: lineItems.filter(i => i.description), subtotal, discountAmount, taxRate, taxAmount, total: grandTotal, notes, terms,
-              });
-              toast({ title: "PDF Downloaded", description: `${proposalNumber || "Proposal"}.pdf generated successfully.` });
-            } catch (err: any) {
-              const message = err?.message || "Failed to generate PDF.";
-              window.alert(`[PDF Debug] Handler catch error: ${message}`);
-              console.error("[PDF] Generation failed:", err);
-              toast({ title: "PDF Error", description: message, variant: "destructive" });
-            }
-          }}
-        >
+          event.preventDefault();
+          event.stopPropagation();
+
+          try {
+            await generateDocumentPdf({
+              docType: "Proposal",
+              docNumber: proposalNumber,
+              companyName: companySettings.company_name || "Your Company",
+              companyAddress: companySettings.physical_address || "",
+              vatNumber: companySettings.vat_number || "",
+              customerName,
+              customerAddress,
+              customerEmail,
+              issueDate,
+              dueDate,
+              lineItems: lineItems.filter((i) => i.description),
+              subtotal,
+              discountAmount,
+              taxRate,
+              taxAmount,
+              total: grandTotal,
+              notes,
+              terms,
+            });
+            toast({ title: "PDF Downloaded", description: `${proposalNumber || "Proposal"}.pdf generated successfully.` });
+          } catch (err: any) {
+            const message = err?.message || "Failed to generate PDF.";
+            console.error("[PDF] Generation failed:", err);
+            toast({ title: "PDF Error", description: message, variant: "destructive" });
+          }
+        }}
+      >
+        <Button type="button" variant="outline" size="sm" data-pdf-trigger="proposal" disabled={loading}>
           <FileDown className="h-4 w-4 mr-1" />PDF
         </Button>
         <Button variant="outline" size="sm" onClick={() => toast({ title: "Email placeholder", description: "Email sending will be connected soon." })}>
