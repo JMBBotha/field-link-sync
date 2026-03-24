@@ -323,6 +323,25 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
           }))
         );
       }
+      // Load saved brochures
+      const { data: savedBrochures } = await (supabase.from("quote_brochures") as any)
+        .select("brochure_id, sort_order")
+        .eq("quote_id", quoteId)
+        .order("sort_order");
+      if (savedBrochures?.length) {
+        const { data: brochureDetails } = await (supabase.from("product_brochures") as any)
+          .select("id, name, file_url")
+          .in("id", savedBrochures.map((sb: any) => sb.brochure_id));
+        if (brochureDetails) {
+          // Preserve sort order
+          const orderMap = new Map(savedBrochures.map((sb: any) => [sb.brochure_id, sb.sort_order]));
+          setSelectedBrochures(
+            brochureDetails
+              .map((b: any) => ({ id: b.id, name: b.name, file_url: b.file_url }))
+              .sort((a: any, b: any) => (orderMap.get(a.id) || 0) - (orderMap.get(b.id) || 0))
+          );
+        }
+      }
       // After loading, mark clean
       setDirty(false);
     };
