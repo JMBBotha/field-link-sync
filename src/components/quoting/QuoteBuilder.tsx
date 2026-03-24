@@ -587,6 +587,20 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         }
       }
 
+      // Save brochure selections
+      if (qId) {
+        await (supabase.from("quote_brochures") as any).delete().eq("quote_id", qId);
+        if (selectedBrochures.length > 0) {
+          await (supabase.from("quote_brochures") as any).insert(
+            selectedBrochures.map((b, idx) => ({
+              quote_id: qId!,
+              brochure_id: b.id,
+              sort_order: idx,
+            }))
+          );
+        }
+      }
+
       clearDraft();
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
       toast({
