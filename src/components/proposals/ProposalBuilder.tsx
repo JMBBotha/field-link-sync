@@ -821,7 +821,7 @@ const ProposalBuilder = ({
 
               try {
                 // Fetch brochures linked to this quote for merging
-                let brochures: { id: string; name: string; fileUrl: string }[] = [];
+                let brochures: { id: string; name: string; file_url: string }[] = [];
                 if (existingId) {
                   const { data: linkedBrochures } = await supabase
                     .from("quote_brochures")
@@ -859,9 +859,7 @@ const ProposalBuilder = ({
                   notes,
                   terms,
                   reference,
-                  brochures: brochures.length > 0
-                    ? brochures.map((b) => ({ id: b.id, name: b.name, fileUrl: b.fileUrl }))
-                    : undefined,
+                  brochures: brochures.length > 0 ? brochures : undefined,
                 });
 
                 toast({ title: "PDF Downloaded", description: `${proposalNumber || "Proposal"}.pdf generated successfully.` });
