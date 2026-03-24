@@ -677,10 +677,25 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
       const productIds = lineItems.map((item) => item.product_id).filter(Boolean) as string[];
       const descriptions = lineItems.map((item) => item.description).filter(Boolean);
+
+      // Fetch actual product model codes for prefix matching
+      let productCodes: string[] = [];
+      if (productIds.length > 0) {
+        const { data: products } = await supabase
+          .from("supplier_products")
+          .select("product_code")
+          .in("id", productIds);
+        productCodes = (products || [])
+          .map((p: any) => p.product_code)
+          .filter(Boolean);
+      }
+
+      // Combine descriptions + product codes for prefix matching
+      const matchTargets = [...descriptions, ...productCodes];
       const fileName = `${finalQuoteNumber}.pdf`;
 
       let matchedBrochures: { id: string; name: string; file_url: string }[] = [];
-      if (productIds.length > 0 || descriptions.length > 0) {
+      if (productIds.length > 0 || matchTargets.length > 0) {
         const { data: brochures } = await supabase
           .from("product_brochures" as any)
           .select("id, name, file_url, linked_product_ids, model_match_prefixes")
@@ -702,8 +717,8 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
             const prefixes: string[] = brochure.model_match_prefixes || [];
             if (
               prefixes.length > 0 &&
-              descriptions.some((desc) => {
-                const upper = desc.toUpperCase();
+              matchTargets.some((target) => {
+                const upper = target.toUpperCase();
                 return prefixes.some((prefix: string) => upper.includes(prefix.toUpperCase().trim()));
               })
             ) {
