@@ -1,6 +1,12 @@
+import { createElement } from "react";
 import jsPDF from "jspdf";
+import { pdf } from "@react-pdf/renderer";
+import QuotePDFDocument, {
+  type QuotePDFData,
+  type QuotePDFLineItem,
+} from "@/components/QuotePDFDocument";
 import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
-import { TERMS_BLOCKS, type TermsBlock } from "./defaultTerms";
+import { TERMS_BLOCKS } from "./defaultTerms";
 
 interface DocumentPdfOptions {
   docType: "Invoice" | "Quote" | "Proposal";
@@ -134,6 +140,38 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
   }
 }
 
+function toQuotePdfLineItem(item: DocumentPdfOptions["lineItems"][number]): QuotePDFLineItem {
+  return {
+    areaName: item.description,
+    unitName: "",
+    btu: 0,
+    quantity: item.quantity,
+    unitPrice: item.rate,
+    markupPercent: item.markup ?? 0,
+    lineTotal: item.amount,
+    subItems: [],
+  };
+}
+
+function buildQuotePdfData(opts: DocumentPdfOptions): QuotePDFData {
+  const discountAmount = opts.discountAmount ?? 0;
+  const subtotalExVat = Math.max(0, opts.subtotal - discountAmount);
+
+  return {
+    quoteNumber: opts.docNumber || "QUOTE",
+    date: opts.issueDate,
+    validUntil: opts.dueDate || opts.issueDate,
+    clientName: opts.customerName,
+    clientEmail: opts.customerEmail || "",
+    items: opts.lineItems.filter((item) => item.description.trim()).map(toQuotePdfLineItem),
+    subtotal: subtotalExVat,
+    vatRate: opts.taxRate / 100,
+    vatAmount: opts.taxAmount,
+    total: opts.total,
+    logoUrl: opts.logoUrl || null,
+  };
+}
+
 function downloadPdfBlob(pdfBytes: Uint8Array, fileName: string) {
   const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
@@ -145,16 +183,35 @@ function downloadPdfBlob(pdfBytes: Uint8Array, fileName: string) {
 }
 
 /**
- * Generates a PDF by capturing the on-screen document via html2canvas,
- * appending Terms & Conditions pages, and optionally merging brochure PDFs.
- *
- * Used by Invoice and Proposal builders. The Quote builder has its own
- * inline capture flow in QuoteBuilder.tsx.
+ * Generates a PDF for invoices/proposals from captured DOM, and for quotes
+ * from the styled react-pdf document (QuotePDFDocument).
  */
 export async function generateDocumentPdf(opts: DocumentPdfOptions) {
   let disableCaptureMode: (() => void) | null = null;
 
   try {
+    const fileName = `${opts.docType}-${opts.docNumber || "DRAFT"}.pdf`;
+
+    if (opts.docType === "Quote") {
+      const quoteData = buildQuotePdfData(opts);
+      const blob = await pdf(createElement(QuotePDFDocument, { data: quoteData })).toBlob();
+      const mainQuotePdfBytes = new Uint8Array(await blob.arrayBuffer());
+
+      if (opts.brochures && opts.brochures.length > 0) {
+        const merged = await assembleQuoteWithBrochures({
+          mainQuotePdfBytes,
+          brochures: opts.brochures,
+          quoteNumber: opts.docNumber,
+        });
+
+        downloadPdfBlob(new Uint8Array(merged), fileName);
+        return;
+      }
+
+      downloadPdfBlob(mainQuotePdfBytes, fileName);
+      return;
+    }
+
     const captureElement = resolveCaptureElement(opts);
 
     disableCaptureMode = enableCaptureMode();
@@ -204,9 +261,7 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
       }
     }
 
-    appendTermsPages(doc);
-
-    const fileName = `${opts.docType}-${opts.docNumber || "DRAFT"}.pdf`;
+    appendTermsPages(doc, opts.terms);
 
     if (opts.brochures && opts.brochures.length > 0) {
       const quoteBytes = doc.output("arraybuffer");
