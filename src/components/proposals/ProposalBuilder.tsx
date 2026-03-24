@@ -811,7 +811,10 @@ const ProposalBuilder = ({
         <button
           type="button"
           className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3"
-          onClick={() => { window.alert("DIRECT CLICK"); }}
+          onClick={(event) => {
+            (event.target as HTMLElement).textContent = "CLICKED!";
+            document.title = "PDF CLICKED";
+          }}
         >
           <FileDown className="h-4 w-4 mr-1" />PDF
         </button>
