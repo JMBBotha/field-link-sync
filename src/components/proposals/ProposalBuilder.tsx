@@ -807,45 +807,14 @@ const ProposalBuilder = ({
       {/* ── Bottom action bar ── */}
       <div
         className="sticky bottom-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2"
-        onClickCapture={async (event) => {
-          const target = (event.target as HTMLElement).closest('[data-pdf-trigger="proposal"]');
-          if (!target) return;
-
-          event.preventDefault();
-          event.stopPropagation();
-
-          try {
-            await generateDocumentPdf({
-              docType: "Proposal",
-              docNumber: proposalNumber,
-              companyName: companySettings.company_name || "Your Company",
-              companyAddress: companySettings.physical_address || "",
-              vatNumber: companySettings.vat_number || "",
-              customerName,
-              customerAddress,
-              customerEmail,
-              issueDate,
-              dueDate,
-              lineItems: lineItems.filter((i) => i.description),
-              subtotal,
-              discountAmount,
-              taxRate,
-              taxAmount,
-              total: grandTotal,
-              notes,
-              terms,
-            });
-            toast({ title: "PDF Downloaded", description: `${proposalNumber || "Proposal"}.pdf generated successfully.` });
-          } catch (err: any) {
-            const message = err?.message || "Failed to generate PDF.";
-            console.error("[PDF] Generation failed:", err);
-            toast({ title: "PDF Error", description: message, variant: "destructive" });
-          }
-        }}
       >
-        <Button type="button" variant="outline" size="sm" data-pdf-trigger="proposal" disabled={loading}>
+        <button
+          type="button"
+          className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3"
+          onClick={() => { window.alert("DIRECT CLICK"); }}
+        >
           <FileDown className="h-4 w-4 mr-1" />PDF
-        </Button>
+        </button>
         <Button variant="outline" size="sm" onClick={() => toast({ title: "Email placeholder", description: "Email sending will be connected soon." })}>
           <Send className="h-4 w-4 mr-1" />Send
         </Button>
