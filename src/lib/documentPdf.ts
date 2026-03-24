@@ -84,9 +84,9 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
   if (!termsBlocks || termsBlocks.length === 0) return;
 
   const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 25;
-  const lineHeight = 6.5;
-  let y = 42;
+  const margin = 20;
+  const lineHeight = 5;
+  let y = 30;
 
   const BLUE = [14, 165, 233] as const;
   const DARK_GRAY = [17, 24, 39] as const;
@@ -99,59 +99,59 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
   doc.line(margin, 18, pageWidth - margin, 18);
 
   termsBlocks.forEach((block) => {
-    if (y > doc.internal.pageSize.getHeight() - 70) {
+    if (y > doc.internal.pageSize.getHeight() - 40) {
       addTermsFooter(doc);
       doc.addPage();
       doc.setDrawColor(...BLUE);
       doc.setLineWidth(2.5);
       doc.line(margin, 18, pageWidth - margin, 18);
-      y = 42;
+      y = 30;
     }
 
     switch (block.type) {
       case "title":
         doc.setTextColor(...BLUE);
-        doc.setFontSize(18);
+        doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
         doc.text(block.text || "MassAir Ind cc Terms and Conditions", margin, y);
-        y += 26;
+        y += 14;
         break;
 
       case "heading":
         doc.setTextColor(...BLUE);
-        doc.setFontSize(13);
+        doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
         doc.text(block.text, margin, y);
-        y += 16;
+        y += 10;
         break;
 
       case "paragraph": {
         doc.setTextColor(...DARK_GRAY);
-        doc.setFontSize(11);
+        doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
         const paraLines: string[] = doc.splitTextToSize(block.text, pageWidth - margin * 2);
         doc.text(paraLines, margin, y);
-        y += paraLines.length * lineHeight + 7;
+        y += paraLines.length * lineHeight + 3;
         break;
       }
 
       case "bullet": {
         doc.setTextColor(...DARK_GRAY);
-        doc.setFontSize(11);
+        doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
         const bulletText = `• ${block.text}`;
         const bulletLines: string[] = doc.splitTextToSize(bulletText, pageWidth - margin * 2 - 15);
-        doc.text(bulletLines, margin + 8, y);
-        y += bulletLines.length * lineHeight + 4;
+        doc.text(bulletLines, margin + 5, y);
+        y += bulletLines.length * lineHeight + 2;
         break;
       }
 
       case "banking":
         doc.setTextColor(...DARK_GRAY);
-        doc.setFontSize(10);
+        doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
         doc.text(block.text, margin, y);
-        y += lineHeight + 6;
+        y += lineHeight + 3;
         break;
 
       case "spacer":
@@ -160,10 +160,10 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
 
       default:
         doc.setTextColor(...DARK_GRAY);
-        doc.setFontSize(11);
+        doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
         doc.text(block.text, margin, y);
-        y += lineHeight + 4;
+        y += lineHeight + 2;
     }
   });
 
