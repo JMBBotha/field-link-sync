@@ -129,11 +129,11 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
 
       case "paragraph": {
         doc.setTextColor(...DARK_GRAY);
-        doc.setFontSize(8.5);
+        doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
         const paraLines: string[] = doc.splitTextToSize(block.text, pageWidth - margin * 2);
         doc.text(paraLines, margin, y);
-        y += paraLines.length * lineHeight + 2;
+        y += paraLines.length * lineHeight + 1.5;
         break;
       }
 
