@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
-import { DEFAULT_TERMS } from "./defaultTerms";
+import { TERMS_BLOCKS, type TermsBlock } from "./defaultTerms";
 
 interface DocumentPdfOptions {
   docType: "Invoice" | "Quote" | "Proposal";
