@@ -1027,6 +1027,87 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
           <Textarea value={terms} onChange={(e) => setTerms(e.target.value)} className="min-h-[80px] text-sm border-transparent hover:border-border focus:border-primary" />
         </div>
 
+        {/* ── BROCHURES (PDF attachments) ── */}
+        <div data-pdf-hide className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <BookOpen className="h-3.5 w-3.5" /> Product Brochures
+            </p>
+            <span className="text-[10px] text-muted-foreground">
+              {selectedBrochures.length} selected — will be appended to PDF
+            </span>
+          </div>
+
+          {/* Selected brochures */}
+          {selectedBrochures.length > 0 && (
+            <div className="space-y-1">
+              {selectedBrochures.map((b) => (
+                <div key={b.id} className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-1.5 text-sm">
+                  <span className="flex items-center gap-1.5">
+                    <Check className="h-3.5 w-3.5 text-primary" />
+                    {b.name}
+                  </span>
+                  <button
+                    onClick={() => setSelectedBrochures((prev) => prev.filter((x) => x.id !== b.id))}
+                    className="text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add brochure picker */}
+          {!showBrochurePicker ? (
+            <button
+              onClick={() => setShowBrochurePicker(true)}
+              className="text-sm text-primary hover:underline flex items-center gap-1.5"
+            >
+              <Plus className="h-4 w-4" /> Add Brochure
+            </button>
+          ) : (
+            <div className="space-y-2 border rounded-md p-3 bg-muted/20">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <input
+                  autoFocus
+                  placeholder="Search brochures…"
+                  value={brochureSearch}
+                  onChange={(e) => setBrochureSearch(e.target.value)}
+                  className="w-full pl-7 pr-2 py-1.5 text-sm border rounded bg-background outline-none focus:ring-1 focus:ring-primary/30"
+                />
+              </div>
+              <div className="max-h-48 overflow-y-auto space-y-0.5">
+                {availableBrochures
+                  .filter((b) => {
+                    const q = brochureSearch.toLowerCase();
+                    return !selectedBrochures.some((s) => s.id === b.id) &&
+                      (!q || b.name.toLowerCase().includes(q) || (b.brand || "").toLowerCase().includes(q));
+                  })
+                  .map((b) => (
+                    <button
+                      key={b.id}
+                      onClick={() => {
+                        setSelectedBrochures((prev) => [...prev, { id: b.id, name: b.name, file_url: b.file_url }]);
+                      }}
+                      className="w-full text-left px-3 py-1.5 hover:bg-accent text-sm transition-colors rounded flex items-center justify-between"
+                    >
+                      <span>{b.name}</span>
+                      {b.brand && <span className="text-[10px] text-muted-foreground">{b.brand}</span>}
+                    </button>
+                  ))}
+              </div>
+              <button
+                onClick={() => { setShowBrochurePicker(false); setBrochureSearch(""); }}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Done
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* ── ATTACHMENTS ── */}
         <div className="space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Attachments</p>
