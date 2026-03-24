@@ -677,6 +677,19 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
       const productIds = lineItems.map((item) => item.product_id).filter(Boolean) as string[];
       const descriptions = lineItems.map((item) => item.description).filter(Boolean);
+      const lineItemsDebug = lineItems.map((i) => ({ desc: i.description, product_id: i.product_id }));
+
+      alert(
+        JSON.stringify(
+          {
+            lineItems: lineItemsDebug,
+            productIds,
+            descriptions,
+          },
+          null,
+          2,
+        ),
+      );
 
       console.log("[Brochure Debug] productIds:", productIds);
       console.log("[Brochure Debug] descriptions:", descriptions);
@@ -702,6 +715,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       const fileName = `${finalQuoteNumber}.pdf`;
 
       let matchedBrochures: { id: string; name: string; file_url: string }[] = [];
+      let brochuresFound = 0;
       if (productIds.length > 0 || matchTargets.length > 0) {
         const { data: brochures, error: brochErr } = await supabase
           .from("product_brochures" as any)
@@ -709,7 +723,8 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
           .eq("is_active", true)
           .order("sort_order");
 
-        console.log("[Brochure Debug] brochures fetched:", brochures?.length ?? 0, "error:", brochErr);
+        brochuresFound = brochures?.length ?? 0;
+        console.log("[Brochure Debug] brochures fetched:", brochuresFound, "error:", brochErr);
 
         if (brochures?.length) {
           const seen = new Set<string>();
@@ -752,7 +767,8 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       console.log(`[Brochure Debug] FINAL: ${productIds.length} products, ${productCodes.length} codes, ${matchTargets.length} targets, ${matchedBrochures.length} matched`);
       toast({
         title: "Brochure matching",
-        description: `${productIds.length} products, ${productCodes.length} codes, ${matchedBrochures.length} brochures matched`,
+        description: `${productIds.length} products, ${productCodes.length} codes, ${brochuresFound} brochures found, ${matchedBrochures.length} matched`,
+        duration: Infinity,
       });
 
       if (matchedBrochures.length > 0) {
