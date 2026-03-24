@@ -723,104 +723,11 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         }
       }
 
-      const productIds = lineItems.map((item) => item.product_id).filter(Boolean) as string[];
-      const descriptions = lineItems.map((item) => item.description).filter(Boolean);
-      const lineItemsDebug = lineItems.map((i) => ({ desc: i.description, product_id: i.product_id }));
-
-      alert(
-        JSON.stringify(
-          {
-            lineItems: lineItemsDebug,
-            productIds,
-            descriptions,
-          },
-          null,
-          2,
-        ),
-      );
-
-      console.log("[Brochure Debug] productIds:", productIds);
-      console.log("[Brochure Debug] descriptions:", descriptions);
-
-      // Fetch actual product model codes for prefix matching
-      let productCodes: string[] = [];
-      if (productIds.length > 0) {
-        const { data: products, error: prodErr } = await supabase
-          .from("supplier_products")
-          .select("id, product_code")
-          .in("id", productIds);
-        console.log("[Brochure Debug] supplier_products query result:", { products, error: prodErr });
-        productCodes = (products || [])
-          .map((p: any) => p.product_code)
-          .filter(Boolean);
-      }
-
-      console.log("[Brochure Debug] productCodes:", productCodes);
-
-      // Combine descriptions + product codes for prefix matching
-      const matchTargets = [...descriptions, ...productCodes];
-      console.log("[Brochure Debug] matchTargets:", matchTargets);
       const fileName = `${finalQuoteNumber}.pdf`;
 
-      let matchedBrochures: { id: string; name: string; file_url: string }[] = [];
-      let brochuresFound = 0;
-      if (productIds.length > 0 || matchTargets.length > 0) {
-        const { data: brochures, error: brochErr } = await supabase
-          .from("product_brochures" as any)
-          .select("id, name, file_url, linked_product_ids, model_match_prefixes")
-          .eq("is_active", true)
-          .order("sort_order");
-
-        brochuresFound = brochures?.length ?? 0;
-        console.log("[Brochure Debug] brochures fetched:", brochuresFound, "error:", brochErr);
-
-        if (brochures?.length) {
-          const seen = new Set<string>();
-          for (const brochure of brochures as any[]) {
-            if (seen.has(brochure.id)) continue;
-
-            console.log(`[Brochure Debug] Checking brochure "${brochure.name}" | linked_product_ids:`, brochure.linked_product_ids, "| prefixes:", brochure.model_match_prefixes);
-
-            const linkedProductIds: string[] = brochure.linked_product_ids || [];
-            const directMatch = linkedProductIds.some((linkedId: string) => productIds.includes(linkedId));
-            if (directMatch) {
-              console.log(`[Brochure Debug] ✅ DIRECT ID match for "${brochure.name}"`);
-              seen.add(brochure.id);
-              matchedBrochures.push({ id: brochure.id, name: brochure.name, file_url: brochure.file_url });
-              continue;
-            }
-
-            const prefixes: string[] = brochure.model_match_prefixes || [];
-            if (prefixes.length > 0) {
-              for (const prefix of prefixes) {
-                const trimmedPrefix = prefix.toUpperCase().trim();
-                const matchFound = matchTargets.some((target) => target.toUpperCase().includes(trimmedPrefix));
-                console.log(`[Brochure Debug]   prefix "${prefix}" vs matchTargets → ${matchFound ? "✅ HIT" : "❌ miss"}`);
-                if (matchFound) {
-                  console.log(`[Brochure Debug] ✅ PREFIX match for "${brochure.name}" via prefix "${prefix}"`);
-                  seen.add(brochure.id);
-                  matchedBrochures.push({ id: brochure.id, name: brochure.name, file_url: brochure.file_url });
-                  break;
-                }
-              }
-            } else {
-              console.log(`[Brochure Debug]   No prefixes defined for "${brochure.name}"`);
-            }
-          }
-        }
-      } else {
-        console.log("[Brochure Debug] Skipped brochure matching — no productIds or matchTargets");
-      }
-
-      console.log(`[Brochure Debug] FINAL: ${productIds.length} products, ${productCodes.length} codes, ${matchTargets.length} targets, ${matchedBrochures.length} matched`);
-      toast({
-        title: "Brochure matching",
-        description: `${productIds.length} products, ${productCodes.length} codes, ${brochuresFound} brochures found, ${matchedBrochures.length} matched`,
-        duration: Infinity,
-      });
-
-      if (matchedBrochures.length > 0) {
-        const brochureAttachments = matchedBrochures.map((brochure) => {
+      // Use saved brochure selections (managed in the brochure picker UI)
+      if (selectedBrochures.length > 0) {
+        const brochureAttachments = selectedBrochures.map((brochure) => {
           let url = brochure.file_url;
           if (!url.startsWith("http")) {
             const { data } = supabase.storage.from("product-brochures").getPublicUrl(url);
@@ -828,6 +735,8 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
           }
           return { id: brochure.id, name: brochure.name, file_url: url };
         });
+
+        console.log(`[PDF] Attaching ${brochureAttachments.length} brochures:`, brochureAttachments.map(b => b.name));
 
         const mergedPdfBytes = await assembleQuoteWithBrochures({
           mainQuotePdfBytes: new Uint8Array(pdf.output("arraybuffer")),
@@ -848,7 +757,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         pdf.save(fileName);
       }
 
-      toast({ title: "PDF Downloaded", description: `${fileName} downloaded successfully.` });
+      toast({ title: "PDF Downloaded", description: `${fileName} with ${selectedBrochures.length} brochure(s) attached.` });
     } catch (err: any) {
       console.error("PDF generation error:", err);
       toast({ title: "PDF Error", description: err?.message || "PDF generation failed.", variant: "destructive" });
