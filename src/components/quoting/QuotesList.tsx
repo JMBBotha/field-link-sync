@@ -123,21 +123,8 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                         className="h-7 w-7"
                         onClick={(e) => {
                           e.stopPropagation();
-                          downloadQuotePDF({
-                            quote_number: quote.quote_number,
-                            customer_name: quote.customers?.name || "Customer",
-                            customer_phone: quote.customers?.phone,
-                            line_items: [],
-                            subtotal: Number(quote.subtotal),
-                            vat_rate: Number(quote.vat_rate),
-                            vat_amount: Number(quote.vat_amount),
-                            total: Number(quote.total),
-                            status: quote.status,
-                            created_at: quote.created_at,
-                            notes: quote.notes,
-                            valid_until: quote.valid_until,
-                          });
-                          toast({ title: "PDF Downloaded 📄" });
+                          onEditQuote(quote.id);
+                          toast({ title: "Open the quote to download PDF" });
                         }}
                         title="Download PDF"
                       >

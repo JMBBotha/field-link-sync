@@ -110,10 +110,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
   const grandTotalInclVat = r2(subtotal + vatAmount);
 
   const handleExportPDF = () => {
-    try {
-      generateQuoteBuilderPDF(baskets, quoteName || "Quote");
-      toast({ title: "PDF downloaded" });
-    } catch { toast({ title: "Failed to generate PDF", variant: "destructive" }); }
+    toast({ title: "Use the Quote Builder preview to download PDF" });
   };
 
   const handleSave = async () => {
