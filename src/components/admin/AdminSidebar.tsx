@@ -109,6 +109,7 @@ const AdminSidebar = ({
       items: [
         { path: "/admin/suppliers", label: "Suppliers", icon: Building2 },
         { path: "/admin/pdf-documents", label: "PDF Documents", icon: FileText },
+        { path: "/admin/brochures", label: "Brochures", icon: FileText },
         { path: "/admin/consumables", label: "Consumables", icon: Package },
         { path: "/admin/catalog", label: "Catalog", icon: ShoppingBag },
         { path: "/admin/maintenance", label: "Maintenance", icon: CalendarDays },
