@@ -1,10 +1,4 @@
-import { createElement, type ReactElement } from "react";
 import jsPDF from "jspdf";
-import { pdf } from "@react-pdf/renderer";
-import QuotePDFDocument, {
-  type QuotePDFData,
-  type QuotePDFLineItem,
-} from "@/components/QuotePDFDocument";
 import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
 import { TERMS_BLOCKS } from "./defaultTerms";
 
