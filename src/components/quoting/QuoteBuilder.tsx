@@ -1027,11 +1027,13 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
           <Textarea value={terms} onChange={(e) => setTerms(e.target.value)} className="min-h-[80px] text-sm border-transparent hover:border-border focus:border-primary" />
         </div>
 
+        <div className="h-px bg-border" />
+
         {/* ── BROCHURES (PDF attachments) ── */}
-        <div data-pdf-hide className="space-y-2">
+        <div data-pdf-hide className="space-y-3 rounded-lg border border-dashed border-primary/30 bg-primary/5 p-4">
           <div className="flex items-center justify-between">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <BookOpen className="h-3.5 w-3.5" /> Product Brochures
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+              <BookOpen className="h-3.5 w-3.5 text-primary" /> Product Brochures
             </p>
             <span className="text-[10px] text-muted-foreground">
               {selectedBrochures.length} selected — will be appended to PDF
