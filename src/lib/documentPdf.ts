@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import { createElement, type ReactElement } from "react";
 import jsPDF from "jspdf";
 import { pdf } from "@react-pdf/renderer";
 import QuotePDFDocument, {
