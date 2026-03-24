@@ -148,10 +148,10 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
 
       case "banking":
         doc.setTextColor(...DARK_GRAY);
-        doc.setFontSize(10);
+        doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
         doc.text(block.text, margin, y);
-        y += lineHeight + 6;
+        y += lineHeight + 3;
         break;
 
       case "spacer":
