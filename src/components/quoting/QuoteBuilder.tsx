@@ -754,7 +754,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
   /* ─── Render ─── */
   return (
-    <div className="flex flex-col h-full min-h-screen bg-muted/40">
+    <div className="flex flex-col h-screen bg-muted/40">
       {/* Exit guard modal */}
       <UnsavedQuoteDialog
         open={exitGuard.showModal}
