@@ -106,19 +106,30 @@ const s = StyleSheet.create({
   footerText: { fontSize: 7, color: GRAY },
 });
 
-/* ─── Terms ─── */
-const TERMS = [
-  "1. This quotation is valid for 30 days from the date of issue.",
-  "2. A 50% deposit is required upon acceptance to secure scheduling.",
-  "3. All equipment carries a 12-month warranty on parts and labour from date of installation.",
-  "4. Installation will be completed within 5–10 business days of deposit confirmation, subject to stock availability.",
-  "5. The customer is responsible for providing adequate electrical supply points as per unit specifications.",
-  "6. This quote excludes any structural modifications, electrical upgrades, or building alterations unless explicitly stated.",
-  "7. Payment terms: Net 30 days from invoice date. Late payments attract 2% monthly interest.",
-  "8. A cancellation fee of 15% of the total quoted amount applies after acceptance.",
-  "9. Prices are quoted in South African Rand (ZAR) and include VAT at 15% as shown.",
-  "10. Any additional work not covered in this quotation will be quoted separately.",
-];
+/* ─── Terms block renderer ─── */
+function TermsBlockRenderer({ block }: { block: TermsBlock }) {
+  switch (block.type) {
+    case "title":
+      return <Text style={s.termsTitle}>{block.text}</Text>;
+    case "heading":
+      return <Text style={s.termsHeading}>{block.text}</Text>;
+    case "paragraph":
+      return <Text style={s.termsParagraph}>{block.text}</Text>;
+    case "bullet":
+      return (
+        <Text style={s.termsBullet}>
+          {"• "}{block.boldPrefix ? <Text style={{ fontWeight: 700 }}>{block.boldPrefix}: </Text> : null}
+          {block.boldPrefix ? block.text.slice(block.boldPrefix.length + 2) : block.text}
+        </Text>
+      );
+    case "banking":
+      return <Text style={s.termsBanking}>{block.text}</Text>;
+    case "spacer":
+      return <View style={s.termsSpacer} />;
+    default:
+      return null;
+  }
+}
 
 /* ─── Document Component ─── */
 export default function QuotePDFDocument({ data }: { data: QuotePDFData }) {
