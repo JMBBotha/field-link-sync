@@ -2,6 +2,7 @@ import React from "react";
 import {
   Document, Page, Text, View, StyleSheet, Font,
 } from "@react-pdf/renderer";
+import { TERMS_BLOCKS, type TermsBlock } from "@/lib/defaultTerms";
 
 /* ─── Font registration ─── */
 Font.register({
@@ -94,26 +95,41 @@ const s = StyleSheet.create({
   subTextBold: { fontSize: 7.5, color: DARK, fontWeight: 700 },
   /* Terms */
   termsSection: { marginTop: 24, paddingTop: 12, borderTopWidth: 0.5, borderTopColor: "#d1d5db" },
-  termsTitle: { fontSize: 10, fontWeight: 700, marginBottom: 6, color: BLUE },
-  termItem: { fontSize: 8, color: GRAY, marginBottom: 3, lineHeight: 1.4 },
+  termsTitle: { fontSize: 11, fontWeight: 700, marginBottom: 8, color: BLUE, textAlign: "center" as const },
+  termsHeading: { fontSize: 9, fontWeight: 700, color: BLUE, marginTop: 8, marginBottom: 3 },
+  termsParagraph: { fontSize: 8, color: GRAY, marginBottom: 3, lineHeight: 1.4 },
+  termsBullet: { fontSize: 8, color: GRAY, marginBottom: 2, lineHeight: 1.4, paddingLeft: 8 },
+  termsBanking: { fontSize: 8, fontWeight: 700, color: DARK, marginBottom: 2, textAlign: "center" as const },
+  termsSpacer: { height: 6 },
   /* Footer */
   footer: { position: "absolute" as const, bottom: 30, left: 40, right: 40, flexDirection: "row", justifyContent: "space-between", borderTopWidth: 0.5, borderTopColor: "#d1d5db", paddingTop: 8 },
   footerText: { fontSize: 7, color: GRAY },
 });
 
-/* ─── Terms ─── */
-const TERMS = [
-  "1. This quotation is valid for 30 days from the date of issue.",
-  "2. A 50% deposit is required upon acceptance to secure scheduling.",
-  "3. All equipment carries a 12-month warranty on parts and labour from date of installation.",
-  "4. Installation will be completed within 5–10 business days of deposit confirmation, subject to stock availability.",
-  "5. The customer is responsible for providing adequate electrical supply points as per unit specifications.",
-  "6. This quote excludes any structural modifications, electrical upgrades, or building alterations unless explicitly stated.",
-  "7. Payment terms: Net 30 days from invoice date. Late payments attract 2% monthly interest.",
-  "8. A cancellation fee of 15% of the total quoted amount applies after acceptance.",
-  "9. Prices are quoted in South African Rand (ZAR) and include VAT at 15% as shown.",
-  "10. Any additional work not covered in this quotation will be quoted separately.",
-];
+/* ─── Terms block renderer ─── */
+function TermsBlockRenderer({ block }: { block: TermsBlock }) {
+  switch (block.type) {
+    case "title":
+      return <Text style={s.termsTitle}>{block.text}</Text>;
+    case "heading":
+      return <Text style={s.termsHeading}>{block.text}</Text>;
+    case "paragraph":
+      return <Text style={s.termsParagraph}>{block.text}</Text>;
+    case "bullet":
+      return (
+        <Text style={s.termsBullet}>
+          {"• "}{block.boldPrefix ? <Text style={{ fontWeight: 700 }}>{block.boldPrefix}: </Text> : null}
+          {block.boldPrefix ? block.text.slice(block.boldPrefix.length + 2) : block.text}
+        </Text>
+      );
+    case "banking":
+      return <Text style={s.termsBanking}>{block.text}</Text>;
+    case "spacer":
+      return <View style={s.termsSpacer} />;
+    default:
+      return null;
+  }
+}
 
 /* ─── Document Component ─── */
 export default function QuotePDFDocument({ data }: { data: QuotePDFData }) {
@@ -211,10 +227,9 @@ export default function QuotePDFDocument({ data }: { data: QuotePDFData }) {
         </View>
 
         {/* Terms and Conditions */}
-        <View style={s.termsSection}>
-          <Text style={s.termsTitle}>Terms & Conditions</Text>
-          {TERMS.map((term, i) => (
-            <Text key={i} style={s.termItem}>{term}</Text>
+        <View style={s.termsSection} break>
+          {TERMS_BLOCKS.map((block, i) => (
+            <TermsBlockRenderer key={i} block={block} />
           ))}
         </View>
 
