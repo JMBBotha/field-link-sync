@@ -807,6 +807,12 @@ const ProposalBuilder = ({
       {/* ── Bottom action bar ── */}
       <div className="sticky bottom-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2">
         <Button variant="outline" size="sm" onClick={async () => {
+          console.log("[ProposalBuilder] PDF button clicked", {
+            proposalNumber,
+            lineItemCount: lineItems.filter((i) => i.description).length,
+            hasCaptureRoot: !!document.querySelector('[data-pdf-capture-root="proposal"]'),
+          });
+
           try {
             await generateDocumentPdf({
               docType: "Proposal", docNumber: proposalNumber, companyName: companySettings.company_name || "Your Company",
