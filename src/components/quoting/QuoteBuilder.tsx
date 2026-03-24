@@ -1027,6 +1027,8 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
           <Textarea value={terms} onChange={(e) => setTerms(e.target.value)} className="min-h-[80px] text-sm border-transparent hover:border-border focus:border-primary" />
         </div>
 
+        <div style={{background: 'red', padding: '20px', color: 'white'}}>BROCHURE PICKER HERE</div>
+
         <div className="h-px bg-border" />
 
         {/* ── BROCHURES (PDF attachments) ── */}
