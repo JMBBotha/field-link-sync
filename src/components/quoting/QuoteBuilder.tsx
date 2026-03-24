@@ -82,7 +82,7 @@ const GhostInput = ({
 /* ────────── Main Component ────────── */
 
 const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
-  console.log("[QuoteBuilder] RENDER — quoteId:", quoteId, "leadId:", leadId);
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { settings: companySettings } = useCompanySettings();
