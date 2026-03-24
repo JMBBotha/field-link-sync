@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  Document, Page, Text, View, StyleSheet, Font,
+  Document, Page, Text, View, StyleSheet, Font, Image,
 } from "@react-pdf/renderer";
 import { TERMS_BLOCKS, type TermsBlock } from "@/lib/defaultTerms";
 
@@ -30,7 +30,6 @@ export interface QuotePDFLineItem {
   unitPrice: number;
   markupPercent: number;
   lineTotal: number;
-  /** Materials/consumables sub-items for this area */
   subItems?: QuotePDFSubItem[];
 }
 
@@ -45,6 +44,7 @@ export interface QuotePDFData {
   vatRate: number;
   vatAmount: number;
   total: number;
+  logoUrl?: string | null;
 }
 
 /* ─── Helpers ─── */
@@ -53,6 +53,7 @@ function formatZAR(value: number) {
 }
 
 /* ─── Styles ─── */
+const ACCENT = "#0EA5E9";
 const BLUE = "#1e40af";
 const BLUE_LIGHT = "#eff6ff";
 const GOLD = "#F59E0B";
@@ -60,7 +61,7 @@ const GRAY = "#6b7280";
 const DARK = "#111827";
 
 const s = StyleSheet.create({
-  page: { fontFamily: "Roboto", fontSize: 9, padding: 40, color: DARK },
+  page: { fontFamily: "Roboto", fontSize: 9, padding: 40, paddingBottom: 60, color: DARK },
   /* Header */
   header: { marginBottom: 0 },
   brandRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
@@ -89,22 +90,84 @@ const s = StyleSheet.create({
   totalsFinal: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6, backgroundColor: BLUE, borderRadius: 4, paddingHorizontal: 8, marginTop: 4 },
   totalsFinalLabel: { fontSize: 10, fontWeight: 700, color: "#ffffff" },
   totalsFinalValue: { fontSize: 10, fontWeight: 700, color: "#ffffff" },
-  /* Sub-items (materials/consumables) */
+  /* Sub-items */
   subRow: { flexDirection: "row", backgroundColor: "#fafafa", paddingVertical: 3, paddingHorizontal: 4, paddingLeft: 16 },
   subText: { fontSize: 7.5, color: GRAY },
   subTextBold: { fontSize: 7.5, color: DARK, fontWeight: 700 },
-  /* Terms */
-  termsSection: { marginTop: 24, paddingTop: 12, borderTopWidth: 0.5, borderTopColor: "#d1d5db" },
-  termsTitle: { fontSize: 11, fontWeight: 700, marginBottom: 8, color: BLUE, textAlign: "center" as const },
-  termsHeading: { fontSize: 9, fontWeight: 700, color: BLUE, marginTop: 8, marginBottom: 3 },
-  termsParagraph: { fontSize: 8, color: GRAY, marginBottom: 3, lineHeight: 1.4 },
-  termsBullet: { fontSize: 8, color: GRAY, marginBottom: 2, lineHeight: 1.4, paddingLeft: 8 },
-  termsBanking: { fontSize: 8, fontWeight: 700, color: DARK, marginBottom: 2, textAlign: "center" as const },
+
+  /* ─── T&C Page Styles ─── */
+  tcPage: { fontFamily: "Roboto", fontSize: 9, padding: 40, paddingBottom: 60, color: DARK },
+  tcHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: 1.5,
+    borderBottomColor: ACCENT,
+    paddingBottom: 10,
+    marginBottom: 16,
+  },
+  tcHeaderLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  tcLogo: { width: 36, height: 36 },
+  tcHeaderBrand: { fontSize: 14, fontWeight: 700, color: ACCENT },
+  tcHeaderSubtitle: { fontSize: 7, color: GRAY },
+  tcHeaderRight: {},
+  tcHeaderTitle: { fontSize: 12, fontWeight: 700, color: ACCENT, letterSpacing: 0.5 },
+  tcTopLine: { height: 2, backgroundColor: ACCENT, borderRadius: 1, marginBottom: 14 },
+
+  /* Terms content */
+  termsTitle: { fontSize: 13, fontWeight: 700, marginBottom: 10, color: ACCENT, textAlign: "center" as const },
+  termsHeading: { fontSize: 9.5, fontWeight: 700, color: ACCENT, marginTop: 10, marginBottom: 3 },
+  termsParagraph: { fontSize: 8, color: DARK, marginBottom: 3, lineHeight: 1.5 },
+  termsBullet: { fontSize: 8, color: DARK, marginBottom: 2, lineHeight: 1.5, paddingLeft: 10 },
+  termsBanking: { fontSize: 8.5, fontWeight: 700, color: DARK, marginBottom: 2, textAlign: "center" as const },
   termsSpacer: { height: 6 },
-  /* Footer */
+
+  /* T&C Footer */
+  tcFooter: {
+    position: "absolute" as const,
+    bottom: 24,
+    left: 40,
+    right: 40,
+    borderTopWidth: 1,
+    borderTopColor: ACCENT,
+    paddingTop: 6,
+    alignItems: "center" as const,
+  },
+  tcFooterText: { fontSize: 7, color: GRAY, textAlign: "center" as const },
+
+  /* Quote page footer */
   footer: { position: "absolute" as const, bottom: 30, left: 40, right: 40, flexDirection: "row", justifyContent: "space-between", borderTopWidth: 0.5, borderTopColor: "#d1d5db", paddingTop: 8 },
   footerText: { fontSize: 7, color: GRAY },
 });
+
+/* ─── T&C Header (fixed on each T&C page) ─── */
+function TCHeader({ logoUrl }: { logoUrl?: string | null }) {
+  return (
+    <View style={s.tcHeader} fixed>
+      <View style={s.tcHeaderLeft}>
+        {logoUrl && <Image src={logoUrl} style={s.tcLogo} />}
+        <View>
+          <Text style={s.tcHeaderBrand}>0800-BE-COOL!</Text>
+          <Text style={s.tcHeaderSubtitle}>AC Super Service</Text>
+        </View>
+      </View>
+      <View style={s.tcHeaderRight}>
+        <Text style={s.tcHeaderTitle}>Terms & Conditions</Text>
+      </View>
+    </View>
+  );
+}
+
+/* ─── T&C Footer (fixed on each T&C page) ─── */
+function TCFooter() {
+  return (
+    <View style={s.tcFooter} fixed>
+      <Text style={s.tcFooterText}>
+        0800-BE-COOL AC Super Service | www.0800becool.co.za
+      </Text>
+    </View>
+  );
+}
 
 /* ─── Terms block renderer ─── */
 function TermsBlockRenderer({ block }: { block: TermsBlock }) {
@@ -135,8 +198,8 @@ function TermsBlockRenderer({ block }: { block: TermsBlock }) {
 export default function QuotePDFDocument({ data }: { data: QuotePDFData }) {
   return (
     <Document>
+      {/* ── Quote Page ── */}
       <Page size="A4" style={s.page}>
-        {/* Header */}
         <View style={s.header}>
           <View style={s.brandRow}>
             <View>
@@ -150,7 +213,6 @@ export default function QuotePDFDocument({ data }: { data: QuotePDFData }) {
         </View>
         <View style={s.goldStripe} />
 
-        {/* Quote meta + Client info */}
         <View style={s.metaRow}>
           <View style={s.metaBlock}>
             <Text style={s.metaLabel}>Prepared For</Text>
@@ -167,7 +229,6 @@ export default function QuotePDFDocument({ data }: { data: QuotePDFData }) {
           </View>
         </View>
 
-        {/* Table header */}
         <View style={s.tableHeader}>
           <Text style={{ ...s.thText, ...s.colDesc }}>Area / Description</Text>
           <Text style={{ ...s.thText, ...s.colQty }}>Qty</Text>
@@ -176,7 +237,6 @@ export default function QuotePDFDocument({ data }: { data: QuotePDFData }) {
           <Text style={{ ...s.thText, ...s.colTotal }}>Line Total</Text>
         </View>
 
-        {/* Table rows */}
         {data.items.map((item, i) => (
           <React.Fragment key={i}>
             <View style={s.tableRow}>
@@ -189,7 +249,6 @@ export default function QuotePDFDocument({ data }: { data: QuotePDFData }) {
               <Text style={{ ...s.tdText, ...s.colMarkup }}>{item.markupPercent}%</Text>
               <Text style={{ ...s.tdText, ...s.colTotal, fontWeight: 700 }}>{formatZAR(item.lineTotal)}</Text>
             </View>
-            {/* Sub-items (materials, consumables from bundle) */}
             {item.subItems && item.subItems.length > 0 && item.subItems.map((sub, j) => (
               <View key={`${i}-sub-${j}`} style={s.subRow}>
                 <Text style={{ ...s.subText, flex: 3 }}>
@@ -210,7 +269,6 @@ export default function QuotePDFDocument({ data }: { data: QuotePDFData }) {
           </React.Fragment>
         ))}
 
-        {/* Totals */}
         <View style={s.totalsBox}>
           <View style={s.totalsRow}>
             <Text style={{ fontSize: 9, color: GRAY }}>Subtotal (excl. VAT)</Text>
@@ -226,19 +284,23 @@ export default function QuotePDFDocument({ data }: { data: QuotePDFData }) {
           </View>
         </View>
 
-        {/* Terms and Conditions */}
-        <View style={s.termsSection} break>
-          {TERMS_BLOCKS.map((block, i) => (
-            <TermsBlockRenderer key={i} block={block} />
-          ))}
-        </View>
-
-        {/* Footer */}
         <View style={s.footer} fixed>
           <Text style={s.footerText}>0800-BE-COOL! AC Super Service</Text>
           <Text style={s.footerText}>info@0800becool.co.za · 0800 23 2665</Text>
           <Text style={s.footerText}>www.0800becool.co.za</Text>
         </View>
+      </Page>
+
+      {/* ── Terms & Conditions Page(s) ── */}
+      <Page size="A4" style={s.tcPage} wrap>
+        <TCHeader logoUrl={data.logoUrl} />
+        <View style={s.tcTopLine} />
+
+        {TERMS_BLOCKS.map((block, i) => (
+          <TermsBlockRenderer key={i} block={block} />
+        ))}
+
+        <TCFooter />
       </Page>
     </Document>
   );
