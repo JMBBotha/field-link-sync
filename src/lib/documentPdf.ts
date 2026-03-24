@@ -222,27 +222,6 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
   try {
     const fileName = `${opts.docType}-${opts.docNumber || "DRAFT"}.pdf`;
 
-    if (opts.docType === "Quote") {
-      const quoteData = buildQuotePdfData(opts);
-      const documentElement = createElement(QuotePDFDocument, { data: quoteData }) as unknown as ReactElement;
-      const blob = await pdf(documentElement).toBlob();
-      const mainQuotePdfBytes = new Uint8Array(await blob.arrayBuffer());
-
-      if (opts.brochures && opts.brochures.length > 0) {
-        const merged = await assembleQuoteWithBrochures({
-          mainQuotePdfBytes,
-          brochures: opts.brochures,
-          quoteNumber: opts.docNumber,
-        });
-
-        downloadPdfBlob(new Uint8Array(merged), fileName);
-        return;
-      }
-
-      downloadPdfBlob(mainQuotePdfBytes, fileName);
-      return;
-    }
-
     const captureElement = resolveCaptureElement(opts);
 
     disableCaptureMode = enableCaptureMode();
