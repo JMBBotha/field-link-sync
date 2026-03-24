@@ -162,10 +162,10 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
 
       default:
         doc.setTextColor(...DARK_GRAY);
-        doc.setFontSize(8.5);
+        doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
         doc.text(block.text, margin, y);
-        y += lineHeight + 1.5;
+        y += lineHeight + 1;
     }
   });
 
