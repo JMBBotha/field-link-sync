@@ -157,7 +157,7 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
         break;
 
       case "spacer":
-        y += 4;
+        y += 2;
         break;
 
       default:
