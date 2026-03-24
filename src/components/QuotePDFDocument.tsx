@@ -227,10 +227,9 @@ export default function QuotePDFDocument({ data }: { data: QuotePDFData }) {
         </View>
 
         {/* Terms and Conditions */}
-        <View style={s.termsSection}>
-          <Text style={s.termsTitle}>Terms & Conditions</Text>
-          {TERMS.map((term, i) => (
-            <Text key={i} style={s.termItem}>{term}</Text>
+        <View style={s.termsSection} break>
+          {TERMS_BLOCKS.map((block, i) => (
+            <TermsBlockRenderer key={i} block={block} />
           ))}
         </View>
 
