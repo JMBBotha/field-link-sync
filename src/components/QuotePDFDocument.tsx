@@ -2,6 +2,7 @@ import React from "react";
 import {
   Document, Page, Text, View, StyleSheet, Font,
 } from "@react-pdf/renderer";
+import { TERMS_BLOCKS, type TermsBlock } from "@/lib/defaultTerms";
 
 /* ─── Font registration ─── */
 Font.register({
