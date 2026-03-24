@@ -62,112 +62,112 @@ async function waitForCaptureFrame() {
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }
 
-function appendTermsPages(doc: jsPDF, _legacyText?: string) {
+const addTermsFooter = (doc: jsPDF) => {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const marginLeft = 20;
-  const marginRight = 20;
-  const topMargin = 30;
-  const bottomLimit = pageHeight - 30;
-  const contentWidth = pageWidth - marginLeft - marginRight;
-  const centerX = pageWidth / 2;
+  const margin = 25;
 
-  const ACCENT_R = 14, ACCENT_G = 165, ACCENT_B = 233;
-  const DARK_R = 17, DARK_G = 24, DARK_B = 39;
-  const GRAY_R = 107, GRAY_G = 114, GRAY_B = 128;
+  doc.setTextColor(107, 114, 128);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
 
-  let pageCount = 0;
+  const footerText = "MassAir Ind cc | Tel: +27 12 809 1258 | admin@massair.co.za | www.massair.co.za";
 
-  const startNewPage = () => {
-    doc.addPage();
-    pageCount++;
-    // Blue accent line at top
-    doc.setDrawColor(ACCENT_R, ACCENT_G, ACCENT_B);
-    doc.setLineWidth(1.5);
-    doc.line(marginLeft, 15, pageWidth - marginRight, 15);
-    // Header text
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(ACCENT_R, ACCENT_G, ACCENT_B);
-    doc.text("0800-BE-COOL! AC Super Service", marginLeft, 12);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text("Terms & Conditions", pageWidth - marginRight, 12, { align: "right" });
-    // Footer
-    doc.setDrawColor(ACCENT_R, ACCENT_G, ACCENT_B);
-    doc.setLineWidth(0.5);
-    doc.line(marginLeft, pageHeight - 18, pageWidth - marginRight, pageHeight - 18);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(GRAY_R, GRAY_G, GRAY_B);
-    doc.text("0800-BE-COOL AC Super Service  |  www.0800becool.co.za  |  info@0800becool.co.za  |  0800 23 2665", centerX, pageHeight - 13, { align: "center" });
-  };
+  doc.text(footerText, pageWidth / 2, pageHeight - 18, {
+    maxWidth: pageWidth - margin * 2,
+    align: "center",
+  });
+};
 
-  startNewPage();
-  let y = topMargin;
+function appendTermsPages(doc: jsPDF, _legacyText?: string) {
+  const termsBlocks = TERMS_BLOCKS;
+  if (!termsBlocks || termsBlocks.length === 0) return;
 
-  const ensureSpace = (needed: number) => {
-    if (y + needed > bottomLimit) {
-      startNewPage();
-      y = topMargin;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 25;
+  const lineHeight = 6.5;
+  let y = 42;
+
+  const BLUE = [14, 165, 233] as const;
+  const DARK_GRAY = [17, 24, 39] as const;
+
+  doc.addPage();
+
+  // Blue accent line at top
+  doc.setDrawColor(...BLUE);
+  doc.setLineWidth(2.5);
+  doc.line(margin, 18, pageWidth - margin, 18);
+
+  termsBlocks.forEach((block) => {
+    if (y > doc.internal.pageSize.getHeight() - 70) {
+      addTermsFooter(doc);
+      doc.addPage();
+      doc.setDrawColor(...BLUE);
+      doc.setLineWidth(2.5);
+      doc.line(margin, 18, pageWidth - margin, 18);
+      y = 42;
     }
-  };
 
-  const renderWrappedCentered = (text: string, fontSize: number, fontStyle: string, lineHeight: number) => {
-    doc.setFont("helvetica", fontStyle);
-    doc.setFontSize(fontSize);
-    const wrapped: string[] = doc.splitTextToSize(text, contentWidth);
-    for (const line of wrapped) {
-      ensureSpace(lineHeight);
-      doc.text(line, centerX, y, { align: "center" });
-      y += lineHeight;
-    }
-  };
-
-  for (const block of TERMS_BLOCKS) {
     switch (block.type) {
       case "title":
-        ensureSpace(8);
-        doc.setTextColor(ACCENT_R, ACCENT_G, ACCENT_B);
-        renderWrappedCentered(block.text, 11, "bold", 5.5);
-        y += 3;
+        doc.setTextColor(...BLUE);
+        doc.setFontSize(18);
+        doc.setFont("helvetica", "bold");
+        doc.text(block.text || "MassAir Ind cc Terms and Conditions", margin, y);
+        y += 26;
         break;
 
       case "heading":
-        ensureSpace(10);
-        y += 3;
-        doc.setTextColor(ACCENT_R, ACCENT_G, ACCENT_B);
-        renderWrappedCentered(block.text, 10, "bold", 5);
-        y += 2;
+        doc.setTextColor(...BLUE);
+        doc.setFontSize(13);
+        doc.setFont("helvetica", "bold");
+        doc.text(block.text, margin, y);
+        y += 16;
         break;
 
-      case "paragraph":
-        ensureSpace(5);
-        doc.setTextColor(DARK_R, DARK_G, DARK_B);
-        renderWrappedCentered(block.text, 9, "normal", 4.5);
-        y += 2;
+      case "paragraph": {
+        doc.setTextColor(...DARK_GRAY);
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
+        const paraLines: string[] = doc.splitTextToSize(block.text, pageWidth - margin * 2);
+        doc.text(paraLines, margin, y);
+        y += paraLines.length * lineHeight + 7;
         break;
+      }
 
       case "bullet": {
-        ensureSpace(5);
-        doc.setTextColor(DARK_R, DARK_G, DARK_B);
-        const bulletText = `•   ${block.text}`;
-        renderWrappedCentered(bulletText, 9, "normal", 4.5);
-        y += 1;
+        doc.setTextColor(...DARK_GRAY);
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
+        const bulletText = `• ${block.text}`;
+        const bulletLines: string[] = doc.splitTextToSize(bulletText, pageWidth - margin * 2 - 15);
+        doc.text(bulletLines, margin + 8, y);
+        y += bulletLines.length * lineHeight + 4;
         break;
       }
 
       case "banking":
-        ensureSpace(5.5);
-        doc.setTextColor(DARK_R, DARK_G, DARK_B);
-        renderWrappedCentered(block.text, 9, "bold", 5);
+        doc.setTextColor(...DARK_GRAY);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text(block.text, margin, y);
+        y += lineHeight + 6;
         break;
 
       case "spacer":
-        y += 4;
+        y += 8;
         break;
+
+      default:
+        doc.setTextColor(...DARK_GRAY);
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
+        doc.text(block.text, margin, y);
+        y += lineHeight + 4;
     }
-  }
+  });
+
+  addTermsFooter(doc);
 }
 
 function downloadPdfBlob(pdfBytes: Uint8Array, fileName: string) {
