@@ -692,6 +692,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
       // Combine descriptions + product codes for prefix matching
       const matchTargets = [...descriptions, ...productCodes];
+      const fileName = `${finalQuoteNumber}.pdf`;
 
       let matchedBrochures: { id: string; name: string; file_url: string }[] = [];
       if (productIds.length > 0 || matchTargets.length > 0) {
