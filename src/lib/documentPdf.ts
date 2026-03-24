@@ -111,11 +111,11 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
     switch (block.type) {
       case "title": {
         doc.setTextColor(...BLUE);
-        doc.setFontSize(13);
+        doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
         const titleLines: string[] = doc.splitTextToSize(block.text || "MassAir Ind cc Terms and Conditions", pageWidth - margin * 2);
         doc.text(titleLines, margin, y);
-        y += titleLines.length * lineHeight + 6;
+        y += titleLines.length * lineHeight + 4;
         break;
       }
 
