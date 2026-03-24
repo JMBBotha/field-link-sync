@@ -107,7 +107,7 @@ const s = StyleSheet.create({
     marginBottom: 16,
   },
   tcHeaderLeft: { flexDirection: "row" as const, alignItems: "center" as const },
-  tcLogo: { width: 36, height: 36 },
+  tcLogo: { width: 36, height: 36, marginRight: 8 },
   tcHeaderBrand: { fontSize: 14, fontWeight: 700, color: ACCENT },
   tcHeaderSubtitle: { fontSize: 7, color: GRAY },
   tcHeaderRight: {},
