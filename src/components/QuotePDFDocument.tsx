@@ -96,7 +96,7 @@ const s = StyleSheet.create({
   subTextBold: { fontSize: 7.5, color: DARK, fontWeight: 700 },
 
   /* ─── T&C Page Styles ─── */
-  tcPage: { fontFamily: "Roboto", fontSize: 9, padding: 40, paddingTop: 30, paddingBottom: 72, color: DARK },
+  tcPage: { fontFamily: "Roboto", fontSize: 9, padding: 40, paddingTop: 30, paddingBottom: 72, color: DARK, backgroundColor: "#E0F2FE" },
   tcHeader: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
