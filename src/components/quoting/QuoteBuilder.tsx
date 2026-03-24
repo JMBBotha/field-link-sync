@@ -248,6 +248,15 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       .then(({ data }) => {
         if (data) setLeads(data);
       });
+    // Available brochures
+    supabase
+      .from("product_brochures" as any)
+      .select("id, name, file_url, brand")
+      .eq("is_active", true)
+      .order("sort_order")
+      .then(({ data }: any) => {
+        if (data) setAvailableBrochures(data);
+      });
   }, [quoteId]);
 
   // Load existing quote
