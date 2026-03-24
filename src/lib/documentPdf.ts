@@ -105,7 +105,7 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
       doc.setDrawColor(...BLUE);
       doc.setLineWidth(2.5);
       doc.line(margin, 18, pageWidth - margin, 18);
-      y = 22;
+      y = 28;
     }
 
     switch (block.type) {
