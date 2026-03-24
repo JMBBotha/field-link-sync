@@ -129,6 +129,7 @@ const App = () => (
                 <Route path="whatsapp" element={<AdminWhatsAppPage />} />
                 <Route path="manual-quote" element={<AdminManualQuotePage />} />
                 <Route path="pdf-documents" element={<AdminPDFDocumentsPage />} />
+                <Route path="brochures" element={<AdminBrochuresPage />} />
                 <Route path="companies" element={<CompanyManagement />} />
               </Route>
 
