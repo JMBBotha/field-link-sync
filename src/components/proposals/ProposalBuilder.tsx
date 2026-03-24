@@ -606,7 +606,7 @@ const ProposalBuilder = ({
       </div>
 
       {/* ── A4 Card ── */}
-      <div className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
+      <div data-pdf-capture-root="proposal" className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
         {/* ── HEADER ROW ── */}
         <DocumentHeader
           logoUrl={logoUrl}
