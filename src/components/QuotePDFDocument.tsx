@@ -98,9 +98,9 @@ const s = StyleSheet.create({
   /* ─── T&C Page Styles ─── */
   tcPage: { fontFamily: "Roboto", fontSize: 9, padding: 40, paddingBottom: 60, color: DARK },
   tcHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
     borderBottomWidth: 1.5,
     borderBottomColor: ACCENT,
     paddingBottom: 10,
