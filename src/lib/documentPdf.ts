@@ -214,7 +214,7 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
       }
     }
 
-    appendTermsPages(doc, DEFAULT_TERMS);
+    appendTermsPages(doc);
     debugStep("After PDF creation");
 
     const fileName = `${opts.docType}-${opts.docNumber || "DRAFT"}.pdf`;
