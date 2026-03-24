@@ -85,8 +85,8 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
-  const lineHeight = 3.8;
-  let y = 22;
+  const lineHeight = 3.6;
+  let y = 28;
 
   const BLUE = [14, 165, 233] as const;
   const DARK_GRAY = [17, 24, 39] as const;
@@ -105,7 +105,7 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
       doc.setDrawColor(...BLUE);
       doc.setLineWidth(2.5);
       doc.line(margin, 18, pageWidth - margin, 18);
-      y = 22;
+      y = 28;
     }
 
     switch (block.type) {
