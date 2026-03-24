@@ -121,10 +121,10 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
 
       case "heading":
         doc.setTextColor(...BLUE);
-        doc.setFontSize(10);
+        doc.setFontSize(9);
         doc.setFont("helvetica", "bold");
         doc.text(block.text, margin, y);
-        y += 8;
+        y += 6;
         break;
 
       case "paragraph": {
