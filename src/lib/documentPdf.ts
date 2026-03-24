@@ -85,8 +85,8 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
-  const lineHeight = 4.2;
-  let y = 24;
+  const lineHeight = 3.8;
+  let y = 22;
 
   const BLUE = [14, 165, 233] as const;
   const DARK_GRAY = [17, 24, 39] as const;
@@ -105,67 +105,67 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
       doc.setDrawColor(...BLUE);
       doc.setLineWidth(2.5);
       doc.line(margin, 18, pageWidth - margin, 18);
-      y = 24;
+      y = 22;
     }
 
     switch (block.type) {
       case "title": {
         doc.setTextColor(...BLUE);
-        doc.setFontSize(13);
+        doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
         const titleLines: string[] = doc.splitTextToSize(block.text || "MassAir Ind cc Terms and Conditions", pageWidth - margin * 2);
         doc.text(titleLines, margin, y);
-        y += titleLines.length * lineHeight + 6;
+        y += titleLines.length * lineHeight + 4;
         break;
       }
 
       case "heading":
         doc.setTextColor(...BLUE);
-        doc.setFontSize(10);
+        doc.setFontSize(9);
         doc.setFont("helvetica", "bold");
         doc.text(block.text, margin, y);
-        y += 8;
+        y += 6;
         break;
 
       case "paragraph": {
         doc.setTextColor(...DARK_GRAY);
-        doc.setFontSize(8.5);
+        doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
         const paraLines: string[] = doc.splitTextToSize(block.text, pageWidth - margin * 2);
         doc.text(paraLines, margin, y);
-        y += paraLines.length * lineHeight + 2;
+        y += paraLines.length * lineHeight + 1.5;
         break;
       }
 
       case "bullet": {
         doc.setTextColor(...DARK_GRAY);
-        doc.setFontSize(8.5);
+        doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
         const bulletText = `• ${block.text}`;
         const bulletLines: string[] = doc.splitTextToSize(bulletText, pageWidth - margin * 2 - 10);
         doc.text(bulletLines, margin + 5, y);
-        y += bulletLines.length * lineHeight + 1.5;
+        y += bulletLines.length * lineHeight + 1;
         break;
       }
 
       case "banking":
         doc.setTextColor(...DARK_GRAY);
-        doc.setFontSize(8.5);
+        doc.setFontSize(8);
         doc.setFont("helvetica", "bold");
         doc.text(block.text, margin, y);
-        y += lineHeight + 2;
+        y += lineHeight + 1.5;
         break;
 
       case "spacer":
-        y += 4;
+        y += 2;
         break;
 
       default:
         doc.setTextColor(...DARK_GRAY);
-        doc.setFontSize(8.5);
+        doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
         doc.text(block.text, margin, y);
-        y += lineHeight + 1.5;
+        y += lineHeight + 1;
     }
   });
 
