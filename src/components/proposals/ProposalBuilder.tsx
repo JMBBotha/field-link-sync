@@ -811,19 +811,67 @@ const ProposalBuilder = ({
         <button
           type="button"
           id="proposal-pdf-btn"
-          className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3"
+          className="inline-flex items-center gap-1 rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3"
           ref={(el) => {
             if (!el) return;
-            el.onclick = (e) => {
+            el.onclick = async (e) => {
               e.preventDefault();
               e.stopPropagation();
               e.stopImmediatePropagation();
-              el.textContent = "CLICKED!";
-              document.title = "PDF CLICKED";
+
+              try {
+                // Fetch brochures linked to this quote for merging
+                let brochures: { id: string; name: string; file_url: string }[] = [];
+                if (existingId) {
+                  const { data: linkedBrochures } = await supabase
+                    .from("quote_brochures")
+                    .select("brochure_id, product_brochures(id, name, file_url)")
+                    .eq("quote_id", existingId);
+                  if (linkedBrochures) {
+                    brochures = linkedBrochures
+                      .filter((lb: any) => lb.product_brochures)
+                      .map((lb: any) => ({
+                        id: lb.product_brochures.id,
+                        name: lb.product_brochures.name,
+                        file_url: lb.product_brochures.file_url,
+                      }));
+                  }
+                }
+
+                await generateDocumentPdf({
+                  docType: "Proposal",
+                  docNumber: proposalNumber,
+                  companyName: companySettings.company_name || "Your Company",
+                  companyAddress: companySettings.physical_address || "",
+                  vatNumber: companySettings.vat_number || "",
+                  logoUrl,
+                  customerName,
+                  customerAddress,
+                  customerEmail,
+                  issueDate,
+                  dueDate,
+                  lineItems: lineItems.filter((i) => i.description),
+                  subtotal,
+                  discountAmount,
+                  taxRate,
+                  taxAmount,
+                  total: grandTotal,
+                  notes,
+                  terms,
+                  reference,
+                  brochures: brochures.length > 0 ? brochures : undefined,
+                });
+
+                toast({ title: "PDF Downloaded", description: `${proposalNumber || "Proposal"}.pdf generated successfully.` });
+              } catch (err: any) {
+                console.error("[PDF] Proposal generation failed:", err);
+                toast({ title: "PDF Error", description: err?.message || "Failed to generate PDF.", variant: "destructive" });
+              }
             };
           }}
         >
-          <FileDown className="h-4 w-4 mr-1" />PDF
+          <FileDown className="h-4 w-4" />
+          PDF
         </button>
         <Button variant="outline" size="sm" onClick={() => toast({ title: "Email placeholder", description: "Email sending will be connected soon." })}>
           <Send className="h-4 w-4 mr-1" />Send

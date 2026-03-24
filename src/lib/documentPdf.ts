@@ -154,22 +154,14 @@ function downloadPdfBlob(pdfBytes: Uint8Array, fileName: string) {
 export async function generateDocumentPdf(opts: DocumentPdfOptions) {
   let disableCaptureMode: (() => void) | null = null;
 
-  const debugStep = (message: string) => {
-    window.alert(`[PDF Debug] ${message}`);
-  };
-
   try {
-    debugStep("Starting generateDocumentPdf");
     const captureElement = resolveCaptureElement(opts);
-    debugStep("Capture element found");
 
     disableCaptureMode = enableCaptureMode();
     await waitForCaptureFrame();
 
-    debugStep("Before html2canvas import");
     const html2canvas = (await import("html2canvas")).default;
 
-    debugStep("Before html2canvas capture");
     const capturedCanvas = await html2canvas(captureElement, {
       scale: 2,
       useCORS: true,
@@ -178,9 +170,7 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
       width: captureElement.scrollWidth,
       height: captureElement.scrollHeight,
     });
-    debugStep("After html2canvas capture");
 
-    debugStep("Before PDF creation");
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -215,32 +205,24 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
     }
 
     appendTermsPages(doc);
-    debugStep("After PDF creation");
 
     const fileName = `${opts.docType}-${opts.docNumber || "DRAFT"}.pdf`;
 
     if (opts.brochures && opts.brochures.length > 0) {
-      debugStep(`Before brochure merge (${opts.brochures.length} brochures)`);
       const quoteBytes = doc.output("arraybuffer");
       const merged = await assembleQuoteWithBrochures({
         mainQuotePdfBytes: new Uint8Array(quoteBytes),
         brochures: opts.brochures,
         quoteNumber: opts.docNumber,
       });
-      debugStep("After brochure merge");
 
-      debugStep("Before download");
       downloadPdfBlob(new Uint8Array(merged), fileName);
-      debugStep("After download");
       return;
     }
 
-    debugStep("Before download");
     doc.save(fileName);
-    debugStep("After download");
   } catch (err: any) {
-    const message = err?.message || "Unknown PDF generation error";
-    window.alert(`[PDF Debug] generateDocumentPdf catch error: ${message}`);
+    console.error("[PDF] generateDocumentPdf error:", err);
     throw err;
   } finally {
     disableCaptureMode?.();
