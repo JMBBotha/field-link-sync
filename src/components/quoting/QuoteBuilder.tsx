@@ -585,179 +585,170 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
     : "CO";
 
   const handleGeneratePdf = async () => {
+    document.body.classList.add("pdf-capture-mode");
+
     try {
-      console.log('Starting PDF generation');
-      const html2canvas = (await import('html2canvas')).default;
-      console.log('html2canvas loaded');
+      const [{ default: html2canvas }, { default: jsPDF }, { assembleQuoteWithBrochures }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+        import("@/lib/pdfMerger"),
+      ]);
 
-      const captureRoot = document.querySelector('[data-pdf-capture-root="quote"]');
+      const captureRoot = document.querySelector<HTMLElement>('[data-pdf-capture-root="quote"]');
       if (!captureRoot) {
-        toast({ title: "PDF Error", description: "Could not find quote element to capture", variant: "destructive" });
-        return;
+        throw new Error('Quote capture root not found: [data-pdf-capture-root="quote"]');
       }
-      console.log('Capture root found');
 
-      document.body.classList.add('pdf-capture-mode');
-      await new Promise(r => setTimeout(r, 300));
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
-      const el = captureRoot as HTMLElement;
-      const canvas = await html2canvas(el, {
+      const canvas = await html2canvas(captureRoot, {
         scale: 2,
         useCORS: true,
-        backgroundColor: '#ffffff',
+        allowTaint: true,
+        backgroundColor: "#ffffff",
         windowWidth: 1200,
-        width: el.scrollWidth,
-        height: el.scrollHeight,
-        scrollX: 0,
-        scrollY: -window.scrollY,
+        logging: false,
+        width: captureRoot.scrollWidth,
+        height: captureRoot.scrollHeight,
       });
-      console.log('Canvas captured', canvas.width, canvas.height);
 
-      document.body.classList.remove('pdf-capture-mode');
+      document.body.classList.remove("pdf-capture-mode");
 
-      const imgData = canvas.toDataURL('image/png');
-      const jsPDF = (await import('jspdf')).default;
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfPageHeight = pdf.internal.pageSize.getHeight();
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+      const detectedQuoteNumber = (captureRoot.textContent || "").match(/Q-\d{4}-\d{4}/i)?.[0];
+      const finalQuoteNumber = quoteNumber || detectedQuoteNumber || "QUOTE";
+
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 5;
-      const usableWidth = pdfWidth - margin * 2;
-      const usableHeight = pdfPageHeight - margin * 2;
-      const scaledHeight = (canvas.height * usableWidth) / canvas.width;
+      const imgWidth = pageWidth - margin * 2;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const pageContentHeight = pageHeight - margin * 2;
 
-      // Multi-page: slice captured image across A4 pages
-      if (scaledHeight <= usableHeight) {
-        pdf.addImage(imgData, 'PNG', margin, margin, usableWidth, scaledHeight);
-      } else {
-        let remainingHeight = scaledHeight;
-        let sourceY = 0;
-        let page = 0;
-        while (remainingHeight > 0) {
-          if (page > 0) pdf.addPage();
-          const sliceHeight = Math.min(usableHeight, remainingHeight);
-          // We use a temporary canvas to slice the portion we need
-          const sliceCanvas = document.createElement('canvas');
-          const sourceSliceH = (sliceHeight / scaledHeight) * canvas.height;
-          sliceCanvas.width = canvas.width;
-          sliceCanvas.height = sourceSliceH;
-          const ctx = sliceCanvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceSliceH, 0, 0, canvas.width, sourceSliceH);
-          }
-          const sliceData = sliceCanvas.toDataURL('image/png');
-          pdf.addImage(sliceData, 'PNG', margin, margin, usableWidth, sliceHeight);
-          sourceY += sourceSliceH;
-          remainingHeight -= sliceHeight;
-          page++;
-        }
+      const imageData = canvas.toDataURL("image/png", 1.0);
+      let heightLeft = imgHeight;
+      let position = margin;
+
+      pdf.addImage(imageData, "PNG", margin, position, imgWidth, imgHeight, undefined, "FAST");
+      heightLeft -= pageContentHeight;
+
+      while (heightLeft > 0) {
+        position = margin - (imgHeight - heightLeft);
+        pdf.addPage();
+        pdf.addImage(imageData, "PNG", margin, position, imgWidth, imgHeight, undefined, "FAST");
+        heightLeft -= pageContentHeight;
       }
 
-      // Append Terms & Conditions pages
-      const { DEFAULT_TERMS: terms } = await import('@/lib/defaultTerms');
       pdf.addPage();
-      const ml = 15;
-      const cw = pdfWidth - ml * 2;
-      const bottomLimit = pdfPageHeight - 15;
-      let y = 20;
-      pdf.setFont('helvetica', 'bold');
+      const termsMargin = 15;
+      const termsMaxWidth = pageWidth - termsMargin * 2;
+      const bottomLimit = pageHeight - 15;
+      let y = termsMargin + 8;
+
+      pdf.setFont("helvetica", "bold");
       pdf.setFontSize(12);
-      pdf.text('Terms & Conditions', ml, y);
+      pdf.text("Terms & Conditions", termsMargin, y);
       y += 8;
-      pdf.setFont('helvetica', 'normal');
+
+      pdf.setFont("helvetica", "normal");
       pdf.setFontSize(9);
-      for (const line of terms.split('\n')) {
-        if (!line.trim()) { y += 3; if (y > bottomLimit) { pdf.addPage(); y = 20; } continue; }
-        const wrapped: string[] = pdf.splitTextToSize(line, cw);
-        for (const w of wrapped) {
-          if (y > bottomLimit) { pdf.addPage(); y = 20; }
-          pdf.text(w, ml, y);
+
+      for (const line of DEFAULT_TERMS.split("\n")) {
+        if (!line.trim()) {
+          y += 3;
+          if (y > bottomLimit) {
+            pdf.addPage();
+            y = termsMargin + 8;
+          }
+          continue;
+        }
+
+        const wrapped = pdf.splitTextToSize(line, termsMaxWidth) as string[];
+        for (const wrappedLine of wrapped) {
+          if (y > bottomLimit) {
+            pdf.addPage();
+            y = termsMargin + 8;
+          }
+          pdf.text(wrappedLine, termsMargin, y);
           y += 4.5;
         }
       }
 
-      // ── Brochure merge ──
-      const fileName = `Quote-${quoteNumber || 'draft'}.pdf`;
-      const productIds = lineItems.map(i => i.product_id).filter(Boolean) as string[];
-      const descriptions = lineItems.map(i => i.description).filter(Boolean);
+      const productIds = lineItems.map((item) => item.product_id).filter(Boolean) as string[];
+      const descriptions = lineItems.map((item) => item.description).filter(Boolean);
+      const fileName = `${finalQuoteNumber}.pdf`;
 
       let matchedBrochures: { id: string; name: string; file_url: string }[] = [];
       if (productIds.length > 0 || descriptions.length > 0) {
-        try {
-          const { data: brochures } = await supabase
-            .from("product_brochures" as any)
-            .select("id, name, file_url, linked_product_ids, model_match_prefixes")
-            .eq("is_active", true)
-            .order("sort_order");
+        const { data: brochures } = await supabase
+          .from("product_brochures" as any)
+          .select("id, name, file_url, linked_product_ids, model_match_prefixes")
+          .eq("is_active", true)
+          .order("sort_order");
 
-          if (brochures && brochures.length > 0) {
-            const seen = new Set<string>();
-            for (const b of brochures as any[]) {
-              if (seen.has(b.id)) continue;
-              // Match by linked_product_ids
-              const linked: string[] = b.linked_product_ids || [];
-              if (linked.some((lid: string) => productIds.includes(lid))) {
-                seen.add(b.id);
-                matchedBrochures.push({ id: b.id, name: b.name, file_url: b.file_url });
-                continue;
-              }
-              // Match by model_match_prefixes against descriptions
-              const prefixes: string[] = b.model_match_prefixes || [];
-              if (prefixes.length > 0) {
-                const hit = descriptions.some(desc => {
-                  const upper = desc.toUpperCase();
-                  return prefixes.some((p: string) => upper.includes(p.toUpperCase().trim()));
-                });
-                if (hit) {
-                  seen.add(b.id);
-                  matchedBrochures.push({ id: b.id, name: b.name, file_url: b.file_url });
-                }
-              }
+        if (brochures?.length) {
+          const seen = new Set<string>();
+          for (const brochure of brochures as any[]) {
+            if (seen.has(brochure.id)) continue;
+
+            const linkedProductIds: string[] = brochure.linked_product_ids || [];
+            if (linkedProductIds.some((linkedId: string) => productIds.includes(linkedId))) {
+              seen.add(brochure.id);
+              matchedBrochures.push({ id: brochure.id, name: brochure.name, file_url: brochure.file_url });
+              continue;
+            }
+
+            const prefixes: string[] = brochure.model_match_prefixes || [];
+            if (
+              prefixes.length > 0 &&
+              descriptions.some((desc) => {
+                const upper = desc.toUpperCase();
+                return prefixes.some((prefix: string) => upper.includes(prefix.toUpperCase().trim()));
+              })
+            ) {
+              seen.add(brochure.id);
+              matchedBrochures.push({ id: brochure.id, name: brochure.name, file_url: brochure.file_url });
             }
           }
-          console.log(`Matched ${matchedBrochures.length} brochures`);
-        } catch (e) {
-          console.warn('Brochure matching failed, generating PDF without brochures:', e);
         }
       }
 
       if (matchedBrochures.length > 0) {
-        // Merge quote+terms with brochure PDFs using pdf-lib
-        const quoteBytes = new Uint8Array(pdf.output('arraybuffer'));
-        const { assembleQuoteWithBrochures } = await import('@/lib/pdfMerger');
-
-        const brochureAttachments = matchedBrochures.map(b => {
-          let url = b.file_url;
-          if (!url.startsWith('http')) {
-            const { data } = supabase.storage.from('product-brochures').getPublicUrl(url);
+        const brochureAttachments = matchedBrochures.map((brochure) => {
+          let url = brochure.file_url;
+          if (!url.startsWith("http")) {
+            const { data } = supabase.storage.from("product-brochures").getPublicUrl(url);
             url = data.publicUrl;
           }
-          return { id: b.id, name: b.name, file_url: url };
+          return { id: brochure.id, name: brochure.name, file_url: url };
         });
 
-        const merged = await assembleQuoteWithBrochures({
-          mainQuotePdfBytes: quoteBytes,
+        const mergedPdfBytes = await assembleQuoteWithBrochures({
+          mainQuotePdfBytes: new Uint8Array(pdf.output("arraybuffer")),
           brochures: brochureAttachments,
-          quoteNumber: quoteNumber || 'draft',
+          quoteNumber: finalQuoteNumber,
         });
 
-        // Download merged PDF
-        const blob = new Blob([new Uint8Array(merged)], { type: 'application/pdf' });
+        const blob = new Blob([new Uint8Array(mergedPdfBytes)], { type: "application/pdf" });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        a.click();
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        toast({ title: "PDF Downloaded", description: `Quote PDF with ${matchedBrochures.length} brochure(s) attached.` });
       } else {
         pdf.save(fileName);
-        toast({ title: "PDF Downloaded", description: "Your quote PDF has been generated." });
       }
+
+      toast({ title: "PDF Downloaded", description: `${fileName} downloaded successfully.` });
     } catch (err: any) {
-      document.body.classList.remove('pdf-capture-mode');
-      console.error('PDF generation error:', err);
-      toast({ title: "PDF Error", description: `${err?.message || err}`, variant: "destructive" });
+      console.error("PDF generation error:", err);
+      toast({ title: "PDF Error", description: err?.message || "PDF generation failed.", variant: "destructive" });
+    } finally {
+      document.body.classList.remove("pdf-capture-mode");
     }
   };
 
