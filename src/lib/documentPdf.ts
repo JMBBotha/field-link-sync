@@ -62,48 +62,74 @@ async function waitForCaptureFrame() {
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }
 
-function appendTermsPages(doc: jsPDF, termsText: string) {
+function appendTermsPages(doc: jsPDF, _legacyText?: string) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const marginLeft = 15;
-  const marginRight = 15;
-  const topMargin = 20;
-  const bottomLimit = pageHeight - 15;
-  const lineHeight = 4.5;
+  const marginLeft = 20;
+  const marginRight = 20;
+  const topMargin = 25;
+  const bottomLimit = pageHeight - 20;
   const contentWidth = pageWidth - marginLeft - marginRight;
+  const centerX = pageWidth / 2;
 
   doc.addPage();
   let y = topMargin;
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.text("Terms & Conditions", marginLeft, y);
-  y += 8;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-
-  const lines = termsText.split("\n");
-
-  for (const line of lines) {
-    if (!line.trim()) {
-      y += 3;
-      if (y > bottomLimit) {
-        doc.addPage();
-        y = topMargin;
-      }
-      continue;
+  const ensureSpace = (needed: number) => {
+    if (y + needed > bottomLimit) {
+      doc.addPage();
+      y = topMargin;
     }
+  };
 
-    const wrapped = doc.splitTextToSize(line, contentWidth);
-
-    for (const wrappedLine of wrapped) {
-      if (y > bottomLimit) {
-        doc.addPage();
-        y = topMargin;
-      }
-      doc.text(wrappedLine, marginLeft, y);
+  const renderWrappedCentered = (text: string, fontSize: number, fontStyle: string, lineHeight: number) => {
+    doc.setFont("helvetica", fontStyle);
+    doc.setFontSize(fontSize);
+    const wrapped: string[] = doc.splitTextToSize(text, contentWidth);
+    for (const line of wrapped) {
+      ensureSpace(lineHeight);
+      doc.text(line, centerX, y, { align: "center" });
       y += lineHeight;
+    }
+  };
+
+  for (const block of TERMS_BLOCKS) {
+    switch (block.type) {
+      case "title":
+        ensureSpace(8);
+        renderWrappedCentered(block.text, 11, "bold", 5.5);
+        y += 3;
+        break;
+
+      case "heading":
+        ensureSpace(10);
+        y += 3;
+        renderWrappedCentered(block.text, 10, "bold", 5);
+        y += 2;
+        break;
+
+      case "paragraph":
+        ensureSpace(5);
+        renderWrappedCentered(block.text, 9, "normal", 4.5);
+        y += 2;
+        break;
+
+      case "bullet": {
+        ensureSpace(5);
+        const bulletText = `•   ${block.text}`;
+        renderWrappedCentered(bulletText, 9, "normal", 4.5);
+        y += 1;
+        break;
+      }
+
+      case "banking":
+        ensureSpace(5.5);
+        renderWrappedCentered(block.text, 9, "bold", 5);
+        break;
+
+      case "spacer":
+        y += 4;
+        break;
     }
   }
 }
