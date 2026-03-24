@@ -170,38 +170,6 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
   }
 }
 
-function toQuotePdfLineItem(item: DocumentPdfOptions["lineItems"][number]): QuotePDFLineItem {
-  return {
-    areaName: item.description,
-    unitName: "",
-    btu: 0,
-    quantity: item.quantity,
-    unitPrice: item.rate,
-    markupPercent: item.markup ?? 0,
-    lineTotal: item.amount,
-    subItems: [],
-  };
-}
-
-function buildQuotePdfData(opts: DocumentPdfOptions): QuotePDFData {
-  const discountAmount = opts.discountAmount ?? 0;
-  const subtotalExVat = Math.max(0, opts.subtotal - discountAmount);
-
-  return {
-    quoteNumber: opts.docNumber || "QUOTE",
-    date: opts.issueDate,
-    validUntil: opts.dueDate || opts.issueDate,
-    clientName: opts.customerName,
-    clientEmail: opts.customerEmail || "",
-    items: opts.lineItems.filter((item) => item.description.trim()).map(toQuotePdfLineItem),
-    subtotal: subtotalExVat,
-    vatRate: opts.taxRate / 100,
-    vatAmount: opts.taxAmount,
-    total: opts.total,
-    logoUrl: opts.logoUrl || null,
-  };
-}
-
 function downloadPdfBlob(pdfBytes: Uint8Array, fileName: string) {
   const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);

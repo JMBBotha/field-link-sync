@@ -665,7 +665,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         taxRate,
         taxAmount,
         total,
-        terms: customTerms || undefined,
+        terms: termsText || undefined,
         brochures: brochureAttachments.length > 0 ? brochureAttachments : undefined,
       });
 
