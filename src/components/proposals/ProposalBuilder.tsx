@@ -606,7 +606,7 @@ const ProposalBuilder = ({
       </div>
 
       {/* ── A4 Card ── */}
-      <div className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
+      <div data-pdf-capture-root="proposal" className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
         {/* ── HEADER ROW ── */}
         <DocumentHeader
           logoUrl={logoUrl}
@@ -806,12 +806,20 @@ const ProposalBuilder = ({
 
       {/* ── Bottom action bar ── */}
       <div className="sticky bottom-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2">
-        <Button variant="outline" size="sm" onClick={() => generateDocumentPdf({
-          docType: "Proposal", docNumber: proposalNumber, companyName: companySettings.company_name || "Your Company",
-          companyAddress: companySettings.physical_address || "", vatNumber: companySettings.vat_number || "",
-          customerName, customerAddress, customerEmail, issueDate, dueDate,
-          lineItems: lineItems.filter(i => i.description), subtotal, discountAmount, taxRate, taxAmount, total: grandTotal, notes, terms,
-        })}>
+        <Button variant="outline" size="sm" onClick={async () => {
+          try {
+            await generateDocumentPdf({
+              docType: "Proposal", docNumber: proposalNumber, companyName: companySettings.company_name || "Your Company",
+              companyAddress: companySettings.physical_address || "", vatNumber: companySettings.vat_number || "",
+              customerName, customerAddress, customerEmail, issueDate, dueDate,
+              lineItems: lineItems.filter(i => i.description), subtotal, discountAmount, taxRate, taxAmount, total: grandTotal, notes, terms,
+            });
+            toast({ title: "PDF Downloaded", description: `${proposalNumber || "Proposal"}.pdf generated successfully.` });
+          } catch (err: any) {
+            console.error("[PDF] Generation failed:", err);
+            toast({ title: "PDF Error", description: err?.message || "Failed to generate PDF.", variant: "destructive" });
+          }
+        }}>
           <FileDown className="h-4 w-4 mr-1" />PDF
         </Button>
         <Button variant="outline" size="sm" onClick={() => toast({ title: "Email placeholder", description: "Email sending will be connected soon." })}>
