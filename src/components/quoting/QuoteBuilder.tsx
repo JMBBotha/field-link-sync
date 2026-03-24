@@ -338,7 +338,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
           setSelectedBrochures(
             brochureDetails
               .map((b: any) => ({ id: b.id, name: b.name, file_url: b.file_url }))
-              .sort((a: any, b: any) => (orderMap.get(a.id) || 0) - (orderMap.get(b.id) || 0))
+              .sort((a: any, b: any) => ((orderMap.get(a.id) as number) || 0) - ((orderMap.get(b.id) as number) || 0))
           );
         }
       }
