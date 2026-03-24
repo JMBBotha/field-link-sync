@@ -833,7 +833,7 @@ const ProposalBuilder = ({
                       .map((lb: any) => ({
                         id: lb.product_brochures.id,
                         name: lb.product_brochures.name,
-                        fileUrl: lb.product_brochures.file_url,
+                        file_url: lb.product_brochures.file_url,
                       }));
                   }
                 }
