@@ -194,7 +194,8 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
 
     if (opts.docType === "Quote") {
       const quoteData = buildQuotePdfData(opts);
-      const blob = await pdf(createElement(QuotePDFDocument, { data: quoteData })).toBlob();
+      const documentElement = createElement(QuotePDFDocument, { data: quoteData }) as unknown as ReactElement;
+      const blob = await pdf(documentElement).toBlob();
       const mainQuotePdfBytes = new Uint8Array(await blob.arrayBuffer());
 
       if (opts.brochures && opts.brochures.length > 0) {
