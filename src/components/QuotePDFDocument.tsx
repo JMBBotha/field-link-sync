@@ -96,34 +96,31 @@ const s = StyleSheet.create({
   subTextBold: { fontSize: 7.5, color: DARK, fontWeight: 700 },
 
   /* ─── T&C Page Styles ─── */
-  tcPage: { fontFamily: "Roboto", fontSize: 9, padding: 40, paddingBottom: 60, color: DARK },
+  tcPage: { fontFamily: "Roboto", fontSize: 9, padding: 40, paddingTop: 30, paddingBottom: 72, color: DARK },
   tcHeader: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     justifyContent: "space-between" as const,
-    borderBottomWidth: 1.5,
-    borderBottomColor: ACCENT,
-    paddingBottom: 10,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   tcHeaderLeft: { flexDirection: "row" as const, alignItems: "center" as const },
   tcLogo: { width: 36, height: 36, marginRight: 8 },
   tcHeaderBrand: { fontSize: 14, fontWeight: 700, color: ACCENT },
   tcHeaderSubtitle: { fontSize: 7, color: GRAY },
-  tcHeaderRight: {},
-  tcHeaderTitle: { fontSize: 12, fontWeight: 700, color: ACCENT, letterSpacing: 0.5 },
-  tcTopLine: { height: 2, backgroundColor: ACCENT, borderRadius: 1, marginBottom: 14 },
+  tcHeaderTitle: { fontSize: 20, fontWeight: 700, color: ACCENT },
+  tcTopBorder: { borderTopWidth: 1, borderTopColor: ACCENT, marginBottom: 12 },
+  tcMainTitle: { fontSize: 20, fontWeight: 700, color: ACCENT, textAlign: "center" as const, marginBottom: 10 },
 
   /* Terms content */
-  termsTitle: { fontSize: 13, fontWeight: 700, marginBottom: 10, color: ACCENT, textAlign: "center" as const },
-  termsHeading: { fontSize: 9.5, fontWeight: 700, color: ACCENT, marginTop: 10, marginBottom: 3 },
+  termsTitle: { fontSize: 11, fontWeight: 700, marginBottom: 8, color: ACCENT, textAlign: "center" as const },
+  termsHeading: { fontSize: 10, fontWeight: 700, color: ACCENT, marginTop: 10, marginBottom: 3 },
   termsParagraph: { fontSize: 8, color: DARK, marginBottom: 3, lineHeight: 1.5 },
   termsBullet: { fontSize: 8, color: DARK, marginBottom: 2, lineHeight: 1.5, paddingLeft: 10 },
   termsBanking: { fontSize: 8.5, fontWeight: 700, color: DARK, marginBottom: 2, textAlign: "center" as const },
   termsSpacer: { height: 6 },
 
   /* T&C Footer */
-  tcFooter: {
+  tcFooterText: {
     position: "absolute" as const,
     bottom: 24,
     left: 40,
@@ -131,9 +128,10 @@ const s = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: ACCENT,
     paddingTop: 6,
-    alignItems: "center" as const,
+    fontSize: 7,
+    color: GRAY,
+    textAlign: "center" as const,
   },
-  tcFooterText: { fontSize: 7, color: GRAY, textAlign: "center" as const },
 
   /* Quote page footer */
   footer: { position: "absolute" as const, bottom: 30, left: 40, right: 40, flexDirection: "row", justifyContent: "space-between", borderTopWidth: 0.5, borderTopColor: "#d1d5db", paddingTop: 8 },
@@ -151,9 +149,7 @@ function TCHeader({ logoUrl }: { logoUrl?: string | null }) {
           <Text style={s.tcHeaderSubtitle}>AC Super Service</Text>
         </View>
       </View>
-      <View style={s.tcHeaderRight}>
-        <Text style={s.tcHeaderTitle}>Terms & Conditions</Text>
-      </View>
+      <Text style={s.tcHeaderTitle}>Terms & Conditions</Text>
     </View>
   );
 }
@@ -161,11 +157,9 @@ function TCHeader({ logoUrl }: { logoUrl?: string | null }) {
 /* ─── T&C Footer (fixed on each T&C page) ─── */
 function TCFooter() {
   return (
-    <View style={s.tcFooter} fixed>
-      <Text style={s.tcFooterText}>
-        0800-BE-COOL AC Super Service | www.0800becool.co.za
-      </Text>
-    </View>
+    <Text style={s.tcFooterText} fixed>
+      0800-BE-COOL AC Super Service | www.0800becool.co.za
+    </Text>
   );
 }
 
@@ -294,7 +288,8 @@ export default function QuotePDFDocument({ data }: { data: QuotePDFData }) {
       {/* ── Terms & Conditions Page(s) ── */}
       <Page size="A4" style={s.tcPage} wrap>
         <TCHeader logoUrl={data.logoUrl} />
-        <View style={s.tcTopLine} />
+        <View style={s.tcTopBorder} />
+        <Text style={s.tcMainTitle}>Terms & Conditions</Text>
 
         {TERMS_BLOCKS.map((block, i) => (
           <TermsBlockRenderer key={i} block={block} />
