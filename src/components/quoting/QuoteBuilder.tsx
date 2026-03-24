@@ -648,7 +648,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       await generateDocumentPdf({
         docType: "Quote",
         docNumber: quoteNumber || "QUOTE",
-        companyName: companyName || "0800-BE-COOL!",
+        companyName: companySettings.company_name || "0800-BE-COOL!",
         logoUrl: logoUrl,
         customerName: customerName,
         customerEmail: customerEmail,
