@@ -96,34 +96,31 @@ const s = StyleSheet.create({
   subTextBold: { fontSize: 7.5, color: DARK, fontWeight: 700 },
 
   /* ─── T&C Page Styles ─── */
-  tcPage: { fontFamily: "Roboto", fontSize: 9, padding: 40, paddingBottom: 60, color: DARK },
+  tcPage: { fontFamily: "Roboto", fontSize: 9, padding: 40, paddingTop: 30, paddingBottom: 72, color: DARK },
   tcHeader: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     justifyContent: "space-between" as const,
-    borderBottomWidth: 1.5,
-    borderBottomColor: ACCENT,
-    paddingBottom: 10,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   tcHeaderLeft: { flexDirection: "row" as const, alignItems: "center" as const },
   tcLogo: { width: 36, height: 36, marginRight: 8 },
-  tcHeaderBrand: { fontSize: 14, fontWeight: 700, color: ACCENT },
+  tcHeaderBrand: { fontSize: 14, fontWeight: "bold", color: ACCENT },
   tcHeaderSubtitle: { fontSize: 7, color: GRAY },
-  tcHeaderRight: {},
-  tcHeaderTitle: { fontSize: 12, fontWeight: 700, color: ACCENT, letterSpacing: 0.5 },
-  tcTopLine: { height: 2, backgroundColor: ACCENT, borderRadius: 1, marginBottom: 14 },
+  tcHeaderTitle: { fontSize: 20, fontWeight: "bold", color: ACCENT },
+  tcTopBorder: { borderTopWidth: 1, borderTopColor: ACCENT, marginBottom: 12 },
+  tcMainTitle: { fontSize: 20, fontWeight: "bold", color: ACCENT, textAlign: "center" as const, marginBottom: 10 },
 
   /* Terms content */
-  termsTitle: { fontSize: 13, fontWeight: 700, marginBottom: 10, color: ACCENT, textAlign: "center" as const },
-  termsHeading: { fontSize: 9.5, fontWeight: 700, color: ACCENT, marginTop: 10, marginBottom: 3 },
+  termsTitle: { fontSize: 11, fontWeight: "bold", marginBottom: 8, color: ACCENT, textAlign: "center" as const },
+  termsHeading: { fontSize: 10, fontWeight: "bold", color: ACCENT, marginTop: 10, marginBottom: 3 },
   termsParagraph: { fontSize: 8, color: DARK, marginBottom: 3, lineHeight: 1.5 },
   termsBullet: { fontSize: 8, color: DARK, marginBottom: 2, lineHeight: 1.5, paddingLeft: 10 },
-  termsBanking: { fontSize: 8.5, fontWeight: 700, color: DARK, marginBottom: 2, textAlign: "center" as const },
+  termsBanking: { fontSize: 8.5, fontWeight: "bold", color: DARK, marginBottom: 2, textAlign: "center" as const },
   termsSpacer: { height: 6 },
 
   /* T&C Footer */
-  tcFooter: {
+  tcFooterText: {
     position: "absolute" as const,
     bottom: 24,
     left: 40,
@@ -131,9 +128,10 @@ const s = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: ACCENT,
     paddingTop: 6,
-    alignItems: "center" as const,
+    fontSize: 7,
+    color: GRAY,
+    textAlign: "center" as const,
   },
-  tcFooterText: { fontSize: 7, color: GRAY, textAlign: "center" as const },
 
   /* Quote page footer */
   footer: { position: "absolute" as const, bottom: 30, left: 40, right: 40, flexDirection: "row", justifyContent: "space-between", borderTopWidth: 0.5, borderTopColor: "#d1d5db", paddingTop: 8 },
@@ -151,9 +149,7 @@ function TCHeader({ logoUrl }: { logoUrl?: string | null }) {
           <Text style={s.tcHeaderSubtitle}>AC Super Service</Text>
         </View>
       </View>
-      <View style={s.tcHeaderRight}>
-        <Text style={s.tcHeaderTitle}>Terms & Conditions</Text>
-      </View>
+      <Text style={s.tcHeaderTitle}>Terms & Conditions</Text>
     </View>
   );
 }
@@ -161,11 +157,9 @@ function TCHeader({ logoUrl }: { logoUrl?: string | null }) {
 /* ─── T&C Footer (fixed on each T&C page) ─── */
 function TCFooter() {
   return (
-    <View style={s.tcFooter} fixed>
-      <Text style={s.tcFooterText}>
-        0800-BE-COOL AC Super Service | www.0800becool.co.za
-      </Text>
-    </View>
+    <Text style={s.tcFooterText} fixed>
+      0800-BE-COOL AC Super Service | www.0800becool.co.za
+    </Text>
   );
 }
 
@@ -181,7 +175,7 @@ function TermsBlockRenderer({ block }: { block: TermsBlock }) {
     case "bullet":
       return (
         <Text style={s.termsBullet}>
-          {"• "}{block.boldPrefix ? <Text style={{ fontWeight: 700 }}>{block.boldPrefix}: </Text> : null}
+          {"• "}{block.boldPrefix ? <Text style={{ fontWeight: "bold" }}>{block.boldPrefix}: </Text> : null}
           {block.boldPrefix ? block.text.slice(block.boldPrefix.length + 2) : block.text}
         </Text>
       );
@@ -200,101 +194,12 @@ export default function QuotePDFDocument({ data }: { data: QuotePDFData }) {
     <Document>
       {/* ── Quote Page ── */}
       <Page size="A4" style={s.page}>
-        <View style={s.header}>
-          <View style={s.brandRow}>
-            <View>
-              <Text style={s.brandName}>0800-BE-COOL!</Text>
-              <Text style={s.brandTagline}>AC Super Service — Professional HVAC Solutions</Text>
-            </View>
-            <View style={{ alignItems: "flex-end" as const }}>
-              <Text style={{ fontSize: 14, fontWeight: 700, color: BLUE }}>QUOTATION</Text>
-            </View>
-          </View>
-        </View>
-        <View style={s.goldStripe} />
-
-        <View style={s.metaRow}>
-          <View style={s.metaBlock}>
-            <Text style={s.metaLabel}>Prepared For</Text>
-            <Text style={s.metaValue}>{data.clientName || "—"}</Text>
-            {data.clientEmail && <Text style={{ fontSize: 8, color: GRAY }}>{data.clientEmail}</Text>}
-          </View>
-          <View style={{ alignItems: "flex-end" as const }}>
-            <Text style={s.metaLabel}>Quote #</Text>
-            <Text style={s.metaValue}>{data.quoteNumber}</Text>
-            <Text style={{ ...s.metaLabel, marginTop: 4 }}>Date</Text>
-            <Text style={{ fontSize: 9 }}>{data.date}</Text>
-            <Text style={{ ...s.metaLabel, marginTop: 4 }}>Valid Until</Text>
-            <Text style={{ fontSize: 9 }}>{data.validUntil}</Text>
-          </View>
-        </View>
-
-        <View style={s.tableHeader}>
-          <Text style={{ ...s.thText, ...s.colDesc }}>Area / Description</Text>
-          <Text style={{ ...s.thText, ...s.colQty }}>Qty</Text>
-          <Text style={{ ...s.thText, ...s.colUnit }}>Unit Price</Text>
-          <Text style={{ ...s.thText, ...s.colMarkup }}>Markup</Text>
-          <Text style={{ ...s.thText, ...s.colTotal }}>Line Total</Text>
-        </View>
-
-        {data.items.map((item, i) => (
-          <React.Fragment key={i}>
-            <View style={s.tableRow}>
-              <View style={s.colDesc}>
-                <Text style={s.tdText}>{item.areaName}</Text>
-                <Text style={s.tdSub}>{item.unitName} · {item.btu.toLocaleString()} BTU</Text>
-              </View>
-              <Text style={{ ...s.tdText, ...s.colQty }}>{item.quantity}</Text>
-              <Text style={{ ...s.tdText, ...s.colUnit }}>{formatZAR(item.unitPrice)}</Text>
-              <Text style={{ ...s.tdText, ...s.colMarkup }}>{item.markupPercent}%</Text>
-              <Text style={{ ...s.tdText, ...s.colTotal, fontWeight: 700 }}>{formatZAR(item.lineTotal)}</Text>
-            </View>
-            {item.subItems && item.subItems.length > 0 && item.subItems.map((sub, j) => (
-              <View key={`${i}-sub-${j}`} style={s.subRow}>
-                <Text style={{ ...s.subText, flex: 3 }}>
-                  {"  ┗ "}{sub.name}{sub.pricingMode === "per-meter" ? " (per m)" : ""}
-                </Text>
-                <Text style={{ ...s.subText, flex: 0.8, textAlign: "center" as const }}>
-                  {sub.pricingMode === "per-meter" ? `${sub.quantity}m` : `×${sub.quantity}`}
-                </Text>
-                <Text style={{ ...s.subText, flex: 1.2, textAlign: "right" as const }}>
-                  {formatZAR(sub.unitPrice)}
-                </Text>
-                <Text style={{ ...s.subText, flex: 1, textAlign: "center" as const }}>—</Text>
-                <Text style={{ ...s.subTextBold, flex: 1.2, textAlign: "right" as const }}>
-                  {formatZAR(sub.lineTotal)}
-                </Text>
-              </View>
-            ))}
-          </React.Fragment>
-        ))}
-
-        <View style={s.totalsBox}>
-          <View style={s.totalsRow}>
-            <Text style={{ fontSize: 9, color: GRAY }}>Subtotal (excl. VAT)</Text>
-            <Text style={{ fontSize: 9, fontWeight: 700 }}>{formatZAR(data.subtotal)}</Text>
-          </View>
-          <View style={s.totalsRow}>
-            <Text style={{ fontSize: 9, color: GRAY }}>VAT ({(data.vatRate * 100).toFixed(0)}%)</Text>
-            <Text style={{ fontSize: 9 }}>{formatZAR(data.vatAmount)}</Text>
-          </View>
-          <View style={s.totalsFinal}>
-            <Text style={s.totalsFinalLabel}>Total Incl. VAT</Text>
-            <Text style={s.totalsFinalValue}>{formatZAR(data.total)}</Text>
-          </View>
-        </View>
-
-        <View style={s.footer} fixed>
-          <Text style={s.footerText}>0800-BE-COOL! AC Super Service</Text>
-          <Text style={s.footerText}>info@0800becool.co.za · 0800 23 2665</Text>
-          <Text style={s.footerText}>www.0800becool.co.za</Text>
-        </View>
-      </Page>
-
+...
       {/* ── Terms & Conditions Page(s) ── */}
       <Page size="A4" style={s.tcPage} wrap>
         <TCHeader logoUrl={data.logoUrl} />
-        <View style={s.tcTopLine} />
+        <View style={s.tcTopBorder} />
+        <Text style={s.tcMainTitle}>Terms & Conditions</Text>
 
         {TERMS_BLOCKS.map((block, i) => (
           <TermsBlockRenderer key={i} block={block} />
