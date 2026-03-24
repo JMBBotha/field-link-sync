@@ -634,99 +634,45 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
     : "CO";
 
   const handleGeneratePdf = async () => {
-    document.body.classList.add("pdf-capture-mode");
-
     try {
-      const [{ default: html2canvas }, { default: jsPDF }, { assembleQuoteWithBrochures }] = await Promise.all([
-        import("html2canvas"),
-        import("jspdf"),
+      const [{ pdf }, { default: QuotePDFDocument }, { assembleQuoteWithBrochures }] = await Promise.all([
+        import("@react-pdf/renderer"),
+        import("@/components/QuotePDFDocument"),
         import("@/lib/pdfMerger"),
       ]);
 
-      const captureRoot = document.querySelector<HTMLElement>('[data-pdf-capture-root="quote"]');
-      if (!captureRoot) {
-        throw new Error('Quote capture root not found: [data-pdf-capture-root="quote"]');
-      }
+      const finalQuoteNumber = quoteNumber || "QUOTE";
 
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      // Build QuotePDFData from current state
+      const pdfData = {
+        quoteNumber: finalQuoteNumber,
+        date: issueDate,
+        validUntil,
+        clientName: customerName,
+        clientEmail: customerEmail,
+        items: lineItems
+          .filter((item) => item.description.trim())
+          .map((item) => ({
+            areaName: item.description,
+            unitName: "",
+            btu: 0,
+            quantity: item.quantity,
+            unitPrice: item.rate,
+            markupPercent: item.markup || 0,
+            lineTotal: item.amount,
+          })),
+        subtotal: taxableAmount,
+        vatRate: taxRate / 100,
+        vatAmount: taxAmount,
+        total,
+        logoUrl,
+      };
 
-      const canvas = await html2canvas(captureRoot, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#ffffff",
-        windowWidth: 1200,
-        logging: false,
-        width: captureRoot.scrollWidth,
-        height: captureRoot.scrollHeight,
-      });
-
-      document.body.classList.remove("pdf-capture-mode");
-
-      const detectedQuoteNumber = (captureRoot.textContent || "").match(/Q-\d{4}-\d{4}/i)?.[0];
-      const finalQuoteNumber = quoteNumber || detectedQuoteNumber || "QUOTE";
-
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 5;
-      const imgWidth = pageWidth - margin * 2;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const pageContentHeight = pageHeight - margin * 2;
-
-      const imageData = canvas.toDataURL("image/png", 1.0);
-      let heightLeft = imgHeight;
-      let position = margin;
-
-      pdf.addImage(imageData, "PNG", margin, position, imgWidth, imgHeight, undefined, "FAST");
-      heightLeft -= pageContentHeight;
-
-      while (heightLeft > 0) {
-        position = margin - (imgHeight - heightLeft);
-        pdf.addPage();
-        pdf.addImage(imageData, "PNG", margin, position, imgWidth, imgHeight, undefined, "FAST");
-        heightLeft -= pageContentHeight;
-      }
-
-      pdf.addPage();
-      const termsMargin = 15;
-      const termsMaxWidth = pageWidth - termsMargin * 2;
-      const bottomLimit = pageHeight - 15;
-      let y = termsMargin + 8;
-
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(12);
-      pdf.text("Terms & Conditions", termsMargin, y);
-      y += 8;
-
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
-
-      for (const line of DEFAULT_TERMS.split("\n")) {
-        if (!line.trim()) {
-          y += 3;
-          if (y > bottomLimit) {
-            pdf.addPage();
-            y = termsMargin + 8;
-          }
-          continue;
-        }
-
-        const wrapped = pdf.splitTextToSize(line, termsMaxWidth) as string[];
-        for (const wrappedLine of wrapped) {
-          if (y > bottomLimit) {
-            pdf.addPage();
-            y = termsMargin + 8;
-          }
-          pdf.text(wrappedLine, termsMargin, y);
-          y += 4.5;
-        }
-      }
+      const blob = await pdf(<QuotePDFDocument data={pdfData} />).toBlob();
+      const pdfBytes = new Uint8Array(await blob.arrayBuffer());
 
       const fileName = `${finalQuoteNumber}.pdf`;
 
-      // Use saved brochure selections (managed in the brochure picker UI)
       if (selectedBrochures.length > 0) {
         const brochureAttachments = selectedBrochures.map((brochure) => {
           let url = brochure.file_url;
@@ -737,16 +683,14 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
           return { id: brochure.id, name: brochure.name, file_url: url };
         });
 
-        console.log(`[PDF] Attaching ${brochureAttachments.length} brochures:`, brochureAttachments.map(b => b.name));
-
         const mergedPdfBytes = await assembleQuoteWithBrochures({
-          mainQuotePdfBytes: new Uint8Array(pdf.output("arraybuffer")),
+          mainQuotePdfBytes: pdfBytes,
           brochures: brochureAttachments,
           quoteNumber: finalQuoteNumber,
         });
 
-        const blob = new Blob([new Uint8Array(mergedPdfBytes)], { type: "application/pdf" });
-        const url = URL.createObjectURL(blob);
+        const mergedBlob = new Blob([new Uint8Array(mergedPdfBytes)], { type: "application/pdf" });
+        const url = URL.createObjectURL(mergedBlob);
         const link = document.createElement("a");
         link.href = url;
         link.download = fileName;
@@ -755,15 +699,20 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
       } else {
-        pdf.save(fileName);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
       }
 
       toast({ title: "PDF Downloaded", description: `${fileName} with ${selectedBrochures.length} brochure(s) attached.` });
     } catch (err: any) {
       console.error("PDF generation error:", err);
       toast({ title: "PDF Error", description: err?.message || "PDF generation failed.", variant: "destructive" });
-    } finally {
-      document.body.classList.remove("pdf-capture-mode");
     }
   };
 
