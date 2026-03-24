@@ -85,8 +85,8 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
-  const lineHeight = 5;
-  let y = 30;
+  const lineHeight = 4.2;
+  let y = 24;
 
   const BLUE = [14, 165, 233] as const;
   const DARK_GRAY = [17, 24, 39] as const;
@@ -99,71 +99,73 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
   doc.line(margin, 18, pageWidth - margin, 18);
 
   termsBlocks.forEach((block) => {
-    if (y > doc.internal.pageSize.getHeight() - 40) {
+    if (y > doc.internal.pageSize.getHeight() - 30) {
       addTermsFooter(doc);
       doc.addPage();
       doc.setDrawColor(...BLUE);
       doc.setLineWidth(2.5);
       doc.line(margin, 18, pageWidth - margin, 18);
-      y = 30;
+      y = 24;
     }
 
     switch (block.type) {
-      case "title":
+      case "title": {
         doc.setTextColor(...BLUE);
-        doc.setFontSize(14);
+        doc.setFontSize(13);
         doc.setFont("helvetica", "bold");
-        doc.text(block.text || "MassAir Ind cc Terms and Conditions", margin, y);
-        y += 14;
+        const titleLines: string[] = doc.splitTextToSize(block.text || "MassAir Ind cc Terms and Conditions", pageWidth - margin * 2);
+        doc.text(titleLines, margin, y);
+        y += titleLines.length * lineHeight + 6;
         break;
+      }
 
       case "heading":
         doc.setTextColor(...BLUE);
-        doc.setFontSize(11);
+        doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
         doc.text(block.text, margin, y);
-        y += 10;
+        y += 8;
         break;
 
       case "paragraph": {
         doc.setTextColor(...DARK_GRAY);
-        doc.setFontSize(9);
+        doc.setFontSize(8.5);
         doc.setFont("helvetica", "normal");
         const paraLines: string[] = doc.splitTextToSize(block.text, pageWidth - margin * 2);
         doc.text(paraLines, margin, y);
-        y += paraLines.length * lineHeight + 3;
+        y += paraLines.length * lineHeight + 2;
         break;
       }
 
       case "bullet": {
         doc.setTextColor(...DARK_GRAY);
-        doc.setFontSize(9);
+        doc.setFontSize(8.5);
         doc.setFont("helvetica", "normal");
         const bulletText = `• ${block.text}`;
-        const bulletLines: string[] = doc.splitTextToSize(bulletText, pageWidth - margin * 2 - 15);
+        const bulletLines: string[] = doc.splitTextToSize(bulletText, pageWidth - margin * 2 - 10);
         doc.text(bulletLines, margin + 5, y);
-        y += bulletLines.length * lineHeight + 2;
+        y += bulletLines.length * lineHeight + 1.5;
         break;
       }
 
       case "banking":
         doc.setTextColor(...DARK_GRAY);
-        doc.setFontSize(9);
+        doc.setFontSize(8.5);
         doc.setFont("helvetica", "bold");
         doc.text(block.text, margin, y);
-        y += lineHeight + 3;
+        y += lineHeight + 2;
         break;
 
       case "spacer":
-        y += 8;
+        y += 4;
         break;
 
       default:
         doc.setTextColor(...DARK_GRAY);
-        doc.setFontSize(9);
+        doc.setFontSize(8.5);
         doc.setFont("helvetica", "normal");
         doc.text(block.text, margin, y);
-        y += lineHeight + 2;
+        y += lineHeight + 1.5;
     }
   });
 
