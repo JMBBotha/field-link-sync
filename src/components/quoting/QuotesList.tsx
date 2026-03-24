@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Search, FileText, Download, Link2 } from "lucide-react";
 import QuoteStatusBadge from "./QuoteStatusBadge";
-import { downloadQuotePDF } from "@/lib/quotePDF";
+
 import { useToast } from "@/hooks/use-toast";
 import WhatsAppShareButton from "@/components/WhatsAppShareButton";
 
