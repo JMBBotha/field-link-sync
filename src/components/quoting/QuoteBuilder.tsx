@@ -585,7 +585,6 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
     : "CO";
 
   const handleGeneratePdf = async () => {
-    alert("HTML2CANVAS PATH");
     document.body.classList.add("pdf-capture-mode");
 
     try {
