@@ -58,17 +58,27 @@ const formatCurrency = (amount: number) =>
 const GhostInput = ({
   className,
   ...props
-}: React.InputHTMLAttributes<HTMLInputElement> & { className?: string }) => (
-  <input
-    {...props}
-    className={cn(
-      "w-full bg-transparent border border-transparent rounded px-2 py-1.5 text-sm outline-none transition-colors",
-      "hover:border-border focus:border-primary focus:ring-1 focus:ring-primary/30",
-      "placeholder:text-muted-foreground/50",
-      className
-    )}
-  />
-);
+}: React.InputHTMLAttributes<HTMLInputElement> & { className?: string }) => {
+  const displayValue = props.type === "date"
+    ? String(props.value || "").replace(/-/g, "/")
+    : String(props.value ?? "");
+  return (
+    <div className="relative">
+      <input
+        {...props}
+        className={cn(
+          "w-full bg-transparent border border-transparent rounded px-2 py-1.5 text-sm outline-none transition-colors",
+          "hover:border-border focus:border-primary focus:ring-1 focus:ring-primary/30",
+          "placeholder:text-muted-foreground/50",
+          className
+        )}
+      />
+      <span data-pdf-static className={cn("hidden px-2 py-1.5 text-sm whitespace-nowrap", className)}>
+        {displayValue}
+      </span>
+    </div>
+  );
+};
 
 /* ────────── Main Component ────────── */
 
@@ -925,6 +935,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
             <div key={idx} className="grid grid-cols-[1fr_80px_50px_60px_80px_30px] gap-2 items-center py-1 group relative">
               <div className="relative">
                 <ProductSearchDropdown value={item.description} allOptions={allOptions} onChange={(val) => updateLineItem(idx, "description", val)} onSelect={(opt) => pickOption(opt, idx)} />
+                <span data-pdf-static className="hidden px-2 py-1.5 text-sm">{item.description || ""}</span>
               </div>
               <div><GhostInput type="number" min="0" step="0.01" className="text-right" value={item.rate || ""} onChange={(e) => updateLineItem(idx, "rate", e.target.value)} placeholder="0.00" /></div>
               <div><GhostInput type="number" min="0" step="1" className="text-right" value={item.quantity || ""} onChange={(e) => updateLineItem(idx, "quantity", e.target.value)} placeholder="1" /></div>
