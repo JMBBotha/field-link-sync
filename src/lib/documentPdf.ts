@@ -139,12 +139,12 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
 
       case "bullet": {
         doc.setTextColor(...DARK_GRAY);
-        doc.setFontSize(8.5);
+        doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
         const bulletText = `• ${block.text}`;
         const bulletLines: string[] = doc.splitTextToSize(bulletText, pageWidth - margin * 2 - 10);
         doc.text(bulletLines, margin + 5, y);
-        y += bulletLines.length * lineHeight + 1.5;
+        y += bulletLines.length * lineHeight + 1;
         break;
       }
 
