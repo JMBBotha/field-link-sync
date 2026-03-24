@@ -807,11 +807,7 @@ const ProposalBuilder = ({
       {/* ── Bottom action bar ── */}
       <div className="sticky bottom-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2">
         <Button variant="outline" size="sm" onClick={async () => {
-          console.log("[ProposalBuilder] PDF button clicked", {
-            proposalNumber,
-            lineItemCount: lineItems.filter((i) => i.description).length,
-            hasCaptureRoot: !!document.querySelector('[data-pdf-capture-root="proposal"]'),
-          });
+          window.alert("[PDF Debug] PDF button click received in ProposalBuilder");
 
           try {
             await generateDocumentPdf({
@@ -822,8 +818,10 @@ const ProposalBuilder = ({
             });
             toast({ title: "PDF Downloaded", description: `${proposalNumber || "Proposal"}.pdf generated successfully.` });
           } catch (err: any) {
+            const message = err?.message || "Failed to generate PDF.";
+            window.alert(`[PDF Debug] Handler catch error: ${message}`);
             console.error("[PDF] Generation failed:", err);
-            toast({ title: "PDF Error", description: err?.message || "Failed to generate PDF.", variant: "destructive" });
+            toast({ title: "PDF Error", description: message, variant: "destructive" });
           }
         }}>
           <FileDown className="h-4 w-4 mr-1" />PDF
