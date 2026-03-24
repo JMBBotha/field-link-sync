@@ -310,23 +310,18 @@ All colors MUST be HSL.
   display: none !important;
 }
 .pdf-capture-mode [data-pdf-capture-root] button,
-.pdf-capture-mode [data-pdf-capture-root] input,
 .pdf-capture-mode [data-pdf-capture-root] select,
 .pdf-capture-mode [data-pdf-capture-root] textarea,
 .pdf-capture-mode [data-pdf-capture-root] a[href],
 .pdf-capture-mode [data-pdf-capture-root] [data-pdf-hide-markup] {
   display: none !important;
 }
-/* Show static text values during capture even though inputs are hidden */
-.pdf-capture-mode [data-pdf-capture-root] p,
-.pdf-capture-mode [data-pdf-capture-root] span,
-.pdf-capture-mode [data-pdf-capture-root] div,
-.pdf-capture-mode [data-pdf-capture-root] h1,
-.pdf-capture-mode [data-pdf-capture-root] h2,
-.pdf-capture-mode [data-pdf-capture-root] h3,
-.pdf-capture-mode [data-pdf-capture-root] img,
-.pdf-capture-mode [data-pdf-capture-root] label {
-  display: revert;
+/* Hide actual inputs but show their static value spans */
+.pdf-capture-mode [data-pdf-capture-root] input {
+  display: none !important;
+}
+.pdf-capture-mode [data-pdf-capture-root] [data-pdf-static] {
+  display: inline-block !important;
 }
 /* Ensure the delete X column is hidden */
 .pdf-capture-mode [data-pdf-capture-root] .group > div:last-child button {

@@ -58,17 +58,27 @@ const formatCurrency = (amount: number) =>
 const GhostInput = ({
   className,
   ...props
-}: React.InputHTMLAttributes<HTMLInputElement> & { className?: string }) => (
-  <input
-    {...props}
-    className={cn(
-      "w-full bg-transparent border border-transparent rounded px-2 py-1.5 text-sm outline-none transition-colors",
-      "hover:border-border focus:border-primary focus:ring-1 focus:ring-primary/30",
-      "placeholder:text-muted-foreground/50",
-      className
-    )}
-  />
-);
+}: React.InputHTMLAttributes<HTMLInputElement> & { className?: string }) => {
+  const displayValue = props.type === "date"
+    ? String(props.value || "").replace(/-/g, "/")
+    : String(props.value ?? "");
+  return (
+    <div className="relative">
+      <input
+        {...props}
+        className={cn(
+          "w-full bg-transparent border border-transparent rounded px-2 py-1.5 text-sm outline-none transition-colors",
+          "hover:border-border focus:border-primary focus:ring-1 focus:ring-primary/30",
+          "placeholder:text-muted-foreground/50",
+          className
+        )}
+      />
+      <span data-pdf-static className={cn("hidden px-2 py-1.5 text-sm whitespace-nowrap", className)}>
+        {displayValue}
+      </span>
+    </div>
+  );
+};
 
 /* ────────── Main Component ────────── */
 
