@@ -1,4 +1,3 @@
-import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
 import { DEFAULT_TERMS } from "./defaultTerms";
@@ -46,30 +45,10 @@ function resolveCaptureElement(opts: DocumentPdfOptions): HTMLElement {
 }
 
 function enableCaptureMode() {
-  const style = document.createElement("style");
-  style.setAttribute("data-pdf-capture-style", "true");
-  style.textContent = `
-    .${CAPTURE_MODE_CLASS} [data-pdf-hide] {
-      display: none !important;
-    }
-
-    .${CAPTURE_MODE_CLASS} [data-pdf-capture-root] button,
-    .${CAPTURE_MODE_CLASS} [data-pdf-capture-root] input,
-    .${CAPTURE_MODE_CLASS} [data-pdf-capture-root] select,
-    .${CAPTURE_MODE_CLASS} [data-pdf-capture-root] textarea,
-    .${CAPTURE_MODE_CLASS} [data-pdf-capture-root] a,
-    .${CAPTURE_MODE_CLASS} [data-pdf-capture-root] [role="button"],
-    .${CAPTURE_MODE_CLASS} [data-pdf-capture-root] [data-pdf-hide-markup] {
-      display: none !important;
-    }
-  `;
-
   document.body.classList.add(CAPTURE_MODE_CLASS);
-  document.head.appendChild(style);
 
   return () => {
     document.body.classList.remove(CAPTURE_MODE_CLASS);
-    style.remove();
   };
 }
 
@@ -77,27 +56,10 @@ async function waitForCaptureFrame() {
   try {
     await document.fonts?.ready;
   } catch {
-    // Ignore font loading errors; capture should still continue.
+    // Ignore font loading errors
   }
-
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-}
-
-function addCapturedCanvasPages(doc: jsPDF, canvas: HTMLCanvasElement) {
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 10;
-  const contentWidth = pageWidth - margin * 2;
-  const contentHeight = pageHeight - margin * 2;
-
-  const imageData = canvas.toDataURL("image/png", 1);
-  const imageHeight = (canvas.height * contentWidth) / canvas.width;
-
-  for (let offsetY = 0; offsetY < imageHeight; offsetY += contentHeight) {
-    if (offsetY > 0) doc.addPage();
-    doc.addImage(imageData, "PNG", margin, margin - offsetY, contentWidth, imageHeight, undefined, "FAST");
-  }
 }
 
 function appendTermsPages(doc: jsPDF, termsText: string) {
@@ -147,8 +109,7 @@ function appendTermsPages(doc: jsPDF, termsText: string) {
 }
 
 function downloadPdfBlob(pdfBytes: Uint8Array, fileName: string) {
-  const normalizedBytes = new Uint8Array(pdfBytes);
-  const blob = new Blob([normalizedBytes], { type: "application/pdf" });
+  const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
@@ -157,12 +118,21 @@ function downloadPdfBlob(pdfBytes: Uint8Array, fileName: string) {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * Generates a PDF by capturing the on-screen document via html2canvas,
+ * appending Terms & Conditions pages, and optionally merging brochure PDFs.
+ *
+ * Used by Invoice and Proposal builders. The Quote builder has its own
+ * inline capture flow in QuoteBuilder.tsx.
+ */
 export async function generateDocumentPdf(opts: DocumentPdfOptions) {
   const captureElement = resolveCaptureElement(opts);
   const disableCaptureMode = enableCaptureMode();
 
   try {
     await waitForCaptureFrame();
+
+    const html2canvas = (await import("html2canvas")).default;
 
     const capturedCanvas = await html2canvas(captureElement, {
       scale: 2,
@@ -174,7 +144,38 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
     });
 
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    addCapturedCanvasPages(doc, capturedCanvas);
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 5;
+    const usableWidth = pageWidth - margin * 2;
+    const usableHeight = pageHeight - margin * 2;
+    const scaledHeight = (capturedCanvas.height * usableWidth) / capturedCanvas.width;
+    const imgData = capturedCanvas.toDataURL("image/png", 1);
+
+    if (scaledHeight <= usableHeight) {
+      doc.addImage(imgData, "PNG", margin, margin, usableWidth, scaledHeight);
+    } else {
+      let remainingHeight = scaledHeight;
+      let sourceY = 0;
+      let page = 0;
+      while (remainingHeight > 0) {
+        if (page > 0) doc.addPage();
+        const sliceHeight = Math.min(usableHeight, remainingHeight);
+        const sourceSliceH = (sliceHeight / scaledHeight) * capturedCanvas.height;
+        const sliceCanvas = document.createElement("canvas");
+        sliceCanvas.width = capturedCanvas.width;
+        sliceCanvas.height = sourceSliceH;
+        const ctx = sliceCanvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(capturedCanvas, 0, sourceY, capturedCanvas.width, sourceSliceH, 0, 0, capturedCanvas.width, sourceSliceH);
+        }
+        doc.addImage(sliceCanvas.toDataURL("image/png"), "PNG", margin, margin, usableWidth, sliceHeight);
+        sourceY += sourceSliceH;
+        remainingHeight -= sliceHeight;
+        page++;
+      }
+    }
+
     appendTermsPages(doc, DEFAULT_TERMS);
 
     const fileName = `${opts.docType}-${opts.docNumber || "DRAFT"}.pdf`;
