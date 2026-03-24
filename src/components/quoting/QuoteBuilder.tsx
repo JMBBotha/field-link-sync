@@ -935,6 +935,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
             <div key={idx} className="grid grid-cols-[1fr_80px_50px_60px_80px_30px] gap-2 items-center py-1 group relative">
               <div className="relative">
                 <ProductSearchDropdown value={item.description} allOptions={allOptions} onChange={(val) => updateLineItem(idx, "description", val)} onSelect={(opt) => pickOption(opt, idx)} />
+                <span data-pdf-static className="hidden px-2 py-1.5 text-sm">{item.description || ""}</span>
               </div>
               <div><GhostInput type="number" min="0" step="0.01" className="text-right" value={item.rate || ""} onChange={(e) => updateLineItem(idx, "rate", e.target.value)} placeholder="0.00" /></div>
               <div><GhostInput type="number" min="0" step="1" className="text-right" value={item.quantity || ""} onChange={(e) => updateLineItem(idx, "quantity", e.target.value)} placeholder="1" /></div>
