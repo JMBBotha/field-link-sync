@@ -95,8 +95,12 @@ const s = StyleSheet.create({
   subTextBold: { fontSize: 7.5, color: DARK, fontWeight: 700 },
   /* Terms */
   termsSection: { marginTop: 24, paddingTop: 12, borderTopWidth: 0.5, borderTopColor: "#d1d5db" },
-  termsTitle: { fontSize: 10, fontWeight: 700, marginBottom: 6, color: BLUE },
-  termItem: { fontSize: 8, color: GRAY, marginBottom: 3, lineHeight: 1.4 },
+  termsTitle: { fontSize: 11, fontWeight: 700, marginBottom: 8, color: BLUE, textAlign: "center" as const },
+  termsHeading: { fontSize: 9, fontWeight: 700, color: BLUE, marginTop: 8, marginBottom: 3 },
+  termsParagraph: { fontSize: 8, color: GRAY, marginBottom: 3, lineHeight: 1.4 },
+  termsBullet: { fontSize: 8, color: GRAY, marginBottom: 2, lineHeight: 1.4, paddingLeft: 8 },
+  termsBanking: { fontSize: 8, fontWeight: 700, color: DARK, marginBottom: 2, textAlign: "center" as const },
+  termsSpacer: { height: 6 },
   /* Footer */
   footer: { position: "absolute" as const, bottom: 30, left: 40, right: 40, flexDirection: "row", justifyContent: "space-between", borderTopWidth: 0.5, borderTopColor: "#d1d5db", paddingTop: 8 },
   footerText: { fontSize: 7, color: GRAY },
