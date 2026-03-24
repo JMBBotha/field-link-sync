@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { Plus, X, Loader2, Search, ChevronDown, ChevronUp, Paperclip, Upload, FileDown, Send } from "lucide-react";
+import { Plus, X, Loader2, Search, ChevronDown, ChevronUp, Paperclip, Upload, FileDown, Send, BookOpen, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -140,6 +140,12 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Brochures
+  const [selectedBrochures, setSelectedBrochures] = useState<{ id: string; name: string; file_url: string }[]>([]);
+  const [availableBrochures, setAvailableBrochures] = useState<{ id: string; name: string; file_url: string; brand: string | null }[]>([]);
+  const [showBrochurePicker, setShowBrochurePicker] = useState(false);
+  const [brochureSearch, setBrochureSearch] = useState("");
+
   /* ─── Zustand store ─── */
   const { isDirty, setDraft, setDirty, clearDraft } = useQuoteSessionStore();
 
@@ -242,6 +248,15 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       .then(({ data }) => {
         if (data) setLeads(data);
       });
+    // Available brochures
+    supabase
+      .from("product_brochures" as any)
+      .select("id, name, file_url, brand")
+      .eq("is_active", true)
+      .order("sort_order")
+      .then(({ data }: any) => {
+        if (data) setAvailableBrochures(data);
+      });
   }, [quoteId]);
 
   // Load existing quote
@@ -307,6 +322,25 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
             url: supabase.storage.from("quote-photos").getPublicUrl(a.storage_path).data.publicUrl,
           }))
         );
+      }
+      // Load saved brochures
+      const { data: savedBrochures } = await (supabase.from("quote_brochures") as any)
+        .select("brochure_id, sort_order")
+        .eq("quote_id", quoteId)
+        .order("sort_order");
+      if (savedBrochures?.length) {
+        const { data: brochureDetails } = await (supabase.from("product_brochures") as any)
+          .select("id, name, file_url")
+          .in("id", savedBrochures.map((sb: any) => sb.brochure_id));
+        if (brochureDetails) {
+          // Preserve sort order
+          const orderMap = new Map(savedBrochures.map((sb: any) => [sb.brochure_id, sb.sort_order]));
+          setSelectedBrochures(
+            brochureDetails
+              .map((b: any) => ({ id: b.id, name: b.name, file_url: b.file_url }))
+              .sort((a: any, b: any) => ((orderMap.get(a.id) as number) || 0) - ((orderMap.get(b.id) as number) || 0))
+          );
+        }
       }
       // After loading, mark clean
       setDirty(false);
@@ -553,6 +587,20 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         }
       }
 
+      // Save brochure selections
+      if (qId) {
+        await (supabase.from("quote_brochures") as any).delete().eq("quote_id", qId);
+        if (selectedBrochures.length > 0) {
+          await (supabase.from("quote_brochures") as any).insert(
+            selectedBrochures.map((b, idx) => ({
+              quote_id: qId!,
+              brochure_id: b.id,
+              sort_order: idx,
+            }))
+          );
+        }
+      }
+
       clearDraft();
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
       toast({
@@ -675,104 +723,11 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         }
       }
 
-      const productIds = lineItems.map((item) => item.product_id).filter(Boolean) as string[];
-      const descriptions = lineItems.map((item) => item.description).filter(Boolean);
-      const lineItemsDebug = lineItems.map((i) => ({ desc: i.description, product_id: i.product_id }));
-
-      alert(
-        JSON.stringify(
-          {
-            lineItems: lineItemsDebug,
-            productIds,
-            descriptions,
-          },
-          null,
-          2,
-        ),
-      );
-
-      console.log("[Brochure Debug] productIds:", productIds);
-      console.log("[Brochure Debug] descriptions:", descriptions);
-
-      // Fetch actual product model codes for prefix matching
-      let productCodes: string[] = [];
-      if (productIds.length > 0) {
-        const { data: products, error: prodErr } = await supabase
-          .from("supplier_products")
-          .select("id, product_code")
-          .in("id", productIds);
-        console.log("[Brochure Debug] supplier_products query result:", { products, error: prodErr });
-        productCodes = (products || [])
-          .map((p: any) => p.product_code)
-          .filter(Boolean);
-      }
-
-      console.log("[Brochure Debug] productCodes:", productCodes);
-
-      // Combine descriptions + product codes for prefix matching
-      const matchTargets = [...descriptions, ...productCodes];
-      console.log("[Brochure Debug] matchTargets:", matchTargets);
       const fileName = `${finalQuoteNumber}.pdf`;
 
-      let matchedBrochures: { id: string; name: string; file_url: string }[] = [];
-      let brochuresFound = 0;
-      if (productIds.length > 0 || matchTargets.length > 0) {
-        const { data: brochures, error: brochErr } = await supabase
-          .from("product_brochures" as any)
-          .select("id, name, file_url, linked_product_ids, model_match_prefixes")
-          .eq("is_active", true)
-          .order("sort_order");
-
-        brochuresFound = brochures?.length ?? 0;
-        console.log("[Brochure Debug] brochures fetched:", brochuresFound, "error:", brochErr);
-
-        if (brochures?.length) {
-          const seen = new Set<string>();
-          for (const brochure of brochures as any[]) {
-            if (seen.has(brochure.id)) continue;
-
-            console.log(`[Brochure Debug] Checking brochure "${brochure.name}" | linked_product_ids:`, brochure.linked_product_ids, "| prefixes:", brochure.model_match_prefixes);
-
-            const linkedProductIds: string[] = brochure.linked_product_ids || [];
-            const directMatch = linkedProductIds.some((linkedId: string) => productIds.includes(linkedId));
-            if (directMatch) {
-              console.log(`[Brochure Debug] ✅ DIRECT ID match for "${brochure.name}"`);
-              seen.add(brochure.id);
-              matchedBrochures.push({ id: brochure.id, name: brochure.name, file_url: brochure.file_url });
-              continue;
-            }
-
-            const prefixes: string[] = brochure.model_match_prefixes || [];
-            if (prefixes.length > 0) {
-              for (const prefix of prefixes) {
-                const trimmedPrefix = prefix.toUpperCase().trim();
-                const matchFound = matchTargets.some((target) => target.toUpperCase().includes(trimmedPrefix));
-                console.log(`[Brochure Debug]   prefix "${prefix}" vs matchTargets → ${matchFound ? "✅ HIT" : "❌ miss"}`);
-                if (matchFound) {
-                  console.log(`[Brochure Debug] ✅ PREFIX match for "${brochure.name}" via prefix "${prefix}"`);
-                  seen.add(brochure.id);
-                  matchedBrochures.push({ id: brochure.id, name: brochure.name, file_url: brochure.file_url });
-                  break;
-                }
-              }
-            } else {
-              console.log(`[Brochure Debug]   No prefixes defined for "${brochure.name}"`);
-            }
-          }
-        }
-      } else {
-        console.log("[Brochure Debug] Skipped brochure matching — no productIds or matchTargets");
-      }
-
-      console.log(`[Brochure Debug] FINAL: ${productIds.length} products, ${productCodes.length} codes, ${matchTargets.length} targets, ${matchedBrochures.length} matched`);
-      toast({
-        title: "Brochure matching",
-        description: `${productIds.length} products, ${productCodes.length} codes, ${brochuresFound} brochures found, ${matchedBrochures.length} matched`,
-        duration: Infinity,
-      });
-
-      if (matchedBrochures.length > 0) {
-        const brochureAttachments = matchedBrochures.map((brochure) => {
+      // Use saved brochure selections (managed in the brochure picker UI)
+      if (selectedBrochures.length > 0) {
+        const brochureAttachments = selectedBrochures.map((brochure) => {
           let url = brochure.file_url;
           if (!url.startsWith("http")) {
             const { data } = supabase.storage.from("product-brochures").getPublicUrl(url);
@@ -780,6 +735,8 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
           }
           return { id: brochure.id, name: brochure.name, file_url: url };
         });
+
+        console.log(`[PDF] Attaching ${brochureAttachments.length} brochures:`, brochureAttachments.map(b => b.name));
 
         const mergedPdfBytes = await assembleQuoteWithBrochures({
           mainQuotePdfBytes: new Uint8Array(pdf.output("arraybuffer")),
@@ -800,7 +757,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         pdf.save(fileName);
       }
 
-      toast({ title: "PDF Downloaded", description: `${fileName} downloaded successfully.` });
+      toast({ title: "PDF Downloaded", description: `${fileName} with ${selectedBrochures.length} brochure(s) attached.` });
     } catch (err: any) {
       console.error("PDF generation error:", err);
       toast({ title: "PDF Error", description: err?.message || "PDF generation failed.", variant: "destructive" });
@@ -1068,6 +1025,87 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         <div className="space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Terms</p>
           <Textarea value={terms} onChange={(e) => setTerms(e.target.value)} className="min-h-[80px] text-sm border-transparent hover:border-border focus:border-primary" />
+        </div>
+
+        {/* ── BROCHURES (PDF attachments) ── */}
+        <div data-pdf-hide className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <BookOpen className="h-3.5 w-3.5" /> Product Brochures
+            </p>
+            <span className="text-[10px] text-muted-foreground">
+              {selectedBrochures.length} selected — will be appended to PDF
+            </span>
+          </div>
+
+          {/* Selected brochures */}
+          {selectedBrochures.length > 0 && (
+            <div className="space-y-1">
+              {selectedBrochures.map((b) => (
+                <div key={b.id} className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-1.5 text-sm">
+                  <span className="flex items-center gap-1.5">
+                    <Check className="h-3.5 w-3.5 text-primary" />
+                    {b.name}
+                  </span>
+                  <button
+                    onClick={() => setSelectedBrochures((prev) => prev.filter((x) => x.id !== b.id))}
+                    className="text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add brochure picker */}
+          {!showBrochurePicker ? (
+            <button
+              onClick={() => setShowBrochurePicker(true)}
+              className="text-sm text-primary hover:underline flex items-center gap-1.5"
+            >
+              <Plus className="h-4 w-4" /> Add Brochure
+            </button>
+          ) : (
+            <div className="space-y-2 border rounded-md p-3 bg-muted/20">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <input
+                  autoFocus
+                  placeholder="Search brochures…"
+                  value={brochureSearch}
+                  onChange={(e) => setBrochureSearch(e.target.value)}
+                  className="w-full pl-7 pr-2 py-1.5 text-sm border rounded bg-background outline-none focus:ring-1 focus:ring-primary/30"
+                />
+              </div>
+              <div className="max-h-48 overflow-y-auto space-y-0.5">
+                {availableBrochures
+                  .filter((b) => {
+                    const q = brochureSearch.toLowerCase();
+                    return !selectedBrochures.some((s) => s.id === b.id) &&
+                      (!q || b.name.toLowerCase().includes(q) || (b.brand || "").toLowerCase().includes(q));
+                  })
+                  .map((b) => (
+                    <button
+                      key={b.id}
+                      onClick={() => {
+                        setSelectedBrochures((prev) => [...prev, { id: b.id, name: b.name, file_url: b.file_url }]);
+                      }}
+                      className="w-full text-left px-3 py-1.5 hover:bg-accent text-sm transition-colors rounded flex items-center justify-between"
+                    >
+                      <span>{b.name}</span>
+                      {b.brand && <span className="text-[10px] text-muted-foreground">{b.brand}</span>}
+                    </button>
+                  ))}
+              </div>
+              <button
+                onClick={() => { setShowBrochurePicker(false); setBrochureSearch(""); }}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Done
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── ATTACHMENTS ── */}
