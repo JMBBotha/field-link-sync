@@ -33,7 +33,7 @@ import type { WizardTriggerItem } from "@/components/catalog/quote-builder/Quote
 import { toast } from "@/hooks/use-toast";
 import { useProductUsageStats } from "@/hooks/useProductUsageStats";
 import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
-import { generateQuoteBuilderPDF } from "@/lib/quoteBuilderPDF";
+
 import { getProductDisplayName } from "@/components/catalog/quote-builder/productDisplayUtils";
 import type { PaletteProduct, BasketItem, Basket } from "@/components/catalog/QuoteBuilderTab";
 import { computeBundlePricing } from "@/components/catalog/quote-builder/BundleItemsPopover";
