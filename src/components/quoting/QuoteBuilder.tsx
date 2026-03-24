@@ -140,6 +140,12 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Brochures
+  const [selectedBrochures, setSelectedBrochures] = useState<{ id: string; name: string; file_url: string }[]>([]);
+  const [availableBrochures, setAvailableBrochures] = useState<{ id: string; name: string; file_url: string; brand: string | null }[]>([]);
+  const [showBrochurePicker, setShowBrochurePicker] = useState(false);
+  const [brochureSearch, setBrochureSearch] = useState("");
+
   /* ─── Zustand store ─── */
   const { isDirty, setDraft, setDirty, clearDraft } = useQuoteSessionStore();
 
