@@ -62,6 +62,7 @@ export interface PaletteProduct {
   pipe_size: string | null;
   is_material_favorite: boolean;
   pack_qty: number | null;
+  btu_rating?: number | null;
   /** @deprecated use default_markup_percent */
   supplier_discount_percent: number | null;
   /** @deprecated use default_markup_percent */
