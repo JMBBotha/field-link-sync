@@ -74,3 +74,23 @@ export function computePricing(
 
   return { costExVat, sellExVat, sellInclVat, discountPercent: discount * 100, markupPercent };
 }
+
+/**
+ * Convenience: compute pricing from a product-shaped object (PaletteProduct or similar).
+ * Use this anywhere you'd previously write `product.selling_price || product.cost_incl_vat || 0`.
+ */
+export function computeProductPricing(product: {
+  cost_excl_vat?: number;
+  cost_price?: number;
+  cost_incl_vat?: number;
+  selling_price?: number;
+  default_markup_percent?: number;
+  markup_percent?: number | null;
+  supplier_name?: string;
+  supplier_discount_percent?: number | null;
+}): ComputedPricing {
+  const listPrice = product.cost_excl_vat || 0;
+  const markupPct = product.default_markup_percent ?? product.markup_percent ?? 35;
+  const supplierCode = resolveSupplierCode(product.supplier_name);
+  return computePricing(supplierCode, listPrice, markupPct, product.cost_price || null);
+}
