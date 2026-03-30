@@ -495,12 +495,12 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     });
 
     return {
-      instanceId: `${tierId}-${Date.now()}-${tier.tier}`,
+      instanceId: `${tierId}-${Date.now()}-${tierNumber}`,
       product: {
         ...firstProduct,
         short_name: tierName,
         description: `${tierName} (${subItems.length} items)`,
-        product_code: `TIER-${capacityLabel}-${tier.tier}`,
+        product_code: `TIER-${capacityLabel}-${tierNumber}`,
         product_category: "Consumables",
         selling_price: unitPrice,
         cost_excl_vat: unitCost,
