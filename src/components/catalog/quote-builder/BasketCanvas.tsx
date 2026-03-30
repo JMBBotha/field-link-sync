@@ -4,7 +4,7 @@ import { Plus, Trash2, Pencil, Check, Package, ShoppingBag, Copy } from "lucide-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SharedBasketItemCard } from "@/components/shared/SharedBasketItems";
-import ConsumablesSuggestionPanel from "./ConsumablesSuggestionPanel";
+import ZoneBundleSection from "./ZoneBundleSection";
 import ZoneTemplateSelector from "./ZoneTemplateSelector";
 import type { Basket, PaletteProduct } from "../QuoteBuilderTab";
 import { calculateBasketSubtotal } from "@/utils/basketCalc";
@@ -12,6 +12,7 @@ import { calculateBasketSubtotal } from "@/utils/basketCalc";
 interface BasketCanvasProps {
   baskets: Basket[];
   allProducts: PaletteProduct[];
+  dbBundles?: Array<{ id: string; name: string; min_btu?: number | null; max_btu?: number | null; items: any[] }>;
   onAddBasket: () => void;
   onRenameBasket: (id: string, name: string) => void;
   onRemoveBasket: (id: string) => void;
@@ -19,6 +20,7 @@ interface BasketCanvasProps {
   onUpdateQuantity: (basketId: string, instanceId: string, qty: number) => void;
   onUpdateLength: (basketId: string, instanceId: string, length: number) => void;
   onAddProductToBasket: (basketId: string, product: PaletteProduct) => void;
+  onAddBundleToBasket?: (basketId: string, bundle: any) => void;
   onDuplicateBasket: (id: string) => void;
   onApplyTemplate: (zones: string[]) => void;
   onClearAll: () => void;
@@ -34,6 +36,7 @@ interface BasketCanvasProps {
 function DroppableBasket({
   basket,
   allProducts,
+  dbBundles,
   onRename,
   onRemove,
   onDuplicate,
@@ -41,11 +44,13 @@ function DroppableBasket({
   onUpdateQuantity,
   onUpdateLength,
   onAddProduct,
+  onAddBundle,
   isDragActive,
   isCompact,
 }: {
   basket: Basket;
   allProducts: PaletteProduct[];
+  dbBundles?: Array<{ id: string; name: string; min_btu?: number | null; max_btu?: number | null; items: any[] }>;
   onRename: (name: string) => void;
   onRemove: () => void;
   onDuplicate: () => void;
@@ -53,6 +58,7 @@ function DroppableBasket({
   onUpdateQuantity: (instanceId: string, qty: number) => void;
   onUpdateLength: (instanceId: string, length: number) => void;
   onAddProduct: (product: PaletteProduct) => void;
+  onAddBundle?: (bundle: any) => void;
   isDragActive?: boolean;
   isCompact?: boolean;
 }) {
@@ -142,11 +148,12 @@ function DroppableBasket({
                 onUpdateLength={(len) => onUpdateLength(item.instanceId, len)}
               />
             ))}
-            {!isCompact && (
-              <ConsumablesSuggestionPanel
+            {!isCompact && dbBundles && (
+              <ZoneBundleSection
                 basketItems={basket.items}
-                allProducts={allProducts}
-                onAddProduct={onAddProduct}
+                dbBundles={dbBundles}
+                onRemoveBundle={(instanceId) => onRemoveItem(instanceId)}
+                onSwapBundle={(_instanceId, bundle) => onAddBundle?.(bundle)}
               />
             )}
           </>
@@ -159,6 +166,7 @@ function DroppableBasket({
 const BasketCanvas = ({
   baskets,
   allProducts,
+  dbBundles,
   onAddBasket,
   onRenameBasket,
   onRemoveBasket,
@@ -166,6 +174,7 @@ const BasketCanvas = ({
   onUpdateQuantity,
   onUpdateLength,
   onAddProductToBasket,
+  onAddBundleToBasket,
   onDuplicateBasket,
   onApplyTemplate,
   onClearAll,
@@ -224,6 +233,7 @@ const BasketCanvas = ({
                 key={basket.id}
                 basket={basket}
                 allProducts={allProducts}
+                dbBundles={dbBundles}
                 onRename={(name) => onRenameBasket(basket.id, name)}
                 onRemove={() => onRemoveBasket(basket.id)}
                 onDuplicate={() => onDuplicateBasket(basket.id)}
@@ -231,6 +241,7 @@ const BasketCanvas = ({
                 onUpdateQuantity={(instanceId, qty) => onUpdateQuantity(basket.id, instanceId, qty)}
                 onUpdateLength={(instanceId, len) => onUpdateLength(basket.id, instanceId, len)}
                 onAddProduct={(product) => onAddProductToBasket(basket.id, product)}
+                onAddBundle={onAddBundleToBasket ? (bundle) => onAddBundleToBasket(basket.id, bundle) : undefined}
                 isDragActive={isDragging}
                 isCompact={isCompact}
               />

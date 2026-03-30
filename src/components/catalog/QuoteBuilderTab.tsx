@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { inclVatFromExcl } from "@/utils/pricing";
 import { computePricing, resolveSupplierCode } from "@/lib/pricing";
+import { extractBtu, findMatchingBundle } from "@/lib/bundles";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { Search, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,7 @@ export interface PaletteProduct {
   pipe_size: string | null;
   is_material_favorite: boolean;
   pack_qty: number | null;
+  btu_rating?: number | null;
   /** @deprecated use default_markup_percent */
   supplier_discount_percent: number | null;
   /** @deprecated use default_markup_percent */
@@ -239,6 +241,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
   const queryClient = useQueryClient();
   const { usageMap, trackUsage } = useProductUsageStats();
   const canvasRef = useRef<HTMLDivElement>(null);
+  const addBundleToBasketRef = useRef<((basketId: string, bundle: any) => void) | null>(null);
   const isMobile = useIsMobile();
 
   const scrollToCanvas = useCallback(() => {
@@ -254,7 +257,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     queryKey: ["quote-builder-products"],
     queryFn: async () => {
       const { data, error } = await (supabase.from("supplier_products") as any).
-      select("id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, suggested_consumables, pack_qty, default_markup_percent, suppliers(name, supplier_type)").
+      select("id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, suggested_consumables, pack_qty, default_markup_percent, btu_rating, suppliers(name, supplier_type)").
       or("archived.is.null,archived.eq.false").
       order("is_pinned", { ascending: false }).
       order("pin_order", { ascending: true, nullsFirst: false }).
@@ -272,6 +275,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         pipe_size: p.pipe_size || null,
         is_material_favorite: p.is_material_favorite || false,
         pack_qty: p.pack_qty || null,
+        btu_rating: p.btu_rating || null,
         supplier_discount_percent: null,
         markup_percent: p.default_markup_percent ?? 20,
         default_markup_percent: p.default_markup_percent ?? 20,
@@ -431,22 +435,39 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         };
       }
       const isLengthItem = product.sold_in_length && !!product.price_per_metre;
-      return {
-        ...basket,
-        items: [
+      const newItems: BasketItem[] = [
         ...basket.items,
         {
           instanceId: `${product.id}-${Date.now()}`,
           product,
           quantity: 1,
           ...(isLengthItem ? { length: product.unit_length || 1 } : {})
-        }]
-
-      };
+        }
+      ];
+      return { ...basket, items: newItems };
     })
     );
+
+    // Auto-add matching bundle when an AC unit is dropped (deferred to next tick)
+    if (product.product_category === "Air Conditioning") {
+      const btu = extractBtu(product);
+      if (btu && bundles.length > 0) {
+        const match = findMatchingBundle(btu, bundles);
+        if (match) {
+          const currentBasket = baskets.find((b) => b.id === basketId);
+          const alreadyHasBundle = currentBasket?.items.some((i) => i.isBundle && i.bundleId === match.id);
+          if (!alreadyHasBundle) {
+            setTimeout(() => {
+              addBundleToBasketRef.current?.(basketId, match as any);
+              toast({ title: `Auto-added "${match.name}" piping kit for ${(btu / 1000).toFixed(0)}K unit` });
+            }, 50);
+          }
+        }
+      }
+    }
+
     scrollToCanvas();
-  }, [trackUsage, scrollToCanvas]);
+  }, [trackUsage, scrollToCanvas, bundles, baskets]);
 
   const addBundleToBasket = useCallback((basketId: string, bundle: PaletteBundle) => {
     // Build sub-items list for the collapsed bundle
@@ -504,6 +525,8 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     );
     scrollToCanvas();
   }, [trackUsage, scrollToCanvas]);
+  // Keep ref in sync for deferred auto-bundle calls
+  addBundleToBasketRef.current = addBundleToBasket;
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const product = (event.active.data.current as any)?.product as PaletteProduct | undefined;
@@ -770,12 +793,14 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
               <BasketCanvas
                 baskets={baskets}
                 allProducts={products}
+                dbBundles={bundles}
                 onAddBasket={handleAddBasket}
                 onRenameBasket={handleRenameBasket}
                 onRemoveBasket={handleRemoveBasket}
                 onRemoveItem={handleRemoveItem}
                 onUpdateQuantity={handleUpdateQuantity}
                 onAddProductToBasket={addProductToBasket}
+                onAddBundleToBasket={addBundleToBasket}
                 onDuplicateBasket={handleDuplicateBasket}
                 onApplyTemplate={handleApplyTemplate}
                 onClearAll={handleClearAll}
