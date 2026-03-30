@@ -21,6 +21,19 @@ export const VAT_RATE = 0.15;
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
+/**
+ * Normalize markup input into a percentage value used by pricing math.
+ * - 0.35 => 35
+ * - 35 => 35
+ * - null/undefined/<=0 => 35 (default)
+ */
+export function normalizeMarkupPercent(markupPercent?: number | null): number {
+  if (markupPercent == null || Number.isNaN(markupPercent)) return 35;
+  if (markupPercent > 0 && markupPercent <= 1) return r2(markupPercent * 100);
+  if (markupPercent <= 0) return 35;
+  return markupPercent;
+}
+
 /** Resolve a supplier name string to a SupplierCode */
 export function resolveSupplierCode(supplierName: string | undefined | null): SupplierCode {
   if (!supplierName) return "OTHER";
