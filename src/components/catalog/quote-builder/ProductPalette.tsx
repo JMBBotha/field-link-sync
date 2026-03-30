@@ -40,7 +40,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
-import { getProductDisplayName } from "./productDisplayUtils";
+import { getProductDisplayName, getProductBriefDescription } from "./productDisplayUtils";
 import BundleItemsPopover, { computeBundlePricing, type BundleSubItem } from "./BundleItemsPopover";
 
 function HighlightText({ text, searchTerm }: { text: string; searchTerm: string }) {
