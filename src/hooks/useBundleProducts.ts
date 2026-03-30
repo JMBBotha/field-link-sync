@@ -4,6 +4,26 @@ import { CAPACITY_TIER_CONFIGS } from "@/lib/bundleTierConfig";
 
 type BundleProductMap = Record<string, any>;
 
+const SUPPLIER_PRODUCT_SELECT = "id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, pack_qty, default_markup_percent, btu_rating, suppliers(name, supplier_type)";
+
+const toBundleProduct = (p: any) => ({
+  ...p,
+  product_category: p.product_category || p.category || "",
+  supplier_name: p.suppliers?.name || "",
+  supplier_type: p.suppliers?.supplier_type || "both",
+  price_per_metre: p.price_per_metre || null,
+  sold_in_length: p.sold_in_length || false,
+  unit_length: p.unit_length || null,
+  pipe_size: p.pipe_size || null,
+  is_material_favorite: p.is_material_favorite || false,
+  pack_qty: p.pack_qty || null,
+  btu_rating: p.btu_rating || null,
+  supplier_discount_percent: null,
+  markup_percent: p.default_markup_percent ?? 35,
+  default_markup_percent: p.default_markup_percent ?? 35,
+  cost_price: p.cost_price ?? p.cost_excl_vat ?? 0,
+});
+
 export function useBundleProducts() {
   const [bundleProducts, setBundleProducts] = useState<BundleProductMap>({});
 
@@ -26,46 +46,78 @@ export function useBundleProducts() {
     const loadBundleProducts = async () => {
       if (allCodes.length === 0) return;
 
-      const { data, error } = await (supabase.from("supplier_products") as any)
-        .select("id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, pack_qty, default_markup_percent, btu_rating, suppliers(name, supplier_type)")
+      const { data: byCodeData, error: byCodeError } = await (supabase.from("supplier_products") as any)
+        .select(SUPPLIER_PRODUCT_SELECT)
         .eq("is_active", true)
         .or("archived.is.null,archived.eq.false")
         .in("product_code", allCodes)
         .limit(2000);
 
-      if (error) {
-        console.error("[AutoBundle] failed to load bundle products", error);
-        return;
+      if (byCodeError) {
+        console.error("[AutoBundle] failed to load bundle products by code", byCodeError);
+      }
+
+      let byTierFlagData: any[] = [];
+      const { data: tierFlagRows, error: tierFlagError } = await (supabase.from("supplier_products") as any)
+        .select(SUPPLIER_PRODUCT_SELECT)
+        .eq("is_active", true)
+        .eq("tier_bundle", true)
+        .or("archived.is.null,archived.eq.false")
+        .limit(2000);
+
+      if (tierFlagError) {
+        console.warn("[AutoBundle] tier_bundle lookup unavailable; falling back to name pattern only", tierFlagError.message || tierFlagError);
+      } else {
+        byTierFlagData = tierFlagRows || [];
+      }
+
+      const namePatternFilter = [
+        "short_name.ilike.%09K INV PIPING KIT%",
+        "short_name.ilike.%12K INV PIPING KIT%",
+        "short_name.ilike.%18K INV PIPING KIT%",
+        "short_name.ilike.%PIPING KIT%",
+        "description.ilike.%PIPING KIT%",
+      ].join(",");
+
+      const { data: byNameData, error: byNameError } = await (supabase.from("supplier_products") as any)
+        .select(SUPPLIER_PRODUCT_SELECT)
+        .eq("is_active", true)
+        .or(`archived.is.null,archived.eq.false`)
+        .or(namePatternFilter)
+        .limit(2000);
+
+      if (byNameError) {
+        console.warn("[AutoBundle] failed to load bundle products by name pattern", byNameError);
       }
 
       if (!active) return;
 
+      const merged = new Map<string, any>();
+      const pushRows = (rows?: any[]) => {
+        (rows || []).forEach((row) => {
+          if (!row?.id) return;
+          merged.set(row.id, row);
+        });
+      };
+
+      pushRows(byCodeData || []);
+      pushRows(byTierFlagData || []);
+      pushRows(byNameData || []);
+
       const map: BundleProductMap = {};
-      (data || []).forEach((p: any) => {
+      Array.from(merged.values()).forEach((p) => {
         const code = (p.product_code || "").trim().toUpperCase();
         if (!code) return;
-        map[code] = {
-          ...p,
-          product_category: p.product_category || p.category || "",
-          supplier_name: p.suppliers?.name || "",
-          supplier_type: p.suppliers?.supplier_type || "both",
-          price_per_metre: p.price_per_metre || null,
-          sold_in_length: p.sold_in_length || false,
-          unit_length: p.unit_length || null,
-          pipe_size: p.pipe_size || null,
-          is_material_favorite: p.is_material_favorite || false,
-          pack_qty: p.pack_qty || null,
-          btu_rating: p.btu_rating || null,
-          supplier_discount_percent: null,
-          markup_percent: p.default_markup_percent ?? 35,
-          default_markup_percent: p.default_markup_percent ?? 35,
-          cost_price: p.cost_price ?? p.cost_excl_vat ?? 0,
-        };
+        map[code] = toBundleProduct(p);
       });
 
       console.log("[AutoBundle] bundle products loaded", {
         requestedCodes: allCodes.length,
+        matchedByCode: (byCodeData || []).length,
+        matchedByTierFlag: (byTierFlagData || []).length,
+        matchedByNamePattern: (byNameData || []).length,
         loadedProducts: Object.keys(map).length,
+        loadedCodes: Object.keys(map),
       });
 
       setBundleProducts(map);
