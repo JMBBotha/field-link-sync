@@ -36,6 +36,7 @@ import QuoteSummaryPanel from "./quote-builder/QuoteSummaryPanel";
 import { toast } from "@/hooks/use-toast";
 // favorites now derived from is_pinned on product data
 import { useProductUsageStats } from "@/hooks/useProductUsageStats";
+import { useBundleProducts } from "@/hooks/useBundleProducts";
 import { allTermsMatchBlob } from "./searchSynonyms";
 import QuoteBuilderPopup from "./quote-builder/QuoteBuilderPopup";
 import type { WizardTriggerItem } from "./quote-builder/QuoteBuilderPopup";
@@ -245,6 +246,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
   const [wizardTriggerItem, setWizardTriggerItem] = useState<WizardTriggerItem | null>(null);
   const queryClient = useQueryClient();
   const { usageMap, trackUsage } = useProductUsageStats();
+  const bundleProducts = useBundleProducts();
   const canvasRef = useRef<HTMLDivElement>(null);
   const addBundleToBasketRef = useRef<((basketId: string, bundle: any) => void) | null>(null);
   const prevBasketsRef = useRef<Basket[]>(baskets);
@@ -416,15 +418,6 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     useSensor(KeyboardSensor)
   );
 
-  const productByCode = useMemo(() => {
-    const map = new Map<string, PaletteProduct>();
-    for (const p of products) {
-      const code = (p.product_code || "").trim().toUpperCase();
-      if (code && !map.has(code)) map.set(code, p);
-    }
-    return map;
-  }, [products]);
-
   const isAirConditioningProduct = useCallback((product: PaletteProduct) => {
     const blob = [product.product_category, product.category, product.short_name, product.description]
       .filter(Boolean)
@@ -440,12 +433,13 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
       tierLabel: tier.label,
       lines: tier.lines.length,
       productsLoaded: products.length,
+      bundleProductsLoaded: Object.keys(bundleProducts).length,
     });
 
     const subItems: BasketItem["bundleItems"] = [];
     for (const line of tier.lines) {
       const code = (line.productCode || "").trim().toUpperCase();
-      const prod = productByCode.get(code);
+      const prod = bundleProducts[code] as PaletteProduct | undefined;
 
       if (!prod) {
         console.warn("[AutoBundle] buildTierBundleItems:missingProduct", {
@@ -521,7 +515,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
       bundleUnitPrice: unitPrice,
       bundleUnitCost: unitCost,
     };
-  }, [products.length, productByCode, trackUsage]);
+  }, [products.length, bundleProducts, trackUsage]);
 
   const addProductToBasket = useCallback((basketId: string, product: PaletteProduct, source: string = "unknown") => {
     trackUsage(product.id);
@@ -569,7 +563,12 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
   // Auto-attach 3-tier bundles by observing basket diffs (covers click, drag, modal, imports, restore paths)
   useEffect(() => {
     if (products.length === 0) {
-      prevBasketsRef.current = baskets;
+      return;
+    }
+
+    const bundleProductsLoaded = Object.keys(bundleProducts).length;
+    if (bundleProductsLoaded === 0) {
+      console.log("[AutoBundleEffect] waiting for bundleProducts map before attaching tiers");
       return;
     }
 
@@ -679,7 +678,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     }
 
     prevBasketsRef.current = baskets;
-  }, [baskets, products.length, buildTierBundleItems, isAirConditioningProduct]);
+  }, [baskets, products.length, bundleProducts, buildTierBundleItems, isAirConditioningProduct]);
 
   const addBundleToBasket = useCallback((basketId: string, bundle: PaletteBundle) => {
     // Build sub-items list for the collapsed bundle
