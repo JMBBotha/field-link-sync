@@ -2,7 +2,6 @@ import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { inclVatFromExcl } from "@/utils/pricing";
 import { computePricing, resolveSupplierCode } from "@/lib/pricing";
 import { extractBtu } from "@/lib/bundles";
-import { findTierConfigForBtu } from "@/lib/bundleTierConfig";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { Search, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,7 +35,6 @@ import QuoteSummaryPanel from "./quote-builder/QuoteSummaryPanel";
 import { toast } from "@/hooks/use-toast";
 // favorites now derived from is_pinned on product data
 import { useProductUsageStats } from "@/hooks/useProductUsageStats";
-import { useBundleProducts } from "@/hooks/useBundleProducts";
 import { allTermsMatchBlob } from "./searchSynonyms";
 import QuoteBuilderPopup from "./quote-builder/QuoteBuilderPopup";
 import type { WizardTriggerItem } from "./quote-builder/QuoteBuilderPopup";
