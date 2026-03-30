@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { calcSellingPrice, VAT_RATE } from "@/utils/pricing";
+import { computeProductPricing } from "@/lib/pricing";
 import { RotateCcw, FileDown, Loader2, Mail, Check, TrendingUp, ChevronDown, ChevronRight, Package, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
