@@ -270,9 +270,11 @@ function DraggableProductCard({
     }
   }, [isDragging]);
 
-  const costPrice = product.cost_price || product.cost_excl_vat || 0;
+  const listPrice = product.cost_excl_vat || 0;
   const markupPct = product.default_markup_percent ?? product.markup_percent ?? 20;
-  const price = product.selling_price || product.cost_incl_vat || 0;
+  const supplierCode = resolveSupplierCode(product.supplier_name);
+  const computed = computePricing(supplierCode, listPrice, markupPct, product.cost_price || null);
+  const price = computed.sellExVat;
   const catBg = getCategoryBg(product.product_category);
 
   const handleStarClick = (e: React.MouseEvent) => {
