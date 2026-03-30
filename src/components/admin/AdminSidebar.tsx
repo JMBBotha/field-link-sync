@@ -101,7 +101,6 @@ const AdminSidebar = ({
         { path: "/admin/invoices", label: "Invoices", icon: Receipt },
         { path: "/admin/invoices/templates", label: "Invoice Templates", icon: FileText },
         { path: "/admin/agreements", label: "Agreements", icon: FileCheck },
-        { path: "/admin/manual-quote", label: "Manual Quote", icon: FilePlus2 },
       ],
     },
     {
