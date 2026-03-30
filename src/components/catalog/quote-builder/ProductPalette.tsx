@@ -271,7 +271,7 @@ function DraggableProductCard({
   }, [isDragging]);
 
   const listPrice = product.cost_excl_vat || 0;
-  const markupPct = product.default_markup_percent ?? product.markup_percent ?? 20;
+  const markupPct = product.default_markup_percent ?? product.markup_percent ?? 35;
   const supplierCode = resolveSupplierCode(product.supplier_name);
   const computed = computePricing(supplierCode, listPrice, markupPct, product.cost_price || null);
   const price = computed.sellExVat;
