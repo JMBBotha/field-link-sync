@@ -793,12 +793,14 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
               <BasketCanvas
                 baskets={baskets}
                 allProducts={products}
+                dbBundles={bundles}
                 onAddBasket={handleAddBasket}
                 onRenameBasket={handleRenameBasket}
                 onRemoveBasket={handleRemoveBasket}
                 onRemoveItem={handleRemoveItem}
                 onUpdateQuantity={handleUpdateQuantity}
                 onAddProductToBasket={addProductToBasket}
+                onAddBundleToBasket={addBundleToBasket}
                 onDuplicateBasket={handleDuplicateBasket}
                 onApplyTemplate={handleApplyTemplate}
                 onClearAll={handleClearAll}
