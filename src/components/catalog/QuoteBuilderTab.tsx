@@ -241,6 +241,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
   const queryClient = useQueryClient();
   const { usageMap, trackUsage } = useProductUsageStats();
   const canvasRef = useRef<HTMLDivElement>(null);
+  const addBundleToBasketRef = useRef<((basketId: string, bundle: any) => void) | null>(null);
   const isMobile = useIsMobile();
 
   const scrollToCanvas = useCallback(() => {
