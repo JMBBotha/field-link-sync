@@ -450,18 +450,22 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     })
     );
 
-    // Auto-add matching bundle when an AC unit is dropped (deferred to next tick)
+    // Auto-add 3-tier installation bundles when an AC unit is dropped
     if (product.product_category === "Air Conditioning") {
       const btu = extractBtu(product);
-      if (btu && bundles.length > 0) {
-        const match = findMatchingBundle(btu, bundles);
-        if (match) {
+      if (btu && products.length > 0) {
+        const tierConfig = findTierConfigForBtu(btu);
+        if (tierConfig) {
           const currentBasket = baskets.find((b) => b.id === basketId);
-          const alreadyHasBundle = currentBasket?.items.some((i) => i.isBundle && i.bundleId === match.id);
-          if (!alreadyHasBundle) {
+          // Check if any tier bundles already exist for this capacity
+          const tierPrefix = `tier-${tierConfig.capacityLabel}-`;
+          const alreadyHasTiers = currentBasket?.items.some((i) => i.isBundle && i.bundleId?.startsWith(tierPrefix));
+          if (!alreadyHasTiers) {
             setTimeout(() => {
-              addBundleToBasketRef.current?.(basketId, match as any);
-              toast({ title: `Auto-added "${match.name}" piping kit for ${(btu / 1000).toFixed(0)}K unit` });
+              for (const tier of tierConfig.tiers) {
+                addTierBundleToBasket(basketId, tierConfig.capacityLabel, tier);
+              }
+              toast({ title: `Auto-added ${tierConfig.capacityLabel} installation bundles (3 tiers)` });
             }, 50);
           }
         }
