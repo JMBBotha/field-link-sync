@@ -566,6 +566,121 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     scrollToCanvas();
   }, [trackUsage, scrollToCanvas]);
 
+  // Auto-attach 3-tier bundles by observing basket diffs (covers click, drag, modal, imports, restore paths)
+  useEffect(() => {
+    if (products.length === 0) {
+      prevBasketsRef.current = baskets;
+      return;
+    }
+
+    const prevBaskets = prevBasketsRef.current;
+    const additionsByBasket = new Map<string, BasketItem[]>();
+
+    for (const basket of baskets) {
+      const prevBasket = prevBaskets.find((b) => b.id === basket.id);
+      const prevIds = new Set((prevBasket?.items || []).map((i) => i.instanceId));
+
+      const newAcItems = basket.items.filter((i) => {
+        if (i.isBundle) return false;
+        if (!isAirConditioningProduct(i.product)) return false;
+        return !prevIds.has(i.instanceId);
+      });
+
+      if (newAcItems.length === 0) continue;
+
+      console.log("[AutoBundleEffect] new AC items detected", {
+        basketId: basket.id,
+        basketName: basket.name,
+        count: newAcItems.length,
+      });
+
+      for (const acItem of newAcItems) {
+        const btu = extractBtu(acItem.product);
+        console.log("[AutoBundleEffect] processing AC item", {
+          basketId: basket.id,
+          product: acItem.product.short_name || acItem.product.product_code,
+          product_category: acItem.product.product_category,
+          category: acItem.product.category,
+          btu_rating: acItem.product.btu_rating,
+          parsedBtu: btu,
+        });
+
+        if (!btu) {
+          console.warn("[AutoBundleEffect] no BTU resolved; skipping auto-bundle", {
+            basketId: basket.id,
+            productId: acItem.product.id,
+          });
+          continue;
+        }
+
+        const tierConfig = findTierConfigForBtu(btu);
+        if (!tierConfig) {
+          console.warn("[AutoBundleEffect] no tier config for BTU", { btu, basketId: basket.id });
+          continue;
+        }
+
+        const tierPrefix = `tier-${tierConfig.capacityLabel}-`;
+        const alreadyHasTiers = basket.items.some(
+          (i) => i.isBundle && i.bundleId?.startsWith(tierPrefix)
+        );
+
+        console.log("[AutoBundleEffect] tier check", {
+          basketId: basket.id,
+          capacity: tierConfig.capacityLabel,
+          tierPrefix,
+          alreadyHasTiers,
+        });
+
+        if (alreadyHasTiers) continue;
+
+        const built: BasketItem[] = [];
+        for (const tier of tierConfig.tiers) {
+          const tierItem = buildTierBundleItems(tierConfig.capacityLabel, tier);
+          if (tierItem) built.push(tierItem);
+        }
+
+        console.log("[AutoBundleEffect] built tier bundles", {
+          basketId: basket.id,
+          capacity: tierConfig.capacityLabel,
+          builtCount: built.length,
+        });
+
+        if (built.length > 0) {
+          const current = additionsByBasket.get(basket.id) || [];
+          additionsByBasket.set(basket.id, [...current, ...built]);
+        }
+      }
+    }
+
+    if (additionsByBasket.size > 0) {
+      setBaskets((prev) =>
+        prev.map((basket) => {
+          const additions = additionsByBasket.get(basket.id);
+          if (!additions || additions.length === 0) return basket;
+
+          const existingBundleIds = new Set(
+            basket.items.filter((i) => i.isBundle && i.bundleId).map((i) => i.bundleId as string)
+          );
+          const uniqueAdditions = additions.filter((item) => !existingBundleIds.has(item.bundleId || ""));
+
+          console.log("[AutoBundleEffect] injecting bundles", {
+            basketId: basket.id,
+            requested: additions.length,
+            injected: uniqueAdditions.length,
+          });
+
+          if (uniqueAdditions.length === 0) return basket;
+          return { ...basket, items: [...basket.items, ...uniqueAdditions] };
+        })
+      );
+
+      const totalInjected = Array.from(additionsByBasket.values()).reduce((s, arr) => s + arr.length, 0);
+      toast({ title: `Auto-added ${totalInjected} tier bundle(s)` });
+    }
+
+    prevBasketsRef.current = baskets;
+  }, [baskets, products.length, buildTierBundleItems, isAirConditioningProduct]);
+
   const addBundleToBasket = useCallback((basketId: string, bundle: PaletteBundle) => {
     // Build sub-items list for the collapsed bundle
     const subItems = bundle.items.
