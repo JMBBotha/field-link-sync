@@ -66,7 +66,7 @@ function ModelList({ products, selectedProductId, onSelect }: {
   return (
     <div ref={containerRef} className="max-h-48 overflow-y-auto space-y-1 border rounded-md p-1.5">
       {products.map((p) => {
-        const price = p.selling_price || p.cost_incl_vat || 0;
+        const price = computeProductPricing(p).sellExVat;
         const isSelected = selectedProductId === p.id;
         return (
           <button
