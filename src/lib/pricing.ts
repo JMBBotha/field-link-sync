@@ -21,6 +21,19 @@ export const VAT_RATE = 0.15;
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
+/**
+ * Normalize markup input into a percentage value used by pricing math.
+ * - 0.35 => 35
+ * - 35 => 35
+ * - null/undefined/<=0 => 35 (default)
+ */
+export function normalizeMarkupPercent(markupPercent?: number | null): number {
+  if (markupPercent == null || Number.isNaN(markupPercent)) return 35;
+  if (markupPercent > 0 && markupPercent <= 1) return r2(markupPercent * 100);
+  if (markupPercent <= 0) return 35;
+  return markupPercent;
+}
+
 /** Resolve a supplier name string to a SupplierCode */
 export function resolveSupplierCode(supplierName: string | undefined | null): SupplierCode {
   if (!supplierName) return "OTHER";
@@ -58,6 +71,7 @@ export function computePricing(
     : (supplier as SupplierCode);
 
   const discount = SUPPLIER_DISCOUNTS[code] ?? 0;
+  const safeMarkupPercent = normalizeMarkupPercent(markupPercent);
 
   // If an override cost is provided AND it's already discounted (lower than list), use it.
   // Otherwise compute from list price with supplier discount.
@@ -69,10 +83,10 @@ export function computePricing(
     costExVat = r2(listPriceExVat * (1 - discount));
   }
 
-  const sellExVat = r2(costExVat * (1 + markupPercent / 100));
+  const sellExVat = r2(costExVat * (1 + safeMarkupPercent / 100));
   const sellInclVat = r2(sellExVat * (1 + VAT_RATE));
 
-  return { costExVat, sellExVat, sellInclVat, discountPercent: discount * 100, markupPercent };
+  return { costExVat, sellExVat, sellInclVat, discountPercent: discount * 100, markupPercent: safeMarkupPercent };
 }
 
 /**

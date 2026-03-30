@@ -271,7 +271,7 @@ function DraggableProductCard({
   }, [isDragging]);
 
   const listPrice = product.cost_excl_vat || 0;
-  const markupPct = product.default_markup_percent ?? product.markup_percent ?? 20;
+  const markupPct = product.default_markup_percent ?? product.markup_percent ?? 35;
   const supplierCode = resolveSupplierCode(product.supplier_name);
   const computed = computePricing(supplierCode, listPrice, markupPct, product.cost_price || null);
   const price = computed.sellExVat;
@@ -516,7 +516,7 @@ function pdfItemToPaletteProduct(item: import("@/types/pdfSelection").PdfSelecte
     cost_incl_vat: price,
     cost_price: item.costPrice ?? price,
     selling_price: price,
-    default_markup_percent: item.markupPercent ?? 0,
+    default_markup_percent: item.markupPercent ?? 0.35,
     description: item.description || item.code,
     is_pinned: false,
     pin_order: null,
@@ -529,7 +529,7 @@ function pdfItemToPaletteProduct(item: import("@/types/pdfSelection").PdfSelecte
     is_material_favorite: false,
     pack_qty: null,
     supplier_discount_percent: null,
-    markup_percent: item.markupPercent ?? null,
+    markup_percent: item.markupPercent ?? 0.35,
   };
 }
 

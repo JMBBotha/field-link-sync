@@ -9,6 +9,7 @@ import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
 import BundleItemsPopover from "@/components/catalog/quote-builder/BundleItemsPopover";
 import type { BasketItem } from "@/components/catalog/QuoteBuilderTab";
 import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
+import { normalizeMarkupPercent } from "@/lib/pricing";
 
 interface SharedBasketItemProps {
   item: BasketItem;
@@ -144,7 +145,7 @@ export function RegularItemCard({
 }: SharedBasketItemProps) {
   const isLengthItem = item.product.sold_in_length && !!item.product.price_per_metre;
   const [markupAdj, setMarkupAdj] = useState(0);
-  const baseMarkup = (item.product as any).default_markup_percent ?? 35;
+  const baseMarkup = normalizeMarkupPercent((item.product as any).default_markup_percent ?? (item.product as any).markup_percent ?? 0.35);
   const effectiveMarkup = baseMarkup + markupAdj;
 
   const { unitSell: rawUnitSell, isPackItem, packQty } = getEffectiveUnitPrices(item.product);
