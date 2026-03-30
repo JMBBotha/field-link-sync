@@ -110,6 +110,9 @@ export interface BasketItem {
   isBundle?: boolean;
   bundleId?: string;
   bundleName?: string;
+  /** Marker for auto-added 3-tier bundle rows */
+  tier_bundle?: boolean;
+  tier_name?: "T1" | "T2" | "T3";
   bundleItems?: Array<{
     product: PaletteProduct;
     quantity: number;
@@ -244,6 +247,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
   const { usageMap, trackUsage } = useProductUsageStats();
   const canvasRef = useRef<HTMLDivElement>(null);
   const addBundleToBasketRef = useRef<((basketId: string, bundle: any) => void) | null>(null);
+  const prevBasketsRef = useRef<Basket[]>(baskets);
   const isMobile = useIsMobile();
 
   const scrollToCanvas = useCallback(() => {
@@ -429,7 +433,6 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     return blob.includes("air conditioning") || blob.includes("aircon");
   }, []);
 
-  /** Build tier bundle basket items inline (no setTimeout, no stale closure) */
   const buildTierBundleItems = useCallback((capacityLabel: string, tier: BundleTier): BasketItem | null => {
     console.log("[AutoBundle] buildTierBundleItems:start", {
       capacityLabel,
@@ -511,6 +514,8 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
       isBundle: true,
       bundleId: tierId,
       bundleName: tierName,
+      tier_bundle: true,
+      tier_name: (`T${tier.tier}` as "T1" | "T2" | "T3"),
       bundleItems: subItems,
       bundlePricingType: pricingType,
       bundleUnitPrice: unitPrice,
@@ -519,53 +524,17 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
   }, [products.length, productByCode, trackUsage]);
 
   const addProductToBasket = useCallback((basketId: string, product: PaletteProduct, source: string = "unknown") => {
-    // Track usage
     trackUsage(product.id);
 
     const parsedBtu = extractBtu(product);
     console.log("[AutoBundle] Product added:", product.short_name || product.product_code, "category:", product.category, "product_category:", product.product_category, "btu_rating:", product.btu_rating, "parsed BTU:", parsedBtu, "source:", source);
 
-    // Pre-compute tier bundles if this is an AC unit
-    let tierBundleItems: BasketItem[] = [];
-    let tierCapacityLabel = "";
-
-    const isAC = isAirConditioningProduct(product);
-    console.log("[AutoBundle] AC detection:", isAC);
-
-    if (isAC) {
-      if (parsedBtu && products.length > 0) {
-        const tierConfig = findTierConfigForBtu(parsedBtu);
-        console.log("[AutoBundle] tierConfig:", tierConfig?.capacityLabel ?? "none", "productsLoaded:", products.length);
-
-        if (tierConfig) {
-          tierCapacityLabel = tierConfig.capacityLabel;
-          for (const tier of tierConfig.tiers) {
-            const item = buildTierBundleItems(tierConfig.capacityLabel, tier);
-            if (item) tierBundleItems.push(item);
-          }
-          console.log("[AutoBundle] tier bundles built:", tierBundleItems.length);
-        } else {
-          console.warn("[AutoBundle] no tier config matched BTU", parsedBtu);
-        }
-      } else {
-        console.warn("[AutoBundle] missing BTU or products not loaded", {
-          parsedBtu,
-          productsLoaded: products.length,
-        });
-      }
-    }
-
     setBaskets((prev) =>
       prev.map((basket) => {
         if (basket.id !== basketId) return basket;
 
-        // Handle existing product (increment qty/length)
         const existing = basket.items.find((i) => i.product.id === product.id);
         if (existing) {
-          console.log("[AutoBundle] existing product in basket, increment only", {
-            basketId,
-            productId: product.id,
-          });
           if (product.sold_in_length && product.price_per_metre) {
             return {
               ...basket,
@@ -582,7 +551,6 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
           };
         }
 
-        // New product
         const isLengthItem = product.sold_in_length && !!product.price_per_metre;
         const newItem: BasketItem = {
           instanceId: `${product.id}-${Date.now()}`,
@@ -591,45 +559,127 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
           ...(isLengthItem ? { length: product.unit_length || 1 } : {}),
         };
 
-        // Check if tier bundles should be added (skip if capacity already has tiers)
-        let extraItems: BasketItem[] = [];
-        if (tierBundleItems.length > 0 && tierCapacityLabel) {
-          const tierPrefix = `tier-${tierCapacityLabel}-`;
-          const alreadyHasTiers = basket.items.some(
-            (i) => i.isBundle && i.bundleId?.startsWith(tierPrefix)
-          );
-
-          console.log("[AutoBundle] tier insert check", {
-            basketId,
-            tierPrefix,
-            alreadyHasTiers,
-            existingItems: basket.items.length,
-            newTierBundles: tierBundleItems.length,
-          });
-
-          if (!alreadyHasTiers) {
-            extraItems = tierBundleItems;
-          }
-        }
-
-        const nextItems = [...basket.items, newItem, ...extraItems];
-        console.log("[AutoBundle] basket updated", {
-          basketId,
-          before: basket.items.length,
-          after: nextItems.length,
-          addedTierBundles: extraItems.length,
-        });
-
-        return { ...basket, items: nextItems };
+        return { ...basket, items: [...basket.items, newItem] };
       })
     );
 
-    if (tierBundleItems.length > 0) {
-      toast({ title: `Auto-added ${tierCapacityLabel} installation bundles (${tierBundleItems.length} tiers)` });
+    scrollToCanvas();
+  }, [trackUsage, scrollToCanvas]);
+
+  // Auto-attach 3-tier bundles by observing basket diffs (covers click, drag, modal, imports, restore paths)
+  useEffect(() => {
+    if (products.length === 0) {
+      prevBasketsRef.current = baskets;
+      return;
     }
 
-    scrollToCanvas();
-  }, [trackUsage, scrollToCanvas, products.length, buildTierBundleItems, isAirConditioningProduct]);
+    const prevBaskets = prevBasketsRef.current;
+    const additionsByBasket = new Map<string, BasketItem[]>();
+
+    for (const basket of baskets) {
+      const prevBasket = prevBaskets.find((b) => b.id === basket.id);
+      const prevIds = new Set((prevBasket?.items || []).map((i) => i.instanceId));
+
+      const newAcItems = basket.items.filter((i) => {
+        if (i.isBundle) return false;
+        if (!isAirConditioningProduct(i.product)) return false;
+        return !prevIds.has(i.instanceId);
+      });
+
+      if (newAcItems.length === 0) continue;
+
+      console.log("[AutoBundleEffect] new AC items detected", {
+        basketId: basket.id,
+        basketName: basket.name,
+        count: newAcItems.length,
+      });
+
+      for (const acItem of newAcItems) {
+        const btu = extractBtu(acItem.product);
+        console.log("[AutoBundleEffect] processing AC item", {
+          basketId: basket.id,
+          product: acItem.product.short_name || acItem.product.product_code,
+          product_category: acItem.product.product_category,
+          category: acItem.product.category,
+          btu_rating: acItem.product.btu_rating,
+          parsedBtu: btu,
+        });
+
+        if (!btu) {
+          console.warn("[AutoBundleEffect] no BTU resolved; skipping auto-bundle", {
+            basketId: basket.id,
+            productId: acItem.product.id,
+          });
+          continue;
+        }
+
+        const tierConfig = findTierConfigForBtu(btu);
+        if (!tierConfig) {
+          console.warn("[AutoBundleEffect] no tier config for BTU", { btu, basketId: basket.id });
+          continue;
+        }
+
+        const tierPrefix = `tier-${tierConfig.capacityLabel}-`;
+        const alreadyHasTiers = basket.items.some(
+          (i) => i.isBundle && i.bundleId?.startsWith(tierPrefix)
+        );
+
+        console.log("[AutoBundleEffect] tier check", {
+          basketId: basket.id,
+          capacity: tierConfig.capacityLabel,
+          tierPrefix,
+          alreadyHasTiers,
+        });
+
+        if (alreadyHasTiers) continue;
+
+        const built: BasketItem[] = [];
+        for (const tier of tierConfig.tiers) {
+          const tierItem = buildTierBundleItems(tierConfig.capacityLabel, tier);
+          if (tierItem) built.push(tierItem);
+        }
+
+        console.log("[AutoBundleEffect] built tier bundles", {
+          basketId: basket.id,
+          capacity: tierConfig.capacityLabel,
+          builtCount: built.length,
+        });
+
+        if (built.length > 0) {
+          const current = additionsByBasket.get(basket.id) || [];
+          additionsByBasket.set(basket.id, [...current, ...built]);
+        }
+      }
+    }
+
+    if (additionsByBasket.size > 0) {
+      setBaskets((prev) =>
+        prev.map((basket) => {
+          const additions = additionsByBasket.get(basket.id);
+          if (!additions || additions.length === 0) return basket;
+
+          const existingBundleIds = new Set(
+            basket.items.filter((i) => i.isBundle && i.bundleId).map((i) => i.bundleId as string)
+          );
+          const uniqueAdditions = additions.filter((item) => !existingBundleIds.has(item.bundleId || ""));
+
+          console.log("[AutoBundleEffect] injecting bundles", {
+            basketId: basket.id,
+            requested: additions.length,
+            injected: uniqueAdditions.length,
+          });
+
+          if (uniqueAdditions.length === 0) return basket;
+          return { ...basket, items: [...basket.items, ...uniqueAdditions] };
+        })
+      );
+
+      const totalInjected = Array.from(additionsByBasket.values()).reduce((s, arr) => s + arr.length, 0);
+      toast({ title: `Auto-added ${totalInjected} tier bundle(s)` });
+    }
+
+    prevBasketsRef.current = baskets;
+  }, [baskets, products.length, buildTierBundleItems, isAirConditioningProduct]);
 
   const addBundleToBasket = useCallback((basketId: string, bundle: PaletteBundle) => {
     // Build sub-items list for the collapsed bundle
