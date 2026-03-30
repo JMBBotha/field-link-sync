@@ -509,6 +509,16 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     const parsedBtu = isAC ? extractBtu(product) : null;
     const autoBundle = isAC ? findPipingKitForBtu(parsedBtu) : null;
 
+    toast({
+      title: `[DEBUG] isAC=${isAC}, parsedBtu=${parsedBtu ?? "null"}, bundlesCount=${bundles?.length ?? 0}`,
+    });
+
+    if (autoBundle) {
+      toast({ title: `[DEBUG] Found bundle: ${autoBundle.name || "Unknown bundle"}` });
+    } else {
+      toast({ title: "[DEBUG] No matching bundle found" });
+    }
+
     if (autoBundle) {
       autoBundle.items.forEach((item) => {
         if (item.product?.id) trackUsage(item.product.id);
@@ -557,7 +567,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     );
 
     scrollToCanvas();
-  }, [trackUsage, scrollToCanvas, isAirConditioningProduct, findPipingKitForBtu, buildBundleBasketItem]);
+  }, [trackUsage, scrollToCanvas, isAirConditioningProduct, findPipingKitForBtu, buildBundleBasketItem, bundles]);
 
   const addBundleToBasket = useCallback((basketId: string, bundle: PaletteBundle) => {
     bundle.items.forEach((item) => {
