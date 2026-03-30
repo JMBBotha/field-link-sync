@@ -110,6 +110,9 @@ export interface BasketItem {
   isBundle?: boolean;
   bundleId?: string;
   bundleName?: string;
+  /** Marker for auto-added 3-tier bundle rows */
+  tier_bundle?: boolean;
+  tier_name?: "T1" | "T2" | "T3";
   bundleItems?: Array<{
     product: PaletteProduct;
     quantity: number;
