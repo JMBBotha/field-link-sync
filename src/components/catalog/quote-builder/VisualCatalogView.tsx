@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { computeProductPricing } from "@/lib/pricing";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -304,7 +305,7 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
                               const product = region.product as PaletteProduct | null;
                               if (!product) return null;
                               const inQuoteQty = basketProductCounts[product.id] || 0;
-                              const price = product.selling_price || product.cost_incl_vat || 0;
+                              const price = computeProductPricing(product).sellExVat;
 
                               return (
                                 <div

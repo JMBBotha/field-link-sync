@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Snowflake, Info } from "lucide-react";
 import type { PaletteProduct } from "../QuoteBuilderTab";
 import { getProductDisplayName } from "./productDisplayUtils";
+import { computeProductPricing } from "@/lib/pricing";
 
 interface ACOptionsModalProps {
   open: boolean;
@@ -65,7 +66,7 @@ function ModelList({ products, selectedProductId, onSelect }: {
   return (
     <div ref={containerRef} className="max-h-48 overflow-y-auto space-y-1 border rounded-md p-1.5">
       {products.map((p) => {
-        const price = p.selling_price || p.cost_incl_vat || 0;
+        const price = computeProductPricing(p).sellExVat;
         const isSelected = selectedProductId === p.id;
         return (
           <button
@@ -269,7 +270,7 @@ const ACOptionsModal = ({ open, onClose, products, initialProduct, onConfirm, in
               <div className="flex gap-2 mt-1">
                 <Badge variant="outline" className="text-[10px]">{selectedProduct.supplier_name}</Badge>
                 <Badge variant="outline" className="text-[10px]">
-                  R{(selectedProduct.selling_price || selectedProduct.cost_incl_vat || 0).toLocaleString("en-ZA")}
+                  R{computeProductPricing(selectedProduct).sellExVat.toLocaleString("en-ZA")}
                 </Badge>
               </div>
             </div>

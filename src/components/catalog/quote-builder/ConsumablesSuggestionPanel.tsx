@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Plus, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { PaletteProduct, BasketItem } from "../QuoteBuilderTab";
+import { computeProductPricing } from "@/lib/pricing";
 
 interface ConsumablesSuggestionPanelProps {
   basketItems: BasketItem[];
@@ -60,7 +61,7 @@ const ConsumablesSuggestionPanel = ({ basketItems, allProducts, onAddProduct }: 
       </p>
       <div className="flex flex-wrap gap-1">
         {suggestedProducts.map(({ product, label }) => {
-          const price = product.selling_price || product.cost_incl_vat || 0;
+          const price = computeProductPricing(product).sellExVat;
           return (
             <Button
               key={product.id}

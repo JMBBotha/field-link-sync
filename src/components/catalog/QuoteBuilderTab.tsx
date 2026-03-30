@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { inclVatFromExcl } from "@/utils/pricing";
+import { computePricing, resolveSupplierCode } from "@/lib/pricing";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { Search, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -67,25 +68,31 @@ export interface PaletteProduct {
   markup_percent: number | null;
 }
 
-/** Returns the effective per-unit prices for a product, accounting for pack_qty and length.
- *  cost_price = discounted buy price (discount already baked in)
- *  selling_price = cost_price × (1 + markup) — already baked in
- *  Do NOT re-apply discount or markup here.
+/** Returns the effective per-unit prices for a product, using computePricing
+ *  to ensure supplier discounts (e.g. Samsung 20%) are always applied.
  */
 export function getEffectiveUnitPrices(product: PaletteProduct, isLengthOverride?: boolean) {
   const isLength = isLengthOverride ?? (product.sold_in_length && !!product.price_per_metre);
   const pq = product.pack_qty && product.pack_qty > 1 && !isLength ? product.pack_qty : 1;
 
+  const listPrice = product.cost_excl_vat || 0;
+  const markupPct = product.default_markup_percent ?? product.markup_percent ?? 35;
+  const supplierCode = resolveSupplierCode(product.supplier_name);
+
+  // computePricing handles discount + markup; cost_price may already be discounted
+  const pricing = computePricing(supplierCode, listPrice, markupPct, product.cost_price || null);
+
   let unitSell: number;
   let unitCost: number;
 
   if (isLength) {
-    unitSell = product.price_per_metre || (product.selling_price || 0) / (product.unit_length || 1);
-    const totalCost = product.cost_price || product.cost_excl_vat || 0;
-    unitCost = totalCost / (product.unit_length || 1);
+    // For length items, derive per-metre from total
+    const totalLength = product.unit_length || 1;
+    unitCost = pricing.costExVat / totalLength;
+    unitSell = pricing.sellExVat / totalLength;
   } else {
-    unitSell = (product.selling_price || 0) / pq;
-    unitCost = (product.cost_price || product.cost_excl_vat || 0) / pq;
+    unitSell = pricing.sellExVat / pq;
+    unitCost = pricing.costExVat / pq;
   }
 
   return { unitCost, unitSell, isPackItem: pq > 1, packQty: pq };
