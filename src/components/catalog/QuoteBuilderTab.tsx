@@ -244,7 +244,6 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
   const [wizardTriggerItem, setWizardTriggerItem] = useState<WizardTriggerItem | null>(null);
   const queryClient = useQueryClient();
   const { usageMap, trackUsage } = useProductUsageStats();
-  const bundleProducts = useBundleProducts();
   const canvasRef = useRef<HTMLDivElement>(null);
   const addBundleToBasketRef = useRef<((basketId: string, bundle: any) => void) | null>(null);
   const isMobile = useIsMobile();
