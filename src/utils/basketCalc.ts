@@ -10,7 +10,8 @@ export function calculateBasketSubtotal(items: BasketItem[]): number {
         : i.bundleUnitPrice * i.quantity);
     }
     if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
-      return s + i.product.price_per_metre * i.length;
+      const { unitSell } = getEffectiveUnitPrices(i.product, true);
+      return s + unitSell * i.length;
     }
     const { unitSell } = getEffectiveUnitPrices(i.product);
     return s + unitSell * i.quantity;
