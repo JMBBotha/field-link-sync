@@ -181,11 +181,11 @@ const AdminSidebar = ({
       </div>
 
       {/* Navigation groups */}
-      <nav className="flex-1 overflow-y-auto px-2 py-2 space-y-4">
+      <nav className="flex-1 overflow-y-auto px-2 py-1.5 space-y-2.5">
         {navGroups.map((group) => (
           <div key={group.title}>
             {!collapsed && (
-              <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-white/60">
+              <p className="px-3 mb-0.5 text-[9px] font-semibold uppercase tracking-widest text-white/60">
                 {group.title}
               </p>
             )}
@@ -198,6 +198,7 @@ const AdminSidebar = ({
                     onClick={() => handleNav(item.path)}
                     className={cn(
                       "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors relative",
+                      !collapsed && "gap-2.5 px-3 py-1.5 text-[13px]",
                       active
                         ? "bg-white/20 text-white border-l-[3px] border-white pl-[calc(0.75rem-3px)]"
                         : "text-white/80 hover:text-white hover:bg-white/10",
