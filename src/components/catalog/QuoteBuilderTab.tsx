@@ -596,62 +596,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     );
     scrollToCanvas();
   }, [trackUsage, scrollToCanvas]);
-  // Keep ref in sync for deferred auto-bundle calls
-
-  // ── Add a virtual tier bundle built from the product catalog ──
-  const addTierBundleToBasket = useCallback((basketId: string, capacityLabel: string, tier: BundleTier) => {
-    const subItems: BasketItem["bundleItems"] = [];
-    for (const line of tier.lines) {
-      const prod = products.find((p) => p.product_code === line.productCode);
-      if (!prod) continue;
-      const isLength = prod.sold_in_length && !!prod.price_per_metre && !!line.lengthMetres;
-      trackUsage(prod.id);
-      subItems.push({
-        product: prod,
-        quantity: line.quantity,
-        isLengthItem: isLength,
-        ...(isLength ? { length: line.lengthMetres } : {}),
-      });
-    }
-    if (subItems.length === 0) return;
-
-    const { pricingType, unitPrice, unitCost } = computeBundlePricing(subItems as any);
-    const firstProduct = subItems[0].product;
-    const tierId = `tier-${capacityLabel}-${tier.tier}`;
-    const tierName = `${capacityLabel} T${tier.tier}: ${tier.label}`;
-
-    const bundleItem: BasketItem = {
-      instanceId: `${tierId}-${Date.now()}`,
-      product: {
-        ...firstProduct,
-        short_name: tierName,
-        description: `${tierName} (${subItems.length} items)`,
-        product_code: `TIER-${capacityLabel}-${tier.tier}`,
-        product_category: "Consumables",
-        selling_price: unitPrice,
-        cost_excl_vat: unitCost,
-        cost_incl_vat: inclVatFromExcl(unitCost),
-        sold_in_length: pricingType === "p/meter",
-        price_per_metre: pricingType === "p/meter" ? unitPrice : null,
-      },
-      quantity: 1,
-      ...(pricingType === "p/meter" ? { length: 1 } : {}),
-      isBundle: true,
-      bundleId: tierId,
-      bundleName: tierName,
-      bundleItems: subItems,
-      bundlePricingType: pricingType,
-      bundleUnitPrice: unitPrice,
-      bundleUnitCost: unitCost,
-    };
-
-    setBaskets((prev) =>
-      prev.map((basket) => {
-        if (basket.id !== basketId) return basket;
-        return { ...basket, items: [...basket.items, bundleItem] };
-      })
-    );
-  }, [products, trackUsage]);
+  // Keep ref in sync
 
   addBundleToBasketRef.current = addBundleToBasket;
 
