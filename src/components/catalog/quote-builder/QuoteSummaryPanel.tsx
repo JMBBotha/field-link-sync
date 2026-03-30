@@ -33,9 +33,8 @@ const QuoteSummaryPanel = ({ baskets, onGenerateQuote, quoteId }: QuoteSummaryPa
           grandTotal += sell;
           totalCost += cost;
         } else if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
-          const sell = i.product.price_per_metre * i.length;
-          const { unitCost } = getEffectiveUnitPrices(i.product, true);
-          grandTotal += sell;
+          const { unitSell, unitCost } = getEffectiveUnitPrices(i.product, true);
+          grandTotal += unitSell * i.length;
           totalCost += unitCost * i.length;
         } else {
           // selling_price already has discount+markup baked in — just multiply by qty
