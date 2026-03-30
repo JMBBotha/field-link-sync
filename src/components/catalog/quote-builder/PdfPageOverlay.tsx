@@ -120,12 +120,13 @@ const RegionBox = memo(({
     const alreadySelectedInPdf = !!pdfSelection?.selectedFromPdf.some((item) => item.code === code);
 
     if (pdfSelection) {
-      const displayPrice = product.selling_price || product.cost_incl_vat || region.detected_price || 0;
+      const computed = computeProductPricing(product);
+      const displayPrice = computed.sellExVat || region.detected_price || 0;
       pdfSelection.handleSelectProduct({
         code,
         description: product.short_name || product.description || region.label || code,
         price: String(displayPrice),
-        costPrice: product.cost_excl_vat || product.cost_price || undefined,
+        costPrice: computed.costExVat || undefined,
         markupPercent: product.default_markup_percent ?? product.markup_percent ?? undefined,
       });
     }
