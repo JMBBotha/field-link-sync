@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Snowflake, Info } from "lucide-react";
 import type { PaletteProduct } from "../QuoteBuilderTab";
 import { getProductDisplayName } from "./productDisplayUtils";
+import { computeProductPricing } from "@/lib/pricing";
 
 interface ACOptionsModalProps {
   open: boolean;
