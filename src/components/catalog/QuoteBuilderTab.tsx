@@ -473,7 +473,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     }
 
     scrollToCanvas();
-  }, [trackUsage, scrollToCanvas, bundles, baskets]);
+  }, [trackUsage, scrollToCanvas, products, baskets]);
 
   const addBundleToBasket = useCallback((basketId: string, bundle: PaletteBundle) => {
     // Build sub-items list for the collapsed bundle
