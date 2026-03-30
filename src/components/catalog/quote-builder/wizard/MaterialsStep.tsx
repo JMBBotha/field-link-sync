@@ -164,7 +164,7 @@ function materialsFromBundle(bundle: Bundle): AreaMaterial[] {
         defaultLength: 1,
         adjustedLength: 1,
         costPerMeter: 0,
-        totalCost: product.selling_price || product.cost_incl_vat || 0,
+        totalCost: computeProductPricing(product).sellExVat,
         pricingMode: "unit",
         unitQuantity: item.quantity,
       });
@@ -230,7 +230,7 @@ const PickerRow = memo(function PickerRow({ product, onSelect }: { product: Pale
           {product.product_code}
           {product.sold_in_length && typeof product.price_per_metre === "number" && product.price_per_metre > 0
             ? ` · R${product.price_per_metre.toFixed(2)}/m`
-            : ` · R${(product.selling_price || product.cost_incl_vat || 0).toFixed(2)}`}
+            : ` · R${(computeProductPricing(product).sellExVat).toFixed(2)}`}
         </div>
       </div>
     </button>
@@ -677,7 +677,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
             defaultLength: isLengthItem ? len : 1,
             adjustedLength: isLengthItem ? len : 1,
             costPerMeter: isLengthItem ? ppm! : 0,
-            totalCost: isLengthItem ? len * ppm! : (safeProduct.selling_price || safeProduct.cost_incl_vat || 0),
+            totalCost: isLengthItem ? len * ppm! : (computeProductPricing(safeProduct).sellExVat),
             pricingMode: isLengthItem ? "length" as const : "unit" as const,
             unitQuantity: 1,
           }],
@@ -755,12 +755,12 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
     for (const area of areas) {
       const matTotal = area.materials.reduce((s, m) => {
         if (m.pricingMode === "unit") {
-          return s + (m.product.selling_price || m.product.cost_incl_vat || 0) * m.unitQuantity;
+          return s + (computeProductPricing(m.product).sellExVat) * m.unitQuantity;
         }
         return s + m.totalCost;
       }, 0);
       const bracketTotal = area.brackets.reduce((s, b) => s + b.price * b.quantity, 0);
-      const consTotal = (area.consumables ?? []).reduce((s, c) => s + (c.product.selling_price || c.product.cost_incl_vat || 0) * c.quantity, 0);
+      const consTotal = (area.consumables ?? []).reduce((s, c) => s + (computeProductPricing(c.product).sellExVat) * c.quantity, 0);
       map[area.id] = { matTotal, bracketTotal, consTotal, sectionTotal: matTotal + bracketTotal + consTotal };
     }
     return map;
@@ -824,7 +824,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                       {area.materials.map((mat) => {
                         const isLength = mat.pricingMode === "length";
                         const canToggle = determinePricingMode(mat.product) === "per-meter" && typeof mat.product.price_per_metre === "number" && mat.product.price_per_metre > 0;
-                        const unitPrice = mat.product.selling_price || mat.product.cost_incl_vat || 0;
+                        const unitPrice = computeProductPricing(mat.product).sellExVat;
                         const lineTotal = isLength ? mat.totalCost : unitPrice * mat.unitQuantity;
 
                         return (
@@ -1042,7 +1042,7 @@ export default function MaterialsStep({ areas, onAreasChange, bundles, products 
                                   )}
                                 </div>
                                 <span className="font-medium w-20 text-right shrink-0">
-                                  R {((cons.product.selling_price || cons.product.cost_incl_vat || 0) * cons.quantity).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+                                  R {((computeProductPricing(cons.product).sellExVat) * cons.quantity).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
                                 </span>
                                 <button
                                   className="h-5 w-5 rounded flex items-center justify-center hover:bg-destructive/20 shrink-0"
