@@ -340,7 +340,7 @@ function DraggableProductCard({
                         </span>
                         {price > 0 && (
                           <span className="text-[9px] text-muted-foreground">
-                            R{(price * 1.15).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} incl
+                            R{computed.sellInclVat.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} incl
                           </span>
                         )}
                       </div>
