@@ -49,7 +49,7 @@ const buildFallbackProduct = (region: OverlayRegion): PaletteProduct => ({
   cost_incl_vat: region.detected_price ?? 0,
   cost_price: region.detected_price ?? 0,
   selling_price: region.detected_price ?? 0,
-  default_markup_percent: 0,
+  default_markup_percent: 0.35,
   description: region.label || region.product_code || "PDF Item",
   is_pinned: false,
   pin_order: null,
@@ -62,7 +62,7 @@ const buildFallbackProduct = (region: OverlayRegion): PaletteProduct => ({
   is_material_favorite: false,
   pack_qty: null,
   supplier_discount_percent: null,
-  markup_percent: null,
+  markup_percent: 0.35,
 });
 
 const RegionBox = memo(({

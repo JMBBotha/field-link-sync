@@ -212,8 +212,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         cost_excl_vat: p.cost_excl_vat ?? p.cost_price ?? 0,
         cost_incl_vat: 0,
         supplier_discount_percent: null,
-        markup_percent: p.default_markup_percent ?? 20,
-        default_markup_percent: p.default_markup_percent ?? 20,
+        markup_percent: p.default_markup_percent ?? 35,
+        default_markup_percent: p.default_markup_percent ?? 35,
       })) as PaletteProduct[];
     },
     staleTime: 60000

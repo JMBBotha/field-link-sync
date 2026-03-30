@@ -6,7 +6,7 @@ import { computePricing, resolveSupplierCode } from "@/lib/pricing";
 
 const DragOverlayCard = ({ product }: { product: PaletteProduct }) => {
   const listPrice = product.cost_excl_vat || 0;
-  const markupPct = product.default_markup_percent ?? product.markup_percent ?? 20;
+  const markupPct = product.default_markup_percent ?? product.markup_percent ?? 35;
   const computed = computePricing(resolveSupplierCode(product.supplier_name), listPrice, markupPct, product.cost_price || null);
   const price = computed.sellExVat;
   const catBg = getCategoryBg(product.product_category);
