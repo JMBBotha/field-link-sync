@@ -524,6 +524,8 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     );
     scrollToCanvas();
   }, [trackUsage, scrollToCanvas]);
+  // Keep ref in sync for deferred auto-bundle calls
+  addBundleToBasketRef.current = addBundleToBasket;
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const product = (event.active.data.current as any)?.product as PaletteProduct | undefined;
