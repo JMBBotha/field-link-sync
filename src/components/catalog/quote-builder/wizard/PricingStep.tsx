@@ -50,13 +50,13 @@ function AreaSubItems({ area }: { area: QuoteArea }) {
 
   for (const mat of area.materials) {
     const isLen = mat.pricingMode === "length";
-    const unitPrice = isLen ? mat.costPerMeter : (mat.product.selling_price || mat.product.cost_incl_vat || 0);
+    const unitPrice = isLen ? mat.costPerMeter : (computeProductPricing(mat.product).sellExVat);
     const qty = isLen ? mat.adjustedLength : mat.unitQuantity;
     const lineTotal = isLen ? mat.totalCost : unitPrice * mat.unitQuantity;
     items.push({ name: mat.product.short_name || mat.product.product_code, qty, unitPrice, lineTotal, mode: isLen ? "/m" : "ea" });
   }
   for (const cons of (area.consumables ?? [])) {
-    const price = cons.product.selling_price || cons.product.cost_incl_vat || 0;
+    const price = computeProductPricing(cons.product).sellExVat;
     items.push({ name: cons.product.short_name || cons.product.product_code, qty: cons.quantity, unitPrice: price, lineTotal: price * cons.quantity, mode: "ea" });
   }
   for (const br of area.brackets) {
@@ -335,13 +335,13 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
         const subItems: QuotePDFSubItem[] = [];
         for (const mat of li.area.materials) {
           const isLen = mat.pricingMode === "length";
-          const unitPrice = isLen ? mat.costPerMeter : (mat.product.selling_price || mat.product.cost_incl_vat || 0);
+          const unitPrice = isLen ? mat.costPerMeter : (computeProductPricing(mat.product).sellExVat);
           const qty = isLen ? mat.adjustedLength : mat.unitQuantity;
           const lineTotal = isLen ? mat.totalCost : unitPrice * mat.unitQuantity;
           subItems.push({ name: mat.product.short_name || mat.product.product_code, quantity: qty, unitPrice, lineTotal, pricingMode: isLen ? "per-meter" : "per-unit" });
         }
         for (const cons of (li.area.consumables ?? [])) {
-          const price = cons.product.selling_price || cons.product.cost_incl_vat || 0;
+          const price = computeProductPricing(cons.product).sellExVat;
           subItems.push({ name: cons.product.short_name || cons.product.product_code, quantity: cons.quantity, unitPrice: price, lineTotal: price * cons.quantity, pricingMode: "per-unit" });
         }
         for (const br of li.area.brackets) {
