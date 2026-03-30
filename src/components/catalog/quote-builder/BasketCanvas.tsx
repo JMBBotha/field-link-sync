@@ -12,6 +12,7 @@ import { calculateBasketSubtotal } from "@/utils/basketCalc";
 interface BasketCanvasProps {
   baskets: Basket[];
   allProducts: PaletteProduct[];
+  dbBundles?: Array<{ id: string; name: string; min_btu?: number | null; max_btu?: number | null; items: any[] }>;
   onAddBasket: () => void;
   onRenameBasket: (id: string, name: string) => void;
   onRemoveBasket: (id: string) => void;
@@ -19,6 +20,7 @@ interface BasketCanvasProps {
   onUpdateQuantity: (basketId: string, instanceId: string, qty: number) => void;
   onUpdateLength: (basketId: string, instanceId: string, length: number) => void;
   onAddProductToBasket: (basketId: string, product: PaletteProduct) => void;
+  onAddBundleToBasket?: (basketId: string, bundle: any) => void;
   onDuplicateBasket: (id: string) => void;
   onApplyTemplate: (zones: string[]) => void;
   onClearAll: () => void;
@@ -34,6 +36,7 @@ interface BasketCanvasProps {
 function DroppableBasket({
   basket,
   allProducts,
+  dbBundles,
   onRename,
   onRemove,
   onDuplicate,
@@ -41,11 +44,13 @@ function DroppableBasket({
   onUpdateQuantity,
   onUpdateLength,
   onAddProduct,
+  onAddBundle,
   isDragActive,
   isCompact,
 }: {
   basket: Basket;
   allProducts: PaletteProduct[];
+  dbBundles?: Array<{ id: string; name: string; min_btu?: number | null; max_btu?: number | null; items: any[] }>;
   onRename: (name: string) => void;
   onRemove: () => void;
   onDuplicate: () => void;
@@ -53,6 +58,7 @@ function DroppableBasket({
   onUpdateQuantity: (instanceId: string, qty: number) => void;
   onUpdateLength: (instanceId: string, length: number) => void;
   onAddProduct: (product: PaletteProduct) => void;
+  onAddBundle?: (bundle: any) => void;
   isDragActive?: boolean;
   isCompact?: boolean;
 }) {
