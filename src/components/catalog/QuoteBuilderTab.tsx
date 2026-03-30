@@ -433,22 +433,41 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         };
       }
       const isLengthItem = product.sold_in_length && !!product.price_per_metre;
-      return {
-        ...basket,
-        items: [
+      const newItems: BasketItem[] = [
         ...basket.items,
         {
           instanceId: `${product.id}-${Date.now()}`,
           product,
           quantity: 1,
           ...(isLengthItem ? { length: product.unit_length || 1 } : {})
-        }]
-
-      };
+        }
+      ];
+      return { ...basket, items: newItems };
     })
     );
+
+    // Auto-add matching bundle when an AC unit is dropped
+    if (product.product_category === "Air Conditioning") {
+      const btu = extractBtu(product);
+      if (btu && bundles.length > 0) {
+        const match = findMatchingBundle(btu, bundles);
+        if (match) {
+          // Check if bundle already in this basket
+          const currentBasket = baskets.find((b) => b.id === basketId);
+          const alreadyHasBundle = currentBasket?.items.some((i) => i.isBundle && i.bundleId === match.id);
+          if (!alreadyHasBundle) {
+            // Defer to avoid state collision with the setBaskets above
+            setTimeout(() => {
+              addBundleToBasket(basketId, match as any);
+              toast({ title: `Auto-added "${match.name}" piping kit for ${(btu / 1000).toFixed(0)}K unit` });
+            }, 50);
+          }
+        }
+      }
+    }
+
     scrollToCanvas();
-  }, [trackUsage, scrollToCanvas]);
+  }, [trackUsage, scrollToCanvas, bundles, baskets, addBundleToBasket]);
 
   const addBundleToBasket = useCallback((basketId: string, bundle: PaletteBundle) => {
     // Build sub-items list for the collapsed bundle
