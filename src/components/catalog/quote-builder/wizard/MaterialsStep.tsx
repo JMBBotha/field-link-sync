@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef, memo, useTransition } from "react";
+import { computeProductPricing } from "@/lib/pricing";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
