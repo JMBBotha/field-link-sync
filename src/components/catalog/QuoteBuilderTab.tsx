@@ -751,7 +751,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
 
     const product = (active.data.current as any)?.product as PaletteProduct | undefined;
     if (!product) return;
-    addProductToBasket(targetBasket.id, product);
+    addProductToBasket(targetBasket.id, product, "drag-drop");
     const displayName = product.short_name || product.product_code;
     toast({ title: `Added ${displayName} to ${targetBasket.name}` });
   }, [baskets, addProductToBasket, addBundleToBasket, areaDropProductToArea, areaDropBundleToArea]);
