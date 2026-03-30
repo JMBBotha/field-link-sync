@@ -270,7 +270,7 @@ const ACOptionsModal = ({ open, onClose, products, initialProduct, onConfirm, in
               <div className="flex gap-2 mt-1">
                 <Badge variant="outline" className="text-[10px]">{selectedProduct.supplier_name}</Badge>
                 <Badge variant="outline" className="text-[10px]">
-                  R{(selectedProduct.selling_price || selectedProduct.cost_incl_vat || 0).toLocaleString("en-ZA")}
+                  R{computeProductPricing(selectedProduct).sellExVat.toLocaleString("en-ZA")}
                 </Badge>
               </div>
             </div>

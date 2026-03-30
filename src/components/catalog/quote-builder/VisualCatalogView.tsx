@@ -305,7 +305,7 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
                               const product = region.product as PaletteProduct | null;
                               if (!product) return null;
                               const inQuoteQty = basketProductCounts[product.id] || 0;
-                              const price = product.selling_price || product.cost_incl_vat || 0;
+                              const price = computeProductPricing(product).sellExVat;
 
                               return (
                                 <div
