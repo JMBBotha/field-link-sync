@@ -276,6 +276,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         is_material_favorite: p.is_material_favorite || false,
         pack_qty: p.pack_qty || null,
         btu_rating: p.btu_rating || null,
+        supplier_discount_percent: null,
         markup_percent: p.default_markup_percent ?? 20,
         default_markup_percent: p.default_markup_percent ?? 20,
         cost_price: p.cost_price ?? p.cost_excl_vat ?? 0,
