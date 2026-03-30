@@ -412,15 +412,47 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     useSensor(KeyboardSensor)
   );
 
+  const productByCode = useMemo(() => {
+    const map = new Map<string, PaletteProduct>();
+    for (const p of products) {
+      const code = (p.product_code || "").trim().toUpperCase();
+      if (code && !map.has(code)) map.set(code, p);
+    }
+    return map;
+  }, [products]);
+
+  const isAirConditioningProduct = useCallback((product: PaletteProduct) => {
+    const blob = [product.product_category, product.category, product.short_name, product.description]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return blob.includes("air conditioning") || blob.includes("aircon");
+  }, []);
+
   /** Build tier bundle basket items inline (no setTimeout, no stale closure) */
   const buildTierBundleItems = useCallback((capacityLabel: string, tier: BundleTier): BasketItem | null => {
+    console.log("[AutoBundle] buildTierBundleItems:start", {
+      capacityLabel,
+      tier: tier.tier,
+      tierLabel: tier.label,
+      lines: tier.lines.length,
+      productsLoaded: products.length,
+    });
+
     const subItems: BasketItem["bundleItems"] = [];
     for (const line of tier.lines) {
-      const prod = products.find((p) => p.product_code === line.productCode);
+      const code = (line.productCode || "").trim().toUpperCase();
+      const prod = productByCode.get(code);
+
       if (!prod) {
-        console.warn(`[TierBundle] product_code "${line.productCode}" not found in catalog`);
+        console.warn("[AutoBundle] buildTierBundleItems:missingProduct", {
+          capacityLabel,
+          tier: tier.tier,
+          code,
+        });
         continue;
       }
+
       const isLength = prod.sold_in_length && !!prod.price_per_metre && !!line.lengthMetres;
       trackUsage(prod.id);
       subItems.push({
@@ -429,13 +461,36 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         isLengthItem: isLength,
         ...(isLength ? { length: line.lengthMetres } : {}),
       });
+
+      console.log("[AutoBundle] buildTierBundleItems:lineMatched", {
+        capacityLabel,
+        tier: tier.tier,
+        code,
+        productId: prod.id,
+        isLength,
+      });
     }
-    if (subItems.length === 0) return null;
+
+    if (subItems.length === 0) {
+      console.warn("[AutoBundle] buildTierBundleItems:emptyTier", {
+        capacityLabel,
+        tier: tier.tier,
+      });
+      return null;
+    }
 
     const { pricingType, unitPrice, unitCost } = computeBundlePricing(subItems as any);
     const firstProduct = subItems[0].product;
     const tierId = `tier-${capacityLabel}-${tier.tier}`;
     const tierName = `${capacityLabel} T${tier.tier}: ${tier.label}`;
+
+    console.log("[AutoBundle] buildTierBundleItems:done", {
+      capacityLabel,
+      tier: tier.tier,
+      matchedLines: subItems.length,
+      pricingType,
+      unitPrice,
+    });
 
     return {
       instanceId: `${tierId}-${Date.now()}-${tier.tier}`,
@@ -461,26 +516,42 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
       bundleUnitPrice: unitPrice,
       bundleUnitCost: unitCost,
     };
-  }, [products, trackUsage]);
+  }, [products.length, productByCode, trackUsage]);
 
-  const addProductToBasket = useCallback((basketId: string, product: PaletteProduct) => {
+  const addProductToBasket = useCallback((basketId: string, product: PaletteProduct, source: string = "unknown") => {
     // Track usage
     trackUsage(product.id);
 
+    const parsedBtu = extractBtu(product);
+    console.log("[AutoBundle] Product added:", product.short_name || product.product_code, "category:", product.category, "product_category:", product.product_category, "btu_rating:", product.btu_rating, "parsed BTU:", parsedBtu, "source:", source);
+
     // Pre-compute tier bundles if this is an AC unit
     let tierBundleItems: BasketItem[] = [];
-    if (product.product_category === "Air Conditioning") {
-      const btu = extractBtu(product);
-      console.log("[AutoBundle] AC dropped:", product.short_name, "btu=", btu);
-      if (btu && products.length > 0) {
-        const tierConfig = findTierConfigForBtu(btu);
-        console.log("[AutoBundle] tierConfig=", tierConfig?.capacityLabel ?? "none");
+    let tierCapacityLabel = "";
+
+    const isAC = isAirConditioningProduct(product);
+    console.log("[AutoBundle] AC detection:", isAC);
+
+    if (isAC) {
+      if (parsedBtu && products.length > 0) {
+        const tierConfig = findTierConfigForBtu(parsedBtu);
+        console.log("[AutoBundle] tierConfig:", tierConfig?.capacityLabel ?? "none", "productsLoaded:", products.length);
+
         if (tierConfig) {
+          tierCapacityLabel = tierConfig.capacityLabel;
           for (const tier of tierConfig.tiers) {
             const item = buildTierBundleItems(tierConfig.capacityLabel, tier);
             if (item) tierBundleItems.push(item);
           }
+          console.log("[AutoBundle] tier bundles built:", tierBundleItems.length);
+        } else {
+          console.warn("[AutoBundle] no tier config matched BTU", parsedBtu);
         }
+      } else {
+        console.warn("[AutoBundle] missing BTU or products not loaded", {
+          parsedBtu,
+          productsLoaded: products.length,
+        });
       }
     }
 
@@ -491,6 +562,10 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         // Handle existing product (increment qty/length)
         const existing = basket.items.find((i) => i.product.id === product.id);
         if (existing) {
+          console.log("[AutoBundle] existing product in basket, increment only", {
+            basketId,
+            productId: product.id,
+          });
           if (product.sold_in_length && product.price_per_metre) {
             return {
               ...basket,
@@ -518,27 +593,43 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
 
         // Check if tier bundles should be added (skip if capacity already has tiers)
         let extraItems: BasketItem[] = [];
-        if (tierBundleItems.length > 0) {
-          const tierPrefix = tierBundleItems[0].bundleId?.replace(/-\d$/, "-") || "";
+        if (tierBundleItems.length > 0 && tierCapacityLabel) {
+          const tierPrefix = `tier-${tierCapacityLabel}-`;
           const alreadyHasTiers = basket.items.some(
             (i) => i.isBundle && i.bundleId?.startsWith(tierPrefix)
           );
+
+          console.log("[AutoBundle] tier insert check", {
+            basketId,
+            tierPrefix,
+            alreadyHasTiers,
+            existingItems: basket.items.length,
+            newTierBundles: tierBundleItems.length,
+          });
+
           if (!alreadyHasTiers) {
             extraItems = tierBundleItems;
           }
         }
 
-        return { ...basket, items: [...basket.items, newItem, ...extraItems] };
+        const nextItems = [...basket.items, newItem, ...extraItems];
+        console.log("[AutoBundle] basket updated", {
+          basketId,
+          before: basket.items.length,
+          after: nextItems.length,
+          addedTierBundles: extraItems.length,
+        });
+
+        return { ...basket, items: nextItems };
       })
     );
 
     if (tierBundleItems.length > 0) {
-      const label = tierBundleItems[0].bundleId?.match(/tier-(\w+)-/)?.[1] || "";
-      toast({ title: `Auto-added ${label} installation bundles (${tierBundleItems.length} tiers)` });
+      toast({ title: `Auto-added ${tierCapacityLabel} installation bundles (${tierBundleItems.length} tiers)` });
     }
 
     scrollToCanvas();
-  }, [trackUsage, scrollToCanvas, products, buildTierBundleItems]);
+  }, [trackUsage, scrollToCanvas, products.length, buildTierBundleItems, isAirConditioningProduct]);
 
   const addBundleToBasket = useCallback((basketId: string, bundle: PaletteBundle) => {
     // Build sub-items list for the collapsed bundle
