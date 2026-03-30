@@ -4,7 +4,7 @@ import { Plus, Trash2, Pencil, Check, Package, ShoppingBag, Copy } from "lucide-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SharedBasketItemCard } from "@/components/shared/SharedBasketItems";
-import ConsumablesSuggestionPanel from "./ConsumablesSuggestionPanel";
+import ZoneBundleSection from "./ZoneBundleSection";
 import ZoneTemplateSelector from "./ZoneTemplateSelector";
 import type { Basket, PaletteProduct } from "../QuoteBuilderTab";
 import { calculateBasketSubtotal } from "@/utils/basketCalc";
