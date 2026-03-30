@@ -166,6 +166,7 @@ function DroppableBasket({
 const BasketCanvas = ({
   baskets,
   allProducts,
+  dbBundles,
   onAddBasket,
   onRenameBasket,
   onRemoveBasket,
@@ -173,6 +174,7 @@ const BasketCanvas = ({
   onUpdateQuantity,
   onUpdateLength,
   onAddProductToBasket,
+  onAddBundleToBasket,
   onDuplicateBasket,
   onApplyTemplate,
   onClearAll,
