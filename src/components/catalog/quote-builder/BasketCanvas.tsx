@@ -148,11 +148,12 @@ function DroppableBasket({
                 onUpdateLength={(len) => onUpdateLength(item.instanceId, len)}
               />
             ))}
-            {!isCompact && (
-              <ConsumablesSuggestionPanel
+            {!isCompact && dbBundles && (
+              <ZoneBundleSection
                 basketItems={basket.items}
-                allProducts={allProducts}
-                onAddProduct={onAddProduct}
+                dbBundles={dbBundles}
+                onRemoveBundle={(instanceId) => onRemoveItem(instanceId)}
+                onSwapBundle={(_instanceId, bundle) => onAddBundle?.(bundle)}
               />
             )}
           </>
