@@ -189,7 +189,7 @@ const AdminSidebar = ({
                 {group.title}
               </p>
             )}
-            <div className="space-y-0.5">
+            <div className="space-y-px">
               {group.items.map((item) => {
                 const active = isActive(item.path);
                 const btn = (
