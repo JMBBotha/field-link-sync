@@ -411,14 +411,20 @@ function DraggableProductCard({
                 </div>
                 <p className="font-mono font-medium text-primary/80">{product.product_code}</p>
                 {(() => {
-                  const cp = (product as any).discounted_cost ?? product.cost_price ?? product.cost_excl_vat ?? 0;
-                  const sp = product.selling_price ?? 0;
-                  const spInclVat = sp * 1.15;
-                  const bakedMarkup = cp > 0 ? ((sp / cp) - 1) * 100 : (product.default_markup_percent ?? product.markup_percent ?? 0);
+                  const cp = computed.costExVat;
+                  const sp = computed.sellExVat;
+                  const spInclVat = computed.sellInclVat;
+                  const bakedMarkup = computed.markupPercent;
                   return (
                     <>
+                      {computed.discountPercent > 0 && (
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>List Price (excl VAT)</span>
+                          <span className="line-through">R{listPrice.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between">
-                        <span>Cost (excl VAT)</span>
+                        <span>Cost (excl VAT){computed.discountPercent > 0 ? ` (-${computed.discountPercent}%)` : ""}</span>
                         <span className="font-medium">R{cp.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
                       <div className="flex justify-between">
