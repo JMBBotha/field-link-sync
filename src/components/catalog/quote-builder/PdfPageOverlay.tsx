@@ -1,4 +1,5 @@
 import { memo, useRef, useCallback } from "react";
+import { computeProductPricing } from "@/lib/pricing";
 import { Info, Circle, CheckCircle2, Star } from "lucide-react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
