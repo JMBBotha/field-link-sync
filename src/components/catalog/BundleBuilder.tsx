@@ -11,7 +11,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Search, X } from "lucide-react";
+import { FileImage } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import VisualPdfBundlePicker from "./VisualPdfBundlePicker";
 
 const BUNDLE_TYPES = [
   { value: "piping_kit", label: "Piping Kit", desc: "Copper + Lagging" },
@@ -53,6 +55,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
+  const [visualPickerOpen, setVisualPickerOpen] = useState(false);
 
   // Load existing bundle
   const { data: existingBundle } = useQuery({
@@ -284,9 +287,14 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
       <Card className="p-4">
         <div className="flex items-center justify-between mb-3">
           <Label className="text-sm font-medium">Bundle Items ({items.length})</Label>
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPickerOpen(true)}>
-            <Plus className="h-3.5 w-3.5" /> Add Item
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setVisualPickerOpen(true)}>
+              <FileImage className="h-3.5 w-3.5" /> Visual PDF
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPickerOpen(true)}>
+              <Plus className="h-3.5 w-3.5" /> Add Item
+            </Button>
+          </div>
         </div>
 
         {items.length === 0 ? (
@@ -440,6 +448,14 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Visual PDF Picker */}
+      <VisualPdfBundlePicker
+        open={visualPickerOpen}
+        onOpenChange={setVisualPickerOpen}
+        onAddProduct={addItem}
+        existingProductIds={new Set(items.map(i => i.supplier_product_id))}
+      />
     </div>
   );
 };
