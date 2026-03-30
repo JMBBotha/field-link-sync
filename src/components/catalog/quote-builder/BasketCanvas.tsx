@@ -233,6 +233,7 @@ const BasketCanvas = ({
                 key={basket.id}
                 basket={basket}
                 allProducts={allProducts}
+                dbBundles={dbBundles}
                 onRename={(name) => onRenameBasket(basket.id, name)}
                 onRemove={() => onRemoveBasket(basket.id)}
                 onDuplicate={() => onDuplicateBasket(basket.id)}
@@ -240,6 +241,7 @@ const BasketCanvas = ({
                 onUpdateQuantity={(instanceId, qty) => onUpdateQuantity(basket.id, instanceId, qty)}
                 onUpdateLength={(instanceId, len) => onUpdateLength(basket.id, instanceId, len)}
                 onAddProduct={(product) => onAddProductToBasket(basket.id, product)}
+                onAddBundle={onAddBundleToBasket ? (bundle) => onAddBundleToBasket(basket.id, bundle) : undefined}
                 isDragActive={isDragging}
                 isCompact={isCompact}
               />
