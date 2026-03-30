@@ -868,7 +868,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
   const handleACConfirm = useCallback((product: PaletteProduct) => {
     const targetBasket = baskets[0];
     if (targetBasket) {
-      addProductToBasket(targetBasket.id, product);
+      addProductToBasket(targetBasket.id, product, "ac-modal-confirm");
     }
   }, [baskets, addProductToBasket]);
 
