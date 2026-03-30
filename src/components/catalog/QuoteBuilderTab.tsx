@@ -273,7 +273,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         pipe_size: p.pipe_size || null,
         is_material_favorite: p.is_material_favorite || false,
         pack_qty: p.pack_qty || null,
-        supplier_discount_percent: null,
+        btu_rating: p.btu_rating || null,
         markup_percent: p.default_markup_percent ?? 20,
         default_markup_percent: p.default_markup_percent ?? 20,
         cost_price: p.cost_price ?? p.cost_excl_vat ?? 0,
