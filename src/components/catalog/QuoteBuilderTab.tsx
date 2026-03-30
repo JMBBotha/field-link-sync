@@ -433,7 +433,6 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     return blob.includes("air conditioning") || blob.includes("aircon");
   }, []);
 
-  /** Build tier bundle basket items inline (no setTimeout, no stale closure) */
   const buildTierBundleItems = useCallback((capacityLabel: string, tier: BundleTier): BasketItem | null => {
     console.log("[AutoBundle] buildTierBundleItems:start", {
       capacityLabel,
@@ -515,6 +514,8 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
       isBundle: true,
       bundleId: tierId,
       bundleName: tierName,
+      tier_bundle: true,
+      tier_name: (`T${tier.tier}` as "T1" | "T2" | "T3"),
       bundleItems: subItems,
       bundlePricingType: pricingType,
       bundleUnitPrice: unitPrice,
@@ -523,53 +524,17 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
   }, [products.length, productByCode, trackUsage]);
 
   const addProductToBasket = useCallback((basketId: string, product: PaletteProduct, source: string = "unknown") => {
-    // Track usage
     trackUsage(product.id);
 
     const parsedBtu = extractBtu(product);
     console.log("[AutoBundle] Product added:", product.short_name || product.product_code, "category:", product.category, "product_category:", product.product_category, "btu_rating:", product.btu_rating, "parsed BTU:", parsedBtu, "source:", source);
 
-    // Pre-compute tier bundles if this is an AC unit
-    let tierBundleItems: BasketItem[] = [];
-    let tierCapacityLabel = "";
-
-    const isAC = isAirConditioningProduct(product);
-    console.log("[AutoBundle] AC detection:", isAC);
-
-    if (isAC) {
-      if (parsedBtu && products.length > 0) {
-        const tierConfig = findTierConfigForBtu(parsedBtu);
-        console.log("[AutoBundle] tierConfig:", tierConfig?.capacityLabel ?? "none", "productsLoaded:", products.length);
-
-        if (tierConfig) {
-          tierCapacityLabel = tierConfig.capacityLabel;
-          for (const tier of tierConfig.tiers) {
-            const item = buildTierBundleItems(tierConfig.capacityLabel, tier);
-            if (item) tierBundleItems.push(item);
-          }
-          console.log("[AutoBundle] tier bundles built:", tierBundleItems.length);
-        } else {
-          console.warn("[AutoBundle] no tier config matched BTU", parsedBtu);
-        }
-      } else {
-        console.warn("[AutoBundle] missing BTU or products not loaded", {
-          parsedBtu,
-          productsLoaded: products.length,
-        });
-      }
-    }
-
     setBaskets((prev) =>
       prev.map((basket) => {
         if (basket.id !== basketId) return basket;
 
-        // Handle existing product (increment qty/length)
         const existing = basket.items.find((i) => i.product.id === product.id);
         if (existing) {
-          console.log("[AutoBundle] existing product in basket, increment only", {
-            basketId,
-            productId: product.id,
-          });
           if (product.sold_in_length && product.price_per_metre) {
             return {
               ...basket,
@@ -586,7 +551,6 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
           };
         }
 
-        // New product
         const isLengthItem = product.sold_in_length && !!product.price_per_metre;
         const newItem: BasketItem = {
           instanceId: `${product.id}-${Date.now()}`,
@@ -595,45 +559,12 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
           ...(isLengthItem ? { length: product.unit_length || 1 } : {}),
         };
 
-        // Check if tier bundles should be added (skip if capacity already has tiers)
-        let extraItems: BasketItem[] = [];
-        if (tierBundleItems.length > 0 && tierCapacityLabel) {
-          const tierPrefix = `tier-${tierCapacityLabel}-`;
-          const alreadyHasTiers = basket.items.some(
-            (i) => i.isBundle && i.bundleId?.startsWith(tierPrefix)
-          );
-
-          console.log("[AutoBundle] tier insert check", {
-            basketId,
-            tierPrefix,
-            alreadyHasTiers,
-            existingItems: basket.items.length,
-            newTierBundles: tierBundleItems.length,
-          });
-
-          if (!alreadyHasTiers) {
-            extraItems = tierBundleItems;
-          }
-        }
-
-        const nextItems = [...basket.items, newItem, ...extraItems];
-        console.log("[AutoBundle] basket updated", {
-          basketId,
-          before: basket.items.length,
-          after: nextItems.length,
-          addedTierBundles: extraItems.length,
-        });
-
-        return { ...basket, items: nextItems };
+        return { ...basket, items: [...basket.items, newItem] };
       })
     );
 
-    if (tierBundleItems.length > 0) {
-      toast({ title: `Auto-added ${tierCapacityLabel} installation bundles (${tierBundleItems.length} tiers)` });
-    }
-
     scrollToCanvas();
-  }, [trackUsage, scrollToCanvas, products.length, buildTierBundleItems, isAirConditioningProduct]);
+  }, [trackUsage, scrollToCanvas]);
 
   const addBundleToBasket = useCallback((basketId: string, bundle: PaletteBundle) => {
     // Build sub-items list for the collapsed bundle
