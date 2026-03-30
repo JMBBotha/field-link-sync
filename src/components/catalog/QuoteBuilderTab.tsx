@@ -412,68 +412,133 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     useSensor(KeyboardSensor)
   );
 
+  /** Build tier bundle basket items inline (no setTimeout, no stale closure) */
+  const buildTierBundleItems = useCallback((capacityLabel: string, tier: BundleTier): BasketItem | null => {
+    const subItems: BasketItem["bundleItems"] = [];
+    for (const line of tier.lines) {
+      const prod = products.find((p) => p.product_code === line.productCode);
+      if (!prod) {
+        console.warn(`[TierBundle] product_code "${line.productCode}" not found in catalog`);
+        continue;
+      }
+      const isLength = prod.sold_in_length && !!prod.price_per_metre && !!line.lengthMetres;
+      trackUsage(prod.id);
+      subItems.push({
+        product: prod,
+        quantity: line.quantity,
+        isLengthItem: isLength,
+        ...(isLength ? { length: line.lengthMetres } : {}),
+      });
+    }
+    if (subItems.length === 0) return null;
+
+    const { pricingType, unitPrice, unitCost } = computeBundlePricing(subItems as any);
+    const firstProduct = subItems[0].product;
+    const tierId = `tier-${capacityLabel}-${tier.tier}`;
+    const tierName = `${capacityLabel} T${tier.tier}: ${tier.label}`;
+
+    return {
+      instanceId: `${tierId}-${Date.now()}-${tier.tier}`,
+      product: {
+        ...firstProduct,
+        short_name: tierName,
+        description: `${tierName} (${subItems.length} items)`,
+        product_code: `TIER-${capacityLabel}-${tier.tier}`,
+        product_category: "Consumables",
+        selling_price: unitPrice,
+        cost_excl_vat: unitCost,
+        cost_incl_vat: inclVatFromExcl(unitCost),
+        sold_in_length: pricingType === "p/meter",
+        price_per_metre: pricingType === "p/meter" ? unitPrice : null,
+      },
+      quantity: 1,
+      ...(pricingType === "p/meter" ? { length: 1 } : {}),
+      isBundle: true,
+      bundleId: tierId,
+      bundleName: tierName,
+      bundleItems: subItems,
+      bundlePricingType: pricingType,
+      bundleUnitPrice: unitPrice,
+      bundleUnitCost: unitCost,
+    };
+  }, [products, trackUsage]);
+
   const addProductToBasket = useCallback((basketId: string, product: PaletteProduct) => {
     // Track usage
     trackUsage(product.id);
 
-    setBaskets((prev) =>
-    prev.map((basket) => {
-      if (basket.id !== basketId) return basket;
-      const existing = basket.items.find((i) => i.product.id === product.id);
-      if (existing) {
-        if (product.sold_in_length && product.price_per_metre) {
-          return {
-            ...basket,
-            items: basket.items.map((i) =>
-            i.product.id === product.id ? { ...i, length: (i.length || 1) + 1 } : i
-            )
-          };
-        }
-        return {
-          ...basket,
-          items: basket.items.map((i) =>
-          i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
-          )
-        };
-      }
-      const isLengthItem = product.sold_in_length && !!product.price_per_metre;
-      const newItems: BasketItem[] = [
-        ...basket.items,
-        {
-          instanceId: `${product.id}-${Date.now()}`,
-          product,
-          quantity: 1,
-          ...(isLengthItem ? { length: product.unit_length || 1 } : {})
-        }
-      ];
-      return { ...basket, items: newItems };
-    })
-    );
-
-    // Auto-add 3-tier installation bundles when an AC unit is dropped
+    // Pre-compute tier bundles if this is an AC unit
+    let tierBundleItems: BasketItem[] = [];
     if (product.product_category === "Air Conditioning") {
       const btu = extractBtu(product);
+      console.log("[AutoBundle] AC dropped:", product.short_name, "btu=", btu);
       if (btu && products.length > 0) {
         const tierConfig = findTierConfigForBtu(btu);
+        console.log("[AutoBundle] tierConfig=", tierConfig?.capacityLabel ?? "none");
         if (tierConfig) {
-          const currentBasket = baskets.find((b) => b.id === basketId);
-          // Check if any tier bundles already exist for this capacity
-          const tierPrefix = `tier-${tierConfig.capacityLabel}-`;
-          const alreadyHasTiers = currentBasket?.items.some((i) => i.isBundle && i.bundleId?.startsWith(tierPrefix));
-          if (!alreadyHasTiers) {
-            setTimeout(() => {
-              for (const tier of tierConfig.tiers) {
-                addTierBundleToBasket(basketId, tierConfig.capacityLabel, tier);
-              }
-              toast({ title: `Auto-added ${tierConfig.capacityLabel} installation bundles (3 tiers)` });
-            }, 50);
+          for (const tier of tierConfig.tiers) {
+            const item = buildTierBundleItems(tierConfig.capacityLabel, tier);
+            if (item) tierBundleItems.push(item);
           }
         }
       }
     }
 
+    setBaskets((prev) =>
+      prev.map((basket) => {
+        if (basket.id !== basketId) return basket;
+
+        // Handle existing product (increment qty/length)
+        const existing = basket.items.find((i) => i.product.id === product.id);
+        if (existing) {
+          if (product.sold_in_length && product.price_per_metre) {
+            return {
+              ...basket,
+              items: basket.items.map((i) =>
+                i.product.id === product.id ? { ...i, length: (i.length || 1) + 1 } : i
+              ),
+            };
+          }
+          return {
+            ...basket,
+            items: basket.items.map((i) =>
+              i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
+            ),
+          };
+        }
+
+        // New product
+        const isLengthItem = product.sold_in_length && !!product.price_per_metre;
+        const newItem: BasketItem = {
+          instanceId: `${product.id}-${Date.now()}`,
+          product,
+          quantity: 1,
+          ...(isLengthItem ? { length: product.unit_length || 1 } : {}),
+        };
+
+        // Check if tier bundles should be added (skip if capacity already has tiers)
+        let extraItems: BasketItem[] = [];
+        if (tierBundleItems.length > 0) {
+          const tierPrefix = tierBundleItems[0].bundleId?.replace(/-\d$/, "-") || "";
+          const alreadyHasTiers = basket.items.some(
+            (i) => i.isBundle && i.bundleId?.startsWith(tierPrefix)
+          );
+          if (!alreadyHasTiers) {
+            extraItems = tierBundleItems;
+          }
+        }
+
+        return { ...basket, items: [...basket.items, newItem, ...extraItems] };
+      })
+    );
+
+    if (tierBundleItems.length > 0) {
+      const label = tierBundleItems[0].bundleId?.match(/tier-(\w+)-/)?.[1] || "";
+      toast({ title: `Auto-added ${label} installation bundles (${tierBundleItems.length} tiers)` });
+    }
+
     scrollToCanvas();
-  }, [trackUsage, scrollToCanvas, products, baskets]);
+  }, [trackUsage, scrollToCanvas, products, buildTierBundleItems]);
 
   const addBundleToBasket = useCallback((basketId: string, bundle: PaletteBundle) => {
     // Build sub-items list for the collapsed bundle
@@ -531,62 +596,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     );
     scrollToCanvas();
   }, [trackUsage, scrollToCanvas]);
-  // Keep ref in sync for deferred auto-bundle calls
-
-  // ── Add a virtual tier bundle built from the product catalog ──
-  const addTierBundleToBasket = useCallback((basketId: string, capacityLabel: string, tier: BundleTier) => {
-    const subItems: BasketItem["bundleItems"] = [];
-    for (const line of tier.lines) {
-      const prod = products.find((p) => p.product_code === line.productCode);
-      if (!prod) continue;
-      const isLength = prod.sold_in_length && !!prod.price_per_metre && !!line.lengthMetres;
-      trackUsage(prod.id);
-      subItems.push({
-        product: prod,
-        quantity: line.quantity,
-        isLengthItem: isLength,
-        ...(isLength ? { length: line.lengthMetres } : {}),
-      });
-    }
-    if (subItems.length === 0) return;
-
-    const { pricingType, unitPrice, unitCost } = computeBundlePricing(subItems as any);
-    const firstProduct = subItems[0].product;
-    const tierId = `tier-${capacityLabel}-${tier.tier}`;
-    const tierName = `${capacityLabel} T${tier.tier}: ${tier.label}`;
-
-    const bundleItem: BasketItem = {
-      instanceId: `${tierId}-${Date.now()}`,
-      product: {
-        ...firstProduct,
-        short_name: tierName,
-        description: `${tierName} (${subItems.length} items)`,
-        product_code: `TIER-${capacityLabel}-${tier.tier}`,
-        product_category: "Consumables",
-        selling_price: unitPrice,
-        cost_excl_vat: unitCost,
-        cost_incl_vat: inclVatFromExcl(unitCost),
-        sold_in_length: pricingType === "p/meter",
-        price_per_metre: pricingType === "p/meter" ? unitPrice : null,
-      },
-      quantity: 1,
-      ...(pricingType === "p/meter" ? { length: 1 } : {}),
-      isBundle: true,
-      bundleId: tierId,
-      bundleName: tierName,
-      bundleItems: subItems,
-      bundlePricingType: pricingType,
-      bundleUnitPrice: unitPrice,
-      bundleUnitCost: unitCost,
-    };
-
-    setBaskets((prev) =>
-      prev.map((basket) => {
-        if (basket.id !== basketId) return basket;
-        return { ...basket, items: [...basket.items, bundleItem] };
-      })
-    );
-  }, [products, trackUsage]);
+  // Keep ref in sync
 
   addBundleToBasketRef.current = addBundleToBasket;
 
