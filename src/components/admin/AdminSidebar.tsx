@@ -198,7 +198,7 @@ const AdminSidebar = ({
                     onClick={() => handleNav(item.path)}
                     className={cn(
                       "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors relative",
-                      !collapsed && "gap-2.5 px-3 py-1.5 text-sm",
+                      !collapsed && "gap-2.5 px-3 py-1 text-sm",
                       active
                         ? "bg-white/20 text-white border-l-[3px] border-white pl-[calc(0.75rem-3px)]"
                         : "text-white/80 hover:text-white hover:bg-white/10",
