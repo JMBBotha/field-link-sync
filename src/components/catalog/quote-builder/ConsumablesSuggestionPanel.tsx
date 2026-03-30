@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Plus, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { PaletteProduct, BasketItem } from "../QuoteBuilderTab";
+import { computeProductPricing } from "@/lib/pricing";
 
 interface ConsumablesSuggestionPanelProps {
   basketItems: BasketItem[];
