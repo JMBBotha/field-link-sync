@@ -566,9 +566,33 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
   }, [trackUsage, scrollToCanvas]);
 
   // Auto-attach 3-tier bundles idempotently (covers click, drag, modal, imports, restore paths)
+  // Dependency includes `baskets` (zone items) so this re-runs whenever zone item arrays change.
   useEffect(() => {
-    const bundleProductsLoaded = Object.keys(bundleProducts).length;
-    if (bundleProductsLoaded === 0) {
+    const bundleProductsCount = Object.keys(bundleProducts).length;
+    const bundleProductCodes = Object.keys(bundleProducts);
+
+    console.log("[AutoBundleEffect] tick", {
+      basketCount: baskets.length,
+      bundleProductsCount,
+      bundleProductCodesSample: bundleProductCodes.slice(0, 30),
+      zoneItems: baskets.map((basket) => ({
+        basketId: basket.id,
+        basketName: basket.name,
+        items: basket.items.map((item) => ({
+          instanceId: item.instanceId,
+          short_name: item.product.short_name,
+          product_code: item.product.product_code,
+          category: item.product.category,
+          product_category: item.product.product_category,
+          isBundle: !!item.isBundle,
+          tier_bundle: item.tier_bundle === true,
+          quantity: item.quantity,
+          length: item.length ?? null,
+        })),
+      })),
+    });
+
+    if (bundleProductsCount === 0) {
       console.log("[AutoBundleEffect] waiting for bundleProducts map before attaching tiers");
       return;
     }
@@ -576,25 +600,33 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     const additionsByBasket = new Map<string, BasketItem[]>();
 
     for (const basket of baskets) {
-      const hasAC = basket.items.some((i) => !i.isBundle && isAirConditioningProduct(i.product));
+      const acItems = basket.items.filter((i) => !i.isBundle && isAirConditioningProduct(i.product));
+      const hasAC = acItems.length > 0;
       const hasTierBundle = basket.items.some((i) => i.tier_bundle === true);
+
+      console.log("[AutoBundleEffect] basket-analysis", {
+        basketId: basket.id,
+        basketName: basket.name,
+        zoneItemsCount: basket.items.length,
+        hasAC,
+        hasTierBundle,
+        acItems: acItems.map((i) => ({
+          instanceId: i.instanceId,
+          short_name: i.product.short_name,
+          product_code: i.product.product_code,
+          btu_rating: i.product.btu_rating,
+        })),
+      });
 
       if (!hasAC || hasTierBundle) {
         continue;
       }
 
-      console.log("[AutoBundleEffect] AC detected with no tier bundles", {
-        basketId: basket.id,
-        basketName: basket.name,
-        hasAC,
-        hasTierBundle,
-      });
-
-      const acItem = basket.items.find((i) => !i.isBundle && isAirConditioningProduct(i.product));
+      const acItem = acItems[0];
       if (!acItem) continue;
 
       const btu = extractBtu(acItem.product);
-      console.log("[AutoBundleEffect] processing AC item", {
+      console.log("[AutoBundleEffect] processing-AC", {
         basketId: basket.id,
         product: acItem.product.short_name || acItem.product.product_code,
         product_category: acItem.product.product_category,
@@ -616,6 +648,26 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         console.warn("[AutoBundleEffect] no tier config for BTU", { btu, basketId: basket.id });
         continue;
       }
+
+      const lookupByTier = tierConfig.tiers.map((tier, tierIndex) => ({
+        tier: `T${tierIndex + 1}`,
+        tierName: tier.name,
+        lines: tier.lines.map((line) => {
+          const code = (line.productCode || "").trim().toUpperCase();
+          return {
+            code,
+            foundInBundleProducts: !!bundleProducts[code],
+            defaultQty: line.defaultQty,
+            unit: line.unit,
+          };
+        }),
+      }));
+
+      console.log("[AutoBundleEffect] tier-product-lookup", {
+        basketId: basket.id,
+        capacityLabel: tierConfig.capacityLabel,
+        lookupByTier,
+      });
 
       const built: BasketItem[] = [];
       for (const [tierIndex, tier] of tierConfig.tiers.entries()) {
