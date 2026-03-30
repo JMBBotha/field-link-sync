@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { inclVatFromExcl } from "@/utils/pricing";
 import { computePricing, resolveSupplierCode } from "@/lib/pricing";
+import { extractBtu, findMatchingBundle } from "@/lib/bundles";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { Search, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
