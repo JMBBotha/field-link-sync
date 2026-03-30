@@ -33,6 +33,7 @@ import type { WizardTriggerItem } from "@/components/catalog/quote-builder/Quote
 import { toast } from "@/hooks/use-toast";
 import { useProductUsageStats } from "@/hooks/useProductUsageStats";
 import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
+import { extractBtu } from "@/lib/bundles";
 
 import { getProductDisplayName } from "@/components/catalog/quote-builder/productDisplayUtils";
 import type { PaletteProduct, BasketItem, Basket } from "@/components/catalog/QuoteBuilderTab";
@@ -403,30 +404,40 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
     useSensor(KeyboardSensor)
   );
 
-  // ─── Basket operations ───
-  const addProductToBasket = useCallback((basketId: string, product: PaletteProduct) => {
-    trackUsage(product.id);
-    pushRecentProduct(product.id);
-    setBaskets((prev) => prev.map((basket) => {
-      if (basket.id !== basketId) return basket;
-      const existing = basket.items.find((i) => i.product.id === product.id);
-      if (existing) {
-        if (product.sold_in_length && product.price_per_metre) {
-          return { ...basket, items: basket.items.map((i) => i.product.id === product.id ? { ...i, length: (i.length || 1) + 1 } : i) };
-        }
-        return { ...basket, items: basket.items.map((i) => i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i) };
-      }
-      const isLengthItem = product.sold_in_length && !!product.price_per_metre;
-      return { ...basket, items: [...basket.items, { instanceId: `${product.id}-${Date.now()}`, product, quantity: 1, ...(isLengthItem ? { length: product.unit_length || 1 } : {}) }] };
-    }));
-    scrollToCanvas();
-  }, [trackUsage, scrollToCanvas]);
+  const isAirConditioningProduct = useCallback((product: PaletteProduct) => {
+    const blob = [product.product_category, product.category, product.short_name, product.description]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return blob.includes("air conditioning") || blob.includes("aircon");
+  }, []);
 
-  const addBundleToBasket = useCallback((basketId: string, bundle: PaletteBundle) => {
+  type QuoteBuilderBundle = PaletteBundle & { min_btu?: number | null; max_btu?: number | null };
+
+  const findPipingBundleForBtu = useCallback((btu: number | null): QuoteBuilderBundle | null => {
+    if (!btu || btu <= 0) return null;
+    const pipingBundles = (bundles as QuoteBuilderBundle[]).filter((bundle) => {
+      const text = [bundle.name, bundle.description].filter(Boolean).join(" ").toUpperCase();
+      return text.includes("PIPING");
+    });
+
+    const rangeMatch = pipingBundles.find((bundle) => {
+      if (bundle.min_btu == null || bundle.max_btu == null) return false;
+      return btu >= bundle.min_btu && btu <= bundle.max_btu;
+    });
+    if (rangeMatch) return rangeMatch;
+
+    const kSize = Math.round(btu / 1000);
+    const paddedK = String(kSize).padStart(2, "0");
+    const btuRegex = new RegExp(`\\b(?:${kSize}K|${paddedK}K)\\b`, "i");
+
+    return pipingBundles.find((bundle) => btuRegex.test([bundle.name, bundle.description].filter(Boolean).join(" "))) || null;
+  }, [bundles]);
+
+  const buildBundleBasketItem = useCallback((bundle: PaletteBundle): BasketItem | null => {
     const subItems = bundle.items
       .filter((bItem) => bItem.product)
       .map((bItem) => {
-        trackUsage(bItem.product!.id);
         const isLengthItem = bItem.is_length_item && !!bItem.product!.price_per_metre;
         return {
           product: bItem.product as PaletteProduct,
@@ -438,11 +449,10 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
       });
 
     const { pricingType, unitPrice, unitCost } = computeBundlePricing(subItems);
-
     const firstProduct = subItems.find((i) => !i.isOptional)?.product || subItems[0]?.product;
-    if (!firstProduct) return;
+    if (!firstProduct) return null;
 
-    const bundleItem: BasketItem = {
+    return {
       instanceId: `bundle-${bundle.id}-${Date.now()}`,
       product: {
         ...firstProduct,
@@ -466,6 +476,72 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
       bundleUnitPrice: unitPrice,
       bundleUnitCost: unitCost,
     };
+  }, []);
+
+  // ─── Basket operations ───
+  const addProductToBasket = useCallback((basketId: string, product: PaletteProduct) => {
+    trackUsage(product.id);
+    pushRecentProduct(product.id);
+
+    const isAC = isAirConditioningProduct(product);
+    const parsedBtu = isAC ? extractBtu(product) : null;
+    const autoBundle = isAC ? findPipingBundleForBtu(parsedBtu) : null;
+
+    toast({ title: `[DEBUG] isAC=${isAC}, parsedBtu=${parsedBtu ?? "null"}, bundlesCount=${bundles?.length ?? 0}` });
+    if (autoBundle) {
+      toast({ title: `[DEBUG] Found bundle: ${autoBundle.name}` });
+      autoBundle.items.forEach((item) => {
+        if (item.product?.id) trackUsage(item.product.id);
+      });
+    } else {
+      toast({ title: "[DEBUG] No matching bundle found" });
+    }
+
+    setBaskets((prev) => prev.map((basket) => {
+      if (basket.id !== basketId) return basket;
+      const nextItems = [...basket.items];
+      const existingIndex = nextItems.findIndex((i) => !i.isBundle && i.product.id === product.id);
+      const isLengthItem = product.sold_in_length && !!product.price_per_metre;
+
+      if (existingIndex >= 0) {
+        const existing = nextItems[existingIndex];
+        nextItems[existingIndex] = isLengthItem
+          ? { ...existing, length: (existing.length || 1) + 1 }
+          : { ...existing, quantity: existing.quantity + 1 };
+      } else {
+        nextItems.push({
+          instanceId: `${product.id}-${Date.now()}`,
+          product,
+          quantity: 1,
+          ...(isLengthItem ? { length: product.unit_length || 1 } : {}),
+        });
+      }
+
+      if (autoBundle) {
+        const existingBundleIndex = nextItems.findIndex((i) => i.isBundle && i.bundleId === autoBundle.id);
+        if (existingBundleIndex >= 0) {
+          const existingBundle = nextItems[existingBundleIndex];
+          nextItems[existingBundleIndex] = existingBundle.bundlePricingType === "p/meter"
+            ? { ...existingBundle, length: (existingBundle.length || 1) + 1 }
+            : { ...existingBundle, quantity: existingBundle.quantity + 1 };
+        } else {
+          const bundleBasketItem = buildBundleBasketItem(autoBundle);
+          if (bundleBasketItem) nextItems.push(bundleBasketItem);
+        }
+      }
+
+      return { ...basket, items: nextItems };
+    }));
+    scrollToCanvas();
+  }, [trackUsage, scrollToCanvas, isAirConditioningProduct, findPipingBundleForBtu, bundles, buildBundleBasketItem]);
+
+  const addBundleToBasket = useCallback((basketId: string, bundle: PaletteBundle) => {
+    bundle.items.forEach((item) => {
+      if (item.product?.id) trackUsage(item.product.id);
+    });
+
+    const bundleItem = buildBundleBasketItem(bundle);
+    if (!bundleItem) return;
 
     setBaskets((prev) =>
       prev.map((basket) => {
@@ -474,7 +550,7 @@ const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) =>
       })
     );
     scrollToCanvas();
-  }, [trackUsage, scrollToCanvas]);
+  }, [trackUsage, scrollToCanvas, buildBundleBasketItem]);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const product = (event.active.data.current as any)?.product as PaletteProduct | undefined;
