@@ -181,7 +181,7 @@ const AdminSidebar = ({
       </div>
 
       {/* Navigation groups */}
-      <nav className="flex-1 overflow-y-auto px-2 py-1.5 space-y-2.5">
+      <nav className="flex-1 overflow-y-auto px-2 py-1 space-y-1.5">
         {navGroups.map((group) => (
           <div key={group.title}>
             {!collapsed && (
