@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { inclVatFromExcl } from "@/utils/pricing";
 import { computePricing, resolveSupplierCode } from "@/lib/pricing";
 import { extractBtu } from "@/lib/bundles";
-import { findTierConfigForBtu, type BundleTier } from "@/lib/bundleTierConfig";
+import { findTierConfigForBtu } from "@/lib/bundleTierConfig";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { Search, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -425,42 +425,48 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     return blob.includes("air conditioning") || blob.includes("aircon");
   }, []);
 
-  const buildTierBundleItems = useCallback((capacityLabel: string, tier: BundleTier): BasketItem | null => {
+  const buildTierBundleItems = useCallback((
+    capacityLabel: string,
+    tierNameInput: string,
+    tierIndex: number,
+    lines: Array<{ productCode: string; defaultQty: number; unit: "qty" | "m" }>
+  ): BasketItem | null => {
+    const tierNumber = tierIndex + 1;
     console.log("[AutoBundle] buildTierBundleItems:start", {
       capacityLabel,
-      tier: tier.tier,
-      tierLabel: tier.label,
-      lines: tier.lines.length,
+      tier: tierNumber,
+      tierLabel: tierNameInput,
+      lines: lines.length,
       productsLoaded: products.length,
       bundleProductsLoaded: Object.keys(bundleProducts).length,
     });
 
     const subItems: BasketItem["bundleItems"] = [];
-    for (const line of tier.lines) {
+    for (const line of lines) {
       const code = (line.productCode || "").trim().toUpperCase();
       const prod = bundleProducts[code] as PaletteProduct | undefined;
 
       if (!prod) {
         console.warn("[AutoBundle] buildTierBundleItems:missingProduct", {
           capacityLabel,
-          tier: tier.tier,
+          tier: tierNumber,
           code,
         });
         continue;
       }
 
-      const isLength = prod.sold_in_length && !!prod.price_per_metre && !!line.lengthMetres;
+      const isLength = line.unit === "m" && prod.sold_in_length && !!prod.price_per_metre;
       trackUsage(prod.id);
       subItems.push({
         product: prod,
-        quantity: line.quantity,
+        quantity: isLength ? 1 : line.defaultQty,
         isLengthItem: isLength,
-        ...(isLength ? { length: line.lengthMetres } : {}),
+        ...(isLength ? { length: line.defaultQty } : {}),
       });
 
       console.log("[AutoBundle] buildTierBundleItems:lineMatched", {
         capacityLabel,
-        tier: tier.tier,
+        tier: tierNumber,
         code,
         productId: prod.id,
         isLength,
@@ -470,31 +476,31 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     if (subItems.length === 0) {
       console.warn("[AutoBundle] buildTierBundleItems:emptyTier", {
         capacityLabel,
-        tier: tier.tier,
+        tier: tierNumber,
       });
       return null;
     }
 
     const { pricingType, unitPrice, unitCost } = computeBundlePricing(subItems as any);
     const firstProduct = subItems[0].product;
-    const tierId = `tier-${capacityLabel}-${tier.tier}`;
-    const tierName = `${capacityLabel} T${tier.tier}: ${tier.label}`;
+    const tierId = `tier-${capacityLabel}-${tierNumber}`;
+    const tierName = `${capacityLabel} T${tierNumber}: ${tierNameInput}`;
 
     console.log("[AutoBundle] buildTierBundleItems:done", {
       capacityLabel,
-      tier: tier.tier,
+      tier: tierNumber,
       matchedLines: subItems.length,
       pricingType,
       unitPrice,
     });
 
     return {
-      instanceId: `${tierId}-${Date.now()}-${tier.tier}`,
+      instanceId: `${tierId}-${Date.now()}-${tierNumber}`,
       product: {
         ...firstProduct,
         short_name: tierName,
         description: `${tierName} (${subItems.length} items)`,
-        product_code: `TIER-${capacityLabel}-${tier.tier}`,
+        product_code: `TIER-${capacityLabel}-${tierNumber}`,
         product_category: "Consumables",
         selling_price: unitPrice,
         cost_excl_vat: unitCost,
@@ -508,7 +514,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
       bundleId: tierId,
       bundleName: tierName,
       tier_bundle: true,
-      tier_name: (`T${tier.tier}` as "T1" | "T2" | "T3"),
+      tier_name: (`T${tierNumber}` as "T1" | "T2" | "T3"),
       bundleItems: subItems,
       bundlePricingType: pricingType,
       bundleUnitPrice: unitPrice,
@@ -612,8 +618,13 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
       }
 
       const built: BasketItem[] = [];
-      for (const tier of tierConfig.tiers) {
-        const tierItem = buildTierBundleItems(tierConfig.capacityLabel, tier);
+      for (const [tierIndex, tier] of tierConfig.tiers.entries()) {
+        const tierItem = buildTierBundleItems(
+          tierConfig.capacityLabel,
+          tier.name,
+          tierIndex,
+          tier.lines
+        );
         if (tierItem) built.push(tierItem);
       }
 
