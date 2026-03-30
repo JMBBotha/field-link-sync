@@ -71,6 +71,7 @@ export function computePricing(
     : (supplier as SupplierCode);
 
   const discount = SUPPLIER_DISCOUNTS[code] ?? 0;
+  const safeMarkupPercent = normalizeMarkupPercent(markupPercent);
 
   // If an override cost is provided AND it's already discounted (lower than list), use it.
   // Otherwise compute from list price with supplier discount.
@@ -82,10 +83,10 @@ export function computePricing(
     costExVat = r2(listPriceExVat * (1 - discount));
   }
 
-  const sellExVat = r2(costExVat * (1 + markupPercent / 100));
+  const sellExVat = r2(costExVat * (1 + safeMarkupPercent / 100));
   const sellInclVat = r2(sellExVat * (1 + VAT_RATE));
 
-  return { costExVat, sellExVat, sellInclVat, discountPercent: discount * 100, markupPercent };
+  return { costExVat, sellExVat, sellInclVat, discountPercent: discount * 100, markupPercent: safeMarkupPercent };
 }
 
 /**
