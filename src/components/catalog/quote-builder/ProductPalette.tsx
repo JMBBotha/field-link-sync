@@ -40,7 +40,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
-import { getProductDisplayName } from "./productDisplayUtils";
+import { getProductDisplayName, getProductBriefDescription } from "./productDisplayUtils";
 import BundleItemsPopover, { computeBundlePricing, type BundleSubItem } from "./BundleItemsPopover";
 
 function HighlightText({ text, searchTerm }: { text: string; searchTerm: string }) {
@@ -333,6 +333,14 @@ function DraggableProductCard({
                     <p className="text-[10px] font-mono font-medium truncate mt-0.5 text-primary/80">
                       <HighlightText text={product.product_code} searchTerm={searchTerm} />
                     </p>
+                    {(() => {
+                      const brief = getProductBriefDescription(product);
+                      return brief ? (
+                        <p className="text-[9px] text-muted-foreground truncate mt-0.5 leading-tight">
+                          {brief}
+                        </p>
+                      ) : null;
+                    })()}
                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                       <div className="flex flex-col">
                         <span className="text-xs font-bold text-foreground">
