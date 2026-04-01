@@ -2169,6 +2169,7 @@ export type Database = {
           description: string | null
           estimated_duration: string | null
           id: string
+          job_type: string | null
           lat: number | null
           lead_id: string | null
           lng: number | null
@@ -2188,6 +2189,7 @@ export type Database = {
           description?: string | null
           estimated_duration?: string | null
           id?: string
+          job_type?: string | null
           lat?: number | null
           lead_id?: string | null
           lng?: number | null
@@ -2207,6 +2209,7 @@ export type Database = {
           description?: string | null
           estimated_duration?: string | null
           id?: string
+          job_type?: string | null
           lat?: number | null
           lead_id?: string | null
           lng?: number | null

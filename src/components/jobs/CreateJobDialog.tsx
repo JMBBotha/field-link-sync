@@ -35,6 +35,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   const [scheduledFor, setScheduledFor] = useState("");
   const [duration, setDuration] = useState("2");
   const [priority, setPriority] = useState("normal");
+  const [jobType, setJobType] = useState("service");
 
   const { data: customers = [] } = useQuery({
     queryKey: ["job-customers", companyId],
@@ -68,6 +69,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
         scheduled_for: scheduledFor || null,
         estimated_duration: `${duration} hours`,
         priority,
+        job_type: jobType,
         created_by: userId || null,
       }).select().single();
       if (error) throw error;
@@ -95,6 +97,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     setScheduledFor("");
     setDuration("2");
     setPriority("normal");
+    setJobType("service");
   };
 
   return (
@@ -112,6 +115,19 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
           <div>
             <Label>Description</Label>
             <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Job details..." rows={3} />
+          </div>
+          <div>
+            <Label>Job Type</Label>
+            <Select value={jobType} onValueChange={setJobType}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="installation">Installation</SelectItem>
+                <SelectItem value="service">Service</SelectItem>
+                <SelectItem value="repair">Repair</SelectItem>
+                <SelectItem value="survey">Survey</SelectItem>
+                <SelectItem value="maintenance">Maintenance</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label>Customer</Label>

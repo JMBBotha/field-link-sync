@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { MapPin, Clock, User, GripVertical, CalendarDays, Users, Loader2, Plus } from "lucide-react";
+import { MapPin, Clock, User, GripVertical, CalendarDays, Users, Loader2, Plus, Zap } from "lucide-react";
 import { format } from "date-fns";
 import CreateJobDialog from "@/components/jobs/CreateJobDialog";
 
@@ -133,6 +133,31 @@ const AdminJobsDispatchPage = () => {
     onError: (err: any) => toast({ title: "Assignment failed", description: err.message, variant: "destructive" }),
   });
 
+  // Auto-dispatch mutation (calls edge function)
+  const autoDispatchMutation = useMutation({
+    mutationFn: async (jobId: string) => {
+      const { data: session } = await supabase.auth.getSession();
+      const { data, error } = await supabase.functions.invoke("dispatch-job", {
+        body: {
+          job_id: jobId,
+          dispatched_by: session.session?.user.id || null,
+          override_assignee_id: null,
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data: any) => {
+      if (data?.success) {
+        toast({ title: "Auto-dispatched", description: `Assigned via ${data.assignment_type} (Tier ${data.tier_used})` });
+      } else {
+        toast({ title: "No available assignees", description: data?.message || "Dispatcher notified", variant: "destructive" });
+      }
+      queryClient.invalidateQueries({ queryKey: ["jobs-dispatch"] });
+    },
+    onError: (err: any) => toast({ title: "Auto-dispatch failed", description: err.message, variant: "destructive" }),
+  });
+
   // Status update mutation (drag-drop)
   const statusMutation = useMutation({
     mutationFn: async ({ jobId, status }: { jobId: string; status: string }) => {
@@ -213,9 +238,14 @@ const AdminJobsDispatchPage = () => {
                 {assignee.profiles?.full_name}
               </span>
             ) : (
-              <Button variant="outline" size="sm" className="h-6 text-[10px] px-2" onClick={e => { e.stopPropagation(); setAssignJobId(job.id); }}>
-                <Users className="h-3 w-3 mr-1" /> Assign
-              </Button>
+              <div className="flex gap-1">
+                <Button variant="outline" size="sm" className="h-6 text-[10px] px-2" onClick={e => { e.stopPropagation(); setAssignJobId(job.id); }}>
+                  <Users className="h-3 w-3 mr-1" /> Assign
+                </Button>
+                <Button variant="outline" size="sm" className="h-6 text-[10px] px-2" onClick={e => { e.stopPropagation(); autoDispatchMutation.mutate(job.id); }} disabled={autoDispatchMutation.isPending}>
+                  <Zap className="h-3 w-3 mr-1" /> Auto
+                </Button>
+              </div>
             )}
           </div>
         </CardContent>
