@@ -147,6 +147,9 @@ const App = () => (
               {/* Agent Quote Builder — same component, agent mode */}
               <Route path="/field/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher", "field_agent"]}><FBQuoteBuilderPage mode="agent" /></RequireRole>} />
 
+              {/* Field agent My Jobs — accessible without AdminLayout */}
+              <Route path="/field/my-jobs" element={<RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><AdminMyJobsPage /></RequireRole>} />
+
               {/* FreshBooks multi-tenant client dashboards */}
               <Route path="/client/:companyId" element={<CompanyProvider><FBLayout /></CompanyProvider>}>
                 <Route path="dashboard" element={<FBDashboard />} />
