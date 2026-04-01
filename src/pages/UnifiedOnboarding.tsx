@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -505,13 +504,13 @@ const UnifiedOnboarding = () => {
         <img src={logo} alt="0800BeCool" className="h-[84px] w-auto drop-shadow-lg" />
       </div>
 
-      <Card className="w-full max-w-lg border-0 shadow-2xl">
+      <div className="w-full max-w-lg space-y-6">
         {/* Progress */}
-        <div className="px-6 pt-5 pb-2 space-y-2">
-          <Progress value={progress} className="h-1.5" />
+        <div className="space-y-2">
+          <Progress value={progress} className="h-1.5 [&>div]:bg-[hsl(25,95%,53%)]" />
           <div className="flex justify-between">
             {stepLabels.map((label, i) => (
-              <span key={i} className={`text-[10px] ${i <= step ? "text-primary font-medium" : "text-muted-foreground"}`}>
+              <span key={i} className={`text-[10px] ${i <= step ? "text-white font-medium" : "text-white/50"}`}>
                 {label}
               </span>
             ))}
@@ -519,14 +518,16 @@ const UnifiedOnboarding = () => {
         </div>
 
         {/* Content */}
-        <CardContent className="px-6 pb-2 pt-4 min-h-[360px] flex items-start justify-center">
-          <div className="w-full">{steps[step]}</div>
-        </CardContent>
+        <div className="min-h-[360px] flex items-start justify-center rounded-xl bg-white/10 backdrop-blur-md border border-white/15 px-6 py-6">
+          <div className="w-full [&_h2]:text-white [&_p]:text-white/70 [&_label]:text-white/90 [&_span]:text-white/80 [&_.text-foreground]:text-white [&_.text-muted-foreground]:text-white/60 [&_.bg-muted]:bg-white/10 [&_.border]:border-white/20 [&_input]:bg-white/10 [&_input]:border-white/20 [&_input]:text-white [&_input]:placeholder:text-white/40">
+            {steps[step]}
+          </div>
+        </div>
 
         {/* Footer nav */}
-        <div className="flex items-center justify-between px-6 pb-5 pt-2">
+        <div className="flex items-center justify-between">
           {step > 0 ? (
-            <Button variant="ghost" size="sm" onClick={prev}>
+            <Button variant="ghost" size="sm" onClick={prev} className="text-white/80 hover:text-white hover:bg-white/10">
               <ChevronLeft className="h-4 w-4 mr-1" /> Back
             </Button>
           ) : (
@@ -534,17 +535,17 @@ const UnifiedOnboarding = () => {
           )}
 
           {step < totalSteps - 1 ? (
-            <Button size="sm" onClick={next} disabled={!canAdvance()}>
+            <Button size="sm" onClick={next} disabled={!canAdvance()} className="bg-[hsl(25,95%,53%)] hover:bg-[hsl(25,95%,45%)] text-white">
               Next <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           ) : (
-            <Button size="sm" onClick={handleComplete} disabled={saving}>
+            <Button size="sm" onClick={handleComplete} disabled={saving} className="bg-[hsl(25,95%,53%)] hover:bg-[hsl(25,95%,45%)] text-white">
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
               {userRole === "admin" ? "Launch Dashboard" : "Start Working"} <Rocket className="h-4 w-4 ml-1" />
             </Button>
           )}
         </div>
-      </Card>
+      </div>
     </div>
   );
 };
