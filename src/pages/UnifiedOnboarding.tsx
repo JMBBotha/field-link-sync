@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
 import {
-  Snowflake,
+  Building2,
   Building2,
   Settings,
   Users,
