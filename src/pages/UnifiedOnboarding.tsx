@@ -502,17 +502,8 @@ const UnifiedOnboarding = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
       {/* Header */}
-      <div className="flex items-center gap-2.5 mb-6">
-        <img src={logo} alt="0800BeCool" className="h-10 w-auto" />
-        <div className="flex items-center gap-1.5">
-          <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center">
-            <Snowflake className="h-4.5 w-4.5 text-white" />
-          </div>
-          <div>
-            <span className="text-lg font-black tracking-tight text-white">0800</span>
-            <span className="text-lg font-black tracking-tight text-[hsl(25,95%,53%)]">BeCool</span>
-          </div>
-        </div>
+      <div className="mb-6">
+        <img src={logo} alt="0800BeCool" className="h-16 w-auto drop-shadow-lg" />
       </div>
 
       <Card className="w-full max-w-lg border-0 shadow-2xl">
