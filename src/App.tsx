@@ -98,6 +98,7 @@ const App = () => (
               <Route path="/login" element={<Auth />} />
               <Route path="/auth" element={<Navigate to="/login" replace />} />
               <Route path="/onboarding" element={<UnifiedOnboarding />} />
+              <Route path="/signup/independent" element={<IndependentSignup />} />
 
               {/* Admin layout with nested routes */}
               <Route path="/admin" element={<AdminLayout />}>
