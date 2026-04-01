@@ -225,11 +225,12 @@ const AdminJobsDispatchPage = () => {
 
   // Group techs for assign modal
   const techGroups = useMemo(() => {
-    const internal = techs.filter((t: any) => t.assignment_type === "internal");
-    const affiliated = techs.filter((t: any) => t.assignment_type === "affiliated");
-    const network = techs.filter((t: any) => t.assignment_type === "network");
+    const filterFn = (t: any) => !showAvailableOnly || availability[t.id];
+    const internal = techs.filter((t: any) => t.assignment_type === "internal" && filterFn(t));
+    const affiliated = techs.filter((t: any) => t.assignment_type === "affiliated" && filterFn(t));
+    const network = techs.filter((t: any) => t.assignment_type === "network" && filterFn(t));
     return { internal, affiliated, network };
-  }, [techs]);
+  }, [techs, showAvailableOnly, availability]);
 
   const JobCard = ({ job }: { job: any }) => {
     const assignee = job.assignments?.find((a: any) => a.status !== "rejected");
