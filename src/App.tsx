@@ -42,6 +42,7 @@ import ServiceAgreements from "./components/ServiceAgreements";
 import AdminAdvancedReportsPage from "./pages/admin/AdminAdvancedReportsPage";
 import AdminTeamPage from "./pages/admin/AdminTeamPage";
 import AdminBillingPage from "./pages/admin/AdminBillingPage";
+import AdminNetworkAgentsPage from "./pages/admin/AdminNetworkAgentsPage";
 
 import AdminSuppliersPage from "./pages/admin/AdminSuppliersPage";
 import AdminConsumablesPage from "./pages/admin/AdminConsumablesPage";
