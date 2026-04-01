@@ -117,6 +117,19 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
             <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Job details..." rows={3} />
           </div>
           <div>
+            <Label>Job Type</Label>
+            <Select value={jobType} onValueChange={setJobType}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="installation">Installation</SelectItem>
+                <SelectItem value="service">Service</SelectItem>
+                <SelectItem value="repair">Repair</SelectItem>
+                <SelectItem value="survey">Survey</SelectItem>
+                <SelectItem value="maintenance">Maintenance</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <Label>Customer</Label>
             <Select value={customerId} onValueChange={setCustomerId}>
               <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
