@@ -17,11 +17,11 @@ const AdminNetworkAgentsPage = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, phone, bio, participant_type, network_status, created_at")
-        .in("participant_type", ["independent_sales", "independent_tech"])
+        .select("id, full_name, phone, participant_type, network_status, created_at")
+        .in("participant_type", ["independent_sales", "independent_tech"] as any)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data || [];
+      return (data || []) as any[];
     },
   });
 
