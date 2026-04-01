@@ -3,10 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Snowflake } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import logo from "@/assets/logo.png";
 
 const Auth = () => {
@@ -88,89 +87,84 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
-      <Card className="w-full max-w-md border-0 shadow-2xl">
-        <CardHeader className="space-y-1 pb-6">
-          <div className="flex flex-col items-center gap-3 mb-2">
-            <img src={logo} alt="0800BeCool" className="h-16 w-auto" />
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center">
-                <Snowflake className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <div>
-                <span className="text-xl font-black tracking-tight text-foreground">0800</span>
-                <span className="text-xl font-black tracking-tight text-primary">BeCool</span>
-              </div>
-            </div>
-          </div>
-          <CardTitle className="text-2xl text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
+      {/* Logo */}
+      <img src={logo} alt="0800BeCool" className="h-20 w-auto mb-8 drop-shadow-lg" />
+
+      {/* Auth form — no card wrapper */}
+      <div className="w-full max-w-sm space-y-6">
+        <div className="text-center space-y-1">
+          <h1 className="text-2xl font-bold text-white">
             {isLogin ? "Welcome Back" : "Create Account"}
-          </CardTitle>
-          <CardDescription className="text-center">
+          </h1>
+          <p className="text-white/70 text-sm">
             {isLogin
               ? "Sign in to access your dashboard"
               : "Get started with your field service account"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input
-                  id="fullName"
-                  type="text"
-                  placeholder="John Doe"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required={!isLogin}
-                />
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {!isLogin && (
+            <div className="space-y-1.5">
+              <Label htmlFor="fullName" className="text-white/90 text-sm">Full Name</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
+                id="fullName"
+                type="text"
+                placeholder="John Doe"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required={!isLogin}
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white/50 focus:ring-white/20"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-            </div>
-            <Button
-              type="submit"
-              className="w-full bg-[hsl(25,95%,53%)] hover:bg-[hsl(25,95%,45%)] text-white font-semibold text-base h-11"
-              disabled={loading}
-            >
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isLogin ? "Sign In" : "Sign Up"}
-            </Button>
-          </form>
-          <div className="mt-4 text-center text-sm">
-            {isLogin ? "Don't have an account?" : "Already have an account?"}
-            <Button
-              variant="link"
-              className="ml-1 text-primary"
-              onClick={() => setIsLogin(!isLogin)}
-            >
-              {isLogin ? "Sign up" : "Sign in"}
-            </Button>
+          )}
+          <div className="space-y-1.5">
+            <Label htmlFor="email" className="text-white/90 text-sm">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white/50 focus:ring-white/20"
+            />
           </div>
-        </CardContent>
-      </Card>
+          <div className="space-y-1.5">
+            <Label htmlFor="password" className="text-white/90 text-sm">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white/50 focus:ring-white/20"
+            />
+          </div>
+          <Button
+            type="submit"
+            className="w-full bg-[hsl(25,95%,53%)] hover:bg-[hsl(25,95%,45%)] text-white font-semibold text-base h-11"
+            disabled={loading}
+          >
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isLogin ? "Sign In" : "Sign Up"}
+          </Button>
+        </form>
+
+        <div className="text-center text-sm text-white/70">
+          {isLogin ? "Don't have an account?" : "Already have an account?"}
+          <Button
+            variant="link"
+            className="ml-1 text-[hsl(25,95%,53%)] hover:text-[hsl(25,95%,63%)]"
+            onClick={() => setIsLogin(!isLogin)}
+          >
+            {isLogin ? "Sign up" : "Sign in"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };
