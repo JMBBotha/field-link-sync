@@ -175,7 +175,7 @@ const PdfPreviewEmbed = ({ url }: { url: string }) => {
   );
 };
 
-
+const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -387,83 +387,58 @@ const PdfPreviewEmbed = ({ url }: { url: string }) => {
   };
 
   const handlePreview = async (pdf: PDFUploadRow) => {
-    const candidates = [pdf.file_url, pdf.file_path, pdf.storage_path].filter(Boolean) as string[];
-    console.log("[PDFManager:Preview] Starting preview for PDF:", pdf.id, {
-      file_url: pdf.file_url,
-      file_path: pdf.file_path,
-      storage_path: pdf.storage_path,
-      file_name: pdf.file_name,
-      supplier_id: pdf.supplier_id,
-      candidates,
-    });
+    try {
+      const filePath = pdf.file_path || pdf.storage_path || pdf.file_url;
+      if (!filePath) throw new Error("No file path found for this PDF");
 
-    // 1. Direct HTTP URLs
-    for (const rawPath of candidates) {
-      if (rawPath.startsWith("http")) {
-        console.log("[PDFManager:Preview] Using direct HTTP URL:", rawPath);
-        setPreviewUrl(rawPath);
+      // Try signed URL from supplier-pdfs bucket first
+      const pathsToTry: { bucket: string; path: string }[] = [];
+
+      // Constructed supplier path
+      if (pdf.supplier_id && pdf.file_name) {
+        pathsToTry.push({ bucket: "supplier-pdfs", path: `${pdf.supplier_id}/${pdf.file_name}` });
+      }
+      // Raw path
+      pathsToTry.push({ bucket: "supplier-pdfs", path: filePath });
+      // Flat filename
+      if (pdf.file_name) {
+        pathsToTry.push({ bucket: "supplier-pdfs", path: pdf.file_name });
+      }
+
+      for (const { bucket, path } of pathsToTry) {
+        const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 60);
+        if (error || !data?.signedUrl) continue;
+
+        const response = await fetch(data.signedUrl);
+        if (!response.ok) continue;
+
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(blobUrl);
         return;
       }
-    }
 
-    // 2. Extract bucket/path from Supabase storage URL patterns
-    for (const rawPath of candidates) {
-      const match = rawPath.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)/);
-      if (match) {
-        const { data } = supabase.storage.from(match[1]).getPublicUrl(match[2]);
-        console.log("[PDFManager:Preview] Extracted public URL from path:", data.publicUrl);
-        setPreviewUrl(data.publicUrl);
-        return;
-      }
-    }
-
-    // 3. Try constructed supplier-specific path first (matches cleanImportPipeline)
-    const pdfBuckets = ["supplier-pdfs", "pdfs", "price-lists", "supplier-pdf-pages", "stock-documents"];
-    if (pdf.supplier_id && pdf.file_name) {
-      const constructedPath = `${pdf.supplier_id}/${pdf.file_name}`;
-      console.log("[PDFManager:Preview] Trying constructed supplier path:", constructedPath);
-      const { data } = supabase.storage.from("supplier-pdfs").getPublicUrl(constructedPath);
-      try {
-        const resp = await fetch(data.publicUrl, { method: "HEAD" });
-        if (resp.ok) {
-          console.log("[PDFManager:Preview] SUCCESS - Constructed path exists:", data.publicUrl);
-          setPreviewUrl(data.publicUrl);
+      // Fallback: direct HTTP URL
+      const directUrl = [pdf.file_url, pdf.file_path, pdf.storage_path].find(u => u?.startsWith("http"));
+      if (directUrl) {
+        const response = await fetch(directUrl);
+        if (response.ok) {
+          const blob = await response.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
+          setPreviewUrl(blobUrl);
           return;
-        } else {
-          console.log("[PDFManager:Preview] Constructed path HEAD failed:", resp.status);
-        }
-      } catch (err) {
-        console.warn("[PDFManager:Preview] Constructed path fetch error:", err);
-      }
-    }
-
-    // 4. Probe all buckets with each candidate path
-    for (const bucket of pdfBuckets) {
-      for (const rawPath of candidates) {
-        console.log(`[PDFManager:Preview] Probing bucket "${bucket}" with path:`, rawPath);
-        const { data } = supabase.storage.from(bucket).getPublicUrl(rawPath);
-        try {
-          const resp = await fetch(data.publicUrl, { method: "HEAD" });
-          if (resp.ok) {
-            console.log("[PDFManager:Preview] SUCCESS - Found in bucket:", bucket, "URL:", data.publicUrl);
-            setPreviewUrl(data.publicUrl);
-            return;
-          }
-          console.log(`[PDFManager:Preview] HEAD ${resp.status} for ${bucket}/${rawPath}`);
-        } catch (err) {
-          console.warn(`[PDFManager:Preview] Fetch error in bucket ${bucket}:`, err);
         }
       }
-    }
 
-    // 5. Ultimate fallback: just try supplier-pdfs + file_name (no folder)
-    if (pdf.file_name) {
-      const { data } = supabase.storage.from("supplier-pdfs").getPublicUrl(pdf.file_name);
-      console.log("[PDFManager:Preview] Last resort - flat file_name in supplier-pdfs:", data.publicUrl);
-      setPreviewUrl(data.publicUrl);
-    } else {
-      console.error("[PDFManager:Preview] No valid path or filename available");
-      setPreviewUrl(null);
+      throw new Error("Could not load PDF from any path");
+    } catch (err: any) {
+      toast({
+        title: "Preview failed",
+        description: err.message || "Could not load PDF preview",
+        variant: "destructive",
+      });
     }
   };
 
