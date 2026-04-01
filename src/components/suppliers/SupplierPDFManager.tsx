@@ -125,8 +125,57 @@ async function deleteSinglePDF(pdf: PDFUploadRow) {
 
   return { success: true, productsDeleted: productIds.length };
 }
+/** Fetches PDF as blob to bypass CORS/X-Frame-Options blocking */
+const PdfPreviewEmbed = ({ url }: { url: string }) => {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
-const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) => {
+  useEffect(() => {
+    let revoke: string | null = null;
+    setError(false);
+    setBlobUrl(null);
+
+    fetch(url)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.blob();
+      })
+      .then((blob) => {
+        const objectUrl = URL.createObjectURL(blob);
+        revoke = objectUrl;
+        setBlobUrl(objectUrl);
+      })
+      .catch(() => setError(true));
+
+    return () => { if (revoke) URL.revokeObjectURL(revoke); };
+  }, [url]);
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-12 text-muted-foreground">
+        <p className="text-sm">Unable to preview this PDF inline.</p>
+        <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm">
+          Open in new tab ↗
+        </a>
+      </div>
+    );
+  }
+
+  if (!blobUrl) {
+    return <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">Loading PDF…</div>;
+  }
+
+  return (
+    <iframe
+      src={blobUrl}
+      className="w-full flex-1 rounded border min-h-0"
+      style={{ height: "calc(80vh - 80px)" }}
+      title="PDF Preview"
+    />
+  );
+};
+
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
