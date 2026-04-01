@@ -28,7 +28,7 @@ import { notifyJobAssigned, notifyTechEnRoute, notifyTechArrived, notifyJobCompl
 import PullToRefresh from "@/components/PullToRefresh";
 import Layout from "@/components/Layout";
 import SyncConflictDialog from "@/components/SyncConflictDialog";
-import OnboardingFlow from "@/components/OnboardingFlow";
+
 import UpgradeModal from "@/components/subscription/UpgradeModal";
 import { createTeardropMarkerElement } from "@/utils/MarkerUtils";
 import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilterButtons";
