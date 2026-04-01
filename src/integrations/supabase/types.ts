@@ -4481,6 +4481,10 @@ export type Database = {
         }
         Returns: number
       }
+      create_portal_booking: {
+        Args: { p_notes?: string; p_service_type: string; p_token: string }
+        Returns: string
+      }
       decline_quote_by_token: { Args: { p_token: string }; Returns: boolean }
       generate_invoice_number: { Args: never; Returns: string }
       generate_maintenance_schedules: {
