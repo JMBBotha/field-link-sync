@@ -145,19 +145,14 @@ const fetchPdfBlob = async (sourceUrl: string, fileName?: string) => {
     throw new Error(`Failed to fetch PDF (${response.status})`);
   }
 
-  const blob = await response.blob();
-  if (!blob.size) {
+  const rawBlob = await response.blob();
+  if (!rawBlob.size) {
     throw new Error("Downloaded PDF is empty");
   }
 
-  const contentType = (response.headers.get("content-type") || blob.type || "").toLowerCase();
-  const looksLikePdf = contentType.includes("pdf") || (fileName || "").toLowerCase().endsWith(".pdf");
-
-  if (!looksLikePdf) {
-    throw new Error(`Fetched file is not a PDF (${contentType || "unknown type"})`);
-  }
-
-  return blob;
+  // Force correct MIME type — raw blob may have wrong/missing content-type
+  const pdfBlob = new Blob([rawBlob], { type: "application/pdf" });
+  return pdfBlob;
 };
 
 async function deleteSinglePDF(pdf: PDFUploadRow) {
@@ -245,7 +240,8 @@ const PdfPreviewEmbed = ({ url, fileName }: { url: string; fileName?: string | n
   return (
     <iframe
       src={url}
-      className="h-full w-full rounded border bg-background"
+      className="w-full h-full border border-border rounded-lg shadow-inner"
+      style={{ minHeight: "500px" }}
       title={fileName || "PDF Preview"}
     />
   );
@@ -840,7 +836,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
           resetPreviewState();
         }
       }}>
-        <DialogContent className="flex flex-col p-0 gap-0 w-[min(92vw,1200px)] max-w-none h-[min(88vh,900px)]">
+        <DialogContent className="max-w-[95vw] w-[1150px] h-[92vh] max-h-[95vh] flex flex-col p-0">
           <div className="flex shrink-0 items-center justify-between border-b px-4 py-2">
             <DialogTitle className="text-sm font-semibold">PDF Preview</DialogTitle>
             <div className="flex items-center gap-1.5">
@@ -888,7 +884,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
                 )}
               </div>
             ) : previewUrl ? (
-              <div className="flex-1 min-h-0 overflow-hidden">
+              <div className="flex-1 p-6 bg-muted/30 overflow-hidden">
                 <PdfPreviewEmbed url={previewUrl} fileName={previewFileName} />
               </div>
             ) : (
