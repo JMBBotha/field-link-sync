@@ -29,6 +29,8 @@ import {
   ChevronRight,
   X,
   Building2,
+  Briefcase,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
