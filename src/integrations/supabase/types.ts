@@ -4879,6 +4879,24 @@ export type Database = {
         }[]
       }
       get_job_billable_hours: { Args: { p_lead_id: string }; Returns: number }
+      get_my_assigned_jobs: {
+        Args: { p_profile_id: string }
+        Returns: {
+          assignment_id: string
+          assignment_notes: string
+          assignment_status: string
+          created_at: string
+          customer_name: string
+          customer_phone: string
+          job_address: string
+          job_description: string
+          job_id: string
+          job_priority: string
+          job_scheduled_for: string
+          job_status: string
+          job_title: string
+        }[]
+      }
       get_or_create_customer_token: {
         Args: { p_customer_id: string }
         Returns: string
