@@ -41,7 +41,7 @@ const SidebarNav = ({ companyId, company, onNavClick, onLogout, onBackToAdmin }:
   <>
     {/* Company header */}
     <div className="p-4 border-b border-primary-foreground/10 flex items-center justify-center">
-      <img src={logo} alt="Logo" className="h-10" />
+      <img src={logo} alt="Logo" className="h-[52px]" />
     </div>
 
     {/* Navigation */}
