@@ -9,12 +9,10 @@ import { useTheme } from "@/hooks/useTheme";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import SubscriptionBadge from "@/components/subscription/SubscriptionBadge";
 import CreateLeadDialog from "@/components/CreateLeadDialog";
-import SetupWizard from "@/components/SetupWizard";
 import Footer from "@/components/Footer";
-import { useCompanySettings } from "@/hooks/useCompanySettings";
+
 import { useQuery } from "@tanstack/react-query";
 import AdminSidebar from "@/components/admin/AdminSidebar";
-import OnboardingFlow from "@/components/OnboardingFlow";
 import IdleWarningModal from "@/components/IdleWarningModal";
 import GlobalSearchDialog from "@/components/GlobalSearchDialog";
 import { useIdleLogout } from "@/hooks/useIdleLogout";
@@ -25,10 +23,9 @@ const AdminLayout = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showCreateLead, setShowCreateLead] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [searchOpen, setSearchOpen] = useState(false);
-  const { needsSetup } = useCompanySettings();
+  
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -108,14 +105,15 @@ const AdminLayout = () => {
       setIsAdmin(true);
       setCurrentUserId(session.user.id);
 
-      // Check onboarding status
+      // If onboarding not completed, redirect to unified onboarding
       const { data: profile } = await supabase
         .from("profiles")
         .select("onboarding_completed")
         .eq("id", session.user.id)
         .maybeSingle();
       if (!profile?.onboarding_completed) {
-        setShowOnboarding(true);
+        navigate("/onboarding");
+        return;
       }
     } catch (error: any) {
       console.error("Auth check error:", error);
@@ -143,9 +141,6 @@ const AdminLayout = () => {
 
   if (!isAdmin) return null;
 
-  if (needsSetup) {
-    return <SetupWizard onComplete={() => window.location.reload()} />;
-  }
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -239,13 +234,6 @@ const AdminLayout = () => {
       <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
       <IdleWarningModal open={showWarning} secondsLeft={secondsLeft} onStayActive={stayActive} />
 
-      {showOnboarding && currentUserId && (
-        <OnboardingFlow
-          userId={currentUserId}
-          userRole="admin"
-          onComplete={() => setShowOnboarding(false)}
-        />
-      )}
     </div>
   );
 };

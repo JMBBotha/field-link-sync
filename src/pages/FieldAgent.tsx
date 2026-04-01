@@ -28,7 +28,7 @@ import { notifyJobAssigned, notifyTechEnRoute, notifyTechArrived, notifyJobCompl
 import PullToRefresh from "@/components/PullToRefresh";
 import Layout from "@/components/Layout";
 import SyncConflictDialog from "@/components/SyncConflictDialog";
-import OnboardingFlow from "@/components/OnboardingFlow";
+
 import UpgradeModal from "@/components/subscription/UpgradeModal";
 import { createTeardropMarkerElement } from "@/utils/MarkerUtils";
 import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilterButtons";
@@ -285,7 +285,8 @@ const FieldAgent = () => {
         setHomeBaseLng(profile.home_base_lng);
       }
       if (!profile?.onboarding_completed) {
-        setShowOnboarding(true);
+        navigate("/onboarding");
+        return;
       }
 
       fetchLeads();
@@ -1957,13 +1958,6 @@ const FieldAgent = () => {
           loading={completedJobsFilter.loading}
         />
         <SyncConflictDialog conflict={activeConflict} onResolve={resolveConflict} />
-        {showOnboarding && currentUserId && (
-          <OnboardingFlow
-            userId={currentUserId}
-            userRole="field_agent"
-            onComplete={() => setShowOnboarding(false)}
-          />
-        )}
         <UpgradeModal
           open={showUpgradeModal}
           onOpenChange={setShowUpgradeModal}
