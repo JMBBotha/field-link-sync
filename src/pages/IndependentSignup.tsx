@@ -49,11 +49,10 @@ const IndependentSignup = () => {
         .from("profiles")
         .update({
           phone,
-          bio,
+          skills: bio ? [bio] : [],
           participant_type: participantType,
           network_status: "pending",
-          // company_id stays NULL for independents
-        } as any)
+        })
         .eq("id", authData.user.id);
 
       if (profileError) throw profileError;
