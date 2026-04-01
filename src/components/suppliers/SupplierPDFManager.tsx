@@ -884,7 +884,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
                 )}
               </div>
             ) : previewUrl ? (
-              <div className="flex-1 min-h-0 overflow-hidden">
+              <div className="flex-1 p-6 bg-muted/30 overflow-hidden">
                 <PdfPreviewEmbed url={previewUrl} fileName={previewFileName} />
               </div>
             ) : (
