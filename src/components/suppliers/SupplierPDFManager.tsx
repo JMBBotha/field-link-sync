@@ -240,7 +240,8 @@ const PdfPreviewEmbed = ({ url, fileName }: { url: string; fileName?: string | n
   return (
     <iframe
       src={url}
-      className="h-full w-full rounded border bg-background"
+      className="w-full h-full border border-border rounded-lg shadow-inner"
+      style={{ minHeight: "500px" }}
       title={fileName || "PDF Preview"}
     />
   );
