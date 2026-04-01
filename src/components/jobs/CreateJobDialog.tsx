@@ -35,6 +35,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   const [scheduledFor, setScheduledFor] = useState("");
   const [duration, setDuration] = useState("2");
   const [priority, setPriority] = useState("normal");
+  const [jobType, setJobType] = useState("service");
 
   const { data: customers = [] } = useQuery({
     queryKey: ["job-customers", companyId],
