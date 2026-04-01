@@ -25,7 +25,7 @@ const AdminLayout = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [searchOpen, setSearchOpen] = useState(false);
-  const { needsSetup } = useCompanySettings();
+  
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
