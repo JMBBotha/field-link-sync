@@ -49,21 +49,15 @@ const IndependentSignup = () => {
         .from("profiles")
         .update({
           phone,
-          bio,
+          skills: bio ? [bio] : [],
           participant_type: participantType,
           network_status: "pending",
-          // company_id stays NULL for independents
-        } as any)
+        })
         .eq("id", authData.user.id);
 
       if (profileError) throw profileError;
 
-      // Assign field_agent role
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert({ user_id: authData.user.id, role: "field_agent" });
-
-      if (roleError) throw roleError;
+      // Role assignment is handled by DB trigger (auto_assign_independent_role)
 
       setSubmitted(true);
     } catch (error: any) {
