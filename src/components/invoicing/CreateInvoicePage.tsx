@@ -414,6 +414,7 @@ const CreateInvoicePage = ({
           invoice_number: finalNumber,
           lead_id: finalLeadId,
           agent_id: agentId,
+          company_id,
           customer_name: customerName,
           customer_phone: customerPhone || null,
           customer_address: customerAddress || null,

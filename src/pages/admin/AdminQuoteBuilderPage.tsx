@@ -130,6 +130,8 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
           category: i.product.product_category,
         })),
       }));
+      const { getUserCompanyId } = await import("@/lib/tenantUtils");
+      const company_id = await getUserCompanyId();
       const { data, error } = await (supabase.from("quotes") as any).insert({
         sales_engineer_id: userId, status: "draft",
         subtotal,
@@ -138,6 +140,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
         total: grandTotalInclVat,
         ...(selectedClientId ? { customer_id: selectedClientId.startsWith("lead-") ? null : selectedClientId } : {}),
         ...(selectedClient ? { customer_name: selectedClient.name } : {}),
+        company_id,
       }).select("id").single();
       if (error) throw error;
       setSavedId(data.id);

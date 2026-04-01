@@ -72,6 +72,9 @@ const EquipmentForm = ({ customerId, open, onClose, onSuccess, existingEquipment
       updated_at: new Date().toISOString(),
     };
 
+    const company_id = await getUserCompanyId();
+    (equipmentData as any).company_id = company_id;
+
     let error;
 
     if (existingEquipment?.id) {

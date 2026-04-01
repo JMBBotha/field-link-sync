@@ -133,12 +133,15 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
           category: i.product.product_category,
         })),
       }));
+      const { getUserCompanyId } = await import("@/lib/tenantUtils");
+      const company_id = await getUserCompanyId();
       const { data, error } = await (supabase.from("quotes") as any).insert({
         sales_engineer_id: userId, status: "draft",
         subtotal,
         vat_rate: VAT_RATE,
         vat_amount: vatAmount,
         total: grandTotalInclVat, notes: quoteName, visual_sections: zonesData,
+        company_id,
       }).select("id").single();
       if (error) throw error;
       setSavedId(data.id);
