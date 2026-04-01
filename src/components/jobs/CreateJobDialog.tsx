@@ -69,6 +69,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
         scheduled_for: scheduledFor || null,
         estimated_duration: `${duration} hours`,
         priority,
+        job_type: jobType,
         created_by: userId || null,
       }).select().single();
       if (error) throw error;
