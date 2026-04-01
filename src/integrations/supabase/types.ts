@@ -2769,6 +2769,7 @@ export type Database = {
           subscription_status: string
           trial_ends_at: string | null
           updated_at: string | null
+          whatsapp_notifications: boolean | null
           workshop_address: string | null
           workshop_lat: number | null
           workshop_lng: number | null
@@ -2797,6 +2798,7 @@ export type Database = {
           subscription_status?: string
           trial_ends_at?: string | null
           updated_at?: string | null
+          whatsapp_notifications?: boolean | null
           workshop_address?: string | null
           workshop_lat?: number | null
           workshop_lng?: number | null
@@ -2825,6 +2827,7 @@ export type Database = {
           subscription_status?: string
           trial_ends_at?: string | null
           updated_at?: string | null
+          whatsapp_notifications?: boolean | null
           workshop_address?: string | null
           workshop_lat?: number | null
           workshop_lng?: number | null
