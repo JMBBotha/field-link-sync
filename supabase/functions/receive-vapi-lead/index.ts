@@ -8,24 +8,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * Creates/finds customer, creates lead, triggers WhatsApp confirmation,
  * and finds the nearest available agent.
  * 
- * Auth: Uses a shared API key (VAPI_WEBHOOK_SECRET) since Lindy/Vapi 
- * can't do Supabase JWT auth. The key is checked in the x-api-key header.
- * 
- * POST body (JSON):
- * {
- *   caller_name?: string,        // From Vapi AI extraction
- *   caller_phone: string,        // Caller ID or spoken number (required)
- *   caller_id_phone?: string,    // Raw caller ID from Vapi
- *   service_type?: string,       // "new_install" | "repair" | "service" | "quote" | "unknown"
- *   address?: string,            // If captured during call
- *   notes?: string,              // Call summary / transcript notes
- *   urgency?: string,            // "emergency" | "urgent" | "normal" | "low"
- *   call_duration_seconds?: number,
- *   call_recording_url?: string,
- *   vapi_call_id?: string,       // For traceability
- *   source?: string,             // "vapi" | "lindy" | "web" | "manual"
- *   whatsapp_consent?: boolean,  // Did caller consent to WhatsApp?
- * }
+ * Now includes company_id for tenant isolation.
+ * Strategy: Look up the company from admin_settings or use the first company as default.
  */
 
 const corsHeaders = {
@@ -33,7 +17,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key",
 };
 
-// Normalize SA phone numbers to +27 format
 function normalizePhone(phone: string): string {
   let digits = phone.replace(/\D/g, "");
   if (digits.startsWith("0") && digits.length === 10) {
@@ -44,7 +27,6 @@ function normalizePhone(phone: string): string {
   return "+" + digits;
 }
 
-// Map urgency to priority
 function mapPriority(urgency?: string): string {
   switch (urgency?.toLowerCase()) {
     case "emergency": return "high";
@@ -55,7 +37,6 @@ function mapPriority(urgency?: string): string {
   }
 }
 
-// Map service description to service_type
 function mapServiceType(raw?: string): string {
   if (!raw) return "General Inquiry";
   const lower = raw.toLowerCase();
@@ -79,7 +60,6 @@ serve(async (req) => {
   }
 
   try {
-    // --- Auth: check API key ---
     const apiKey = req.headers.get("x-api-key");
     const expectedKey = Deno.env.get("VAPI_WEBHOOK_SECRET");
 
@@ -91,7 +71,6 @@ serve(async (req) => {
       });
     }
 
-    // --- Parse body ---
     const body = await req.json();
     console.log("[receive-vapi-lead] Incoming:", JSON.stringify(body));
 
@@ -108,9 +87,9 @@ serve(async (req) => {
       vapi_call_id,
       source = "vapi",
       whatsapp_consent,
+      company_id: bodyCompanyId,
     } = body;
 
-    // Phone is required
     const phone = caller_phone || caller_id_phone;
     if (!phone) {
       return new Response(JSON.stringify({ error: "caller_phone is required" }), {
@@ -122,17 +101,19 @@ serve(async (req) => {
     const normalizedPhone = normalizePhone(phone);
     const callerIdNormalized = caller_id_phone ? normalizePhone(caller_id_phone) : null;
 
-    // --- Init Supabase (service role — this is a server-to-server webhook) ---
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // --- Resolve company_id ---
+    // Priority: body.company_id > matched customer's company > first company in DB
+    let resolvedCompanyId: string | null = bodyCompanyId || null;
 
     // --- Step 1: Check for existing customer by phone ---
     let customerId: string | null = null;
     let customerName = caller_name || "Unknown Caller";
     let isExistingCustomer = false;
 
-    // Search by the phone number spoken in the call
     const { data: phoneMatch } = await supabase
       .rpc("check_customer_duplicates", {
         p_phone: normalizedPhone,
@@ -141,13 +122,21 @@ serve(async (req) => {
       });
 
     if (phoneMatch && phoneMatch.length > 0 && phoneMatch[0].match_score >= 0.8) {
-      // Strong match — use existing customer
       customerId = phoneMatch[0].id;
       customerName = `${phoneMatch[0].first_name || ""} ${phoneMatch[0].last_name || ""}`.trim() || customerName;
       isExistingCustomer = true;
       console.log(`[receive-vapi-lead] Matched existing customer: ${customerName} (${customerId})`);
+
+      // Inherit company from matched customer
+      if (!resolvedCompanyId) {
+        const { data: custData } = await supabase
+          .from("customers")
+          .select("company_id")
+          .eq("id", customerId)
+          .single();
+        if (custData?.company_id) resolvedCompanyId = custData.company_id;
+      }
     } else if (callerIdNormalized && callerIdNormalized !== normalizedPhone) {
-      // Try caller ID number too
       const { data: callerIdMatch } = await supabase
         .rpc("check_customer_duplicates", { p_phone: callerIdNormalized });
 
@@ -156,7 +145,27 @@ serve(async (req) => {
         customerName = `${callerIdMatch[0].first_name || ""} ${callerIdMatch[0].last_name || ""}`.trim() || customerName;
         isExistingCustomer = true;
         console.log(`[receive-vapi-lead] Matched via caller ID: ${customerName} (${customerId})`);
+
+        if (!resolvedCompanyId) {
+          const { data: custData } = await supabase
+            .from("customers")
+            .select("company_id")
+            .eq("id", customerId)
+            .single();
+          if (custData?.company_id) resolvedCompanyId = custData.company_id;
+        }
       }
+    }
+
+    // Fallback: use first company in DB (single-tenant fallback)
+    if (!resolvedCompanyId) {
+      const { data: firstCompany } = await supabase
+        .from("companies")
+        .select("id")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .single();
+      if (firstCompany) resolvedCompanyId = firstCompany.id;
     }
 
     // If no match, create a new customer
@@ -173,13 +182,13 @@ serve(async (req) => {
           phone: normalizedPhone,
           address: address || "",
           status: "lead",
+          company_id: resolvedCompanyId,
         })
         .select("id")
         .single();
 
       if (custError) {
         console.error("[receive-vapi-lead] Customer create error:", custError);
-        // Don't fail — proceed without customer_id
       } else {
         customerId = newCustomer.id;
         console.log(`[receive-vapi-lead] Created new customer: ${customerName} (${customerId})`);
@@ -205,9 +214,9 @@ serve(async (req) => {
           : "",
         isExistingCustomer ? "⭐ Returning customer" : "🆕 New customer",
       ].filter(Boolean).join("\n"),
-      // Default coords (0,0) — will be updated when address is confirmed
       latitude: 0,
       longitude: 0,
+      company_id: resolvedCompanyId,
     };
 
     if (customerId) {
@@ -234,10 +243,8 @@ serve(async (req) => {
 
     console.log(`[receive-vapi-lead] Lead created: ${newLead.id}`);
 
-    // --- Step 3: Queue WhatsApp confirmation (if we have a number) ---
+    // --- Step 3: Queue WhatsApp confirmation ---
     let whatsappQueued = false;
-
-    // Only send WhatsApp if consent was given OR if it's a genuine lead (not a hangup)
     const shouldSendWhatsapp = whatsapp_consent !== false && 
       (call_duration_seconds === undefined || call_duration_seconds > 15);
 
@@ -276,12 +283,6 @@ serve(async (req) => {
       }
     }
 
-    // --- Step 4: Find nearest agents (for logging/future auto-assign) ---
-    let nearbyAgentCount = 0;
-    // We can't do geofencing without coords yet, but log for reference
-    // Once the customer confirms their address, the admin can assign via the map view
-
-    // --- Build response ---
     const response = {
       success: true,
       lead_id: newLead.id,
@@ -289,6 +290,7 @@ serve(async (req) => {
       customer_name: customerName,
       is_existing_customer: isExistingCustomer,
       whatsapp_queued: whatsappQueued,
+      company_id: resolvedCompanyId,
       message: isExistingCustomer
         ? `Returning customer "${customerName}" — lead created and queued.`
         : `New customer "${customerName}" — created and lead queued.`,

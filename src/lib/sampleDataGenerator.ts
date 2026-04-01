@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getUserCompanyId } from "@/lib/tenantUtils";
 
 // Cape Town area coordinates
 const CAPE_TOWN_LOCATIONS = [
@@ -63,9 +64,13 @@ export async function generateSampleData(): Promise<SampleDataResult> {
   if (!session) throw new Error("You must be logged in to generate sample data");
   const userId = session.user.id;
 
+  // Get the user's company_id for tenant scoping
+  const companyId = await getUserCompanyId();
+  if (!companyId) throw new Error("You must complete onboarding (company setup) before generating sample data");
+
   const result: SampleDataResult = { customers: 0, leads: 0, products: 0, agreements: 0, invoices: 0, feedback: 0 };
 
-  // 1. Create supplier (Midea)
+  // 1. Create supplier (Midea) — suppliers are global, not tenant-scoped
   const { data: existingSupplier } = await supabase
     .from("suppliers")
     .select("id")
@@ -85,7 +90,7 @@ export async function generateSampleData(): Promise<SampleDataResult> {
     supplierId = sup.id;
   }
 
-  // 2. Create catalog products
+  // 2. Create catalog products — global catalog
   const productInserts = CATALOG_PRODUCTS.map(p => ({
     supplier_id: supplierId,
     product_code: p.code,
@@ -106,7 +111,7 @@ export async function generateSampleData(): Promise<SampleDataResult> {
   if (prodErr) throw prodErr;
   result.products = products?.length || CATALOG_PRODUCTS.length;
 
-  // 3. Create customers
+  // 3. Create customers — tenant-scoped
   const customerInserts = CUSTOMER_NAMES.map((c, i) => ({
     name: c.name,
     phone: c.phone,
@@ -118,6 +123,7 @@ export async function generateSampleData(): Promise<SampleDataResult> {
     created_by: userId,
     data_consent: true,
     data_consent_date: new Date().toISOString(),
+    company_id: companyId,
   }));
 
   const { data: customers, error: custErr } = await supabase
@@ -127,7 +133,7 @@ export async function generateSampleData(): Promise<SampleDataResult> {
   if (custErr) throw custErr;
   result.customers = customers?.length || 0;
 
-  // 4. Create leads/jobs
+  // 4. Create leads/jobs — tenant-scoped
   const now = new Date();
   const leadInserts = Array.from({ length: 10 }, (_, i) => {
     const loc = CAPE_TOWN_LOCATIONS[i];
@@ -151,6 +157,7 @@ export async function generateSampleData(): Promise<SampleDataResult> {
       completed_at: status === "completed" ? new Date(created.getTime() + 7200000).toISOString() : null,
       notes: `Sample job #${i + 1} — ${loc.name} area`,
       scheduled_date: new Date(now.getTime() + (i - 5) * 86400000).toISOString().split("T")[0],
+      company_id: companyId,
     };
   });
 
@@ -161,7 +168,7 @@ export async function generateSampleData(): Promise<SampleDataResult> {
   if (leadErr) throw leadErr;
   result.leads = leads?.length || 0;
 
-  // 5. Create service agreements for first 3 customers
+  // 5. Create service agreements — tenant-scoped
   const agreementInserts = customers!.slice(0, 3).map((c, i) => ({
     customer_id: c.id,
     contract_type: "annual_ac_maintenance",
@@ -174,13 +181,14 @@ export async function generateSampleData(): Promise<SampleDataResult> {
     next_service_due: new Date(now.getTime() + 30 * 86400000).toISOString().split("T")[0],
     created_by: userId,
     notes: `Sample agreement #${i + 1}`,
+    company_id: companyId,
   }));
 
   const { error: agrErr } = await supabase.from("service_agreements").insert(agreementInserts);
   if (agrErr) throw agrErr;
   result.agreements = agreementInserts.length;
 
-  // 6. Create invoices for completed leads
+  // 6. Create invoices for completed leads — tenant-scoped
   const completedLeads = leads!.filter(l => l.status === "completed" && l.assigned_agent_id);
   for (let i = 0; i < completedLeads.length; i++) {
     const lead = completedLeads[i];
@@ -189,7 +197,7 @@ export async function generateSampleData(): Promise<SampleDataResult> {
       { description: "Call-out Fee", quantity: 1, unit_price: 450, amount: 450 },
     ];
     const subtotal = lineItems.reduce((s, li) => s + li.amount, 0);
-    const taxAmount = Math.round(subtotal * 0.15 * 100) / 100; // sample data — hardcoded VAT is acceptable here
+    const taxAmount = Math.round(subtotal * 0.15 * 100) / 100;
 
     const { error: invErr } = await supabase.from("invoices").insert({
       lead_id: lead.id,
@@ -210,6 +218,7 @@ export async function generateSampleData(): Promise<SampleDataResult> {
       due_date: new Date(now.getTime() + 30 * 86400000).toISOString().split("T")[0],
       paid_date: i < 3 ? new Date().toISOString().split("T")[0] : null,
       payment_method: i < 3 ? "eft" : null,
+      company_id: companyId,
     });
     if (invErr) console.warn("Invoice insert error:", invErr);
     else result.invoices++;
@@ -233,7 +242,6 @@ export async function generateSampleData(): Promise<SampleDataResult> {
 }
 
 export async function clearSampleData(): Promise<void> {
-  // Delete in reverse dependency order
   await supabase.from("customer_feedback").delete().like("comment", "%Sample%").throwOnError();
   await supabase.from("invoices").delete().like("invoice_number", "INV-SAMPLE-%");
   await supabase.from("service_agreements").delete().like("notes", "Sample agreement%");
