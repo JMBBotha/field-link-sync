@@ -4773,7 +4773,13 @@ export type Database = {
       validate_customer_token: { Args: { p_token: string }; Returns: string }
     }
     Enums: {
-      app_role: "admin" | "field_agent" | "dispatcher" | "viewer"
+      app_role:
+        | "admin"
+        | "field_agent"
+        | "dispatcher"
+        | "viewer"
+        | "platform_super_admin"
+        | "platform_ops"
       availability_status: "available" | "busy" | "offline"
       equipment_type:
         | "ac"
@@ -4909,7 +4915,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "field_agent", "dispatcher", "viewer"],
+      app_role: [
+        "admin",
+        "field_agent",
+        "dispatcher",
+        "viewer",
+        "platform_super_admin",
+        "platform_ops",
+      ],
       availability_status: ["available", "busy", "offline"],
       equipment_type: ["ac", "heater", "vent", "heat_pump", "furnace", "other"],
     },
