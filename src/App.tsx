@@ -130,8 +130,10 @@ const App = () => (
                 <Route path="consumables" element={<AdminConsumablesPage />} />
                 <Route path="whatsapp" element={<AdminWhatsAppPage />} />
                 <Route path="pdf-documents" element={<AdminPDFDocumentsPage />} />
-                <Route path="brochures" element={<AdminBrochuresPage />} /> {/* brochure manager */}
+                <Route path="brochures" element={<AdminBrochuresPage />} />
                 <Route path="companies" element={<CompanyManagement />} />
+                <Route path="network-agents" element={<AdminNetworkAgentsPage />} />
+              </Route>
               </Route>
 
               {/* Full-page Quote Builder (outside AdminLayout for full-bleed) */}
