@@ -13,7 +13,6 @@ import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
 import {
   Building2,
-  Building2,
   Settings,
   Users,
   Rocket,
