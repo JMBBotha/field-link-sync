@@ -15,6 +15,7 @@ import CustomerFeedbackForm from "./components/CustomerFeedbackForm";
 import CustomerInvoiceView from "./components/CustomerInvoiceView";
 import NotFound from "./pages/NotFound";
 import UnifiedOnboarding from "./pages/UnifiedOnboarding";
+import IndependentSignup from "./pages/IndependentSignup";
 import ClientProposalView from "./components/client/ClientProposalView";
 
 // Admin layout + pages
