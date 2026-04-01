@@ -23,7 +23,6 @@ const AdminLayout = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showCreateLead, setShowCreateLead] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [searchOpen, setSearchOpen] = useState(false);
   const { needsSetup } = useCompanySettings();
