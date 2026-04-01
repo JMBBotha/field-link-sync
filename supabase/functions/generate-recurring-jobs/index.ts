@@ -7,7 +7,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -34,13 +33,22 @@ serve(async (req) => {
 
     const userId = claimsData.claims.sub;
 
-    // Verify user has admin role
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const { data: hasAdmin } = await supabase.rpc('has_role', { _user_id: userId, _role: 'admin' });
 
+    // Verify user has admin role
+    const { data: hasAdmin } = await supabase.rpc('has_role', { _user_id: userId, _role: 'admin' });
     if (!hasAdmin) {
       return new Response(JSON.stringify({ error: 'Forbidden - Admin access required' }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
+    // Get the user's company_id for tenant scoping
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", userId)
+      .single();
+
+    const userCompanyId = profile?.company_id;
 
     // Get agreements due for service within the next 7 days
     const { data: dueAgreements, error: fetchError } = await supabase
@@ -57,7 +65,6 @@ serve(async (req) => {
 
     for (const agreement of dueAgreements || []) {
       try {
-        // Get contract type label
         const contractLabels: Record<string, string> = {
           annual_ac_maintenance: "Annual AC Maintenance",
           biannual_heater_check: "Bi-Annual Heater Check",
@@ -68,7 +75,17 @@ serve(async (req) => {
         
         const serviceDescription = contractLabels[agreement.contract_type] || agreement.contract_type;
 
-        // Create lead from agreement
+        // Resolve company_id: prefer agreement's customer company, fallback to user's company
+        let leadCompanyId = userCompanyId;
+        if (agreement.customer_id) {
+          const { data: cust } = await supabase
+            .from("customers")
+            .select("company_id")
+            .eq("id", agreement.customer_id)
+            .single();
+          if (cust?.company_id) leadCompanyId = cust.company_id;
+        }
+
         const { data: lead, error: insertError } = await supabase
           .from("leads")
           .insert({
@@ -79,12 +96,13 @@ serve(async (req) => {
             longitude: agreement.customer_lng || 0,
             service_type: "Scheduled Maintenance",
             notes: `${serviceDescription} - Scheduled Maintenance\n\nThis is an automatically generated job from a service agreement.`,
-            priority: "high", // Contract jobs are high priority
+            priority: "high",
             status: "pending",
             agreement_id: agreement.agreement_id,
             scheduled_date: agreement.next_service_due,
             customer_id: agreement.customer_id,
             equipment_id: agreement.equipment_id,
+            company_id: leadCompanyId,
           })
           .select()
           .single();
@@ -94,7 +112,7 @@ serve(async (req) => {
           continue;
         }
 
-        // Calculate next service date based on frequency
+        // Calculate next service date
         let nextDate: Date;
         const currentDue = new Date(agreement.next_service_due);
         
@@ -114,7 +132,6 @@ serve(async (req) => {
             break;
         }
 
-        // Update agreement with new next_service_due
         const { error: updateError } = await supabase
           .from("service_agreements")
           .update({
