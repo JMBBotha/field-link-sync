@@ -175,7 +175,7 @@ const PdfPreviewEmbed = ({ url }: { url: string }) => {
   );
 };
 
-
+const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
