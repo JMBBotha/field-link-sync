@@ -1957,13 +1957,6 @@ const FieldAgent = () => {
           loading={completedJobsFilter.loading}
         />
         <SyncConflictDialog conflict={activeConflict} onResolve={resolveConflict} />
-        {showOnboarding && currentUserId && (
-          <OnboardingFlow
-            userId={currentUserId}
-            userRole="field_agent"
-            onComplete={() => setShowOnboarding(false)}
-          />
-        )}
         <UpgradeModal
           open={showUpgradeModal}
           onOpenChange={setShowUpgradeModal}
