@@ -175,17 +175,10 @@ const CustomerPortal = () => {
     if (!customer) return;
     setBookingSubmitting(true);
     try {
-      const { error: insertError } = await supabase.from("leads").insert({
-        customer_id: customer.id,
-        customer_name: customer.name,
-        customer_phone: customer.phone,
-        customer_address: customer.address || "TBC",
-        service_type: bookingForm.service_type,
-        notes: `[Customer Portal Booking] ${bookingForm.preferred_date ? `Preferred date: ${bookingForm.preferred_date}. ` : ""}${bookingForm.notes}`,
-        latitude: 0,
-        longitude: 0,
-        status: "pending",
-        priority: "normal",
+      const { error: insertError } = await supabase.rpc("create_portal_booking", {
+        p_token: token as string,
+        p_service_type: bookingForm.service_type,
+        p_notes: `[Customer Portal Booking] ${bookingForm.preferred_date ? `Preferred date: ${bookingForm.preferred_date}. ` : ""}${bookingForm.notes}`,
       });
       if (insertError) throw insertError;
       toast({ title: "✅ Booking Submitted", description: "We'll be in touch to confirm your appointment." });
