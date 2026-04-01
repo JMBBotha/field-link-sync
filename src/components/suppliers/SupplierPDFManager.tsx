@@ -145,19 +145,14 @@ const fetchPdfBlob = async (sourceUrl: string, fileName?: string) => {
     throw new Error(`Failed to fetch PDF (${response.status})`);
   }
 
-  const blob = await response.blob();
-  if (!blob.size) {
+  const rawBlob = await response.blob();
+  if (!rawBlob.size) {
     throw new Error("Downloaded PDF is empty");
   }
 
-  const contentType = (response.headers.get("content-type") || blob.type || "").toLowerCase();
-  const looksLikePdf = contentType.includes("pdf") || (fileName || "").toLowerCase().endsWith(".pdf");
-
-  if (!looksLikePdf) {
-    throw new Error(`Fetched file is not a PDF (${contentType || "unknown type"})`);
-  }
-
-  return blob;
+  // Force correct MIME type — raw blob may have wrong/missing content-type
+  const pdfBlob = new Blob([rawBlob], { type: "application/pdf" });
+  return pdfBlob;
 };
 
 async function deleteSinglePDF(pdf: PDFUploadRow) {
