@@ -9,7 +9,6 @@ import { useTheme } from "@/hooks/useTheme";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import SubscriptionBadge from "@/components/subscription/SubscriptionBadge";
 import CreateLeadDialog from "@/components/CreateLeadDialog";
-import SetupWizard from "@/components/SetupWizard";
 import Footer from "@/components/Footer";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useQuery } from "@tanstack/react-query";
