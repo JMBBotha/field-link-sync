@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, FileText, BarChart3, ClipboardList, AlertTriangle, CheckCircle2, Clock, DollarSign, Users, Wrench } from "lucide-react";
+import { Briefcase, UserCheck, Timer, TrendingUp, TrendingDown } from "lucide-react";
 import AdminAlertsPanel from "@/components/AdminAlertsPanel";
 import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
 import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
@@ -13,6 +14,8 @@ import QuotePerformanceWidget from "@/components/analytics/QuotePerformanceWidge
 import { format, subDays } from "date-fns";
 import { useState, useMemo } from "react";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
+import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 
 interface AdminHomeProps {
   onNavigate: (tab: string) => void;
@@ -22,6 +25,66 @@ interface AdminHomeProps {
 const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   const today = new Date().toISOString().split("T")[0];
   const [selectedKpi, setSelectedKpi] = useState<string | null>(null);
+  const { companyId } = useUserCompanyId();
+
+  // Jobs & Assignments KPI query
+  const { data: jobStats } = useQuery({
+    queryKey: ["jobs-kpi-stats", companyId],
+    queryFn: async () => {
+      if (!companyId) return null;
+      const [jobsRes, assignmentsRes, completedRes] = await Promise.all([
+        supabase.from("jobs").select("id, status, created_at, updated_at").eq("company_id", companyId),
+        supabase.from("assignments").select("id, status, profile_id").eq("status", "proposed"),
+        supabase.from("jobs").select("id, created_at, updated_at").eq("company_id", companyId).eq("status", "completed"),
+      ]);
+
+      const jobs = jobsRes.data || [];
+      const totalJobs = jobs.length;
+      const activeJobs = jobs.filter(j => j.status === "in_progress").length;
+      const completedJobs = jobs.filter(j => j.status === "completed").length;
+      const pendingAssignments = assignmentsRes.data?.length || 0;
+
+      // Active field agents (unique agents with active assignments)
+      const activeAgentsRes = await supabase
+        .from("assignments")
+        .select("profile_id")
+        .in("status", ["accepted", "in_progress"]);
+      const uniqueAgents = new Set((activeAgentsRes.data || []).map(a => a.profile_id));
+
+      // Avg completion time in days
+      const completed = completedRes.data || [];
+      let avgCompletionDays = 0;
+      if (completed.length > 0) {
+        const totalMs = completed.reduce((sum, j) => {
+          const created = new Date(j.created_at).getTime();
+          const updated = new Date(j.updated_at!).getTime();
+          return sum + (updated - created);
+        }, 0);
+        avgCompletionDays = Math.round((totalMs / completed.length) / (1000 * 60 * 60 * 24) * 10) / 10;
+      }
+
+      // Status breakdown
+      const statusCounts: Record<string, number> = {};
+      jobs.forEach(j => {
+        const s = j.status || "unknown";
+        statusCounts[s] = (statusCounts[s] || 0) + 1;
+      });
+      const statusBreakdown = Object.entries(statusCounts).map(([status, count]) => ({ status, count }));
+
+      return { totalJobs, activeJobs, completedJobs, pendingAssignments, activeFieldAgents: uniqueAgents.size, avgCompletionDays, statusBreakdown };
+    },
+    enabled: !!companyId,
+    staleTime: 30000,
+  });
+
+  const statusColors: Record<string, string> = {
+    pending: "hsl(var(--chart-4))",
+    scheduled: "hsl(var(--chart-2))",
+    dispatched: "hsl(var(--chart-5))",
+    in_progress: "hsl(var(--chart-1))",
+    completed: "hsl(var(--chart-3))",
+    cancelled: "hsl(var(--muted-foreground))",
+  };
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ["admin-home-stats", today],
@@ -99,6 +162,71 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
       {/* KPI Cards */}
+      {/* Jobs & Dispatch KPIs */}
+      {jobStats && (
+        <>
+          <div>
+            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+              <Briefcase className="h-5 w-5 text-primary" /> Jobs & Dispatch Overview
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              {[
+                { label: "Total Jobs", value: jobStats.totalJobs, icon: Briefcase, color: "text-primary" },
+                { label: "Active Jobs", value: jobStats.activeJobs, icon: Clock, color: "text-chart-1" },
+                { label: "Completed", value: jobStats.completedJobs, icon: CheckCircle2, color: "text-chart-3" },
+                { label: "Pending Assignments", value: jobStats.pendingAssignments, icon: ClipboardList, color: "text-chart-4" },
+                { label: "Active Agents", value: jobStats.activeFieldAgents, icon: UserCheck, color: "text-chart-2" },
+                { label: "Avg Completion", value: `${jobStats.avgCompletionDays}d`, icon: Timer, color: "text-chart-5" },
+              ].map((card) => (
+                <Card key={card.label} className="rounded-xl border border-border">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <card.icon className={`h-4 w-4 ${card.color}`} />
+                      <span className="text-xs text-muted-foreground">{card.label}</span>
+                    </div>
+                    <p className="text-2xl font-bold">{card.value}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Jobs by Status Chart */}
+          {jobStats.statusBreakdown.length > 0 && (
+            <Card className="rounded-xl border border-border">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Jobs by Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={jobStats.statusBreakdown} layout="vertical" margin={{ left: 80 }}>
+                      <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
+                      <YAxis
+                        type="category"
+                        dataKey="status"
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={(v: string) => v.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                      />
+                      <Tooltip
+                        formatter={(value: number) => [value, "Jobs"]}
+                        labelFormatter={(v: string) => v.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                      />
+                      <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                        {jobStats.statusBreakdown.map((entry) => (
+                          <Cell key={entry.status} fill={statusColors[entry.status] || "hsl(var(--muted-foreground))"} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* Existing KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         {isLoading
           ? Array.from({ length: 6 }).map((_, i) => (
