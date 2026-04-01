@@ -13,6 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { MapPin, Clock, User, GripVertical, CalendarDays, Users, Loader2, Plus, Zap } from "lucide-react";
+import { Filter } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
 import { format } from "date-fns";
 import CreateJobDialog from "@/components/jobs/CreateJobDialog";
@@ -38,6 +41,7 @@ const AdminJobsDispatchPage = () => {
   const [assignNotes, setAssignNotes] = useState("");
   const [detailJob, setDetailJob] = useState<any>(null);
   const [dragJobId, setDragJobId] = useState<string | null>(null);
+  const [showAvailableOnly, setShowAvailableOnly] = useState(false);
 
   // Fetch jobs with assignments
   const { data: jobs = [], isLoading } = useQuery({
@@ -97,6 +101,33 @@ const AdminJobsDispatchPage = () => {
       return results;
     },
     enabled: !!companyId,
+  });
+
+  // Fetch availability for all techs
+  const { data: availability = {} } = useQuery({
+    queryKey: ["dispatch-availability", techs.map((t: any) => t.id).join(",")],
+    queryFn: async () => {
+      if (techs.length === 0) return {};
+      const ids = techs.map((t: any) => t.id);
+      const now = new Date();
+      const dow = now.getDay();
+      const currentTime = now.toTimeString().slice(0, 8);
+
+      const { data } = await supabase
+        .from("agent_availability")
+        .select("agent_id, is_available, start_time, end_time")
+        .in("agent_id", ids)
+        .eq("day_of_week", dow);
+
+      const result: Record<string, boolean> = {};
+      ids.forEach((id: string) => { result[id] = false; });
+      (data || []).forEach((row: any) => {
+        result[row.agent_id] = row.is_available && row.start_time <= currentTime && row.end_time >= currentTime;
+      });
+      return result;
+    },
+    enabled: techs.length > 0,
+    refetchInterval: 60000,
   });
 
   // Group jobs by status
@@ -194,11 +225,12 @@ const AdminJobsDispatchPage = () => {
 
   // Group techs for assign modal
   const techGroups = useMemo(() => {
-    const internal = techs.filter((t: any) => t.assignment_type === "internal");
-    const affiliated = techs.filter((t: any) => t.assignment_type === "affiliated");
-    const network = techs.filter((t: any) => t.assignment_type === "network");
+    const filterFn = (t: any) => !showAvailableOnly || availability[t.id];
+    const internal = techs.filter((t: any) => t.assignment_type === "internal" && filterFn(t));
+    const affiliated = techs.filter((t: any) => t.assignment_type === "affiliated" && filterFn(t));
+    const network = techs.filter((t: any) => t.assignment_type === "network" && filterFn(t));
     return { internal, affiliated, network };
-  }, [techs]);
+  }, [techs, showAvailableOnly, availability]);
 
   const JobCard = ({ job }: { job: any }) => {
     const assignee = job.assignments?.find((a: any) => a.status !== "rejected");
@@ -258,9 +290,16 @@ const AdminJobsDispatchPage = () => {
     <div className="space-y-4 p-4 md:p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">Dispatch Board</h1>
-        <Button onClick={() => setShowCreate(true)} className="gap-2">
-          <Plus className="h-4 w-4" /> New Job
-        </Button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-sm">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">Available only</span>
+            <Switch checked={showAvailableOnly} onCheckedChange={setShowAvailableOnly} />
+          </div>
+          <Button onClick={() => setShowCreate(true)} className="gap-2">
+            <Plus className="h-4 w-4" /> New Job
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -316,6 +355,7 @@ const AdminJobsDispatchPage = () => {
                       }`}
                     >
                       <div className="flex items-center gap-2">
+                        <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${availability[tech.id] ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
                         <User className="h-4 w-4 text-muted-foreground" />
                         <span className="text-foreground">{tech.full_name}</span>
                       </div>

@@ -100,6 +100,47 @@ export type Database = {
           },
         ]
       }
+      agent_availability: {
+        Row: {
+          agent_id: string
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          is_available: boolean
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          day_of_week: number
+          end_time?: string
+          id?: string
+          is_available?: boolean
+          start_time?: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_available?: boolean
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_availability_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_locations: {
         Row: {
           agent_id: string
@@ -4960,6 +5001,7 @@ export type Database = {
         Args: { p_product_id: string }
         Returns: undefined
       }
+      is_agent_available_now: { Args: { p_agent_id: string }; Returns: boolean }
       is_company_admin: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
