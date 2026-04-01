@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import type { AppRole } from "@/hooks/useRole";
+import AgentAvailabilityEditor from "@/components/scheduling/AgentAvailabilityEditor";
 
 const ROLE_META: Record<string, { label: string; color: string; icon: React.ElementType; description: string }> = {
   admin: { label: "Admin", color: "bg-purple-600 text-purple-50", icon: Shield, description: "Full access to all features" },
@@ -33,6 +34,7 @@ const AdminTeamPage = () => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<string>("field_agent");
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
+  const [availabilityUser, setAvailabilityUser] = useState<string | null>(null);
 
   // Fetch team members
   const { data: members = [], isLoading } = useQuery({
@@ -375,6 +377,14 @@ const AdminTeamPage = () => {
                                 )}
 
                                 <div className="mt-4 pt-3 border-t border-border/30 flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-xs"
+                                    onClick={() => setAvailabilityUser(member.id)}
+                                  >
+                                    <Clock className="h-3 w-3 mr-1" /> Set Availability
+                                  </Button>
                                   {member.roles.map((r) => (
                                     <Button
                                       key={r}
@@ -405,6 +415,18 @@ const AdminTeamPage = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Availability Editor Dialog */}
+      {availabilityUser && (
+        <Dialog open={!!availabilityUser} onOpenChange={(open) => { if (!open) setAvailabilityUser(null); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Set Weekly Availability</DialogTitle>
+            </DialogHeader>
+            <AgentAvailabilityEditor agentId={availabilityUser} />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };
