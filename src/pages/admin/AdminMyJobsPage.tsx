@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { MapPin, Clock, CalendarDays, CheckCircle, XCircle, Play } from "lucide-react";
+import { MapPin, CalendarDays, CheckCircle, XCircle, Play } from "lucide-react";
 import { format } from "date-fns";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -16,29 +15,88 @@ const STATUS_COLORS: Record<string, string> = {
   rejected: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
 };
 
+type MyAssignedJobRow = {
+  assignment_id: string;
+  assignment_status: string | null;
+  job_id: string;
+  job_title: string | null;
+  job_description: string | null;
+  job_address: string | null;
+  job_status: string | null;
+  job_priority: string | null;
+  job_scheduled_for: string | null;
+  customer_name: string | null;
+  customer_phone: string | null;
+  assignment_notes: string | null;
+  created_at: string | null;
+};
+
+type MyJobItem = {
+  id: string;
+  status: string;
+  notes: string | null;
+  created_at: string | null;
+  job_id: string;
+  jobs: {
+    id: string;
+    title: string | null;
+    description: string | null;
+    address: string | null;
+    scheduled_for: string | null;
+    priority: string | null;
+    status: string | null;
+    customers: {
+      name: string | null;
+      phone: string | null;
+    } | null;
+  };
+};
+
 const AdminMyJobsPage = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<"active" | "completed">("active");
 
-  const { data: myAssignments = [], isLoading } = useQuery({
+  const { data: myAssignments = [], isLoading } = useQuery<MyJobItem[]>({
     queryKey: ["my-jobs"],
     queryFn: async () => {
       const { data: session } = await supabase.auth.getSession();
       if (!session.session) return [];
-      const { data, error } = await supabase
-        .from("assignments")
-        .select("*, jobs(id, title, description, address, scheduled_for, priority, status, customers(name))")
-        .eq("profile_id", session.session.user.id)
-        .order("created_at", { ascending: false });
+
+      const { data, error } = await supabase.rpc("get_my_assigned_jobs", {
+        p_profile_id: session.session.user.id,
+      });
+
       if (error) throw error;
-      return data || [];
+
+      return ((data as MyAssignedJobRow[] | null) || []).map((row) => ({
+        id: row.assignment_id,
+        status: row.assignment_status ?? "proposed",
+        notes: row.assignment_notes,
+        created_at: row.created_at,
+        job_id: row.job_id,
+        jobs: {
+          id: row.job_id,
+          title: row.job_title,
+          description: row.job_description,
+          address: row.job_address,
+          scheduled_for: row.job_scheduled_for,
+          priority: row.job_priority,
+          status: row.job_status,
+          customers: row.customer_name
+            ? {
+                name: row.customer_name,
+                phone: row.customer_phone,
+              }
+            : null,
+        },
+      }));
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: async ({ assignmentId, status, jobStatus }: { assignmentId: string; status: string; jobStatus?: string }) => {
-      const updates: any = { status };
+      const updates: { status: string; started_at?: string; completed_at?: string } = { status };
       if (status === "in_progress") updates.started_at = new Date().toISOString();
       if (status === "completed") updates.completed_at = new Date().toISOString();
 
@@ -47,9 +105,10 @@ const AdminMyJobsPage = () => {
 
       // Also update job status if needed
       if (jobStatus) {
-        const assignment = myAssignments.find((a: any) => a.id === assignmentId);
+        const assignment = myAssignments.find((a) => a.id === assignmentId);
         if (assignment?.job_id) {
-          await supabase.from("jobs").update({ status: jobStatus, updated_at: new Date().toISOString() }).eq("id", assignment.job_id);
+          const { error: jobError } = await supabase.from("jobs").update({ status: jobStatus, updated_at: new Date().toISOString() }).eq("id", assignment.job_id);
+          if (jobError) throw jobError;
         }
       }
     },
@@ -60,8 +119,11 @@ const AdminMyJobsPage = () => {
     onError: (err: any) => toast({ title: "Update failed", description: err.message, variant: "destructive" }),
   });
 
-  const filtered = myAssignments.filter((a: any) =>
-    filter === "active" ? !["completed", "rejected"].includes(a.status) : ["completed", "rejected"].includes(a.status)
+  const filtered = useMemo(
+    () => myAssignments.filter((a) =>
+      filter === "active" ? !["completed", "rejected"].includes(a.status) : ["completed", "rejected"].includes(a.status)
+    ),
+    [filter, myAssignments]
   );
 
   return (
@@ -79,7 +141,7 @@ const AdminMyJobsPage = () => {
         <div className="text-center py-12 text-muted-foreground">No {filter} jobs</div>
       ) : (
         <div className="grid gap-3">
-          {filtered.map((assignment: any) => {
+          {filtered.map((assignment) => {
             const job = assignment.jobs;
             if (!job) return null;
             return (
