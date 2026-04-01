@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { MapPin, Clock, User, GripVertical, CalendarDays, Users, Loader2, Plus, Zap } from "lucide-react";
+import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
 import { format } from "date-fns";
 import CreateJobDialog from "@/components/jobs/CreateJobDialog";
 
@@ -387,6 +388,8 @@ const AdminJobsDispatchPage = () => {
                   <Users className="h-4 w-4 mr-1" /> Assign Tech
                 </Button>
               </div>
+              <Separator />
+              <JobActivityTimeline jobId={detailJob.id} />
             </div>
           )}
         </DialogContent>
