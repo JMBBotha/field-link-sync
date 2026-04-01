@@ -438,7 +438,65 @@ const UnifiedOnboarding = () => {
     setSaving(true);
     try {
       if (userRole === "admin") {
-        // Save company settings (upsert)
+        // 1. Create or find the company
+        const slug = adminForm.company_name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "")
+          .slice(0, 60);
+
+        let companyId: string | null = null;
+
+        // Check if user already has a company linked
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("company_id")
+          .eq("id", userId)
+          .maybeSingle();
+
+        if (profile?.company_id) {
+          companyId = profile.company_id;
+          // Update existing company
+          await supabase.from("companies").update({
+            name: adminForm.company_name,
+            vat_rate: 0.15,
+            default_rate: adminForm.default_hourly_rate,
+            services: selectedServices,
+            onboarding_completed: true,
+            updated_at: new Date().toISOString(),
+          }).eq("id", companyId);
+        } else {
+          // Create new company
+          const { data: newCompany, error: companyErr } = await supabase
+            .from("companies")
+            .insert({
+              name: adminForm.company_name,
+              slug,
+              vat_rate: 0.15,
+              default_rate: adminForm.default_hourly_rate,
+              services: selectedServices,
+              onboarding_completed: true,
+            })
+            .select("id")
+            .single();
+
+          if (companyErr) throw companyErr;
+          companyId = newCompany.id;
+
+          // Link user to company in profiles
+          await supabase.from("profiles").update({
+            company_id: companyId,
+          }).eq("id", userId);
+
+          // Add to company_members
+          await supabase.from("company_members").upsert({
+            user_id: userId,
+            company_id: companyId,
+            role: "admin",
+          }, { onConflict: "user_id,company_id" });
+        }
+
+        // 2. Save company_settings (upsert) — kept for backward compat
         const { data: existing } = await supabase.from("company_settings").select("id").limit(1).maybeSingle();
         if (existing) {
           await supabase.from("company_settings").update({
