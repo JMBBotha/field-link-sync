@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, FileText, BarChart3, ClipboardList, AlertTriangle, CheckCircle2, Clock, DollarSign, Users, Wrench } from "lucide-react";
 import { Briefcase, UserCheck, Timer, TrendingUp, TrendingDown } from "lucide-react";
 import AdminAlertsPanel from "@/components/AdminAlertsPanel";
+// Jobs & Dispatch KPI dashboard section
 import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
 import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
 import KpiDetailDialog from "@/components/admin/KpiDetailDialog";
