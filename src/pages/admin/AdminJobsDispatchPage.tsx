@@ -133,6 +133,31 @@ const AdminJobsDispatchPage = () => {
     onError: (err: any) => toast({ title: "Assignment failed", description: err.message, variant: "destructive" }),
   });
 
+  // Auto-dispatch mutation (calls edge function)
+  const autoDispatchMutation = useMutation({
+    mutationFn: async (jobId: string) => {
+      const { data: session } = await supabase.auth.getSession();
+      const { data, error } = await supabase.functions.invoke("dispatch-job", {
+        body: {
+          job_id: jobId,
+          dispatched_by: session.session?.user.id || null,
+          override_assignee_id: null,
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data: any) => {
+      if (data?.success) {
+        toast({ title: "Auto-dispatched", description: `Assigned via ${data.assignment_type} (Tier ${data.tier_used})` });
+      } else {
+        toast({ title: "No available assignees", description: data?.message || "Dispatcher notified", variant: "destructive" });
+      }
+      queryClient.invalidateQueries({ queryKey: ["jobs-dispatch"] });
+    },
+    onError: (err: any) => toast({ title: "Auto-dispatch failed", description: err.message, variant: "destructive" }),
+  });
+
   // Status update mutation (drag-drop)
   const statusMutation = useMutation({
     mutationFn: async ({ jobId, status }: { jobId: string; status: string }) => {
