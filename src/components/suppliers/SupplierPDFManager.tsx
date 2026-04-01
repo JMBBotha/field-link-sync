@@ -683,18 +683,17 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
       </AlertDialog>
 
       {/* PDF Preview */}
-      <Dialog open={!!previewUrl} onOpenChange={(o) => !o && setPreviewUrl(null)}>
+      <Dialog open={!!previewUrl} onOpenChange={(o) => {
+        if (!o) {
+          if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
+          setPreviewUrl(null);
+        }
+      }}>
         <DialogContent className="max-w-4xl h-[80vh]">
           <DialogHeader>
             <DialogTitle>PDF Preview</DialogTitle>
           </DialogHeader>
-          {previewUrl && (
-            <iframe
-              src={previewUrl}
-              className="w-full flex-1 rounded border min-h-0"
-              style={{ height: "calc(80vh - 80px)" }}
-            />
-          )}
+          {previewUrl && <PdfPreviewEmbed url={previewUrl} />}
         </DialogContent>
       </Dialog>
     </div>
