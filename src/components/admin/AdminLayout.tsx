@@ -235,13 +235,6 @@ const AdminLayout = () => {
       <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
       <IdleWarningModal open={showWarning} secondsLeft={secondsLeft} onStayActive={stayActive} />
 
-      {showOnboarding && currentUserId && (
-        <OnboardingFlow
-          userId={currentUserId}
-          userRole="admin"
-          onComplete={() => setShowOnboarding(false)}
-        />
-      )}
     </div>
   );
 };
