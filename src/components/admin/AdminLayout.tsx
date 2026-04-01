@@ -10,7 +10,7 @@ import NotificationBell from "@/components/notifications/NotificationBell";
 import SubscriptionBadge from "@/components/subscription/SubscriptionBadge";
 import CreateLeadDialog from "@/components/CreateLeadDialog";
 import Footer from "@/components/Footer";
-import { useCompanySettings } from "@/hooks/useCompanySettings";
+
 import { useQuery } from "@tanstack/react-query";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import IdleWarningModal from "@/components/IdleWarningModal";
