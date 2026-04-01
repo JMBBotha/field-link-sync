@@ -502,7 +502,7 @@ const UnifiedOnboarding = () => {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
       {/* Header */}
       <div className="mb-6">
-        <img src={logo} alt="0800BeCool" className="h-16 w-auto drop-shadow-lg" />
+        <img src={logo} alt="0800BeCool" className="h-[84px] w-auto drop-shadow-lg" />
       </div>
 
       <Card className="w-full max-w-lg border-0 shadow-2xl">
