@@ -134,7 +134,6 @@ const App = () => (
                 <Route path="companies" element={<CompanyManagement />} />
                 <Route path="network-agents" element={<AdminNetworkAgentsPage />} />
               </Route>
-              </Route>
 
               {/* Full-page Quote Builder (outside AdminLayout for full-bleed) */}
               <Route path="/admin/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><FBQuoteBuilderPage mode="admin" /></RequireRole>} />
