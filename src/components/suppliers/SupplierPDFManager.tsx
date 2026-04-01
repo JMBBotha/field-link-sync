@@ -836,7 +836,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
           resetPreviewState();
         }
       }}>
-        <DialogContent className="flex flex-col p-0 gap-0 w-[min(92vw,1200px)] max-w-none h-[min(88vh,900px)]">
+        <DialogContent className="max-w-[95vw] w-[1150px] h-[92vh] max-h-[95vh] flex flex-col p-0">
           <div className="flex shrink-0 items-center justify-between border-b px-4 py-2">
             <DialogTitle className="text-sm font-semibold">PDF Preview</DialogTitle>
             <div className="flex items-center gap-1.5">
