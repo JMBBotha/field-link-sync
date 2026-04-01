@@ -142,9 +142,6 @@ const AdminLayout = () => {
 
   if (!isAdmin) return null;
 
-  if (needsSetup) {
-    return <SetupWizard onComplete={() => window.location.reload()} />;
-  }
 
   return (
     <div className="flex h-screen overflow-hidden">
