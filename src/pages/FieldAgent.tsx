@@ -285,7 +285,8 @@ const FieldAgent = () => {
         setHomeBaseLng(profile.home_base_lng);
       }
       if (!profile?.onboarding_completed) {
-        setShowOnboarding(true);
+        navigate("/onboarding");
+        return;
       }
 
       fetchLeads();
