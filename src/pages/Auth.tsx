@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Building2, Wrench } from "lucide-react";
 import logo from "@/assets/logo.png";
 
 const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
+  const [showSignupChoice, setShowSignupChoice] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -19,7 +20,6 @@ const Auth = () => {
 
   useEffect(() => {
     const redirectUser = async (userId: string) => {
-      // Check if onboarding is completed
       const { data: profile } = await supabase
         .from("profiles")
         .select("onboarding_completed")
@@ -86,16 +86,79 @@ const Auth = () => {
     }
   };
 
+  // Signup choice screen
+  if (showSignupChoice) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
+        <img src={logo} alt="0800BeCool" className="h-24 w-auto mb-8 drop-shadow-lg" />
+        <div className="w-full max-w-sm space-y-6">
+          <div className="text-center space-y-1">
+            <h1 className="text-2xl font-bold text-white">How do you want to join?</h1>
+            <p className="text-white/70 text-sm">Choose the option that fits you best</p>
+          </div>
+
+          <div className="space-y-3">
+            <button
+              onClick={() => { setShowSignupChoice(false); setIsLogin(false); }}
+              className="w-full p-4 rounded-xl border border-white/20 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-all text-left group"
+            >
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-[hsl(25,95%,53%)]/20 text-[hsl(25,95%,53%)] mt-0.5">
+                  <Building2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="font-semibold text-white group-hover:text-[hsl(25,95%,53%)] transition-colors">
+                    Sign Up as a Company
+                  </div>
+                  <div className="text-xs text-white/60 mt-1">
+                    Register your HVAC business, manage teams, dispatch jobs, send quotes & invoices
+                  </div>
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => navigate("/signup/independent")}
+              className="w-full p-4 rounded-xl border border-white/20 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-all text-left group"
+            >
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-[hsl(204,100%,50%)]/20 text-[hsl(204,100%,60%)] mt-0.5">
+                  <Wrench className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="font-semibold text-white group-hover:text-[hsl(204,100%,60%)] transition-colors">
+                    Join as Independent Agent
+                  </div>
+                  <div className="text-xs text-white/60 mt-1">
+                    Apply as a freelance sales agent or technician to take jobs from companies on the network
+                  </div>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <div className="text-center">
+            <Button
+              variant="link"
+              className="text-white/70 hover:text-white"
+              onClick={() => { setShowSignupChoice(false); setIsLogin(true); }}
+            >
+              Already have an account? Sign in
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
-      {/* Logo */}
-      <img src={logo} alt="0800BeCool" className="h-20 w-auto mb-8 drop-shadow-lg" />
+      <img src={logo} alt="0800BeCool" className="h-24 w-auto mb-8 drop-shadow-lg" />
 
-      {/* Auth form — no card wrapper */}
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-1">
           <h1 className="text-2xl font-bold text-white">
-            {isLogin ? "Welcome Back" : "Create Account"}
+            {isLogin ? "Welcome Back" : "Create Company Account"}
           </h1>
           <p className="text-white/70 text-sm">
             {isLogin
@@ -159,7 +222,13 @@ const Auth = () => {
           <Button
             variant="link"
             className="ml-1 text-[hsl(25,95%,53%)] hover:text-[hsl(25,95%,63%)]"
-            onClick={() => setIsLogin(!isLogin)}
+            onClick={() => {
+              if (isLogin) {
+                setShowSignupChoice(true);
+              } else {
+                setIsLogin(true);
+              }
+            }}
           >
             {isLogin ? "Sign up" : "Sign in"}
           </Button>

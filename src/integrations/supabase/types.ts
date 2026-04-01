@@ -38,6 +38,68 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_affiliations: {
+        Row: {
+          affiliation_type: string
+          approved_at: string | null
+          approved_by: string | null
+          company_id: string
+          created_at: string | null
+          id: string
+          profile_id: string
+          status: string | null
+        }
+        Insert: {
+          affiliation_type: string
+          approved_at?: string | null
+          approved_by?: string | null
+          company_id: string
+          created_at?: string | null
+          id?: string
+          profile_id: string
+          status?: string | null
+        }
+        Update: {
+          affiliation_type?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          profile_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_affiliations_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_affiliations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_affiliations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "agent_affiliations_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_locations: {
         Row: {
           agent_id: string
@@ -2830,7 +2892,9 @@ export type Database = {
           last_availability_update: string | null
           location_tracking_enabled: boolean | null
           max_travel_km: number | null
+          network_status: string | null
           onboarding_completed: boolean
+          participant_type: string
           phone: string | null
           skills: string[] | null
           stripe_customer_id: string | null
@@ -2859,7 +2923,9 @@ export type Database = {
           last_availability_update?: string | null
           location_tracking_enabled?: boolean | null
           max_travel_km?: number | null
+          network_status?: string | null
           onboarding_completed?: boolean
+          participant_type?: string
           phone?: string | null
           skills?: string[] | null
           stripe_customer_id?: string | null
@@ -2888,7 +2954,9 @@ export type Database = {
           last_availability_update?: string | null
           location_tracking_enabled?: boolean | null
           max_travel_km?: number | null
+          network_status?: string | null
           onboarding_completed?: boolean
+          participant_type?: string
           phone?: string | null
           skills?: string[] | null
           stripe_customer_id?: string | null
@@ -4401,6 +4469,71 @@ export type Database = {
         }
         Relationships: []
       }
+      upgrade_paths: {
+        Row: {
+          from_participant_type: string | null
+          id: string
+          metadata: Json | null
+          performed_at: string | null
+          performed_by: string | null
+          profile_id: string
+          to_company_id: string | null
+          to_participant_type: string | null
+          upgrade_reason: string | null
+        }
+        Insert: {
+          from_participant_type?: string | null
+          id?: string
+          metadata?: Json | null
+          performed_at?: string | null
+          performed_by?: string | null
+          profile_id: string
+          to_company_id?: string | null
+          to_participant_type?: string | null
+          upgrade_reason?: string | null
+        }
+        Update: {
+          from_participant_type?: string | null
+          id?: string
+          metadata?: Json | null
+          performed_at?: string | null
+          performed_by?: string | null
+          profile_id?: string
+          to_company_id?: string | null
+          to_participant_type?: string | null
+          upgrade_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upgrade_paths_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upgrade_paths_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upgrade_paths_to_company_id_fkey"
+            columns: ["to_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upgrade_paths_to_company_id_fkey"
+            columns: ["to_company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -4767,7 +4900,13 @@ export type Database = {
       validate_customer_token: { Args: { p_token: string }; Returns: string }
     }
     Enums: {
-      app_role: "admin" | "field_agent" | "dispatcher" | "viewer"
+      app_role:
+        | "admin"
+        | "field_agent"
+        | "dispatcher"
+        | "viewer"
+        | "platform_super_admin"
+        | "platform_ops"
       availability_status: "available" | "busy" | "offline"
       equipment_type:
         | "ac"
@@ -4903,7 +5042,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "field_agent", "dispatcher", "viewer"],
+      app_role: [
+        "admin",
+        "field_agent",
+        "dispatcher",
+        "viewer",
+        "platform_super_admin",
+        "platform_ops",
+      ],
       availability_status: ["available", "busy", "offline"],
       equipment_type: ["ac", "heater", "vent", "heat_pump", "furnace", "other"],
     },

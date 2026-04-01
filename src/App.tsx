@@ -15,6 +15,7 @@ import CustomerFeedbackForm from "./components/CustomerFeedbackForm";
 import CustomerInvoiceView from "./components/CustomerInvoiceView";
 import NotFound from "./pages/NotFound";
 import UnifiedOnboarding from "./pages/UnifiedOnboarding";
+import IndependentSignup from "./pages/IndependentSignup";
 import ClientProposalView from "./components/client/ClientProposalView";
 
 // Admin layout + pages
@@ -41,6 +42,7 @@ import ServiceAgreements from "./components/ServiceAgreements";
 import AdminAdvancedReportsPage from "./pages/admin/AdminAdvancedReportsPage";
 import AdminTeamPage from "./pages/admin/AdminTeamPage";
 import AdminBillingPage from "./pages/admin/AdminBillingPage";
+import AdminNetworkAgentsPage from "./pages/admin/AdminNetworkAgentsPage";
 
 import AdminSuppliersPage from "./pages/admin/AdminSuppliersPage";
 import AdminConsumablesPage from "./pages/admin/AdminConsumablesPage";
@@ -96,6 +98,7 @@ const App = () => (
               <Route path="/login" element={<Auth />} />
               <Route path="/auth" element={<Navigate to="/login" replace />} />
               <Route path="/onboarding" element={<UnifiedOnboarding />} />
+              <Route path="/signup/independent" element={<IndependentSignup />} />
 
               {/* Admin layout with nested routes */}
               <Route path="/admin" element={<AdminLayout />}>
@@ -127,8 +130,9 @@ const App = () => (
                 <Route path="consumables" element={<AdminConsumablesPage />} />
                 <Route path="whatsapp" element={<AdminWhatsAppPage />} />
                 <Route path="pdf-documents" element={<AdminPDFDocumentsPage />} />
-                <Route path="brochures" element={<AdminBrochuresPage />} /> {/* brochure manager */}
+                <Route path="brochures" element={<AdminBrochuresPage />} />
                 <Route path="companies" element={<CompanyManagement />} />
+                <Route path="network-agents" element={<AdminNetworkAgentsPage />} />
               </Route>
 
               {/* Full-page Quote Builder (outside AdminLayout for full-bleed) */}
