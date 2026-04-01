@@ -243,34 +243,11 @@ async function deleteSinglePDF(pdf: PDFUploadRow) {
 }
 const PdfPreviewEmbed = ({ url, fileName }: { url: string; fileName?: string | null }) => {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-        <span className="truncate">Rendering local PDF preview{fileName ? `: ${fileName}` : ""}</span>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <a href={url} target="_blank" rel="noopener noreferrer">Open in new tab</a>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <a href={url} download={fileName || "supplier-document.pdf"}>Download PDF</a>
-          </Button>
-        </div>
-      </div>
-
-      <object data={url} type="application/pdf" className="min-h-0 flex-1 w-full rounded-md border bg-background">
-        <embed src={url} type="application/pdf" className="h-full w-full rounded-md" />
-        <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-12 text-center text-muted-foreground">
-          <p className="text-sm">Inline PDF preview is not available for this file in your browser.</p>
-          <div className="flex flex-wrap justify-center gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <a href={url} target="_blank" rel="noopener noreferrer">Open in new tab</a>
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <a href={url} download={fileName || "supplier-document.pdf"}>Download PDF</a>
-            </Button>
-          </div>
-        </div>
-      </object>
-    </div>
+    <iframe
+      src={url}
+      className="h-full w-full rounded border bg-background"
+      title={fileName || "PDF Preview"}
+    />
   );
 };
 
@@ -863,24 +840,37 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
           resetPreviewState();
         }
       }}>
-        <DialogContent className="max-w-4xl h-[80vh]">
-          <DialogHeader>
-            <DialogTitle>PDF Preview</DialogTitle>
-          </DialogHeader>
-          <div className="flex min-h-0 flex-1 flex-col gap-3">
+        <DialogContent className="flex flex-col p-0 gap-0 w-[min(92vw,1200px)] max-w-none h-[min(88vh,900px)]">
+          <div className="flex shrink-0 items-center justify-between border-b px-4 py-2">
+            <DialogTitle className="text-sm font-semibold">PDF Preview</DialogTitle>
+            <div className="flex items-center gap-1.5">
+              {previewUrl && (
+                <>
+                  <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                    <a href={previewUrl} target="_blank" rel="noopener noreferrer">Open in new tab</a>
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                    <a href={previewUrl} download={previewFileName || "supplier-document.pdf"}>Download</a>
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col">
             {previewDebugMessage && (
-              <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              <div className="shrink-0 border-b bg-muted/40 px-4 py-1.5 text-[11px] text-muted-foreground">
                 {previewDebugMessage}
               </div>
             )}
 
             {previewLoading ? (
-              <div className="flex flex-1 items-center justify-center gap-3 rounded-md border border-dashed text-muted-foreground">
+              <div className="flex flex-1 items-center justify-center gap-3 text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin" />
                 <span className="text-sm">Loading preview...</span>
               </div>
             ) : previewError ? (
-              <div className="flex flex-1 flex-col items-center justify-center gap-4 rounded-md border border-dashed px-6 text-center text-muted-foreground">
+              <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center text-muted-foreground">
                 <AlertTriangle className="h-8 w-8 text-destructive" />
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-foreground">Preview failed</p>
@@ -898,9 +888,11 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
                 )}
               </div>
             ) : previewUrl ? (
-              <PdfPreviewEmbed url={previewUrl} fileName={previewFileName} />
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <PdfPreviewEmbed url={previewUrl} fileName={previewFileName} />
+              </div>
             ) : (
-              <div className="flex flex-1 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+              <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
                 No preview selected.
               </div>
             )}
