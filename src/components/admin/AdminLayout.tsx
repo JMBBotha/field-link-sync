@@ -106,14 +106,15 @@ const AdminLayout = () => {
       setIsAdmin(true);
       setCurrentUserId(session.user.id);
 
-      // Check onboarding status
+      // If onboarding not completed, redirect to unified onboarding
       const { data: profile } = await supabase
         .from("profiles")
         .select("onboarding_completed")
         .eq("id", session.user.id)
         .maybeSingle();
       if (!profile?.onboarding_completed) {
-        setShowOnboarding(true);
+        navigate("/onboarding");
+        return;
       }
     } catch (error: any) {
       console.error("Auth check error:", error);
