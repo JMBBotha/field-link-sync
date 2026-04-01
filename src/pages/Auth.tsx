@@ -19,7 +19,19 @@ const Auth = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const redirectByRole = async (userId: string) => {
+    const redirectUser = async (userId: string) => {
+      // Check if onboarding is completed
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (!profile?.onboarding_completed) {
+        navigate("/onboarding");
+        return;
+      }
+
       const { data: roles } = await supabase
         .from("user_roles")
         .select("role")
@@ -29,11 +41,11 @@ const Auth = () => {
     };
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) redirectByRole(session.user.id);
+      if (session) redirectUser(session.user.id);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) redirectByRole(session.user.id);
+      if (session) redirectUser(session.user.id);
     });
 
     return () => subscription.unsubscribe();
