@@ -68,10 +68,13 @@ const CreateCustomerDialog = ({ open, onOpenChange, onCreated, initialName }: Cr
   const saveCustomer = async () => {
     setSaving(true);
     try {
+      const { getUserCompanyId } = await import("@/lib/tenantUtils");
+      const company_id = await getUserCompanyId();
       const { data, error } = await supabase
         .from("customers")
         .insert({
           first_name: form.first_name,
+          company_id,
           last_name: form.last_name,
           name: `${form.first_name} ${form.last_name}`.trim(),
           company_name: form.company_name || null,

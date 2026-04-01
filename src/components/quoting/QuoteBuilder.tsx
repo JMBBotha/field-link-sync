@@ -525,9 +525,12 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         finalNumber = "Generating...";
       }
 
+      const { getUserCompanyId } = await import("@/lib/tenantUtils");
+      const company_id = await getUserCompanyId();
       const quotePayload: any = {
         customer_id: selectedCustomerId || null,
         sales_engineer_id: session.user.id,
+        company_id,
         subtotal,
         vat_rate: taxRate / 100,
         vat_amount: taxAmount,

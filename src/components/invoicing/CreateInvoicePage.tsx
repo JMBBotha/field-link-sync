@@ -382,6 +382,9 @@ const CreateInvoicePage = ({
         setInvoiceNumber(finalNumber);
       }
 
+      const { getUserCompanyId } = await import("@/lib/tenantUtils");
+      const company_id = await getUserCompanyId();
+
       let finalLeadId = leadId;
       if (!finalLeadId) {
         const { data: newLead, error: leadError } = await supabase
@@ -397,6 +400,7 @@ const CreateInvoicePage = ({
             longitude: 0,
             completed_at: new Date().toISOString(),
             customer_id: selectedCustomerId,
+            company_id,
           })
           .select("id")
           .single();
@@ -410,6 +414,7 @@ const CreateInvoicePage = ({
           invoice_number: finalNumber,
           lead_id: finalLeadId,
           agent_id: agentId,
+          company_id,
           customer_name: customerName,
           customer_phone: customerPhone || null,
           customer_address: customerAddress || null,

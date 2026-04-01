@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getUserCompanyId } from "@/lib/tenantUtils";
 import { cn } from "@/lib/utils";
 
 interface EquipmentFormProps {
@@ -70,6 +71,9 @@ const EquipmentForm = ({ customerId, open, onClose, onSuccess, existingEquipment
       notes: notes.trim() || null,
       updated_at: new Date().toISOString(),
     };
+
+    const company_id = await getUserCompanyId();
+    (equipmentData as any).company_id = company_id;
 
     let error;
 

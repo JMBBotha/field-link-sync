@@ -278,9 +278,12 @@ const ServiceAgreements = () => {
       // Calculate next service due date based on start date and frequency
       let nextServiceDue = formData.start_date;
       
+      const { getUserCompanyId } = await import("@/lib/tenantUtils");
+      const company_id = await getUserCompanyId();
       const agreementData = {
         customer_id: formData.customer_id,
         equipment_id: formData.equipment_id || null,
+        company_id,
         contract_type: formData.contract_type,
         contract_type_custom: formData.contract_type === "custom" ? formData.contract_type_custom : null,
         frequency: formData.frequency,

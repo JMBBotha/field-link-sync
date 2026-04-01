@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getUserCompanyId } from "@/lib/tenantUtils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -123,6 +124,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
       // Format phone number for WhatsApp
       const formattedPhone = formatPhoneForWhatsApp(formData.customer_phone);
       
+      const company_id = await getUserCompanyId();
       const { error } = await supabase.from("leads").insert({
         customer_name: formData.customer_name,
         customer_phone: formattedPhone,
@@ -136,6 +138,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
         scheduled_date: scheduledDate ? format(scheduledDate, "yyyy-MM-dd") : null,
         scheduled_time: scheduledTime || null,
         status: "pending",
+        company_id,
       });
 
       if (error) throw error;
