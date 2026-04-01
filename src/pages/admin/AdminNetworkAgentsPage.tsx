@@ -100,14 +100,7 @@ const AdminNetworkAgentsPage = () => {
               {agents.map((agent) => (
                 <TableRow key={agent.id}>
                   <TableCell>
-                    <div>
-                      <div className="font-medium">{agent.full_name}</div>
-                      {agent.bio && (
-                        <div className="text-xs text-muted-foreground line-clamp-1 max-w-[200px]">
-                          {agent.bio}
-                        </div>
-                      )}
-                    </div>
+                    <div className="font-medium">{agent.full_name}</div>
                   </TableCell>
                   <TableCell>{typeBadge(agent.participant_type)}</TableCell>
                   <TableCell className="text-sm">{agent.phone || "—"}</TableCell>
