@@ -2714,6 +2714,7 @@ export type Database = {
           body: string | null
           created_at: string
           id: string
+          metadata: Json | null
           read: boolean
           related_id: string | null
           title: string
@@ -2724,6 +2725,7 @@ export type Database = {
           body?: string | null
           created_at?: string
           id?: string
+          metadata?: Json | null
           read?: boolean
           related_id?: string | null
           title: string
@@ -2734,6 +2736,7 @@ export type Database = {
           body?: string | null
           created_at?: string
           id?: string
+          metadata?: Json | null
           read?: boolean
           related_id?: string | null
           title?: string
