@@ -13,7 +13,6 @@ import Footer from "@/components/Footer";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useQuery } from "@tanstack/react-query";
 import AdminSidebar from "@/components/admin/AdminSidebar";
-import AdminSidebar from "@/components/admin/AdminSidebar";
 import IdleWarningModal from "@/components/IdleWarningModal";
 import GlobalSearchDialog from "@/components/GlobalSearchDialog";
 import { useIdleLogout } from "@/hooks/useIdleLogout";
