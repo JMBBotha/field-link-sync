@@ -97,6 +97,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     setScheduledFor("");
     setDuration("2");
     setPriority("normal");
+    setJobType("service");
   };
 
   return (
