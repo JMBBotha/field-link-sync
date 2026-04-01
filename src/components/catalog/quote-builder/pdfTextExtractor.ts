@@ -160,7 +160,14 @@ function buildProductLookup(products: PaletteProduct[]) {
   const byDescription = new Map<string, PaletteProduct>();
   for (const p of products) {
     if (p.product_code) {
-      byCode.set(p.product_code.toLowerCase().trim(), p);
+      const fullCode = p.product_code.toLowerCase().trim();
+      byCode.set(fullCode, p);
+      // Also store base code without /XX suffix (e.g. AR18BSAAAWK/FA → ar18bsaaawk)
+      // so PDF text missing the suffix still matches
+      const baseCode = fullCode.replace(/\/[a-z]{1,3}$/i, "");
+      if (baseCode !== fullCode && baseCode.length >= 5 && !byCode.has(baseCode)) {
+        byCode.set(baseCode, p);
+      }
     }
     if (p.short_name) {
       byName.set(p.short_name.toLowerCase().trim(), p);
