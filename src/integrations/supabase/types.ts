@@ -2830,7 +2830,9 @@ export type Database = {
           last_availability_update: string | null
           location_tracking_enabled: boolean | null
           max_travel_km: number | null
+          network_status: string | null
           onboarding_completed: boolean
+          participant_type: string
           phone: string | null
           skills: string[] | null
           stripe_customer_id: string | null
@@ -2859,7 +2861,9 @@ export type Database = {
           last_availability_update?: string | null
           location_tracking_enabled?: boolean | null
           max_travel_km?: number | null
+          network_status?: string | null
           onboarding_completed?: boolean
+          participant_type?: string
           phone?: string | null
           skills?: string[] | null
           stripe_customer_id?: string | null
@@ -2888,7 +2892,9 @@ export type Database = {
           last_availability_update?: string | null
           location_tracking_enabled?: boolean | null
           max_travel_km?: number | null
+          network_status?: string | null
           onboarding_completed?: boolean
+          participant_type?: string
           phone?: string | null
           skills?: string[] | null
           stripe_customer_id?: string | null
