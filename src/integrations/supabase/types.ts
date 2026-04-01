@@ -38,6 +38,68 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_affiliations: {
+        Row: {
+          affiliation_type: string
+          approved_at: string | null
+          approved_by: string | null
+          company_id: string
+          created_at: string | null
+          id: string
+          profile_id: string
+          status: string | null
+        }
+        Insert: {
+          affiliation_type: string
+          approved_at?: string | null
+          approved_by?: string | null
+          company_id: string
+          created_at?: string | null
+          id?: string
+          profile_id: string
+          status?: string | null
+        }
+        Update: {
+          affiliation_type?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          profile_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_affiliations_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_affiliations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_affiliations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "agent_affiliations_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_locations: {
         Row: {
           agent_id: string
@@ -4406,6 +4468,71 @@ export type Database = {
           server_data?: Json | null
         }
         Relationships: []
+      }
+      upgrade_paths: {
+        Row: {
+          from_participant_type: string | null
+          id: string
+          metadata: Json | null
+          performed_at: string | null
+          performed_by: string | null
+          profile_id: string
+          to_company_id: string | null
+          to_participant_type: string | null
+          upgrade_reason: string | null
+        }
+        Insert: {
+          from_participant_type?: string | null
+          id?: string
+          metadata?: Json | null
+          performed_at?: string | null
+          performed_by?: string | null
+          profile_id: string
+          to_company_id?: string | null
+          to_participant_type?: string | null
+          upgrade_reason?: string | null
+        }
+        Update: {
+          from_participant_type?: string | null
+          id?: string
+          metadata?: Json | null
+          performed_at?: string | null
+          performed_by?: string | null
+          profile_id?: string
+          to_company_id?: string | null
+          to_participant_type?: string | null
+          upgrade_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upgrade_paths_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upgrade_paths_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upgrade_paths_to_company_id_fkey"
+            columns: ["to_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upgrade_paths_to_company_id_fkey"
+            columns: ["to_company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
