@@ -29,6 +29,8 @@ import {
   ChevronRight,
   X,
   Building2,
+  Briefcase,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -88,7 +90,10 @@ const AdminSidebar = ({
         { path: "/admin", label: "Home", icon: LayoutDashboard },
         { path: "/admin/customers", label: "Customers", icon: Users },
         { path: "/admin/map", label: "Map", icon: MapPin },
-        { path: "/admin/dispatch", label: "Dispatch", icon: LayoutGrid },
+        { path: "/admin/jobs", label: "Jobs", icon: Briefcase },
+        { path: "/admin/jobs/dispatch", label: "Dispatch Board", icon: ClipboardList },
+        { path: "/admin/my-jobs", label: "My Jobs", icon: Briefcase },
+        { path: "/admin/dispatch", label: "Legacy Dispatch", icon: LayoutGrid },
         { path: "/admin/schedule", label: "Schedule", icon: CalendarDays },
       ],
     },

@@ -151,6 +151,70 @@ export type Database = {
         }
         Relationships: []
       }
+      assignments: {
+        Row: {
+          assigned_by: string | null
+          assignment_type: string | null
+          completed_at: string | null
+          created_at: string | null
+          eta: string | null
+          id: string
+          job_id: string
+          notes: string | null
+          profile_id: string
+          started_at: string | null
+          status: string | null
+        }
+        Insert: {
+          assigned_by?: string | null
+          assignment_type?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          eta?: string | null
+          id?: string
+          job_id: string
+          notes?: string | null
+          profile_id: string
+          started_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          assigned_by?: string | null
+          assignment_type?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          eta?: string | null
+          id?: string
+          job_id?: string
+          notes?: string | null
+          profile_id?: string
+          started_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -2091,6 +2155,109 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "supplier_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs: {
+        Row: {
+          address: string | null
+          company_id: string
+          created_at: string | null
+          created_by: string | null
+          customer_id: string | null
+          description: string | null
+          estimated_duration: string | null
+          id: string
+          lat: number | null
+          lead_id: string | null
+          lng: number | null
+          priority: string | null
+          quote_id: string | null
+          scheduled_for: string | null
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          company_id: string
+          created_at?: string | null
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          estimated_duration?: string | null
+          id?: string
+          lat?: number | null
+          lead_id?: string | null
+          lng?: number | null
+          priority?: string | null
+          quote_id?: string | null
+          scheduled_for?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          company_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          estimated_duration?: string | null
+          id?: string
+          lat?: number | null
+          lead_id?: string | null
+          lng?: number | null
+          priority?: string | null
+          quote_id?: string | null
+          scheduled_for?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "jobs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
             referencedColumns: ["id"]
           },
         ]

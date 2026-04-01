@@ -28,6 +28,9 @@ import AdminDispatchPage from "./pages/admin/AdminDispatchPage";
 import AdminMaintenancePage from "./pages/admin/AdminMaintenancePage";
 import AdminCustomersPage from "./pages/admin/AdminCustomersPage";
 import AdminCustomerDetailPage from "./pages/admin/AdminCustomerDetailPage";
+import AdminJobsPage from "./pages/admin/AdminJobsPage";
+import AdminJobsDispatchPage from "./pages/admin/AdminJobsDispatchPage";
+import AdminMyJobsPage from "./pages/admin/AdminMyJobsPage";
 
 // Lazy-loaded admin pages (simple wrappers)
 import ScheduleCalendar from "./components/scheduling/ScheduleCalendar";
@@ -105,6 +108,9 @@ const App = () => (
                 <Route index element={<AdminHomePage />} />
                 <Route path="map" element={<AdminMapPage />} />
                 <Route path="dispatch" element={<AdminDispatchPage />} />
+                <Route path="jobs" element={<AdminJobsPage />} />
+                <Route path="jobs/dispatch" element={<AdminJobsDispatchPage />} />
+                <Route path="my-jobs" element={<AdminMyJobsPage />} />
                 <Route path="schedule" element={<ScheduleCalendar />} />
                 <Route path="quotes" element={<AdminQuotesPage />} />
                 <Route path="templates" element={<AdminProposalsPage />} />
