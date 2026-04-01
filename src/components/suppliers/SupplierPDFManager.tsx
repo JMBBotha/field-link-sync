@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,122 @@ interface SupplierPDFManagerProps {
 }
 
 const STORAGE_BUCKETS = ["supplier-pdf-pages", "stock-documents", "product-image", "pdfs", "price-lists"];
+const PREVIEW_BUCKETS = ["supplier-pdf-pages", "supplier-pdfs", "stock-documents", "price-lists", "pdfs"] as const;
+
+type PreviewCandidate = {
+  bucket?: string;
+  path?: string;
+  directUrl?: string;
+  label: string;
+};
+
+const STORAGE_URL_PATTERN = /\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+)$/;
+
+const decodeStoragePath = (value: string) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
+const extractStorageCandidateFromUrl = (value: string): PreviewCandidate | null => {
+  try {
+    const parsed = new URL(value);
+    const match = `${parsed.pathname}${parsed.search}`.match(STORAGE_URL_PATTERN);
+    if (!match) {
+      return {
+        directUrl: value,
+        label: value,
+      };
+    }
+
+    return {
+      bucket: match[1],
+      path: decodeStoragePath(match[2].split("?")[0]),
+      directUrl: value,
+      label: `${match[1]}/${decodeStoragePath(match[2].split("?")[0])}`,
+    };
+  } catch {
+    return {
+      directUrl: value,
+      label: value,
+    };
+  }
+};
+
+const buildPreviewCandidates = (pdf: PDFUploadRow): PreviewCandidate[] => {
+  const rawValues = [pdf.file_path, pdf.storage_path, pdf.file_url].filter(Boolean) as string[];
+  const candidates: PreviewCandidate[] = [];
+
+  for (const value of rawValues) {
+    if (/^https?:\/\//i.test(value)) {
+      const extracted = extractStorageCandidateFromUrl(value);
+      if (extracted) candidates.push(extracted);
+      continue;
+    }
+
+    const cleanValue = value.replace(/^\/+/, "");
+    for (const bucket of PREVIEW_BUCKETS) {
+      candidates.push({
+        bucket,
+        path: cleanValue,
+        label: `${bucket}/${cleanValue}`,
+      });
+    }
+  }
+
+  if (pdf.supplier_id && pdf.file_name) {
+    const supplierPath = `${pdf.supplier_id}/${pdf.file_name}`;
+    for (const bucket of PREVIEW_BUCKETS) {
+      candidates.push({
+        bucket,
+        path: supplierPath,
+        label: `${bucket}/${supplierPath}`,
+      });
+    }
+  }
+
+  if (pdf.file_name) {
+    for (const bucket of PREVIEW_BUCKETS) {
+      candidates.push({
+        bucket,
+        path: pdf.file_name,
+        label: `${bucket}/${pdf.file_name}`,
+      });
+    }
+  }
+
+  const seen = new Set<string>();
+  return candidates.filter((candidate) => {
+    const key = `${candidate.bucket || "url"}::${candidate.path || candidate.directUrl}`;
+    if (!candidate.path && !candidate.directUrl) return false;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+const fetchPdfBlob = async (sourceUrl: string, fileName?: string) => {
+  const response = await fetch(sourceUrl, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch PDF (${response.status})`);
+  }
+
+  const blob = await response.blob();
+  if (!blob.size) {
+    throw new Error("Downloaded PDF is empty");
+  }
+
+  const contentType = (response.headers.get("content-type") || blob.type || "").toLowerCase();
+  const looksLikePdf = contentType.includes("pdf") || (fileName || "").toLowerCase().endsWith(".pdf");
+
+  if (!looksLikePdf) {
+    throw new Error(`Fetched file is not a PDF (${contentType || "unknown type"})`);
+  }
+
+  return blob;
+};
 
 async function deleteSinglePDF(pdf: PDFUploadRow) {
   const isSynthetic = pdf.id.startsWith("spp-");
@@ -125,53 +241,36 @@ async function deleteSinglePDF(pdf: PDFUploadRow) {
 
   return { success: true, productsDeleted: productIds.length };
 }
-/** Fetches PDF as blob to bypass CORS/X-Frame-Options blocking */
-const PdfPreviewEmbed = ({ url }: { url: string }) => {
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    let revoke: string | null = null;
-    setError(false);
-    setBlobUrl(null);
-
-    fetch(url)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.blob();
-      })
-      .then((blob) => {
-        const objectUrl = URL.createObjectURL(blob);
-        revoke = objectUrl;
-        setBlobUrl(objectUrl);
-      })
-      .catch(() => setError(true));
-
-    return () => { if (revoke) URL.revokeObjectURL(revoke); };
-  }, [url]);
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-3 py-12 text-muted-foreground">
-        <p className="text-sm">Unable to preview this PDF inline.</p>
-        <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm">
-          Open in new tab ↗
-        </a>
-      </div>
-    );
-  }
-
-  if (!blobUrl) {
-    return <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">Loading PDF…</div>;
-  }
-
+const PdfPreviewEmbed = ({ url, fileName }: { url: string; fileName?: string | null }) => {
   return (
-    <iframe
-      src={blobUrl}
-      className="w-full flex-1 rounded border min-h-0"
-      style={{ height: "calc(80vh - 80px)" }}
-      title="PDF Preview"
-    />
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+        <span className="truncate">Rendering local PDF preview{fileName ? `: ${fileName}` : ""}</span>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <a href={url} target="_blank" rel="noopener noreferrer">Open in new tab</a>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <a href={url} download={fileName || "supplier-document.pdf"}>Download PDF</a>
+          </Button>
+        </div>
+      </div>
+
+      <object data={url} type="application/pdf" className="min-h-0 flex-1 w-full rounded-md border bg-background">
+        <embed src={url} type="application/pdf" className="h-full w-full rounded-md" />
+        <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-12 text-center text-muted-foreground">
+          <p className="text-sm">Inline PDF preview is not available for this file in your browser.</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <a href={url} target="_blank" rel="noopener noreferrer">Open in new tab</a>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <a href={url} download={fileName || "supplier-document.pdf"}>Download PDF</a>
+            </Button>
+          </div>
+        </div>
+      </object>
+    </div>
   );
 };
 
@@ -188,8 +287,37 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
   const [deleting, setDeleting] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewFileName, setPreviewFileName] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewDebugMessage, setPreviewDebugMessage] = useState<string | null>(null);
   const [purgingOrphans, setPurgingOrphans] = useState(false);
+
+  const clearPreviewUrl = useCallback((url?: string | null) => {
+    if (url?.startsWith("blob:")) {
+      URL.revokeObjectURL(url);
+    }
+  }, []);
+
+  const resetPreviewState = useCallback(() => {
+    setPreviewOpen(false);
+    setPreviewLoading(false);
+    setPreviewError(null);
+    setPreviewDebugMessage(null);
+    setPreviewFileName(null);
+    setPreviewUrl((current) => {
+      clearPreviewUrl(current);
+      return null;
+    });
+  }, [clearPreviewUrl]);
+
+  useEffect(() => {
+    return () => {
+      clearPreviewUrl(previewUrl);
+    };
+  }, [previewUrl, clearPreviewUrl]);
 
   // Fetch all PDFs — merge pdf_uploads AND supplier_pdf_pages (grouped by filename)
   const { data: pdfUploads = [], isLoading } = useQuery({
@@ -387,58 +515,81 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
   };
 
   const handlePreview = async (pdf: PDFUploadRow) => {
+    const previewName = pdf.file_name || "Selected PDF";
+
     try {
-      const filePath = pdf.file_path || pdf.storage_path || pdf.file_url;
-      if (!filePath) throw new Error("No file path found for this PDF");
+      setPreviewOpen(true);
+      setPreviewLoading(true);
+      setPreviewError(null);
+      setPreviewFileName(previewName);
+      setPreviewDebugMessage(`[Preview Debug] Opening preview for ${previewName}`);
+      setPreviewUrl((current) => {
+        clearPreviewUrl(current);
+        return null;
+      });
 
-      // Try signed URL from supplier-pdfs bucket first
-      const pathsToTry: { bucket: string; path: string }[] = [];
+      toast({
+        title: "[Preview Debug] Opening preview...",
+        description: previewName,
+      });
 
-      // Constructed supplier path
-      if (pdf.supplier_id && pdf.file_name) {
-        pathsToTry.push({ bucket: "supplier-pdfs", path: `${pdf.supplier_id}/${pdf.file_name}` });
-      }
-      // Raw path
-      pathsToTry.push({ bucket: "supplier-pdfs", path: filePath });
-      // Flat filename
-      if (pdf.file_name) {
-        pathsToTry.push({ bucket: "supplier-pdfs", path: pdf.file_name });
-      }
-
-      for (const { bucket, path } of pathsToTry) {
-        const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 60);
-        if (error || !data?.signedUrl) continue;
-
-        const response = await fetch(data.signedUrl);
-        if (!response.ok) continue;
-
-        const blob = await response.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
-        setPreviewUrl(blobUrl);
-        return;
+      const candidates = buildPreviewCandidates(pdf);
+      if (candidates.length === 0) {
+        throw new Error("No file path found for this PDF");
       }
 
-      // Fallback: direct HTTP URL
-      const directUrl = [pdf.file_url, pdf.file_path, pdf.storage_path].find(u => u?.startsWith("http"));
-      if (directUrl) {
-        const response = await fetch(directUrl);
-        if (response.ok) {
-          const blob = await response.blob();
-          const blobUrl = URL.createObjectURL(blob);
-          if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
-          setPreviewUrl(blobUrl);
+      let lastError: Error | null = null;
+
+      for (const candidate of candidates) {
+        try {
+          setPreviewDebugMessage(`[Preview Debug] Trying ${candidate.label}`);
+
+          let blob: Blob;
+
+          if (candidate.bucket && candidate.path) {
+            const { data, error } = await supabase.storage.from(candidate.bucket).createSignedUrl(candidate.path, 60);
+            if (error) throw new Error(error.message);
+            if (!data?.signedUrl) throw new Error("Signed URL was not created");
+
+            blob = await fetchPdfBlob(data.signedUrl, previewName);
+          } else if (candidate.directUrl) {
+            blob = await fetchPdfBlob(candidate.directUrl, previewName);
+          } else {
+            throw new Error("Preview candidate is missing a usable source");
+          }
+
+          const nextBlobUrl = URL.createObjectURL(blob);
+
+          setPreviewUrl((current) => {
+            clearPreviewUrl(current);
+            return nextBlobUrl;
+          });
+
+          const sizeKb = Math.max(1, Math.round(blob.size / 1024));
+          setPreviewDebugMessage(`[Preview Debug] Preview ready from ${candidate.label} (${sizeKb} KB)`);
+          toast({
+            title: "[Preview Debug] Blob loaded successfully",
+            description: `${sizeKb} KB PDF ready`,
+          });
           return;
+        } catch (candidateError: any) {
+          lastError = candidateError instanceof Error ? candidateError : new Error(candidateError?.message || "Unknown preview error");
+          setPreviewDebugMessage(`[Preview Debug] ${candidate.label} failed: ${lastError.message}`);
         }
       }
 
-      throw new Error("Could not load PDF from any path");
+      throw lastError || new Error("Could not load PDF from any storage path");
     } catch (err: any) {
+      const message = err.message || "Could not load PDF preview";
+      setPreviewError(message);
+      setPreviewDebugMessage(`[Preview Debug] Preview failed: ${message}`);
       toast({
         title: "Preview failed",
-        description: err.message || "Could not load PDF preview",
+        description: message,
         variant: "destructive",
       });
+    } finally {
+      setPreviewLoading(false);
     }
   };
 
@@ -707,17 +858,53 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
       </AlertDialog>
 
       {/* PDF Preview */}
-      <Dialog open={!!previewUrl} onOpenChange={(o) => {
-        if (!o) {
-          if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
-          setPreviewUrl(null);
+      <Dialog open={previewOpen} onOpenChange={(open) => {
+        if (!open) {
+          resetPreviewState();
         }
       }}>
         <DialogContent className="max-w-4xl h-[80vh]">
           <DialogHeader>
             <DialogTitle>PDF Preview</DialogTitle>
           </DialogHeader>
-          {previewUrl && <PdfPreviewEmbed url={previewUrl} />}
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
+            {previewDebugMessage && (
+              <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                {previewDebugMessage}
+              </div>
+            )}
+
+            {previewLoading ? (
+              <div className="flex flex-1 items-center justify-center gap-3 rounded-md border border-dashed text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span className="text-sm">Loading preview...</span>
+              </div>
+            ) : previewError ? (
+              <div className="flex flex-1 flex-col items-center justify-center gap-4 rounded-md border border-dashed px-6 text-center text-muted-foreground">
+                <AlertTriangle className="h-8 w-8 text-destructive" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground">Preview failed</p>
+                  <p className="text-sm text-muted-foreground">{previewError}</p>
+                </div>
+                {previewUrl && (
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={previewUrl} target="_blank" rel="noopener noreferrer">Open in new tab</a>
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={previewUrl} download={previewFileName || "supplier-document.pdf"}>Download PDF</a>
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : previewUrl ? (
+              <PdfPreviewEmbed url={previewUrl} fileName={previewFileName} />
+            ) : (
+              <div className="flex flex-1 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+                No preview selected.
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
