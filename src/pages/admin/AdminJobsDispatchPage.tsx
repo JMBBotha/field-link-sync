@@ -238,9 +238,14 @@ const AdminJobsDispatchPage = () => {
                 {assignee.profiles?.full_name}
               </span>
             ) : (
-              <Button variant="outline" size="sm" className="h-6 text-[10px] px-2" onClick={e => { e.stopPropagation(); setAssignJobId(job.id); }}>
-                <Users className="h-3 w-3 mr-1" /> Assign
-              </Button>
+              <div className="flex gap-1">
+                <Button variant="outline" size="sm" className="h-6 text-[10px] px-2" onClick={e => { e.stopPropagation(); setAssignJobId(job.id); }}>
+                  <Users className="h-3 w-3 mr-1" /> Assign
+                </Button>
+                <Button variant="outline" size="sm" className="h-6 text-[10px] px-2" onClick={e => { e.stopPropagation(); autoDispatchMutation.mutate(job.id); }} disabled={autoDispatchMutation.isPending}>
+                  <Zap className="h-3 w-3 mr-1" /> Auto
+                </Button>
+              </div>
             )}
           </div>
         </CardContent>
