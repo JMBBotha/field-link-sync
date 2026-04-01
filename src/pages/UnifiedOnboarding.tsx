@@ -545,6 +545,21 @@ const UnifiedOnboarding = () => {
             </Button>
           )}
         </div>
+
+        {/* Sign out / back to login */}
+        <div className="text-center">
+          <Button
+            variant="link"
+            size="sm"
+            className="text-white/50 hover:text-white/80 text-xs"
+            onClick={async () => {
+              await supabase.auth.signOut();
+              navigate("/login");
+            }}
+          >
+            Sign out & return to login
+          </Button>
+        </div>
       </div>
     </div>
   );
