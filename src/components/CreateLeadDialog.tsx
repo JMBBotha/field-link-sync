@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getUserCompanyId } from "@/lib/tenantUtils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
