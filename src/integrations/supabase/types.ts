@@ -443,6 +443,7 @@ export type Database = {
           onboarding_completed: boolean | null
           services: string[] | null
           slug: string
+          status: string
           updated_at: string | null
           vat_rate: number | null
         }
@@ -455,6 +456,7 @@ export type Database = {
           onboarding_completed?: boolean | null
           services?: string[] | null
           slug?: string
+          status?: string
           updated_at?: string | null
           vat_rate?: number | null
         }
@@ -467,6 +469,7 @@ export type Database = {
           onboarding_completed?: boolean | null
           services?: string[] | null
           slug?: string
+          status?: string
           updated_at?: string | null
           vat_rate?: number | null
         }
