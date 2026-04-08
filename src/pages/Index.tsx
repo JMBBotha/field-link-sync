@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin, Users, TrendingUp, Navigation } from "lucide-react";
+import { MapPin, Users, Navigation, Loader2 } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 const Index = () => {
   const [loading, setLoading] = useState(true);
@@ -36,115 +36,69 @@ const Index = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading...</div>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)]">
+        <Loader2 className="h-8 w-8 animate-spin text-white" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-primary">
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center mb-16">
-          <div className="flex justify-center mb-6">
-            <div className="relative">
-              <div className="absolute inset-0 bg-primary/20 rounded-full blur-3xl animate-pulse" />
-              <div className="relative p-6 bg-primary/10 rounded-full">
-                <MapPin className="h-16 w-16 text-primary" />
-              </div>
-            </div>
-          </div>
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Field Service Management
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            Intelligent lead distribution and real-time tracking for your field operations
-          </p>
-          <Button size="lg" onClick={() => navigate("/login")} className="text-lg px-8">
-            Get Started
-          </Button>
-        </div>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
+      {/* Logo */}
+      <img src={logo} alt="0800BeCool" className="h-24 w-auto mb-6 drop-shadow-lg" />
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto mb-16">
-          <Card className="border-primary/20 hover:border-primary/40 transition-colors">
-            <CardHeader>
-              <div className="p-3 rounded-lg bg-primary/10 w-fit mb-4">
-                <MapPin className="h-8 w-8 text-primary" />
-              </div>
-              <CardTitle>Live Tracking</CardTitle>
-              <CardDescription>
-                Monitor all field agents in real-time on an interactive map dashboard
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              See exactly where your team is and track their progress throughout the day
-            </CardContent>
-          </Card>
-
-          <Card className="border-primary/20 hover:border-primary/40 transition-colors">
-            <CardHeader>
-              <div className="p-3 rounded-lg bg-primary/10 w-fit mb-4">
-                <Navigation className="h-8 w-8 text-primary" />
-              </div>
-              <CardTitle>Smart Distribution</CardTitle>
-              <CardDescription>
-                Intelligent lead routing to nearby agents based on proximity
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              First-to-accept assignment system ensures quick response times
-            </CardContent>
-          </Card>
-
-          <Card className="border-primary/20 hover:border-primary/40 transition-colors">
-            <CardHeader>
-              <div className="p-3 rounded-lg bg-primary/10 w-fit mb-4">
-                <Users className="h-8 w-8 text-primary" />
-              </div>
-              <CardTitle>Mobile Ready</CardTitle>
-              <CardDescription>
-                Full-featured mobile interface for field workers on the go
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              Accept leads, update status, and navigate to customers seamlessly
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card className="max-w-3xl mx-auto bg-primary/5 border-primary/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-6 w-6" />
-              Key Features
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-3">
-              <li className="flex items-start gap-3">
-                <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-                <span><strong>Real-time GPS tracking</strong> - Know where every team member is at all times</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-                <span><strong>Proximity-based assignment</strong> - Leads go to the nearest available agent within 20km</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-                <span><strong>Push notifications</strong> - Instant alerts when new leads become available</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-                <span><strong>Admin oversight</strong> - Complete dashboard for monitoring and reporting</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-                <span><strong>Status tracking</strong> - Follow leads from pending to completion</span>
-              </li>
-            </ul>
-          </CardContent>
-        </Card>
+      {/* Tagline */}
+      <div className="text-center mb-10 max-w-md">
+        <h1 className="text-3xl font-bold text-white mb-2">
+          Field Service Management
+        </h1>
+        <p className="text-white/70 text-sm">
+          Intelligent lead distribution and real-time tracking for your field operations
+        </p>
       </div>
+
+      {/* Feature cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl w-full mb-10">
+        <div className="p-4 rounded-xl border border-white/15 bg-white/5 backdrop-blur-sm text-center">
+          <div className="mx-auto mb-3 p-2 rounded-lg bg-[hsl(25,95%,53%)]/20 text-[hsl(25,95%,53%)] w-fit">
+            <MapPin className="h-5 w-5" />
+          </div>
+          <h3 className="text-sm font-semibold text-white">Live Tracking</h3>
+          <p className="text-xs text-white/50 mt-1">Monitor agents in real-time on an interactive map</p>
+        </div>
+
+        <div className="p-4 rounded-xl border border-white/15 bg-white/5 backdrop-blur-sm text-center">
+          <div className="mx-auto mb-3 p-2 rounded-lg bg-[hsl(25,95%,53%)]/20 text-[hsl(25,95%,53%)] w-fit">
+            <Navigation className="h-5 w-5" />
+          </div>
+          <h3 className="text-sm font-semibold text-white">Smart Dispatch</h3>
+          <p className="text-xs text-white/50 mt-1">Proximity-based lead routing to nearest agents</p>
+        </div>
+
+        <div className="p-4 rounded-xl border border-white/15 bg-white/5 backdrop-blur-sm text-center">
+          <div className="mx-auto mb-3 p-2 rounded-lg bg-[hsl(25,95%,53%)]/20 text-[hsl(25,95%,53%)] w-fit">
+            <Users className="h-5 w-5" />
+          </div>
+          <h3 className="text-sm font-semibold text-white">Mobile Ready</h3>
+          <p className="text-xs text-white/50 mt-1">Full-featured interface for field workers on the go</p>
+        </div>
+      </div>
+
+      {/* CTA */}
+      <Button
+        onClick={() => navigate("/login")}
+        className="bg-[hsl(25,95%,53%)] hover:bg-[hsl(25,95%,45%)] text-white font-semibold text-base h-11 px-10"
+      >
+        Get Started
+      </Button>
+
+      <Button
+        variant="link"
+        className="mt-3 text-white/60 hover:text-white"
+        onClick={() => navigate("/login")}
+      >
+        Already have an account? Sign in
+      </Button>
     </div>
   );
 };
