@@ -163,7 +163,7 @@ const AdminLayout = () => {
             >
               <Menu className="h-5 w-5" />
             </Button>
-            <img src={logo} alt="Logo" className="h-8 lg:hidden" />
+            <img src={logo} alt="Logo" className="h-12 lg:hidden" />
             <h1 className="text-base font-semibold text-white">{pageTitle}</h1>
           </div>
 
