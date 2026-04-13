@@ -39,6 +39,7 @@ export interface MapViewHandle {
 interface MapViewProps {
   onStatusFiltersChange?: (filters: Set<LeadStatusFilter>) => void;
   onLeadClick?: (lead: Lead) => void;
+  showAllAgents?: boolean;
 }
 
 const formatTimeAgo = (createdAt: string): string => {
@@ -64,7 +65,7 @@ const escapeHtml = (text: string | null | undefined): string => {
   return div.innerHTML;
 };
 
-const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange, onLeadClick }, ref) => {
+const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange, onLeadClick, showAllAgents = false }, ref) => {
   const MAP_CHROME_BOTTOM_OFFSET_PX = 64;
   const [agents, setAgents] = useState<AgentLocation[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -303,8 +304,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         })
       );
 
-      // Only show agents belonging to the same company
-      const companyAgents = companyId
+      // Admin view: show all agents. Company/field view: filter by company
+      const companyAgents = (!showAllAgents && companyId)
         ? agentsWithProfiles.filter((a) => a.profileCompanyId === companyId)
         : agentsWithProfiles;
 

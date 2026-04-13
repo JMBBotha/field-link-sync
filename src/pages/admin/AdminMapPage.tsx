@@ -87,6 +87,7 @@ const AdminMapPage = () => {
             <div className="absolute inset-0">
               <MapView
                 ref={mapRef}
+                showAllAgents={true}
                 onStatusFiltersChange={(filters) => {
                   const hasCompleted = filters.has("completed");
                   setShowCompletedFilter(hasCompleted);
