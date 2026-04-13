@@ -304,8 +304,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         })
       );
 
-      // Only show agents belonging to the same company
-      const companyAgents = companyId
+      // Admin view: show all agents. Company/field view: filter by company
+      const companyAgents = (!showAllAgents && companyId)
         ? agentsWithProfiles.filter((a) => a.profileCompanyId === companyId)
         : agentsWithProfiles;
 
