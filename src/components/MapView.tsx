@@ -263,28 +263,52 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
   };
 
   const fetchData = async () => {
-    // Fetch agent locations with most recently updated first
+    // Get current user's company to scope data
+    const { data: { session } } = await supabase.auth.getSession();
+    const currentUserId = session?.user?.id;
+    let companyId: string | null = null;
+
+    if (currentUserId) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", currentUserId)
+        .maybeSingle();
+      companyId = profile?.company_id ?? null;
+    }
+
+    // Fetch agent locations - only for agents in the same company
     const { data: agentData } = await supabase
       .from("agent_locations")
       .select("*")
       .order("last_updated", { ascending: false });
 
-    const { data: leadData } = await supabase
-      .from("leads")
-      .select("*");
+    // Fetch leads scoped to company
+    let leadQuery = supabase.from("leads").select("*");
+    if (companyId) {
+      leadQuery = leadQuery.eq("company_id", companyId);
+    }
+    const { data: leadData } = await leadQuery;
 
     if (agentData) {
+      // Fetch profiles with company_id to filter by company
       const agentsWithProfiles = await Promise.all(
         agentData.map(async (agent) => {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("full_name")
+            .select("full_name, company_id")
             .eq("id", agent.agent_id)
             .maybeSingle();
-          return { ...agent, profiles: profile };
+          return { ...agent, profiles: profile, profileCompanyId: profile?.company_id };
         })
       );
-      setAgents(agentsWithProfiles as any);
+
+      // Only show agents belonging to the same company
+      const companyAgents = companyId
+        ? agentsWithProfiles.filter((a) => a.profileCompanyId === companyId)
+        : agentsWithProfiles;
+
+      setAgents(companyAgents as any);
     }
     if (leadData) setLeads(leadData);
   };
