@@ -39,6 +39,7 @@ export interface MapViewHandle {
 interface MapViewProps {
   onStatusFiltersChange?: (filters: Set<LeadStatusFilter>) => void;
   onLeadClick?: (lead: Lead) => void;
+  showAllAgents?: boolean;
 }
 
 const formatTimeAgo = (createdAt: string): string => {
