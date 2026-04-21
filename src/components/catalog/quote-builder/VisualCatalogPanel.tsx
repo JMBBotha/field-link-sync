@@ -939,12 +939,16 @@ const LazyPdfPage = ({
     queryFn: async () => {
       const supplierName = (page.supplier_id || "").trim();
       if (!supplierName) return [];
+      // Use wildcards: legacy supplier names may have trailing whitespace in DB
       const { data: supplierRow } = await (supabase.from("suppliers") as any)
         .select("id")
-        .ilike("name", supplierName)
+        .ilike("name", `%${supplierName}%`)
         .maybeSingle();
       const supplierUuid = supplierRow?.id;
-      if (!supplierUuid) return [];
+      if (!supplierUuid) {
+        console.warn(`[VisualCatalog] No supplier UUID for "${supplierName}"`);
+        return [];
+      }
       const { data } = await (supabase.from("supplier_products") as any)
         .select("id, product_code, short_name, description, cost_excl_vat, cost_price, default_markup_percent, row_bbox, price_bbox")
         .eq("supplier_id", supplierUuid)
