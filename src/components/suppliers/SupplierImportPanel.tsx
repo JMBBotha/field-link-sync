@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Loader2, Sparkles, AlertTriangle, RotateCcw } from "lucide-react";
+import { Upload, Loader2, Sparkles, AlertTriangle, RotateCcw, ScanLine } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -104,6 +104,51 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
 
   const [reparseLoading, setReparseLoading] = useState(false);
   const [pendingReparse, setPendingReparse] = useState(false);
+  const [enrichLoading, setEnrichLoading] = useState(false);
+  const [enrichProgress, setEnrichProgress] = useState<{ page: number; total: number; updated: number } | null>(null);
+
+  const isDaikin = /daikin/i.test(supplierName);
+
+  const handleEnrichOverlays = useCallback(async () => {
+    setEnrichLoading(true);
+    setEnrichProgress({ page: 0, total: 0, updated: 0 });
+    let totalUpdated = 0;
+    let page = 1;
+    let totalPages = 0;
+    try {
+      while (true) {
+        const resp = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ocr-pdf-bbox-daikin?page=${page}`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            },
+          }
+        );
+        const result = await resp.json();
+        if (!resp.ok) throw new Error(result?.error || `OCR failed on page ${page}`);
+        totalPages = result.total_pages || totalPages;
+        totalUpdated += result.updated || 0;
+        setEnrichProgress({ page, total: totalPages, updated: totalUpdated });
+        if (result.done) break;
+        page = result.next_page ?? page + 1;
+        if (page > 200) break; // safety guard
+      }
+      toast({
+        title: "Overlay enrichment complete",
+        description: `Updated ${totalUpdated} products across ${totalPages} pages with bbox coordinates.`,
+      });
+      invalidateAll();
+    } catch (err: any) {
+      console.error("[Enrich] failed:", err);
+      toast({ title: "Enrichment failed", description: err.message, variant: "destructive" });
+    } finally {
+      setEnrichLoading(false);
+      setEnrichProgress(null);
+    }
+  }, [toast]);
 
   const handleCleanupStalePdfs = useCallback(async () => {
     const target = lastImport?.file_name as string | undefined;
