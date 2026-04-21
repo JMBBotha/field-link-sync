@@ -460,6 +460,26 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
                       Remove {storedPdfInfo.totalFiles - 1} stale PDF{storedPdfInfo.totalFiles - 1 === 1 ? "" : "s"} from storage
                     </Button>
                   )}
+                  {isDaikin && (
+                    <div className="space-y-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleEnrichOverlays}
+                        disabled={enrichLoading || activeProductCount === 0}
+                        className="gap-1.5 w-full justify-start"
+                        title="Use vision OCR to populate row/price bbox coordinates so PDF overlays render in the Quote Builder"
+                      >
+                        {enrichLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ScanLine className="h-3.5 w-3.5" />}
+                        <span>Enrich overlay coordinates (vision OCR)</span>
+                      </Button>
+                      {enrichProgress && (
+                        <p className="text-[11px] text-muted-foreground px-1">
+                          Page {enrichProgress.page}{enrichProgress.total ? ` / ${enrichProgress.total}` : ""} — {enrichProgress.updated} products updated
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
