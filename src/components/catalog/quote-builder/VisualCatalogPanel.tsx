@@ -1077,10 +1077,10 @@ const LazyPdfPage = ({
 
   // ─── FALLBACK REGIONS: only used when no live extraction available ───
   const fallbackRegions: OverlayRegion[] = useMemo(() => {
-    const isDaikin = (page.supplier_id || "").toUpperCase().includes("DAIKIN");
-    // For most suppliers live extraction wins; Daikin must still allow stored OCR row_bbox fallback
-    // even when pdf.js returns partial/noisy text on scanned pages.
-    if (liveRegions.length > 0 && !isDaikin) return [];
+    // Live extraction always wins when it returns regions.
+    // Fallback (OCR / stored regions / even-distribution) only kicks in when
+    // live extraction returned nothing — e.g. true scanned/image PDFs.
+    if (liveRegions.length > 0) return [];
 
     // Primary fallback: OCR-extracted bboxes stored on supplier_products
     // (handles scanned/image PDFs e.g. Daikin where client-side text extraction fails)
