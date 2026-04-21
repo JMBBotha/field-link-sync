@@ -135,27 +135,35 @@ function pickBestPrice(prices: Record<string, number>): { price: number; columnN
     return { price: val, columnName: col, isInclVat: isIncl };
   }
 
-  const exclPatterns = [/EXCL/i, /EX\s*VAT/i, /\bCOST\b/i, /\bNET\b/i, /DEALER/i, /TRADE/i];
+  // Reject any "Incl <add-on>" columns (corrosion treatment, coating, warranty, etc.) — they are NOT base prices
+  const isAddOnIncl = (col: string) =>
+    /INCL.*(CORROSION|TREATMENT|COATING|WARRANTY|EXTENDED|INSTALL|DELIVERY)/i.test(col);
+  const baseEntries = entries.filter(([col]) => !isAddOnIncl(col));
+  const pool = baseEntries.length > 0 ? baseEntries : entries;
+
+  // Prefer Installer / Dealer / Trade / Cost / Net / Excl columns first
+  const exclPatterns = [/INSTALLER/i, /DEALER/i, /TRADE/i, /\bCOST\b/i, /\bNET\b/i, /EXCL/i, /EX\s*VAT/i];
   for (const pattern of exclPatterns) {
-    const match = entries.find(([col]) => pattern.test(col));
+    const match = pool.find(([col]) => pattern.test(col));
     if (match) return { price: match[1], columnName: match[0], isInclVat: false };
   }
 
   // Webshop price priority (e.g. Daikin) — prefer WEBSHOP PRICE over CAMPAIGN/RRP
   const webshopPatterns = [/WEBSHOP.*PRICE/i, /\bWEBSHOP\b/i];
   for (const pattern of webshopPatterns) {
-    const match = entries.find(([col]) => pattern.test(col) && !/CAMPAIGN/i.test(col));
+    const match = pool.find(([col]) => pattern.test(col) && !/CAMPAIGN/i.test(col));
     if (match) return { price: match[1], columnName: match[0], isInclVat: false };
   }
 
-  const inclIdx = entries.findIndex(([col]) => /INCL|INC\b|INCLUDING/i.test(col.toUpperCase()));
-  if (inclIdx !== -1 && entries.length > 1) {
-    const exclEntry = entries.find((_, idx) => idx !== inclIdx);
+  const inclIdx = pool.findIndex(([col]) => /INCL|INC\b|INCLUDING/i.test(col.toUpperCase()));
+  if (inclIdx !== -1 && pool.length > 1) {
+    const exclEntry = pool.find((_, idx) => idx !== inclIdx);
     if (exclEntry) return { price: exclEntry[1], columnName: exclEntry[0], isInclVat: false };
   }
 
-  entries.sort((a, b) => a[1] - b[1]);
-  return { price: entries[0][1], columnName: entries[0][0], isInclVat: false };
+  // Final fallback — pick the LOWEST price in the base pool (Installer is almost always cheapest)
+  pool.sort((a, b) => a[1] - b[1]);
+  return { price: pool[0][1], columnName: pool[0][0], isInclVat: false };
 }
 
 function autoDetectBrand(p: ParsedProduct): string | null {
