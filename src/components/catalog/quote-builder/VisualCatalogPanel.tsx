@@ -1077,10 +1077,10 @@ const LazyPdfPage = ({
 
   // ─── FALLBACK REGIONS: only used when no live extraction available ───
   const fallbackRegions: OverlayRegion[] = useMemo(() => {
-    const isDaikin = (page.supplier_id || "").toUpperCase().includes("DAIKIN");
-    // For most suppliers live extraction wins; Daikin must still allow stored OCR row_bbox fallback
-    // even when pdf.js returns partial/noisy text on scanned pages.
-    if (liveRegions.length > 0 && !isDaikin) return [];
+    // Live extraction always wins when it returns regions.
+    // Fallback (OCR / stored regions / even-distribution) only kicks in when
+    // live extraction returned nothing — e.g. true scanned/image PDFs.
+    if (liveRegions.length > 0) return [];
 
     // Primary fallback: OCR-extracted bboxes stored on supplier_products
     // (handles scanned/image PDFs e.g. Daikin where client-side text extraction fails)
@@ -1164,23 +1164,11 @@ const LazyPdfPage = ({
     return [];
   }, [liveRegions, ocrRegions, storedRegions, activeProducts, page.id, page.supplier_id, supplierName, totalPages, pageIndex]);
 
-  // ─── OVERLAY REGIONS: Daikin uses stored row_bbox first; others prefer live extraction ───
-  // No longer skip pageIndex 0 unconditionally — some suppliers have products on page 1
+  // ─── OVERLAY REGIONS: live extraction wins; OCR/stored regions only when live returns nothing ───
   const overlayRegions: OverlayRegion[] = useMemo(() => {
-    // Daikin priority: stored OCR row_bbox wins over live text extraction
-    // (Daikin price lists are scanned/image PDFs where text extraction is unreliable)
-    const isDaikin = (page.supplier_id || "").toUpperCase().includes("DAIKIN");
-    const daikinPriority = isDaikin && ocrRegions.length > 0;
-    if (daikinPriority) {
-      console.log(`[VisualCatalog] Daikin detected — using ${ocrRegions.length} stored row_bbox regions over live extraction`);
-    }
-
-    // Source priority: Daikin stored bboxes → live text → other OCR fallback
-    const sourceRegions = daikinPriority
-      ? fallbackRegions
-      : (liveRegions.length > 0
-          ? liveRegions
-          : (ocrRegions.length > 0 ? fallbackRegions : []));
+    // Single, predictable priority: live text extraction → fallback (OCR / stored / even-distribution).
+    // No supplier-specific overrides — the locked extractor is responsible for correctness.
+    const sourceRegions = liveRegions.length > 0 ? liveRegions : fallbackRegions;
     const result: OverlayRegion[] = [];
 
     const seenOnPage = new Set<string>();
