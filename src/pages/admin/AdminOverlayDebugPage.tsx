@@ -10,6 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { AuditFindingsPanel } from "@/components/catalog/quote-builder/AuditFindingsPanel";
 
 interface SupplierOption {
   id: string;
