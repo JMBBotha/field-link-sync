@@ -376,25 +376,46 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
                 )}
               </div>
 
-              {storedPdfPath && !importAnalysing && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (activeProductCount > 0) {
-                      setPendingFile(null);
-                      setPendingReparse(true);
-                      setShowCleanConfirm(true);
-                    } else {
-                      handleReparse();
-                    }
-                  }}
-                  disabled={reparseLoading}
-                  className="gap-1.5"
-                >
-                  {reparseLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-                  Re-parse existing PDF with AI
-                </Button>
+              {storedPdfInfo && !importAnalysing && (
+                <div className="space-y-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (activeProductCount > 0) {
+                        setPendingFile(null);
+                        setPendingReparse(true);
+                        setShowCleanConfirm(true);
+                      } else {
+                        handleReparse();
+                      }
+                    }}
+                    disabled={reparseLoading}
+                    className="gap-1.5 w-full justify-start"
+                  >
+                    {reparseLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                    <span className="truncate">Re-parse: {storedPdfInfo.fileName}</span>
+                  </Button>
+                  {!storedPdfInfo.matchesLastImport && lastImport?.file_name && (
+                    <div className="flex items-start gap-1.5 text-[11px] text-yellow-700 dark:text-yellow-400 px-1">
+                      <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                      <span>
+                        This isn't the most recently imported PDF (
+                        <strong className="break-all">{lastImport.file_name}</strong>) — it may be a stale leftover in storage.
+                      </span>
+                    </div>
+                  )}
+                  {storedPdfInfo.totalFiles > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCleanupStalePdfs}
+                      className="h-6 text-[11px] text-muted-foreground hover:text-destructive gap-1"
+                    >
+                      Remove {storedPdfInfo.totalFiles - 1} stale PDF{storedPdfInfo.totalFiles - 1 === 1 ? "" : "s"} from storage
+                    </Button>
+                  )}
+                </div>
               )}
 
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
