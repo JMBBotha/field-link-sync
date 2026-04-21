@@ -1104,7 +1104,8 @@ const LazyPdfPage = ({
   // ─── OVERLAY REGIONS: prefer live extraction with cross-page dedup, else fallback ───
   // No longer skip pageIndex 0 unconditionally — some suppliers have products on page 1
   const overlayRegions: OverlayRegion[] = useMemo(() => {
-    const sourceRegions = liveRegions.length > 0 ? liveRegions : [];
+    // Prefer live extraction; if PDF is image-based/scanned (0 live regions), use fallbackRegions
+    const sourceRegions = liveRegions.length > 0 ? liveRegions : fallbackRegions;
     const result: OverlayRegion[] = [];
 
     const seenOnPage = new Set<string>();
