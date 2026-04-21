@@ -16,7 +16,6 @@ For EACH product row that has a price in the WEBSHOP PRICE column (NOT RRP, NOT 
 - product_code: exact SKU as printed (e.g. "FTXF25F", "RXF25E", "FTXM25R")
 - row_bbox: {x, y, width, height} normalized 0-1, tightly wrapping ONLY that single product row (height ~1-3% of page)
 - price_bbox: {x, y, width, height, center_x} normalized 0-1, tightly wrapping the WEBSHOP PRICE numeric value only.
-  center_x MUST be > 0.7 (rightmost column rule).
 
 CRITICAL:
 - One entry per product row. NEVER merge rows.
@@ -151,10 +150,7 @@ Deno.serve(async (req) => {
         skipReasons["bad_bbox_types"] = (skipReasons["bad_bbox_types"] || 0) + 1;
         skipped++; continue;
       }
-      if (pb.x + pb.width < 0.7) {
-        skipReasons["not_rightmost"] = (skipReasons["not_rightmost"] || 0) + 1;
-        skipped++; continue;
-      }
+      // Daikin webshop price column is mid-page — rightmost rule does not apply here.
 
       const { error, count } = await supabase
         .from("supplier_products")
