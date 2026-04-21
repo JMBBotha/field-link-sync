@@ -2831,6 +2831,125 @@ export type Database = {
         }
         Relationships: []
       }
+      overlay_audit_config: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          supplier_name: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          supplier_name: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          supplier_name?: string
+        }
+        Relationships: []
+      }
+      overlay_audit_findings: {
+        Row: {
+          actual_bbox: Json | null
+          created_at: string
+          details: string | null
+          expected_bbox: Json | null
+          expected_page_number: number | null
+          id: string
+          issue_type: string
+          page_number: number | null
+          product_code: string | null
+          product_id: string | null
+          run_id: string
+          severity: string
+          short_name: string | null
+          supplier_id: string | null
+          supplier_name: string | null
+        }
+        Insert: {
+          actual_bbox?: Json | null
+          created_at?: string
+          details?: string | null
+          expected_bbox?: Json | null
+          expected_page_number?: number | null
+          id?: string
+          issue_type: string
+          page_number?: number | null
+          product_code?: string | null
+          product_id?: string | null
+          run_id: string
+          severity?: string
+          short_name?: string | null
+          supplier_id?: string | null
+          supplier_name?: string | null
+        }
+        Update: {
+          actual_bbox?: Json | null
+          created_at?: string
+          details?: string | null
+          expected_bbox?: Json | null
+          expected_page_number?: number | null
+          id?: string
+          issue_type?: string
+          page_number?: number | null
+          product_code?: string | null
+          product_id?: string | null
+          run_id?: string
+          severity?: string
+          short_name?: string | null
+          supplier_id?: string | null
+          supplier_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "overlay_audit_findings_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "overlay_audit_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      overlay_audit_runs: {
+        Row: {
+          error: string | null
+          finished_at: string | null
+          id: string
+          started_at: string
+          status: string
+          suppliers_scanned: string[]
+          total_findings: number
+          total_products: number
+          triggered_by: string
+        }
+        Insert: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          suppliers_scanned?: string[]
+          total_findings?: number
+          total_products?: number
+          triggered_by?: string
+        }
+        Update: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          suppliers_scanned?: string[]
+          total_findings?: number
+          total_products?: number
+          triggered_by?: string
+        }
+        Relationships: []
+      }
       overlay_mismatch_reports: {
         Row: {
           created_at: string
