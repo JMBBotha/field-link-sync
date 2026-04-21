@@ -538,6 +538,12 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                 {currentFilename && <p className="text-[10px] text-muted-foreground truncate">{currentFilename}</p>}
               </div>
               {currentPage && (
+                <DaikinOverlayDiagnostic
+                  currentSupplierName={(currentPage.supplier_id || "").trim()}
+                  currentPageNumber={currentPage.page_number ?? null}
+                />
+              )}
+              {currentPage && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 text-destructive hover:bg-destructive/10" disabled={deleting}>
