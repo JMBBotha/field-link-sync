@@ -1158,14 +1158,23 @@ const LazyPdfPage = ({
     return [];
   }, [liveRegions, ocrRegions, storedRegions, activeProducts, page.id, page.supplier_id, supplierName, totalPages, pageIndex]);
 
-  // ─── OVERLAY REGIONS: prefer live extraction with cross-page dedup, else fallback ───
+  // ─── OVERLAY REGIONS: Daikin uses stored row_bbox first; others prefer live extraction ───
   // No longer skip pageIndex 0 unconditionally — some suppliers have products on page 1
   const overlayRegions: OverlayRegion[] = useMemo(() => {
-    // Live (text-extracted) takes precedence; for scanned PDFs (e.g. Daikin) where live is empty,
-    // use OCR-stored bboxes from supplier_products via fallbackRegions.
-    const sourceRegions = liveRegions.length > 0
-      ? liveRegions
-      : (ocrRegions.length > 0 ? fallbackRegions : []);
+    // Daikin priority: stored OCR row_bbox wins over live text extraction
+    // (Daikin price lists are scanned/image PDFs where text extraction is unreliable)
+    const isDaikin = (page.supplier_id || "").toUpperCase().includes("DAIKIN");
+    const daikinPriority = isDaikin && ocrRegions.length > 0;
+    if (daikinPriority) {
+      console.log(`[VisualCatalog] Daikin detected — using ${ocrRegions.length} stored row_bbox regions over live extraction`);
+    }
+
+    // Source priority: Daikin stored bboxes → live text → other OCR fallback
+    const sourceRegions = daikinPriority
+      ? fallbackRegions
+      : (liveRegions.length > 0
+          ? liveRegions
+          : (ocrRegions.length > 0 ? fallbackRegions : []));
     const result: OverlayRegion[] = [];
 
     const seenOnPage = new Set<string>();
