@@ -38,6 +38,37 @@ export const DaikinOverlayDiagnostic = ({ currentSupplierName, currentPageNumber
   const [running, setRunning] = useState(false);
   const [steps, setSteps] = useState<Step[]>([]);
   const [rawRow, setRawRow] = useState<any>(null);
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const submitReport = async () => {
+    setSubmitting(true);
+    const trimmed = (currentSupplierName || "").trim();
+    let supplierUuid: string | null = null;
+    if (trimmed) {
+      const { data: s } = await (supabase.from("suppliers") as any)
+        .select("id").ilike("name", trimmed).maybeSingle();
+      supplierUuid = s?.id ?? null;
+    }
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await (supabase.from("overlay_mismatch_reports") as any).insert({
+      supplier_name: trimmed || null,
+      supplier_id: supplierUuid,
+      product_code: code.trim() || null,
+      page_number: currentPageNumber,
+      stored_page_number: rawRow?.page_number ?? null,
+      stored_row_bbox: rawRow?.row_bbox ?? null,
+      notes: notes.trim() || null,
+      reported_by: user?.id ?? null,
+    });
+    setSubmitting(false);
+    if (error) {
+      toast({ title: "Report failed", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Mismatch queued for review" });
+      setNotes("");
+    }
+  };
 
   const run = async () => {
     setRunning(true);
