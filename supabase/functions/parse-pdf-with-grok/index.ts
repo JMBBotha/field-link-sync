@@ -93,7 +93,13 @@ brand: detect from product name/code (Samsung=AR*, Alliance=FOUR*/ALL*, Midea, D
 shortName: BRAND BTU/kW ABBREV format (e.g. "Samsung 9K INV MW")
 
 Prices: ZAR format "R 7 700,00" = 7700. Use rightmost NETT/COST column preferentially.
-For Daikin price lists: prefer the "WEBSHOP PRICE" column as the primary cost column, NOT "RRP" or "INSTALLER PRICE" or "WEBSHOP CAMPAIGN PRICE".
+For Daikin price lists: prefer the "WEBSHOP PRICE" column as the primary cost column, NOT "RRP" or "WEBSHOP CAMPAIGN PRICE".
+
+CRITICAL MULTI-COLUMN PRICE RULE: When a price list has MULTIPLE price columns per row (e.g. "Installer Price", "Incl Corrosion Treatment Partial", "Incl Corrosion Treatment Full", or "Trade", "Wholesale", "Retail"), you MUST:
+1. Identify the BASE/INSTALLER/TRADE/DEALER price column (usually the LEFTMOST or LOWEST-priced column, the one WITHOUT add-ons like "Incl Corrosion", "Incl Treatment", "Incl Coating", "Incl Warranty Extended").
+2. For EVERY product row, populate the prices object with ALL columns under their EXACT column header names (so {"Installer Price": 8991, "Incl Corrosion Treatment Partial": 10303, "Incl Corrosion Treatment Full": 11500}).
+3. NEVER swap, shift, or merge columns between rows. The Installer Price for row 2 must come from the SAME visual column as row 1's Installer Price.
+4. If a row visually only shows ONE price, label that column based on its horizontal position matching the header row above — do NOT default to the middle/right column.
 
 SECTION HEADER DETECTION: Rows like "AR3000 Non-Inverter" or "Midwall Split Systems" with NO price are section headers — SKIP them entirely.
 Document title/date rows like "CPT ONLY ONE STOP SHOP - PRICELIST NO.17 VALID FROM 13 NOVEMBER 2025" are NOT products — SKIP them.
@@ -129,27 +135,35 @@ function pickBestPrice(prices: Record<string, number>): { price: number; columnN
     return { price: val, columnName: col, isInclVat: isIncl };
   }
 
-  const exclPatterns = [/EXCL/i, /EX\s*VAT/i, /\bCOST\b/i, /\bNET\b/i, /DEALER/i, /TRADE/i];
+  // Reject any "Incl <add-on>" columns (corrosion treatment, coating, warranty, etc.) — they are NOT base prices
+  const isAddOnIncl = (col: string) =>
+    /INCL.*(CORROSION|TREATMENT|COATING|WARRANTY|EXTENDED|INSTALL|DELIVERY)/i.test(col);
+  const baseEntries = entries.filter(([col]) => !isAddOnIncl(col));
+  const pool = baseEntries.length > 0 ? baseEntries : entries;
+
+  // Prefer Installer / Dealer / Trade / Cost / Net / Excl columns first
+  const exclPatterns = [/INSTALLER/i, /DEALER/i, /TRADE/i, /\bCOST\b/i, /\bNET\b/i, /EXCL/i, /EX\s*VAT/i];
   for (const pattern of exclPatterns) {
-    const match = entries.find(([col]) => pattern.test(col));
+    const match = pool.find(([col]) => pattern.test(col));
     if (match) return { price: match[1], columnName: match[0], isInclVat: false };
   }
 
   // Webshop price priority (e.g. Daikin) — prefer WEBSHOP PRICE over CAMPAIGN/RRP
   const webshopPatterns = [/WEBSHOP.*PRICE/i, /\bWEBSHOP\b/i];
   for (const pattern of webshopPatterns) {
-    const match = entries.find(([col]) => pattern.test(col) && !/CAMPAIGN/i.test(col));
+    const match = pool.find(([col]) => pattern.test(col) && !/CAMPAIGN/i.test(col));
     if (match) return { price: match[1], columnName: match[0], isInclVat: false };
   }
 
-  const inclIdx = entries.findIndex(([col]) => /INCL|INC\b|INCLUDING/i.test(col.toUpperCase()));
-  if (inclIdx !== -1 && entries.length > 1) {
-    const exclEntry = entries.find((_, idx) => idx !== inclIdx);
+  const inclIdx = pool.findIndex(([col]) => /INCL|INC\b|INCLUDING/i.test(col.toUpperCase()));
+  if (inclIdx !== -1 && pool.length > 1) {
+    const exclEntry = pool.find((_, idx) => idx !== inclIdx);
     if (exclEntry) return { price: exclEntry[1], columnName: exclEntry[0], isInclVat: false };
   }
 
-  entries.sort((a, b) => a[1] - b[1]);
-  return { price: entries[0][1], columnName: entries[0][0], isInclVat: false };
+  // Final fallback — pick the LOWEST price in the base pool (Installer is almost always cheapest)
+  pool.sort((a, b) => a[1] - b[1]);
+  return { price: pool[0][1], columnName: pool[0][0], isInclVat: false };
 }
 
 function autoDetectBrand(p: ParsedProduct): string | null {
