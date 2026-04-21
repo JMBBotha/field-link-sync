@@ -922,6 +922,22 @@ const LazyPdfPage = ({
     staleTime: 60000,
   });
 
+  // OCR-stored bboxes from supplier_products — used when client-side text extraction
+  // returns nothing (e.g. scanned/image PDFs like Daikin).
+  const { data: ocrRegions = [] } = useQuery({
+    queryKey: ["visual-panel-ocr-bboxes", page.supplier_id, page.page_number],
+    enabled: isVisible,
+    queryFn: async () => {
+      const { data } = await (supabase.from("supplier_products") as any)
+        .select("id, product_code, short_name, description, cost_excl_vat, cost_price, default_markup_percent, row_bbox, price_bbox")
+        .eq("supplier_id", page.supplier_id)
+        .eq("page_number", page.page_number)
+        .not("row_bbox", "is", null);
+      return data || [];
+    },
+    staleTime: 120000,
+  });
+
    // Live extraction for this page — enable even without hasPdfSource so fallback kicks in
   const queryEnabled = isVisible && hasPdfSource && activeProducts.length > 0;
   
