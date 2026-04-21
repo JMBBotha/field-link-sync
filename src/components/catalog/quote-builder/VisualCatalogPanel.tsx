@@ -924,13 +924,23 @@ const LazyPdfPage = ({
 
   // OCR-stored bboxes from supplier_products — used when client-side text extraction
   // returns nothing (e.g. scanned/image PDFs like Daikin).
+  // NOTE: page.supplier_id stores the supplier *name* (legacy), while supplier_products.supplier_id
+  // stores a UUID. Resolve the UUID via the suppliers table by name (trimmed).
   const { data: ocrRegions = [] } = useQuery({
     queryKey: ["visual-panel-ocr-bboxes", page.supplier_id, page.page_number],
     enabled: isVisible,
     queryFn: async () => {
+      const supplierName = (page.supplier_id || "").trim();
+      if (!supplierName) return [];
+      const { data: supplierRow } = await (supabase.from("suppliers") as any)
+        .select("id")
+        .ilike("name", supplierName)
+        .maybeSingle();
+      const supplierUuid = supplierRow?.id;
+      if (!supplierUuid) return [];
       const { data } = await (supabase.from("supplier_products") as any)
         .select("id, product_code, short_name, description, cost_excl_vat, cost_price, default_markup_percent, row_bbox, price_bbox")
-        .eq("supplier_id", page.supplier_id)
+        .eq("supplier_id", supplierUuid)
         .eq("page_number", page.page_number)
         .not("row_bbox", "is", null);
       return data || [];
