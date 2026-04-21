@@ -243,25 +243,21 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
       const t0 = Date.now();
       let apiUrl: string, apiKey: string, model: string, useXai: boolean;
 
-      if (xaiApiKey) {
-        apiUrl = "https://api.x.ai/v1/chat/completions";
-        apiKey = xaiApiKey;
-        model = "grok-3-fast";
-        useXai = true;
-      } else {
+      // xAI key is currently returning 403 — skip it and go straight to Lovable AI for speed.
+      // This avoids wasting time on a guaranteed-failed request before falling back.
+      if (lovableApiKey) {
         apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
-        apiKey = lovableApiKey!;
+        apiKey = lovableApiKey;
         model = "google/gemini-2.5-flash";
         useXai = false;
+      } else {
+        apiUrl = "https://api.x.ai/v1/chat/completions";
+        apiKey = xaiApiKey!;
+        model = "grok-3-fast";
+        useXai = true;
       }
 
       let resp = await callAI(chunkText, apiUrl, apiKey, model, useXai);
-
-      if (!resp.ok && useXai && lovableApiKey) {
-        console.warn(`[Grok] Chunk ${chunkIdx}: xAI failed (${resp.status}), falling back to Lovable AI`);
-        await resp.text(); // consume body
-        resp = await callAI(chunkText, "https://ai.gateway.lovable.dev/v1/chat/completions", lovableApiKey, "google/gemini-2.5-flash", false);
-      }
 
       // Retry once with a different model if first attempt fails
       if (!resp.ok && lovableApiKey) {
