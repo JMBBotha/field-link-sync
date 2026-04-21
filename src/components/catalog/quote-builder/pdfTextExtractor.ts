@@ -353,54 +353,108 @@ function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHei
  * Headers are typically in top 3% with no price or model codes.
  */
 function isHeaderOrNonProductRow(rowText: string, detectedPrice: number, hasModel: boolean, y_pct: number): boolean {
-  // Skip empty or whitespace-only rows
   if (rowText.replace(/\s/g, "").length === 0) return true;
-
-  // Dotted leaders (4+ consecutive dots) → TOC or index line, never a product
   if (/\.{4,}/.test(rowText)) return true;
 
   const lower = rowText.toLowerCase();
 
-  // Skip header/date text regardless of price — these are NEVER products
   if (/valid\s+from|pricelist|price\s+list/i.test(rowText)) return true;
-  // Standalone year (2019-2029) with no R-prefixed price is a date, not a product
   if (/\b20[1-2]\d\b/.test(rowText) && !/R\s*\d/.test(rowText)) return true;
 
-  // Skip common non-product headers
   const headerKeywords = [
     "contents", "table of contents", "index", "page", "chapter",
     "introduction", "disclaimer", "warranty", "terms", "fourways",
   ];
   if (headerKeywords.some((kw) => lower.includes(kw))) return true;
 
-  // Month names in footers/headers (e.g. "Fourways January 2026")
   if (/\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/i.test(rowText)) return true;
-
-  // Model codes like AR8500 where "R" is NOT a currency prefix
   if (/\bAR\s*\d{4}\b/i.test(rowText)) return true;
-
-  // Refrigerant type labels like "Samsung R410", "R32", "R290" — only filter SHORT header-like rows
-  // with no significant price. Dense product rows in R32/R410 sections must NOT be filtered.
   if (/\bR\s*(410|32|290)\b/i.test(rowText) && !hasModel && (detectedPrice < 50 || isNaN(detectedPrice))) return true;
-
-  // Fundamental rule: no valid price → not a product
   if (detectedPrice == null || isNaN(detectedPrice) || detectedPrice <= 0) return true;
-
-  // TOC detection: dotted leaders or trailing 1-2 digit page numbers
   if (/[.\s]{4,}\s*\d{1,2}/.test(rowText) || /^[\w\s-]+\s+[.\s]{4,}\s*\d+$/.test(rowText)) return true;
   if (/\s*\d{1,2}$/.test(rowText) && detectedPrice < 10 && !hasModel) return true;
-
-  // Skip page headers/footers without model code
   if ((y_pct < 3 || y_pct > 97) && !hasModel) return true;
 
   return false;
 }
 
-/**
- * PRICE-FIRST approach v39: column-based detection for dense table PDFs.
- * Combines R-prefixed prices with column-position-based numeric prices.
- * supplierType: 'consumables' uses R1 min, 'ac_units'/default uses R50 min.
- */
+function buildStructuredRowText(items: ExtractedTextItem[]): string {
+  const sorted = [...items].sort((a, b) => a.x - b.x);
+  let line = "";
+
+  for (let i = 0; i < sorted.length; i++) {
+    const current = sorted[i];
+    const text = current.text.trim();
+    if (!text) continue;
+
+    if (i > 0) {
+      const prev = sorted[i - 1];
+      const gap = current.x - (prev.x + prev.width);
+      const gapUnit = Math.max(prev.height * 0.8, 8);
+      if (gap > gapUnit * 2) line += "  ";
+      else if (gap > gapUnit * 0.35) line += " ";
+    }
+
+    line += text;
+  }
+
+  return line.trim();
+}
+
+function groupItemsIntoRows(items: ExtractedTextItem[], yTolerance: number) {
+  const sorted = [...items]
+    .filter((item) => item.text.trim())
+    .sort((a, b) => a.y - b.y || a.x - b.x);
+
+  const rows: Array<{
+    items: ExtractedTextItem[];
+    avgY: number;
+    minY: number;
+    maxY: number;
+  }> = [];
+
+  for (const item of sorted) {
+    let bestRow: (typeof rows)[number] | null = null;
+    let bestDistance = Infinity;
+
+    for (const row of rows) {
+      const distance = Math.abs(row.avgY - item.y);
+      if (distance <= yTolerance && distance < bestDistance) {
+        bestRow = row;
+        bestDistance = distance;
+      }
+    }
+
+    if (!bestRow) {
+      rows.push({
+        items: [item],
+        avgY: item.y,
+        minY: item.y,
+        maxY: item.y + item.height,
+      });
+      continue;
+    }
+
+    bestRow.items.push(item);
+    bestRow.avgY = bestRow.items.reduce((sum, entry) => sum + entry.y, 0) / bestRow.items.length;
+    bestRow.minY = min(bestRow.minY, item.y);
+    bestRow.maxY = max(bestRow.maxY, item.y + item.height);
+  }
+
+  return rows
+    .map((row) => {
+      const rowItems = [...row.items].sort((a, b) => a.x - b.x);
+      return {
+        items: rowItems,
+        avgY: row.avgY,
+        minY: row.minY,
+        maxY: row.maxY,
+        text: buildStructuredRowText(rowItems),
+      };
+    })
+    .sort((a, b) => a.avgY - b.avgY);
+}
+
 export function matchTextRowsToProducts(
   items: ExtractedTextItem[],
   pageWidth: number,
@@ -409,87 +463,97 @@ export function matchTextRowsToProducts(
   supplierType?: string,
   pageIndex?: number,
 ): ExtractedProductRegion[] {
-  const minPrice = 1; // Universal R1 floor — isHeaderOrNonProductRow handles TOC/header filtering
+  const minPrice = 1;
   console.log(`[pdfExtract] matchTextRows: supplierType=${supplierType || "unknown"}, minPrice=R${minPrice}`);
   if (items.length === 0 || pageHeight === 0) return [];
 
-  // TOC page detection: if page text contains "Contents" and dotted leaders, skip entire page
-  const allText = items.map(i => i.text).join(" ");
+  const allText = items.map((i) => i.text).join(" ");
   if (/contents/i.test(allText) && /\.{4,}/.test(allText)) {
     console.log(`[pdfExtract] Skipping TOC page (contains "Contents" + dotted leaders)`);
     return [];
   }
+
   const lookup = buildProductLookup(products);
   const { byCode, byName, byDescription } = lookup;
   const mergedItems = mergeAdjacentPriceFragments(items, 3, pageWidth);
-  // Adaptive Y-threshold
   const avgHeight = mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length || 10;
   const yThreshold = Math.max(avgHeight * 1.5, 8);
-  // STEP 1a: Explicit R-prefixed prices (works for Samsung/Daikin/Midea)
+
   const explicitPriceItems = mergedItems.filter(
     (item) => /R\s*\d/.test(item.text) && (item.x / pageWidth) > 0.40 && detectPrice(item.text) !== null,
   );
-  // STEP 1b: Column-based numeric prices (works for dense table PDFs like One Stop)
   const columnPrices = findColumnPrices(mergedItems, pageWidth, pageHeight, minPrice);
-  // Combine and deduplicate by position
+
   const seen = new Set<string>();
   let priceItems: ExtractedTextItem[] = [];
   for (const item of [...explicitPriceItems, ...columnPrices]) {
-    const key = `${item.x.toFixed(0)},${item.y.toFixed(0)}`;
+    const key = `${item.x.toFixed(0)},${item.y.toFixed(0)},${item.text.trim()}`;
     if (!seen.has(key)) {
       seen.add(key);
       priceItems.push(item);
     }
   }
 
-  priceItems = priceItems.filter(item => {
+  priceItems = priceItems.filter((item) => {
     const val = detectPrice(item.text);
-    if (val === 410 || val === 32 || val === 290) return false;
-    return true;
+    return val !== 410 && val !== 32 && val !== 290;
   });
+
   const colRange = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
   console.log(
-    `[pdfExtract] matchTextRows: ${mergedItems.length} items, yThreshold=${yThreshold.toFixed(1)}, explicit R-prices=${explicitPriceItems.length}, column-based prices=${columnPrices.length}, combined unique=${priceItems.length}, priceColumnRange=${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : "none (using x>25% fallback)"}, pageWidth=${pageWidth.toFixed(0)}`,
+    `[pdfExtract] matchTextRows: ${mergedItems.length} items, yThreshold=${yThreshold.toFixed(1)}, explicit R-prices=${explicitPriceItems.length}, column-based prices=${columnPrices.length}, combined unique=${priceItems.length}, priceColumnRange=${colRange ? `${colRange.minX.toFixed(0)}-${colRange.maxX.toFixed(0)}` : "none"}, pageWidth=${pageWidth.toFixed(0)}`,
   );
   if (priceItems.length === 0) return [];
-  // STEP 2: Create one row per individual price item (no grouping).
-  const sortedPrices = [...priceItems].sort((a, b) => a.y - b.y);
-  const priceRows: { items: ExtractedTextItem[] }[] = sortedPrices.map((p) => ({ items: [p] }));
-  // Model code regex - broad enough for Samsung, Daikin, Midea
-  const modelRegex = /^[A-Za-z0-9\-\/]{5,}$/;
-  // STEP 3: For each price row, gather context and build a region
-  let regions: ExtractedProductRegion[] = [];
-  let skippedCount = { noPrice: 0, ghost: 0, outOfBounds: 0 };
-  const assignedCodes = new Set<string>();
-  const allProductCodes = [...byCode.keys()];
-  for (const pRow of priceRows) {
-    const rightmost = pRow.items[pRow.items.length - 1];
-    const rowAvgY = pRow.items.reduce((s, i) => s + i.y, 0) / pRow.items.length;
-    // Ghost filter: skip if in top 3% AND no model code nearby
-    const y_pct = (rowAvgY / pageHeight) * 100;
-    // TIGHT same-row context ONLY (no aboveItems, no wide band)
-    const tightBand = avgHeight * 0.6;
-    const contextItems = mergedItems.filter((it) => Math.abs(it.y - rowAvgY) <= tightBand);
-    const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
-    const rowText = contextItems.map((it) => it.text).join(" ");
-    const looseRowText = pRow.items.map((it) => it.text).join(" ");
 
-    // FUNDAMENTAL RULE: Skip entire row if rightmost price item is on LEFT side of page
-    const rightmostXPct = rightmost.x / pageWidth;
-    // Try explicit R-prefixed price first, then raw numeric parse for column-based items
-    let detectedPrice = detectPrice(rightmost.text);
-    if (detectedPrice === null) {
-      let raw = rightmost.text.trim().replace(/\s/g, "");
-      if (/,\d{1,2}$/.test(raw) && !/\.\d/.test(raw)) {
-        raw = raw.replace(/,(?=\d{1,2}$)/, ".");
-      } else {
-        raw = raw.replace(/,/g, "");
+  const priceItemSet = new Set(priceItems);
+  const rowTolerance = Math.max(avgHeight * 0.95, 6);
+  const groupedRows = groupItemsIntoRows(mergedItems, rowTolerance);
+  const priceRows = groupedRows.filter((row) => row.items.some((item) => priceItemSet.has(item)));
+
+  const modelRegex = /^[A-Za-z0-9\-\/]{5,}$/;
+  let regions: ExtractedProductRegion[] = [];
+  const skippedCount = { noPrice: 0, ghost: 0, outOfBounds: 0 };
+  const assignedCodes = new Set<string>();
+
+  for (const pRow of priceRows) {
+    const rowPriceItems = pRow.items
+      .filter((item) => priceItemSet.has(item))
+      .sort((a, b) => a.x - b.x);
+    if (rowPriceItems.length === 0) continue;
+
+    let rightmost = rowPriceItems[rowPriceItems.length - 1];
+    let detectedPrice: number | null = null;
+
+    for (let i = rowPriceItems.length - 1; i >= 0; i--) {
+      const candidate = rowPriceItems[i];
+      let candidatePrice = detectPrice(candidate.text);
+      if (candidatePrice === null) {
+        let raw = candidate.text.trim().replace(/\s/g, "");
+        if (/\,\d{1,2}$/.test(raw) && !/\.\d/.test(raw)) {
+          raw = raw.replace(/,(?=\d{1,2}$)/, ".");
+        } else {
+          raw = raw.replace(/,/g, "");
+        }
+        const val = parseFloat(raw);
+        if (!isNaN(val) && val >= minPrice) candidatePrice = val;
       }
-      const val = parseFloat(raw);
-      if (!isNaN(val) && val >= minPrice) detectedPrice = val;
+      if (candidatePrice !== null) {
+        rightmost = candidate;
+        detectedPrice = candidatePrice;
+        break;
+      }
     }
 
-    // Skip samsung/R410 section headers ONLY when tight-band row looks like a header (no real price)
+    const rowTop = pRow.minY;
+    const rowBottom = pRow.maxY;
+    const rowHeight = Math.max(rowBottom - rowTop, avgHeight * 0.9);
+    const y_pct = (rowTop / pageHeight) * 100;
+    const h_pct = Math.max((rowHeight / pageHeight) * 100, 0.8);
+    const contextItems = pRow.items;
+    const hasModel = contextItems.some((i) => modelRegex.test(i.text.trim()));
+    const rowText = pRow.text;
+    const rightmostXPct = rightmost.x / pageWidth;
+
     if (/samsung.*r\s*410|r\s*410.*kw/i.test(rowText) && (detectedPrice === null || detectedPrice < 50)) continue;
 
     const headerOrNonProduct = isHeaderOrNonProductRow(rowText, detectedPrice ?? NaN, hasModel, y_pct);
@@ -499,23 +563,24 @@ export function matchTextRowsToProducts(
       skippedCount.ghost++;
       continue;
     }
+
     console.log(
-      `[pdfExtract] STEP3 row: rightText="${rightmost.text}" x=${rightmost.x.toFixed(1)} xPct=${((rightmost.x / pageWidth) * 100).toFixed(1)}% detectedPrice=${detectedPrice}`,
+      `[pdfExtract] STEP3 row: rightText="${rightmost.text}" x=${rightmost.x.toFixed(1)} xPct=${(rightmostXPct * 100).toFixed(1)}% detectedPrice=${detectedPrice}`,
     );
+
     if (detectedPrice === null || detectedPrice < minPrice) {
       skippedCount.noPrice++;
       console.log(`[pdfExtract] Skipped noPrice (min R${minPrice}): ${rightmost.text} at y=${rightmost.y}`);
       continue;
     }
+
     if (headerOrNonProduct) {
       skippedCount.ghost++;
-      console.log(
-        `[pdfExtract] Skipped ghost: ${rowText} at y_pct=${y_pct.toFixed(1)}, detectedPrice=${detectedPrice}`,
-      );
+      console.log(`[pdfExtract] Skipped ghost: ${rowText} at y_pct=${y_pct.toFixed(1)}, detectedPrice=${detectedPrice}`);
       continue;
     }
+
     const matchTextLower = rowText.toLowerCase();
-    // POSITION-AWARE matching: find candidate codes in this row's items, sorted left-to-right
     const candidates: { code: string; product: PaletteProduct; x: number }[] = [];
     for (const it of contextItems) {
       const itLower = it.text.toLowerCase();
@@ -525,11 +590,11 @@ export function matchTextRowsToProducts(
         }
       }
     }
-    // Sort leftmost first – prefer codes physically left of the price
+
     candidates.sort((a, b) => a.x - b.x);
     let matched: PaletteProduct | null = null;
     let matchedCode = "";
-    // Pick leftmost candidate that hasn't been assigned yet (or genuinely appears multiple times)
+
     for (const cand of candidates) {
       const occurrences = contextItems.filter((i) => i.text.toLowerCase().includes(cand.code)).length;
       if (!assignedCodes.has(cand.code) || occurrences > 1) {
@@ -539,19 +604,18 @@ export function matchTextRowsToProducts(
         break;
       }
     }
-    // Fallback: try byName then byDescription (loose, but still row-scoped)
+
     if (!matched && hasModel) {
       for (const [name, product] of byName) {
-        if (name.length >= 5 && matchTextLower.includes(name)) {
-          if (!assignedCodes.has(name)) {
-            matched = product;
-            matchedCode = product.product_code;
-            assignedCodes.add(name);
-            break;
-          }
+        if (name.length >= 5 && matchTextLower.includes(name) && !assignedCodes.has(name)) {
+          matched = product;
+          matchedCode = product.product_code;
+          assignedCodes.add(name);
+          break;
         }
       }
     }
+
     if (!matched && hasModel) {
       for (const [desc, product] of byDescription) {
         if (desc.length >= 8 && matchTextLower.includes(desc)) {
@@ -561,30 +625,25 @@ export function matchTextRowsToProducts(
         }
       }
     }
-    const extractedCode =
-      matchedCode ||
-      (() => {
-        const codeMatch = contextItems
-          .map((it) => it.text)
-          .join(" ")
-          .match(/\b([A-Za-z]{2,}\d+[A-Za-z0-9\-]*)\b/);
-        return codeMatch ? codeMatch[1] : rowText.trim().substring(0, 80) + `@${detectedPrice}`;
-      })();
-    const anchorHeight = rightmost.height;
-    const h_pct = Math.max((anchorHeight / pageHeight) * 100, 0.8);
-    if (y_pct > 100 || h_pct > 5) {
+
+    const extractedCode = matchedCode || (() => {
+      const codeMatch = rowText.match(/\b([A-Za-z]{2,}\d+[A-Za-z0-9\-]*)\b/);
+      return codeMatch ? codeMatch[1] : rowText.trim().substring(0, 80) + `@${detectedPrice}`;
+    })();
+
+    if (y_pct > 100 || h_pct > 8) {
       skippedCount.outOfBounds++;
       continue;
     }
-    // Use ACTUAL price item coordinates for icon alignment (not hardcoded)
+
     const actualX_pct = (rightmost.x / pageWidth) * 100;
     const actualW_pct = Math.max((rightmost.width / pageWidth) * 100, 2);
-    // Allow unmatched rows through — they appear as blue "new" rectangles
-    console.log(`[pdfExtract] ADDING REGION: label="${rowText.trim().substring(0,200)}" price=${detectedPrice} matched=${!!matched} y_pct=${y_pct.toFixed(1)} code="${extractedCode}"`);
+    console.log(`[pdfExtract] ADDING REGION: label="${rowText.substring(0, 200)}" price=${detectedPrice} matched=${!!matched} y_pct=${y_pct.toFixed(1)} h_pct=${h_pct.toFixed(2)} code="${extractedCode}"`);
+
     regions.push({
       product: matched,
       product_code: extractedCode,
-      label: rowText.trim().substring(0, 200),
+      label: rowText.substring(0, 200),
       x_pct: actualX_pct,
       y_pct: Math.max(0, y_pct),
       w_pct: actualW_pct,
@@ -594,18 +653,20 @@ export function matchTextRowsToProducts(
       detected_price: detectedPrice,
     });
   }
+
   console.log(
-    `[pdfExtract] Row processing: ${priceRows.length} price rows → ${regions.length} regions. Skipped: noPrice=${skippedCount.noPrice}, ghost=${skippedCount.ghost}, outOfBounds=${skippedCount.outOfBounds}`,
+    `[pdfExtract] Row processing: ${priceRows.length} grouped rows → ${regions.length} regions. Skipped: noPrice=${skippedCount.noPrice}, ghost=${skippedCount.ghost}, outOfBounds=${skippedCount.outOfBounds}`,
   );
-  // Align all icons to a single X column
+
   if (regions.length > 0) {
     const maxX = Math.max(...regions.map((r) => r.x_pct));
     for (const r of regions) r.x_pct = maxX;
   }
+
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 75; // v75: revert 0.45/tightBand/dedup regressions, keep hasModel gate, add 0.40 for column prices only
+let _extractionVersion = 76; // v76: coordinate-grouped rows for better item pickup and vertical overlay alignment
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
