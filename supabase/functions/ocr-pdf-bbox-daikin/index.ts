@@ -166,9 +166,16 @@ Deno.serve(async (req) => {
         .eq("supplier_id", supplier.id)
         .eq("product_code", p.product_code);
 
-      if (error) { console.warn(`[ocr-daikin] ${p.product_code}: ${error.message}`); skipped++; }
-      else if (count && count > 0) { updated++; }
-      else { skipped++; }
+      if (error) {
+        console.warn(`[ocr-daikin] ${p.product_code}: ${error.message}`);
+        skipReasons["update_error"] = (skipReasons["update_error"] || 0) + 1;
+        skipped++;
+      } else if (count && count > 0) {
+        updated++;
+      } else {
+        skipReasons["no_db_match"] = (skipReasons["no_db_match"] || 0) + 1;
+        skipped++;
+      }
     }
 
     const nextPage = pageNum + 1;
@@ -181,6 +188,7 @@ Deno.serve(async (req) => {
       ai_returned: products.length,
       updated,
       skipped,
+      skip_reasons: skipReasons,
       done,
       next_page: done ? null : nextPage,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
