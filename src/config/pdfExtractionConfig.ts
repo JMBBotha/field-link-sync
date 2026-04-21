@@ -78,10 +78,10 @@ export const VALIDATION_RULES = {
   minPrice: 0.01,
   /** Maximum price sanity check */
   maxPrice: 1_000_000,
-  /** Product code pattern — alphanumeric with dashes/slashes */
-  productCodePattern: /^[A-Za-z0-9][A-Za-z0-9\-\/\s_.]{0,60}$/,
+  /** Product code pattern — alphanumeric, dashes, slashes, plus, parens, spaces (for multi-SKU bundle codes like "FFA25A9 + FFA50A9 (X2)") */
+  productCodePattern: /^[A-Za-z0-9][A-Za-z0-9\-\/\s_.+()×x*,]{0,120}$/,
   /** Maximum description length */
-  maxDescriptionLength: 500,
+  maxDescriptionLength: 1000,
   /** Minimum product code length */
   minProductCodeLength: 2,
 } as const;

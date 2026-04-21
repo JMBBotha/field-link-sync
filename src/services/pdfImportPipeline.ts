@@ -29,6 +29,15 @@ function sanitizeFloat(val: any): number | null {
   const n = parseFloat(String(val).replace(/[^0-9.\-]/g, ""));
   return isNaN(n) ? null : n;
 }
+/** DB constraint: phase ∈ {'single','three'} or NULL. Map common AI variants. */
+function sanitizePhase(val: any): "single" | "three" | null {
+  if (val == null) return null;
+  const s = String(val).toLowerCase().trim();
+  if (!s) return null;
+  if (/^(1|single|1ph|1-ph|1\s*phase|mono)/.test(s)) return "single";
+  if (/^(3|three|3ph|3-ph|3\s*phase|tri)/.test(s)) return "three";
+  return null;
+}
 
 // ─── TYPES ───
 
@@ -251,7 +260,7 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
       btu_rating: sanitizeInt(p.btu_rating),
       pipe_size: p.pipe_size || null,
       refrigerant_type: p.refrigerant_type || null,
-      phase: p.phase || null,
+      phase: sanitizePhase(p.phase),
       kw: sanitizeFloat(p.kw),
       sold_in_length: p.sold_in_length || false,
       unit_length: p.unit_length || null,
