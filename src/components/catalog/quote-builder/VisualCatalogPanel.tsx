@@ -922,6 +922,22 @@ const LazyPdfPage = ({
     staleTime: 60000,
   });
 
+  // OCR-stored bboxes from supplier_products — used when client-side text extraction
+  // returns nothing (e.g. scanned/image PDFs like Daikin).
+  const { data: ocrRegions = [] } = useQuery({
+    queryKey: ["visual-panel-ocr-bboxes", page.supplier_id, page.page_number],
+    enabled: isVisible,
+    queryFn: async () => {
+      const { data } = await (supabase.from("supplier_products") as any)
+        .select("id, product_code, short_name, description, cost_excl_vat, cost_price, default_markup_percent, row_bbox, price_bbox")
+        .eq("supplier_id", page.supplier_id)
+        .eq("page_number", page.page_number)
+        .not("row_bbox", "is", null);
+      return data || [];
+    },
+    staleTime: 120000,
+  });
+
    // Live extraction for this page — enable even without hasPdfSource so fallback kicks in
   const queryEnabled = isVisible && hasPdfSource && activeProducts.length > 0;
   
@@ -1042,6 +1058,29 @@ const LazyPdfPage = ({
     // If live regions exist, no fallback needed
     if (liveRegions.length > 0) return [];
 
+    // Primary fallback: OCR-extracted bboxes stored on supplier_products
+    // (handles scanned/image PDFs e.g. Daikin where client-side text extraction fails)
+    if (ocrRegions.length > 0) {
+      return (ocrRegions as any[]).map((sp, idx) => {
+        const rb = sp.row_bbox || {};
+        const paletteProduct = activeProducts.find(p => p.id === sp.id || p.product_code === sp.product_code) || null;
+        const cost = sp.cost_excl_vat ?? sp.cost_price ?? 0;
+        return {
+          id: `ocr-${page.id}-${sp.id}-${idx}`,
+          x_pct: (rb.x ?? 0) * 100,
+          y_pct: (rb.y ?? 0) * 100,
+          w_pct: (rb.width ?? 1) * 100,
+          h_pct: (rb.height ?? 0.02) * 100,
+          product: paletteProduct,
+          product_code: sp.product_code || "",
+          label: sp.short_name || sp.description || sp.product_code || "",
+          has_price: cost > 0,
+          detected_price: cost || null,
+          matched: !!paletteProduct,
+        } as OverlayRegion;
+      });
+    }
+
     // Secondary: use stored regions from pdf_product_regions table
     if (storedRegions.length > 0) {
       return storedRegions.map((sr: any, idx: number) => {
@@ -1099,12 +1138,16 @@ const LazyPdfPage = ({
     }
 
     return [];
-  }, [liveRegions, storedRegions, activeProducts, page.id, page.supplier_id, supplierName, totalPages, pageIndex]);
+  }, [liveRegions, ocrRegions, storedRegions, activeProducts, page.id, page.supplier_id, supplierName, totalPages, pageIndex]);
 
   // ─── OVERLAY REGIONS: prefer live extraction with cross-page dedup, else fallback ───
   // No longer skip pageIndex 0 unconditionally — some suppliers have products on page 1
   const overlayRegions: OverlayRegion[] = useMemo(() => {
-    const sourceRegions = liveRegions.length > 0 ? liveRegions : [];
+    // Live (text-extracted) takes precedence; for scanned PDFs (e.g. Daikin) where live is empty,
+    // use OCR-stored bboxes from supplier_products via fallbackRegions.
+    const sourceRegions = liveRegions.length > 0
+      ? liveRegions
+      : (ocrRegions.length > 0 ? fallbackRegions : []);
     const result: OverlayRegion[] = [];
 
     const seenOnPage = new Set<string>();
@@ -1178,7 +1221,7 @@ const LazyPdfPage = ({
     // that page should show 0 items and 0 blue rectangles. No fallback filling.
 
     return result;
-  }, [liveRegions, fallbackRegions, page.id, pageIndex]);
+  }, [liveRegions, ocrRegions, fallbackRegions, page.id, pageIndex]);
 
   // Report detected categories to parent for category→page mapping
   useEffect(() => {
