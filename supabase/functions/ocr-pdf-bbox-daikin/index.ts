@@ -135,13 +135,26 @@ Deno.serve(async (req) => {
     }
     const products: any[] = parsed.products || [];
     console.log(`[ocr-daikin] Page ${pageNum}: AI returned ${products.length} products`);
+    if (products.length > 0) {
+      console.log(`[ocr-daikin] Page ${pageNum} sample:`, JSON.stringify(products.slice(0, 3)));
+    }
 
+    const skipReasons: Record<string, number> = {};
     let updated = 0, skipped = 0;
     for (const p of products) {
-      if (!p.product_code || !p.row_bbox || !p.price_bbox) { skipped++; continue; }
+      if (!p.product_code || !p.row_bbox || !p.price_bbox) {
+        skipReasons["missing_fields"] = (skipReasons["missing_fields"] || 0) + 1;
+        skipped++; continue;
+      }
       const pb = p.price_bbox;
-      if (typeof pb.x !== "number" || typeof pb.width !== "number") { skipped++; continue; }
-      if (pb.x + pb.width < 0.7) { skipped++; continue; }
+      if (typeof pb.x !== "number" || typeof pb.width !== "number") {
+        skipReasons["bad_bbox_types"] = (skipReasons["bad_bbox_types"] || 0) + 1;
+        skipped++; continue;
+      }
+      if (pb.x + pb.width < 0.7) {
+        skipReasons["not_rightmost"] = (skipReasons["not_rightmost"] || 0) + 1;
+        skipped++; continue;
+      }
 
       const { error, count } = await supabase
         .from("supplier_products")
