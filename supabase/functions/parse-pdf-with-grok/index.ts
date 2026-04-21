@@ -125,9 +125,26 @@ function parseAIContent(content: string): { detected_price_columns: string[]; pr
   return { detected_price_columns: parsed.detected_price_columns || [], products };
 }
 
-function pickBestPrice(prices: Record<string, number>): { price: number; columnName: string; isInclVat: boolean } {
+function pickBestPrice(
+  prices: Record<string, number>,
+  supplierName?: string,
+): { price: number; columnName: string; isInclVat: boolean } {
   const entries = Object.entries(prices).filter(([, v]) => typeof v === "number" && v > 0);
   if (entries.length === 0) return { price: 0, columnName: "", isInclVat: false };
+
+  // Daikin override: ALWAYS use the Contractor column when present.
+  // Daikin price lists have 3 columns (List / Contractor / RRP); Contractor is our buy price.
+  // One Daikin SKU → one supplier_products row, priced from Contractor.
+  const isDaikin = !!supplierName && /DAIKIN/i.test(supplierName);
+  if (isDaikin) {
+    const contractor = entries.find(([col]) => /CONTRACTOR/i.test(col));
+    if (contractor) {
+      console.log(`[Grok] Daikin override → using Contractor column "${contractor[0]}" = ${contractor[1]}`);
+      return { price: contractor[1], columnName: contractor[0], isInclVat: false };
+    }
+    console.warn(`[Grok] Daikin: no Contractor column found in [${entries.map(([c]) => c).join(", ")}] — falling back`);
+  }
+
   if (entries.length === 1) {
     const [col, val] = entries[0];
     const upper = col.toUpperCase();
