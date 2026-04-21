@@ -378,6 +378,8 @@ const AdminOverlayDebugPage = () => {
           </div>
         </Card>
       )}
+
+      <AuditFindingsPanel />
     </div>
   );
 };
