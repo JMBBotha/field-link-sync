@@ -63,23 +63,6 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
     },
   });
 
-  // Check for existing PDF in storage for re-parse
-  const { data: storedPdfPath } = useQuery({
-    queryKey: ["supplier-stored-pdf", supplierId],
-    queryFn: async () => {
-      const { data: files } = await supabase.storage
-        .from("supplier-pdfs")
-        .list(supplierId, { limit: 1, sortBy: { column: "created_at", order: "desc" } });
-      if (files && files.length > 0) {
-        return `${supplierId}/${files[0].name}`;
-      }
-      return null;
-    },
-  });
-
-  const [reparseLoading, setReparseLoading] = useState(false);
-  const [pendingReparse, setPendingReparse] = useState(false);
-
   const { data: lastImport } = useQuery({
     queryKey: ["supplier-last-import", supplierId],
     queryFn: async () => {
@@ -92,6 +75,60 @@ const SupplierImportPanel = ({ supplierId, supplierName, onImportComplete, compa
       return data?.[0] || null;
     },
   });
+
+  // Check for existing PDF in storage for re-parse — prefer the file that matches
+  // the latest successful import; otherwise fall back to the newest file present.
+  const { data: storedPdfInfo } = useQuery({
+    queryKey: ["supplier-stored-pdf", supplierId, lastImport?.file_name],
+    queryFn: async () => {
+      const { data: files } = await supabase.storage
+        .from("supplier-pdfs")
+        .list(supplierId, { limit: 100, sortBy: { column: "created_at", order: "desc" } });
+      if (!files || files.length === 0) return null;
+
+      const targetName = lastImport?.file_name as string | undefined;
+      const matched = targetName ? files.find((f) => f.name === targetName) : undefined;
+      const chosen = matched ?? files[0];
+
+      return {
+        path: `${supplierId}/${chosen.name}`,
+        fileName: chosen.name,
+        matchesLastImport: !!matched,
+        totalFiles: files.length,
+      };
+    },
+    enabled: !!supplierId,
+  });
+
+  const storedPdfPath = storedPdfInfo?.path ?? null;
+
+  const [reparseLoading, setReparseLoading] = useState(false);
+  const [pendingReparse, setPendingReparse] = useState(false);
+
+  const handleCleanupStalePdfs = useCallback(async () => {
+    const target = lastImport?.file_name as string | undefined;
+    const { data: files } = await supabase.storage
+      .from("supplier-pdfs")
+      .list(supplierId, { limit: 100 });
+    if (!files || files.length === 0) {
+      toast({ title: "No PDFs to clean up" });
+      return;
+    }
+    const toRemove = files
+      .filter((f) => !target || f.name !== target)
+      .map((f) => `${supplierId}/${f.name}`);
+    if (toRemove.length === 0) {
+      toast({ title: "Storage already clean", description: "Only the latest PDF is present." });
+      return;
+    }
+    const { error } = await supabase.storage.from("supplier-pdfs").remove(toRemove);
+    if (error) {
+      toast({ title: "Cleanup failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: `Removed ${toRemove.length} stale PDF${toRemove.length === 1 ? "" : "s"}` });
+    queryClient.invalidateQueries({ queryKey: ["supplier-stored-pdf", supplierId] });
+  }, [supplierId, lastImport?.file_name, queryClient, toast]);
 
   const invalidateAll = useCallback(() => {
     const keys = [
