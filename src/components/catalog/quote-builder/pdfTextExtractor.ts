@@ -437,8 +437,8 @@ function groupItemsIntoRows(items: ExtractedTextItem[], yTolerance: number) {
 
     bestRow.items.push(item);
     bestRow.avgY = bestRow.items.reduce((sum, entry) => sum + entry.y, 0) / bestRow.items.length;
-    bestRow.minY = min(bestRow.minY, item.y);
-    bestRow.maxY = max(bestRow.maxY, item.y + item.height);
+    bestRow.minY = Math.min(bestRow.minY, item.y);
+    bestRow.maxY = Math.max(bestRow.maxY, item.y + item.height);
   }
 
   return rows
