@@ -5,8 +5,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Stethoscope, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Stethoscope, CheckCircle2, XCircle, Loader2, Flag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 type Step = {
   label: string;
@@ -36,6 +38,37 @@ export const DaikinOverlayDiagnostic = ({ currentSupplierName, currentPageNumber
   const [running, setRunning] = useState(false);
   const [steps, setSteps] = useState<Step[]>([]);
   const [rawRow, setRawRow] = useState<any>(null);
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const submitReport = async () => {
+    setSubmitting(true);
+    const trimmed = (currentSupplierName || "").trim();
+    let supplierUuid: string | null = null;
+    if (trimmed) {
+      const { data: s } = await (supabase.from("suppliers") as any)
+        .select("id").ilike("name", trimmed).maybeSingle();
+      supplierUuid = s?.id ?? null;
+    }
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await (supabase.from("overlay_mismatch_reports") as any).insert({
+      supplier_name: trimmed || null,
+      supplier_id: supplierUuid,
+      product_code: code.trim() || null,
+      page_number: currentPageNumber,
+      stored_page_number: rawRow?.page_number ?? null,
+      stored_row_bbox: rawRow?.row_bbox ?? null,
+      notes: notes.trim() || null,
+      reported_by: user?.id ?? null,
+    });
+    setSubmitting(false);
+    if (error) {
+      toast({ title: "Report failed", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Mismatch queued for review" });
+      setNotes("");
+    }
+  };
 
   const run = async () => {
     setRunning(true);
@@ -196,6 +229,46 @@ export const DaikinOverlayDiagnostic = ({ currentSupplierName, currentPageNumber
                 <summary className="cursor-pointer text-muted-foreground">Raw supplier_products row</summary>
                 <pre className="mt-2 p-2 bg-muted rounded overflow-auto text-[10px] max-h-48">{JSON.stringify(rawRow, null, 2)}</pre>
               </details>
+            )}
+
+            {steps.length > 0 && (
+              <div className="border-t pt-3 space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-semibold">
+                  <Flag className="h-3.5 w-3.5 text-warning" />
+                  Report mismatch for review
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-[11px]">
+                  <div className="rounded border bg-muted/30 p-1.5">
+                    <div className="text-muted-foreground">Product</div>
+                    <div className="font-mono truncate">{code.trim() || "—"}</div>
+                  </div>
+                  <div className="rounded border bg-muted/30 p-1.5">
+                    <div className="text-muted-foreground">Viewing page</div>
+                    <div className="font-mono">{currentPageNumber ?? "—"}</div>
+                  </div>
+                  <div className="rounded border bg-muted/30 p-1.5">
+                    <div className="text-muted-foreground">Stored page</div>
+                    <div className="font-mono">{rawRow?.page_number ?? "—"}</div>
+                  </div>
+                </div>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Optional: what did you expect vs. what you saw?"
+                  rows={2}
+                  className="text-xs"
+                />
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={submitReport}
+                  disabled={submitting || !code.trim()}
+                  className="w-full"
+                >
+                  {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Flag className="h-3.5 w-3.5 mr-1.5" />}
+                  Queue for debug review
+                </Button>
+              </div>
             )}
           </div>
 

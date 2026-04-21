@@ -2831,6 +2831,51 @@ export type Database = {
         }
         Relationships: []
       }
+      overlay_mismatch_reports: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          page_number: number | null
+          product_code: string | null
+          reported_by: string | null
+          reviewed_at: string | null
+          status: string
+          stored_page_number: number | null
+          stored_row_bbox: Json | null
+          supplier_id: string | null
+          supplier_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          page_number?: number | null
+          product_code?: string | null
+          reported_by?: string | null
+          reviewed_at?: string | null
+          status?: string
+          stored_page_number?: number | null
+          stored_row_bbox?: Json | null
+          supplier_id?: string | null
+          supplier_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          page_number?: number | null
+          product_code?: string | null
+          reported_by?: string | null
+          reviewed_at?: string | null
+          status?: string
+          stored_page_number?: number | null
+          stored_row_bbox?: Json | null
+          supplier_id?: string | null
+          supplier_name?: string | null
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
