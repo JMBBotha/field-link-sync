@@ -1138,7 +1138,7 @@ const LazyPdfPage = ({
     }
 
     return [];
-  }, [liveRegions, storedRegions, activeProducts, page.id, page.supplier_id, supplierName, totalPages, pageIndex]);
+  }, [liveRegions, ocrRegions, storedRegions, activeProducts, page.id, page.supplier_id, supplierName, totalPages, pageIndex]);
 
   // ─── OVERLAY REGIONS: prefer live extraction with cross-page dedup, else fallback ───
   // No longer skip pageIndex 0 unconditionally — some suppliers have products on page 1
