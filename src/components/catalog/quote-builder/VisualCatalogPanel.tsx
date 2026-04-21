@@ -30,6 +30,7 @@ import PdfMagnifier from "./PdfMagnifier";
 import CompactZonesSidebar from "./CompactZonesSidebar";
 import EnhancedProductPopup from "./EnhancedProductPopup";
 import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
+import DaikinOverlayDiagnostic from "./DaikinOverlayDiagnostic";
 
 import CategoryNavBar, { groupCategory } from "./CategoryNavBar";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
@@ -536,6 +537,12 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                 <p className="text-xs font-semibold truncate text-foreground">{currentSupplierName || "Visual Catalog"}</p>
                 {currentFilename && <p className="text-[10px] text-muted-foreground truncate">{currentFilename}</p>}
               </div>
+              {currentPage && (
+                <DaikinOverlayDiagnostic
+                  currentSupplierName={(currentPage.supplier_id || "").trim()}
+                  currentPageNumber={currentPage.page_number ?? null}
+                />
+              )}
               {currentPage && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
