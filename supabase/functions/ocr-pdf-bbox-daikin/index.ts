@@ -156,21 +156,42 @@ Deno.serve(async (req) => {
       }
       // Daikin webshop price column is mid-page — rightmost rule does not apply here.
 
+      // Build candidate SKU list from AI-returned code
+      // Handles: "FBA35A9 (x2)", "FBA35A9 + FBA50A9", "FFA25A9 + FFA35A9\n+ FFA50A9"
+      const raw = String(p.product_code).replace(/\s+/g, " ").trim();
+      const cleaned = raw.replace(/\(x\d+\)/gi, "").trim();
+      const tokens = cleaned.split(/\s*\+\s*/).map((t) => t.trim()).filter(Boolean);
+      const candidates = Array.from(new Set([raw, cleaned, ...tokens])).filter(Boolean);
+
+      const updatePayload = {
+        row_bbox: p.row_bbox,
+        price_bbox: p.price_bbox,
+        page_number: pageNum,
+      };
+
+      // Try exact match first across all candidates, then ilike fallback for first token
       const { error, count } = await supabase
         .from("supplier_products")
-        .update({
-          row_bbox: p.row_bbox,
-          price_bbox: p.price_bbox,
-          page_number: pageNum,
-        }, { count: "exact" })
+        .update(updatePayload, { count: "exact" })
         .eq("supplier_id", supplier.id)
-        .eq("product_code", p.product_code);
+        .in("product_code", candidates);
+
+      let didUpdate = !!(count && count > 0);
+
+      if (!didUpdate && tokens[0]) {
+        const { count: c2 } = await supabase
+          .from("supplier_products")
+          .update(updatePayload, { count: "exact" })
+          .eq("supplier_id", supplier.id)
+          .ilike("product_code", `${tokens[0]}%`);
+        if (c2 && c2 > 0) didUpdate = true;
+      }
 
       if (error) {
-        console.warn(`[ocr-daikin] ${p.product_code}: ${error.message}`);
+        console.warn(`[ocr-daikin] ${raw}: ${error.message}`);
         skipReasons["update_error"] = (skipReasons["update_error"] || 0) + 1;
         skipped++;
-      } else if (count && count > 0) {
+      } else if (didUpdate) {
         updated++;
       } else {
         skipReasons["no_db_match"] = (skipReasons["no_db_match"] || 0) + 1;
