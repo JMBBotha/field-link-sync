@@ -1058,6 +1058,29 @@ const LazyPdfPage = ({
     // If live regions exist, no fallback needed
     if (liveRegions.length > 0) return [];
 
+    // Primary fallback: OCR-extracted bboxes stored on supplier_products
+    // (handles scanned/image PDFs e.g. Daikin where client-side text extraction fails)
+    if (ocrRegions.length > 0) {
+      return (ocrRegions as any[]).map((sp, idx) => {
+        const rb = sp.row_bbox || {};
+        const paletteProduct = activeProducts.find(p => p.id === sp.id || p.product_code === sp.product_code) || null;
+        const cost = sp.cost_excl_vat ?? sp.cost_price ?? 0;
+        return {
+          id: `ocr-${page.id}-${sp.id}-${idx}`,
+          x_pct: (rb.x ?? 0) * 100,
+          y_pct: (rb.y ?? 0) * 100,
+          w_pct: (rb.width ?? 1) * 100,
+          h_pct: (rb.height ?? 0.02) * 100,
+          product: paletteProduct,
+          product_code: sp.product_code || "",
+          label: sp.short_name || sp.description || sp.product_code || "",
+          has_price: cost > 0,
+          detected_price: cost || null,
+          matched: !!paletteProduct,
+        } as OverlayRegion;
+      });
+    }
+
     // Secondary: use stored regions from pdf_product_regions table
     if (storedRegions.length > 0) {
       return storedRegions.map((sr: any, idx: number) => {
