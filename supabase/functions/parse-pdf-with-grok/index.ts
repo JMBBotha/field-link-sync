@@ -93,7 +93,13 @@ brand: detect from product name/code (Samsung=AR*, Alliance=FOUR*/ALL*, Midea, D
 shortName: BRAND BTU/kW ABBREV format (e.g. "Samsung 9K INV MW")
 
 Prices: ZAR format "R 7 700,00" = 7700. Use rightmost NETT/COST column preferentially.
-For Daikin price lists: prefer the "WEBSHOP PRICE" column as the primary cost column, NOT "RRP" or "INSTALLER PRICE" or "WEBSHOP CAMPAIGN PRICE".
+For Daikin price lists: prefer the "WEBSHOP PRICE" column as the primary cost column, NOT "RRP" or "WEBSHOP CAMPAIGN PRICE".
+
+CRITICAL MULTI-COLUMN PRICE RULE: When a price list has MULTIPLE price columns per row (e.g. "Installer Price", "Incl Corrosion Treatment Partial", "Incl Corrosion Treatment Full", or "Trade", "Wholesale", "Retail"), you MUST:
+1. Identify the BASE/INSTALLER/TRADE/DEALER price column (usually the LEFTMOST or LOWEST-priced column, the one WITHOUT add-ons like "Incl Corrosion", "Incl Treatment", "Incl Coating", "Incl Warranty Extended").
+2. For EVERY product row, populate the prices object with ALL columns under their EXACT column header names (so {"Installer Price": 8991, "Incl Corrosion Treatment Partial": 10303, "Incl Corrosion Treatment Full": 11500}).
+3. NEVER swap, shift, or merge columns between rows. The Installer Price for row 2 must come from the SAME visual column as row 1's Installer Price.
+4. If a row visually only shows ONE price, label that column based on its horizontal position matching the header row above — do NOT default to the middle/right column.
 
 SECTION HEADER DETECTION: Rows like "AR3000 Non-Inverter" or "Midwall Split Systems" with NO price are section headers — SKIP them entirely.
 Document title/date rows like "CPT ONLY ONE STOP SHOP - PRICELIST NO.17 VALID FROM 13 NOVEMBER 2025" are NOT products — SKIP them.
