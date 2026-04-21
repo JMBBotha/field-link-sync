@@ -943,6 +943,7 @@ const LazyPdfPage = ({
         .eq("supplier_id", supplierUuid)
         .eq("page_number", page.page_number)
         .not("row_bbox", "is", null);
+      console.log(`[VisualCatalog] OCR bbox query: supplier="${supplierName}" uuid=${supplierUuid} page=${page.page_number} → ${(data || []).length} regions`);
       return data || [];
     },
     staleTime: 120000,
