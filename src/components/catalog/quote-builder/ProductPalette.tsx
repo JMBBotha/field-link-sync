@@ -864,8 +864,13 @@ const ProductPalette = ({
             <button
               onClick={() => setSelectedCollapsed(!selectedCollapsed)}
               className="text-xs font-semibold text-foreground hover:text-primary flex items-center gap-1"
+              title={selectedCollapsed ? "Expand selected PDF items" : "Collapse selected PDF items"}
             >
-              <span className={`transition-transform text-[10px] ${selectedCollapsed ? "" : "rotate-90"}`}>▶</span>
+              {selectedCollapsed ? (
+                <ChevronRight className="h-3 w-3 shrink-0" />
+              ) : (
+                <ChevronDown className="h-3 w-3 shrink-0" />
+              )}
               Selected Items
             </button>
             <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">
