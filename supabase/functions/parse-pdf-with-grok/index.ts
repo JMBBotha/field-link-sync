@@ -344,7 +344,7 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
     const deduped = result.products.filter((p) => {
       const sku = (p.sku || "").toLowerCase();
       if (!sku) return true; // keep products without SKU
-      const bestPrice = pickBestPrice(p.prices || {}).price;
+      const bestPrice = pickBestPrice(p.prices || {}, supplier_name).price;
       const page = p.pageNumber || 0;
       // Bucket y-position to nearest 2% so only rows at nearly the same vertical position dedup
       const yPct = p.rowBbox?.y ?? -1;
@@ -371,7 +371,7 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
         console.warn(`[Grok] Reject short code: "${code}"`);
         return false;
       }
-      const bestP = pickBestPrice(p.prices || {});
+      const bestP = pickBestPrice(p.prices || {}, supplier_name);
       if (!bestP.price || !Number.isFinite(bestP.price) || bestP.price < SHARED_MIN_PRICE || bestP.price > SHARED_MAX_PRICE) {
         console.warn(`[Grok] Reject "${code}" invalid/out-of-range price: ${bestP.price}`);
         return false;
@@ -408,7 +408,7 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
         success: true,
         detected_price_columns: [...allCols],
         products: validated.map(p => {
-          const bestPrice = pickBestPrice(p.prices || {});
+          const bestPrice = pickBestPrice(p.prices || {}, supplier_name);
           const costPrice = bestPrice.price;
           const soldInLength = p.soldInLength || false;
           const unitLength = p.unitLength || null;
