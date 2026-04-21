@@ -1221,7 +1221,7 @@ const LazyPdfPage = ({
     // that page should show 0 items and 0 blue rectangles. No fallback filling.
 
     return result;
-  }, [liveRegions, fallbackRegions, page.id, pageIndex]);
+  }, [liveRegions, ocrRegions, fallbackRegions, page.id, pageIndex]);
 
   // Report detected categories to parent for category→page mapping
   useEffect(() => {
