@@ -51,14 +51,18 @@ Deno.serve(async (req) => {
       .limit(1).single();
     if (!supplier) throw new Error("Daikin supplier not found");
 
-    const { data: pages } = await supabase
-      .from("supplier_pdf_pages")
-      .select("pdf_storage_path")
-      .ilike("supplier_id", "%daikin%")
-      .order("page_number")
-      .limit(1);
-    const pdfUrl = pages?.[0]?.pdf_storage_path;
-    if (!pdfUrl) throw new Error("Daikin PDF URL not found");
+    // Find the most recent PDF stored in the supplier-pdfs bucket for this supplier
+    const { data: storageFiles } = await supabase.storage
+      .from("supplier-pdfs")
+      .list(supplier.id, { limit: 100, sortBy: { column: "created_at", order: "desc" } });
+    const newestPdf = storageFiles?.find((f) => /\.pdf$/i.test(f.name));
+    if (!newestPdf) throw new Error("No Daikin PDF found in supplier-pdfs storage");
+    const { data: signed } = await supabase.storage
+      .from("supplier-pdfs")
+      .createSignedUrl(`${supplier.id}/${newestPdf.name}`, 600);
+    const pdfUrl = signed?.signedUrl;
+    if (!pdfUrl) throw new Error("Could not sign Daikin PDF URL");
+    console.log(`[ocr-daikin] Using PDF: ${newestPdf.name}`);
 
     // Download full PDF, extract just the requested page to keep payload small
     const pdfResp = await fetch(pdfUrl);
