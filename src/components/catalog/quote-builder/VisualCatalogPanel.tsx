@@ -1125,48 +1125,12 @@ const LazyPdfPage = ({
       });
     }
 
-    // Tertiary fallback: evenly distribute supplier products across the page
-    const pageSupplierName = (supplierName || page.supplier_id || "").toLowerCase().trim();
-    const supplierProds = activeProducts.filter(p => {
-      const productSupplier = (p.supplier_name || p.brand || "").toLowerCase().trim();
-      return productSupplier.includes(pageSupplierName) || pageSupplierName.includes(productSupplier);
-    });
-
-    let pageProds: PaletteProduct[] = [];
-    if (supplierProds.length > 0) {
-      const productsPerPage = Math.ceil(supplierProds.length / Math.max(1, totalPages));
-      const startIdx = pageIndex * productsPerPage;
-      pageProds = supplierProds.slice(startIdx, startIdx + productsPerPage);
-    } else {
-      const productsPerPage = 20;
-      const startIdx = (page.page_number - 1) * productsPerPage;
-      pageProds = activeProducts.slice(startIdx, startIdx + productsPerPage);
-    }
-
-    if (pageProds.length > 0) {
-      const usableRange = 90;
-      const rowHeight = Math.min(usableRange / pageProds.length, 4);
-      return pageProds.map((p, idx) => ({
-        id: `fallback-${page.id}-${idx}`,
-        x_pct: 0,
-        y_pct: 5 + (idx * (usableRange / pageProds.length)),
-        w_pct: 100,
-        h_pct: rowHeight,
-        product: p,
-        product_code: p.product_code || "",
-        label: p.short_name || p.description || "",
-        has_price: !!(p.selling_price || p.cost_incl_vat),
-        detected_price: p.selling_price || p.cost_incl_vat || null,
-        matched: true,
-      }));
-    }
-
     return [];
-  }, [liveRegions, ocrRegions, storedRegions, activeProducts, page.id, page.supplier_id, supplierName, totalPages, pageIndex]);
+  }, [liveRegions, ocrRegions, storedRegions, activeProducts, page.id]);
 
   // ─── OVERLAY REGIONS: live extraction wins; OCR/stored regions only when live returns nothing ───
   const overlayRegions: OverlayRegion[] = useMemo(() => {
-    // Single, predictable priority: live text extraction → fallback (OCR / stored / even-distribution).
+    // Single, predictable priority: live text extraction → fallback (OCR / stored only).
     // No supplier-specific overrides — the locked extractor is responsible for correctness.
     const sourceRegions = liveRegions.length > 0 ? liveRegions : fallbackRegions;
     const result: OverlayRegion[] = [];
@@ -1238,8 +1202,8 @@ const LazyPdfPage = ({
       });
     }
 
-    // FUNDAMENTAL RULE: If pdfTextExtractor found no valid R-value prices on a page,
-    // that page should show 0 items and 0 blue rectangles. No fallback filling.
+    // FUNDAMENTAL RULE: If extraction/OCR found no real regions on a page,
+    // that page should show 0 items and 0 overlay controls.
 
     return result;
   }, [liveRegions, ocrRegions, fallbackRegions, page.id, pageIndex]);
