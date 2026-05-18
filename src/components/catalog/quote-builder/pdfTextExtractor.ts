@@ -682,8 +682,10 @@ export async function extractAndMatchPage(
   products: PaletteProduct[],
   supplierId?: string,
   supplierType?: string,
+  priceColumnBbox?: { x_frac: number; w_frac: number } | null,
 ): Promise<ExtractedProductRegion[]> {
-  const cacheKey = `v${_extractionVersion}:${pdfUrl}:${pageNumber}:${products.length}`;
+  const bboxKey = priceColumnBbox ? `:b${priceColumnBbox.x_frac.toFixed(3)}_${priceColumnBbox.w_frac.toFixed(3)}` : "";
+  const cacheKey = `v${_extractionVersion}:${pdfUrl}:${pageNumber}:${products.length}${bboxKey}`;
   if (extractionCache.has(cacheKey)) {
     return extractionCache.get(cacheKey)!;
   }
