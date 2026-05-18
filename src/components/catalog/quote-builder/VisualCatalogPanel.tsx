@@ -99,8 +99,9 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     setProductInfoProduct(product);
   }, []);
 
-  const handleHoverStart = useCallback((product: PaletteProduct | null, e: React.MouseEvent) => {
+  const handleHoverStart = useCallback((product: PaletteProduct | null, e: React.MouseEvent, priceOverride?: number | null) => {
     setHoveredProduct(product);
+    setHoveredPriceOverride(priceOverride ?? null);
     setHoverEvent(e.nativeEvent);
   }, []);
 
@@ -110,6 +111,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
 
   const handleHoverEnd = useCallback(() => {
     setHoveredProduct(null);
+    setHoveredPriceOverride(null);
     setHoverEvent(null);
   }, []);
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
