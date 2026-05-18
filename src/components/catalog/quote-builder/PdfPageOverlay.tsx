@@ -85,7 +85,7 @@ const RegionBox = memo(({
   baskets: Basket[];
   basketProductCounts?: Record<string, number>;
   pdfSelection?: PdfSelectionHandlers;
-  onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent) => void;
+  onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent, priceOverride?: number | null) => void;
   onHoverMove?: (e: React.MouseEvent) => void;
   onHoverEnd?: () => void;
   isFavorite: boolean;
