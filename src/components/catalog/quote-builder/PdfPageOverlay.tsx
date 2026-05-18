@@ -92,8 +92,9 @@ const RegionBox = memo(({
 }) => {
   const getProductOrFallback = (): PaletteProduct => region.product ?? buildFallbackProduct(region);
 
-  const getSelectionCode = (product: PaletteProduct): string =>
-    region.product_code || product.product_code || product.id;
+  // Use region.id so each PDF row toggles independently, even when
+  // multiple rows on the page share the same product_code.
+  const getSelectionCode = (_product: PaletteProduct): string => region.id;
 
   const productForState = getProductOrFallback();
   const selectionCode = getSelectionCode(productForState);
