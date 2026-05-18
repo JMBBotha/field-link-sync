@@ -454,9 +454,11 @@ export function matchTextRowsToProducts(
   products: PaletteProduct[],
   supplierType?: string,
   pageIndex?: number,
+  /** Pink-marked column bbox in fractions of canvas/page width — overrides header detection */
+  priceColumnBbox?: { x_frac: number; w_frac: number } | null,
 ): ExtractedProductRegion[] {
   const minPrice = 1; // Universal R1 floor — isHeaderOrNonProductRow handles TOC/header filtering
-  console.log(`[pdfExtract] matchTextRows: supplierType=${supplierType || "unknown"}, minPrice=R${minPrice}`);
+  console.log(`[pdfExtract] matchTextRows: supplierType=${supplierType || "unknown"}, minPrice=R${minPrice}, pinkBbox=${priceColumnBbox ? `${(priceColumnBbox.x_frac * 100).toFixed(1)}%+${(priceColumnBbox.w_frac * 100).toFixed(1)}%` : "none"}`);
   if (items.length === 0 || pageHeight === 0) return [];
 
   // TOC page detection: if page text contains "Contents" and dotted leaders, skip entire page
@@ -471,8 +473,17 @@ export function matchTextRowsToProducts(
   // Adaptive Y-threshold
   const avgHeight = mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length || 10;
   const yThreshold = Math.max(avgHeight * 1.5, 8);
-  // Resolve INSTALLER PRICE column up-front so we can restrict prices to it.
-  const colRangeEarly = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
+  // PRIMARY: pink-marked bbox (stored at upload). FALLBACK: header text detection.
+  let colRangeEarly: { minX: number; maxX: number } | null = null;
+  if (priceColumnBbox && priceColumnBbox.w_frac > 0) {
+    const minX = priceColumnBbox.x_frac * pageWidth;
+    const maxX = (priceColumnBbox.x_frac + priceColumnBbox.w_frac) * pageWidth;
+    // Pad ±4% of page width to absorb minor render/PDF-coord misalignment
+    const pad = pageWidth * 0.04;
+    colRangeEarly = { minX: Math.max(0, minX - pad), maxX: Math.min(pageWidth, maxX + pad) };
+  } else {
+    colRangeEarly = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
+  }
   const inCol = (x: number) =>
     !colRangeEarly || (x >= colRangeEarly.minX && x <= colRangeEarly.maxX);
   // STEP 1a: Explicit R-prefixed prices (works for Samsung/Daikin/Midea)
