@@ -854,7 +854,7 @@ interface LazyPdfPageProps {
   totalPages: number;
   supplierName?: string;
   onOpenWizard?: (item: WizardTriggerItem) => void;
-  onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent) => void;
+  onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent, priceOverride?: number | null) => void;
   onHoverMove?: (e: React.MouseEvent) => void;
   onHoverEnd?: () => void;
   pdfSelection?: PdfSelectionHandlers;
