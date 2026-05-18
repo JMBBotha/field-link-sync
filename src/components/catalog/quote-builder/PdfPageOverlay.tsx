@@ -128,18 +128,20 @@ const RegionBox = memo(({
       // not the product's catalog default (which may differ between rows that
       // share a product_code).
       const rowCost = region.detected_price ?? 0;
+      const baseCost = Number(product.cost_price ?? product.cost_excl_vat ?? product.cost_incl_vat ?? 0);
+      const effectiveCost = rowCost > 0 ? rowCost : baseCost;
       const markupPct = product.default_markup_percent ?? product.markup_percent ?? 35;
       const normalizedMarkup = markupPct > 0 && markupPct <= 1 ? markupPct * 100 : markupPct;
-      const sellExVat = rowCost > 0
-        ? Math.round(rowCost * (1 + normalizedMarkup / 100) * 100) / 100
+      const sellExVat = effectiveCost > 0
+        ? Math.round(effectiveCost * (1 + normalizedMarkup / 100) * 100) / 100
         : (computeProductPricing(product).sellExVat || 0);
       const specs = parsePdfRowSpecs(region.label || "");
       pdfSelection.handleSelectProduct({
         code,
         description: product.short_name || product.description || region.label || code,
         price: String(sellExVat),
-        costPrice: rowCost || undefined,
-        markupPercent: markupPct,
+        costPrice: effectiveCost || undefined,
+        markupPercent: normalizedMarkup,
         indoorModel: specs.indoorModel,
         outdoorModel: specs.outdoorModel,
         btu: specs.btu,

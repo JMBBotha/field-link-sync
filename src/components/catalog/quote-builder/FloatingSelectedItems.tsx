@@ -6,6 +6,28 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 
+const normalizeMarkupPercent = (markupPercent?: number) => {
+  if (markupPercent == null) return null;
+  const numericMarkup = Number(markupPercent);
+  if (!Number.isFinite(numericMarkup)) return null;
+  return numericMarkup > 0 && numericMarkup <= 1 ? numericMarkup * 100 : numericMarkup;
+};
+
+const getMarkupAmount = (costPrice: number | undefined, markupPercent: number | undefined, sellingPrice: number) => {
+  const normalizedMarkup = normalizeMarkupPercent(markupPercent);
+  if (normalizedMarkup == null) return null;
+
+  if (costPrice != null && Number.isFinite(Number(costPrice))) {
+    return Number(costPrice) * (normalizedMarkup / 100);
+  }
+
+  if (!Number.isFinite(sellingPrice) || sellingPrice <= 0) {
+    return 0;
+  }
+
+  return normalizedMarkup === 0 ? 0 : (sellingPrice * normalizedMarkup) / (100 + normalizedMarkup);
+};
+
 interface FloatingSelectedItemsProps {
   pdfSelection: PdfSelectionHandlers;
   onClose: () => void;
@@ -79,7 +101,12 @@ const FloatingSelectedItems = ({ pdfSelection, onClose }: FloatingSelectedItemsP
               Select products from PDF view
             </p>
           ) : (
-            items.map((item) => (
+            items.map((item) => {
+              const normalizedMarkup = normalizeMarkupPercent(item.markupPercent);
+              const sellingPrice = parseFloat(item.price) || 0;
+              const markupAmount = getMarkupAmount(item.costPrice, item.markupPercent, sellingPrice);
+
+              return (
               <div key={item.code} className="bg-muted/50 p-2 rounded-md space-y-1">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -116,7 +143,7 @@ const FloatingSelectedItems = ({ pdfSelection, onClose }: FloatingSelectedItemsP
                     {item.costPrice != null && (
                       <span>Cost: <span className="font-mono font-medium text-foreground">R{Number(item.costPrice).toFixed(2)}</span></span>
                     )}
-                    {item.markupPercent != null && item.costPrice != null && (
+                    {normalizedMarkup != null && (
                       <div className="flex items-center gap-0.5">
                         <span>M/Up:</span>
                         <Button
@@ -125,24 +152,26 @@ const FloatingSelectedItems = ({ pdfSelection, onClose }: FloatingSelectedItemsP
                           className="h-4 w-4"
                           onClick={() => {
                             const cost = Number(item.costPrice);
-                            const newMarkup = Math.max(0, (item.markupPercent || 0) - 5);
+                            const newMarkup = Math.max(0, (normalizedMarkup || 0) - 5);
                             const { sellingExclVat } = calcSellingPrice(cost, newMarkup);
                             pdfSelection.updateSelectedItem(item.code, { markupPercent: newMarkup, price: String(Math.round(sellingExclVat * 100) / 100) } as any);
                           }}
                         >
                           <ChevronDown className="h-2.5 w-2.5" />
                         </Button>
-                        <span className="font-mono font-semibold text-primary min-w-[32px] text-center">{Number(item.markupPercent).toFixed(1)}%</span>
-                        <span className="font-mono text-[9px] text-accent-foreground ml-0.5">
-                          (R{(Number(item.costPrice) * (Number(item.markupPercent) / 100)).toFixed(2)})
-                        </span>
+                        <span className="font-mono font-semibold text-primary min-w-[32px] text-center">{normalizedMarkup.toFixed(1)}%</span>
+                        {markupAmount != null && (
+                          <span className="font-mono text-[9px] text-foreground ml-0.5">
+                            (R{markupAmount.toFixed(2)})
+                          </span>
+                        )}
                         <Button
                           variant="outline"
                           size="icon"
                           className="h-4 w-4"
                           onClick={() => {
                             const cost = Number(item.costPrice);
-                            const newMarkup = (item.markupPercent || 0) + 5;
+                            const newMarkup = (normalizedMarkup || 0) + 5;
                             const { sellingExclVat } = calcSellingPrice(cost, newMarkup);
                             pdfSelection.updateSelectedItem(item.code, { markupPercent: newMarkup, price: String(Math.round(sellingExclVat * 100) / 100) } as any);
                           }}
@@ -151,8 +180,11 @@ const FloatingSelectedItems = ({ pdfSelection, onClose }: FloatingSelectedItemsP
                         </Button>
                       </div>
                     )}
-                    {item.markupPercent != null && item.costPrice == null && (
-                      <span>M/Up: <span className="font-mono font-medium text-foreground">{Number(item.markupPercent).toFixed(1)}%</span></span>
+                    {normalizedMarkup != null && item.costPrice == null && (
+                      <span>
+                        M/Up: <span className="font-mono font-medium text-foreground">{normalizedMarkup.toFixed(1)}%</span>
+                        {markupAmount != null && <span className="font-mono text-foreground"> (R{markupAmount.toFixed(2)})</span>}
+                      </span>
                     )}
                   </div>
                 )}
@@ -183,7 +215,7 @@ const FloatingSelectedItems = ({ pdfSelection, onClose }: FloatingSelectedItemsP
                   </div>
                 </div>
               </div>
-            ))
+            )})
           )}
         </div>
       )}
