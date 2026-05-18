@@ -631,7 +631,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 76; // v76 LOCKED — do not modify thresholds or logic
+let _extractionVersion = 77; // v77 — add comma-thousands price parsing (e.g. R4,945)
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
