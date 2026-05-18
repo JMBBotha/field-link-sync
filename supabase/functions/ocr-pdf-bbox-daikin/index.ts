@@ -168,11 +168,17 @@ Deno.serve(async (req) => {
       const tokens = cleaned.split(/\s*\+\s*/).map((t) => t.trim()).filter(Boolean);
       const candidates = Array.from(new Set([raw, cleaned, ...tokens])).filter(Boolean);
 
-      const updatePayload = {
+      // INSTALLER PRICE in the Daikin pricelist is INCL VAT (SA, 15%).
+      // We store excl-VAT cost in supplier_products.cost_price.
+      const priceInclVat = Number(p.price_value);
+      const updatePayload: Record<string, unknown> = {
         row_bbox: p.row_bbox,
         price_bbox: p.price_bbox,
         page_number: pageNum,
       };
+      if (Number.isFinite(priceInclVat) && priceInclVat > 0) {
+        updatePayload.cost_price = Math.round((priceInclVat / 1.15) * 100) / 100;
+      }
 
       // Try exact match first across all candidates, then ilike fallback for first token
       const { error, count } = await supabase
