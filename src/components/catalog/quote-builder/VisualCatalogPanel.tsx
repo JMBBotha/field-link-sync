@@ -788,6 +788,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
           isVisible={!!hoveredProduct}
           isHoverMode
           basketProductCounts={basketProductCounts}
+          priceOverride={hoveredPriceOverride}
         />
       )}
 
