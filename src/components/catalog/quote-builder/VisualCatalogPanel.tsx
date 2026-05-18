@@ -993,7 +993,7 @@ const LazyPdfPage = ({
         }
 
         // First pass: extract and match against existing non-archived products
-        const regions = await extractAndMatchPage(pdfUrl, page.page_number, activeProducts, page.supplier_id, supplierType);
+        const regions = await extractAndMatchPage(pdfUrl, page.page_number, activeProducts, page.supplier_id, supplierType, page.price_column_bbox || null);
         const matched = regions.filter(r => r.matched);
         const unmatchedWithPrice = regions.filter(r => !r.matched && r.has_price && r.detected_price);
         
