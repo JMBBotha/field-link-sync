@@ -326,15 +326,34 @@ function findPriceColumnRange(
   pageWidth: number,
   pageHeight: number,
 ): { minX: number; maxX: number } | null {
-  // Look at items in top 15% of page for column headers
-  const headerItems = items.filter((i) => i.y / pageHeight < 0.15);
+  // Look at items in top 25% of page for column headers
+  const headerItems = items.filter((i) => i.y / pageHeight < 0.25);
+  // PREFERRED: explicit "INSTALLER PRICE" / "INSTALLER" column (Daikin pink-marked column).
+  // Also detect adjacent INSTALLER + PRICE fragments on same line.
+  const installer = headerItems.find((i) => /INSTALLER\s*PRICE/i.test(i.text));
+  if (installer) {
+    return { minX: installer.x - 25, maxX: installer.x + installer.width + 35 };
+  }
+  const installerFrag = headerItems.find((i) => /^INSTALLER$/i.test(i.text.trim()));
+  if (installerFrag) {
+    // Find a PRICE fragment within ~12pt vertically; combined box covers the header
+    const priceFrag = headerItems.find(
+      (i) => /^PRICE$/i.test(i.text.trim()) && Math.abs(i.y - installerFrag.y) < 14,
+    );
+    const left = Math.min(installerFrag.x, priceFrag?.x ?? installerFrag.x);
+    const right = Math.max(
+      installerFrag.x + installerFrag.width,
+      (priceFrag?.x ?? installerFrag.x) + (priceFrag?.width ?? installerFrag.width),
+    );
+    return { minX: left - 25, maxX: right + 35 };
+  }
   const priceHeaders = headerItems.filter((i) => {
     const t = i.text.trim().toUpperCase();
     return t.includes("PRICE") || t === "EXCL" || t.includes("EXCL VAT") || t.includes("INCL VAT");
   });
   if (priceHeaders.length === 0) return null;
-  // Use the rightmost price-related header
-  priceHeaders.sort((a, b) => b.x - a.x);
+  // Fallback: leftmost price-related header (avoids picking RETAIL when INSTALLER missing)
+  priceHeaders.sort((a, b) => a.x - b.x);
   const header = priceHeaders[0];
   return { minX: header.x - 20, maxX: header.x + header.width + 30 };
 }
