@@ -48,6 +48,8 @@ export interface PipelineOptions {
   products: ParsedProduct[];
   /** The original file (for storage upload + supplier info extraction) */
   file?: File | null;
+  /** Optional brand tag for multi-brand suppliers (e.g. Fourways → Samsung) */
+  brand?: string | null;
   /** Callback for stage updates */
   onStage?: (stage: ImportStage) => void;
 }
