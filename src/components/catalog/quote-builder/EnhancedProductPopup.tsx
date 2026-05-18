@@ -9,11 +9,15 @@ import { getProductDisplayName } from "./productDisplayUtils";
 import { getProductPricing, stripVat } from "@/utils/pricing";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
-function getPopupPricing(product: PaletteProduct) {
-  const cost = product.cost_price || product.cost_excl_vat || 0;
+function getPopupPricing(product: PaletteProduct, priceOverride?: number | null) {
   const markup = product.default_markup_percent ?? 35;
+  // Live PDF pink-column price wins — keeps popup in sync with what's visible on the page,
+  // even if the DB cost is stale from an older upload.
+  if (priceOverride != null && isFinite(priceOverride) && priceOverride > 0) {
+    return getProductPricing(priceOverride, markup);
+  }
+  const cost = product.cost_price || product.cost_excl_vat || 0;
   if (cost <= 0) {
-    // Fallback: if we only have an incl-VAT price, strip VAT first
     const fallbackRaw = product.cost_incl_vat || 0;
     const fallbackCost = fallbackRaw > 0 ? stripVat(fallbackRaw) : 0;
     return getProductPricing(fallbackCost, markup);
