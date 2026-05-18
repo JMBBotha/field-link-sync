@@ -38,6 +38,8 @@ interface EnhancedProductPopupProps {
   isHoverMode?: boolean;
   /** Controls visibility in hover mode */
   isVisible?: boolean;
+  /** Live cost (excl VAT) detected from the supplier PDF's pink-marked price column */
+  priceOverride?: number | null;
 }
 
 const OFFSET = 14;
