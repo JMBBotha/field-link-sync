@@ -144,7 +144,7 @@ const RegionBox = memo(({
   };
 
   const handleMouseEnter = (e: React.MouseEvent) => {
-    if (onHoverStart) onHoverStart(getProductOrFallback(), e);
+    if (onHoverStart) onHoverStart(getProductOrFallback(), e, region.detected_price ?? null);
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
