@@ -10,19 +10,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SYSTEM_PROMPT = `You are extracting product row coordinates from ONE page of a Daikin scanned price-list PDF.
+const SYSTEM_PROMPT = `You are extracting product row coordinates from ONE page of a Daikin price-list PDF.
 
-For EACH product row that has a price in the WEBSHOP PRICE column (NOT RRP, NOT Campaign), return:
-- product_code: exact SKU as printed (e.g. "FTXF25F", "RXF25E", "FTXM25R")
+The target price column is labelled "INSTALLER PRICE" in the table header.
+It is typically the FIRST price column (to the LEFT of "INCL. CORROSION TREATMENT - PARTIAL" and "INCL. CORROSION TREATMENT - FULL").
+NEVER use the corrosion-treatment columns. NEVER use RRP or Campaign columns.
+
+For EACH product row that has a price in the INSTALLER PRICE column, return:
+- product_code: exact SKU as printed (e.g. "FTXF25F", "FFA25A9 + FFA50A9", "FFA25A9 (x2)")
+- price_value: the numeric INSTALLER PRICE value as a NUMBER, with no "R", no spaces, no commas (e.g. 8991, 15446, 37615)
 - row_bbox: {x, y, width, height} normalized 0-1, tightly wrapping ONLY that single product row (height ~1-3% of page)
-- price_bbox: {x, y, width, height, center_x} normalized 0-1, tightly wrapping the WEBSHOP PRICE numeric value only.
+- price_bbox: {x, y, width, height, center_x} normalized 0-1, tightly wrapping the INSTALLER PRICE numeric value only.
 
 CRITICAL:
 - One entry per product row. NEVER merge rows.
-- SKIP section headers, totals, RRP-only rows, footers, dates, page titles.
+- SKIP section headers, totals, footers, dates, page titles, and any row without an INSTALLER PRICE value.
 - If you cannot determine a tight bbox, OMIT that row.
 
-Return JSON: {"products":[{product_code, row_bbox, price_bbox}]}`;
+Return JSON: {"products":[{product_code, price_value, row_bbox, price_bbox}]}`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -163,11 +168,17 @@ Deno.serve(async (req) => {
       const tokens = cleaned.split(/\s*\+\s*/).map((t) => t.trim()).filter(Boolean);
       const candidates = Array.from(new Set([raw, cleaned, ...tokens])).filter(Boolean);
 
-      const updatePayload = {
+      // INSTALLER PRICE in the Daikin pricelist is INCL VAT (SA, 15%).
+      // We store excl-VAT cost in supplier_products.cost_price.
+      const priceInclVat = Number(p.price_value);
+      const updatePayload: Record<string, unknown> = {
         row_bbox: p.row_bbox,
         price_bbox: p.price_bbox,
         page_number: pageNum,
       };
+      if (Number.isFinite(priceInclVat) && priceInclVat > 0) {
+        updatePayload.cost_price = Math.round((priceInclVat / 1.15) * 100) / 100;
+      }
 
       // Try exact match first across all candidates, then ilike fallback for first token
       const { error, count } = await supabase
