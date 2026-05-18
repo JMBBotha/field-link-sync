@@ -94,6 +94,22 @@ const FloatingSelectedItems = ({ pdfSelection, onClose }: FloatingSelectedItemsP
                   </div>
                 </div>
                 <p className="text-[10px] text-muted-foreground truncate">{item.description}</p>
+                {(item.indoorModel || item.outdoorModel || item.btu || item.kw) && (
+                  <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-muted-foreground">
+                    {item.indoorModel && (
+                      <span>Indoor: <span className="font-mono text-foreground">{item.indoorModel}</span></span>
+                    )}
+                    {item.outdoorModel && (
+                      <span>Outdoor: <span className="font-mono text-foreground">{item.outdoorModel}</span></span>
+                    )}
+                    {item.btu && (
+                      <span>BTU: <span className="font-mono text-foreground">{item.btu}</span></span>
+                    )}
+                    {item.kw && (
+                      <span>kW: <span className="font-mono text-foreground">{item.kw}</span></span>
+                    )}
+                  </div>
+                )}
                 {/* Cost & Markup row with adjustment controls */}
                 {(item.costPrice != null || item.markupPercent != null) && (
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground">

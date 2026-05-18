@@ -1,5 +1,6 @@
 import { memo, useRef, useCallback } from "react";
 import { computeProductPricing } from "@/lib/pricing";
+import { parsePdfRowSpecs } from "./parsePdfRowSpecs";
 import { Info, Circle, CheckCircle2, Star } from "lucide-react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import type { WizardTriggerItem } from "./QuoteBuilderPopup";
@@ -132,12 +133,17 @@ const RegionBox = memo(({
       const sellExVat = rowCost > 0
         ? Math.round(rowCost * (1 + normalizedMarkup / 100) * 100) / 100
         : (computeProductPricing(product).sellExVat || 0);
+      const specs = parsePdfRowSpecs(region.label || "");
       pdfSelection.handleSelectProduct({
         code,
         description: product.short_name || product.description || region.label || code,
         price: String(sellExVat),
         costPrice: rowCost || undefined,
         markupPercent: markupPct,
+        indoorModel: specs.indoorModel,
+        outdoorModel: specs.outdoorModel,
+        btu: specs.btu,
+        kw: specs.kw,
       });
     }
 
