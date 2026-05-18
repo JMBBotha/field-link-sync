@@ -55,13 +55,14 @@ const EnhancedProductPopup = ({
   mouseEvent,
   isHoverMode = false,
   isVisible = true,
+  priceOverride = null,
 }: EnhancedProductPopupProps) => {
   const safeNum = (n: number) => (isFinite(n) && !isNaN(n) ? n : 0);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const popupRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
-  const pricing = useMemo(() => getPopupPricing(product), [product]);
+  const pricing = useMemo(() => getPopupPricing(product, priceOverride), [product, priceOverride]);
   
   const inQuoteQty = basketProductCounts[product.id] || 0;
 
