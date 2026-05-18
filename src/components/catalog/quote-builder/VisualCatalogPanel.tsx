@@ -211,7 +211,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     enabled: open,
     queryFn: async () => {
       let query = (supabase.from("supplier_pdf_pages") as any)
-        .select("id, supplier_id, pdf_filename, page_number, page_image_url, pdf_storage_path")
+        .select("id, supplier_id, pdf_filename, page_number, page_image_url, pdf_storage_path, price_column_bbox")
         .order("supplier_id").order("pdf_filename").order("page_number");
       if (selectedSupplier !== "all") query = query.eq("supplier_id", selectedSupplier);
       const { data, error } = await query.limit(500);
