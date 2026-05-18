@@ -122,14 +122,22 @@ const RegionBox = memo(({
     const alreadySelectedInPdf = !!pdfSelection?.selectedFromPdf.some((item) => item.code === code);
 
     if (pdfSelection) {
-      const computed = computeProductPricing(product);
-      const displayPrice = computed.sellExVat || region.detected_price || 0;
+      // Use the row's actual pink-column price (region.detected_price) as the
+      // source of truth — this is the installer/cost price for THIS specific row,
+      // not the product's catalog default (which may differ between rows that
+      // share a product_code).
+      const rowCost = region.detected_price ?? 0;
+      const markupPct = product.default_markup_percent ?? product.markup_percent ?? 35;
+      const normalizedMarkup = markupPct > 0 && markupPct <= 1 ? markupPct * 100 : markupPct;
+      const sellExVat = rowCost > 0
+        ? Math.round(rowCost * (1 + normalizedMarkup / 100) * 100) / 100
+        : (computeProductPricing(product).sellExVat || 0);
       pdfSelection.handleSelectProduct({
         code,
         description: product.short_name || product.description || region.label || code,
-        price: String(displayPrice),
-        costPrice: computed.costExVat || undefined,
-        markupPercent: product.default_markup_percent ?? product.markup_percent ?? undefined,
+        price: String(sellExVat),
+        costPrice: rowCost || undefined,
+        markupPercent: markupPct,
       });
     }
 
