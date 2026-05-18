@@ -383,10 +383,11 @@ function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHei
     if (isNaN(val) || val < minPrice) continue;
     const excludedVals = [32, 290, 410];
     if (excludedVals.includes(val)) continue;
-    // Check if in price column or right side of page
-    const inColumn = colRange && item.x >= colRange.minX && item.x <= colRange.maxX;
-    const inRightSide = item.x / pageWidth > 0.40; // Lower for column-based prices to capture One Stop Shop
-    if (inColumn || inRightSide) {
+    // If a price column header (e.g. INSTALLER PRICE) was found, restrict strictly to it.
+    // Otherwise fall back to right-side heuristic.
+    if (colRange) {
+      if (item.x >= colRange.minX && item.x <= colRange.maxX) candidates.push(item);
+    } else if (item.x / pageWidth > 0.40) {
       candidates.push(item);
     }
   }
