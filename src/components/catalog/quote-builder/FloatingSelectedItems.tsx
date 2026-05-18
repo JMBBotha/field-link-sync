@@ -143,7 +143,7 @@ const FloatingSelectedItems = ({ pdfSelection, onClose }: FloatingSelectedItemsP
                     {item.costPrice != null && (
                       <span>Cost: <span className="font-mono font-medium text-foreground">R{Number(item.costPrice).toFixed(2)}</span></span>
                     )}
-                    {normalizedMarkup != null && (
+                    {normalizedMarkup != null && item.costPrice != null && (
                       <div className="flex items-center gap-0.5">
                         <span>M/Up:</span>
                         <Button
