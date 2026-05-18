@@ -133,6 +133,9 @@ const FloatingSelectedItems = ({ pdfSelection, onClose }: FloatingSelectedItemsP
                           <ChevronDown className="h-2.5 w-2.5" />
                         </Button>
                         <span className="font-mono font-semibold text-primary min-w-[32px] text-center">{Number(item.markupPercent).toFixed(1)}%</span>
+                        <span className="font-mono text-[9px] text-accent-foreground ml-0.5">
+                          (R{(Number(item.costPrice) * (Number(item.markupPercent) / 100)).toFixed(2)})
+                        </span>
                         <Button
                           variant="outline"
                           size="icon"
