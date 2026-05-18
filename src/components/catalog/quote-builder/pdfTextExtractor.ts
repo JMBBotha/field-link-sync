@@ -326,15 +326,34 @@ function findPriceColumnRange(
   pageWidth: number,
   pageHeight: number,
 ): { minX: number; maxX: number } | null {
-  // Look at items in top 15% of page for column headers
-  const headerItems = items.filter((i) => i.y / pageHeight < 0.15);
+  // Look at items in top 25% of page for column headers
+  const headerItems = items.filter((i) => i.y / pageHeight < 0.25);
+  // PREFERRED: explicit "INSTALLER PRICE" / "INSTALLER" column (Daikin pink-marked column).
+  // Also detect adjacent INSTALLER + PRICE fragments on same line.
+  const installer = headerItems.find((i) => /INSTALLER\s*PRICE/i.test(i.text));
+  if (installer) {
+    return { minX: installer.x - 25, maxX: installer.x + installer.width + 35 };
+  }
+  const installerFrag = headerItems.find((i) => /^INSTALLER$/i.test(i.text.trim()));
+  if (installerFrag) {
+    // Find a PRICE fragment within ~12pt vertically; combined box covers the header
+    const priceFrag = headerItems.find(
+      (i) => /^PRICE$/i.test(i.text.trim()) && Math.abs(i.y - installerFrag.y) < 14,
+    );
+    const left = Math.min(installerFrag.x, priceFrag?.x ?? installerFrag.x);
+    const right = Math.max(
+      installerFrag.x + installerFrag.width,
+      (priceFrag?.x ?? installerFrag.x) + (priceFrag?.width ?? installerFrag.width),
+    );
+    return { minX: left - 25, maxX: right + 35 };
+  }
   const priceHeaders = headerItems.filter((i) => {
     const t = i.text.trim().toUpperCase();
     return t.includes("PRICE") || t === "EXCL" || t.includes("EXCL VAT") || t.includes("INCL VAT");
   });
   if (priceHeaders.length === 0) return null;
-  // Use the rightmost price-related header
-  priceHeaders.sort((a, b) => b.x - a.x);
+  // Fallback: leftmost price-related header (avoids picking RETAIL when INSTALLER missing)
+  priceHeaders.sort((a, b) => a.x - b.x);
   const header = priceHeaders[0];
   return { minX: header.x - 20, maxX: header.x + header.width + 30 };
 }
@@ -364,10 +383,11 @@ function findColumnPrices(items: ExtractedTextItem[], pageWidth: number, pageHei
     if (isNaN(val) || val < minPrice) continue;
     const excludedVals = [32, 290, 410];
     if (excludedVals.includes(val)) continue;
-    // Check if in price column or right side of page
-    const inColumn = colRange && item.x >= colRange.minX && item.x <= colRange.maxX;
-    const inRightSide = item.x / pageWidth > 0.40; // Lower for column-based prices to capture One Stop Shop
-    if (inColumn || inRightSide) {
+    // If a price column header (e.g. INSTALLER PRICE) was found, restrict strictly to it.
+    // Otherwise fall back to right-side heuristic.
+    if (colRange) {
+      if (item.x >= colRange.minX && item.x <= colRange.maxX) candidates.push(item);
+    } else if (item.x / pageWidth > 0.40) {
       candidates.push(item);
     }
   }
@@ -451,9 +471,17 @@ export function matchTextRowsToProducts(
   // Adaptive Y-threshold
   const avgHeight = mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length || 10;
   const yThreshold = Math.max(avgHeight * 1.5, 8);
+  // Resolve INSTALLER PRICE column up-front so we can restrict prices to it.
+  const colRangeEarly = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
+  const inCol = (x: number) =>
+    !colRangeEarly || (x >= colRangeEarly.minX && x <= colRangeEarly.maxX);
   // STEP 1a: Explicit R-prefixed prices (works for Samsung/Daikin/Midea)
   const explicitPriceItems = mergedItems.filter(
-    (item) => /R\s*\d/.test(item.text) && (item.x / pageWidth) > 0.40 && detectPrice(item.text) !== null,
+    (item) =>
+      /R\s*\d/.test(item.text) &&
+      (item.x / pageWidth) > 0.40 &&
+      detectPrice(item.text) !== null &&
+      inCol(item.x),
   );
   // STEP 1b: Column-based numeric prices (works for dense table PDFs like One Stop)
   const columnPrices = findColumnPrices(mergedItems, pageWidth, pageHeight, minPrice);
@@ -631,7 +659,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 77; // v77 — add comma-thousands price parsing (e.g. R4,945)
+let _extractionVersion = 78; // v78 — lock prices to INSTALLER PRICE column when present
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
