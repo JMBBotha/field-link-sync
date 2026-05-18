@@ -63,6 +63,7 @@ interface PdfPage {
   page_number: number;
   page_image_url: string;
   pdf_storage_path: string | null;
+  price_column_bbox?: { x_frac: number; w_frac: number } | null;
 }
 
 const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAddBasket, onRemoveBasket, products, isDragging: isDraggingExternal, onOpenWizard, pdfSearchRef, wizardOpen, pdfSelection }: VisualCatalogPanelProps) => {
