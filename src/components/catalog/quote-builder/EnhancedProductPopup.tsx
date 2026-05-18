@@ -169,13 +169,15 @@ const EnhancedProductPopup = ({
             {pricing.costPrice > 0 && (
               <span className="text-muted-foreground">Cost Price (excl VAT): <span className="font-mono font-medium text-foreground">R{safeNum(pricing.costPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
             )}
-            <span className="text-muted-foreground">M/Up: <span className="font-mono font-semibold text-primary">{pricing.markupPercent.toFixed(1)}%</span></span>
+            <span className="text-muted-foreground">
+              M/Up: <span className="font-mono font-semibold text-primary">{pricing.markupPercent.toFixed(1)}%</span>
+              {pricing.costPrice > 0 && (
+                <span className="ml-1 font-mono font-medium text-accent-foreground">
+                  (R{safeNum(pricing.profit).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                </span>
+              )}
+            </span>
           </div>
-          {pricing.profit > 0 && (
-            <div className="text-[10px] text-muted-foreground">
-              Markup Amount: <span className="font-mono font-medium text-accent-foreground">R{safeNum(pricing.profit).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-            </div>
-          )}
           {product.brand && (
             <p className="text-xs text-muted-foreground">{product.brand}</p>
           )}
