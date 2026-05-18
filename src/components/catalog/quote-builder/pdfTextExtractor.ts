@@ -670,7 +670,7 @@ export function matchTextRowsToProducts(
   return regions;
 }
 // Cache for extracted regions per page
-let _extractionVersion = 78; // v78 — lock prices to INSTALLER PRICE column when present
+let _extractionVersion = 79; // v79 — pink-marked price column bbox from supplier_pdf_pages
 const extractionCache = new Map<string, ExtractedProductRegion[]>();
 /**
  * Extract and match products from a PDF page, with caching.
