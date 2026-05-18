@@ -68,7 +68,7 @@ export interface PipelineResult {
 // ─── MAIN PIPELINE ───
 
 export async function runImportPipeline(opts: PipelineOptions): Promise<PipelineResult> {
-  const { supplierId, supplierName, products, file } = opts;
+  const { supplierId, supplierName, products, file, brand } = opts;
   const warnings: string[] = [];
   let pdfUploadId: string | null = null;
 
