@@ -1044,7 +1044,7 @@ const LazyPdfPage = ({
               // Clear cache and re-extract with augmented product list so icons turn blue
               clearExtractionCache();
               const allProducts = [...activeProducts, ...newPaletteProducts];
-              const reMatched = await extractAndMatchPage(pdfUrl, page.page_number, allProducts, page.supplier_id, supplierType);
+              const reMatched = await extractAndMatchPage(pdfUrl, page.page_number, allProducts, page.supplier_id, supplierType, page.price_column_bbox || null);
               
               // Invalidate the main products query so palette picks up new items
               queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
