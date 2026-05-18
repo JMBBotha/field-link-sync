@@ -33,6 +33,55 @@ interface CaptureResult {
 }
 
 /**
+ * Scan a rendered page canvas for the pink-marked price column.
+ * Returns the x-range as fractions of canvas width, or null if no clear band found.
+ * Pink = saturated magenta/pink (R high, G low, B high-ish; R > G + 40).
+ */
+function detectPinkColumn(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+): { x_frac: number; w_frac: number } | null {
+  try {
+    const img = ctx.getImageData(0, 0, w, h);
+    const data = img.data;
+    const cols = new Uint32Array(w);
+    const stepX = 2; // sample every 2px for speed
+    const stepY = 4;
+    for (let y = 0; y < h; y += stepY) {
+      const row = y * w * 4;
+      for (let x = 0; x < w; x += stepX) {
+        const i = row + x * 4;
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        // Pink/magenta highlight heuristic — tuned for marker-pen pink rectangles.
+        if (r > 200 && g < 180 && b > 130 && r - g > 40 && r - b > -10) {
+          cols[x]++;
+        }
+      }
+    }
+    // Find x positions with meaningful pink mass.
+    const total = cols.reduce((a, b) => a + b, 0);
+    if (total < 50) return null;
+    const max = Math.max(...cols);
+    const threshold = Math.max(3, max * 0.15);
+    let minX = -1, maxX = -1;
+    for (let x = 0; x < w; x++) {
+      if (cols[x] >= threshold) {
+        if (minX === -1) minX = x;
+        maxX = x;
+      }
+    }
+    if (minX < 0 || maxX <= minX) return null;
+    // Reject if band is the whole page (>70% width) — likely not a column mark.
+    const widthFrac = (maxX - minX) / w;
+    if (widthFrac > 0.7) return null;
+    return { x_frac: minX / w, w_frac: widthFrac };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Render each page of a PDF to a canvas, convert to JPEG,
  * upload to Supabase Storage, and insert rows into supplier_pdf_pages.
  */
@@ -42,6 +91,8 @@ export async function capturePdfPages(
   onProgress?: (current: number, total: number) => void,
   /** Optional supplierId to use as storage folder key (falls back to supplierName) */
   supplierId?: string,
+  /** Optional brand tag (e.g. Samsung / Alliance) for multi-brand suppliers */
+  brand?: string | null,
 ): Promise<CaptureResult> {
   console.log("[PDF Capture] Loading pdfjs...");
   const pdfjsLib = await loadPdfJs();
@@ -68,6 +119,12 @@ export async function capturePdfPages(
       const ctx = canvas.getContext("2d", { alpha: false })!;
 
       await page.render({ canvasContext: ctx, viewport }).promise;
+
+      // Detect pink-marked price column BEFORE converting to JPEG
+      const pink = detectPinkColumn(ctx, canvas.width, canvas.height);
+      if (pink) {
+        console.log(`[PDF Capture] Page ${pageNum}: pink column at x=${(pink.x_frac * 100).toFixed(1)}% w=${(pink.w_frac * 100).toFixed(1)}%`);
+      }
 
       // Convert canvas to JPEG blob
       let blob = await new Promise<Blob>((resolve) => {
@@ -107,6 +164,8 @@ export async function capturePdfPages(
         pdf_filename: file.name,
         page_number: pageNum,
         page_image_url: urlData.publicUrl,
+        price_column_bbox: pink ? { x_frac: pink.x_frac, w_frac: pink.w_frac } : null,
+        brand: brand || null,
       });
 
       if (insertError) {

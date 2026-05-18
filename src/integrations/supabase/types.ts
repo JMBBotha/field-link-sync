@@ -4500,29 +4500,35 @@ export type Database = {
       }
       supplier_pdf_pages: {
         Row: {
+          brand: string | null
           id: string
           page_image_url: string
           page_number: number
           pdf_filename: string
           pdf_storage_path: string | null
+          price_column_bbox: Json | null
           supplier_id: string
           uploaded_at: string
         }
         Insert: {
+          brand?: string | null
           id?: string
           page_image_url: string
           page_number: number
           pdf_filename: string
           pdf_storage_path?: string | null
+          price_column_bbox?: Json | null
           supplier_id: string
           uploaded_at?: string
         }
         Update: {
+          brand?: string | null
           id?: string
           page_image_url?: string
           page_number?: number
           pdf_filename?: string
           pdf_storage_path?: string | null
+          price_column_bbox?: Json | null
           supplier_id?: string
           uploaded_at?: string
         }

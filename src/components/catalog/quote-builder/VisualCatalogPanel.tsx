@@ -63,6 +63,7 @@ interface PdfPage {
   page_number: number;
   page_image_url: string;
   pdf_storage_path: string | null;
+  price_column_bbox?: { x_frac: number; w_frac: number } | null;
 }
 
 const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAddBasket, onRemoveBasket, products, isDragging: isDraggingExternal, onOpenWizard, pdfSearchRef, wizardOpen, pdfSelection }: VisualCatalogPanelProps) => {
@@ -210,7 +211,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     enabled: open,
     queryFn: async () => {
       let query = (supabase.from("supplier_pdf_pages") as any)
-        .select("id, supplier_id, pdf_filename, page_number, page_image_url, pdf_storage_path")
+        .select("id, supplier_id, pdf_filename, page_number, page_image_url, pdf_storage_path, price_column_bbox")
         .order("supplier_id").order("pdf_filename").order("page_number");
       if (selectedSupplier !== "all") query = query.eq("supplier_id", selectedSupplier);
       const { data, error } = await query.limit(500);
@@ -992,7 +993,7 @@ const LazyPdfPage = ({
         }
 
         // First pass: extract and match against existing non-archived products
-        const regions = await extractAndMatchPage(pdfUrl, page.page_number, activeProducts, page.supplier_id, supplierType);
+        const regions = await extractAndMatchPage(pdfUrl, page.page_number, activeProducts, page.supplier_id, supplierType, page.price_column_bbox || null);
         const matched = regions.filter(r => r.matched);
         const unmatchedWithPrice = regions.filter(r => !r.matched && r.has_price && r.detected_price);
         
@@ -1043,7 +1044,7 @@ const LazyPdfPage = ({
               // Clear cache and re-extract with augmented product list so icons turn blue
               clearExtractionCache();
               const allProducts = [...activeProducts, ...newPaletteProducts];
-              const reMatched = await extractAndMatchPage(pdfUrl, page.page_number, allProducts, page.supplier_id, supplierType);
+              const reMatched = await extractAndMatchPage(pdfUrl, page.page_number, allProducts, page.supplier_id, supplierType, page.price_column_bbox || null);
               
               // Invalidate the main products query so palette picks up new items
               queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });

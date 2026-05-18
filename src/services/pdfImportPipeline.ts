@@ -48,6 +48,8 @@ export interface PipelineOptions {
   products: ParsedProduct[];
   /** The original file (for storage upload + supplier info extraction) */
   file?: File | null;
+  /** Optional brand tag for multi-brand suppliers (e.g. Fourways → Samsung) */
+  brand?: string | null;
   /** Callback for stage updates */
   onStage?: (stage: ImportStage) => void;
 }
@@ -66,7 +68,7 @@ export interface PipelineResult {
 // ─── MAIN PIPELINE ───
 
 export async function runImportPipeline(opts: PipelineOptions): Promise<PipelineResult> {
-  const { supplierId, supplierName, products, file } = opts;
+  const { supplierId, supplierName, products, file, brand } = opts;
   const warnings: string[] = [];
   let pdfUploadId: string | null = null;
 
@@ -112,7 +114,7 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
     // ── STEP 2b: EXTRACT PDF pages as images for visual builder ──
     console.log("[Pipeline] Step 2b: Extracting PDF pages as images...");
     try {
-      const captureResult = await capturePdfPages(file, supplierName, undefined, supplierId);
+      const captureResult = await capturePdfPages(file, supplierName, undefined, supplierId, brand || null);
       console.log(`[Pipeline] Page capture: ${captureResult.pagesStored} stored, ${captureResult.errors} errors`);
       if (captureResult.pagesStored === 0) {
         warnings.push("PDF page image extraction failed — visual builder may not show pages");
