@@ -114,7 +114,7 @@ export async function runImportPipeline(opts: PipelineOptions): Promise<Pipeline
     // ── STEP 2b: EXTRACT PDF pages as images for visual builder ──
     console.log("[Pipeline] Step 2b: Extracting PDF pages as images...");
     try {
-      const captureResult = await capturePdfPages(file, supplierName, undefined, supplierId);
+      const captureResult = await capturePdfPages(file, supplierName, undefined, supplierId, brand || null);
       console.log(`[Pipeline] Page capture: ${captureResult.pagesStored} stored, ${captureResult.errors} errors`);
       if (captureResult.pagesStored === 0) {
         warnings.push("PDF page image extraction failed — visual builder may not show pages");
