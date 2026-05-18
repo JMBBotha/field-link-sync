@@ -470,9 +470,17 @@ export function matchTextRowsToProducts(
   // Adaptive Y-threshold
   const avgHeight = mergedItems.reduce((sum, i) => sum + i.height, 0) / mergedItems.length || 10;
   const yThreshold = Math.max(avgHeight * 1.5, 8);
+  // Resolve INSTALLER PRICE column up-front so we can restrict prices to it.
+  const colRangeEarly = findPriceColumnRange(mergedItems, pageWidth, pageHeight);
+  const inCol = (x: number) =>
+    !colRangeEarly || (x >= colRangeEarly.minX && x <= colRangeEarly.maxX);
   // STEP 1a: Explicit R-prefixed prices (works for Samsung/Daikin/Midea)
   const explicitPriceItems = mergedItems.filter(
-    (item) => /R\s*\d/.test(item.text) && (item.x / pageWidth) > 0.40 && detectPrice(item.text) !== null,
+    (item) =>
+      /R\s*\d/.test(item.text) &&
+      (item.x / pageWidth) > 0.40 &&
+      detectPrice(item.text) !== null &&
+      inCol(item.x),
   );
   // STEP 1b: Column-based numeric prices (works for dense table PDFs like One Stop)
   const columnPrices = findColumnPrices(mergedItems, pageWidth, pageHeight, minPrice);
