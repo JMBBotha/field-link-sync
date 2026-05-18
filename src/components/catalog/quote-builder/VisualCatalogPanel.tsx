@@ -82,6 +82,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     try { return localStorage.getItem(HD_KEY) === "true"; } catch { return false; }
   });
   const [hoveredProduct, setHoveredProduct] = useState<PaletteProduct | null>(null);
+  const [hoveredPriceOverride, setHoveredPriceOverride] = useState<number | null>(null);
   const [hoverEvent, setHoverEvent] = useState<MouseEvent | null>(null);
   const [productInfoProduct, setProductInfoProduct] = useState<PaletteProduct | null>(null);
 
@@ -98,8 +99,9 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     setProductInfoProduct(product);
   }, []);
 
-  const handleHoverStart = useCallback((product: PaletteProduct | null, e: React.MouseEvent) => {
+  const handleHoverStart = useCallback((product: PaletteProduct | null, e: React.MouseEvent, priceOverride?: number | null) => {
     setHoveredProduct(product);
+    setHoveredPriceOverride(priceOverride ?? null);
     setHoverEvent(e.nativeEvent);
   }, []);
 
@@ -109,6 +111,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
 
   const handleHoverEnd = useCallback(() => {
     setHoveredProduct(null);
+    setHoveredPriceOverride(null);
     setHoverEvent(null);
   }, []);
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -785,6 +788,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
           isVisible={!!hoveredProduct}
           isHoverMode
           basketProductCounts={basketProductCounts}
+          priceOverride={hoveredPriceOverride}
         />
       )}
 
@@ -850,7 +854,7 @@ interface LazyPdfPageProps {
   totalPages: number;
   supplierName?: string;
   onOpenWizard?: (item: WizardTriggerItem) => void;
-  onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent) => void;
+  onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent, priceOverride?: number | null) => void;
   onHoverMove?: (e: React.MouseEvent) => void;
   onHoverEnd?: () => void;
   pdfSelection?: PdfSelectionHandlers;

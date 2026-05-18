@@ -30,7 +30,7 @@ interface PdfPageOverlayProps {
   onRemoveRegion?: (region: OverlayRegion) => void;
   supplierName?: string;
   onOpenWizard?: (item: WizardTriggerItem) => void;
-  onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent) => void;
+  onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent, priceOverride?: number | null) => void;
   onHoverMove?: (e: React.MouseEvent) => void;
   onHoverEnd?: () => void;
   pdfSelection?: PdfSelectionHandlers;
@@ -85,7 +85,7 @@ const RegionBox = memo(({
   baskets: Basket[];
   basketProductCounts?: Record<string, number>;
   pdfSelection?: PdfSelectionHandlers;
-  onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent) => void;
+  onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent, priceOverride?: number | null) => void;
   onHoverMove?: (e: React.MouseEvent) => void;
   onHoverEnd?: () => void;
   isFavorite: boolean;
@@ -144,7 +144,7 @@ const RegionBox = memo(({
   };
 
   const handleMouseEnter = (e: React.MouseEvent) => {
-    if (onHoverStart) onHoverStart(getProductOrFallback(), e);
+    if (onHoverStart) onHoverStart(getProductOrFallback(), e, region.detected_price ?? null);
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
