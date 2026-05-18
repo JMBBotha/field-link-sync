@@ -82,6 +82,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     try { return localStorage.getItem(HD_KEY) === "true"; } catch { return false; }
   });
   const [hoveredProduct, setHoveredProduct] = useState<PaletteProduct | null>(null);
+  const [hoveredPriceOverride, setHoveredPriceOverride] = useState<number | null>(null);
   const [hoverEvent, setHoverEvent] = useState<MouseEvent | null>(null);
   const [productInfoProduct, setProductInfoProduct] = useState<PaletteProduct | null>(null);
 
