@@ -245,6 +245,13 @@ function detectAllPrices(text: string): number[] {
       if (!isNaN(val) && val >= 1000 && !results.includes(val)) results.push(val);
     }
   }
+  // Comma-thousands whole prices (no decimals): R4,945  R12,345  R1,234,567
+  const re5 = /R\s*(\d{1,3}(?:,\d{3})+)(?!\d)(?!\.\d)(?!,\d{1,2}(?!\d))/g;
+  while ((m = re5.exec(text)) !== null) {
+    const raw = m[1].replace(/,/g, "");
+    const val = parseFloat(raw);
+    if (!isNaN(val) && val >= 1000 && !results.includes(val)) results.push(val);
+  }
   return results;
 }
 function parseRawPrice(captured: string): number | null {
