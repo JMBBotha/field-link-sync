@@ -23,9 +23,9 @@ export function useUnsavedQuoteGuard({
 }: {
   isDirty: boolean;
   canSave: boolean;
-  onSaveDraft: () => Promise<void> | void;
-  onSendQuote?: () => Promise<void> | void;
-  onDeleteQuote?: () => Promise<void> | void;
+  onSaveDraft: () => Promise<any> | void;
+  onSendQuote?: () => Promise<any> | void;
+  onDeleteQuote?: () => Promise<any> | void;
   onExit: () => void;
 }): UnsavedQuoteGuardActions {
   const [showModal, setShowModal] = useState(false);
