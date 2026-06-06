@@ -23,11 +23,6 @@ export function useOfflinePhotos(): UseOfflinePhotosResult {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  // Load pending count on mount
-  useEffect(() => {
-    loadPendingCount();
-  }, [loadPendingCount]);
-
   const loadPendingCount = useCallback(async () => {
     try {
       const pending = await offlineDb.getPendingPhotos();
@@ -36,6 +31,11 @@ export function useOfflinePhotos(): UseOfflinePhotosResult {
       console.error('Failed to load pending photo count:', error);
     }
   }, []);
+
+  // Load pending count on mount
+  useEffect(() => {
+    loadPendingCount();
+  }, [loadPendingCount]);
 
   // Load photos for a specific lead
   const loadPhotos = useCallback(async (leadId: string) => {
