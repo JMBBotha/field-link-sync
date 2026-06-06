@@ -283,12 +283,14 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
 
   /* ── Helpers ── */
   const ensureDefaultArea = useCallback(async (): Promise<QuoteArea | null> => {
-    if (!needsDefaultArea(items, areas)) {
+    const currentItems = itemsRef.current;
+    const currentAreas = areasRef.current;
+    if (!needsDefaultArea(currentItems, currentAreas)) {
       // If areas exist but items have null area_id, assign them to first area
-      if (areas.length > 0) {
-        const orphans = items.filter((i) => !i.area_id && !i.parent_item_id);
+      if (currentAreas.length > 0) {
+        const orphans = currentItems.filter((i) => !i.area_id && !i.parent_item_id);
         if (orphans.length > 0) {
-          const defaultArea = areas[0];
+          const defaultArea = currentAreas[0];
           await Promise.all(orphans.map((i) =>
             supabase.from("quote_items").update({ area_id: defaultArea.id } as any).eq("id", i.id)
           ));
@@ -296,15 +298,15 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
             !i.area_id && !i.parent_item_id ? { ...i, area_id: defaultArea.id } : i
           ));
         }
-        return areas[0];
+        return currentAreas[0];
       }
-      return areas[0] || null;
+      return currentAreas[0] || null;
     }
     // Create "General" area
     const area = await addArea(getDefaultAreaName());
     if (area) {
       // Assign all orphan items to this area
-      const orphans = items.filter((i) => !i.area_id && !i.parent_item_id);
+      const orphans = itemsRef.current.filter((i) => !i.area_id && !i.parent_item_id);
       await Promise.all(orphans.map((i) =>
         supabase.from("quote_items").update({ area_id: area.id } as any).eq("id", i.id)
       ));
@@ -313,7 +315,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
       ));
     }
     return area;
-  }, [items, areas, addArea]);
+  }, [addArea]);
 
   const getItemsByArea = useCallback((areaId: string | null): QuoteItem[] => {
     return items
@@ -327,7 +329,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
       .sort((a, b) => a.sort_order - b.sort_order);
   }, [items]);
 
-  const value: QuoteContextValue = {
+  const value: QuoteContextValue = useMemo(() => ({
     quoteId,
     meta,
     areas,
@@ -347,7 +349,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     ensureDefaultArea,
     getItemsByArea,
     getBundleChildren: getBundleChildrenFn,
-  };
+  }), [quoteId, meta, areas, items, loading, error, canSave, updateQuote, addArea, updateArea, deleteArea, reorderAreas, addItem, updateItem, deleteItem, moveItemToArea, ensureDefaultArea, getItemsByArea, getBundleChildrenFn]);
 
   return <QuoteContext.Provider value={value}>{children}</QuoteContext.Provider>;
 }
