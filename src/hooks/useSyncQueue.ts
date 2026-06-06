@@ -35,7 +35,7 @@ export function useSyncQueue(isOnline: boolean) {
   });
   
   const syncingRef = useRef(false);
-  const retryTimeoutRef = useRef<number | null>(null);
+  
   const [activeConflict, setActiveConflict] = useState<ConflictInfo | null>(null);
   const conflictResolveRef = useRef<((choice: "keep_local" | "use_server") => void) | null>(null);
 
@@ -229,7 +229,7 @@ export function useSyncQueue(isOnline: boolean) {
   };
 
   // Process a single operation
-  const processOperation = async (operation: PendingOperation): Promise<boolean> => {
+  const processOperation = useCallback(async (operation: PendingOperation): Promise<boolean> => {
     try {
       console.log('[Offline][Sync] Processing operation:', { id: operation.id, type: operation.operationType, recordId: operation.recordId, retryCount: operation.retryCount });
       // Check for conflicts on lead updates
@@ -467,7 +467,7 @@ export function useSyncQueue(isOnline: boolean) {
       });
       throw error;
     }
-  };
+  }, []);
 
   // Sync all pending operations
   const syncPendingOperations = useCallback(async () => {
@@ -562,7 +562,7 @@ export function useSyncQueue(isOnline: boolean) {
     } finally {
       syncingRef.current = false;
     }
-  }, [isOnline, loadPendingCount, toast]);
+  }, [isOnline, loadPendingCount, processOperation]);
 
   // Manual retry
   const retrySyncFailedOperations = useCallback(async () => {
@@ -597,16 +597,17 @@ export function useSyncQueue(isOnline: boolean) {
 
   // Auto-sync when coming back online
   useEffect(() => {
+    let timeoutId: number | undefined;
     if (isOnline && syncStatus.pendingCount > 0 && !syncingRef.current) {
       // Small delay to let connection stabilize
-      retryTimeoutRef.current = window.setTimeout(() => {
+      timeoutId = window.setTimeout(() => {
         syncPendingOperations();
       }, 2000);
     }
     
     return () => {
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
     };
   }, [isOnline, syncStatus.pendingCount, syncPendingOperations]);
