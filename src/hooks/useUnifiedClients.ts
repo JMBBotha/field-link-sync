@@ -33,6 +33,9 @@ export function useUnifiedClients() {
           .limit(500),
       ]);
 
+      if (customersRes.error) throw customersRes.error;
+      if (leadsRes.error) throw leadsRes.error;
+
       const clients: UnifiedClient[] = [];
       const seenCustomerIds = new Set<string>();
 
