@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 export interface OnlineStatus {
   isOnline: boolean;
@@ -14,6 +14,9 @@ export function useOnlineStatus() {
     lastOnlineAt: null,
     lastOfflineAt: null,
   });
+
+  const isOnlineRef = useRef(status.isOnline);
+  isOnlineRef.current = status.isOnline;
 
   const handleOnline = useCallback(() => {
     setStatus(prev => ({
@@ -42,11 +45,6 @@ export function useOnlineStatus() {
   }, []);
 
   useEffect(() => {
-    // Set initial state
-    if (navigator.onLine) {
-      setStatus(prev => ({ ...prev, lastOnlineAt: Date.now() }));
-    }
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
@@ -66,13 +64,13 @@ export function useOnlineStatus() {
         clearTimeout(timeoutId);
         
         // If we get here, we're truly online
-        if (!status.isOnline) {
+        if (!isOnlineRef.current) {
           handleOnline();
         }
       } catch {
         // Could be offline or request failed
         // Only mark offline if navigator says offline too
-        if (!navigator.onLine && status.isOnline) {
+        if (!navigator.onLine && isOnlineRef.current) {
           handleOffline();
         }
       }
@@ -86,7 +84,7 @@ export function useOnlineStatus() {
       window.removeEventListener('offline', handleOffline);
       clearInterval(intervalId);
     };
-  }, [handleOnline, handleOffline, status.isOnline]);
+  }, [handleOnline, handleOffline]);
 
   return {
     ...status,
