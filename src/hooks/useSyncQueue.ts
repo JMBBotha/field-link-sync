@@ -611,7 +611,7 @@ export function useSyncQueue(isOnline: boolean) {
         clearTimeout(timeoutId);
       }
     };
-  }, [isOnline, syncStatus.pendingCount, syncPendingOperations]);
+  }, [isOnline, syncStatus.pendingCount]);
 
   return {
     syncStatus,
