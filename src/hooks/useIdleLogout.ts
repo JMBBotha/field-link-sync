@@ -12,14 +12,17 @@ export const useIdleLogout = () => {
   const warningTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const logoutTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const countdownRef = useRef<ReturnType<typeof setInterval>>();
+  const showWarningRef = useRef(false);
 
   const resetTimers = useCallback(() => {
+    showWarningRef.current = false;
     setShowWarning(false);
     clearTimeout(warningTimerRef.current);
     clearTimeout(logoutTimerRef.current);
     clearInterval(countdownRef.current);
 
     warningTimerRef.current = setTimeout(() => {
+      showWarningRef.current = true;
       setShowWarning(true);
       setSecondsLeft(60);
       countdownRef.current = setInterval(() => {
@@ -45,9 +48,9 @@ export const useIdleLogout = () => {
 
   useEffect(() => {
     const events = ["mousedown", "keydown", "scroll", "touchstart", "mousemove"];
-    
+
     const handleActivity = () => {
-      if (!showWarning) resetTimers();
+      if (!showWarningRef.current) resetTimers();
     };
 
     events.forEach(e => window.addEventListener(e, handleActivity, { passive: true }));
@@ -59,7 +62,7 @@ export const useIdleLogout = () => {
       clearTimeout(logoutTimerRef.current);
       clearInterval(countdownRef.current);
     };
-  }, [resetTimers, showWarning]);
+  }, [resetTimers]);
 
   return { showWarning, secondsLeft, stayActive };
 };
