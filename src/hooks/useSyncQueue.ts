@@ -229,7 +229,7 @@ export function useSyncQueue(isOnline: boolean) {
   };
 
   // Process a single operation
-  const processOperation = async (operation: PendingOperation): Promise<boolean> => {
+  const processOperation = useCallback(async (operation: PendingOperation): Promise<boolean> => {
     try {
       console.log('[Offline][Sync] Processing operation:', { id: operation.id, type: operation.operationType, recordId: operation.recordId, retryCount: operation.retryCount });
       // Check for conflicts on lead updates
