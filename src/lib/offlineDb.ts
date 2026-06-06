@@ -213,9 +213,13 @@ class OfflineDatabase extends Dexie {
 
     await this.transaction('rw', this.leads, async () => {
       // Clear old leads for this agent or unassigned
-      const existingIds = await this.leads.toCollection().primaryKeys();
-      if (existingIds.length > 0) {
-        await this.leads.bulkDelete(existingIds);
+      const agentLeadIds = await this.leads.where('assigned_agent_id').equals(agentId).primaryKeys();
+      if (agentLeadIds.length > 0) {
+        await this.leads.bulkDelete(agentLeadIds);
+      }
+      const unassignedLeadIds = await this.leads.where('assigned_agent_id').equals(null as any).primaryKeys();
+      if (unassignedLeadIds.length > 0) {
+        await this.leads.bulkDelete(unassignedLeadIds);
       }
       // Add fresh leads
       await this.leads.bulkPut(offlineLeads);
@@ -376,13 +380,17 @@ class OfflineDatabase extends Dexie {
 
   // Update operation with error
   async updateOperationError(id: number, error: string) {
-    const op = await this.pendingOperations.get(id);
-    if (op) {
-      console.warn('[Offline][DB] Recording error for op:', id, 'retry:', op.retryCount + 1, 'error:', error.slice(0, 80));
-      await this.pendingOperations.update(id, {
-        retryCount: op.retryCount + 1,
-        lastError: error
-      });
+    try {
+      const op = await this.pendingOperations.get(id);
+      if (op) {
+        console.warn('[Offline][DB] Recording error for op:', id, 'retry:', op.retryCount + 1, 'error:', error.slice(0, 80));
+        await this.pendingOperations.update(id, {
+          retryCount: op.retryCount + 1,
+          lastError: error
+        });
+      }
+    } catch (e) {
+      console.error('[Offline][DB] Failed to update operation error:', e);
     }
   }
 
