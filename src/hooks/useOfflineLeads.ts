@@ -149,17 +149,17 @@ export function useOfflineLeads(
       if (error) {
         console.error('accept_lead RPC error:', error);
         // If RPC fails (e.g. already accepted by someone else), refresh
-        fetchAndCacheLeads();
+        fetchAndCacheLeads().catch(() => {});
         throw new Error((data as any)?.error || error.message || 'Failed to accept lead');
       }
       if (data && !(data as any).success) {
         // Someone else got it first — refresh
-        fetchAndCacheLeads();
+        fetchAndCacheLeads().catch(() => {});
         throw new Error((data as any).error || 'Lead already taken');
       }
     }
     return true;
-  }, [userId, updateLeadOptimistic, isOnline, supabase, fetchAndCacheLeads]);
+  }, [userId, updateLeadOptimistic, isOnline, fetchAndCacheLeads]);
 
   // Start a job
   const startJob = useCallback(async (leadId: string) => {
@@ -207,12 +207,13 @@ export function useOfflineLeads(
       }
     }
     return true;
-  }, [userId, updateLeadOptimistic, isOnline, supabase]);
+  }, [userId, updateLeadOptimistic, isOnline]);
 
   // Subscribe to real-time updates when online
   const subscribeToLeads = useCallback(() => {
     if (subscriptionRef.current) {
       supabase.removeChannel(subscriptionRef.current);
+      subscriptionRef.current = null;
     }
 
     subscriptionRef.current = supabase
@@ -236,6 +237,7 @@ export function useOfflineLeads(
     return () => {
       if (subscriptionRef.current) {
         supabase.removeChannel(subscriptionRef.current);
+        subscriptionRef.current = null;
       }
     };
   }, [isOnline, fetchAndCacheLeads]);
@@ -254,9 +256,10 @@ export function useOfflineLeads(
     return () => {
       if (subscriptionRef.current) {
         supabase.removeChannel(subscriptionRef.current);
+        subscriptionRef.current = null;
       }
     };
-  }, [userId, isOnline]);
+  }, [userId, isOnline, fetchAndCacheLeads, subscribeToLeads, loadFromCache]);
 
   // Refetch when coming back online
   useEffect(() => {
