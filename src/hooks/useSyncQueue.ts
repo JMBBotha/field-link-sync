@@ -35,7 +35,7 @@ export function useSyncQueue(isOnline: boolean) {
   });
   
   const syncingRef = useRef(false);
-  const retryTimeoutRef = useRef<number | null>(null);
+  
   const [activeConflict, setActiveConflict] = useState<ConflictInfo | null>(null);
   const conflictResolveRef = useRef<((choice: "keep_local" | "use_server") => void) | null>(null);
 
