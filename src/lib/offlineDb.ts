@@ -213,8 +213,14 @@ class OfflineDatabase extends Dexie {
 
     await this.transaction('rw', this.leads, async () => {
       // Clear old leads for this agent or unassigned
-      await this.leads.where('assigned_agent_id').equals(agentId).delete();
-      await this.leads.where('assigned_agent_id').equals(null as any).delete();
+      const agentLeadIds = await this.leads.where('assigned_agent_id').equals(agentId).primaryKeys();
+      if (agentLeadIds.length > 0) {
+        await this.leads.bulkDelete(agentLeadIds);
+      }
+      const unassignedLeadIds = await this.leads.where('assigned_agent_id').equals(null as any).primaryKeys();
+      if (unassignedLeadIds.length > 0) {
+        await this.leads.bulkDelete(unassignedLeadIds);
+      }
       // Add fresh leads
       await this.leads.bulkPut(offlineLeads);
     });
