@@ -71,6 +71,9 @@ export const useInvoiceAgentContext = (leadId: string | null) => {
           .maybeSingle(),
       ]);
 
+      if (agentRes.error) throw agentRes.error;
+      if (companyRes.error) throw companyRes.error;
+
       const inv = invoiceRes.data;
       const daysOverdue =
         inv?.due_date && inv.status !== "paid"
