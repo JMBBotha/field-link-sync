@@ -36,20 +36,20 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         duration: 5000,
       });
     }
-  }, [onlineStatus.isOnline, toast]);
+  }, [onlineStatus.isOnline]);
 
   // Show toast when coming back online
   useEffect(() => {
     if (onlineStatus.wasOffline && onlineStatus.isOnline) {
+      onlineStatus.acknowledgeReconnection();
       toast({
         title: "Back Online! 🌐",
         description: syncQueue.syncStatus.pendingCount > 0 
           ? `Syncing ${syncQueue.syncStatus.pendingCount} pending change${syncQueue.syncStatus.pendingCount > 1 ? 's' : ''}...`
           : "All changes synced",
       });
-      onlineStatus.acknowledgeReconnection();
     }
-  }, [onlineStatus.wasOffline, onlineStatus.isOnline, syncQueue.syncStatus.pendingCount, toast]);
+  }, [onlineStatus.wasOffline, onlineStatus.isOnline, syncQueue.syncStatus.pendingCount]);
 
   const value: OfflineContextValue = {
     isOnline: onlineStatus.isOnline,

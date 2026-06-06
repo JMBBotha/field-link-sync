@@ -23,10 +23,16 @@ const RequireRole = ({ allowedRoles, redirectTo, children }: RequireRoleProps) =
   const { toast } = useToast();
 
   useEffect(() => {
-    const check = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+    let cancelled = false;
+
+    const check = async (sessionArg?: Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"]) => {
+      const session = sessionArg ?? (await supabase.auth.getSession()).data.session;
+      if (cancelled) return;
+
       if (!session) {
-        navigate("/login", { replace: true });
+        // Smart redirect on lost session: try to preserve field agent context via current path
+        const isFieldContext = typeof window !== "undefined" && window.location.pathname.startsWith("/field");
+        navigate(isFieldContext ? "/field" : "/login", { replace: true });
         return;
       }
 
@@ -34,6 +40,7 @@ const RequireRole = ({ allowedRoles, redirectTo, children }: RequireRoleProps) =
         .from("user_roles")
         .select("role")
         .eq("user_id", session.user.id);
+      if (cancelled) return;
 
       const userRoles = (roles?.map((r) => r.role) || []) as AppRole[];
       const hasAccess = userRoles.some((r) => allowedRoles.includes(r));
@@ -44,7 +51,7 @@ const RequireRole = ({ allowedRoles, redirectTo, children }: RequireRoleProps) =
           description: "You don't have permission to view this page.",
           variant: "destructive",
         });
-        // Smart redirect: field agents → /field, others → /login
+        // Smart redirect: field agents → /field, others → /admin
         const fallback = redirectTo || (userRoles.includes("field_agent") ? "/field" : "/admin");
         navigate(fallback, { replace: true });
         return;
@@ -53,7 +60,22 @@ const RequireRole = ({ allowedRoles, redirectTo, children }: RequireRoleProps) =
       setAuthorized(true);
     };
 
+    // Reactive auth state listener — re-evaluate on sign-out / token refresh
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        const isFieldContext = typeof window !== "undefined" && window.location.pathname.startsWith("/field");
+        navigate(isFieldContext ? "/field" : "/login", { replace: true });
+        return;
+      }
+      check(session);
+    });
+
     check();
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, [allowedRoles, navigate, redirectTo, toast]);
 
   if (authorized === null) {
