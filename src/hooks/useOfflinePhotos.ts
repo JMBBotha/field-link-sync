@@ -26,16 +26,16 @@ export function useOfflinePhotos(): UseOfflinePhotosResult {
   // Load pending count on mount
   useEffect(() => {
     loadPendingCount();
-  }, []);
+  }, [loadPendingCount]);
 
-  const loadPendingCount = async () => {
+  const loadPendingCount = useCallback(async () => {
     try {
       const pending = await offlineDb.getPendingPhotos();
       setPendingCount(pending.length);
     } catch (error) {
       console.error('Failed to load pending photo count:', error);
     }
-  };
+  }, []);
 
   // Load photos for a specific lead
   const loadPhotos = useCallback(async (leadId: string) => {
@@ -115,7 +115,7 @@ export function useOfflinePhotos(): UseOfflinePhotosResult {
       });
       throw error;
     }
-  }, [toast]);
+  }, [toast, loadPendingCount]);
 
   // Delete a photo
   const deletePhoto = useCallback(async (photoId: string) => {
@@ -131,7 +131,7 @@ export function useOfflinePhotos(): UseOfflinePhotosResult {
         variant: "destructive",
       });
     }
-  }, [toast]);
+  }, [toast, loadPendingCount]);
 
   // Get all pending photos
   const getPendingPhotos = useCallback(async (): Promise<OfflinePhoto[]> => {
