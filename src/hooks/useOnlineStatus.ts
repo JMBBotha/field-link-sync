@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 export interface OnlineStatus {
   isOnline: boolean;
-  wasOffline: boolean; // True if we just came back online
+  wasOffline: boolean;
   lastOnlineAt: number | null;
   lastOfflineAt: number | null;
 }
@@ -18,10 +18,12 @@ export function useOnlineStatus() {
   const isOnlineRef = useRef(status.isOnline);
   isOnlineRef.current = status.isOnline;
 
+  const checkingRef = useRef(false);
+
   const handleOnline = useCallback(() => {
     setStatus(prev => ({
       isOnline: true,
-      wasOffline: !prev.isOnline, // True if we were offline before
+      wasOffline: !prev.isOnline,
       lastOnlineAt: Date.now(),
       lastOfflineAt: prev.lastOfflineAt,
     }));
@@ -36,7 +38,6 @@ export function useOnlineStatus() {
     }));
   }, []);
 
-  // Reset wasOffline flag after it's been acknowledged
   const acknowledgeReconnection = useCallback(() => {
     setStatus(prev => ({
       ...prev,
@@ -48,46 +49,32 @@ export function useOnlineStatus() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Also check connection quality periodically
     const checkConnection = async () => {
+      if (checkingRef.current) return;
+      checkingRef.current = true;
+
       try {
-        // Try a small fetch to verify actual connectivity
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        
-        await fetch('/favicon.ico', {
-          method: 'HEAD',
-          cache: 'no-store',
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        
-        // If we get here, we're truly online
-        if (!isOnlineRef.current) {
+        const response = await fetch('/', { cache: 'no-cache' });
+        if (response.ok && !isOnlineRef.current) {
           handleOnline();
         }
-      } catch {
-        // Could be offline or request failed
-        // Only mark offline if navigator says offline too
-        if (!navigator.onLine && isOnlineRef.current) {
+      } catch (err) {
+        if (isOnlineRef.current) {
           handleOffline();
         }
+      } finally {
+        checkingRef.current = false;
       }
     };
 
-    // Check connection every 30 seconds
-    const intervalId = setInterval(checkConnection, 30000);
+    const interval = setInterval(checkConnection, 30000);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      clearInterval(intervalId);
+      clearInterval(interval);
     };
   }, [handleOnline, handleOffline]);
 
-  return {
-    ...status,
-    acknowledgeReconnection,
-  };
+  return { ...status, acknowledgeReconnection };
 }
