@@ -597,16 +597,17 @@ export function useSyncQueue(isOnline: boolean) {
 
   // Auto-sync when coming back online
   useEffect(() => {
+    let timeoutId: number | undefined;
     if (isOnline && syncStatus.pendingCount > 0 && !syncingRef.current) {
       // Small delay to let connection stabilize
-      retryTimeoutRef.current = window.setTimeout(() => {
+      timeoutId = window.setTimeout(() => {
         syncPendingOperations();
       }, 2000);
     }
     
     return () => {
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
     };
   }, [isOnline, syncStatus.pendingCount, syncPendingOperations]);
