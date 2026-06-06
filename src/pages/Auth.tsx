@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import logo from "@/assets/logo.png";
 
 const Auth = () => {
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
+  const redirectingRef = useRef(false);
   const [isLogin, setIsLogin] = useState(true);
   const [showSignupChoice, setShowSignupChoice] = useState(false);
   const [email, setEmail] = useState("");
@@ -20,23 +22,37 @@ const Auth = () => {
 
   useEffect(() => {
     const redirectUser = async (userId: string) => {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("onboarding_completed")
-        .eq("id", userId)
-        .maybeSingle();
+      if (redirectingRef.current) return;
+      redirectingRef.current = true;
+      setRedirecting(true);
 
-      if (!profile?.onboarding_completed) {
-        navigate("/onboarding");
-        return;
+      try {
+        const { data: profile, error: profileErr } = await supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("id", userId)
+          .maybeSingle();
+
+        if (profileErr) throw profileErr;
+
+        if (!profile?.onboarding_completed) {
+          navigate("/onboarding");
+          return;
+        }
+
+        const { data: roles, error: rolesErr } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId);
+
+        if (rolesErr) throw rolesErr;
+
+        const hasAdmin = roles?.some(r => ["admin", "dispatcher", "viewer"].includes(r.role));
+        navigate(hasAdmin ? "/admin" : "/field");
+      } catch {
+        redirectingRef.current = false;
+        setRedirecting(false);
       }
-
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId);
-      const hasAdmin = roles?.some(r => ["admin", "dispatcher", "viewer"].includes(r.role));
-      navigate(hasAdmin ? "/admin" : "/field");
     };
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -210,7 +226,7 @@ const Auth = () => {
           <Button
             type="submit"
             className="w-full bg-[hsl(25,95%,53%)] hover:bg-[hsl(25,95%,45%)] text-white font-semibold text-base h-11"
-            disabled={loading}
+            disabled={loading || redirecting}
           >
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isLogin ? "Sign In" : "Sign Up"}
