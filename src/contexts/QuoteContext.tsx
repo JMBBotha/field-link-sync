@@ -62,6 +62,10 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
+  const itemsRef = useRef<QuoteItem[]>([]);
+  const areasRef = useRef<QuoteArea[]>([]);
+  useEffect(() => { itemsRef.current = items; }, [items]);
+  useEffect(() => { areasRef.current = areas; }, [areas]);
 
   /* ── Fetch ── */
   const fetchAll = useCallback(async () => {
