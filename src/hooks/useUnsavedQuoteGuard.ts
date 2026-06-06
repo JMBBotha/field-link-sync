@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 
 export interface UnsavedQuoteGuardActions {
   showModal: boolean;
@@ -42,31 +42,24 @@ export function useUnsavedQuoteGuard({
     setShowModal(false);
   }, []);
 
-  const confirmSaveDraft = useCallback(async () => {
+  const confirmSaveDraft = useCallback(() => {
     setShowModal(false);
-    await onSaveDraft();
+    Promise.resolve(onSaveDraft()).catch(() => {});
   }, [onSaveDraft]);
 
-  const confirmSendQuote = useCallback(async () => {
+  const confirmSendQuote = useCallback(() => {
     setShowModal(false);
-    if (onSendQuote) await onSendQuote();
+    if (onSendQuote) {
+      Promise.resolve(onSendQuote()).catch(() => {});
+    }
   }, [onSendQuote]);
 
-  const confirmDeleteQuote = useCallback(async () => {
+  const confirmDeleteQuote = useCallback(() => {
     setShowModal(false);
-    if (onDeleteQuote) await onDeleteQuote();
+    if (onDeleteQuote) {
+      Promise.resolve(onDeleteQuote()).catch(() => {});
+    }
   }, [onDeleteQuote]);
-
-  // Browser beforeunload guard
-  useEffect(() => {
-    if (!isDirty) return;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [isDirty]);
 
   return {
     showModal,
