@@ -39,11 +39,6 @@ export function useSyncQueue(isOnline: boolean) {
   const [activeConflict, setActiveConflict] = useState<ConflictInfo | null>(null);
   const conflictResolveRef = useRef<((choice: "keep_local" | "use_server") => void) | null>(null);
 
-  // Load pending count on mount
-  useEffect(() => {
-    loadPendingCount();
-  }, []);
-
   const loadPendingCount = useCallback(async () => {
     try {
       const count = await offlineDb.getPendingCount();
@@ -59,6 +54,12 @@ export function useSyncQueue(isOnline: boolean) {
       console.error('[SyncQueue] Error loading pending count:', error);
     }
   }, []);
+
+  // Load pending count on mount
+  useEffect(() => {
+    loadPendingCount();
+  }, [loadPendingCount]);
+
 
   // Queue a new operation
   const queueOperation = useCallback(async (
