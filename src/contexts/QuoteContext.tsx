@@ -140,9 +140,12 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
 
   /* ── Quote meta ── */
   const updateQuote = useCallback(async (patch: Partial<Pick<QuoteMeta, "customer_id" | "customer_name" | "notes" | "status" | "discount_type" | "discount_value" | "terms_text" | "reference_text">>) => {
-    const wasNullCustomer = !meta?.customer_id;
-    // Optimistic
-    setMeta((prev) => prev ? { ...prev, ...patch } : prev);
+    let wasNullCustomer = false;
+    // Optimistic — use functional update to read fresh state
+    setMeta((prev) => {
+      if (prev && !prev.customer_id) wasNullCustomer = true;
+      return prev ? { ...prev, ...patch } : prev;
+    });
     const { error } = await supabase.from("quotes").update(patch as any).eq("id", quoteId);
     if (error) {
       toast({ title: "Error updating quote", description: error.message, variant: "destructive" });
@@ -156,7 +159,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
         setMeta((prev) => prev ? { ...prev, quote_number: refreshed.quote_number } : prev);
       }
     }
-  }, [quoteId, fetchAll, meta?.customer_id]);
+  }, [quoteId, fetchAll]);
 
   /* ── Areas ── */
   const addArea = useCallback(async (name: string): Promise<QuoteArea | null> => {
