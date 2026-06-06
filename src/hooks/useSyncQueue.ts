@@ -467,7 +467,7 @@ export function useSyncQueue(isOnline: boolean) {
       });
       throw error;
     }
-  };
+  }, []);
 
   // Sync all pending operations
   const syncPendingOperations = useCallback(async () => {
@@ -562,7 +562,7 @@ export function useSyncQueue(isOnline: boolean) {
     } finally {
       syncingRef.current = false;
     }
-  }, [isOnline, loadPendingCount, toast]);
+  }, [isOnline, loadPendingCount, processOperation]);
 
   // Manual retry
   const retrySyncFailedOperations = useCallback(async () => {
