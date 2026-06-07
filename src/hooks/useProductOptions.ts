@@ -33,12 +33,7 @@ export const filterProductOptions = (options: ProductOption[], query: string) =>
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   if (words.length === 0) return options.slice(0, 8);
   return options.filter((o) => {
-    const blob = [
-      o.name,
-      o.description || "",
-      o.productCode || "",
-      o.category || "",
-    ].join(" ").toLowerCase();
+    const blob = [o.name, o.description || "", o.productCode || "", o.category || ""].join(" ").toLowerCase();
     return words.every((w) => blob.includes(w));
   });
 };
@@ -61,32 +56,44 @@ export function useProductOptions() {
         .eq("is_active", true)
         .order("is_pinned", { ascending: false })
         .order("description"),
-    ]).then(([svcRes, prodRes]) => {
-      const svcData = svcRes.data || [];
-      const prodData = prodRes.data || [];
-      const merged: ProductOption[] = [
-        ...svcData.map((s: any) => ({
-          id: s.id,
-          name: s.name,
-          description: s.description,
-          rate: Number(s.default_rate),
-          category: s.category,
-          isFavorite: false,
-          source: "template" as const,
-        })),
-        ...prodData.map((p: any) => ({
-          id: p.id,
-          name: p.short_name || p.description,
-          description: p.description,
-          rate: Number(p.cost_price || 0),
-          category: p.category,
-          isFavorite: p.is_pinned ?? false,
-          source: "product" as const,
-          productCode: p.product_code || "",
-        })),
-      ];
-      setAllOptions(sortProductOptions(merged));
-    });
+    ])
+      .then(([svcRes, prodRes]) => {
+        if (svcRes.error) {
+          console.error("[useProductOptions] service_templates error:", svcRes.error);
+          return;
+        }
+        if (prodRes.error) {
+          console.error("[useProductOptions] supplier_products error:", prodRes.error);
+          return;
+        }
+        const svcData = svcRes.data || [];
+        const prodData = prodRes.data || [];
+        const merged: ProductOption[] = [
+          ...svcData.map((s) => ({
+            id: s.id,
+            name: s.name,
+            description: s.description,
+            rate: Number(s.default_rate),
+            category: s.category,
+            isFavorite: false,
+            source: "template" as const,
+          })),
+          ...prodData.map((p) => ({
+            id: p.id,
+            name: p.short_name || p.description,
+            description: p.description,
+            rate: Number(p.cost_price || 0),
+            category: p.category,
+            isFavorite: p.is_pinned ?? false,
+            source: "product" as const,
+            productCode: p.product_code || "",
+          })),
+        ];
+        setAllOptions(sortProductOptions(merged));
+      })
+      .catch((err) => {
+        console.error("[useProductOptions] Failed to load options:", err);
+      });
   }, []);
 
   return allOptions;
