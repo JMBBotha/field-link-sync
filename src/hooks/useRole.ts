@@ -21,9 +21,13 @@ export const useRole = (): UseRoleReturn => {
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUserId(session?.user?.id || null);
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        setUserId(session?.user?.id || null);
+      })
+      .catch(() => {
+        setUserId(null);
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUserId(session?.user?.id || null);
@@ -40,11 +44,11 @@ export const useRole = (): UseRoleReturn => {
         .from("user_roles")
         .select("role")
         .eq("user_id", userId);
+
       if (error) throw error;
       return (data?.map((r) => r.role) || []) as AppRole[];
     },
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000,
   });
 
   const isAdmin = roles.includes("admin");
@@ -52,32 +56,16 @@ export const useRole = (): UseRoleReturn => {
   const isDispatcher = roles.includes("dispatcher");
   const isViewer = roles.includes("viewer");
 
-  // Primary role priority: admin > dispatcher > field_agent > viewer
-  const role: AppRole | null = isAdmin
-    ? "admin"
-    : isDispatcher
-    ? "dispatcher"
-    : isFieldAgent
-    ? "field_agent"
-    : isViewer
-    ? "viewer"
-    : null;
-
-  // Can access admin panel (admin + dispatcher + viewer)
-  const canAccessAdmin = isAdmin || isDispatcher || isViewer;
-  // Can write / modify data
-  const canWrite = isAdmin || isDispatcher || isFieldAgent;
-
   return {
-    role,
+    role: roles[0] || null,
     roles,
     isAdmin,
     isFieldAgent,
     isDispatcher,
     isViewer,
-    canAccessAdmin,
-    canWrite,
+    canAccessAdmin: isAdmin || isDispatcher,
+    canWrite: isAdmin || isFieldAgent || isDispatcher,
     userId,
-    loading: isLoading || userId === null,
+    loading: isLoading,
   };
 };
