@@ -6,14 +6,27 @@ import type { PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 export function useQuoteBuilderFavorites(products: PaletteProduct[]) {
   const queryClient = useQueryClient();
 
-  const favorites = useMemo(() => new Set(products.filter(p => p.is_pinned).map(p => p.id)), [products]);
+  const favorites = useMemo(
+    () => new Set(products.filter((p) => p.is_pinned).map((p) => p.id)),
+    [products]
+  );
 
   const togglePinMutation = useMutation({
     mutationFn: async (productId: string) => {
-      const currentlyPinned = products.find(p => p.id === productId)?.is_pinned ?? false;
+      const currentData = queryClient.getQueryData<PaletteProduct[]>(["quote-builder-products"]);
+      const currentProduct = currentData?.find((p) => p.id === productId);
+      const currentlyPinned = currentProduct?.is_pinned ?? products.find((p) => p.id === productId)?.is_pinned ?? false;
+
       const pinOrder = currentlyPinned ? 0 : Math.floor(Date.now() / 1000) % 2000000000;
-      const { error } = await (supabase.from("supplier_products") as any)
-        .update({ is_pinned: !currentlyPinned, pin_order: pinOrder } as any).eq("id", productId);
+
+      const { error } = await supabase
+        .from("supplier_products")
+        .update({
+          is_pinned: !currentlyPinned,
+          pin_order: pinOrder
+        })
+        .eq("id", productId);
+
       if (error) throw error;
     },
     onMutate: async (productId) => {
@@ -28,7 +41,10 @@ export function useQuoteBuilderFavorites(products: PaletteProduct[]) {
     },
   });
 
-  const toggleFavorite = useCallback((id: string) => togglePinMutation.mutate(id), [togglePinMutation]);
+  const toggleFavorite = useCallback(
+    (id: string) => togglePinMutation.mutate(id),
+    [togglePinMutation]
+  );
 
   return { favorites, toggleFavorite };
 }
