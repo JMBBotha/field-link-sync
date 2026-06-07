@@ -58,19 +58,23 @@ export function useProductFavorites() {
 
       if (userId) {
         if (nowFavorite) {
-          supabase
-            .from("product_favorites")
-            .insert({ user_id: userId, product_id: productId })
+          Promise.resolve(
+            supabase
+              .from("product_favorites")
+              .insert({ user_id: userId, product_id: productId })
+          )
             .then(({ error }) => {
               if (error) console.error("[FAV] DB insert error:", error);
             })
             .catch((err) => console.error("[FAV] DB insert failed:", err));
         } else {
-          supabase
-            .from("product_favorites")
-            .delete()
-            .eq("user_id", userId)
-            .eq("product_id", productId)
+          Promise.resolve(
+            supabase
+              .from("product_favorites")
+              .delete()
+              .eq("user_id", userId)
+              .eq("product_id", productId)
+          )
             .then(({ error }) => {
               if (error) console.error("[FAV] DB delete error:", error);
             })
