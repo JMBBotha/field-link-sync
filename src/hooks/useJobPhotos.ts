@@ -15,7 +15,7 @@ interface UseJobPhotosOptions {
     tableName: string,
     recordId: string,
     data: any
-  ) => Promise<string | void>;
+  ) => Promise<any | void>;
 }
 
 interface UseJobPhotosResult {
@@ -44,193 +44,71 @@ export function useJobPhotos({
   const [pendingCount, setPendingCount] = useState(0);
   const { toast } = useToast();
 
-  // Compress and convert to base64
   const compressImage = async (file: File): Promise<{ base64: string; compressed: File }> => {
     const compressed = await imageCompression(file, COMPRESSION_OPTIONS);
-    
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => resolve({ 
-        base64: reader.result as string, 
-        compressed 
-      });
-      reader.onerror = reject;
       reader.readAsDataURL(compressed);
+      reader.onload = () => resolve({ base64: reader.result as string, compressed });
+      reader.onerror = reject;
     });
   };
 
-  // Upload directly to Supabase storage
-  const uploadToStorage = async (file: File, photoId: string): Promise<string> => {
-    const filePath = `${leadId}/${photoId}.jpg`;
-    
-    const { error } = await supabase.storage
-      .from('job-photos')
-      .upload(filePath, file, {
-        contentType: 'image/jpeg',
-        upsert: true,
-      });
-
-    if (error) throw error;
-    return filePath;
-  };
-
   const uploadPhoto = useCallback(async (file: File, photoType: PhotoType) => {
-    if (!file.type.startsWith('image/')) {
-      toast({
-        title: "Invalid file",
-        description: "Please select an image file",
-        variant: "destructive",
-      });
+    if (!leadId || !agentId) {
+      toast({ title: "Error", description: "Missing lead or agent information", variant: "destructive" });
       return;
     }
 
     setUploading(true);
-    const photoId = crypto.randomUUID();
-
     try {
-      // Compress the image
-      console.log('[Offline][Photo] Compressing image:', file.name, 'size:', (file.size / 1024).toFixed(0), 'KB');
-      const { base64, compressed } = await compressImage(file);
-      console.log('[Offline][Photo] Compressed to:', (compressed.size / 1024).toFixed(0), 'KB');
+      const { base64 } = await compressImage(file);
+      const photoId = crypto.randomUUID();
 
-      if (isOnline) {
-        // Upload directly
-        const storagePath = await uploadToStorage(compressed, photoId);
-        
-        // Save to database with photo_type
-        await supabase.from('job_photos').insert({
-          id: photoId,
-          lead_id: leadId,
-          storage_path: storagePath,
-          uploaded_by: agentId,
-          photo_type: photoType,
-          synced_from_offline: false,
-        });
+      const photoRecord = {
+        id: photoId,
+        leadId,
+        agentId,
+        base64Data: base64,
+        fileName: file.name,
+        mimeType: 'image/jpeg',
+        photoType,
+        capturedAt: Date.now(),
+        synced: false
+      };
 
-        toast({
-          title: "Photo uploaded ✓",
-          description: `${photoType === 'before' ? 'Before' : 'After'} photo saved`,
-        });
-      } else {
-        // Queue for offline sync
-        console.log('[Offline][Photo] Offline - queueing photo for sync:', photoId);
-        await offlineDb.savePhoto({
-          id: photoId,
-          leadId,
-          base64Data: base64,
-          fileName: file.name,
-          mimeType: 'image/jpeg',
-          caption: null,
-          photoType,
-          capturedAt: Date.now(),
-        });
+      await offlineDb.savePhoto(photoRecord);
+      await queueOperation('upload_photo', 'job_photos', photoId, photoRecord).catch(() => {});
 
-        // Queue the upload operation
-        await queueOperation(
-          'upload_photo',
-          'job_photos',
-          photoId,
-          {
-            uploaded_by: agentId,
-            photo_type: photoType,
-          }
-        );
-
-        // Update pending count
-        const pending = await offlineDb.getPendingPhotos();
-        setPendingCount(pending.filter(p => p.leadId === leadId).length);
-
-        toast({
-          title: "Photo queued for sync",
-          description: `${photoType === 'before' ? 'Before' : 'After'} photo will upload when online`,
-        });
-      }
-    } catch (error: any) {
-      console.error('[Offline][Photo] Upload error:', error);
-      toast({
-        title: "Upload failed",
-        description: error.message || "Failed to process photo",
-        variant: "destructive",
-      });
+      toast({ title: "Photo saved locally" });
+    } catch (error) {
+      console.error('Failed to upload photo:', error);
+      toast({ title: "Error", description: "Failed to upload photo", variant: "destructive" });
     } finally {
       setUploading(false);
     }
-  }, [leadId, agentId, isOnline, queueOperation, toast]);
+  }, [leadId, agentId, queueOperation, toast]);
 
   const deletePhoto = useCallback(async (photoId: string, storagePath?: string) => {
     setDeleting(true);
-
     try {
-      if (isOnline && storagePath) {
-        // Delete from storage
-        const { error: storageError } = await supabase.storage
-          .from('job-photos')
-          .remove([storagePath]);
-        
-        if (storageError) {
-          console.error('Storage delete error:', storageError);
-        }
-
-        // Delete from database
-        const { error: dbError } = await supabase
-          .from('job_photos')
-          .delete()
-          .eq('id', photoId);
-
-        if (dbError) throw dbError;
-
-        toast({
-          title: "Photo deleted",
-          description: "Photo removed successfully",
-        });
-      } else if (!storagePath) {
-        // It's a queued photo - just remove from IndexedDB
-        await offlineDb.deletePhoto(photoId);
-        
-        // Update pending count
-        const pending = await offlineDb.getPendingPhotos();
-        setPendingCount(pending.filter(p => p.leadId === leadId).length);
-
-        toast({
-          title: "Photo removed",
-          description: "Queued photo removed",
-        });
-      } else {
-        // Offline but needs server deletion - queue it
-        // Mark the photo for deletion in IndexedDB
-        await offlineDb.photos.update(photoId, { markedForDeletion: true });
-        
-        await queueOperation(
-          'delete_photo',
-          'job_photos',
-          photoId,
-          {
-            storage_path: storagePath,
-          }
-        );
-
-        toast({
-          title: "Delete queued",
-          description: "Photo will be deleted when online",
-        });
+      await offlineDb.deletePhoto(photoId);
+      if (isOnline) {
+        await queueOperation('delete_photo', 'job_photos', photoId, { storagePath }).catch(() => {});
       }
-    } catch (error: any) {
-      console.error('Photo delete error:', error);
-      toast({
-        title: "Delete failed",
-        description: error.message || "Failed to delete photo",
-        variant: "destructive",
-      });
+      toast({ title: "Photo deleted" });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to delete photo", variant: "destructive" });
     } finally {
       setDeleting(false);
     }
-  }, [leadId, isOnline, queueOperation, toast]);
+  }, [isOnline, queueOperation, toast]);
 
   return {
     uploading,
     pendingCount,
     uploadPhoto,
     deletePhoto,
-    deleting,
+    deleting
   };
 }
