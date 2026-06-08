@@ -23,6 +23,7 @@ interface RequireRoleProps {
  */
 const RequireRole = ({ allowedRoles, redirectTo, children }: RequireRoleProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { session, loading: authLoading } = useAuth();
   const { roles, loading: roleLoading } = useRole();
