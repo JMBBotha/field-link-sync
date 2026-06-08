@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
 import { format } from "date-fns";
 import CreateJobDialog from "@/components/jobs/CreateJobDialog";
+import RequireRole from "@/components/RequireRole";
 
 const COLUMNS = [
   { key: "scheduled", label: "Scheduled", color: "border-blue-500" },
@@ -44,6 +45,21 @@ const AdminJobsDispatchPage = () => {
   const [detailJob, setDetailJob] = useState<any>(null);
   const [dragJobId, setDragJobId] = useState<string | null>(null);
   const [showAvailableOnly, setShowAvailableOnly] = useState(false);
+
+  // Realtime: refresh dispatch board when jobs change
+  useEffect(() => {
+    const channel = supabase
+      .channel("jobs-dispatch-board")
+      .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["jobs-dispatch"] });
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
+
 
   // Fetch jobs with assignments
   const { data: jobs = [], isLoading } = useQuery({
@@ -440,4 +456,10 @@ const AdminJobsDispatchPage = () => {
   );
 };
 
-export default AdminJobsDispatchPage;
+const AdminJobsDispatchPageGuarded = () => (
+  <RequireRole allowedRoles={["admin"]}>
+    <AdminJobsDispatchPage />
+  </RequireRole>
+);
+
+export default AdminJobsDispatchPageGuarded;
