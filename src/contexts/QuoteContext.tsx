@@ -118,7 +118,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     } finally {
       if (mountedRef.current && seq === fetchSeqRef.current) setLoading(false);
     }
-  }, [quoteId]);
+  }, [quoteId, userId]);
 
   useEffect(() => {
     mountedRef.current = true;
