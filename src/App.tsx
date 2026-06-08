@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { OfflineProvider } from "@/contexts/OfflineContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import RequireRole from "@/components/RequireRole";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -90,6 +91,7 @@ const queryClient = new QueryClient({
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <AuthProvider>
     <TooltipProvider>
       <OfflineProvider>
         <ErrorBoundary>
@@ -205,6 +207,7 @@ const App = () => (
         </ErrorBoundary>
       </OfflineProvider>
     </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

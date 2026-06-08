@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export type AppRole = "admin" | "field_agent" | "dispatcher" | "viewer";
 
@@ -18,35 +18,8 @@ interface UseRoleReturn {
 }
 
 export const useRole = (): UseRoleReturn => {
-  const [userId, setUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    // Register auth listener first so getSession() (which may resolve later)
-    // can't clobber a fresher session with a stale one.
-    let authStateFired = false;
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      authStateFired = true;
-      setUserId(session?.user?.id ?? null);
-    });
-
-    supabase.auth.getSession()
-      .then(({ data: { session } }) => {
-        if (!mounted || authStateFired) return;
-        setUserId(session?.user?.id ?? null);
-      })
-      .catch((err) => {
-        console.error("useRole getSession error:", err);
-        if (mounted && !authStateFired) setUserId(null);
-      });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
+  const { user, loading: authLoading } = useAuth();
+  const userId = user?.id ?? null;
 
   const { data: roles = [], isLoading } = useQuery({
     queryKey: ["user-roles", userId],
@@ -78,6 +51,6 @@ export const useRole = (): UseRoleReturn => {
     canAccessAdmin: isAdmin || isDispatcher,
     canWrite: isAdmin || isFieldAgent || isDispatcher,
     userId,
-    loading: isLoading,
+    loading: authLoading || isLoading,
   };
 };

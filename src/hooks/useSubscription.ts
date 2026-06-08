@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export type SubscriptionStatus = "trial" | "active" | "expired" | "canceled";
 export type SubscriptionPlan = "free" | "pro" | "enterprise";
@@ -20,34 +21,8 @@ export interface SubscriptionInfo {
 }
 
 export const useSubscription = (): SubscriptionInfo => {
-  const [userId, setUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    // Track whether onAuthStateChange has already produced a value so the
-    // (potentially later-resolving) getSession() promise can't clobber it
-    // with a stale session.
-    let authStateFired = false;
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      authStateFired = true;
-      setUserId(session?.user?.id ?? null);
-    });
-
-    supabase.auth
-      .getSession()
-      .then(({ data: { session } }) => {
-        if (!mounted || authStateFired) return;
-        setUserId(session?.user?.id ?? null);
-      })
-      .catch((err) => console.error("useSubscription getSession error:", err));
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
+  const { user, loading: authLoading } = useAuth();
+  const userId = user?.id ?? null;
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["subscription", userId],
@@ -69,11 +44,10 @@ export const useSubscription = (): SubscriptionInfo => {
     queryKey: ["job-count", userId],
     queryFn: async () => {
       if (!userId) return 0;
-      // Count jobs assigned to user this month
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
-      
+
       const { count, error } = await supabase
         .from("leads")
         .select("*", { count: "exact", head: true })
@@ -114,7 +88,7 @@ export const useSubscription = (): SubscriptionInfo => {
       isProActive,
       isExpired,
       canCreateJobs,
-      loading: isLoading || userId === null,
+      loading: authLoading || isLoading,
     };
-  }, [profile, isLoading, userId, jobCount]);
+  }, [profile, isLoading, authLoading, jobCount]);
 };
