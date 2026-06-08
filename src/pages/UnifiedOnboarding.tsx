@@ -303,7 +303,31 @@ const UnifiedOnboarding = () => {
   const [saving, setSaving] = useState(false);
   const [userRole, setUserRole] = useState<"admin" | "field_agent" | null>(null);
   const [step, setStep] = useState(0);
-...
+
+  // Admin form state
+  const [adminForm, setAdminForm] = useState<AdminForm>({
+    company_name: "0800-BE-COOL AC Super Service",
+    vat_number: "",
+    physical_address: "",
+    postal_address: "",
+    default_hourly_rate: 450,
+    default_deposit_percentage: 50,
+    default_payment_terms_days: 30,
+    banking_details: { bank_name: "FNB", account_number: "", branch_code: "", account_type: "Cheque" },
+  });
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+
+  // Agent form state
+  const [homeBase, setHomeBase] = useState<{ lat: number; lng: number } | null>(null);
+  const [gettingLocation, setGettingLocation] = useState(false);
+  const [whatsappEnabled, setWhatsappEnabled] = useState(false);
+
+  const updateAdmin = (key: keyof AdminForm, value: any) => setAdminForm((p) => ({ ...p, [key]: value }));
+  const updateBanking = (key: string, value: string) =>
+    setAdminForm((p) => ({ ...p, banking_details: { ...p.banking_details, [key]: value } }));
+  const toggleService = (s: string) =>
+    setSelectedServices((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+
   // Check auth & role on mount
   useEffect(() => {
     if (authLoading) return;
