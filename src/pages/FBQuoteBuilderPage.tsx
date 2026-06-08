@@ -64,6 +64,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
   collapsed: boolean;
   onToggle: () => void;
 }) => {
+  const { user } = useAuth();
   const [quoteName, setQuoteName] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -119,8 +120,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
     if (!quoteName.trim()) { toast({ title: "Enter a quote name first", variant: "destructive" }); return; }
     setSaving(true);
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
+      const userId = user?.id;
       if (!userId) { toast({ title: "You must be logged in", variant: "destructive" }); setSaving(false); return; }
       const zonesData = baskets.map((b) => ({
         id: b.id, name: b.name,
@@ -257,7 +257,6 @@ export type QuoteBuilderMode = "admin" | "agent" | "client";
 
 const FBQuoteBuilderPage = ({ mode = "client" }: { mode?: QuoteBuilderMode }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const isMobile = useIsMobile();
   const canvasRef = useRef<HTMLDivElement>(null);
   const { usageMap, trackUsage } = useProductUsageStats();
