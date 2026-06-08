@@ -205,7 +205,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
         console.error("QuoteContext refresh quote_number error:", refErr);
         return;
       }
-      if (refreshed?.quote_number) {
+      if (refreshed?.quote_number && mountedRef.current) {
         setMeta((prev) => prev ? { ...prev, quote_number: refreshed.quote_number } : prev);
       }
     }
