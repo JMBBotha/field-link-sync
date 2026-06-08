@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { App as CapacitorApp, type AppState } from '@capacitor/app';
+import type { PluginListenerHandle } from '@capacitor/core';
 
 export interface AuthContextValue {
   session: Session | null;
