@@ -35,6 +35,8 @@ const isUUID = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-
 
 export const CompanyProvider = ({ children }: { children: ReactNode }) => {
   const { companyId: paramId } = useParams<{ companyId: string }>();
+  const { user, loading: authLoading } = useAuth();
+  const userId = user?.id ?? null;
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const mountedRef = useRef(true);
@@ -42,6 +44,14 @@ export const CompanyProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchCompany = useCallback(async () => {
     const seq = ++fetchSeqRef.current;
+
+    if (!userId) {
+      if (mountedRef.current && seq === fetchSeqRef.current) {
+        setCompany(null);
+        setLoading(false);
+      }
+      return;
+    }
 
     if (!paramId) {
       if (mountedRef.current && seq === fetchSeqRef.current) {
