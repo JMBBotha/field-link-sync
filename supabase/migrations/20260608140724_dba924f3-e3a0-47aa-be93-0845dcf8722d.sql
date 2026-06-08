@@ -1,0 +1,1 @@
+DELETE FROM public.quotes WHERE customer_id IS NULL;
