@@ -24,7 +24,19 @@ export function useQuoteBuilderProducts() {
 
       if (error) throw error;
 
-      return (data || []).map((p: any) => ({
+      return ((data || []) as unknown as Array<Record<string, unknown> & {
+        product_category?: string;
+        category?: string;
+        suppliers?: { name?: string; supplier_type?: string } | null;
+        price_per_metre?: number | null;
+        sold_in_length?: boolean | null;
+        unit_length?: number | null;
+        pipe_size?: string | null;
+        is_material_favorite?: boolean | null;
+        pack_qty?: number | null;
+        cost_price?: number | null;
+        default_markup_percent?: number | null;
+      }>).map((p) => ({
         ...p,
         product_category: p.product_category || p.category || "",
         supplier_name: p.suppliers?.name || "",
