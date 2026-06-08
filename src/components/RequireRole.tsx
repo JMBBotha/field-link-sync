@@ -79,9 +79,14 @@ const RequireRole = ({ allowedRoles, redirectTo, children }: RequireRoleProps) =
               {location.pathname}
             </code>
           </div>
-          <Button onClick={() => navigate(fallback, { replace: true })} className="gap-2">
-            Go to Dashboard
-          </Button>
+          <div className="flex gap-3 justify-center">
+            <Button variant="outline" onClick={() => navigate(-1)}>
+              Go Back
+            </Button>
+            <Button onClick={() => navigate(fallback, { replace: true })}>
+              Go to Dashboard
+            </Button>
+          </div>
         </div>
       </div>
     );
