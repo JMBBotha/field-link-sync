@@ -84,11 +84,17 @@ const GhostInput = ({
 /* ────────── Main Component ────────── */
 
 const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { settings: companySettings } = useCompanySettings();
   const allOptions = useProductOptions();
+
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const [loading, setLoading] = useState(false);
   const [savedQuoteId, setSavedQuoteId] = useState<string | null>(quoteId || null);
