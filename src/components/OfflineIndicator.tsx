@@ -9,7 +9,7 @@ interface OfflineIndicatorProps {
   isOnline: boolean;
   syncStatus: SyncStatus;
   onRetrySync: () => Promise<void>;
-  onClearFailed: () => Promise<number>;
+  onClearFailed: () => Promise<void>;
   onDeleteOperation: (id: number) => Promise<void>;
   getPendingOperations: () => Promise<PendingOperation[]>;
   compact?: boolean;
