@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
@@ -121,7 +122,8 @@ const FieldAgent = () => {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
+  const { session, loading: authLoading } = useAuth();
+  const currentUserId = session?.user.id;
   const [userName, setUserName] = useState<string>("");
   const [showMapOnMobile, setShowMapOnMobile] = useState(false);
   const [isAvailableForLeads, setIsAvailableForLeads] = useState(true);
@@ -246,14 +248,12 @@ const FieldAgent = () => {
 
   const checkAuth = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      if (authLoading) return;
 
       if (!session) {
         navigate("/auth");
         return;
       }
-
-      setCurrentUserId(session.user.id);
 
       // Check user role - only field_agent can access this page
       const { data: roles } = await supabase
