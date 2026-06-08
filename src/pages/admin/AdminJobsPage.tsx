@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Search, MapPin, Clock, User, CalendarDays } from "lucide-react";
 import { format } from "date-fns";
 import CreateJobDialog from "@/components/jobs/CreateJobDialog";
+import RequireRole from "@/components/RequireRole";
 
 const PRIORITY_VARIANT: Record<string, "destructive" | "default" | "secondary" | "outline"> = {
   urgent: "destructive",
