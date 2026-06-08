@@ -92,28 +92,29 @@ export function useQuoteBrochures({ quoteId, lineItemModelCodes }: UseQuoteBroch
     setLoading(true);
     try {
       const { data, error: err } = await supabase
-        .from("quote_brochures" as any)
-        .select("*, brochure:product_brochures(*)" as any)
+        .from("quote_brochures" as never)
+        .select("*, brochure:product_brochures(*)")
         .eq("quote_id", quoteId)
         .order("sort_order");
       if (err) throw new Error(err.message);
+      type AttachedRow = { id: string; brochure: BrochureRecord; is_auto_matched: boolean; sort_order: number };
       setAttachedBrochures(
-        ((data || []) as any[]).map((row: any) => ({
+        ((data || []) as unknown as AttachedRow[]).map((row) => ({
           linkId: row.id,
-          brochure: row.brochure as BrochureRecord,
+          brochure: row.brochure,
           isAutoMatched: row.is_auto_matched,
           sortOrder: row.sort_order,
         }))
       );
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
   }, [quoteId]);
 
   useEffect(() => {
-    fetchAttached();
+    fetchAttached().catch((e) => console.error("[useQuoteBrochures] fetchAttached", e));
   }, [fetchAttached]);
 
   // Sync auto-matched brochures when line items change
