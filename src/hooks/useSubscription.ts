@@ -23,13 +23,30 @@ export const useSubscription = (): SubscriptionInfo => {
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUserId(session?.user?.id || null);
-    });
+    let mounted = true;
+    // Track whether onAuthStateChange has already produced a value so the
+    // (potentially later-resolving) getSession() promise can't clobber it
+    // with a stale session.
+    let authStateFired = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserId(session?.user?.id || null);
+      if (!mounted) return;
+      authStateFired = true;
+      setUserId(session?.user?.id ?? null);
     });
-    return () => subscription.unsubscribe();
+
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        if (!mounted || authStateFired) return;
+        setUserId(session?.user?.id ?? null);
+      })
+      .catch((err) => console.error("useSubscription getSession error:", err));
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const { data: profile, isLoading } = useQuery({
