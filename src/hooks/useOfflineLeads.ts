@@ -13,7 +13,7 @@ export interface OfflineLeadsState {
 export function useOfflineLeads(
   userId: string | undefined,
   isOnline: boolean,
-  queueOperation: (type: string, table: string, id: string, data: any) => Promise<void>
+  queueOperation: (type: string, table: string, id: string, data: any) => Promise<any>
 ) {
   const { toast } = useToast();
   const [state, setState] = useState<OfflineLeadsState>({
@@ -22,10 +22,9 @@ export function useOfflineLeads(
     isFromCache: false,
     lastFetchedAt: null,
   });
-  
+
   const subscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  // Fetch leads from Supabase and cache them
   const fetchAndCacheLeads = useCallback(async () => {
     if (!userId) return;
 
@@ -39,31 +38,28 @@ export function useOfflineLeads(
       if (error) throw error;
 
       const leads = data || [];
-      
-      // Cache to IndexedDB
+
       await offlineDb.cacheLeads(leads, userId);
-      
-      // Also cache related customers if available
+
       const customerIds = [...new Set(leads.map(l => l.customer_id).filter(Boolean))];
       if (customerIds.length > 0) {
         const { data: customers } = await supabase
           .from('customers')
           .select('*')
           .in('id', customerIds as string[]);
-        
+
         if (customers) {
           await offlineDb.cacheCustomers(customers);
         }
       }
 
-      // Cache related equipment
       const equipmentIds = [...new Set(leads.map(l => l.equipment_id).filter(Boolean))];
       if (equipmentIds.length > 0) {
         const { data: equipment } = await supabase
           .from('equipment')
           .select('*')
           .in('id', equipmentIds as string[]);
-        
+
         if (equipment) {
           await offlineDb.cacheEquipment(equipment);
         }
@@ -77,25 +73,22 @@ export function useOfflineLeads(
       });
     } catch (error: any) {
       console.error('[OfflineLeads] Fetch error:', error);
-      
-      // Try to load from cache
       await loadFromCache();
     }
   }, [userId]);
 
-  // Load leads from IndexedDB cache
   const loadFromCache = useCallback(async () => {
     try {
       const cachedLeads = await offlineDb.getCachedLeads();
       const lastSync = await offlineDb.getLastSyncTime();
-      
+
       setState({
         leads: cachedLeads,
         loading: false,
         isFromCache: true,
         lastFetchedAt: lastSync,
       });
-      
+
       if (cachedLeads.length > 0) {
         toast({
           title: "Offline Mode",
@@ -108,31 +101,22 @@ export function useOfflineLeads(
     }
   }, [toast]);
 
-  // Update lead locally (optimistic update) and queue sync
   const updateLeadOptimistic = useCallback(async (
     leadId: string,
     updates: Partial<OfflineLead>
   ) => {
-    // Update local state immediately
     setState(prev => ({
       ...prev,
-      leads: prev.leads.map(lead =>
-        lead.id === leadId ? { ...lead, ...updates, cachedAt: Date.now() } : lead
-      ),
+      leads: prev.leads.map(lead => lead.id === leadId ? { ...lead, ...updates, cachedAt: Date.now() } : lead),
     }));
 
-    // Update IndexedDB cache
     await offlineDb.updateLeadLocally(leadId, updates);
-
-    // Queue for sync if offline, or sync immediately if online
     await queueOperation('update_lead', 'leads', leadId, updates);
   }, [queueOperation]);
 
-  // Accept a lead
   const acceptLead = useCallback(async (leadId: string) => {
     if (!userId) return false;
 
-    // Optimistic update for immediate UI feedback
     const updates = {
       assigned_agent_id: userId,
       status: 'accepted',
@@ -140,54 +124,47 @@ export function useOfflineLeads(
     };
     await updateLeadOptimistic(leadId, updates);
 
-    // Call the RPC which handles lead_offers, expires other agents' offers, etc.
     if (isOnline) {
       const { data, error } = await supabase.rpc('accept_lead' as any, {
         p_lead_id: leadId,
         p_agent_id: userId,
       });
+
       if (error) {
         console.error('accept_lead RPC error:', error);
-        // If RPC fails (e.g. already accepted by someone else), refresh
         fetchAndCacheLeads().catch(() => {});
         throw new Error((data as any)?.error || error.message || 'Failed to accept lead');
       }
+
       if (data && !(data as any).success) {
-        // Someone else got it first — refresh
         fetchAndCacheLeads().catch(() => {});
-        throw new Error((data as any).error || 'Lead already taken');
+        throw new Error((data as any)?.error || 'Lead already taken');
       }
     }
     return true;
   }, [userId, updateLeadOptimistic, isOnline, fetchAndCacheLeads]);
 
-  // Start a job
   const startJob = useCallback(async (leadId: string) => {
     const updates = {
       status: 'in_progress',
       started_at: new Date().toISOString(),
     };
-
     await updateLeadOptimistic(leadId, updates);
     return true;
   }, [updateLeadOptimistic]);
 
-  // Complete a job
   const completeJob = useCallback(async (leadId: string) => {
     const updates = {
       status: 'completed',
       completed_at: new Date().toISOString(),
     };
-
     await updateLeadOptimistic(leadId, updates);
     return true;
   }, [updateLeadOptimistic]);
 
-  // Release a lead
   const releaseLead = useCallback(async (leadId: string, reason?: string) => {
     if (!userId) return false;
 
-    // Optimistic update
     const updates = {
       status: 'pending',
       assigned_agent_id: null,
@@ -195,13 +172,13 @@ export function useOfflineLeads(
     };
     await updateLeadOptimistic(leadId, updates as any);
 
-    // Call the RPC which logs the release and alerts admin
     if (isOnline) {
       const { error } = await supabase.rpc('release_lead' as any, {
         p_lead_id: leadId,
         p_agent_id: userId,
         p_reason: reason || 'No reason provided',
       });
+
       if (error) {
         console.error('release_lead RPC error:', error);
       }
@@ -209,40 +186,25 @@ export function useOfflineLeads(
     return true;
   }, [userId, updateLeadOptimistic, isOnline]);
 
-  // Subscribe to real-time updates when online
   const subscribeToLeads = useCallback(() => {
     if (subscriptionRef.current) {
       supabase.removeChannel(subscriptionRef.current);
       subscriptionRef.current = null;
     }
 
-    subscriptionRef.current = supabase
-      .channel('offline-leads-changes')
+    subscriptionRef.current = supabase.channel('offline-leads-changes')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'leads',
-        },
+        { event: '*', schema: 'public', table: 'leads' },
         () => {
-          // Refresh data when changes occur
           if (isOnline) {
-            fetchAndCacheLeads();
+            fetchAndCacheLeads().catch(() => {});
           }
         }
       )
       .subscribe();
-
-    return () => {
-      if (subscriptionRef.current) {
-        supabase.removeChannel(subscriptionRef.current);
-        subscriptionRef.current = null;
-      }
-    };
   }, [isOnline, fetchAndCacheLeads]);
 
-  // Initial load
   useEffect(() => {
     if (!userId) return;
 
@@ -261,7 +223,6 @@ export function useOfflineLeads(
     };
   }, [userId, isOnline, fetchAndCacheLeads, subscribeToLeads, loadFromCache]);
 
-  // Refetch when coming back online
   useEffect(() => {
     if (isOnline && userId && state.isFromCache) {
       fetchAndCacheLeads();
