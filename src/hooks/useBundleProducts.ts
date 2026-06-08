@@ -78,7 +78,13 @@ export function useBundleProducts() {
     const loadBundleProducts = async () => {
       if (allCodes.length === 0) return;
 
-      const { data: byCodeData, error: byCodeError } = await (supabase.from("supplier_products") as any)
+      const fromTable = supabase.from("supplier_products" as never) as unknown as {
+        select: (cols: string) => {
+          eq: (col: string, val: unknown) => any;
+        };
+      };
+
+      const { data: byCodeData, error: byCodeError } = await fromTable
         .select(SUPPLIER_PRODUCT_SELECT)
         .eq("is_active", true)
         .or("archived.is.null,archived.eq.false")
@@ -89,8 +95,8 @@ export function useBundleProducts() {
         console.error("[AutoBundle] failed to load bundle products by code", byCodeError);
       }
 
-      let byTierFlagData: any[] = [];
-      const { data: tierFlagRows, error: tierFlagError } = await (supabase.from("supplier_products") as any)
+      let byTierFlagData: SupplierProductRow[] = [];
+      const { data: tierFlagRows, error: tierFlagError } = await fromTable
         .select(SUPPLIER_PRODUCT_SELECT)
         .eq("is_active", true)
         .eq("tier_bundle", true)
@@ -100,7 +106,7 @@ export function useBundleProducts() {
       if (tierFlagError) {
         console.warn("[AutoBundle] tier_bundle lookup unavailable; falling back to name pattern only", tierFlagError.message || tierFlagError);
       } else {
-        byTierFlagData = tierFlagRows || [];
+        byTierFlagData = (tierFlagRows as SupplierProductRow[] | null) || [];
       }
 
       const namePatternFilter = [
@@ -111,7 +117,7 @@ export function useBundleProducts() {
         "description.ilike.%PIPING KIT%",
       ].join(",");
 
-      const { data: byNameData, error: byNameError } = await (supabase.from("supplier_products") as any)
+      const { data: byNameData, error: byNameError } = await fromTable
         .select(SUPPLIER_PRODUCT_SELECT)
         .eq("is_active", true)
         .or(`archived.is.null,archived.eq.false`)
@@ -124,17 +130,17 @@ export function useBundleProducts() {
 
       if (!active) return;
 
-      const merged = new Map<string, any>();
-      const pushRows = (rows?: any[]) => {
+      const merged = new Map<string, SupplierProductRow>();
+      const pushRows = (rows?: SupplierProductRow[] | null) => {
         (rows || []).forEach((row) => {
           if (!row?.id) return;
           merged.set(row.id, row);
         });
       };
 
-      pushRows(byCodeData || []);
-      pushRows(byTierFlagData || []);
-      pushRows(byNameData || []);
+      pushRows((byCodeData as SupplierProductRow[] | null) || []);
+      pushRows(byTierFlagData);
+      pushRows((byNameData as SupplierProductRow[] | null) || []);
 
       const map: BundleProductMap = {};
       Array.from(merged.values()).forEach((p) => {
@@ -145,9 +151,9 @@ export function useBundleProducts() {
 
       console.log("[AutoBundle] bundle products loaded", {
         requestedCodes: allCodes.length,
-        matchedByCode: (byCodeData || []).length,
-        matchedByTierFlag: (byTierFlagData || []).length,
-        matchedByNamePattern: (byNameData || []).length,
+        matchedByCode: ((byCodeData as SupplierProductRow[] | null) || []).length,
+        matchedByTierFlag: byTierFlagData.length,
+        matchedByNamePattern: ((byNameData as SupplierProductRow[] | null) || []).length,
         loadedProducts: Object.keys(map).length,
         loadedCodes: Object.keys(map),
       });
@@ -155,7 +161,7 @@ export function useBundleProducts() {
       setBundleProducts(map);
     };
 
-    loadBundleProducts();
+    loadBundleProducts().catch((err) => console.error("[AutoBundle] load failed", err));
 
     return () => {
       active = false;
