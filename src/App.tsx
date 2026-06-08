@@ -173,7 +173,7 @@ const App = () => (
                     <Route path="pdf-documents" element={<AdminPDFDocumentsPage />} />
                     <Route path="brochures" element={<AdminBrochuresPage />} />
                     <Route path="overlay-debug" element={<AdminOverlayDebugPage />} />
-                    <Route path="companies" element={<CompanyManagement />} />
+                    <Route path="companies" element={<RequireRole allowedRoles={["admin"]}><CompanyManagement /></RequireRole>} />
                     <Route path="network-agents" element={<AdminNetworkAgentsPage />} />
                   </Route>
 
