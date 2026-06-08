@@ -65,11 +65,10 @@ const FBTimeTracking = () => {
 
   const createMutation = useMutation({
     mutationFn: async (payload: { hours: string; minutes: string; date: string; billable: boolean; notes: string; project_id: string }) => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!user) throw new Error("Not authenticated");
       const durationStr = `${payload.hours} hours ${payload.minutes} minutes`;
       const { error } = await supabase.from("fb_time_entries").insert({
-        company_id: companyId!, user_id: session.user.id, duration: durationStr,
+        company_id: companyId!, user_id: user.id, duration: durationStr,
         date: payload.date, billable: payload.billable, notes: payload.notes || null,
         project_id: payload.project_id || null,
       });
