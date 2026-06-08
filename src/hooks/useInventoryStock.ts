@@ -89,7 +89,7 @@ export function useInventoryStock() {
       } else {
         const { data: newStock, error } = await supabase
           .from("inventory_stock")
-          .insert({ product_id: productId, quantity: newQuantity, stock_mode: "stock_sensitive" as any })
+          .insert({ product_id: productId, quantity: newQuantity, stock_mode: "stock_sensitive" })
           .select("id")
           .single();
         if (error) throw error;
