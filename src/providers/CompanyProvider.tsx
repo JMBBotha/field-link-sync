@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo, ReactNode } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import type { TablesInsert } from "@/integrations/supabase/types";
 
 interface Company {
@@ -34,6 +35,8 @@ const isUUID = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-
 
 export const CompanyProvider = ({ children }: { children: ReactNode }) => {
   const { companyId: paramId } = useParams<{ companyId: string }>();
+  const { user, loading: authLoading } = useAuth();
+  const userId = user?.id ?? null;
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const mountedRef = useRef(true);
@@ -41,6 +44,14 @@ export const CompanyProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchCompany = useCallback(async () => {
     const seq = ++fetchSeqRef.current;
+
+    if (!userId) {
+      if (mountedRef.current && seq === fetchSeqRef.current) {
+        setCompany(null);
+        setLoading(false);
+      }
+      return;
+    }
 
     if (!paramId) {
       if (mountedRef.current && seq === fetchSeqRef.current) {
@@ -96,13 +107,14 @@ export const CompanyProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       if (mountedRef.current && seq === fetchSeqRef.current) setLoading(false);
     }
-  }, [paramId]);
+  }, [paramId, userId]);
 
   useEffect(() => {
     mountedRef.current = true;
-    void fetchCompany();
+    if (authLoading) return;
+    fetchCompany().catch((err) => console.error("CompanyProvider fetch unhandled:", err));
     return () => { mountedRef.current = false; };
-  }, [fetchCompany]);
+  }, [fetchCompany, authLoading, userId]);
 
   const resolvedId = company?.id || (paramId && isUUID(paramId) ? paramId : null);
 

@@ -5,6 +5,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import type { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import type {
@@ -68,6 +69,8 @@ type RowWithId = { id: string };
 /* ────────────────── Provider ────────────────── */
 
 export function QuoteProvider({ quoteId, children }: { quoteId: string; children: React.ReactNode }) {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
   const [meta, setMeta] = useState<QuoteMeta | null>(null);
   const [areas, setAreas] = useState<QuoteArea[]>([]);
   const [items, setItems] = useState<QuoteItem[]>([]);
@@ -115,7 +118,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     } finally {
       if (mountedRef.current && seq === fetchSeqRef.current) setLoading(false);
     }
-  }, [quoteId]);
+  }, [quoteId, userId]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -167,7 +170,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
       .subscribe();
 
     return () => { void supabase.removeChannel(channel); };
-  }, [quoteId]);
+  }, [quoteId, userId]);
 
   /* ── Derived ── */
   const canSave = !!meta?.customer_id;
@@ -175,10 +178,12 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   /* ── Quote meta ── */
   const updateQuote = useCallback(async (patch: Partial<Pick<QuoteMeta, "customer_id" | "customer_name" | "notes" | "status" | "discount_type" | "discount_value" | "terms_text" | "reference_text">>) => {
     let wasNullCustomer = false;
-    setMeta((prev) => {
-      if (prev && !prev.customer_id) wasNullCustomer = true;
-      return prev ? { ...prev, ...patch } : prev;
-    });
+    if (mountedRef.current) {
+      setMeta((prev) => {
+        if (prev && !prev.customer_id) wasNullCustomer = true;
+        return prev ? { ...prev, ...patch } : prev;
+      });
+    }
     const { error } = await supabase
       .from("quotes")
       .update(patch as TablesUpdate<"quotes">)
@@ -200,7 +205,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
         console.error("QuoteContext refresh quote_number error:", refErr);
         return;
       }
-      if (refreshed?.quote_number) {
+      if (refreshed?.quote_number && mountedRef.current) {
         setMeta((prev) => prev ? { ...prev, quote_number: refreshed.quote_number } : prev);
       }
     }

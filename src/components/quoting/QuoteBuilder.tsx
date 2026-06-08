@@ -84,11 +84,17 @@ const GhostInput = ({
 /* ────────── Main Component ────────── */
 
 const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { settings: companySettings } = useCompanySettings();
   const allOptions = useProductOptions();
+
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const [loading, setLoading] = useState(false);
   const [savedQuoteId, setSavedQuoteId] = useState<string | null>(quoteId || null);
@@ -186,23 +192,28 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
   /* ─── Exit guard ─── */
   const handleSaveDraft = useCallback(async () => {
+    if (!user?.id) return;
     if (!canSave) return;
     await saveQuote("draft");
+    if (!mountedRef.current) return;
     clearDraft();
     onBack();
-  }, [canSave, clearDraft, onBack]);
+  }, [canSave, clearDraft, onBack, user?.id]);
 
   const handleSendQuote = useCallback(async () => {
+    if (!user?.id) return;
     if (!canSave) return;
     await saveQuote("sent");
+    if (!mountedRef.current) return;
     clearDraft();
     onBack();
-  }, [canSave, clearDraft, onBack]);
+  }, [canSave, clearDraft, onBack, user?.id]);
 
   const handleDeleteQuote = useCallback(async () => {
     if (savedQuoteId) {
       await supabase.from("quotes").delete().eq("id", savedQuoteId);
     }
+    if (!mountedRef.current) return;
     clearDraft();
     onBack();
   }, [savedQuoteId, clearDraft, onBack]);
@@ -504,6 +515,10 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
   /* ─── Save ─── */
   const saveQuote = async (status: "draft" | "sent" | "accepted") => {
+    if (!user?.id) {
+      toast({ title: "Not authenticated", description: "Please sign in again.", variant: "destructive" });
+      return;
+    }
     if (!selectedCustomerId) {
       toast({ title: "Client Required", description: "Please assign a client before saving this quote.", variant: "destructive" });
       return;
@@ -606,6 +621,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         }
       }
 
+      if (!mountedRef.current) return;
       clearDraft();
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
       toast({
@@ -615,9 +631,11 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       if (status === "sent") onBack();
     } catch (err: any) {
       console.error("Quote save error:", err);
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      if (mountedRef.current) {
+        toast({ title: "Error", description: err.message, variant: "destructive" });
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   };
 

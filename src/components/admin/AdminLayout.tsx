@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -86,19 +86,27 @@ const AdminLayout = () => {
     refetchInterval: 30000,
   });
 
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
   useEffect(() => {
     if (authLoading) return;
+    if (!session || !user) return;
     checkAuth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, session]);
+  }, [authLoading, session, user]);
 
   const checkAuth = async () => {
     try {
-      if (!session) { navigate("/login"); return; }
+      if (!session || !user) { navigate("/login"); return; }
       const { data: roles } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", session.user.id);
+      if (!mountedRef.current) return;
       const userRoles = roles?.map(r => r.role) || [];
       const hasAdminAccess = userRoles.some(r => ["admin", "dispatcher", "viewer"].includes(r));
       if (!hasAdminAccess) {
@@ -106,6 +114,7 @@ const AdminLayout = () => {
         navigate("/field");
         return;
       }
+      if (!mountedRef.current) return;
       setIsAdmin(true);
 
       // If onboarding not completed, redirect to unified onboarding
@@ -114,6 +123,7 @@ const AdminLayout = () => {
         .select("onboarding_completed")
         .eq("id", session.user.id)
         .maybeSingle();
+      if (!mountedRef.current) return;
       if (!profile?.onboarding_completed) {
         navigate("/onboarding");
         return;
@@ -122,7 +132,7 @@ const AdminLayout = () => {
       console.error("Auth check error:", error);
       navigate("/login");
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   };
 
