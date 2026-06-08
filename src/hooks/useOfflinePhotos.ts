@@ -34,8 +34,17 @@ export function useOfflinePhotos(): UseOfflinePhotosResult {
 
   // Load pending count on mount
   useEffect(() => {
-    loadPendingCount();
-  }, [loadPendingCount]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const pending = await offlineDb.getPendingPhotos();
+        if (!cancelled) setPendingCount(pending.length);
+      } catch (error) {
+        console.error('Failed to load pending photo count:', error);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Load photos for a specific lead
   const loadPhotos = useCallback(async (leadId: string) => {
@@ -73,7 +82,7 @@ export function useOfflinePhotos(): UseOfflinePhotosResult {
     caption?: string
   ): Promise<string> => {
     const photoId = crypto.randomUUID();
-    
+
     try {
       // Validate file type
       if (!file.type.startsWith('image/')) {
@@ -106,11 +115,12 @@ export function useOfflinePhotos(): UseOfflinePhotosResult {
       await loadPendingCount();
 
       return photoId;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to save photo:', error);
+      const description = error instanceof Error ? error.message : "Failed to save photo";
       toast({
         title: "Error",
-        description: error.message || "Failed to save photo",
+        description,
         variant: "destructive",
       });
       throw error;
