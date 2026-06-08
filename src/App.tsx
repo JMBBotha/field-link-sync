@@ -207,6 +207,7 @@ const App = () => (
         </ErrorBoundary>
       </OfflineProvider>
     </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
