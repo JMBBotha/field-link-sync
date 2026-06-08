@@ -44,6 +44,7 @@ export function useProductOptions() {
   const [allOptions, setAllOptions] = useState<ProductOption[]>([]);
 
   useEffect(() => {
+    let cancelled = false;
     Promise.all([
       supabase
         .from("service_templates")
@@ -58,6 +59,7 @@ export function useProductOptions() {
         .order("description"),
     ])
       .then(([svcRes, prodRes]) => {
+        if (cancelled) return;
         if (svcRes.error) {
           console.error("[useProductOptions] service_templates error:", svcRes.error);
           return;
@@ -94,6 +96,8 @@ export function useProductOptions() {
       .catch((err) => {
         console.error("[useProductOptions] Failed to load options:", err);
       });
+
+    return () => { cancelled = true; };
   }, []);
 
   return allOptions;
