@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompany } from "@/providers/CompanyProvider";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import CreateInvoicePage from "@/components/invoicing/CreateInvoicePage";
 import { Loader2 } from "lucide-react";
 
@@ -12,13 +11,8 @@ import { Loader2 } from "lucide-react";
 const FBCreateInvoicePage = () => {
   const { companyId } = useCompany();
   const navigate = useNavigate();
-  const [agentId, setAgentId] = useState<string | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setAgentId(data?.session?.user?.id || "00000000-0000-0000-0000-000000000001");
-    });
-  }, []);
+  const { user, loading: authLoading } = useAuth();
+  const agentId = authLoading ? null : (user?.id || "00000000-0000-0000-0000-000000000001");
 
   if (!agentId) {
     return (

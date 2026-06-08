@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -296,44 +297,20 @@ const AgentCompleteStep = () => (
 const UnifiedOnboarding = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { session, loading: authLoading } = useAuth();
+  const userId = session?.user.id ?? null;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<"admin" | "field_agent" | null>(null);
   const [step, setStep] = useState(0);
-
-  // Admin form state
-  const [adminForm, setAdminForm] = useState<AdminForm>({
-    company_name: "0800-BE-COOL AC Super Service",
-    vat_number: "",
-    physical_address: "",
-    postal_address: "",
-    default_hourly_rate: 450,
-    default_deposit_percentage: 50,
-    default_payment_terms_days: 30,
-    banking_details: { bank_name: "FNB", account_number: "", branch_code: "", account_type: "Cheque" },
-  });
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
-
-  // Agent form state
-  const [homeBase, setHomeBase] = useState<{ lat: number; lng: number } | null>(null);
-  const [gettingLocation, setGettingLocation] = useState(false);
-  const [whatsappEnabled, setWhatsappEnabled] = useState(false);
-
-  const updateAdmin = (key: keyof AdminForm, value: any) => setAdminForm((p) => ({ ...p, [key]: value }));
-  const updateBanking = (key: string, value: string) =>
-    setAdminForm((p) => ({ ...p, banking_details: { ...p.banking_details, [key]: value } }));
-  const toggleService = (s: string) =>
-    setSelectedServices((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
-
+...
   // Check auth & role on mount
   useEffect(() => {
-    const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { navigate("/login"); return; }
+    if (authLoading) return;
+    if (!session) { navigate("/login"); return; }
 
+    const init = async () => {
       const uid = session.user.id;
-      setUserId(uid);
 
       // Check if already completed
       const { data: profile } = await supabase
@@ -364,7 +341,7 @@ const UnifiedOnboarding = () => {
       setLoading(false);
     };
     init();
-  }, [navigate]);
+  }, [session, authLoading, navigate]);
 
   const handleGetLocation = useCallback(() => {
     if (!navigator.geolocation) {

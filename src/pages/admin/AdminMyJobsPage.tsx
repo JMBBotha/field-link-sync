@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,16 +56,17 @@ type MyJobItem = {
 const AdminMyJobsPage = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [filter, setFilter] = useState<"active" | "completed">("active");
 
   const { data: myAssignments = [], isLoading } = useQuery<MyJobItem[]>({
-    queryKey: ["my-jobs"],
+    queryKey: ["my-jobs", user?.id],
+    enabled: !!user,
     queryFn: async () => {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session) return [];
+      if (!user) return [];
 
       const { data, error } = await supabase.rpc("get_my_assigned_jobs", {
-        p_profile_id: session.session.user.id,
+        p_profile_id: user.id,
       });
 
       if (error) throw error;

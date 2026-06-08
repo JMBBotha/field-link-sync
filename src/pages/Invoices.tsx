@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import Layout from "@/components/Layout";
 import InvoiceListPage from "@/components/invoicing/InvoiceListPage";
 import CreateInvoicePage from "@/components/invoicing/CreateInvoicePage";
@@ -12,8 +13,9 @@ import logo from "@/assets/logo.png";
 type InvoiceView = "list" | "create" | "detail";
 
 const Invoices = () => {
+  const { session, loading: authLoading } = useAuth();
+  const currentUserId = session?.user.id ?? "";
   const [loading, setLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<string>("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [view, setView] = useState<InvoiceView>("list");
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
@@ -24,8 +26,21 @@ const Invoices = () => {
   const prefillLead = (location.state as any)?.prefillLead || null;
 
   useEffect(() => {
-    checkAuth();
-  }, []);
+    if (authLoading) return;
+    if (!session) {
+      navigate("/auth");
+      return;
+    }
+    (async () => {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", session.user.id);
+
+      setIsAdmin(roles?.some(r => r.role === "admin") || false);
+      setLoading(false);
+    })();
+  }, [session, authLoading, navigate]);
 
   // If navigated with prefill data, go straight to create view
   useEffect(() => {
@@ -33,23 +48,6 @@ const Invoices = () => {
       setView("create");
     }
   }, [prefillLead, loading]);
-
-  const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      navigate("/auth");
-      return;
-    }
-    setCurrentUserId(session.user.id);
-
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", session.user.id);
-
-    setIsAdmin(roles?.some(r => r.role === "admin") || false);
-    setLoading(false);
-  };
 
   if (loading) {
     return (

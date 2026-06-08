@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { MapPin, Users, Navigation, Loader2 } from "lucide-react";
 import logo from "@/assets/logo.png";
@@ -8,33 +9,33 @@ import logo from "@/assets/logo.png";
 const Index = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { session, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    checkUser();
-  }, []);
+    if (authLoading) return;
 
-  const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (session) {
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", session.user.id);
+    const checkUser = async () => {
+      if (session) {
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", session.user.id);
 
-      const hasAdminRole = roles?.some(r => r.role === "admin");
-      
-      if (hasAdminRole) {
-        navigate("/admin");
-      } else {
-        navigate("/field");
+        const hasAdminRole = roles?.some(r => r.role === "admin");
+
+        if (hasAdminRole) {
+          navigate("/admin");
+        } else {
+          navigate("/field");
+        }
       }
-    }
-    
-    setLoading(false);
-  };
+      setLoading(false);
+    };
 
-  if (loading) {
+    checkUser();
+  }, [session, authLoading, navigate]);
+
+  if (loading || authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)]">
         <Loader2 className="h-8 w-8 animate-spin text-white" />
