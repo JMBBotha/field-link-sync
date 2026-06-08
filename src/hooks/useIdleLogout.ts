@@ -13,6 +13,7 @@ export const useIdleLogout = () => {
   const logoutTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const countdownRef = useRef<ReturnType<typeof setInterval>>();
   const showWarningRef = useRef(false);
+  const mountedRef = useRef(true);
 
   const resetTimers = useCallback(() => {
     showWarningRef.current = false;
@@ -22,6 +23,7 @@ export const useIdleLogout = () => {
     clearInterval(countdownRef.current);
 
     warningTimerRef.current = setTimeout(() => {
+      if (!mountedRef.current) return;
       showWarningRef.current = true;
       setShowWarning(true);
       setSecondsLeft(60);
@@ -36,9 +38,15 @@ export const useIdleLogout = () => {
       }, 1000);
     }, IDLE_TIMEOUT - WARNING_BEFORE);
 
-    logoutTimerRef.current = setTimeout(async () => {
-      await supabase.auth.signOut();
-      navigate("/auth");
+    logoutTimerRef.current = setTimeout(() => {
+      void (async () => {
+        try {
+          await supabase.auth.signOut();
+        } catch (err) {
+          console.error("useIdleLogout signOut error:", err);
+        }
+        if (mountedRef.current) navigate("/auth");
+      })();
     }, IDLE_TIMEOUT);
   }, [navigate]);
 
@@ -47,6 +55,7 @@ export const useIdleLogout = () => {
   }, [resetTimers]);
 
   useEffect(() => {
+    mountedRef.current = true;
     const events = ["mousedown", "keydown", "scroll", "touchstart", "mousemove"];
 
     const handleActivity = () => {
@@ -57,6 +66,7 @@ export const useIdleLogout = () => {
     resetTimers();
 
     return () => {
+      mountedRef.current = false;
       events.forEach(e => window.removeEventListener(e, handleActivity));
       clearTimeout(warningTimerRef.current);
       clearTimeout(logoutTimerRef.current);

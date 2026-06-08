@@ -21,19 +21,31 @@ export const useRole = (): UseRoleReturn => {
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession()
-      .then(({ data: { session } }) => {
-        setUserId(session?.user?.id || null);
-      })
-      .catch(() => {
-        setUserId(null);
-      });
+    let mounted = true;
+    // Register auth listener first so getSession() (which may resolve later)
+    // can't clobber a fresher session with a stale one.
+    let authStateFired = false;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserId(session?.user?.id || null);
+      if (!mounted) return;
+      authStateFired = true;
+      setUserId(session?.user?.id ?? null);
     });
 
-    return () => subscription.unsubscribe();
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!mounted || authStateFired) return;
+        setUserId(session?.user?.id ?? null);
+      })
+      .catch((err) => {
+        console.error("useRole getSession error:", err);
+        if (mounted && !authStateFired) setUserId(null);
+      });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const { data: roles = [], isLoading } = useQuery({
