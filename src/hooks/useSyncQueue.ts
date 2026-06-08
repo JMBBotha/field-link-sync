@@ -581,8 +581,6 @@ export function useSyncQueue(isOnline: boolean) {
         description: `${count} failed operation${count > 1 ? 's' : ''} removed`,
       });
     }
-    
-    return count;
   }, [loadPendingCount, toast]);
 
   // Delete a single operation

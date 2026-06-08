@@ -166,7 +166,7 @@ const LeadDetailSheet = ({
   const [showInlineInvoice, setShowInlineInvoice] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { isOnline, queueOperation: contextQueueOp } = useOffline();
+  const { isOnline, queueOperation: contextQueueOp } = useOfflineContext();
   const [timeRefreshKey, setTimeRefreshKey] = useState(0);
   
   // Use provided queueOperation or fall back to context
