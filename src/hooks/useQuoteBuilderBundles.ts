@@ -31,8 +31,37 @@ export function useQuoteBuilderBundles() {
 
       if (iErr) throw iErr;
 
-      const itemsByBundle: Record<string, any[]> = {};
-      (itemsData || []).forEach((item: any) => {
+      interface BundleItemRow {
+        id: string;
+        bundle_id: string;
+        supplier_product_id: string;
+        quantity: number;
+        length_metres: number | null;
+        is_length_item: boolean | null;
+        is_optional: boolean | null;
+        sort_order: number | null;
+        supplier_products: {
+          id: string;
+          product_code: string | null;
+          short_name: string | null;
+          brand: string | null;
+          product_category: string | null;
+          category: string | null;
+          cost_excl_vat: number | null;
+          cost_incl_vat: number | null;
+          selling_price: number | null;
+          description: string | null;
+          is_pinned: boolean | null;
+          pin_order: number | null;
+          price_per_metre: number | null;
+          sold_in_length: boolean | null;
+          unit_length: number | null;
+          suppliers: { name: string | null } | null;
+        } | null;
+      }
+
+      const itemsByBundle: Record<string, unknown[]> = {};
+      ((itemsData as unknown as BundleItemRow[]) || []).forEach((item) => {
         if (!itemsByBundle[item.bundle_id]) itemsByBundle[item.bundle_id] = [];
         const sp = item.supplier_products;
         itemsByBundle[item.bundle_id].push({
