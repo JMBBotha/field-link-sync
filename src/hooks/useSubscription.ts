@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 export type SubscriptionStatus = "trial" | "active" | "expired" | "canceled";
 export type SubscriptionPlan = "free" | "pro" | "enterprise";
