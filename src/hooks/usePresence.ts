@@ -27,30 +27,40 @@ export const usePresence = (channelName = "admin-presence") => {
           const state = channel.presenceState<PresenceState>();
           const ids = new Set<string>();
           Object.values(state).forEach((presences) => {
-            presences.forEach((p: any) => {
+            presences.forEach((p) => {
               if (p.user_id) ids.add(p.user_id);
             });
           });
           if (!cancelled) setOnlineUsers(ids);
         })
-        .subscribe(async (status) => {
+        .subscribe((status) => {
           if (status === "SUBSCRIBED") {
-            await channel.track({
-              user_id: session.user.id,
-              online_at: new Date().toISOString(),
-            });
+            if (cancelled) return;
+            channel
+              .track({
+                user_id: session.user.id,
+                online_at: new Date().toISOString(),
+              })
+              .catch((err) => console.error("usePresence track error:", err));
           }
         });
 
+      // If unmount happened while awaiting getSession, tear the channel down now
+      // — channelRef would otherwise leak past cleanup.
+      if (cancelled) {
+        void supabase.removeChannel(channel);
+        return;
+      }
       channelRef.current = channel;
     };
 
-    init();
+    init().catch((err) => console.error("usePresence init error:", err));
 
     return () => {
       cancelled = true;
       if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
+        void supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
       }
     };
   }, [channelName]);
