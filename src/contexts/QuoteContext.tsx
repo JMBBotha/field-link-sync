@@ -170,7 +170,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
       .subscribe();
 
     return () => { void supabase.removeChannel(channel); };
-  }, [quoteId]);
+  }, [quoteId, userId]);
 
   /* ── Derived ── */
   const canSave = !!meta?.customer_id;
