@@ -100,10 +100,12 @@ export const useJobTimer = (startedAt: string | null | undefined, leadId?: strin
   // Restore timer from IndexedDB on mount
   useEffect(() => {
     if (startedAt || !leadId) return;
+    let cancelled = false;
 
     const restoreTimer = async () => {
       try {
         const saved = await offlineDb.getTimerLogForLead(leadId);
+        if (cancelled) return;
         if (saved && !saved.synced) {
           const diffMs = saved.totalElapsedMs;
           if (diffMs > 0) {
@@ -120,7 +122,8 @@ export const useJobTimer = (startedAt: string | null | undefined, leadId?: strin
       }
     };
 
-    restoreTimer();
+    void restoreTimer();
+    return () => { cancelled = true; };
   }, [leadId, startedAt]);
 
   useEffect(() => {
