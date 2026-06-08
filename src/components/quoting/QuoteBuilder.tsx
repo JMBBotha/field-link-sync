@@ -192,23 +192,28 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
   /* ─── Exit guard ─── */
   const handleSaveDraft = useCallback(async () => {
+    if (!user?.id) return;
     if (!canSave) return;
     await saveQuote("draft");
+    if (!mountedRef.current) return;
     clearDraft();
     onBack();
-  }, [canSave, clearDraft, onBack]);
+  }, [canSave, clearDraft, onBack, user?.id]);
 
   const handleSendQuote = useCallback(async () => {
+    if (!user?.id) return;
     if (!canSave) return;
     await saveQuote("sent");
+    if (!mountedRef.current) return;
     clearDraft();
     onBack();
-  }, [canSave, clearDraft, onBack]);
+  }, [canSave, clearDraft, onBack, user?.id]);
 
   const handleDeleteQuote = useCallback(async () => {
     if (savedQuoteId) {
       await supabase.from("quotes").delete().eq("id", savedQuoteId);
     }
+    if (!mountedRef.current) return;
     clearDraft();
     onBack();
   }, [savedQuoteId, clearDraft, onBack]);
