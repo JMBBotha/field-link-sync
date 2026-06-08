@@ -45,6 +45,21 @@ const AdminJobsDispatchPage = () => {
   const [dragJobId, setDragJobId] = useState<string | null>(null);
   const [showAvailableOnly, setShowAvailableOnly] = useState(false);
 
+  // Realtime: refresh dispatch board when jobs change
+  useEffect(() => {
+    const channel = supabase
+      .channel("jobs-dispatch-board")
+      .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["jobs-dispatch"] });
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
+
+
   // Fetch jobs with assignments
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ["jobs-dispatch", companyId],
