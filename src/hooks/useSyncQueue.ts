@@ -66,7 +66,7 @@ export function useSyncQueue(isOnline: boolean) {
     operationType: PendingOperation['operationType'],
     tableName: string,
     recordId: string,
-    data: any
+    data: Record<string, unknown>
   ) => {
     try {
       console.log('[Offline][Queue] Adding operation:', { operationType, tableName, recordId, online: isOnline });
