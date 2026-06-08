@@ -75,6 +75,9 @@ const RequireRole = ({ allowedRoles, redirectTo, children }: RequireRoleProps) =
             <p className="text-sm text-muted-foreground mt-2">
               You don't have permission to view this page. Contact your administrator if you believe this is an error.
             </p>
+            <code className="mt-3 inline-block text-xs bg-muted px-2 py-1 rounded text-muted-foreground">
+              {location.pathname}
+            </code>
           </div>
           <Button onClick={() => navigate(fallback, { replace: true })} className="gap-2">
             Go to Dashboard
