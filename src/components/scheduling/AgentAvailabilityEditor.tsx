@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -31,16 +32,9 @@ interface Props {
 const AgentAvailabilityEditor = ({ agentId }: Props) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [schedule, setSchedule] = useState<DaySchedule[]>(DEFAULT_SCHEDULE);
-  const [userId, setUserId] = useState<string | null>(agentId || null);
-
-  useEffect(() => {
-    if (!agentId) {
-      supabase.auth.getSession().then(({ data }) => {
-        if (data.session) setUserId(data.session.user.id);
-      });
-    }
-  }, [agentId]);
+  const userId = agentId ?? user?.id ?? null;
 
   const { isLoading } = useQuery({
     queryKey: ["agent-availability", userId],

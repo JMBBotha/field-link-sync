@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +27,7 @@ interface PaymentRecorderProps {
 const PaymentRecorder = ({ invoiceId, invoiceTotal }: PaymentRecorderProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("eft");
   const [reference, setReference] = useState("");
@@ -51,13 +53,12 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal }: PaymentRecorderProps) => {
     if (!amount || Number(amount) <= 0) return;
     setAdding(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const { error } = await supabase.from("payments").insert({
         invoice_id: invoiceId,
         amount: Number(amount),
         method,
         reference: reference || null,
-        created_by: session?.user.id,
+        created_by: user?.id,
       });
       if (error) throw error;
 
