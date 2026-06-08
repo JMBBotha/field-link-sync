@@ -1,9 +1,4 @@
-import {
-  createContext,
-  useContext,
-  ReactNode,
-  useEffect
-} from 'react';
+import { createContext, useContext, ReactNode, useEffect, useRef } from 'react';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useSyncQueue, SyncStatus } from '@/hooks/useSyncQueue';
 import { useToast } from '@/hooks/use-toast';
@@ -14,15 +9,15 @@ interface OfflineContextValue {
   isOnline: boolean;
   wasOffline: boolean;
   syncStatus: SyncStatus;
-  queueOperation: (type: string, table: string, id: string, data: any) => Promise<any>;
+  queueOperation: (type: string, table: string, id: string, data: Record<string, unknown>) => Promise<void>;
   syncPendingOperations: () => Promise<void>;
   retrySyncFailedOperations: () => Promise<void>;
-  clearFailedOperations: () => Promise<number>;
+  clearFailedOperations: () => Promise<void>;
   deleteOperation: (id: number) => Promise<void>;
   getPendingOperationsList: () => Promise<PendingOperation[]>;
   acknowledgeReconnection: () => void;
   activeConflict: ConflictInfo | null;
-  resolveConflict: (operationId: number, choice: "keep_local" | "use_server") => void;
+  resolveConflict: (operationId: number, choice: 'keep_local' | 'use_server') => void;
 }
 
 const OfflineContext = createContext<OfflineContextValue | null>(null);
@@ -31,9 +26,13 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const onlineStatus = useOnlineStatus();
   const syncQueue = useSyncQueue(onlineStatus.isOnline);
+  const mountedRef = useRef(false);
 
-  // Show toast when going offline
   useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
     if (!onlineStatus.isOnline) {
       toast({
         title: "You're Offline",
@@ -43,45 +42,40 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     }
   }, [onlineStatus.isOnline, toast]);
 
-  // Show toast when coming back online
   useEffect(() => {
     if (onlineStatus.wasOffline && onlineStatus.isOnline) {
-      onlineStatus.acknowledgeReconnection();
       toast({
-        title: "Back Online! 🌐",
-        description: syncQueue.syncStatus.pendingCount > 0
-          ? `Syncing ${syncQueue.syncStatus.pendingCount} pending change${syncQueue.syncStatus.pendingCount > 1 ? 's' : ''}...`
-          : "All changes synced",
+        title: "Back Online",
+        description: "Syncing your offline changes...",
+        duration: 3000,
       });
     }
-  }, [onlineStatus.wasOffline, onlineStatus.isOnline, syncQueue.syncStatus.pendingCount, toast]);
-
-  const value: OfflineContextValue = {
-    isOnline: onlineStatus.isOnline,
-    wasOffline: onlineStatus.wasOffline,
-    syncStatus: syncQueue.syncStatus,
-    queueOperation: syncQueue.queueOperation,
-    syncPendingOperations: syncQueue.syncPendingOperations,
-    retrySyncFailedOperations: syncQueue.retrySyncFailedOperations,
-    clearFailedOperations: syncQueue.clearFailedOperations,
-    deleteOperation: syncQueue.deleteOperation,
-    getPendingOperationsList: syncQueue.getPendingOperationsList,
-    acknowledgeReconnection: onlineStatus.acknowledgeReconnection,
-    activeConflict: syncQueue.activeConflict,
-    resolveConflict: syncQueue.resolveConflict,
-  };
+  }, [onlineStatus.wasOffline, onlineStatus.isOnline, toast]);
 
   return (
-    <OfflineContext.Provider value={value}>
+    <OfflineContext.Provider
+      value={{
+        isOnline: onlineStatus.isOnline,
+        wasOffline: onlineStatus.wasOffline,
+        syncStatus: syncQueue.syncStatus,
+        queueOperation: syncQueue.queueOperation,
+        syncPendingOperations: syncQueue.syncPendingOperations,
+        retrySyncFailedOperations: syncQueue.retrySyncFailedOperations,
+        clearFailedOperations: syncQueue.clearFailedOperations,
+        deleteOperation: syncQueue.deleteOperation,
+        getPendingOperationsList: syncQueue.getPendingOperationsList,
+        acknowledgeReconnection: onlineStatus.acknowledgeReconnection,
+        activeConflict: syncQueue.activeConflict,
+        resolveConflict: syncQueue.resolveConflict,
+      }}
+    >
       {children}
     </OfflineContext.Provider>
   );
 }
 
-export function useOffline() {
+export function useOfflineContext() {
   const context = useContext(OfflineContext);
-  if (!context) {
-    throw new Error('useOffline must be used within an OfflineProvider');
-  }
+  if (!context) throw new Error('useOfflineContext must be used within an OfflineProvider');
   return context;
 }

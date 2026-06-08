@@ -21,7 +21,7 @@ import AvailabilityIndicator from "@/components/AvailabilityIndicator";
 import { formatElapsedTime } from "@/hooks/useJobTimer";
 import { useAvailability } from "@/hooks/useAvailability";
 import { calculateDistanceKm, formatDistance } from "@/lib/geolocation";
-import { useOffline } from "@/contexts/OfflineContext";
+import { useOfflineContext } from "@/contexts/OfflineContext";
 import { useOfflineLeads } from "@/hooks/useOfflineLeads";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { notifyJobAssigned, notifyTechEnRoute, notifyTechArrived, notifyJobCompleted, sendNotificationOfflineAware } from "@/lib/notificationService";
@@ -148,7 +148,7 @@ const FieldAgent = () => {
   const isMobile = useIsMobile();
 
   // Offline support
-  const { isOnline, syncStatus, queueOperation, retrySyncFailedOperations, clearFailedOperations, deleteOperation, getPendingOperationsList, activeConflict, resolveConflict } = useOffline();
+  const { isOnline, syncStatus, queueOperation, retrySyncFailedOperations, clearFailedOperations, deleteOperation, getPendingOperationsList, activeConflict, resolveConflict } = useOfflineContext();
   const offlineLeads = useOfflineLeads(currentUserId, isOnline, queueOperation);
 
   // Availability tracking

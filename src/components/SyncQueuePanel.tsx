@@ -41,7 +41,7 @@ import { formatDistanceToNow } from "date-fns";
 interface SyncQueuePanelProps {
   syncStatus: SyncStatus;
   onSyncNow: () => Promise<void>;
-  onClearFailed: () => Promise<number>;
+  onClearFailed: () => Promise<void>;
   onDeleteOperation: (id: number) => Promise<void>;
   getPendingOperations: () => Promise<PendingOperation[]>;
   trigger: React.ReactNode;

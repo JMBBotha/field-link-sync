@@ -5,7 +5,7 @@ import BookingBadge from "@/components/BookingBadge";
 import CustomerJobHistory from "@/components/CustomerJobHistory";
 import CreateInvoiceDialog from "@/components/invoicing/CreateInvoiceDialog";
 import { useJobPhotos, PhotoType } from "@/hooks/useJobPhotos";
-import { useOffline } from "@/contexts/OfflineContext";
+import { useOfflineContext } from "@/contexts/OfflineContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -166,7 +166,7 @@ const LeadDetailSheet = ({
   const [showInlineInvoice, setShowInlineInvoice] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { isOnline, queueOperation: contextQueueOp } = useOffline();
+  const { isOnline, queueOperation: contextQueueOp } = useOfflineContext();
   const [timeRefreshKey, setTimeRefreshKey] = useState(0);
   
   // Use provided queueOperation or fall back to context
