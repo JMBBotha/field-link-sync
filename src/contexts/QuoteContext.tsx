@@ -69,6 +69,8 @@ type RowWithId = { id: string };
 /* ────────────────── Provider ────────────────── */
 
 export function QuoteProvider({ quoteId, children }: { quoteId: string; children: React.ReactNode }) {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
   const [meta, setMeta] = useState<QuoteMeta | null>(null);
   const [areas, setAreas] = useState<QuoteArea[]>([]);
   const [items, setItems] = useState<QuoteItem[]>([]);
