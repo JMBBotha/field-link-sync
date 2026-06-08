@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,7 @@ const AdminNetworkAgentsPage = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { companyId } = useUserCompanyId();
+  const { user } = useAuth();
   const [affiliateDialogAgent, setAffiliateDialogAgent] = useState<any>(null);
   const [affiliationType, setAffiliationType] = useState("technical");
 
@@ -68,14 +70,13 @@ const AdminNetworkAgentsPage = () => {
   // Create affiliation
   const affiliateMutation = useMutation({
     mutationFn: async ({ agentId, type }: { agentId: string; type: string }) => {
-      const { data: session } = await supabase.auth.getSession();
       const { error } = await supabase.from("agent_affiliations").insert({
         profile_id: agentId,
         company_id: companyId!,
         affiliation_type: type,
         status: "active",
         approved_at: new Date().toISOString(),
-        approved_by: session.session?.user.id || null,
+        approved_by: user?.id || null,
       });
       if (error) throw error;
     },

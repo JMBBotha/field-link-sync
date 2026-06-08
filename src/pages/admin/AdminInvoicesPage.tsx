@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import InvoiceListPage from "@/components/invoicing/InvoiceListPage";
 import CreateInvoicePage from "@/components/invoicing/CreateInvoicePage";
 import InvoiceDetailPage from "@/components/invoicing/InvoiceDetailPage";
@@ -8,7 +9,8 @@ import InvoiceDetailPage from "@/components/invoicing/InvoiceDetailPage";
 type InvoiceView = "list" | "create" | "detail";
 
 const AdminInvoicesPage = () => {
-  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const { session, loading: authLoading } = useAuth();
+  const currentUserId = session?.user.id ?? "";
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<InvoiceView>("list");
@@ -17,10 +19,9 @@ const AdminInvoicesPage = () => {
   const prefillLead = (location.state as any)?.prefillLead || null;
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!session) return;
     (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      setCurrentUserId(session.user.id);
       const { data: roles } = await supabase
         .from("user_roles")
         .select("role")
@@ -28,7 +29,7 @@ const AdminInvoicesPage = () => {
       setIsAdmin(roles?.some(r => r.role === "admin") || false);
       setLoading(false);
     })();
-  }, []);
+  }, [session, authLoading]);
 
   useEffect(() => {
     if (prefillLead && !loading) setView("create");

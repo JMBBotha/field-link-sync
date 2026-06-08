@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -296,9 +297,10 @@ const AgentCompleteStep = () => (
 const UnifiedOnboarding = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { session, loading: authLoading } = useAuth();
+  const userId = session?.user.id ?? null;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<"admin" | "field_agent" | null>(null);
   const [step, setStep] = useState(0);
 
@@ -328,12 +330,11 @@ const UnifiedOnboarding = () => {
 
   // Check auth & role on mount
   useEffect(() => {
-    const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { navigate("/login"); return; }
+    if (authLoading) return;
+    if (!session) { navigate("/login"); return; }
 
+    const init = async () => {
       const uid = session.user.id;
-      setUserId(uid);
 
       // Check if already completed
       const { data: profile } = await supabase
@@ -364,7 +365,7 @@ const UnifiedOnboarding = () => {
       setLoading(false);
     };
     init();
-  }, [navigate]);
+  }, [session, authLoading, navigate]);
 
   const handleGetLocation = useCallback(() => {
     if (!navigator.geolocation) {

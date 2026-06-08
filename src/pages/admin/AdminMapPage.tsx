@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Map, Flame } from "lucide-react";
 import MapView, { MapViewHandle } from "@/components/MapView";
@@ -7,7 +7,7 @@ import CompletedLeadsPanel from "@/components/CompletedLeadsPanel";
 import LeadDetailSheet from "@/components/LeadDetailSheet";
 import LeadHeatmap from "@/components/map/LeadHeatmap";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Lead {
   id: string;
@@ -39,15 +39,10 @@ const AdminMapPage = () => {
   const [showCompletedFilter, setShowCompletedFilter] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | undefined>();
+  const { user } = useAuth();
+  const currentUserId = user?.id;
   const mapRef = useRef<MapViewHandle>(null);
   const { toast } = useToast();
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setCurrentUserId(session.user.id);
-    });
-  }, []);
 
   const handleLeadClick = (lead: Lead) => {
     setSelectedLead(lead);

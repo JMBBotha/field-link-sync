@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +34,7 @@ const PRIORITY_VARIANT: Record<string, "destructive" | "default" | "secondary" |
 
 const AdminJobsDispatchPage = () => {
   const { companyId } = useUserCompanyId();
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
@@ -142,12 +144,11 @@ const AdminJobsDispatchPage = () => {
   // Assign tech mutation
   const assignMutation = useMutation({
     mutationFn: async ({ jobId, techId }: { jobId: string; techId: string }) => {
-      const { data: session } = await supabase.auth.getSession();
       const tech = techs.find((t: any) => t.id === techId);
       const { error } = await supabase.from("assignments").insert({
         job_id: jobId,
         profile_id: techId,
-        assigned_by: session.session?.user.id || null,
+        assigned_by: user?.id || null,
         assignment_type: tech?.assignment_type || "internal",
         notes: assignNotes || null,
       });
@@ -168,11 +169,10 @@ const AdminJobsDispatchPage = () => {
   // Auto-dispatch mutation (calls edge function)
   const autoDispatchMutation = useMutation({
     mutationFn: async (jobId: string) => {
-      const { data: session } = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke("dispatch-job", {
         body: {
           job_id: jobId,
-          dispatched_by: session.session?.user.id || null,
+          dispatched_by: user?.id || null,
           override_assignee_id: null,
         },
       });
