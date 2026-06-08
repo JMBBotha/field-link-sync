@@ -24,6 +24,9 @@ interface GeolocationState {
   isTracking: boolean;
 }
 
+const isGeoError = (e: unknown): e is GeolocationPositionError =>
+  typeof e === "object" && e !== null && "code" in e && "message" in e;
+
 export const useGeolocation = (options: UseGeolocationOptions = {}) => {
   const { enableTracking = false, updateInterval = 300000, onLocationUpdate } = options; // 5 min default
 
@@ -39,16 +42,29 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
   });
 
   const watchIdRef = useRef<number | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastUpdateRef = useRef<number>(0);
+  const mountedRef = useRef(true);
+  // Mirror latest coords so the periodic interval doesn't read a stale closure
+  const coordsRef = useRef<{ lat: number | null; lng: number | null }>({ lat: null, lng: null });
+  // Keep latest callback so changing it doesn't force consumers to memoize
+  const onLocationUpdateRef = useRef(onLocationUpdate);
+  useEffect(() => { onLocationUpdateRef.current = onLocationUpdate; }, [onLocationUpdate]);
 
   // Check permission status on mount
   useEffect(() => {
+    mountedRef.current = true;
     const checkPermission = async () => {
-      const status = await checkLocationPermission();
-      setState((prev) => ({ ...prev, permissionStatus: status }));
+      try {
+        const status = await checkLocationPermission();
+        if (!mountedRef.current) return;
+        setState((prev) => ({ ...prev, permissionStatus: status }));
+      } catch (err) {
+        console.error("useGeolocation checkPermission error:", err);
+      }
     };
-    checkPermission();
+    void checkPermission();
+    return () => { mountedRef.current = false; };
   }, []);
 
   // Update agent location in database
@@ -60,7 +76,7 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
         } = await supabase.auth.getUser();
         if (!user) return;
 
-        await supabase.from("agent_locations").upsert(
+        const { error } = await supabase.from("agent_locations").upsert(
           {
             agent_id: user.id,
             latitude: lat,
@@ -70,7 +86,10 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
           },
           { onConflict: "agent_id" }
         );
-
+        if (error) {
+          console.error("Error updating agent location:", error);
+          return;
+        }
         lastUpdateRef.current = Date.now();
       } catch (error) {
         console.error("Error updating agent location:", error);
@@ -82,62 +101,78 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
   // Get current position once
   const refreshLocation = useCallback(async () => {
     if (!isGeolocationSupported()) {
-      setState((prev) => ({
-        ...prev,
-        error: "Geolocation is not supported by your browser",
-      }));
+      if (mountedRef.current) {
+        setState((prev) => ({
+          ...prev,
+          error: "Geolocation is not supported by your browser",
+        }));
+      }
       return null;
     }
 
-    setState((prev) => ({ ...prev, loading: true, error: null }));
+    if (mountedRef.current) {
+      setState((prev) => ({ ...prev, loading: true, error: null }));
+    }
 
     try {
       const position = await getCurrentPosition();
       const { latitude, longitude, accuracy } = position.coords;
 
-      setState((prev) => ({
-        ...prev,
-        latitude,
-        longitude,
-        accuracy,
-        timestamp: position.timestamp,
-        loading: false,
-        permissionStatus: "granted",
-      }));
+      coordsRef.current = { lat: latitude, lng: longitude };
 
-      onLocationUpdate?.(latitude, longitude);
+      if (mountedRef.current) {
+        setState((prev) => ({
+          ...prev,
+          latitude,
+          longitude,
+          accuracy,
+          timestamp: position.timestamp,
+          loading: false,
+          permissionStatus: "granted",
+        }));
+      }
+
+      onLocationUpdateRef.current?.(latitude, longitude);
       await updateAgentLocation(latitude, longitude);
 
       return { latitude, longitude };
-    } catch (error: any) {
+    } catch (error: unknown) {
       let errorMessage = "Unable to get location";
 
-      if (error.code === 1) {
-        errorMessage = "Location permission denied";
-        setState((prev) => ({ ...prev, permissionStatus: "denied" }));
-      } else if (error.code === 2) {
-        errorMessage = "Location unavailable";
-      } else if (error.code === 3) {
-        errorMessage = "Location request timed out";
+      if (isGeoError(error)) {
+        if (error.code === 1) {
+          errorMessage = "Location permission denied";
+          if (mountedRef.current) {
+            setState((prev) => ({ ...prev, permissionStatus: "denied" }));
+          }
+        } else if (error.code === 2) {
+          errorMessage = "Location unavailable";
+        } else if (error.code === 3) {
+          errorMessage = "Location request timed out";
+        }
       }
 
-      setState((prev) => ({
-        ...prev,
-        loading: false,
-        error: errorMessage,
-      }));
+      if (mountedRef.current) {
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          error: errorMessage,
+        }));
+      }
 
       return null;
     }
-  }, [onLocationUpdate, updateAgentLocation]);
+  }, [updateAgentLocation]);
 
   // Start continuous tracking
   const startTracking = useCallback(async () => {
     if (!isGeolocationSupported()) {
-      setState((prev) => ({
-        ...prev,
-        error: "Geolocation is not supported",
-      }));
+      if (mountedRef.current) {
+        setState((prev) => ({
+          ...prev,
+          error: "Geolocation is not supported",
+        }));
+      }
       return;
     }
 
@@ -146,37 +181,46 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
 
     // Start watching position
     watchIdRef.current = navigator.geolocation.watchPosition(
-      async (position) => {
+      (position) => {
         const { latitude, longitude, accuracy } = position.coords;
+        coordsRef.current = { lat: latitude, lng: longitude };
 
-        setState((prev) => ({
-          ...prev,
-          latitude,
-          longitude,
-          accuracy,
-          timestamp: position.timestamp,
-          isTracking: true,
-          permissionStatus: "granted",
-          error: null,
-        }));
+        if (mountedRef.current) {
+          setState((prev) => ({
+            ...prev,
+            latitude,
+            longitude,
+            accuracy,
+            timestamp: position.timestamp,
+            isTracking: true,
+            permissionStatus: "granted",
+            error: null,
+          }));
+        }
 
         // Only update database if enough time has passed
         if (Date.now() - lastUpdateRef.current >= updateInterval) {
-          await updateAgentLocation(latitude, longitude);
-          onLocationUpdate?.(latitude, longitude);
+          updateAgentLocation(latitude, longitude).catch((err) =>
+            console.error("watchPosition update error:", err)
+          );
+          onLocationUpdateRef.current?.(latitude, longitude);
         }
       },
       (error) => {
         let errorMessage = "Location error";
         if (error.code === 1) {
           errorMessage = "Location permission denied";
-          setState((prev) => ({ ...prev, permissionStatus: "denied" }));
+          if (mountedRef.current) {
+            setState((prev) => ({ ...prev, permissionStatus: "denied" }));
+          }
         }
-        setState((prev) => ({
-          ...prev,
-          error: errorMessage,
-          isTracking: false,
-        }));
+        if (mountedRef.current) {
+          setState((prev) => ({
+            ...prev,
+            error: errorMessage,
+            isTracking: false,
+          }));
+        }
       },
       {
         enableHighAccuracy: true,
@@ -185,15 +229,20 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
       }
     );
 
-    // Set up periodic database updates
-    intervalRef.current = setInterval(async () => {
-      if (state.latitude && state.longitude) {
-        await updateAgentLocation(state.latitude, state.longitude);
+    // Set up periodic database updates — read coords from ref to avoid stale closure
+    intervalRef.current = setInterval(() => {
+      const { lat, lng } = coordsRef.current;
+      if (lat !== null && lng !== null) {
+        updateAgentLocation(lat, lng).catch((err) =>
+          console.error("periodic update error:", err)
+        );
       }
     }, updateInterval);
 
-    setState((prev) => ({ ...prev, isTracking: true }));
-  }, [refreshLocation, updateAgentLocation, updateInterval, onLocationUpdate, state.latitude, state.longitude]);
+    if (mountedRef.current) {
+      setState((prev) => ({ ...prev, isTracking: true }));
+    }
+  }, [refreshLocation, updateAgentLocation, updateInterval]);
 
   // Stop tracking
   const stopTracking = useCallback(async () => {
@@ -212,12 +261,13 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (user && state.latitude && state.longitude) {
+      const { lat, lng } = coordsRef.current;
+      if (user && lat !== null && lng !== null) {
         await supabase.from("agent_locations").upsert(
           {
             agent_id: user.id,
-            latitude: state.latitude,
-            longitude: state.longitude,
+            latitude: lat,
+            longitude: lng,
             is_available: false,
             last_updated: new Date().toISOString(),
           },
@@ -228,24 +278,30 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
       console.error("Error updating availability:", error);
     }
 
-    setState((prev) => ({ ...prev, isTracking: false }));
-  }, [state.latitude, state.longitude]);
+    if (mountedRef.current) {
+      setState((prev) => ({ ...prev, isTracking: false }));
+    }
+  }, []);
 
   // Auto-start tracking if enabled
   useEffect(() => {
     if (enableTracking) {
-      startTracking();
+      startTracking().catch((err) =>
+        console.error("useGeolocation auto-start error:", err)
+      );
     }
 
     return () => {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
       }
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
-  }, [enableTracking]);
+  }, [enableTracking, startTracking]);
 
   return {
     ...state,
