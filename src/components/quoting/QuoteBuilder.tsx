@@ -521,7 +521,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
     }
     if (!selectedCustomerId) {
       toast({ title: "Client Required", description: "Please assign a client before saving this quote.", variant: "destructive" });
-      return;
+      throw new Error("A client must be associated with the quote before saving.");
     }
     if (lineItems.every((i) => !i.description || i.amount === 0)) {
       toast({ title: "Error", description: "Add at least one line item", variant: "destructive" });
