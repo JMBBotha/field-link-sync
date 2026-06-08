@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
@@ -39,6 +40,7 @@ const TemplateSaveDialog = ({
   termsText,
 }: TemplateSaveDialogProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
@@ -52,8 +54,6 @@ const TemplateSaveDialog = ({
     }
     setSaving(true);
     try {
-      const { data: session } = await supabase.auth.getSession();
-
       const templatePayload = {
         name: name.trim(),
         category: category.trim() || null,
@@ -66,7 +66,7 @@ const TemplateSaveDialog = ({
         sections: sections,
         terms_text: termsText || null,
         is_active: true,
-        created_by: session?.session?.user?.id || null,
+        created_by: user?.id || null,
       };
 
       const { data: template, error } = await supabase

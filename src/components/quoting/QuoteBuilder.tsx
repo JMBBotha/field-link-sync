@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -83,7 +84,7 @@ const GhostInput = ({
 /* ────────── Main Component ────────── */
 
 const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
-  
+  const { session } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { settings: companySettings } = useCompanySettings();
@@ -514,7 +515,6 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
       // Quote number is now auto-assigned by DB trigger when customer_id is set

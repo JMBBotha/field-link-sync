@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +30,7 @@ const CompanyManagement = () => {
   const [confirmAction, setConfirmAction] = useState<{ company: any; action: CompanyStatus | "delete" } | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const qc = useQueryClient();
 
   const { data: companies = [], isLoading } = useQuery({
@@ -41,8 +43,7 @@ const CompanyManagement = () => {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!user) throw new Error("Not authenticated");
       const { data: company, error: companyErr } = await supabase
         .from("companies")
         .insert({ name: form.name, slug: form.slug || form.name.toLowerCase().replace(/\s+/g, "-") })
@@ -51,7 +52,7 @@ const CompanyManagement = () => {
       if (companyErr) throw companyErr;
       const { error: memberErr } = await supabase
         .from("company_members")
-        .insert({ user_id: session.user.id, company_id: company.id, role: "admin" });
+        .insert({ user_id: user.id, company_id: company.id, role: "admin" });
       if (memberErr) throw memberErr;
       return company;
     },

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useCompany } from "@/providers/CompanyProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Clock, Play, Square, Timer } from "lucide-react";
@@ -17,6 +18,7 @@ const FBTimeTracking = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ hours: "1", minutes: "0", date: new Date().toISOString().split("T")[0], billable: true, notes: "", project_id: "" });
   const { toast } = useToast();
+  const { user } = useAuth();
   const qc = useQueryClient();
 
   // Timer state
@@ -63,11 +65,10 @@ const FBTimeTracking = () => {
 
   const createMutation = useMutation({
     mutationFn: async (payload: { hours: string; minutes: string; date: string; billable: boolean; notes: string; project_id: string }) => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!user) throw new Error("Not authenticated");
       const durationStr = `${payload.hours} hours ${payload.minutes} minutes`;
       const { error } = await supabase.from("fb_time_entries").insert({
-        company_id: companyId!, user_id: session.user.id, duration: durationStr,
+        company_id: companyId!, user_id: user.id, duration: durationStr,
         date: payload.date, billable: payload.billable, notes: payload.notes || null,
         project_id: payload.project_id || null,
       });
