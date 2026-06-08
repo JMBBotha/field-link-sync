@@ -17,6 +17,7 @@ import { useState, useMemo } from "react";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
+import { Link } from "react-router-dom";
 
 interface AdminHomeProps {
   onNavigate: (tab: string) => void;
