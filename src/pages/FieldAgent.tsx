@@ -170,7 +170,7 @@ const FieldAgent = () => {
   const leads = offlineLeads.leads as Lead[];
 
   useEffect(() => {
-    checkAuth();
+    if (!authLoading) checkAuth();
     startLocationTracking();
 
     // Check for Mapbox token from localStorage
@@ -205,7 +205,7 @@ const FieldAgent = () => {
       }
       mapInstanceRef.current = null;
     };
-  }, []);
+  }, [authLoading, session]);
 
   const applyMapChromeBottomOffset = useCallback(() => {
     const root = mapRef.current;
