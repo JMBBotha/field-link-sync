@@ -39,11 +39,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
+    let appStateListener: PluginListenerHandle | null = null;
+    CapacitorApp.addListener('appStateChange', (state: AppState) => {
+      if (!state.isActive || !mountedRef.current) return;
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (mountedRef.current) {
+          setSession(session);
+          setUser(session?.user ?? null);
+        }
+      });
+    })
+      .then((handle) => {
+        if (!mountedRef.current) {
+          void handle.remove();
+          return;
+        }
+        appStateListener = handle;
+      })
+      .catch((err) => console.error('AuthProvider appStateChange listener error:', err));
+
     return () => {
       mountedRef.current = false;
       subscription.unsubscribe();
+      if (appStateListener) void appStateListener.remove();
     };
   }, []);
+
 
   return (
     <AuthContext.Provider value={{ session, user, loading }}>
