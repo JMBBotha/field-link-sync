@@ -148,4 +148,10 @@ const AdminJobsPage = () => {
   );
 };
 
-export default AdminJobsPage;
+const AdminJobsPageGuarded = () => (
+  <RequireRole allowedRoles={["admin"]}>
+    <AdminJobsPage />
+  </RequireRole>
+);
+
+export default AdminJobsPageGuarded;
