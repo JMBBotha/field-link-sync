@@ -64,18 +64,23 @@ export function useQuoteBrochures({ quoteId, lineItemModelCodes }: UseQuoteBroch
 
   // Fetch all active brochures once
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       const { data, error: err } = await supabase
-        .from("product_brochures" as any)
+        .from("product_brochures" as never)
         .select("*")
         .eq("is_active", true)
         .order("sort_order");
+      if (cancelled) return;
       if (err) {
         setError(err.message);
         return;
       }
       setAllBrochures((data || []) as unknown as BrochureRecord[]);
-    })();
+    })().catch((e) => console.error("[useQuoteBrochures] load brochures", e));
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Fetch attached brochures for this quote
