@@ -62,7 +62,7 @@ export const useBroadcastSettings = () => {
   const updateSettings = useCallback(
     async (newSettings: Partial<BroadcastRadiusSettings>) => {
       try {
-        const updates: Promise<unknown>[] = [];
+        const updates = [];
 
         if (newSettings.sales !== undefined) {
           updates.push(
