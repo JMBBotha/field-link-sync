@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -113,6 +114,7 @@ const STATUS_BADGES: Record<string, { bg: string; label: string }> = {
 };
 
 const ServiceAgreements = () => {
+  const { user } = useAuth();
   const [agreements, setAgreements] = useState<Agreement[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -279,7 +281,7 @@ const ServiceAgreements = () => {
       let nextServiceDue = formData.start_date;
       
       const { getUserCompanyId } = await import("@/lib/tenantUtils");
-      const company_id = await getUserCompanyId();
+      const company_id = await getUserCompanyId(user?.id);
       const agreementData = {
         customer_id: formData.customer_id,
         equipment_id: formData.equipment_id || null,

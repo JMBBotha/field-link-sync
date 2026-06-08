@@ -12,6 +12,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getUserCompanyId } from "@/lib/tenantUtils";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 interface EquipmentFormProps {
@@ -33,6 +34,7 @@ const equipmentTypes = [
 
 const EquipmentForm = ({ customerId, open, onClose, onSuccess, existingEquipment }: EquipmentFormProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [type, setType] = useState(existingEquipment?.type || "ac");
   const [brand, setBrand] = useState(existingEquipment?.brand || "");
@@ -72,7 +74,7 @@ const EquipmentForm = ({ customerId, open, onClose, onSuccess, existingEquipment
       updated_at: new Date().toISOString(),
     };
 
-    const company_id = await getUserCompanyId();
+    const company_id = await getUserCompanyId(user?.id);
     (equipmentData as any).company_id = company_id;
 
     let error;

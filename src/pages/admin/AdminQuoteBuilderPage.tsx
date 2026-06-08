@@ -15,6 +15,7 @@ import {
   type DragStartEvent, type DragEndEvent,
 } from "@dnd-kit/core";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
 import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
 import { useQuoteBuilderFavorites } from "@/hooks/useQuoteBuilderFavorites";
@@ -131,7 +132,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
         })),
       }));
       const { getUserCompanyId } = await import("@/lib/tenantUtils");
-      const company_id = await getUserCompanyId();
+      const company_id = await getUserCompanyId(user?.id);
       const { data, error } = await (supabase.from("quotes") as any).insert({
         sales_engineer_id: userId, status: "draft",
         subtotal,
@@ -316,6 +317,7 @@ const MobileSummaryDrawer = ({ baskets }: { baskets: Basket[] }) => {
    ═══════════════════════════════════════════════════════════════ */
 const AdminQuoteBuilderPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const isMobile = useIsMobile();
   const canvasRef = useRef<HTMLDivElement>(null);
   const { usageMap, trackUsage } = useProductUsageStats();
