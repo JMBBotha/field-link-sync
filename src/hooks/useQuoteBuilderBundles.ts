@@ -60,7 +60,7 @@ export function useQuoteBuilderBundles() {
         } | null;
       }
 
-      const itemsByBundle: Record<string, unknown[]> = {};
+      const itemsByBundle: Record<string, PaletteBundle["items"]> = {};
       ((itemsData as unknown as BundleItemRow[]) || []).forEach((item) => {
         if (!itemsByBundle[item.bundle_id]) itemsByBundle[item.bundle_id] = [];
         const sp = item.supplier_products;
