@@ -173,22 +173,24 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
               {[
-                { label: "Total Jobs", value: jobStats.totalJobs, icon: Briefcase, color: "text-primary" },
-                { label: "Active Jobs", value: jobStats.activeJobs, icon: Clock, color: "text-chart-1" },
-                { label: "Completed", value: jobStats.completedJobs, icon: CheckCircle2, color: "text-chart-3" },
-                { label: "Pending Assignments", value: jobStats.pendingAssignments, icon: ClipboardList, color: "text-chart-4" },
-                { label: "Active Agents", value: jobStats.activeFieldAgents, icon: UserCheck, color: "text-chart-2" },
-                { label: "Avg Completion", value: `${jobStats.avgCompletionDays}d`, icon: Timer, color: "text-chart-5" },
+                { label: "Total Jobs", value: jobStats.totalJobs, icon: Briefcase, color: "text-primary", to: "/admin/jobs-dispatch" },
+                { label: "Active Jobs", value: jobStats.activeJobs, icon: Clock, color: "text-chart-1", to: "/admin/jobs-dispatch" },
+                { label: "Completed", value: jobStats.completedJobs, icon: CheckCircle2, color: "text-chart-3", to: "/admin/jobs-dispatch" },
+                { label: "Pending Assignments", value: jobStats.pendingAssignments, icon: ClipboardList, color: "text-chart-4", to: "/admin/dispatch" },
+                { label: "Active Agents", value: jobStats.activeFieldAgents, icon: UserCheck, color: "text-chart-2", to: "/admin/team" },
+                { label: "Avg Completion", value: `${jobStats.avgCompletionDays}d`, icon: Timer, color: "text-chart-5", to: "/admin/analytics" },
               ].map((card) => (
-                <Card key={card.label} className="rounded-xl border border-border">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <card.icon className={`h-4 w-4 ${card.color}`} />
-                      <span className="text-xs text-muted-foreground">{card.label}</span>
-                    </div>
-                    <p className="text-2xl font-bold">{card.value}</p>
-                  </CardContent>
-                </Card>
+                <Link key={card.label} to={card.to} className="block focus:outline-none focus:ring-2 focus:ring-primary rounded-xl">
+                  <Card className="rounded-xl border border-border cursor-pointer transition-all duration-200 hover:border-primary/30 hover:bg-muted/40 hover:shadow-md">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <card.icon className={`h-4 w-4 ${card.color}`} />
+                        <span className="text-xs text-muted-foreground">{card.label}</span>
+                      </div>
+                      <p className="text-2xl font-bold">{card.value}</p>
+                    </CardContent>
+                  </Card>
+                </Link>
               ))}
             </div>
           </div>
