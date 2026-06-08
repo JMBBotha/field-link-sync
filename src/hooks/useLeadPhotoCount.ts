@@ -8,20 +8,32 @@ interface PhotoCounts {
 export function useLeadPhotoCount(leadIds: string[]) {
   const [photoCounts, setPhotoCounts] = useState<PhotoCounts>({});
   const [loading, setLoading] = useState(true);
+  const mountedRef = useRef(true);
+  const leadIdsKey = leadIds.join(',');
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const fetchCounts = useCallback(async () => {
     if (leadIds.length === 0) {
-      setPhotoCounts({});
-      setLoading(false);
+      if (mountedRef.current) {
+        setPhotoCounts({});
+        setLoading(false);
+      }
       return;
     }
 
     try {
-      // Fetch photo counts for all lead IDs
       const { data, error } = await supabase
         .from('job_photos')
         .select('lead_id')
         .in('lead_id', leadIds);
+
+      if (!mountedRef.current) return;
 
       if (error) {
         console.error('Error fetching photo counts:', error);
@@ -29,10 +41,9 @@ export function useLeadPhotoCount(leadIds: string[]) {
         return;
       }
 
-      // Count photos per lead
       const counts: PhotoCounts = {};
       leadIds.forEach(id => counts[id] = 0);
-      
+
       if (data) {
         data.forEach(photo => {
           if (photo.lead_id) {
@@ -43,14 +54,15 @@ export function useLeadPhotoCount(leadIds: string[]) {
 
       setPhotoCounts(counts);
     } catch (error) {
-      console.error('Error fetching photo counts:', error);
+      if (mountedRef.current) console.error('Error fetching photo counts:', error);
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
-  }, [leadIds.join(',')]); // Use join to create stable dependency
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadIdsKey]);
 
   useEffect(() => {
-    fetchCounts();
+    fetchCounts().catch((err) => console.error('[useLeadPhotoCount] fetch', err));
   }, [fetchCounts]);
 
   // Subscribe to photo changes
@@ -67,7 +79,7 @@ export function useLeadPhotoCount(leadIds: string[]) {
           table: 'job_photos',
         },
         () => {
-          fetchCounts();
+          fetchCounts().catch((err) => console.error('[useLeadPhotoCount] realtime fetch', err));
         }
       )
       .subscribe();
@@ -75,7 +87,8 @@ export function useLeadPhotoCount(leadIds: string[]) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchCounts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchCounts, leadIdsKey]);
 
   return { photoCounts, loading, refetch: fetchCounts };
 }
