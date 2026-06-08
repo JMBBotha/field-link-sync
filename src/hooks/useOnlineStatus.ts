@@ -46,6 +46,7 @@ export function useOnlineStatus() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
@@ -55,10 +56,12 @@ export function useOnlineStatus() {
 
       try {
         const response = await fetch('/', { cache: 'no-cache' });
+        if (cancelled) return;
         if (response.ok && !isOnlineRef.current) {
           handleOnline();
         }
-      } catch (err) {
+      } catch {
+        if (cancelled) return;
         if (isOnlineRef.current) {
           handleOffline();
         }
@@ -70,6 +73,7 @@ export function useOnlineStatus() {
     const interval = setInterval(checkConnection, 30000);
 
     return () => {
+      cancelled = true;
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       clearInterval(interval);
