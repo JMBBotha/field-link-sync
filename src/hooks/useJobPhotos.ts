@@ -11,11 +11,11 @@ interface UseJobPhotosOptions {
   agentId: string;
   isOnline: boolean;
   queueOperation: (
-    operationType: any,
+    operationType: string,
     tableName: string,
     recordId: string,
-    data: any
-  ) => Promise<any | void>;
+    data: Record<string, unknown>
+  ) => Promise<unknown>;
 }
 
 interface UseJobPhotosResult {

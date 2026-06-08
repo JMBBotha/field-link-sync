@@ -2,22 +2,54 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { CAPACITY_TIER_CONFIGS } from "@/lib/bundleTierConfig";
 
-type BundleProductMap = Record<string, any>;
+interface SupplierProductRow {
+  id: string;
+  product_code?: string | null;
+  short_name?: string | null;
+  brand?: string | null;
+  product_category?: string | null;
+  category?: string | null;
+  cost_price?: number | null;
+  cost_excl_vat?: number | null;
+  cost_incl_vat?: number | null;
+  selling_price?: number | null;
+  description?: string | null;
+  is_pinned?: boolean | null;
+  pin_order?: number | null;
+  price_per_metre?: number | null;
+  sold_in_length?: boolean | null;
+  unit_length?: number | null;
+  pipe_size?: string | null;
+  is_material_favorite?: boolean | null;
+  pack_qty?: number | null;
+  default_markup_percent?: number | null;
+  btu_rating?: number | null;
+  suppliers?: { name?: string | null; supplier_type?: string | null } | null;
+}
+
+export interface BundleProduct extends SupplierProductRow {
+  supplier_name: string;
+  supplier_type: string;
+  supplier_discount_percent: number | null;
+  markup_percent: number;
+}
+
+type BundleProductMap = Record<string, BundleProduct>;
 
 const SUPPLIER_PRODUCT_SELECT = "id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, pack_qty, default_markup_percent, btu_rating, suppliers(name, supplier_type)";
 
-const toBundleProduct = (p: any) => ({
+const toBundleProduct = (p: SupplierProductRow): BundleProduct => ({
   ...p,
   product_category: p.product_category || p.category || "",
   supplier_name: p.suppliers?.name || "",
   supplier_type: p.suppliers?.supplier_type || "both",
-  price_per_metre: p.price_per_metre || null,
-  sold_in_length: p.sold_in_length || false,
-  unit_length: p.unit_length || null,
-  pipe_size: p.pipe_size || null,
-  is_material_favorite: p.is_material_favorite || false,
-  pack_qty: p.pack_qty || null,
-  btu_rating: p.btu_rating || null,
+  price_per_metre: p.price_per_metre ?? null,
+  sold_in_length: p.sold_in_length ?? false,
+  unit_length: p.unit_length ?? null,
+  pipe_size: p.pipe_size ?? null,
+  is_material_favorite: p.is_material_favorite ?? false,
+  pack_qty: p.pack_qty ?? null,
+  btu_rating: p.btu_rating ?? null,
   supplier_discount_percent: null,
   markup_percent: p.default_markup_percent ?? 35,
   default_markup_percent: p.default_markup_percent ?? 35,
@@ -46,7 +78,13 @@ export function useBundleProducts() {
     const loadBundleProducts = async () => {
       if (allCodes.length === 0) return;
 
-      const { data: byCodeData, error: byCodeError } = await (supabase.from("supplier_products") as any)
+      const fromTable = supabase.from("supplier_products" as never) as unknown as {
+        select: (cols: string) => {
+          eq: (col: string, val: unknown) => any;
+        };
+      };
+
+      const { data: byCodeData, error: byCodeError } = await fromTable
         .select(SUPPLIER_PRODUCT_SELECT)
         .eq("is_active", true)
         .or("archived.is.null,archived.eq.false")
@@ -57,8 +95,8 @@ export function useBundleProducts() {
         console.error("[AutoBundle] failed to load bundle products by code", byCodeError);
       }
 
-      let byTierFlagData: any[] = [];
-      const { data: tierFlagRows, error: tierFlagError } = await (supabase.from("supplier_products") as any)
+      let byTierFlagData: SupplierProductRow[] = [];
+      const { data: tierFlagRows, error: tierFlagError } = await fromTable
         .select(SUPPLIER_PRODUCT_SELECT)
         .eq("is_active", true)
         .eq("tier_bundle", true)
@@ -68,7 +106,7 @@ export function useBundleProducts() {
       if (tierFlagError) {
         console.warn("[AutoBundle] tier_bundle lookup unavailable; falling back to name pattern only", tierFlagError.message || tierFlagError);
       } else {
-        byTierFlagData = tierFlagRows || [];
+        byTierFlagData = (tierFlagRows as SupplierProductRow[] | null) || [];
       }
 
       const namePatternFilter = [
@@ -79,7 +117,7 @@ export function useBundleProducts() {
         "description.ilike.%PIPING KIT%",
       ].join(",");
 
-      const { data: byNameData, error: byNameError } = await (supabase.from("supplier_products") as any)
+      const { data: byNameData, error: byNameError } = await fromTable
         .select(SUPPLIER_PRODUCT_SELECT)
         .eq("is_active", true)
         .or(`archived.is.null,archived.eq.false`)
@@ -92,17 +130,17 @@ export function useBundleProducts() {
 
       if (!active) return;
 
-      const merged = new Map<string, any>();
-      const pushRows = (rows?: any[]) => {
+      const merged = new Map<string, SupplierProductRow>();
+      const pushRows = (rows?: SupplierProductRow[] | null) => {
         (rows || []).forEach((row) => {
           if (!row?.id) return;
           merged.set(row.id, row);
         });
       };
 
-      pushRows(byCodeData || []);
-      pushRows(byTierFlagData || []);
-      pushRows(byNameData || []);
+      pushRows((byCodeData as SupplierProductRow[] | null) || []);
+      pushRows(byTierFlagData);
+      pushRows((byNameData as SupplierProductRow[] | null) || []);
 
       const map: BundleProductMap = {};
       Array.from(merged.values()).forEach((p) => {
@@ -113,9 +151,9 @@ export function useBundleProducts() {
 
       console.log("[AutoBundle] bundle products loaded", {
         requestedCodes: allCodes.length,
-        matchedByCode: (byCodeData || []).length,
-        matchedByTierFlag: (byTierFlagData || []).length,
-        matchedByNamePattern: (byNameData || []).length,
+        matchedByCode: ((byCodeData as SupplierProductRow[] | null) || []).length,
+        matchedByTierFlag: byTierFlagData.length,
+        matchedByNamePattern: ((byNameData as SupplierProductRow[] | null) || []).length,
         loadedProducts: Object.keys(map).length,
         loadedCodes: Object.keys(map),
       });
@@ -123,7 +161,7 @@ export function useBundleProducts() {
       setBundleProducts(map);
     };
 
-    loadBundleProducts();
+    loadBundleProducts().catch((err) => console.error("[AutoBundle] load failed", err));
 
     return () => {
       active = false;

@@ -156,26 +156,37 @@ export const useAvailability = (userId: string | undefined): UseAvailabilityResu
 
   // Load initial status from profile
   useEffect(() => {
+    let cancelled = false;
     const loadStatus = async () => {
       if (!userId) return;
 
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("availability_status")
         .eq("id", userId)
         .maybeSingle();
+
+      if (cancelled) return;
+      if (profileError) {
+        console.error("[useAvailability] load profile failed", profileError);
+      }
 
       if (profile?.availability_status) {
         setStatus(profile.availability_status as AvailabilityStatus);
       }
 
       // Check for active in_progress lead to set next available time
-      const { data: activeLead } = await supabase
+      const { data: activeLead, error: leadError } = await supabase
         .from("leads")
         .select("estimated_end_time, actual_start_time, estimated_duration_minutes")
         .eq("assigned_agent_id", userId)
         .eq("status", "in_progress")
         .maybeSingle();
+
+      if (cancelled) return;
+      if (leadError) {
+        console.error("[useAvailability] load active lead failed", leadError);
+      }
 
       if (activeLead?.estimated_end_time) {
         setNextAvailableTime(new Date(activeLead.estimated_end_time));
@@ -183,7 +194,11 @@ export const useAvailability = (userId: string | undefined): UseAvailabilityResu
       }
     };
 
-    loadStatus();
+    loadStatus().catch((err) => console.error("[useAvailability] loadStatus error", err));
+
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   return {

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface CompletedJobsFilters {
@@ -48,6 +48,15 @@ export function useCompletedJobsFilter() {
   const [jobs, setJobs] = useState<CompletedJob[]>([]);
   const [loading, setLoading] = useState(false);
   const [isFiltered, setIsFiltered] = useState(false);
+  const mountedRef = useRef(true);
+  const fetchSeqRef = useRef(0);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const hasActiveFilters = useCallback(() => {
     return (
@@ -60,6 +69,7 @@ export function useCompletedJobsFilter() {
   }, [filters]);
 
   const fetchFilteredJobs = useCallback(async (filtersToApply: CompletedJobsFilters) => {
+    const seq = ++fetchSeqRef.current;
     setLoading(true);
     try {
       const { data, error } = await supabase.rpc("get_completed_jobs", {
@@ -72,6 +82,8 @@ export function useCompletedJobsFilter() {
         p_search: filtersToApply.search || null,
       });
 
+      if (!mountedRef.current || seq !== fetchSeqRef.current) return;
+
       if (error) {
         console.error("[CompletedJobsFilter] RPC error:", error);
         return;
@@ -80,15 +92,18 @@ export function useCompletedJobsFilter() {
       setJobs((data as CompletedJob[]) || []);
       setIsFiltered(true);
     } catch (err) {
+      if (!mountedRef.current || seq !== fetchSeqRef.current) return;
       console.error("[CompletedJobsFilter] Error:", err);
     } finally {
-      setLoading(false);
+      if (mountedRef.current && seq === fetchSeqRef.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
   const applyFilters = useCallback((newFilters: CompletedJobsFilters) => {
     setFilters(newFilters);
-    fetchFilteredJobs(newFilters);
+    fetchFilteredJobs(newFilters).catch((err) => console.error("[CompletedJobsFilter] applyFilters", err));
   }, [fetchFilteredJobs]);
 
   const clearFilters = useCallback(() => {

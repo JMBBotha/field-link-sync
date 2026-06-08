@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 
 export function useQuoteBuilderProducts() {
-  const { data: products = [], isLoading } = useQuery({
+  const { data: products = [], isLoading } = useQuery<PaletteProduct[]>({
     queryKey: ["quote-builder-products"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -24,7 +24,21 @@ export function useQuoteBuilderProducts() {
 
       if (error) throw error;
 
-      return (data || []).map((p: any) => ({
+      type RawRow = Record<string, unknown> & {
+        product_category?: string | null;
+        category?: string | null;
+        suppliers?: { name?: string | null; supplier_type?: string | null } | null;
+        price_per_metre?: number | null;
+        sold_in_length?: boolean | null;
+        unit_length?: number | null;
+        pipe_size?: string | null;
+        is_material_favorite?: boolean | null;
+        pack_qty?: number | null;
+        cost_price?: number | null;
+        default_markup_percent?: number | null;
+      };
+
+      return ((data || []) as unknown as RawRow[]).map((p) => ({
         ...p,
         product_category: p.product_category || p.category || "",
         supplier_name: p.suppliers?.name || "",
@@ -37,7 +51,7 @@ export function useQuoteBuilderProducts() {
         pack_qty: p.pack_qty || null,
         cost_price: p.cost_price ?? 0,
         default_markup_percent: p.default_markup_percent ?? 35,
-      }));
+      })) as unknown as PaletteProduct[];
     },
   });
 

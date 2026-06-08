@@ -35,7 +35,10 @@ export function useInventoryStock() {
         .select("id, product_id, quantity, low_stock_threshold, stock_mode");
       if (error) throw error;
       const map = new Map<string, StockRecord>();
-      (data || []).forEach((row: any) => map.set(row.product_id, row as StockRecord));
+      (data || []).forEach((row) => {
+        const r = row as unknown as StockRecord;
+        map.set(r.product_id, r);
+      });
       return map;
     },
   });
@@ -47,9 +50,10 @@ export function useInventoryStock() {
         .from("inventory_stock")
         .select("quantity, low_stock_threshold, stock_mode");
       if (error) return 0;
-      return (data || []).filter(
-        (r: any) => r.stock_mode === "stock_sensitive" && r.quantity <= r.low_stock_threshold
-      ).length;
+      return (data || []).filter((row) => {
+        const r = row as unknown as Pick<StockRecord, "quantity" | "low_stock_threshold" | "stock_mode">;
+        return r.stock_mode === "stock_sensitive" && r.quantity <= r.low_stock_threshold;
+      }).length;
     },
   });
 
@@ -85,7 +89,7 @@ export function useInventoryStock() {
       } else {
         const { data: newStock, error } = await supabase
           .from("inventory_stock")
-          .insert({ product_id: productId, quantity: newQuantity, stock_mode: "stock_sensitive" as any })
+          .insert({ product_id: productId, quantity: newQuantity, stock_mode: "stock_sensitive" })
           .select("id")
           .single();
         if (error) throw error;
@@ -119,7 +123,7 @@ export function useInventoryStock() {
       const existing = stockMap.get(productId);
 
       if (existing) {
-        const updatePayload: any = { stock_mode: mode };
+        const updatePayload: { stock_mode: StockMode; quantity?: number } = { stock_mode: mode };
         if (mode === "stock_sensitive" && existing.quantity === null) {
           updatePayload.quantity = 0;
         }
@@ -134,7 +138,7 @@ export function useInventoryStock() {
           .insert({
             product_id: productId,
             quantity: 0,
-            stock_mode: mode as any,
+            stock_mode: mode,
           });
         if (error) throw error;
       }
@@ -160,7 +164,7 @@ export function useInventoryStock() {
       for (const productId of productIds) {
         const existing = stockMap.get(productId);
         if (existing) {
-          const updatePayload: any = { stock_mode: mode };
+          const updatePayload: { stock_mode: StockMode; quantity?: number } = { stock_mode: mode };
           if (mode === "stock_sensitive" && (existing.quantity === null || existing.quantity === undefined)) {
             updatePayload.quantity = 0;
           }
@@ -174,7 +178,7 @@ export function useInventoryStock() {
             .insert({
               product_id: productId,
               quantity: 0,
-              stock_mode: mode as any,
+              stock_mode: mode,
             });
         }
       }

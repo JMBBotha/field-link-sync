@@ -64,18 +64,23 @@ export function useQuoteBrochures({ quoteId, lineItemModelCodes }: UseQuoteBroch
 
   // Fetch all active brochures once
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       const { data, error: err } = await supabase
-        .from("product_brochures" as any)
+        .from("product_brochures" as never)
         .select("*")
         .eq("is_active", true)
         .order("sort_order");
+      if (cancelled) return;
       if (err) {
         setError(err.message);
         return;
       }
       setAllBrochures((data || []) as unknown as BrochureRecord[]);
-    })();
+    })().catch((e) => console.error("[useQuoteBrochures] load brochures", e));
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Fetch attached brochures for this quote
@@ -87,28 +92,29 @@ export function useQuoteBrochures({ quoteId, lineItemModelCodes }: UseQuoteBroch
     setLoading(true);
     try {
       const { data, error: err } = await supabase
-        .from("quote_brochures" as any)
-        .select("*, brochure:product_brochures(*)" as any)
+        .from("quote_brochures" as never)
+        .select("*, brochure:product_brochures(*)")
         .eq("quote_id", quoteId)
         .order("sort_order");
       if (err) throw new Error(err.message);
+      type AttachedRow = { id: string; brochure: BrochureRecord; is_auto_matched: boolean; sort_order: number };
       setAttachedBrochures(
-        ((data || []) as any[]).map((row: any) => ({
+        ((data || []) as unknown as AttachedRow[]).map((row) => ({
           linkId: row.id,
-          brochure: row.brochure as BrochureRecord,
+          brochure: row.brochure,
           isAutoMatched: row.is_auto_matched,
           sortOrder: row.sort_order,
         }))
       );
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
   }, [quoteId]);
 
   useEffect(() => {
-    fetchAttached();
+    fetchAttached().catch((e) => console.error("[useQuoteBrochures] fetchAttached", e));
   }, [fetchAttached]);
 
   // Sync auto-matched brochures when line items change
@@ -119,29 +125,31 @@ export function useQuoteBrochures({ quoteId, lineItemModelCodes }: UseQuoteBroch
     if (codesKey === prevCodesRef.current) return;
     prevCodesRef.current = codesKey;
 
+    let cancelled = false;
     (async () => {
       try {
         const autoIds = computeAutoMatches(allBrochures, lineItemModelCodes);
 
-        // Get current auto-matched
         const { data: current } = await supabase
-          .from("quote_brochures" as any)
+          .from("quote_brochures" as never)
           .select("id, brochure_id")
           .eq("quote_id", quoteId)
           .eq("is_auto_matched", true);
 
-        const currentIds = new Set(((current || []) as any[]).map((r: any) => r.brochure_id));
+        if (cancelled) return;
+
+        type CurrentRow = { id: string; brochure_id: string };
+        const currentRows = ((current || []) as unknown as CurrentRow[]);
+        const currentIds = new Set(currentRows.map((r) => r.brochure_id));
         const newIds = new Set(autoIds);
 
-        // Delete stale auto-matches
-        const staleIds = ((current || []) as any[])
-          .filter((r: any) => !newIds.has(r.brochure_id))
-          .map((r: any) => r.id);
+        const staleIds = currentRows
+          .filter((r) => !newIds.has(r.brochure_id))
+          .map((r) => r.id);
         if (staleIds.length > 0) {
-          await supabase.from("quote_brochures" as any).delete().in("id", staleIds);
+          await supabase.from("quote_brochures" as never).delete().in("id", staleIds);
         }
 
-        // Upsert new auto-matches
         const toUpsert = autoIds
           .filter((id) => !currentIds.has(id))
           .map((brochureId, i) => ({
@@ -152,16 +160,21 @@ export function useQuoteBrochures({ quoteId, lineItemModelCodes }: UseQuoteBroch
           }));
 
         if (toUpsert.length > 0) {
-          await supabase
-            .from("quote_brochures" as any)
-            .upsert(toUpsert as any, { onConflict: "quote_id,brochure_id" });
+          await (supabase.from("quote_brochures" as never) as unknown as {
+            upsert: (rows: unknown, opts: { onConflict: string }) => Promise<unknown>;
+          }).upsert(toUpsert, { onConflict: "quote_id,brochure_id" });
         }
 
+        if (cancelled) return;
         await fetchAttached();
-      } catch (e: any) {
-        console.warn("Auto-match sync failed:", e.message);
+      } catch (e) {
+        console.warn("Auto-match sync failed:", e instanceof Error ? e.message : e);
       }
-    })();
+    })().catch((e) => console.error("[useQuoteBrochures] auto-sync", e));
+
+    return () => {
+      cancelled = true;
+    };
   }, [quoteId, lineItemModelCodes, allBrochures, fetchAttached]);
 
   // Manual add
@@ -170,18 +183,20 @@ export function useQuoteBrochures({ quoteId, lineItemModelCodes }: UseQuoteBroch
       if (!quoteId) return;
       try {
         const maxSort = attachedBrochures.reduce((m, a) => Math.max(m, a.sortOrder), 0);
-        await supabase.from("quote_brochures" as any).upsert(
+        await (supabase.from("quote_brochures" as never) as unknown as {
+          upsert: (row: unknown, opts: { onConflict: string }) => Promise<unknown>;
+        }).upsert(
           {
             quote_id: quoteId,
             brochure_id: brochureId,
             is_auto_matched: false,
             sort_order: maxSort + 1,
-          } as any,
+          },
           { onConflict: "quote_id,brochure_id" }
         );
         await fetchAttached();
-      } catch (e: any) {
-        setError(e.message);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
       }
     },
     [quoteId, attachedBrochures, fetchAttached]
@@ -191,10 +206,10 @@ export function useQuoteBrochures({ quoteId, lineItemModelCodes }: UseQuoteBroch
   const removeBrochure = useCallback(
     async (linkId: string) => {
       try {
-        await supabase.from("quote_brochures" as any).delete().eq("id", linkId);
+        await supabase.from("quote_brochures" as never).delete().eq("id", linkId);
         await fetchAttached();
-      } catch (e: any) {
-        setError(e.message);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
       }
     },
     [fetchAttached]
@@ -206,12 +221,14 @@ export function useQuoteBrochures({ quoteId, lineItemModelCodes }: UseQuoteBroch
       try {
         await Promise.all(
           orderedLinkIds.map((id, i) =>
-            supabase.from("quote_brochures" as any).update({ sort_order: i } as any).eq("id", id)
+            (supabase.from("quote_brochures" as never) as unknown as {
+              update: (vals: unknown) => { eq: (col: string, val: string) => Promise<unknown> };
+            }).update({ sort_order: i }).eq("id", id)
           )
         );
         await fetchAttached();
-      } catch (e: any) {
-        setError(e.message);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
       }
     },
     [fetchAttached]

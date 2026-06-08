@@ -10,21 +10,31 @@ export function useBackButtonGuard(active: boolean, onBack: () => void) {
   useEffect(() => {
     if (!active || !Capacitor.isNativePlatform()) return;
 
+    let cancelled = false;
     let cleanup: (() => void) | undefined;
 
-    import("@capacitor/app").then(({ App }) => {
-      const listener = App.addListener("backButton", (ev) => {
-        // Prevent default back navigation
-        onBack();
+    import("@capacitor/app")
+      .then(({ App }) => {
+        if (cancelled) return;
+        const listenerPromise = App.addListener("backButton", () => {
+          onBack();
+        });
+        listenerPromise
+          .then((handle) => {
+            if (cancelled) {
+              handle.remove();
+              return;
+            }
+            cleanup = () => handle.remove();
+          })
+          .catch((err) => console.error("[useBackButtonGuard] listener error", err));
+      })
+      .catch(() => {
+        // App plugin not available
       });
-      listener.then((handle) => {
-        cleanup = () => handle.remove();
-      });
-    }).catch(() => {
-      // App plugin not available
-    });
 
     return () => {
+      cancelled = true;
       cleanup?.();
     };
   }, [active, onBack]);

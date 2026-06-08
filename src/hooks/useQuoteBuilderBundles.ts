@@ -31,25 +31,40 @@ export function useQuoteBuilderBundles() {
 
       if (iErr) throw iErr;
 
-      const itemsByBundle: Record<string, any[]> = {};
-      (itemsData || []).forEach((item: any) => {
+      interface BundleItemRow {
+        id: string;
+        bundle_id: string;
+        supplier_product_id: string;
+        quantity: number;
+        length_metres: number | null;
+        is_length_item: boolean | null;
+        is_optional: boolean | null;
+        sort_order: number | null;
+        supplier_products: Record<string, unknown> | null;
+      }
+
+      const itemsByBundle: Record<string, PaletteBundle["items"]> = {};
+      ((itemsData as unknown as BundleItemRow[]) || []).forEach((item) => {
         if (!itemsByBundle[item.bundle_id]) itemsByBundle[item.bundle_id] = [];
-        const sp = item.supplier_products;
+        const sp = item.supplier_products as Record<string, unknown> | null;
+        const product = sp
+          ? ({
+              ...sp,
+              product_category: (sp.product_category as string) || (sp.category as string) || "",
+              supplier_name: (sp.suppliers as { name?: string } | null)?.name || "",
+              price_per_metre: (sp.price_per_metre as number | null) || null,
+              sold_in_length: (sp.sold_in_length as boolean) || false,
+              unit_length: (sp.unit_length as number | null) || null,
+            } as unknown as PaletteBundle["items"][number]["product"])
+          : (null as unknown as PaletteBundle["items"][number]["product"]);
         itemsByBundle[item.bundle_id].push({
           id: item.id,
           supplier_product_id: item.supplier_product_id,
           quantity: item.quantity,
-          length_metres: item.length_metres,
-          is_length_item: item.is_length_item,
+          length_metres: item.length_metres as number,
+          is_length_item: item.is_length_item as boolean,
           is_optional: item.is_optional || false,
-          product: sp ? {
-            ...sp,
-            product_category: sp.product_category || sp.category || "",
-            supplier_name: sp.suppliers?.name || "",
-            price_per_metre: sp.price_per_metre || null,
-            sold_in_length: sp.sold_in_length || false,
-            unit_length: sp.unit_length || null
-          } : null,
+          product,
         });
       });
 

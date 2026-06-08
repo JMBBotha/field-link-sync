@@ -17,10 +17,11 @@ export function useProductFavorites() {
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     const loadFavorites = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (cancelled || !user) return;
         setUserId(user.id);
 
         const { data, error } = await supabase
@@ -28,6 +29,7 @@ export function useProductFavorites() {
           .select("product_id")
           .eq("user_id", user.id);
 
+        if (cancelled) return;
         if (error) {
           console.error("[FAV] Load error:", error);
           return;
@@ -41,10 +43,13 @@ export function useProductFavorites() {
           localStorage.setItem(LS_FAVORITES_KEY, JSON.stringify([...merged]));
         }
       } catch (err) {
-        console.error("[FAV] Load failed:", err);
+        if (!cancelled) console.error("[FAV] Load failed:", err);
       }
     };
     loadFavorites();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const toggleFavorite = useCallback((productId: string) => {
