@@ -162,11 +162,11 @@ const App = () => (
                     <Route path="reports/advanced" element={<AdminAdvancedReportsPage />} />
                     <Route path="analytics" element={<AnalyticsDashboard />} />
                     <Route path="notifications" element={<AdminNotificationSettings />} />
-                    <Route path="audit" element={<AuditLogViewer />} />
-                    <Route path="import" element={<AdminImportPage />} />
+                    <Route path="audit" element={<RequireRole allowedRoles={["admin"]}><AuditLogViewer /></RequireRole>} />
+                    <Route path="import" element={<RequireRole allowedRoles={["admin"]}><AdminImportPage /></RequireRole>} />
                     <Route path="settings" element={<AdminSettingsPage />} />
-                    <Route path="team" element={<AdminTeamPage />} />
-                    <Route path="billing" element={<AdminBillingPage />} />
+                    <Route path="team" element={<RequireRole allowedRoles={["admin"]}><AdminTeamPage /></RequireRole>} />
+                    <Route path="billing" element={<RequireRole allowedRoles={["admin"]}><AdminBillingPage /></RequireRole>} />
                     <Route path="suppliers" element={<AdminSuppliersPage />} />
                     <Route path="consumables" element={<AdminConsumablesPage />} />
                     <Route path="whatsapp" element={<AdminWhatsAppPage />} />
