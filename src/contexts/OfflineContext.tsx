@@ -17,7 +17,7 @@ interface OfflineContextValue {
   queueOperation: (type: string, table: string, id: string, data: any) => Promise<any>;
   syncPendingOperations: () => Promise<void>;
   retrySyncFailedOperations: () => Promise<void>;
-  clearFailedOperations: () => Promise<void>;
+  clearFailedOperations: () => Promise<number>;
   deleteOperation: (id: number) => Promise<void>;
   getPendingOperationsList: () => Promise<PendingOperation[]>;
   acknowledgeReconnection: () => void;
