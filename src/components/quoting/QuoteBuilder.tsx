@@ -515,6 +515,10 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
   /* ─── Save ─── */
   const saveQuote = async (status: "draft" | "sent" | "accepted") => {
+    if (!user?.id) {
+      toast({ title: "Not authenticated", description: "Please sign in again.", variant: "destructive" });
+      return;
+    }
     if (!selectedCustomerId) {
       toast({ title: "Client Required", description: "Please assign a client before saving this quote.", variant: "destructive" });
       return;
