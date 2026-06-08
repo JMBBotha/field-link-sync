@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserCompanyId } from "@/lib/tenantUtils";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -49,6 +50,7 @@ interface NearbyAgent {
 }
 
 const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     customer_name: "",
@@ -124,7 +126,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
       // Format phone number for WhatsApp
       const formattedPhone = formatPhoneForWhatsApp(formData.customer_phone);
       
-      const company_id = await getUserCompanyId();
+      const company_id = await getUserCompanyId(user?.id);
       const { error } = await supabase.from("leads").insert({
         customer_name: formData.customer_name,
         customer_phone: formattedPhone,

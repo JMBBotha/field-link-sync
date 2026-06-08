@@ -15,6 +15,7 @@ import {
   type DragStartEvent, type DragEndEvent,
 } from "@dnd-kit/core";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
 import { useQuoteBuilderBundles } from "@/hooks/useQuoteBuilderBundles";
 import { useQuoteBuilderFavorites } from "@/hooks/useQuoteBuilderFavorites";
@@ -58,6 +59,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
   collapsed: boolean;
   onToggle: () => void;
 }) => {
+  const { user } = useAuth();
   const [quoteName, setQuoteName] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -115,8 +117,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
     if (!quoteName.trim()) { toast({ title: "Enter a quote name first", variant: "destructive" }); return; }
     setSaving(true);
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
+      const userId = user?.id;
       if (!userId) { toast({ title: "You must be logged in", variant: "destructive" }); setSaving(false); return; }
       const zonesData = baskets.map((b) => ({
         id: b.id, name: b.name,
@@ -131,7 +132,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
         })),
       }));
       const { getUserCompanyId } = await import("@/lib/tenantUtils");
-      const company_id = await getUserCompanyId();
+      const company_id = await getUserCompanyId(user?.id);
       const { data, error } = await (supabase.from("quotes") as any).insert({
         sales_engineer_id: userId, status: "draft",
         subtotal,

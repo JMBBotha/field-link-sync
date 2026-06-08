@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { notifyInvoiceSent } from "@/lib/notificationService";
@@ -100,6 +101,7 @@ const CreateInvoicePage = ({
   prefillFromLead,
 }: CreateInvoicePageProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const { settings: companySettings } = useCompanySettings();
   const allOptions = useProductOptions();
 
@@ -383,7 +385,7 @@ const CreateInvoicePage = ({
       }
 
       const { getUserCompanyId } = await import("@/lib/tenantUtils");
-      const company_id = await getUserCompanyId();
+      const company_id = await getUserCompanyId(user?.id);
 
       let finalLeadId = leadId;
       if (!finalLeadId) {

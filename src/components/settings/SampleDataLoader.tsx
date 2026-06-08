@@ -7,8 +7,10 @@ import { Database, Loader2, Trash2, CheckCircle2, AlertTriangle } from "lucide-r
 import { generateSampleData, clearSampleData, SampleDataResult } from "@/lib/sampleDataGenerator";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 
 const SampleDataLoader = () => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [result, setResult] = useState<SampleDataResult | null>(null);
@@ -19,7 +21,8 @@ const SampleDataLoader = () => {
     setLoading(true);
     setResult(null);
     try {
-      const res = await generateSampleData();
+      if (!user) throw new Error("You must be logged in to generate sample data");
+      const res = await generateSampleData(user.id);
       setResult(res);
       queryClient.invalidateQueries();
       toast({

@@ -526,7 +526,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       }
 
       const { getUserCompanyId } = await import("@/lib/tenantUtils");
-      const company_id = await getUserCompanyId();
+      const company_id = await getUserCompanyId(session?.user.id);
       const quotePayload: any = {
         customer_id: selectedCustomerId || null,
         sales_engineer_id: session.user.id,

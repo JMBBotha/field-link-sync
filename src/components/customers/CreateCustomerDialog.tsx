@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +26,7 @@ interface CreateCustomerDialogProps {
 }
 
 const CreateCustomerDialog = ({ open, onOpenChange, onCreated, initialName }: CreateCustomerDialogProps) => {
+  const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [duplicates, setDuplicates] = useState<DuplicateMatch[]>([]);
   const [showDuplicates, setShowDuplicates] = useState(false);
@@ -69,7 +71,7 @@ const CreateCustomerDialog = ({ open, onOpenChange, onCreated, initialName }: Cr
     setSaving(true);
     try {
       const { getUserCompanyId } = await import("@/lib/tenantUtils");
-      const company_id = await getUserCompanyId();
+      const company_id = await getUserCompanyId(user?.id);
       const { data, error } = await supabase
         .from("customers")
         .insert({

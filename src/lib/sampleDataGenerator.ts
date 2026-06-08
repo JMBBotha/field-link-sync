@@ -59,13 +59,11 @@ export interface SampleDataResult {
   feedback: number;
 }
 
-export async function generateSampleData(): Promise<SampleDataResult> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error("You must be logged in to generate sample data");
-  const userId = session.user.id;
+export async function generateSampleData(userId: string): Promise<SampleDataResult> {
+  if (!userId) throw new Error("You must be logged in to generate sample data");
 
   // Get the user's company_id for tenant scoping
-  const companyId = await getUserCompanyId();
+  const companyId = await getUserCompanyId(userId);
   if (!companyId) throw new Error("You must complete onboarding (company setup) before generating sample data");
 
   const result: SampleDataResult = { customers: 0, leads: 0, products: 0, agreements: 0, invoices: 0, feedback: 0 };
