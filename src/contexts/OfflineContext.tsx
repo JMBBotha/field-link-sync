@@ -1,4 +1,9 @@
-import { createContext, useContext, ReactNode, useEffect } from 'react';
+import {
+  createContext,
+  useContext,
+  ReactNode,
+  useEffect
+} from 'react';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useSyncQueue, SyncStatus } from '@/hooks/useSyncQueue';
 import { useToast } from '@/hooks/use-toast';
@@ -9,10 +14,10 @@ interface OfflineContextValue {
   isOnline: boolean;
   wasOffline: boolean;
   syncStatus: SyncStatus;
-  queueOperation: (type: string, table: string, id: string, data: any) => Promise<void>;
+  queueOperation: (type: string, table: string, id: string, data: any) => Promise<any>;
   syncPendingOperations: () => Promise<void>;
   retrySyncFailedOperations: () => Promise<void>;
-  clearFailedOperations: () => Promise<number>;
+  clearFailedOperations: () => Promise<void>;
   deleteOperation: (id: number) => Promise<void>;
   getPendingOperationsList: () => Promise<PendingOperation[]>;
   acknowledgeReconnection: () => void;
@@ -36,7 +41,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         duration: 5000,
       });
     }
-  }, [onlineStatus.isOnline]);
+  }, [onlineStatus.isOnline, toast]);
 
   // Show toast when coming back online
   useEffect(() => {
@@ -44,18 +49,18 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       onlineStatus.acknowledgeReconnection();
       toast({
         title: "Back Online! 🌐",
-        description: syncQueue.syncStatus.pendingCount > 0 
+        description: syncQueue.syncStatus.pendingCount > 0
           ? `Syncing ${syncQueue.syncStatus.pendingCount} pending change${syncQueue.syncStatus.pendingCount > 1 ? 's' : ''}...`
           : "All changes synced",
       });
     }
-  }, [onlineStatus.wasOffline, onlineStatus.isOnline, syncQueue.syncStatus.pendingCount]);
+  }, [onlineStatus.wasOffline, onlineStatus.isOnline, syncQueue.syncStatus.pendingCount, toast]);
 
   const value: OfflineContextValue = {
     isOnline: onlineStatus.isOnline,
     wasOffline: onlineStatus.wasOffline,
     syncStatus: syncQueue.syncStatus,
-    queueOperation: syncQueue.queueOperation as any,
+    queueOperation: syncQueue.queueOperation,
     syncPendingOperations: syncQueue.syncPendingOperations,
     retrySyncFailedOperations: syncQueue.retrySyncFailedOperations,
     clearFailedOperations: syncQueue.clearFailedOperations,
