@@ -1,7 +1,12 @@
 /**
  * QuoteContext — single source of truth for all three quote builders.
  * Wraps Supabase CRUD + realtime subscriptions for quotes, quote_areas, quote_items.
+ *
+ * Orphaned quotes audit (run in DB to find quotes without an associated customer):
+ *   SELECT id, quote_number, status, created_at, company_id
+ *   FROM quotes WHERE customer_id IS NULL ORDER BY created_at DESC;
  */
+
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -177,6 +182,14 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
 
   /* ── Quote meta ── */
   const updateQuote = useCallback(async (patch: Partial<Pick<QuoteMeta, "customer_id" | "customer_name" | "notes" | "status" | "discount_type" | "discount_value" | "terms_text" | "reference_text">>) => {
+    // Hard guard: never null out customer_id, and never persist a non-draft status without one.
+    if ("customer_id" in patch && !patch.customer_id) {
+      throw new Error("A client must be associated with the quote before saving.");
+    }
+    const resultingCustomerId = patch.customer_id ?? meta?.customer_id ?? null;
+    if (patch.status && patch.status !== "draft" && !resultingCustomerId) {
+      throw new Error("A client must be associated with the quote before saving.");
+    }
     let wasNullCustomer = false;
     if (mountedRef.current) {
       setMeta((prev) => {
