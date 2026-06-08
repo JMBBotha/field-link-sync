@@ -178,10 +178,12 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   /* ── Quote meta ── */
   const updateQuote = useCallback(async (patch: Partial<Pick<QuoteMeta, "customer_id" | "customer_name" | "notes" | "status" | "discount_type" | "discount_value" | "terms_text" | "reference_text">>) => {
     let wasNullCustomer = false;
-    setMeta((prev) => {
-      if (prev && !prev.customer_id) wasNullCustomer = true;
-      return prev ? { ...prev, ...patch } : prev;
-    });
+    if (mountedRef.current) {
+      setMeta((prev) => {
+        if (prev && !prev.customer_id) wasNullCustomer = true;
+        return prev ? { ...prev, ...patch } : prev;
+      });
+    }
     const { error } = await supabase
       .from("quotes")
       .update(patch as TablesUpdate<"quotes">)
