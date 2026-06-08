@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
-import { offlineDb, OfflineAvailability } from '@/lib/offlineDb';
+import { useState, useCallback } from 'react';
+import { offlineDb } from '@/lib/offlineDb';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -11,7 +11,7 @@ interface UseOfflineAvailabilityResult {
     available: boolean,
     location: { lat: number; lng: number } | null,
     isOnline: boolean,
-    queueOperation: (type: string, table: string, id: string, data: any) => Promise<void>
+    queueOperation: (type: string, table: string, id: string, data: Record<string, unknown>) => Promise<void>
   ) => Promise<void>;
   loadAvailability: (agentId: string) => Promise<boolean | null>;
 }
@@ -56,10 +56,10 @@ export function useOfflineAvailability(): UseOfflineAvailabilityResult {
     available: boolean,
     location: { lat: number; lng: number } | null,
     isOnline: boolean,
-    queueOperation: (type: string, table: string, id: string, data: any) => Promise<void>
+    queueOperation: (type: string, table: string, id: string, data: Record<string, unknown>) => Promise<void>
   ) => {
     setLoading(true);
-    
+
     try {
       // Update local state immediately (optimistic update)
       setIsAvailable(available);
@@ -114,12 +114,12 @@ export function useOfflineAvailability(): UseOfflineAvailabilityResult {
           ? "You'll see new available leads"
           : "You won't see new leads, but can work on active jobs",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to toggle availability:', error);
-      
+
       // Revert optimistic update
       setIsAvailable(!available);
-      
+
       toast({
         title: "Error",
         description: "Failed to update availability. Please try again.",
