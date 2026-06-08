@@ -173,9 +173,9 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
               {[
-                { label: "Total Jobs", value: jobStats.totalJobs, icon: Briefcase, color: "text-primary", to: "/admin/jobs-dispatch" },
-                { label: "Active Jobs", value: jobStats.activeJobs, icon: Clock, color: "text-chart-1", to: "/admin/jobs-dispatch" },
-                { label: "Completed", value: jobStats.completedJobs, icon: CheckCircle2, color: "text-chart-3", to: "/admin/jobs-dispatch" },
+                { label: "Total Jobs", value: jobStats.totalJobs, icon: Briefcase, color: "text-primary", to: "/admin/jobs/dispatch" },
+                { label: "Active Jobs", value: jobStats.activeJobs, icon: Clock, color: "text-chart-1", to: "/admin/jobs/dispatch" },
+                { label: "Completed", value: jobStats.completedJobs, icon: CheckCircle2, color: "text-chart-3", to: "/admin/jobs/dispatch" },
                 { label: "Pending Assignments", value: jobStats.pendingAssignments, icon: ClipboardList, color: "text-chart-4", to: "/admin/dispatch" },
                 { label: "Active Agents", value: jobStats.activeFieldAgents, icon: UserCheck, color: "text-chart-2", to: "/admin/team" },
                 { label: "Avg Completion", value: `${jobStats.avgCompletionDays}d`, icon: Timer, color: "text-chart-5", to: "/admin/analytics" },
