@@ -8,6 +8,13 @@ interface NearbyAgent {
   is_available: boolean;
 }
 
+interface RpcAgent {
+  agent_id: string;
+  full_name?: string | null;
+  distance_km: number;
+  is_available: boolean;
+}
+
 export const useNearbyAgents = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,15 +37,16 @@ export const useNearbyAgents = () => {
 
         if (rpcError) throw rpcError;
 
-        return (data || []).map((agent: any) => ({
+        const rows = (data as RpcAgent[] | null) || [];
+        return rows.map((agent) => ({
           agent_id: agent.agent_id,
           full_name: agent.full_name || "Unknown Agent",
           distance_km: agent.distance_km,
           is_available: agent.is_available,
         }));
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error finding nearby agents:", err);
-        setError(err.message);
+        setError(err instanceof Error ? err.message : "Failed to find nearby agents");
         return [];
       } finally {
         setLoading(false);
