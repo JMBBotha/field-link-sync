@@ -3,6 +3,14 @@ import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
+import noDirectAuth from "./src/eslint-rules/no-direct-auth.js";
+
+const localAuthPlugin = {
+  meta: { name: "local-auth-plugin" },
+  rules: {
+    "no-direct-auth": noDirectAuth,
+  },
+};
 
 export default tseslint.config(
   { ignores: ["dist"] },
@@ -24,23 +32,12 @@ export default tseslint.config(
     },
   },
   {
-    files: ["src/components/**/*.{ts,tsx}", "src/pages/**/*.{ts,tsx}"],
+    files: ["src/**/*.{ts,tsx}"],
+    plugins: {
+      "local-auth": localAuthPlugin,
+    },
     rules: {
-      "no-restricted-syntax": [
-        "error",
-        {
-          selector:
-            "CallExpression[callee.object.object.name='supabase'][callee.object.property.name='auth'][callee.property.name='getSession']",
-          message:
-            "Use useAuth() from @/contexts/AuthContext instead of direct supabase.auth calls.",
-        },
-        {
-          selector:
-            "CallExpression[callee.object.object.name='supabase'][callee.object.property.name='auth'][callee.property.name='onAuthStateChange']",
-          message:
-            "Use useAuth() from @/contexts/AuthContext instead of direct supabase.auth calls.",
-        },
-      ],
+      "local-auth/no-direct-auth": "error",
     },
   },
 );
