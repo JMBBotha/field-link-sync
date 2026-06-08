@@ -85,7 +85,7 @@ export const useCompanySettings = () => {
             default_payment_terms_days: updated.default_payment_terms_days,
             payfast_merchant_id: updated.payfast_merchant_id,
             payfast_merchant_key: updated.payfast_merchant_key,
-            banking_details: updated.banking_details as any,
+            banking_details: updated.banking_details as unknown as Json,
             updated_at: new Date().toISOString(),
           })
           .eq("id", updated.id);
@@ -102,7 +102,7 @@ export const useCompanySettings = () => {
           default_payment_terms_days: updated.default_payment_terms_days,
           payfast_merchant_id: updated.payfast_merchant_id,
           payfast_merchant_key: updated.payfast_merchant_key,
-          banking_details: updated.banking_details as any,
+          banking_details: updated.banking_details as unknown as Json,
         });
         if (error) throw error;
       }
@@ -111,8 +111,9 @@ export const useCompanySettings = () => {
       queryClient.invalidateQueries({ queryKey: ["company-settings"] });
       toast({ title: "Settings saved ✅" });
     },
-    onError: (err: any) => {
-      toast({ title: "Error saving settings", description: err.message, variant: "destructive" });
+    onError: (err: unknown) => {
+      const description = err instanceof Error ? err.message : "Failed to save settings";
+      toast({ title: "Error saving settings", description, variant: "destructive" });
     },
   });
 
