@@ -35,7 +35,10 @@ export function useInventoryStock() {
         .select("id, product_id, quantity, low_stock_threshold, stock_mode");
       if (error) throw error;
       const map = new Map<string, StockRecord>();
-      (data || []).forEach((row: any) => map.set(row.product_id, row as StockRecord));
+      (data || []).forEach((row) => {
+        const r = row as unknown as StockRecord;
+        map.set(r.product_id, r);
+      });
       return map;
     },
   });
@@ -47,9 +50,10 @@ export function useInventoryStock() {
         .from("inventory_stock")
         .select("quantity, low_stock_threshold, stock_mode");
       if (error) return 0;
-      return (data || []).filter(
-        (r: any) => r.stock_mode === "stock_sensitive" && r.quantity <= r.low_stock_threshold
-      ).length;
+      return (data || []).filter((row) => {
+        const r = row as unknown as Pick<StockRecord, "quantity" | "low_stock_threshold" | "stock_mode">;
+        return r.stock_mode === "stock_sensitive" && r.quantity <= r.low_stock_threshold;
+      }).length;
     },
   });
 
