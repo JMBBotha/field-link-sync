@@ -729,7 +729,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
                     onClick={() => saveQuote("draft")}
                     disabled={loading || !canSave}
                   >
-                    Save Draft
+                    Save as Draft
                   </Button>
                 </span>
               </TooltipTrigger>
