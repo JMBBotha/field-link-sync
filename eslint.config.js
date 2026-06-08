@@ -23,4 +23,24 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  {
+    files: ["src/components/**/*.{ts,tsx}", "src/pages/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "CallExpression[callee.object.object.name='supabase'][callee.object.property.name='auth'][callee.property.name='getSession']",
+          message:
+            "Use useAuth() from @/contexts/AuthContext instead of direct supabase.auth calls.",
+        },
+        {
+          selector:
+            "CallExpression[callee.object.object.name='supabase'][callee.object.property.name='auth'][callee.property.name='onAuthStateChange']",
+          message:
+            "Use useAuth() from @/contexts/AuthContext instead of direct supabase.auth calls.",
+        },
+      ],
+    },
+  },
 );

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useImperativeHandle, forwardRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,7 @@ const escapeHtml = (text: string | null | undefined): string => {
 
 const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange, onLeadClick, showAllAgents = false }, ref) => {
   const MAP_CHROME_BOTTOM_OFFSET_PX = 64;
+  const { user } = useAuth();
   const [agents, setAgents] = useState<AgentLocation[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [center, setCenter] = useState({ lat: -34.0522, lng: 22.2922 });
@@ -265,8 +267,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
 
   const fetchData = async () => {
     // Get current user's company to scope data
-    const { data: { session } } = await supabase.auth.getSession();
-    const currentUserId = session?.user?.id;
+    const currentUserId = user?.id;
     let companyId: string | null = null;
 
     if (currentUserId) {

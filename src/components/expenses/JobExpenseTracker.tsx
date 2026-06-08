@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,7 @@ interface JobExpenseTrackerProps {
 const JobExpenseTracker = ({ leadId }: JobExpenseTrackerProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split("T")[0]);
@@ -44,8 +46,7 @@ const JobExpenseTracker = ({ leadId }: JobExpenseTrackerProps) => {
     if (!description.trim() || !amount || Number(amount) <= 0) return;
     setSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!user) throw new Error("Not authenticated");
 
       let receiptPath: string | null = null;
 
@@ -69,7 +70,7 @@ const JobExpenseTracker = ({ leadId }: JobExpenseTrackerProps) => {
         amount: Number(amount),
         expense_date: expenseDate,
         receipt_path: receiptPath,
-        created_by: session.user.id,
+        created_by: user.id,
       });
       if (error) throw error;
 

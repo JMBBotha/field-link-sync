@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 type AppRole = "admin" | "field_agent" | "dispatcher" | "viewer";
 
@@ -21,21 +22,20 @@ const RequireRole = ({ allowedRoles, redirectTo, children }: RequireRoleProps) =
   const [authorized, setAuthorized] = useState<boolean | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { session, loading: authLoading } = useAuth();
 
   useEffect(() => {
+    if (authLoading) return;
     let cancelled = false;
 
-    const check = async (sessionArg?: Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"]) => {
-      const session = sessionArg ?? (await supabase.auth.getSession()).data.session;
-      if (cancelled) return;
+    if (!session) {
+      const isFieldContext =
+        typeof window !== "undefined" && window.location.pathname.startsWith("/field");
+      navigate(isFieldContext ? "/field" : "/login", { replace: true });
+      return;
+    }
 
-      if (!session) {
-        // Smart redirect on lost session: try to preserve field agent context via current path
-        const isFieldContext = typeof window !== "undefined" && window.location.pathname.startsWith("/field");
-        navigate(isFieldContext ? "/field" : "/login", { replace: true });
-        return;
-      }
-
+    (async () => {
       const { data: roles } = await supabase
         .from("user_roles")
         .select("role")
@@ -51,32 +51,19 @@ const RequireRole = ({ allowedRoles, redirectTo, children }: RequireRoleProps) =
           description: "You don't have permission to view this page.",
           variant: "destructive",
         });
-        // Smart redirect: field agents → /field, others → /admin
-        const fallback = redirectTo || (userRoles.includes("field_agent") ? "/field" : "/admin");
+        const fallback =
+          redirectTo || (userRoles.includes("field_agent") ? "/field" : "/admin");
         navigate(fallback, { replace: true });
         return;
       }
 
       setAuthorized(true);
-    };
-
-    // Reactive auth state listener — re-evaluate on sign-out / token refresh
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        const isFieldContext = typeof window !== "undefined" && window.location.pathname.startsWith("/field");
-        navigate(isFieldContext ? "/field" : "/login", { replace: true });
-        return;
-      }
-      check(session);
-    });
-
-    check();
+    })();
 
     return () => {
       cancelled = true;
-      subscription.unsubscribe();
     };
-  }, [allowedRoles, navigate, redirectTo, toast]);
+  }, [allowedRoles, navigate, redirectTo, toast, session, authLoading]);
 
   if (authorized === null) {
     return (

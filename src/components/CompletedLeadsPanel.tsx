@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -49,15 +50,10 @@ const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: Completed
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [invoiceMap, setInvoiceMap] = useState<Map<string, InvoiceInfo>>(new Map());
   const [invoiceDialogLead, setInvoiceDialogLead] = useState<Lead | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const { user } = useAuth();
+  const currentUserId = user?.id ?? null;
   const { toast } = useToast();
   const isMobile = useIsMobile();
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setCurrentUserId(session.user.id);
-    });
-  }, []);
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);

@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,13 +58,8 @@ const CompletedLeadsList = () => {
   const [selectedLead, setSelectedLead] = useState<CompletedLeadWithInvoice | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [invoiceDialogLead, setInvoiceDialogLead] = useState<CompletedLeadWithInvoice | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setCurrentUserId(session.user.id);
-    });
-  }, []);
+  const { user } = useAuth();
+  const currentUserId = user?.id ?? null;
 
   const { data: leads, isLoading, isError, refetch } = useQuery({
     queryKey: ["completed-leads-with-invoices"],

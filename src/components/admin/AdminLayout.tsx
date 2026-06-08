@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Menu, Sun, Moon, Search } from "lucide-react";
@@ -23,9 +24,11 @@ const AdminLayout = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showCreateLead, setShowCreateLead] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string>("");
   const [searchOpen, setSearchOpen] = useState(false);
-  
+
+  const { session, user, loading: authLoading } = useAuth();
+  const currentUserId = user?.id ?? "";
+
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -84,12 +87,13 @@ const AdminLayout = () => {
   });
 
   useEffect(() => {
+    if (authLoading) return;
     checkAuth();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, session]);
 
   const checkAuth = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       if (!session) { navigate("/login"); return; }
       const { data: roles } = await supabase
         .from("user_roles")
@@ -103,7 +107,6 @@ const AdminLayout = () => {
         return;
       }
       setIsAdmin(true);
-      setCurrentUserId(session.user.id);
 
       // If onboarding not completed, redirect to unified onboarding
       const { data: profile } = await supabase
