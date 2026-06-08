@@ -164,7 +164,7 @@ export function useInventoryStock() {
       for (const productId of productIds) {
         const existing = stockMap.get(productId);
         if (existing) {
-          const updatePayload: any = { stock_mode: mode };
+          const updatePayload: { stock_mode: StockMode; quantity?: number } = { stock_mode: mode };
           if (mode === "stock_sensitive" && (existing.quantity === null || existing.quantity === undefined)) {
             updatePayload.quantity = 0;
           }
@@ -178,7 +178,7 @@ export function useInventoryStock() {
             .insert({
               product_id: productId,
               quantity: 0,
-              stock_mode: mode as any,
+              stock_mode: mode,
             });
         }
       }
