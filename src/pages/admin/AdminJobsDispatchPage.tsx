@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
 import { format } from "date-fns";
 import CreateJobDialog from "@/components/jobs/CreateJobDialog";
+import RequireRole from "@/components/RequireRole";
 
 const COLUMNS = [
   { key: "scheduled", label: "Scheduled", color: "border-blue-500" },
