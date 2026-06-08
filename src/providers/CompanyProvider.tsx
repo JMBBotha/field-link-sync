@@ -107,13 +107,14 @@ export const CompanyProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       if (mountedRef.current && seq === fetchSeqRef.current) setLoading(false);
     }
-  }, [paramId]);
+  }, [paramId, userId]);
 
   useEffect(() => {
     mountedRef.current = true;
-    void fetchCompany();
+    if (authLoading) return;
+    fetchCompany().catch((err) => console.error("CompanyProvider fetch unhandled:", err));
     return () => { mountedRef.current = false; };
-  }, [fetchCompany]);
+  }, [fetchCompany, authLoading, userId]);
 
   const resolvedId = company?.id || (paramId && isUUID(paramId) ? paramId : null);
 
