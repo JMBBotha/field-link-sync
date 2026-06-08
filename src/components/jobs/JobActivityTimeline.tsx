@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -67,6 +68,7 @@ interface Props {
 
 const JobActivityTimeline = ({ jobId }: Props) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [noteText, setNoteText] = useState("");
 
@@ -86,11 +88,10 @@ const JobActivityTimeline = ({ jobId }: Props) => {
 
   const addNoteMutation = useMutation({
     mutationFn: async (note: string) => {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session) throw new Error("Not authenticated");
+      if (!user) throw new Error("Not authenticated");
       const { error } = await supabase.from("job_activity_log").insert({
         job_id: jobId,
-        user_id: session.session.user.id,
+        user_id: user.id,
         action: "note_added",
         details: { note },
       });

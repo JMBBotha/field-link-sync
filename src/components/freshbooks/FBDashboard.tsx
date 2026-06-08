@@ -1,6 +1,7 @@
 import { useCompany } from "@/providers/CompanyProvider";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { DollarSign, FileText, AlertTriangle, TrendingUp, CreditCard, Plus, Clock, CalendarClock, Database, Receipt, Users } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,7 @@ const StatCard = ({ title, value, icon: Icon, color }: { title: string; value: s
 
 const FBDashboard = () => {
   const { companyId } = useCompany();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [loadingDemo, setLoadingDemo] = useState(false);
@@ -107,8 +109,7 @@ const FBDashboard = () => {
       if (payErr) console.error("Payment insert error:", payErr);
 
       // 5 time entries (need a user_id – use a placeholder UUID)
-      const { data: sessionData } = await supabase.auth.getSession();
-      const userId = sessionData?.session?.user?.id || "00000000-0000-0000-0000-000000000001";
+      const userId = user?.id || "00000000-0000-0000-0000-000000000001";
       const projectIds = projects?.map(p => p.id) || [];
 
       const { error: timeErr } = await supabase.from("fb_time_entries").insert([

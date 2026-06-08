@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -24,6 +25,7 @@ interface Props {
 const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, defaultCustomerId }: Props) => {
   const { companyId } = useUserCompanyId();
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const [title, setTitle] = useState("");
@@ -56,8 +58,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const { data: session } = await supabase.auth.getSession();
-      const userId = session.session?.user.id;
+      const userId = user?.id;
       const { data, error } = await supabase.from("jobs").insert({
         company_id: companyId!,
         title,

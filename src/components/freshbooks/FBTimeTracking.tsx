@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useCompany } from "@/providers/CompanyProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Clock, Play, Square, Timer } from "lucide-react";
@@ -17,6 +18,7 @@ const FBTimeTracking = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ hours: "1", minutes: "0", date: new Date().toISOString().split("T")[0], billable: true, notes: "", project_id: "" });
   const { toast } = useToast();
+  const { user } = useAuth();
   const qc = useQueryClient();
 
   // Timer state
