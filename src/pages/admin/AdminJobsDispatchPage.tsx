@@ -455,4 +455,10 @@ const AdminJobsDispatchPage = () => {
   );
 };
 
-export default AdminJobsDispatchPage;
+const AdminJobsDispatchPageGuarded = () => (
+  <RequireRole allowedRoles={["admin"]}>
+    <AdminJobsDispatchPage />
+  </RequireRole>
+);
+
+export default AdminJobsDispatchPageGuarded;
