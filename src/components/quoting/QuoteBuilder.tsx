@@ -621,6 +621,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         }
       }
 
+      if (!mountedRef.current) return;
       clearDraft();
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
       toast({
@@ -630,9 +631,11 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       if (status === "sent") onBack();
     } catch (err: any) {
       console.error("Quote save error:", err);
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      if (mountedRef.current) {
+        toast({ title: "Error", description: err.message, variant: "destructive" });
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   };
 
