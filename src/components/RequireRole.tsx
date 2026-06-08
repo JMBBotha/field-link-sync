@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole, type AppRole } from "@/hooks/useRole";
+import { Shield } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface RequireRoleProps {
   /** Roles that are allowed to view this route */
@@ -45,18 +47,38 @@ const RequireRole = ({ allowedRoles, redirectTo, children }: RequireRoleProps) =
         description: "You don't have permission to view this page.",
         variant: "destructive",
       });
-      const fallback =
-        redirectTo || (roles.includes("field_agent") ? "/field" : "/admin");
-      navigate(fallback, { replace: true });
     }
-  }, [loading, session, hasAccess, roles, allowedRoles, navigate, redirectTo, toast]);
+  }, [loading, session, hasAccess, navigate, toast]);
 
   // Prevent UI flash before auth/role resolution
   if (loading) return null;
-  if (!session || !hasAccess) {
+
+  if (!session) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="h-10 w-10 rounded-full bg-primary/40 animate-pulse" />
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    const fallback = redirectTo || (roles.includes("field_agent") ? "/field" : "/admin");
+    return (
+      <div className="flex min-h-screen items-center justify-center p-8 bg-background">
+        <div className="text-center space-y-5 max-w-md">
+          <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+            <Shield className="h-8 w-8 text-destructive" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">Access Denied</h2>
+            <p className="text-sm text-muted-foreground mt-2">
+              You don't have permission to view this page. Contact your administrator if you believe this is an error.
+            </p>
+          </div>
+          <Button onClick={() => navigate(fallback, { replace: true })} className="gap-2">
+            Go to Dashboard
+          </Button>
+        </div>
       </div>
     );
   }
