@@ -23,7 +23,7 @@ const MapInteractive = ({
   onLocationChange,
 }: LocationPickerProps) => {
   const map = useMap();
-  const markerRef = useRef<google.maps.Marker | null>(null);
+  const markerRef = useRef<any>(null);
 
   // Place / update marker
   const placeMarker = useCallback(
@@ -63,7 +63,7 @@ const MapInteractive = ({
   // Click to place marker
   useEffect(() => {
     if (!map) return;
-    const listener = map.addListener("click", (e: google.maps.MapMouseEvent) => {
+    const listener = map.addListener("click", (e: any) => {
       if (!e.latLng) return;
       placeMarker(e.latLng.lat(), e.latLng.lng());
     });
@@ -187,7 +187,7 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
       fullscreenControl={false}
       zoomControlOptions={
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        window.google?.maps ? { position: (google.maps.ControlPosition as any)[fullscreen ? "RIGHT_BOTTOM" : "RIGHT_TOP"] } : undefined
+        window.google?.maps ? { position: google.ControlPosition[fullscreen ? "RIGHT_BOTTOM" : "RIGHT_TOP"] } : undefined
       }
       style={{ width: "100%", height: "100%" }}
     >
