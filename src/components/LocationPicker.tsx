@@ -4,6 +4,9 @@ import { Crosshair, Loader2, MapPin, Maximize2, Navigation, X, Search } from "lu
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare const google: any;
+
 interface LocationPickerProps {
   latitude: number | null;
   longitude: number | null;
