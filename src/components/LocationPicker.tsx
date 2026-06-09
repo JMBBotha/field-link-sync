@@ -13,7 +13,7 @@ interface LocationPickerProps {
   onLocationChange: (lat: number, lng: number, address?: string) => void;
 }
 
-const GOOGLE_MAPS_API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined) ?? "";
+const GOOGLE_MAPS_API_KEY = "AIzaSyBeInqqEhzsu_U7OImGQnvJ8vusF_21wvc";
 const DEFAULT_CENTER = { lat: -33.9249, lng: 18.4241 };
 
 /** Marker + click handling inside the Map */
