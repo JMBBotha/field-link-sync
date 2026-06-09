@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import {
   APIProvider,
+  APILoadingStatus,
   Map,
-  useMap,
+  useApiLoadingStatus,
   useMapsLibrary,
   AdvancedMarker,
 } from "@vis.gl/react-google-maps";
-import { Crosshair, Loader2, Maximize2, Search, X } from "lucide-react";
+import { AlertCircle, Crosshair, Loader2, Maximize2, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -41,7 +42,9 @@ const LocationPickerInner = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState("");
+  const [searchError, setSearchError] = useState<string | null>(null);
 
+  const apiStatus = useApiLoadingStatus();
   const placesLib = useMapsLibrary("places");
   const geocoderLib = useMapsLibrary("geocoding");
 
@@ -54,6 +57,12 @@ const LocationPickerInner = ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (placesLib) autocompleteService.current = new (placesLib as any).AutocompleteService();
   }, [geocoderLib, placesLib]);
+
+  const apiLoading = apiStatus === APILoadingStatus.LOADING || apiStatus === APILoadingStatus.NOT_LOADED;
+  const apiFailed =
+    apiStatus === APILoadingStatus.FAILED || apiStatus === APILoadingStatus.AUTH_FAILURE;
+  const apiReady = apiStatus === APILoadingStatus.LOADED;
+  const placesReady = apiReady && !!autocompleteService.current;
 
   const reverseGeocode = useCallback(
     (lat: number, lng: number) => {
