@@ -13,22 +13,7 @@ interface LocationPickerProps {
   onLocationChange: (lat: number, lng: number, address?: string) => void;
 }
 
-const ENV_GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
-let cachedKey: string | null = ENV_GOOGLE_MAPS_API_KEY || null;
-let keyPromise: Promise<string> | null = null;
-
-async function loadGoogleMapsKey(): Promise<string> {
-  if (cachedKey) return cachedKey;
-  if (keyPromise) return keyPromise;
-  keyPromise = (async () => {
-    const { supabase } = await import("@/integrations/supabase/client");
-    const { data } = await supabase.functions.invoke("get-google-maps-key");
-    const key = (data as { key?: string } | null)?.key ?? "";
-    cachedKey = key;
-    return key;
-  })();
-  return keyPromise;
-}
+const GOOGLE_MAPS_API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined) ?? "";
 const DEFAULT_CENTER = { lat: -33.9249, lng: 18.4241 };
 
 /** Marker + click handling inside the Map */
