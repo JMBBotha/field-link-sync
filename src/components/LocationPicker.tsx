@@ -136,7 +136,7 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
         // Reverse geocode via Google Geocoder if available
         let address: string | undefined;
         try {
-          if (window.google?.maps) {
+          if ((window as any).google?.maps) {
             const geocoder = new google.maps.Geocoder();
             const res = await geocoder.geocode({ location: { lat, lng } });
             address = res.results?.[0]?.formatted_address;
@@ -187,7 +187,7 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
       fullscreenControl={false}
       zoomControlOptions={
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        window.google?.maps ? { position: google.ControlPosition[fullscreen ? "RIGHT_BOTTOM" : "RIGHT_TOP"] } : undefined
+        (window as any).google?.maps ? { position: ((window as any).google?.maps?.ControlPosition ?? {})[fullscreen ? "RIGHT_BOTTOM" : "RIGHT_TOP"] } : undefined
       }
       style={{ width: "100%", height: "100%" }}
     >
