@@ -5165,6 +5165,18 @@ export type Database = {
       }
       get_overdue_maintenance_count: { Args: never; Returns: number }
       get_quote_by_public_token: { Args: { p_token: string }; Returns: string }
+      get_recently_active_customers: {
+        Args: { p_company_id: string; p_limit?: number }
+        Returns: {
+          email: string
+          id: string
+          lead_source: string
+          name: string
+          phone: string
+          status: string
+          updated_at: string
+        }[]
+      }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
