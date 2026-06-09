@@ -190,58 +190,73 @@ const LocationPickerInner = ({
   );
 
   const searchBar = (
-    <div className="flex items-center gap-2">
-      <div className="relative flex-1">
-        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-        <Input
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleSearch();
-            }
-          }}
-          placeholder="Search address in South Africa"
-          className="pl-8 h-9 bg-background/95 backdrop-blur"
-        />
-        {predictions.length > 0 && (
-          <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
-            {predictions.map((p) => (
-              <button
-                key={p.place_id}
-                type="button"
-                onClick={() => handleSelectPlace(p.place_id, p.description)}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-accent"
-              >
-                {p.description}
-              </button>
-            ))}
-          </div>
-        )}
+    <div className="space-y-1">
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleSearch();
+              }
+            }}
+            placeholder={placesReady ? "Search address in South Africa" : "Loading places…"}
+            disabled={!placesReady}
+            className="pl-8 h-9 bg-background/95 backdrop-blur"
+          />
+          {predictions.length > 0 && (
+            <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
+              {predictions.map((p) => (
+                <button
+                  key={p.place_id}
+                  type="button"
+                  onClick={() => handleSelectPlace(p.place_id, p.description)}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-accent"
+                >
+                  {p.description}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={handleSearch}
+          disabled={isSearching || !placesReady}
+          className="h-9"
+        >
+          {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={handleGPS}
+          disabled={gettingLocation}
+          className="h-9"
+        >
+          {gettingLocation ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crosshair className="h-4 w-4" />}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={() => setIsFullscreen((v) => !v)}
+          className="h-9"
+        >
+          {isFullscreen ? <X className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        </Button>
       </div>
-      <Button type="button" size="sm" variant="outline" onClick={handleSearch} disabled={isSearching} className="h-9">
-        {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-      </Button>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        onClick={handleGPS}
-        disabled={gettingLocation}
-        className="h-9"
-      >
-        {gettingLocation ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crosshair className="h-4 w-4" />}
-      </Button>
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        onClick={() => setIsFullscreen((v) => !v)}
-        className="h-9"
-      >
-        {isFullscreen ? <X className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-      </Button>
+      {searchError && (
+        <p className="text-xs text-destructive flex items-center gap-1">
+          <AlertCircle className="h-3 w-3" /> {searchError}
+        </p>
+      )}
     </div>
   );
 
