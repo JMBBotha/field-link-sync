@@ -356,7 +356,7 @@ const LocationPickerInner = ({ latitude, longitude, onLocationChange }: Location
 };
 
 export const LocationPicker = (props: LocationPickerProps) => (
-  <APIProvider apiKey={GOOGLE_MAPS_API_KEY} libraries={["places", "geocoding", "marker"]}>
+  <APIProvider apiKey={GOOGLE_MAPS_API_KEY} libraries={["places", "marker"]}>
     <LocationPickerInner {...props} />
   </APIProvider>
 );
