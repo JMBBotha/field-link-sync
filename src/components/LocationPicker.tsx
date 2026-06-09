@@ -227,7 +227,7 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
   );
 
   return (
-    <APIProvider apiKey={GOOGLE_MAPS_API_KEY} libraries={["places", "marker"]}>
+    <APIProvider apiKey={apiKey} libraries={["places", "marker"]}>
       {isFullscreen ? (
         <div className="fixed inset-0 z-50 bg-background">
           <div className="absolute top-4 left-4 right-20 z-10 max-w-md">
