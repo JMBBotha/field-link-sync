@@ -22,6 +22,7 @@ interface LocationPickerProps {
 
 interface MapInteractiveProps extends LocationPickerProps {
   onMapReady: () => void;
+  onDragPreview: (pos: google.maps.LatLngLiteral | null) => void;
 }
 
 const MapInteractive = ({
@@ -29,6 +30,7 @@ const MapInteractive = ({
   longitude,
   onLocationChange,
   onMapReady,
+  onDragPreview,
 }: MapInteractiveProps) => {
   const map = useMap();
   const geocodingLibrary = useMapsLibrary("geocoding");
@@ -76,6 +78,17 @@ const MapInteractive = ({
     [onLocationChange],
   );
 
+  const handleMarkerDrag = useCallback(
+    (e: google.maps.MapMouseEvent) => {
+      const latLng = e.latLng;
+      if (!latLng) return;
+      const pos = { lat: latLng.lat(), lng: latLng.lng() };
+      setMarkerPosition(pos);
+      onDragPreview(pos);
+    },
+    [onDragPreview],
+  );
+
   const handleMarkerDragEnd = useCallback(
     (e: google.maps.MapMouseEvent) => {
       const latLng = e.latLng;
@@ -83,6 +96,7 @@ const MapInteractive = ({
       const lat = latLng.lat();
       const lng = latLng.lng();
       setMarkerPosition({ lat, lng });
+      onDragPreview(null);
       if (geocoderRef.current) {
         geocoderRef.current.geocode({ location: { lat, lng } }, (results, status) => {
           if (status === "OK" && results?.[0]) {
@@ -95,7 +109,7 @@ const MapInteractive = ({
         onLocationChange(lat, lng);
       }
     },
-    [onLocationChange],
+    [onLocationChange, onDragPreview],
   );
 
   useEffect(() => {
@@ -113,6 +127,7 @@ const MapInteractive = ({
     <AdvancedMarker
       position={markerPosition}
       draggable
+      onDrag={handleMarkerDrag}
       onDragEnd={handleMarkerDragEnd}
       title="Drag to adjust location"
     />
@@ -126,6 +141,7 @@ const LocationPickerInner = ({ latitude, longitude, onLocationChange }: Location
   const [isLoading, setIsLoading] = useState(true);
   const [mapError] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [dragPreview, setDragPreview] = useState<google.maps.LatLngLiteral | null>(null);
 
   const placesLibrary = useMapsLibrary("places");
   const autocompleteServiceRef = useRef<google.maps.places.AutocompleteService | null>(null);
@@ -299,8 +315,14 @@ const LocationPickerInner = ({ latitude, longitude, onLocationChange }: Location
               longitude={longitude}
               onLocationChange={onLocationChange}
               onMapReady={handleMapReady}
+              onDragPreview={setDragPreview}
             />
           </Map>
+          {dragPreview && (
+            <div className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-20 px-3 py-1 rounded-full bg-background/90 backdrop-blur border text-xs font-mono shadow">
+              {dragPreview.lat.toFixed(6)}, {dragPreview.lng.toFixed(6)}
+            </div>
+          )}
         </>
       )}
     </div>
