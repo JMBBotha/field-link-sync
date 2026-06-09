@@ -4,6 +4,9 @@ import { Crosshair, Loader2, MapPin, Maximize2, Navigation, X, Search } from "lu
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare const google: any;
+
 interface LocationPickerProps {
   latitude: number | null;
   longitude: number | null;
@@ -20,7 +23,7 @@ const MapInteractive = ({
   onLocationChange,
 }: LocationPickerProps) => {
   const map = useMap();
-  const markerRef = useRef<google.maps.Marker | null>(null);
+  const markerRef = useRef<any>(null);
 
   // Place / update marker
   const placeMarker = useCallback(
@@ -60,7 +63,7 @@ const MapInteractive = ({
   // Click to place marker
   useEffect(() => {
     if (!map) return;
-    const listener = map.addListener("click", (e: google.maps.MapMouseEvent) => {
+    const listener = map.addListener("click", (e: any) => {
       if (!e.latLng) return;
       placeMarker(e.latLng.lat(), e.latLng.lng());
     });
@@ -133,7 +136,7 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
         // Reverse geocode via Google Geocoder if available
         let address: string | undefined;
         try {
-          if (window.google?.maps) {
+          if ((window as any).google?.maps) {
             const geocoder = new google.maps.Geocoder();
             const res = await geocoder.geocode({ location: { lat, lng } });
             address = res.results?.[0]?.formatted_address;
@@ -184,7 +187,7 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
       fullscreenControl={false}
       zoomControlOptions={
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        window.google?.maps ? { position: (google.maps.ControlPosition as any)[fullscreen ? "RIGHT_BOTTOM" : "RIGHT_TOP"] } : undefined
+        (window as any).google?.maps ? { position: ((window as any).google?.maps?.ControlPosition ?? {})[fullscreen ? "RIGHT_BOTTOM" : "RIGHT_TOP"] } : undefined
       }
       style={{ width: "100%", height: "100%" }}
     >
