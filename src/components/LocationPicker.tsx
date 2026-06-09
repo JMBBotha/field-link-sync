@@ -13,7 +13,22 @@ interface LocationPickerProps {
   onLocationChange: (lat: number, lng: number, address?: string) => void;
 }
 
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+const ENV_GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+let cachedKey: string | null = ENV_GOOGLE_MAPS_API_KEY || null;
+let keyPromise: Promise<string> | null = null;
+
+async function loadGoogleMapsKey(): Promise<string> {
+  if (cachedKey) return cachedKey;
+  if (keyPromise) return keyPromise;
+  keyPromise = (async () => {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data } = await supabase.functions.invoke("get-google-maps-key");
+    const key = (data as { key?: string } | null)?.key ?? "";
+    cachedKey = key;
+    return key;
+  })();
+  return keyPromise;
+}
 const DEFAULT_CENTER = { lat: -33.9249, lng: 18.4241 };
 
 /** Marker + click handling inside the Map */
@@ -117,8 +132,20 @@ const PlacesSearch = ({
 const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPickerProps) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
+  const [apiKey, setApiKey] = useState<string | null>(cachedKey);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const fsSearchInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (apiKey) return;
+    let cancelled = false;
+    loadGoogleMapsKey().then((k) => {
+      if (!cancelled) setApiKey(k || null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiKey]);
 
   // Use a key to force fresh Map mount per scope (inline vs fullscreen)
   const center =
@@ -165,11 +192,11 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
     );
   };
 
-  if (!GOOGLE_MAPS_API_KEY) {
+  if (!apiKey) {
     return (
       <div className="h-48 rounded-md border border-dashed flex items-center justify-center bg-muted/50">
         <p className="text-sm text-muted-foreground text-center px-4">
-          Google Maps API key not configured. Set VITE_GOOGLE_MAPS_API_KEY.
+          Loading map…
         </p>
       </div>
     );
@@ -200,7 +227,7 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
   );
 
   return (
-    <APIProvider apiKey={GOOGLE_MAPS_API_KEY} libraries={["places", "marker"]}>
+    <APIProvider apiKey={apiKey} libraries={["places", "marker"]}>
       {isFullscreen ? (
         <div className="fixed inset-0 z-50 bg-background">
           <div className="absolute top-4 left-4 right-20 z-10 max-w-md">
