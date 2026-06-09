@@ -132,8 +132,20 @@ const PlacesSearch = ({
 const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPickerProps) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
+  const [apiKey, setApiKey] = useState<string | null>(cachedKey);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const fsSearchInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (apiKey) return;
+    let cancelled = false;
+    loadGoogleMapsKey().then((k) => {
+      if (!cancelled) setApiKey(k || null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiKey]);
 
   // Use a key to force fresh Map mount per scope (inline vs fullscreen)
   const center =
