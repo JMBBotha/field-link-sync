@@ -122,7 +122,7 @@ const NotificationBell = () => {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
+      <PopoverContent className="w-80 p-0 overflow-hidden" align="end">
         <NotificationsList
           notifications={notifications}
           onMarkAsRead={markAsRead}
