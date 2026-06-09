@@ -807,6 +807,7 @@ export type Database = {
           is_company: boolean | null
           last_name: string | null
           latitude: number | null
+          lead_source: string | null
           longitude: number | null
           name: string
           normalized_email: string | null
@@ -841,6 +842,7 @@ export type Database = {
           is_company?: boolean | null
           last_name?: string | null
           latitude?: number | null
+          lead_source?: string | null
           longitude?: number | null
           name: string
           normalized_email?: string | null
@@ -875,6 +877,7 @@ export type Database = {
           is_company?: boolean | null
           last_name?: string | null
           latitude?: number | null
+          lead_source?: string | null
           longitude?: number | null
           name?: string
           normalized_email?: string | null
