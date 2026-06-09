@@ -81,7 +81,12 @@ const LocationPickerInner = ({
   );
 
   const handleSearch = useCallback(() => {
-    if (!searchQuery.trim() || !autocompleteService.current) return;
+    if (!searchQuery.trim()) return;
+    if (!autocompleteService.current) {
+      setSearchError("Places service not ready yet");
+      return;
+    }
+    setSearchError(null);
     setIsSearching(true);
     autocompleteService.current.getPlacePredictions(
       { input: searchQuery, componentRestrictions: { country: "za" } },
@@ -94,6 +99,9 @@ const LocationPickerInner = ({
           );
         } else {
           setPredictions([]);
+          if (status !== "ZERO_RESULTS") {
+            setSearchError(`Places search failed (${status}). Check the API is enabled.`);
+          }
         }
       },
     );
