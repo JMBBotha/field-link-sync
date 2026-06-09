@@ -170,7 +170,7 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
     return (
       <div className="h-48 rounded-md border border-dashed flex items-center justify-center bg-muted/50">
         <p className="text-sm text-muted-foreground text-center px-4">
-          Loading map…
+          Google Maps API key not configured. Set VITE_GOOGLE_MAPS_API_KEY.
         </p>
       </div>
     );
