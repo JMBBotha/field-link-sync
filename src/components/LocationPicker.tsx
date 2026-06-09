@@ -22,6 +22,7 @@ interface LocationPickerProps {
 
 interface MapInteractiveProps extends LocationPickerProps {
   onMapReady: () => void;
+  onDragPreview: (pos: google.maps.LatLngLiteral | null) => void;
 }
 
 const MapInteractive = ({
