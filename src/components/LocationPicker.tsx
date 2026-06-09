@@ -149,25 +149,44 @@ const LocationPickerInner = ({
       : DEFAULT_CENTER;
 
   const mapBlock = (
-    <Map
-      defaultCenter={center}
-      defaultZoom={latitude && longitude ? 16 : 12}
-      mapTypeId="hybrid"
-      mapId="location_picker_map"
-      gestureHandling="greedy"
-      mapTypeControl
-      streetViewControl={false}
-      fullscreenControl={false}
-      onClick={(e) => {
-        if (!e.detail.latLng) return;
-        reverseGeocode(e.detail.latLng.lat, e.detail.latLng.lng);
-      }}
-      style={{ width: "100%", height: "100%" }}
-    >
-      {latitude != null && longitude != null && (
-        <AdvancedMarker position={{ lat: latitude, lng: longitude }} />
+    <div className="relative w-full h-full">
+      {apiReady ? (
+        <Map
+          defaultCenter={center}
+          defaultZoom={latitude && longitude ? 16 : 12}
+          mapTypeId="hybrid"
+          mapId="location_picker_map"
+          gestureHandling="greedy"
+          mapTypeControl
+          streetViewControl={false}
+          fullscreenControl={false}
+          onClick={(e) => {
+            if (!e.detail.latLng) return;
+            reverseGeocode(e.detail.latLng.lat, e.detail.latLng.lng);
+          }}
+          style={{ width: "100%", height: "100%" }}
+        >
+          {latitude != null && longitude != null && (
+            <AdvancedMarker position={{ lat: latitude, lng: longitude }} />
+          )}
+        </Map>
+      ) : apiFailed ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted/60 text-center p-4">
+          <AlertCircle className="h-6 w-6 text-destructive" />
+          <p className="text-sm font-medium">Google Maps failed to load</p>
+          <p className="text-xs text-muted-foreground">
+            {apiStatus === APILoadingStatus.AUTH_FAILURE
+              ? "API key rejected. Check Maps JavaScript API is enabled and the key is unrestricted for this domain."
+              : "Check your network connection and that the Maps API is enabled."}
+          </p>
+        </div>
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center gap-2 bg-muted/40">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Loading map…</span>
+        </div>
       )}
-    </Map>
+    </div>
   );
 
   const searchBar = (
