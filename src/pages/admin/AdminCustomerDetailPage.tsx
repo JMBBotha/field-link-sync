@@ -1,65 +1,89 @@
-import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { format, subMonths, startOfMonth } from "date-fns";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import {
-  User, Building2, Phone, Mail, MapPin, ArrowLeft, Edit2, Plus,
-  Wrench, FileCheck, Calendar, Star, Loader2, Trash2,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+  ArrowLeft, Mail, Phone, MapPin, FileText, Settings2, Plus, ChevronDown, Loader2,
 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { cn } from "@/lib/utils";
+import { formatRand } from "@/utils/formatRand";
+
+const LEAD_SOURCES = [
+  "Manual", "Facebook Lead", "Website Form", "WhatsApp", "Phone Call", "Walk-in", "Referral",
+] as const;
+
+const LEAD_SOURCE_STYLES: Record<string, string> = {
+  "Manual":        "bg-slate-100 text-slate-700 border-slate-200",
+  "Facebook Lead": "bg-blue-100 text-blue-700 border-blue-200",
+  "Website Form":  "bg-green-100 text-green-700 border-green-200",
+  "WhatsApp":      "bg-emerald-100 text-emerald-700 border-emerald-200",
+  "Phone Call":    "bg-orange-100 text-orange-700 border-orange-200",
+  "Walk-in":       "bg-purple-100 text-purple-700 border-purple-200",
+  "Referral":      "bg-pink-100 text-pink-700 border-pink-200",
+};
+
+const statusBadge = (status?: string | null) => {
+  const s = (status || "").toLowerCase();
+  if (s === "paid" || s === "accepted" || s === "completed" || s === "active") return "bg-emerald-100 text-emerald-700 border-emerald-200";
+  if (s === "overdue" || s === "declined") return "bg-rose-100 text-rose-700 border-rose-200";
+  if (s === "draft") return "bg-slate-100 text-slate-700 border-slate-200";
+  if (s === "sent" || s === "viewed" || s === "scheduled" || s === "in_progress") return "bg-blue-100 text-blue-700 border-blue-200";
+  return "bg-amber-100 text-amber-700 border-amber-200";
+};
+
+const getInitials = (first?: string | null, last?: string | null, company?: string | null) => {
+  const src = company || `${first || ""} ${last || ""}`.trim();
+  return src.split(/\s+/).filter(Boolean).slice(0, 2).map(s => s[0]?.toUpperCase()).join("") || "?";
+};
 
 const AdminCustomerDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [yearFilter, setYearFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [showUnitDialog, setShowUnitDialog] = useState(false);
-  const [unitForm, setUnitForm] = useState({ label: "", full_address: "", notes: "" });
-  const [savingUnit, setSavingUnit] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const qc = useQueryClient();
+  const [showEdit, setShowEdit] = useState(false);
 
-  // Fetch customer
   const { data: customer, isLoading } = useQuery({
     queryKey: ["customer-detail", id],
     enabled: !!id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("customers")
-        .select("*")
-        .eq("id", id!)
-        .single();
+      const { data, error } = await supabase.from("customers").select("*").eq("id", id!).single();
       if (error) throw error;
       return data;
     },
   });
 
-  // Fetch units
-  const { data: units = [] } = useQuery({
-    queryKey: ["customer-units", id],
+  const { data: invoices = [] } = useQuery({
+    queryKey: ["customer-invoices", id],
     enabled: !!id,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("customer_units")
-        .select("*")
+        .from("invoices")
+        .select("id, invoice_number, notes, issue_date, due_date, grand_total, status, created_at")
         .eq("customer_id", id!)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -67,14 +91,27 @@ const AdminCustomerDetailPage = () => {
     },
   });
 
-  // Fetch jobs (leads)
+  const { data: quotes = [] } = useQuery({
+    queryKey: ["customer-quotes", id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("quotes")
+        .select("id, quote_number, notes, total, status, created_at")
+        .eq("customer_id", id!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const { data: jobs = [] } = useQuery({
-    queryKey: ["customer-jobs", id],
+    queryKey: ["customer-jobs-detail", id],
     enabled: !!id,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("leads")
-        .select("id, service_type, status, created_at, completed_at, scheduled_date, assigned_agent_id, notes, customer_address")
+        .from("jobs")
+        .select("id, title, description, status, scheduled_for, created_at")
         .eq("customer_id", id!)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -82,333 +119,446 @@ const AdminCustomerDetailPage = () => {
     },
   });
 
-  // Fetch agreements
-  const { data: agreements = [] } = useQuery({
-    queryKey: ["customer-agreements", id],
-    enabled: !!id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("service_agreements")
-        .select("id, contract_type, frequency, start_date, end_date, price, status, next_service_due")
-        .eq("customer_id", id!)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  // Fetch feedback
-  const { data: feedback = [] } = useQuery({
-    queryKey: ["customer-feedback", id],
-    enabled: !!id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("customer_feedback")
-        .select("rating, comment, created_at")
-        .eq("customer_id", id!)
-        .order("created_at", { ascending: false })
-        .limit(10);
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  const handleAddUnit = async () => {
-    if (!unitForm.label || !id) return;
-    setSavingUnit(true);
-    try {
-      const { error } = await supabase.from("customer_units").insert({
-        customer_id: id,
-        label: unitForm.label,
-        full_address: unitForm.full_address || null,
-        notes: unitForm.notes || null,
-      });
-      if (error) throw error;
-      toast({ title: "Unit Added ✅" });
-      queryClient.invalidateQueries({ queryKey: ["customer-units", id] });
-      setShowUnitDialog(false);
-      setUnitForm({ label: "", full_address: "", notes: "" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    } finally {
-      setSavingUnit(false);
+  // 6-month revenue chart
+  const chartData = useMemo(() => {
+    const buckets: { month: string; key: string; amount: number }[] = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = startOfMonth(subMonths(now, i));
+      buckets.push({ month: format(d, "MMM"), key: format(d, "yyyy-MM"), amount: 0 });
     }
-  };
-
-  const handleDeleteCustomer = async () => {
-    if (!id) return;
-    setDeleting(true);
-    try {
-      const { error } = await supabase.from("customers").delete().eq("id", id);
-      if (error) throw error;
-      toast({ title: "Customer Deleted ✅" });
-      queryClient.invalidateQueries({ queryKey: ["all-customers"] });
-      queryClient.invalidateQueries({ queryKey: ["unified-clients"] });
-      navigate("/admin/customers");
-    } catch (err: any) {
-      toast({ title: "Delete Failed", description: err.message, variant: "destructive" });
-    } finally {
-      setDeleting(false);
+    for (const inv of invoices) {
+      const date = inv.issue_date || inv.created_at;
+      if (!date) continue;
+      const key = format(new Date(date), "yyyy-MM");
+      const bucket = buckets.find(b => b.key === key);
+      if (bucket) bucket.amount += Number(inv.grand_total || 0);
     }
-  };
+    return buckets;
+  }, [invoices]);
 
-  // Filter jobs
-  const filteredJobs = jobs.filter((j) => {
-    if (yearFilter !== "all") {
-      const year = new Date(j.created_at || "").getFullYear().toString();
-      if (year !== yearFilter) return false;
-    }
-    if (statusFilter !== "all" && j.status !== statusFilter) return false;
-    return true;
-  });
-
-  const jobYears = [...new Set(jobs.map((j) => new Date(j.created_at || "").getFullYear().toString()))].sort().reverse();
-
-  const avgRating = feedback.length
-    ? (feedback.reduce((s, f) => s + f.rating, 0) / feedback.length).toFixed(1)
-    : null;
-
-  const statusBadge: Record<string, string> = {
-    active: "bg-emerald-100 text-emerald-700",
-    lead: "bg-amber-100 text-amber-700",
-    inactive: "bg-muted text-muted-foreground",
-  };
+  const draftQuotesTotal = useMemo(
+    () => quotes.filter(q => q.status === "draft").reduce((s, q) => s + Number(q.total || 0), 0),
+    [quotes],
+  );
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-4 max-w-5xl mx-auto">
-        <Skeleton className="h-10 w-48" />
-        <Skeleton className="h-40 w-full" />
-        <Skeleton className="h-64 w-full" />
+      <div className="p-6 space-y-4 max-w-6xl mx-auto">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-32" />
+        <Skeleton className="h-64" />
       </div>
     );
   }
 
   if (!customer) {
     return (
-      <div className="p-6 text-center">
-        <p className="text-muted-foreground">Customer not found</p>
-        <Button variant="outline" onClick={() => navigate(-1)} className="mt-4">Go Back</Button>
+      <div className="p-8 text-center">
+        <p className="text-muted-foreground">Customer not found.</p>
+        <Button variant="outline" onClick={() => navigate("/admin/customers")} className="mt-4">
+          Back to Clients
+        </Button>
       </div>
     );
   }
 
-  const displayName = customer.is_company && customer.company_name
-    ? customer.company_name
-    : `${customer.first_name || ""} ${customer.last_name || ""}`.trim() || customer.name;
+  const fullName = `${customer.first_name || ""} ${customer.last_name || ""}`.trim();
+  const headerName =
+    customer.is_company && customer.company_name
+      ? customer.company_name
+      : fullName || customer.name || "Unnamed";
+  const contactName = customer.is_company ? fullName : headerName;
+  const fullAddress = [customer.primary_address_line1, customer.primary_address_line2, customer.city, customer.postal_code]
+    .filter(Boolean).join(", ");
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-5xl mx-auto">
-      {/* Back */}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1">
-          <ArrowLeft className="h-4 w-4" /> Back
-        </Button>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" size="sm" className="gap-1">
-              <Trash2 className="h-4 w-4" /> Delete Customer
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete this customer?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently remove the customer record. Linked leads, quotes, and invoices will remain but lose the customer link. This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteCustomer} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+    <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
+      {/* Breadcrumb */}
+      <Link
+        to="/admin/customers"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-[#0066CC]"
+      >
+        <ArrowLeft className="h-4 w-4" /> Clients
+      </Link>
+
+      {/* Header row */}
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="text-2xl font-bold">{headerName}</h1>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground"
+            onClick={() => setShowEdit(true)}
+            aria-label="Edit customer"
+          >
+            <Settings2 className="h-4 w-4" />
+          </Button>
+          <Badge variant="outline" className={cn("text-[10px]", LEAD_SOURCE_STYLES[customer.lead_source || "Manual"])}>
+            {customer.lead_source || "Manual"}
+          </Badge>
+        </div>
+        <div className="flex gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">More Actions <ChevronDown className="h-4 w-4 ml-1" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => toast({ title: "Email feature coming soon" })}>
+                Send Email
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate(`/admin/customers`)}>Back to list</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                <Plus className="h-4 w-4 mr-1" /> Create New <ChevronDown className="h-4 w-4 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => navigate("/admin/quotes")}>New Quote</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/admin/invoices")}>New Invoice</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/admin/jobs")}>New Job</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
-      {/* Header */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-start gap-4">
-            <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              {customer.is_company ? <Building2 className="h-6 w-6 text-primary" /> : <User className="h-6 w-6 text-primary" />}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-bold">{displayName}</h1>
-                <Badge variant="outline" className={cn("text-xs", statusBadge[customer.status || "lead"])}>
-                  {customer.status || "lead"}
-                </Badge>
-              </div>
-              {customer.is_company && customer.first_name && (
-                <p className="text-sm text-muted-foreground">Contact: {customer.first_name} {customer.last_name}</p>
-              )}
-              <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{customer.phone}</span>
-                {customer.secondary_phone && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{customer.secondary_phone}</span>}
-                {customer.email && <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{customer.email}</span>}
-                {customer.primary_address_line1 && (
-                  <span className="flex items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5" />
-                    {[customer.primary_address_line1, customer.primary_address_line2, customer.city, customer.postal_code].filter(Boolean).join(", ")}
-                  </span>
-                )}
-              </div>
-              <div className="flex gap-4 mt-3 text-sm">
-                <div><span className="text-muted-foreground">Jobs:</span> <span className="font-semibold">{jobs.length}</span></div>
-                <div><span className="text-muted-foreground">Agreements:</span> <span className="font-semibold">{agreements.length}</span></div>
-                {avgRating && <div className="flex items-center gap-1"><Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" /> {avgRating}</div>}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="overview">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="relationship">Relationship</TabsTrigger>
+        </TabsList>
 
-      {/* Units Section */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> Units / Locations</CardTitle>
-            <Button size="sm" variant="outline" onClick={() => setShowUnitDialog(true)}>
-              <Plus className="h-3.5 w-3.5 mr-1" /> Add Unit
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {units.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No units/locations added yet.</p>
-          ) : (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {units.map((u: any) => (
-                <div key={u.id} className="border rounded-lg p-3">
-                  <p className="font-medium text-sm">{u.label}</p>
-                  {u.full_address && <p className="text-xs text-muted-foreground">{u.full_address}</p>}
-                  {u.notes && <p className="text-xs text-muted-foreground mt-1">{u.notes}</p>}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Job History */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <CardTitle className="text-base flex items-center gap-2"><Wrench className="h-4 w-4 text-primary" /> Job History</CardTitle>
-            <div className="flex gap-2">
-              <Select value={yearFilter} onValueChange={setYearFilter}>
-                <SelectTrigger className="w-24 h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Years</SelectItem>
-                  {jobYears.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="accepted">Accepted</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {filteredJobs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No jobs found.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-muted-foreground text-left">
-                    <th className="pb-2 font-medium">Date</th>
-                    <th className="pb-2 font-medium">Service</th>
-                    <th className="pb-2 font-medium">Status</th>
-                    <th className="pb-2 font-medium hidden sm:table-cell">Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredJobs.map((j) => (
-                    <tr key={j.id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => navigate(`/admin`)}>
-                      <td className="py-2 pr-3">{j.created_at ? format(new Date(j.created_at), "dd MMM yyyy") : "—"}</td>
-                      <td className="py-2 pr-3">{j.service_type}</td>
-                      <td className="py-2 pr-3">
-                        <Badge variant="outline" className="text-xs">{j.status}</Badge>
-                      </td>
-                      <td className="py-2 text-muted-foreground truncate max-w-[200px] hidden sm:table-cell">{j.notes || "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Agreements */}
-      {agreements.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2"><FileCheck className="h-4 w-4 text-primary" /> Service Agreements</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {agreements.map((a: any) => (
-                <div key={a.id} className="flex items-center justify-between border rounded-lg p-3">
+        <TabsContent value="overview" className="mt-4 space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Contact card */}
+            <Card className="lg:col-span-1 bg-card">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex flex-col items-center text-center gap-3">
+                  <Avatar className="h-20 w-20">
+                    <AvatarFallback className="bg-[#0066CC] text-white text-xl font-bold">
+                      {getInitials(customer.first_name, customer.last_name, customer.company_name)}
+                    </AvatarFallback>
+                  </Avatar>
                   <div>
-                    <p className="text-sm font-medium">{a.contract_type}</p>
-                    <p className="text-xs text-muted-foreground">{a.start_date} → {a.end_date} • {a.frequency}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold">R {Number(a.price).toLocaleString()}</p>
-                    <Badge variant="outline" className="text-[10px]">{a.status}</Badge>
+                    <p className="font-bold text-base">{contactName || headerName}</p>
+                    {customer.is_company && fullName && (
+                      <p className="text-xs text-muted-foreground">Primary contact</p>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                <div className="space-y-2 text-sm">
+                  {customer.email && (
+                    <div className="flex items-start gap-2"><Mail className="h-4 w-4 text-[#0066CC] mt-0.5 shrink-0" /><span className="break-all">{customer.email}</span></div>
+                  )}
+                  {customer.phone && (
+                    <div className="flex items-start gap-2"><Phone className="h-4 w-4 text-[#0066CC] mt-0.5 shrink-0" /><span>{customer.phone}</span></div>
+                  )}
+                  {fullAddress && (
+                    <div className="flex items-start gap-2"><MapPin className="h-4 w-4 text-[#0066CC] mt-0.5 shrink-0" /><span>{fullAddress}</span></div>
+                  )}
+                  {customer.vat_number && (
+                    <div className="flex items-start gap-2"><FileText className="h-4 w-4 text-[#0066CC] mt-0.5 shrink-0" /><span>VAT: {customer.vat_number}</span></div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
-      {/* Add Unit Dialog */}
-      <Dialog open={showUnitDialog} onOpenChange={setShowUnitDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Unit / Location</DialogTitle>
-            <DialogDescription>Add a site or equipment location for this customer</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <Label>Label *</Label>
-              <Input value={unitForm.label} onChange={(e) => setUnitForm(p => ({ ...p, label: e.target.value }))} placeholder="e.g. Flat 3, Block B" />
-            </div>
-            <div className="space-y-2">
-              <Label>Full Address (optional)</Label>
-              <Input value={unitForm.full_address} onChange={(e) => setUnitForm(p => ({ ...p, full_address: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Notes (optional)</Label>
-              <Input value={unitForm.notes} onChange={(e) => setUnitForm(p => ({ ...p, notes: e.target.value }))} placeholder="Access codes, equipment notes..." />
-            </div>
+            {/* Revenue chart + stats */}
+            <Card className="lg:col-span-2 bg-card">
+              <CardContent className="p-6 space-y-4">
+                <div>
+                  <p className="text-sm font-semibold">Outstanding Revenue</p>
+                  <p className="text-xs text-muted-foreground">Last 6 months</p>
+                </div>
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
+                      <YAxis tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
+                      <Tooltip
+                        contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                        formatter={(v: number) => formatRand(v)}
+                      />
+                      <Bar dataKey="amount" fill="#0066CC" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="grid grid-cols-3 gap-3 pt-2 border-t">
+                  <Stat label="In Draft" value={formatRand(draftQuotesTotal)} />
+                  <Stat label="Unbilled Time" value="0h" />
+                  <Stat label="Unbilled Expenses" value="R 0,00" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
-          <div className="flex gap-2 pt-2">
-            <Button variant="outline" onClick={() => setShowUnitDialog(false)} className="flex-1">Cancel</Button>
-            <Button onClick={handleAddUnit} disabled={savingUnit || !unitForm.label} className="flex-1">
-              {savingUnit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Add Unit
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+
+          {/* Bottom tabs */}
+          <Card className="bg-card">
+            <CardContent className="p-0">
+              <Tabs defaultValue="invoices">
+                <TabsList className="m-4">
+                  <TabsTrigger value="invoices">Invoices</TabsTrigger>
+                  <TabsTrigger value="quotes">Quotes</TabsTrigger>
+                  <TabsTrigger value="jobs">Jobs</TabsTrigger>
+                  <TabsTrigger value="contacts">Contacts</TabsTrigger>
+                  <TabsTrigger value="credits">Credits</TabsTrigger>
+                  <TabsTrigger value="estimates">Estimates</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="invoices" className="p-0 mt-0">
+                  <SectionHeader title="Invoices" onNew={() => navigate("/admin/invoices")} cta="+ New Invoice" />
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Invoice #</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Issued</TableHead>
+                        <TableHead>Due</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {invoices.map(inv => (
+                        <TableRow key={inv.id}>
+                          <TableCell className="font-medium">{inv.invoice_number || "—"}</TableCell>
+                          <TableCell className="max-w-[260px] truncate text-muted-foreground text-xs">{inv.notes || "—"}</TableCell>
+                          <TableCell className="text-xs">{inv.issue_date ? format(new Date(inv.issue_date), "dd MMM yyyy") : "—"}</TableCell>
+                          <TableCell className="text-xs">{inv.due_date ? format(new Date(inv.due_date), "dd MMM yyyy") : "—"}</TableCell>
+                          <TableCell className="text-right font-medium">{formatRand(Number(inv.grand_total || 0))}</TableCell>
+                          <TableCell><Badge variant="outline" className={cn("text-[10px]", statusBadge(inv.status))}>{inv.status || "draft"}</Badge></TableCell>
+                        </TableRow>
+                      ))}
+                      {invoices.length === 0 && <EmptyRow cols={6} text="No invoices yet." />}
+                    </TableBody>
+                  </Table>
+                </TabsContent>
+
+                <TabsContent value="quotes" className="p-0 mt-0">
+                  <SectionHeader title="Quotes" onNew={() => navigate("/admin/quotes")} cta="+ New Quote" />
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Quote #</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {quotes.map(q => (
+                        <TableRow key={q.id}>
+                          <TableCell className="font-medium">{q.quote_number || "—"}</TableCell>
+                          <TableCell className="max-w-[260px] truncate text-muted-foreground text-xs">{q.notes || "—"}</TableCell>
+                          <TableCell className="text-xs">{q.created_at ? format(new Date(q.created_at), "dd MMM yyyy") : "—"}</TableCell>
+                          <TableCell className="text-right font-medium">{formatRand(Number(q.total || 0))}</TableCell>
+                          <TableCell><Badge variant="outline" className={cn("text-[10px]", statusBadge(q.status))}>{q.status || "draft"}</Badge></TableCell>
+                        </TableRow>
+                      ))}
+                      {quotes.length === 0 && <EmptyRow cols={5} text="No quotes yet." />}
+                    </TableBody>
+                  </Table>
+                </TabsContent>
+
+                <TabsContent value="jobs" className="p-0 mt-0">
+                  <SectionHeader title="Jobs" onNew={() => navigate("/admin/jobs")} cta="+ New Job" />
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Job</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {jobs.map(j => (
+                        <TableRow key={j.id}>
+                          <TableCell className="font-medium">{j.title || "Untitled"}</TableCell>
+                          <TableCell className="max-w-[260px] truncate text-muted-foreground text-xs">{j.description || "—"}</TableCell>
+                          <TableCell className="text-xs">{(j.scheduled_for || j.created_at) ? format(new Date((j.scheduled_for || j.created_at)!), "dd MMM yyyy") : "—"}</TableCell>
+                          <TableCell><Badge variant="outline" className={cn("text-[10px]", statusBadge(j.status))}>{j.status || "pending"}</Badge></TableCell>
+                        </TableRow>
+                      ))}
+                      {jobs.length === 0 && <EmptyRow cols={4} text="No jobs yet." />}
+                    </TableBody>
+                  </Table>
+                </TabsContent>
+
+                <TabsContent value="contacts" className="p-6 text-sm text-muted-foreground">
+                  Additional contacts will appear here.
+                </TabsContent>
+                <TabsContent value="credits" className="p-6 text-sm text-muted-foreground">
+                  No credits on file.
+                </TabsContent>
+                <TabsContent value="estimates" className="p-6 text-sm text-muted-foreground">
+                  Estimates will appear here.
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="relationship" className="mt-4">
+          <Card className="bg-card">
+            <CardContent className="p-6 space-y-3">
+              <p className="font-semibold text-sm">Internal Notes</p>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{customer.notes || "No notes for this client yet."}</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <EditCustomerDialog
+        open={showEdit}
+        onOpenChange={setShowEdit}
+        customer={customer}
+        onSaved={() => qc.invalidateQueries({ queryKey: ["customer-detail", id] })}
+      />
     </div>
   );
 };
+
+const Stat = ({ label, value }: { label: string; value: string }) => (
+  <div>
+    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+    <p className="text-sm font-bold mt-1">{value}</p>
+  </div>
+);
+
+const SectionHeader = ({ title, onNew, cta }: { title: string; onNew: () => void; cta: string }) => (
+  <div className="flex items-center justify-between px-4 pb-3">
+    <p className="font-semibold text-sm">{title}</p>
+    <Button size="sm" variant="outline" onClick={onNew}>{cta}</Button>
+  </div>
+);
+
+const EmptyRow = ({ cols, text }: { cols: number; text: string }) => (
+  <TableRow>
+    <TableCell colSpan={cols} className="text-center text-sm text-muted-foreground py-8">{text}</TableCell>
+  </TableRow>
+);
+
+// ---------- Edit dialog ----------
+const EditCustomerDialog = ({
+  open, onOpenChange, customer, onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  customer: any;
+  onSaved: () => void;
+}) => {
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    first_name: customer.first_name || "",
+    last_name: customer.last_name || "",
+    company_name: customer.company_name || "",
+    email: customer.email || "",
+    phone: customer.phone || "",
+    address: customer.primary_address_line1 || "",
+    city: customer.city || "",
+    postal_code: customer.postal_code || "",
+    vat_number: customer.vat_number || "",
+    notes: customer.notes || "",
+    status: customer.status || "lead",
+    lead_source: customer.lead_source || "Manual",
+  });
+  const set = (k: keyof typeof form, v: string) => setForm(p => ({ ...p, [k]: v }));
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("customers").update({
+        first_name: form.first_name,
+        last_name: form.last_name,
+        name: `${form.first_name} ${form.last_name}`.trim(),
+        company_name: form.company_name || null,
+        is_company: !!form.company_name,
+        email: form.email || null,
+        phone: form.phone,
+        primary_address_line1: form.address || null,
+        address: [form.address, form.city, form.postal_code].filter(Boolean).join(", "),
+        city: form.city || null,
+        postal_code: form.postal_code || null,
+        vat_number: form.vat_number || null,
+        notes: form.notes || null,
+        status: form.status,
+        lead_source: form.lead_source,
+      }).eq("id", customer.id);
+      if (error) throw error;
+      toast({ title: "Customer updated ✅" });
+      onOpenChange(false);
+      onSaved();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit Customer</DialogTitle>
+          <DialogDescription>Update client details.</DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-4">
+          <DField label="First Name"><Input value={form.first_name} onChange={e => set("first_name", e.target.value)} /></DField>
+          <DField label="Last Name"><Input value={form.last_name} onChange={e => set("last_name", e.target.value)} /></DField>
+          <DField label="Company Name" full><Input value={form.company_name} onChange={e => set("company_name", e.target.value)} /></DField>
+          <DField label="Email"><Input value={form.email} onChange={e => set("email", e.target.value)} /></DField>
+          <DField label="Phone"><Input value={form.phone} onChange={e => set("phone", e.target.value)} /></DField>
+          <DField label="Address" full><Input value={form.address} onChange={e => set("address", e.target.value)} /></DField>
+          <DField label="City"><Input value={form.city} onChange={e => set("city", e.target.value)} /></DField>
+          <DField label="Postal Code"><Input value={form.postal_code} onChange={e => set("postal_code", e.target.value)} /></DField>
+          <DField label="VAT Number" full><Input value={form.vat_number} onChange={e => set("vat_number", e.target.value)} /></DField>
+          <DField label="Status">
+            <Select value={form.status} onValueChange={(v) => set("status", v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="lead">Lead</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </DField>
+          <DField label="Lead Source">
+            <Select value={form.lead_source} onValueChange={(v) => set("lead_source", v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {LEAD_SOURCES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </DField>
+          <DField label="Notes" full>
+            <Textarea value={form.notes} onChange={e => set("notes", e.target.value)} rows={3} />
+          </DField>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={save} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Save Changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const DField = ({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) => (
+  <div className={cn("space-y-1.5", full && "col-span-2")}>
+    <Label className="text-xs">{label}</Label>
+    {children}
+  </div>
+);
 
 export default AdminCustomerDetailPage;
