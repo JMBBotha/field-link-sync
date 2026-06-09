@@ -54,38 +54,69 @@ const MapInteractive = ({
     }
   }, [map, latitude, longitude]);
 
+  const handleMapClick = useCallback(
+    (e: google.maps.MapMouseEvent) => {
+      const latLng = e.latLng;
+      if (!latLng) return;
+      const lat = latLng.lat();
+      const lng = latLng.lng();
+      setMarkerPosition({ lat, lng });
+      if (geocoderRef.current) {
+        geocoderRef.current.geocode({ location: { lat, lng } }, (results, status) => {
+          if (status === "OK" && results?.[0]) {
+            onLocationChange(lat, lng, results[0].formatted_address);
+          } else {
+            onLocationChange(lat, lng);
+          }
+        });
+      } else {
+        onLocationChange(lat, lng);
+      }
+    },
+    [onLocationChange],
+  );
+
+  const handleMarkerDragEnd = useCallback(
+    (e: google.maps.MapMouseEvent) => {
+      const latLng = e.latLng;
+      if (!latLng) return;
+      const lat = latLng.lat();
+      const lng = latLng.lng();
+      setMarkerPosition({ lat, lng });
+      if (geocoderRef.current) {
+        geocoderRef.current.geocode({ location: { lat, lng } }, (results, status) => {
+          if (status === "OK" && results?.[0]) {
+            onLocationChange(lat, lng, results[0].formatted_address);
+          } else {
+            onLocationChange(lat, lng);
+          }
+        });
+      } else {
+        onLocationChange(lat, lng);
+      }
+    },
+    [onLocationChange],
+  );
+
   useEffect(() => {
     if (!map) return;
-    clickListenerRef.current = map.addListener(
-      "click",
-      (e: google.maps.MapMouseEvent) => {
-        const latLng = e.latLng;
-        if (!latLng) return;
-        const lat = latLng.lat();
-        const lng = latLng.lng();
-        setMarkerPosition({ lat, lng });
-        if (geocoderRef.current) {
-          geocoderRef.current.geocode({ location: { lat, lng } }, (results, status) => {
-            if (status === "OK" && results?.[0]) {
-              onLocationChange(lat, lng, results[0].formatted_address);
-            } else {
-              onLocationChange(lat, lng);
-            }
-          });
-        } else {
-          onLocationChange(lat, lng);
-        }
-      },
-    );
+    clickListenerRef.current = map.addListener("click", handleMapClick);
     return () => {
       if (clickListenerRef.current) {
         google.maps.event.removeListener(clickListenerRef.current);
         clickListenerRef.current = null;
       }
     };
-  }, [map, onLocationChange]);
+  }, [map, handleMapClick]);
 
-  return markerPosition ? <AdvancedMarker position={markerPosition} /> : null;
+  return markerPosition ? (
+    <AdvancedMarker
+      position={markerPosition}
+      draggable
+      onDragEnd={handleMarkerDragEnd}
+      title="Drag to adjust location"
+    />
+  ) : null;
 };
 
 const LocationPickerInner = ({ latitude, longitude, onLocationChange }: LocationPickerProps) => {
