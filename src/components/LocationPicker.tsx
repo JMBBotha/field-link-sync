@@ -141,6 +141,7 @@ const LocationPickerInner = ({ latitude, longitude, onLocationChange }: Location
   const [isLoading, setIsLoading] = useState(true);
   const [mapError] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [dragPreview, setDragPreview] = useState<google.maps.LatLngLiteral | null>(null);
 
   const placesLibrary = useMapsLibrary("places");
   const autocompleteServiceRef = useRef<google.maps.places.AutocompleteService | null>(null);
