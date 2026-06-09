@@ -1,11 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import mapboxgl from "mapbox-gl";
-import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
-import "mapbox-gl/dist/mapbox-gl.css";
-import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css";
-import { Crosshair, Loader2, MapPin, Maximize2, Navigation, X } from "lucide-react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { APIProvider, Map, useMap, useMapsLibrary } from "@vis.gl/react-google-maps";
+import { Crosshair, Loader2, MapPin, Maximize2, Navigation, X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { createTeardropMarkerElement } from "@/utils/MarkerUtils";
+import { Input } from "@/components/ui/input";
 
 interface LocationPickerProps {
   latitude: number | null;
@@ -13,372 +10,292 @@ interface LocationPickerProps {
   onLocationChange: (lat: number, lng: number, address?: string) => void;
 }
 
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+const DEFAULT_CENTER = { lat: -33.9249, lng: 18.4241 };
+
+/** Marker + click handling inside the Map */
+const MapInteractive = ({
+  latitude,
+  longitude,
+  onLocationChange,
+}: LocationPickerProps) => {
+  const map = useMap();
+  const markerRef = useRef<google.maps.Marker | null>(null);
+
+  // Place / update marker
+  const placeMarker = useCallback(
+    (lat: number, lng: number, fireCallback = true, address?: string) => {
+      if (!map) return;
+      const position = { lat, lng };
+      if (!markerRef.current) {
+        markerRef.current = new google.maps.Marker({
+          position,
+          map,
+          draggable: true,
+        });
+        markerRef.current.addListener("dragend", () => {
+          const p = markerRef.current?.getPosition();
+          if (p) onLocationChange(p.lat(), p.lng());
+        });
+      } else {
+        markerRef.current.setPosition(position);
+      }
+      if (fireCallback) onLocationChange(lat, lng, address);
+    },
+    [map, onLocationChange],
+  );
+
+  // Initialize marker from props
+  useEffect(() => {
+    if (!map) return;
+    if (latitude != null && longitude != null) {
+      if (!markerRef.current) {
+        placeMarker(latitude, longitude, false);
+      } else {
+        markerRef.current.setPosition({ lat: latitude, lng: longitude });
+      }
+    }
+  }, [map, latitude, longitude, placeMarker]);
+
+  // Click to place marker
+  useEffect(() => {
+    if (!map) return;
+    const listener = map.addListener("click", (e: google.maps.MapMouseEvent) => {
+      if (!e.latLng) return;
+      placeMarker(e.latLng.lat(), e.latLng.lng());
+    });
+    return () => listener.remove();
+  }, [map, placeMarker]);
+
+  return null;
+};
+
+/** Address search using Places Autocomplete */
+const PlacesSearch = ({
+  onPick,
+  placeholder = "Search address...",
+  inputRef,
+}: {
+  onPick: (lat: number, lng: number, address: string) => void;
+  placeholder?: string;
+  inputRef?: React.MutableRefObject<HTMLInputElement | null>;
+}) => {
+  const placesLib = useMapsLibrary("places");
+  const localRef = useRef<HTMLInputElement | null>(null);
+  const ref = inputRef ?? localRef;
+
+  useEffect(() => {
+    if (!placesLib || !ref.current) return;
+    const ac = new placesLib.Autocomplete(ref.current, {
+      fields: ["formatted_address", "geometry"],
+    });
+    const listener = ac.addListener("place_changed", () => {
+      const place = ac.getPlace();
+      const loc = place.geometry?.location;
+      if (!loc) return;
+      onPick(loc.lat(), loc.lng(), place.formatted_address || "");
+    });
+    return () => listener.remove();
+  }, [placesLib, onPick, ref]);
+
+  return (
+    <div className="relative w-full">
+      <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+      <Input
+        ref={ref}
+        type="text"
+        placeholder={placeholder}
+        className="pl-8 h-9 bg-background/95 backdrop-blur shadow-sm"
+      />
+    </div>
+  );
+};
+
 const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPickerProps) => {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const fullscreenMapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
-  const markerRef = useRef<mapboxgl.Marker | null>(null);
-  const geocoderRef = useRef<MapboxGeocoder | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const fsSearchInputRef = useRef<HTMLInputElement | null>(null);
 
-  const initializeMap = (container: HTMLDivElement, isFullscreen: boolean = false) => {
-    const token = localStorage.getItem("mapbox_token");
-    if (!token) return null;
+  // Use a key to force fresh Map mount per scope (inline vs fullscreen)
+  const center =
+    latitude != null && longitude != null ? { lat: latitude, lng: longitude } : DEFAULT_CENTER;
 
-    mapboxgl.accessToken = token;
-
-    const defaultCenter: [number, number] = [18.4241, -33.9249];
-    const initialCenter: [number, number] = latitude && longitude
-      ? [longitude, latitude]
-      : defaultCenter;
-
-    const map = new mapboxgl.Map({
-      container,
-      style: "mapbox://styles/mapbox/streets-v12",
-      center: initialCenter,
-      zoom: 12,
-    });
-
-    // Position zoom controls at bottom-right for fullscreen mode
-    const position = isFullscreen ? "bottom-right" : "top-right";
-    map.addControl(new mapboxgl.NavigationControl(), position);
-
-    // Add geocoder (address search)
-    const geocoder = new MapboxGeocoder({
-      accessToken: token,
-      mapboxgl: mapboxgl as any,
-      marker: false,
-      placeholder: "Search address...",
-      flyTo: {
-        speed: 1.5,
-        zoom: 16,
-      },
-    });
-
-    map.addControl(geocoder, "top-left");
-    geocoderRef.current = geocoder;
-
-    // When address is selected from suggestions
-    geocoder.on("result", (e: any) => {
-      const [lng, lat] = e.result.center;
-      const address = e.result.place_name;
-
-      if (markerRef.current) {
-        markerRef.current.setLngLat([lng, lat]);
-      } else {
-        const el = createTeardropMarkerElement("#ef4444");
-        markerRef.current = new mapboxgl.Marker({ element: el, draggable: true, anchor: 'bottom' })
-          .setLngLat([lng, lat])
-          .addTo(map);
-
-        markerRef.current.on("dragend", () => {
-          const lngLat = markerRef.current?.getLngLat();
-          if (lngLat) {
-            onLocationChange(lngLat.lat, lngLat.lng);
-          }
-        });
-      }
-
-      onLocationChange(lat, lng, address);
-    });
-
-    // Add marker if we have initial coordinates
-    if (latitude && longitude) {
-      const el = createTeardropMarkerElement("#ef4444");
-      markerRef.current = new mapboxgl.Marker({ element: el, draggable: true, anchor: 'bottom' })
-        .setLngLat([longitude, latitude])
-        .addTo(map);
-
-      markerRef.current.on("dragend", () => {
-        const lngLat = markerRef.current?.getLngLat();
-        if (lngLat) {
-          onLocationChange(lngLat.lat, lngLat.lng);
-        }
-      });
-    }
-
-    // Track if dragging to prevent click after pan
-    let isDragging = false;
-
-    map.on("dragstart", () => {
-      isDragging = true;
-    });
-
-    map.on("moveend", () => {
-      // Reset drag state after a short delay to allow click events to be filtered
-      setTimeout(() => {
-        isDragging = false;
-      }, 100);
-    });
-
-    // Click to place/move marker (only on actual clicks, not after panning)
-    map.on("click", (e) => {
-      if (isDragging) return;
-
-      const { lng, lat } = e.lngLat;
-
-      if (markerRef.current) {
-        markerRef.current.setLngLat([lng, lat]);
-      } else {
-        const el = createTeardropMarkerElement("#ef4444");
-        markerRef.current = new mapboxgl.Marker({ element: el, draggable: true, anchor: 'bottom' })
-          .setLngLat([lng, lat])
-          .addTo(map);
-
-        markerRef.current.on("dragend", () => {
-          const lngLat = markerRef.current?.getLngLat();
-          if (lngLat) {
-            onLocationChange(lngLat.lat, lngLat.lng);
-          }
-        });
-      }
-
-      onLocationChange(lat, lng);
-    });
-
-    return map;
-  };
-
-  const handleGetCurrentLocation = async () => {
+  const handleGetCurrentLocation = () => {
     if (!navigator.geolocation) {
       alert("Geolocation is not supported by your browser");
       return;
     }
-
     setGettingLocation(true);
-
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude: lat, longitude: lng } = position.coords;
-        const token = localStorage.getItem("mapbox_token");
-
-        // Update marker on map
-        if (mapInstanceRef.current) {
-          if (markerRef.current) {
-            markerRef.current.setLngLat([lng, lat]);
-          } else {
-            const el = createTeardropMarkerElement("#ef4444");
-            markerRef.current = new mapboxgl.Marker({ element: el, draggable: true, anchor: 'bottom' })
-              .setLngLat([lng, lat])
-              .addTo(mapInstanceRef.current);
-
-            markerRef.current.on("dragend", () => {
-              const lngLat = markerRef.current?.getLngLat();
-              if (lngLat) {
-                onLocationChange(lngLat.lat, lngLat.lng);
-              }
-            });
-          }
-
-          mapInstanceRef.current.flyTo({
-            center: [lng, lat],
-            zoom: 16,
-            speed: 1.5,
-          });
-        }
-
-        // Reverse geocode to get address
-        let address = "";
-        if (token) {
-          try {
-            const response = await fetch(
-              `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&types=address,place`
-            );
-            const data = await response.json();
-            if (data.features && data.features.length > 0) {
-              address = data.features[0].place_name;
-
-              // Update the geocoder search bar with the address
-              if (geocoderRef.current) {
-                geocoderRef.current.setInput(address);
-              }
+        // Reverse geocode via Google Geocoder if available
+        let address: string | undefined;
+        try {
+          if (window.google?.maps) {
+            const geocoder = new google.maps.Geocoder();
+            const res = await geocoder.geocode({ location: { lat, lng } });
+            address = res.results?.[0]?.formatted_address;
+            if (address) {
+              if (searchInputRef.current) searchInputRef.current.value = address;
+              if (fsSearchInputRef.current) fsSearchInputRef.current.value = address;
             }
-          } catch (error) {
-            console.error("Reverse geocoding failed:", error);
           }
+        } catch (e) {
+          console.error("Reverse geocoding failed:", e);
         }
-
-        onLocationChange(lat, lng, address || undefined);
+        onLocationChange(lat, lng, address);
         setGettingLocation(false);
       },
       (error) => {
         setGettingLocation(false);
         let message = "Unable to get your location";
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            message = "Location permission denied. Please enable location access.";
-            break;
-          case error.POSITION_UNAVAILABLE:
-            message = "Location information unavailable.";
-            break;
-          case error.TIMEOUT:
-            message = "Location request timed out.";
-            break;
-        }
+        if (error.code === error.PERMISSION_DENIED)
+          message = "Location permission denied. Please enable location access.";
+        else if (error.code === error.POSITION_UNAVAILABLE)
+          message = "Location information unavailable.";
+        else if (error.code === error.TIMEOUT) message = "Location request timed out.";
         alert(message);
       },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     );
   };
 
-  useEffect(() => {
-    const container = isFullscreen ? fullscreenMapRef.current : mapRef.current;
-    if (!container) return;
-
-    // Small delay to ensure DOM is ready
-    const timeoutId = setTimeout(() => {
-      // Cleanup previous instance safely
-      if (markerRef.current) {
-        try {
-          markerRef.current.remove();
-        } catch (e) {
-          // Ignore cleanup errors
-        }
-        markerRef.current = null;
-      }
-
-      if (mapInstanceRef.current) {
-        try {
-          mapInstanceRef.current.remove();
-        } catch (e) {
-          // Ignore cleanup errors
-        }
-        mapInstanceRef.current = null;
-      }
-
-      geocoderRef.current = null;
-
-      const map = initializeMap(container, isFullscreen);
-      if (map) {
-        mapInstanceRef.current = map;
-      }
-    }, 50);
-
-    return () => {
-      clearTimeout(timeoutId);
-      if (markerRef.current) {
-        try {
-          markerRef.current.remove();
-        } catch (e) {
-          // Ignore cleanup errors
-        }
-      }
-      if (mapInstanceRef.current) {
-        try {
-          mapInstanceRef.current.remove();
-        } catch (e) {
-          // Ignore cleanup errors
-        }
-      }
-    };
-  }, [isFullscreen]);
-
-  const token = localStorage.getItem("mapbox_token");
-
-  if (!token) {
+  if (!GOOGLE_MAPS_API_KEY) {
     return (
       <div className="h-48 rounded-md border border-dashed flex items-center justify-center bg-muted/50">
         <p className="text-sm text-muted-foreground text-center px-4">
-          Map token not configured. Please set up Mapbox token in the Admin Dashboard first.
+          Google Maps API key not configured. Set VITE_GOOGLE_MAPS_API_KEY.
         </p>
       </div>
     );
   }
 
-  if (isFullscreen) {
-    return (
-      <div className="fixed inset-0 z-50 bg-background [&_.mapboxgl-ctrl-geocoder]:!z-20 [&_.mapboxgl-ctrl-geocoder]:!min-w-[280px] [&_.mapboxgl-ctrl-geocoder]:!shadow-lg">
-        {/* Labeled buttons positioned top-right corner */}
-        <div className="absolute top-4 right-4 z-10 flex flex-col gap-3">
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-xs font-medium text-foreground bg-background/80 backdrop-blur px-2 py-0.5 rounded">Close</span>
-            <Button
-              type="button"
-              size="icon"
-              onClick={() => setIsFullscreen(false)}
-              className="h-12 w-12 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-xs font-medium text-foreground bg-background/80 backdrop-blur px-2 py-0.5 rounded">Locate</span>
-            <Button
-              type="button"
-              size="icon"
-              onClick={handleGetCurrentLocation}
-              disabled={gettingLocation}
-              className="h-12 w-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-            >
-              {gettingLocation ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Navigation className="h-5 w-5" />
-              )}
-            </Button>
-          </div>
-        </div>
-        <div ref={fullscreenMapRef} className="w-full h-full" />
-        {latitude && longitude && (
-          <div className="absolute bottom-4 left-4 bg-background/90 backdrop-blur px-3 py-2 rounded-md shadow">
-            <p className="text-sm">
-              Selected: {latitude.toFixed(6)}, {longitude.toFixed(6)}
-            </p>
-          </div>
-        )}
-      </div>
-    );
-  }
+  const mapEl = (fullscreen: boolean) => (
+    <Map
+      defaultCenter={center}
+      defaultZoom={latitude && longitude ? 16 : 12}
+      mapTypeId="hybrid"
+      gestureHandling="greedy"
+      disableDefaultUI={false}
+      mapTypeControl
+      streetViewControl={false}
+      fullscreenControl={false}
+      zoomControlOptions={
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        window.google?.maps ? { position: (google.maps.ControlPosition as any)[fullscreen ? "RIGHT_BOTTOM" : "RIGHT_TOP"] } : undefined
+      }
+      style={{ width: "100%", height: "100%" }}
+    >
+      <MapInteractive
+        latitude={latitude}
+        longitude={longitude}
+        onLocationChange={onLocationChange}
+      />
+    </Map>
+  );
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <MapPin className="h-4 w-4" />
-          <span>Search, or click GPS to use your current location</span>
+    <APIProvider apiKey={GOOGLE_MAPS_API_KEY} libraries={["places", "marker"]}>
+      {isFullscreen ? (
+        <div className="fixed inset-0 z-50 bg-background">
+          <div className="absolute top-4 left-4 right-20 z-10 max-w-md">
+            <PlacesSearch
+              inputRef={fsSearchInputRef}
+              onPick={(lat, lng, address) => onLocationChange(lat, lng, address)}
+            />
+          </div>
+          <div className="absolute top-4 right-4 z-10 flex flex-col gap-3">
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-xs font-medium text-foreground bg-background/80 backdrop-blur px-2 py-0.5 rounded">
+                Close
+              </span>
+              <Button
+                type="button"
+                size="icon"
+                onClick={() => setIsFullscreen(false)}
+                className="h-12 w-12 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-xs font-medium text-foreground bg-background/80 backdrop-blur px-2 py-0.5 rounded">
+                Locate
+              </span>
+              <Button
+                type="button"
+                size="icon"
+                onClick={handleGetCurrentLocation}
+                disabled={gettingLocation}
+                className="h-12 w-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+              >
+                {gettingLocation ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Navigation className="h-5 w-5" />
+                )}
+              </Button>
+            </div>
+          </div>
+          <div className="w-full h-full">{mapEl(true)}</div>
+          {latitude && longitude && (
+            <div className="absolute bottom-4 left-4 bg-background/90 backdrop-blur px-3 py-2 rounded-md shadow">
+              <p className="text-sm">
+                Selected: {latitude.toFixed(6)}, {longitude.toFixed(6)}
+              </p>
+            </div>
+          )}
         </div>
-        <div className="flex gap-1">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleGetCurrentLocation}
-            disabled={gettingLocation}
-            className="h-7 px-2"
-          >
-            {gettingLocation ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Crosshair className="h-4 w-4" />
-            )}
-            <span className="ml-1 text-xs">GPS</span>
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsFullscreen(true)}
-            className="h-7 px-2"
-          >
-            <Maximize2 className="h-4 w-4" />
-          </Button>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
+              <MapPin className="h-4 w-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <PlacesSearch
+                inputRef={searchInputRef}
+                onPick={(lat, lng, address) => onLocationChange(lat, lng, address)}
+              />
+            </div>
+            <div className="flex gap-1 shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleGetCurrentLocation}
+                disabled={gettingLocation}
+                className="h-9 px-2"
+              >
+                {gettingLocation ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Crosshair className="h-4 w-4" />
+                )}
+                <span className="ml-1 text-xs">GPS</span>
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsFullscreen(true)}
+                className="h-9 px-2"
+              >
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="h-48 rounded-md border overflow-hidden">{mapEl(false)}</div>
+          {latitude && longitude && (
+            <p className="text-xs text-muted-foreground">
+              Selected: {latitude.toFixed(6)}, {longitude.toFixed(6)}
+            </p>
+          )}
         </div>
-      </div>
-      <div
-        ref={mapRef}
-        className="h-48 rounded-md border overflow-hidden"
-      />
-      {latitude && longitude && (
-        <p className="text-xs text-muted-foreground">
-          Selected: {latitude.toFixed(6)}, {longitude.toFixed(6)}
-        </p>
       )}
-    </div>
+    </APIProvider>
   );
 };
 
