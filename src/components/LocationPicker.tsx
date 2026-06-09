@@ -1,11 +1,17 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import { APIProvider, Map, useMap, useMapsLibrary } from "@vis.gl/react-google-maps";
-import { Crosshair, Loader2, MapPin, Maximize2, Navigation, X, Search } from "lucide-react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import {
+  APIProvider,
+  Map,
+  useMap,
+  useMapsLibrary,
+  AdvancedMarker,
+} from "@vis.gl/react-google-maps";
+import { Crosshair, Loader2, Maximize2, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-declare const google: any;
+const GOOGLE_MAPS_API_KEY = "AIzaSyBeInqqEhzsu_U7OImGQnvJ8vusF_21wvc";
+const DEFAULT_CENTER = { lat: -33.9249, lng: 18.4241 };
 
 interface LocationPickerProps {
   latitude: number | null;
@@ -13,293 +19,220 @@ interface LocationPickerProps {
   onLocationChange: (lat: number, lng: number, address?: string) => void;
 }
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyBeInqqEhzsu_U7OImGQnvJ8vusF_21wvc";
-const DEFAULT_CENTER = { lat: -33.9249, lng: 18.4241 };
+const LocationPicker = (props: LocationPickerProps) => (
+  <APIProvider apiKey={GOOGLE_MAPS_API_KEY} libraries={["places", "geocoding", "marker"]}>
+    <LocationPickerInner {...props} />
+  </APIProvider>
+);
 
-/** Marker + click handling inside the Map */
-const MapInteractive = ({
+interface Prediction {
+  place_id: string;
+  description: string;
+}
+
+const LocationPickerInner = ({
   latitude,
   longitude,
   onLocationChange,
 }: LocationPickerProps) => {
-  const map = useMap();
-  const markerRef = useRef<any>(null);
-
-  // Place / update marker
-  const placeMarker = useCallback(
-    (lat: number, lng: number, fireCallback = true, address?: string) => {
-      if (!map) return;
-      const position = { lat, lng };
-      if (!markerRef.current) {
-        markerRef.current = new google.maps.Marker({
-          position,
-          map,
-          draggable: true,
-        });
-        markerRef.current.addListener("dragend", () => {
-          const p = markerRef.current?.getPosition();
-          if (p) onLocationChange(p.lat(), p.lng());
-        });
-      } else {
-        markerRef.current.setPosition(position);
-      }
-      if (fireCallback) onLocationChange(lat, lng, address);
-    },
-    [map, onLocationChange],
-  );
-
-  // Initialize marker from props
-  useEffect(() => {
-    if (!map) return;
-    if (latitude != null && longitude != null) {
-      if (!markerRef.current) {
-        placeMarker(latitude, longitude, false);
-      } else {
-        markerRef.current.setPosition({ lat: latitude, lng: longitude });
-      }
-    }
-  }, [map, latitude, longitude, placeMarker]);
-
-  // Click to place marker
-  useEffect(() => {
-    if (!map) return;
-    const listener = map.addListener("click", (e: any) => {
-      if (!e.latLng) return;
-      placeMarker(e.latLng.lat(), e.latLng.lng());
-    });
-    return () => listener.remove();
-  }, [map, placeMarker]);
-
-  return null;
-};
-
-/** Address search using Places Autocomplete */
-const PlacesSearch = ({
-  onPick,
-  placeholder = "Search address...",
-  inputRef,
-}: {
-  onPick: (lat: number, lng: number, address: string) => void;
-  placeholder?: string;
-  inputRef?: React.MutableRefObject<HTMLInputElement | null>;
-}) => {
-  const placesLib = useMapsLibrary("places");
-  const localRef = useRef<HTMLInputElement | null>(null);
-  const ref = inputRef ?? localRef;
-
-  useEffect(() => {
-    if (!placesLib || !ref.current) return;
-    const ac = new placesLib.Autocomplete(ref.current, {
-      fields: ["formatted_address", "geometry"],
-    });
-    const listener = ac.addListener("place_changed", () => {
-      const place = ac.getPlace();
-      const loc = place.geometry?.location;
-      if (!loc) return;
-      onPick(loc.lat(), loc.lng(), place.formatted_address || "");
-    });
-    return () => listener.remove();
-  }, [placesLib, onPick, ref]);
-
-  return (
-    <div className="relative w-full">
-      <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-      <Input
-        ref={ref}
-        type="text"
-        placeholder={placeholder}
-        className="pl-8 h-9 bg-background/95 backdrop-blur shadow-sm"
-      />
-    </div>
-  );
-};
-
-const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPickerProps) => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
-  const apiKey = GOOGLE_MAPS_API_KEY;
-  const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const fsSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const [selectedAddress, setSelectedAddress] = useState("");
 
-  // Use a key to force fresh Map mount per scope (inline vs fullscreen)
-  const center =
-    latitude != null && longitude != null ? { lat: latitude, lng: longitude } : DEFAULT_CENTER;
+  const placesLib = useMapsLibrary("places");
+  const geocoderLib = useMapsLibrary("geocoding");
 
-  const handleGetCurrentLocation = () => {
+  const geocoder = useRef<google.maps.Geocoder | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const autocompleteService = useRef<any>(null);
+
+  useEffect(() => {
+    if (geocoderLib) geocoder.current = new geocoderLib.Geocoder();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (placesLib) autocompleteService.current = new (placesLib as any).AutocompleteService();
+  }, [geocoderLib, placesLib]);
+
+  const reverseGeocode = useCallback(
+    (lat: number, lng: number) => {
+      if (!geocoder.current) {
+        onLocationChange(lat, lng);
+        return;
+      }
+      geocoder.current.geocode({ location: { lat, lng } }, (results, status) => {
+        const address =
+          status === "OK" && results && results[0] ? results[0].formatted_address : undefined;
+        onLocationChange(lat, lng, address);
+        if (address) setSelectedAddress(address);
+      });
+    },
+    [onLocationChange],
+  );
+
+  const handleSearch = useCallback(() => {
+    if (!searchQuery.trim() || !autocompleteService.current) return;
+    setIsSearching(true);
+    autocompleteService.current.getPlacePredictions(
+      { input: searchQuery, componentRestrictions: { country: "za" } },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (results: any[] | null, status: string) => {
+        setIsSearching(false);
+        if (status === "OK" && results) {
+          setPredictions(
+            results.map((r) => ({ place_id: r.place_id, description: r.description })),
+          );
+        } else {
+          setPredictions([]);
+        }
+      },
+    );
+  }, [searchQuery]);
+
+  const handleSelectPlace = useCallback(
+    (placeId: string, description: string) => {
+      if (!geocoder.current) return;
+      geocoder.current.geocode({ placeId }, (results, status) => {
+        if (status === "OK" && results && results[0]) {
+          const loc = results[0].geometry.location;
+          onLocationChange(loc.lat(), loc.lng(), description);
+          setSelectedAddress(description);
+          setPredictions([]);
+          setSearchQuery("");
+        }
+      });
+    },
+    [onLocationChange],
+  );
+
+  const handleGPS = () => {
     if (!navigator.geolocation) {
       alert("Geolocation is not supported by your browser");
       return;
     }
     setGettingLocation(true);
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude: lat, longitude: lng } = position.coords;
-        // Reverse geocode via Google Geocoder if available
-        let address: string | undefined;
-        try {
-          if ((window as any).google?.maps) {
-            const geocoder = new google.maps.Geocoder();
-            const res = await geocoder.geocode({ location: { lat, lng } });
-            address = res.results?.[0]?.formatted_address;
-            if (address) {
-              if (searchInputRef.current) searchInputRef.current.value = address;
-              if (fsSearchInputRef.current) fsSearchInputRef.current.value = address;
-            }
-          }
-        } catch (e) {
-          console.error("Reverse geocoding failed:", e);
-        }
-        onLocationChange(lat, lng, address);
+      (pos) => {
         setGettingLocation(false);
+        reverseGeocode(pos.coords.latitude, pos.coords.longitude);
       },
-      (error) => {
+      (err) => {
         setGettingLocation(false);
-        let message = "Unable to get your location";
-        if (error.code === error.PERMISSION_DENIED)
-          message = "Location permission denied. Please enable location access.";
-        else if (error.code === error.POSITION_UNAVAILABLE)
-          message = "Location information unavailable.";
-        else if (error.code === error.TIMEOUT) message = "Location request timed out.";
-        alert(message);
+        console.error(err);
+        alert("Unable to get your location");
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     );
   };
 
-  if (!apiKey) {
-    return (
-      <div className="h-48 rounded-md border border-dashed flex items-center justify-center bg-muted/50">
-        <p className="text-sm text-muted-foreground text-center px-4">
-          Google Maps API key not configured. Set VITE_GOOGLE_MAPS_API_KEY.
-        </p>
-      </div>
-    );
-  }
+  const center =
+    latitude != null && longitude != null
+      ? { lat: latitude, lng: longitude }
+      : DEFAULT_CENTER;
 
-  const mapEl = (fullscreen: boolean) => (
+  const mapBlock = (
     <Map
       defaultCenter={center}
       defaultZoom={latitude && longitude ? 16 : 12}
       mapTypeId="hybrid"
+      mapId="location_picker_map"
       gestureHandling="greedy"
-      disableDefaultUI={false}
       mapTypeControl
       streetViewControl={false}
       fullscreenControl={false}
-      zoomControlOptions={
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (window as any).google?.maps ? { position: ((window as any).google?.maps?.ControlPosition ?? {})[fullscreen ? "RIGHT_BOTTOM" : "RIGHT_TOP"] } : undefined
-      }
+      onClick={(e) => {
+        if (!e.detail.latLng) return;
+        reverseGeocode(e.detail.latLng.lat, e.detail.latLng.lng);
+      }}
       style={{ width: "100%", height: "100%" }}
     >
-      <MapInteractive
-        latitude={latitude}
-        longitude={longitude}
-        onLocationChange={onLocationChange}
-      />
+      {latitude != null && longitude != null && (
+        <AdvancedMarker position={{ lat: latitude, lng: longitude }} />
+      )}
     </Map>
   );
 
+  const searchBar = (
+    <div className="flex items-center gap-2">
+      <div className="relative flex-1">
+        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleSearch();
+            }
+          }}
+          placeholder="Search address in South Africa"
+          className="pl-8 h-9 bg-background/95 backdrop-blur"
+        />
+        {predictions.length > 0 && (
+          <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
+            {predictions.map((p) => (
+              <button
+                key={p.place_id}
+                type="button"
+                onClick={() => handleSelectPlace(p.place_id, p.description)}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-accent"
+              >
+                {p.description}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <Button type="button" size="sm" variant="outline" onClick={handleSearch} disabled={isSearching} className="h-9">
+        {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={handleGPS}
+        disabled={gettingLocation}
+        className="h-9"
+      >
+        {gettingLocation ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crosshair className="h-4 w-4" />}
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        onClick={() => setIsFullscreen((v) => !v)}
+        className="h-9"
+      >
+        {isFullscreen ? <X className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+      </Button>
+    </div>
+  );
+
+  if (isFullscreen) {
+    return (
+      <div className="fixed inset-0 z-50 bg-background flex flex-col">
+        <div className="p-3 border-b">{searchBar}</div>
+        <div className="flex-1 relative">{mapBlock}</div>
+        {latitude != null && longitude != null && (
+          <div className="p-2 text-sm text-muted-foreground border-t bg-background/90">
+            {selectedAddress || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <APIProvider apiKey={apiKey} libraries={["places", "marker"]}>
-      {isFullscreen ? (
-        <div className="fixed inset-0 z-50 bg-background">
-          <div className="absolute top-4 left-4 right-20 z-10 max-w-md">
-            <PlacesSearch
-              inputRef={fsSearchInputRef}
-              onPick={(lat, lng, address) => onLocationChange(lat, lng, address)}
-            />
-          </div>
-          <div className="absolute top-4 right-4 z-10 flex flex-col gap-3">
-            <div className="flex flex-col items-center gap-1">
-              <span className="text-xs font-medium text-foreground bg-background/80 backdrop-blur px-2 py-0.5 rounded">
-                Close
-              </span>
-              <Button
-                type="button"
-                size="icon"
-                onClick={() => setIsFullscreen(false)}
-                className="h-12 w-12 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg"
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-            <div className="flex flex-col items-center gap-1">
-              <span className="text-xs font-medium text-foreground bg-background/80 backdrop-blur px-2 py-0.5 rounded">
-                Locate
-              </span>
-              <Button
-                type="button"
-                size="icon"
-                onClick={handleGetCurrentLocation}
-                disabled={gettingLocation}
-                className="h-12 w-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-              >
-                {gettingLocation ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <Navigation className="h-5 w-5" />
-                )}
-              </Button>
-            </div>
-          </div>
-          <div className="w-full h-full">{mapEl(true)}</div>
-          {latitude && longitude && (
-            <div className="absolute bottom-4 left-4 bg-background/90 backdrop-blur px-3 py-2 rounded-md shadow">
-              <p className="text-sm">
-                Selected: {latitude.toFixed(6)}, {longitude.toFixed(6)}
-              </p>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
-              <MapPin className="h-4 w-4" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <PlacesSearch
-                inputRef={searchInputRef}
-                onPick={(lat, lng, address) => onLocationChange(lat, lng, address)}
-              />
-            </div>
-            <div className="flex gap-1 shrink-0">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleGetCurrentLocation}
-                disabled={gettingLocation}
-                className="h-9 px-2"
-              >
-                {gettingLocation ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Crosshair className="h-4 w-4" />
-                )}
-                <span className="ml-1 text-xs">GPS</span>
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsFullscreen(true)}
-                className="h-9 px-2"
-              >
-                <Maximize2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          <div className="h-48 rounded-md border overflow-hidden">{mapEl(false)}</div>
-          {latitude && longitude && (
-            <p className="text-xs text-muted-foreground">
-              Selected: {latitude.toFixed(6)}, {longitude.toFixed(6)}
-            </p>
-          )}
-        </div>
+    <div className="space-y-2">
+      {searchBar}
+      <div className="h-48 rounded-md border overflow-hidden">{mapBlock}</div>
+      {latitude != null && longitude != null && (
+        <p className="text-xs text-muted-foreground">
+          {selectedAddress || `Selected: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`}
+        </p>
       )}
-    </APIProvider>
+    </div>
   );
 };
 
