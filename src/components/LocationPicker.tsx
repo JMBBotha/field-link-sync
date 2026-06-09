@@ -30,6 +30,7 @@ const MapInteractive = ({
   longitude,
   onLocationChange,
   onMapReady,
+  onDragPreview,
 }: MapInteractiveProps) => {
   const map = useMap();
   const geocodingLibrary = useMapsLibrary("geocoding");
