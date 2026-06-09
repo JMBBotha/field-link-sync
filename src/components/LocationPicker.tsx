@@ -78,6 +78,17 @@ const MapInteractive = ({
     [onLocationChange],
   );
 
+  const handleMarkerDrag = useCallback(
+    (e: google.maps.MapMouseEvent) => {
+      const latLng = e.latLng;
+      if (!latLng) return;
+      const pos = { lat: latLng.lat(), lng: latLng.lng() };
+      setMarkerPosition(pos);
+      onDragPreview(pos);
+    },
+    [onDragPreview],
+  );
+
   const handleMarkerDragEnd = useCallback(
     (e: google.maps.MapMouseEvent) => {
       const latLng = e.latLng;
@@ -85,6 +96,7 @@ const MapInteractive = ({
       const lat = latLng.lat();
       const lng = latLng.lng();
       setMarkerPosition({ lat, lng });
+      onDragPreview(null);
       if (geocoderRef.current) {
         geocoderRef.current.geocode({ location: { lat, lng } }, (results, status) => {
           if (status === "OK" && results?.[0]) {
@@ -97,7 +109,7 @@ const MapInteractive = ({
         onLocationChange(lat, lng);
       }
     },
-    [onLocationChange],
+    [onLocationChange, onDragPreview],
   );
 
   useEffect(() => {
@@ -115,6 +127,7 @@ const MapInteractive = ({
     <AdvancedMarker
       position={markerPosition}
       draggable
+      onDrag={handleMarkerDrag}
       onDragEnd={handleMarkerDragEnd}
       title="Drag to adjust location"
     />
