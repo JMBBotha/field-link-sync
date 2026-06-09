@@ -192,11 +192,11 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
     );
   };
 
-  if (!GOOGLE_MAPS_API_KEY) {
+  if (!apiKey) {
     return (
       <div className="h-48 rounded-md border border-dashed flex items-center justify-center bg-muted/50">
         <p className="text-sm text-muted-foreground text-center px-4">
-          Google Maps API key not configured. Set VITE_GOOGLE_MAPS_API_KEY.
+          Loading map…
         </p>
       </div>
     );
