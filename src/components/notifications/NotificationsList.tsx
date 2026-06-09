@@ -35,9 +35,9 @@ const NotificationsList = ({
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col max-h-80">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b">
+      <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b">
         <h3 className="font-semibold text-sm">Notifications</h3>
         {unreadCount > 0 && (
           <Button
@@ -53,7 +53,7 @@ const NotificationsList = ({
       </div>
 
       {/* List */}
-      <ScrollArea className="max-h-80">
+      <ScrollArea className="flex-1">
         {notifications.length === 0 ? (
           <div className="py-8 text-center text-muted-foreground text-sm">
             <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
