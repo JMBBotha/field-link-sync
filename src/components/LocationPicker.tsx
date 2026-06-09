@@ -317,12 +317,12 @@ const LocationPickerInner = ({ latitude, longitude, onLocationChange }: Location
               onMapReady={handleMapReady}
               onDragPreview={setDragPreview}
             />
-            {dragPreview && (
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 px-3 py-1 rounded-full bg-background/90 backdrop-blur border text-xs font-mono shadow">
-                {dragPreview.lat.toFixed(6)}, {dragPreview.lng.toFixed(6)}
-              </div>
-            )}
           </Map>
+          {dragPreview && (
+            <div className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-20 px-3 py-1 rounded-full bg-background/90 backdrop-blur border text-xs font-mono shadow">
+              {dragPreview.lat.toFixed(6)}, {dragPreview.lng.toFixed(6)}
+            </div>
+          )}
         </>
       )}
     </div>
