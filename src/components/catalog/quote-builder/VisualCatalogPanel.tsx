@@ -165,6 +165,26 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     return () => window.removeEventListener("keydown", handleKey);
   }, [open, onClose, wizardOpen]);
 
+  // Auto-invalidate page/supplier queries when supplier_pdf_pages changes (new uploads, deletes)
+  useEffect(() => {
+    if (!open) return;
+    const channel = supabase
+      .channel("visual-panel-pdf-pages")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "supplier_pdf_pages" },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["visual-panel-pages"] });
+          queryClient.invalidateQueries({ queryKey: ["visual-panel-suppliers"] });
+          queryClient.invalidateQueries({ queryKey: ["visual-panel-supplier-names"] });
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [open, queryClient]);
+
   // Fetch suppliers
   // UUID pattern to filter out raw IDs that shouldn't appear as display names
   const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
