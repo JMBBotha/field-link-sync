@@ -35,6 +35,8 @@ interface Lead {
 export interface MapViewHandle {
   panToLocation: (lat: number, lng: number) => void;
   panToLocationAndOpenPopup: (lat: number, lng: number, leadId: string) => void;
+  showSearchResult: (lat: number, lng: number, name: string, address?: string) => void;
+  getMapboxToken: () => string | null;
 }
 
 interface MapViewProps {
