@@ -456,7 +456,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
             paint: {
               "circle-color": [
                 "step", ["get", "point_count"],
-                "hsl(var(--primary))", 10,
+                "#0077B6", 10,
                 "#f59e0b", 30,
                 "#ef4444",
               ],
