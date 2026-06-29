@@ -738,7 +738,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     };
 
     // Remove stale agent markers (be resilient to transient empty fetches)
-    const STALE_REMOVE_THRESHOLD = 3;
+    const STALE_REMOVE_THRESHOLD = 1;
     const nextAgentIds = new Set(agents.map((a) => a.agent_id));
 
     // Reset missing counters for agents that are present
