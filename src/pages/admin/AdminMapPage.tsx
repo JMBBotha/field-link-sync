@@ -87,6 +87,14 @@ const AdminMapPage = () => {
           <LocateFixed className="h-3.5 w-3.5" />
           My Location
         </Button>
+        <div className="ml-auto">
+          <BusinessSearch
+            getToken={() => mapRef.current?.getMapboxToken() ?? null}
+            onSelect={(lat, lng, name, address) => {
+              mapRef.current?.showSearchResult(lat, lng, name, address);
+            }}
+          />
+        </div>
       </div>
 
 
