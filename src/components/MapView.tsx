@@ -205,6 +205,30 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         console.error('[MapView] panToLocationAndOpenPopup: flyTo failed', error);
       }
     },
+    showSearchResult: (lat: number, lng: number, name: string, address?: string) => {
+      const map = mapInstanceRef.current;
+      if (!map || !mapLoaded) return;
+      try {
+        map.flyTo({ center: [lng, lat], zoom: 16, duration: 1000, essential: true });
+        if (searchMarkerRef.current) {
+          searchMarkerRef.current.remove();
+          searchMarkerRef.current = null;
+        }
+        const popup = new mapboxgl.Popup({ offset: 28, closeButton: true }).setHTML(
+          `<div style="font-family:inherit;min-width:180px"><div style="font-weight:600;font-size:13px;margin-bottom:2px">${name.replace(/</g, '&lt;')}</div>${address ? `<div style="font-size:12px;color:#555">${address.replace(/</g, '&lt;')}</div>` : ''}</div>`
+        );
+        searchMarkerRef.current = new mapboxgl.Marker({ color: '#0077B6' })
+          .setLngLat([lng, lat])
+          .setPopup(popup)
+          .addTo(map);
+        searchMarkerRef.current.togglePopup();
+      } catch (e) {
+        console.error('[MapView] showSearchResult failed', e);
+      }
+    },
+    getMapboxToken: () => {
+      return mapboxgl.accessToken || localStorage.getItem('mapbox_token');
+    },
   }), [mapLoaded]);
 
   useEffect(() => {
