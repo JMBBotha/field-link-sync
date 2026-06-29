@@ -446,6 +446,33 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
           clearTimeout(loadingTimeoutRef.current);
         }
 
+        // Auto-center on the user's current geolocation when available
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const { latitude, longitude } = pos.coords;
+              setCenter({ lat: latitude, lng: longitude });
+              try {
+                mapInstanceRef.current?.flyTo({
+                  center: [longitude, latitude],
+                  zoom: 14,
+                  duration: 1200,
+                  essential: true,
+                });
+                // Skip the auto bounds-fit so we stay on the user's location
+                initialBoundsFitRef.current = true;
+              } catch (e) {
+                console.warn('[MapView] auto-center flyTo failed', e);
+              }
+            },
+            (err) => {
+              console.warn('[MapView] auto-center geolocation denied/failed', err);
+            },
+            { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+          );
+        }
+
+
         // Add clustering source for leads
         const map = mapInstanceRef.current!;
         if (!map.getSource("leads-cluster")) {
