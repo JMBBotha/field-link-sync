@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Map, LocateFixed } from "lucide-react";
 import MapView, { MapViewHandle } from "@/components/MapView";
+import BusinessSearch from "@/components/map/BusinessSearch";
 import LeadsList from "@/components/LeadsList";
 import CompletedLeadsPanel from "@/components/CompletedLeadsPanel";
 import LeadDetailSheet from "@/components/LeadDetailSheet";
@@ -86,6 +87,14 @@ const AdminMapPage = () => {
           <LocateFixed className="h-3.5 w-3.5" />
           My Location
         </Button>
+        <div className="ml-auto">
+          <BusinessSearch
+            getToken={() => mapRef.current?.getMapboxToken() ?? null}
+            onSelect={(lat, lng, name, address) => {
+              mapRef.current?.showSearchResult(lat, lng, name, address);
+            }}
+          />
+        </div>
       </div>
 
 
