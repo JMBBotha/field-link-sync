@@ -1,0 +1,2 @@
+ALTER TABLE public.customers ALTER COLUMN lead_source SET DEFAULT 'other';
+UPDATE public.customers SET lead_source = 'other' WHERE lead_source IS NOT NULL AND lead_source NOT IN ('referral','website','social_media','cold_call','email_campaign','trade_show','walk_in','other');
