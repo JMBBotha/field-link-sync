@@ -91,6 +91,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const agentMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const leadMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
+  const searchMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialBoundsFitRef = useRef(false);
   const missingAgentCountsRef = useRef<Map<string, number>>(new Map());
