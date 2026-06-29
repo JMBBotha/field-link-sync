@@ -91,89 +91,82 @@ const AdminMapPage = () => {
 
       {/* Content */}
       <div className="flex-1 relative">
-        {activeTab === "map" && (
-          <>
-            <div className="absolute inset-0">
-              <MapView
-                ref={mapRef}
-                showAllAgents={true}
-                onStatusFiltersChange={(filters) => {
-                  const hasCompleted = filters.has("completed");
-                  setShowCompletedFilter(hasCompleted);
-                  if (hasCompleted) setCompletedPanelCollapsed(false);
-                  else setCompletedPanelCollapsed(true);
-                }}
-                onLeadClick={handleLeadClick}
-              />
-            </div>
+        <>
+          <div className="absolute inset-0">
+            <MapView
+              ref={mapRef}
+              showAllAgents={true}
+              onStatusFiltersChange={(filters) => {
+                const hasCompleted = filters.has("completed");
+                setShowCompletedFilter(hasCompleted);
+                if (hasCompleted) setCompletedPanelCollapsed(false);
+                else setCompletedPanelCollapsed(true);
+              }}
+              onLeadClick={handleLeadClick}
+            />
+          </div>
 
-            {showCompletedFilter && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setCompletedPanelCollapsed(!completedPanelCollapsed)}
-                className="hidden md:flex absolute top-4 z-20 bg-white/80 backdrop-blur-md shadow-md hover:bg-white/90 rounded-md border transition-all duration-300"
-                style={{ left: completedPanelCollapsed ? '1rem' : 'calc(24rem + 1rem)' }}
-              >
-                {completedPanelCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-              </Button>
-            )}
-
-            <div
-              className={`absolute top-0 left-0 h-full z-10 overflow-y-auto backdrop-blur-md border-r shadow-xl transition-all duration-300 ease-out ${
-                completedPanelCollapsed || !showCompletedFilter
-                  ? 'w-0 opacity-0 pointer-events-none translate-x-[-100%]'
-                  : 'w-full md:w-96 opacity-100 translate-x-0'
-              }`}
-              style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(34, 197, 94, 0.08) 100%)' }}
-            >
-              {!completedPanelCollapsed && showCompletedFilter && (
-                <CompletedLeadsPanel
-                  isVisible={!completedPanelCollapsed && showCompletedFilter}
-                  onLeadClick={(lat, lng, leadId) => {
-                    if (mapRef.current) mapRef.current.panToLocationAndOpenPopup(lat, lng, leadId);
-                  }}
-                  onPanelClose={() => setCompletedPanelCollapsed(true)}
-                />
-              )}
-            </div>
-
+          {showCompletedFilter && (
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setLeadsCollapsed(!leadsCollapsed)}
+              onClick={() => setCompletedPanelCollapsed(!completedPanelCollapsed)}
               className="hidden md:flex absolute top-4 z-20 bg-white/80 backdrop-blur-md shadow-md hover:bg-white/90 rounded-md border transition-all duration-300"
-              style={{ right: leadsCollapsed ? '1rem' : 'calc(24rem + 1rem)' }}
+              style={{ left: completedPanelCollapsed ? '1rem' : 'calc(24rem + 1rem)' }}
             >
-              {leadsCollapsed ? <PanelRightOpen className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />}
+              {completedPanelCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
             </Button>
+          )}
 
-            <div
-              className={`absolute top-0 right-0 h-full z-10 overflow-y-auto backdrop-blur-md border-l shadow-xl transition-all duration-300 ease-out ${
-                leadsCollapsed
-                  ? 'w-0 opacity-0 pointer-events-none translate-x-[100%]'
-                  : 'w-full md:w-96 opacity-100 translate-x-0'
-              }`}
-              style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(34, 197, 94, 0.08) 100%)' }}
-            >
-              {!leadsCollapsed && (
-                <LeadsList
-                  onLeadClick={(lat, lng, leadId) => {
-                    if (mapRef.current) mapRef.current.panToLocationAndOpenPopup(lat, lng, leadId);
-                  }}
-                  onPanelClose={() => setLeadsCollapsed(true)}
-                />
-              )}
-            </div>
-          </>
-        )}
-
-        {activeTab === "heatmap" && (
-          <div className="absolute inset-0">
-            <LeadHeatmap />
+          <div
+            className={`absolute top-0 left-0 h-full z-10 overflow-y-auto backdrop-blur-md border-r shadow-xl transition-all duration-300 ease-out ${
+              completedPanelCollapsed || !showCompletedFilter
+                ? 'w-0 opacity-0 pointer-events-none translate-x-[-100%]'
+                : 'w-full md:w-96 opacity-100 translate-x-0'
+            }`}
+            style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(34, 197, 94, 0.08) 100%)' }}
+          >
+            {!completedPanelCollapsed && showCompletedFilter && (
+              <CompletedLeadsPanel
+                isVisible={!completedPanelCollapsed && showCompletedFilter}
+                onLeadClick={(lat, lng, leadId) => {
+                  if (mapRef.current) mapRef.current.panToLocationAndOpenPopup(lat, lng, leadId);
+                }}
+                onPanelClose={() => setCompletedPanelCollapsed(true)}
+              />
+            )}
           </div>
-        )}
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setLeadsCollapsed(!leadsCollapsed)}
+            className="hidden md:flex absolute top-4 z-20 bg-white/80 backdrop-blur-md shadow-md hover:bg-white/90 rounded-md border transition-all duration-300"
+            style={{ right: leadsCollapsed ? '1rem' : 'calc(24rem + 1rem)' }}
+          >
+            {leadsCollapsed ? <PanelRightOpen className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />}
+          </Button>
+
+          <div
+            className={`absolute top-0 right-0 h-full z-10 overflow-y-auto backdrop-blur-md border-l shadow-xl transition-all duration-300 ease-out ${
+              leadsCollapsed
+                ? 'w-0 opacity-0 pointer-events-none translate-x-[100%]'
+                : 'w-full md:w-96 opacity-100 translate-x-0'
+            }`}
+            style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(34, 197, 94, 0.08) 100%)' }}
+          >
+            {!leadsCollapsed && (
+              <LeadsList
+                onLeadClick={(lat, lng, leadId) => {
+                  if (mapRef.current) mapRef.current.panToLocationAndOpenPopup(lat, lng, leadId);
+                }}
+                onPanelClose={() => setLeadsCollapsed(true)}
+              />
+            )}
+          </div>
+        </>
       </div>
+
 
       <LeadDetailSheet
         lead={selectedLead}
