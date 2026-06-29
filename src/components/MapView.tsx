@@ -310,7 +310,16 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         ? agentsWithProfiles.filter((a) => a.profileCompanyId === companyId)
         : agentsWithProfiles;
 
-      setAgents(companyAgents as any);
+      // Drop stale locations (older than 15 minutes or missing timestamp)
+      const FRESHNESS_MS = 15 * 60 * 1000;
+      const now = Date.now();
+      const freshAgents = companyAgents.filter((a) => {
+        if (!a.last_updated) return false;
+        const ts = new Date(a.last_updated).getTime();
+        return Number.isFinite(ts) && now - ts <= FRESHNESS_MS;
+      });
+
+      setAgents(freshAgents as any);
     }
     if (leadData) setLeads(leadData);
   };
@@ -729,7 +738,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     };
 
     // Remove stale agent markers (be resilient to transient empty fetches)
-    const STALE_REMOVE_THRESHOLD = 3;
+    const STALE_REMOVE_THRESHOLD = 1;
     const nextAgentIds = new Set(agents.map((a) => a.agent_id));
 
     // Reset missing counters for agents that are present
