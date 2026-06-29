@@ -1,11 +1,10 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Map, Flame } from "lucide-react";
+import { PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Map, LocateFixed } from "lucide-react";
 import MapView, { MapViewHandle } from "@/components/MapView";
 import LeadsList from "@/components/LeadsList";
 import CompletedLeadsPanel from "@/components/CompletedLeadsPanel";
 import LeadDetailSheet from "@/components/LeadDetailSheet";
-import LeadHeatmap from "@/components/map/LeadHeatmap";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -30,10 +29,7 @@ interface Lead {
   actual_start_time?: string | null;
 }
 
-type TabView = "map" | "heatmap";
-
 const AdminMapPage = () => {
-  const [activeTab, setActiveTab] = useState<TabView>("map");
   const [leadsCollapsed, setLeadsCollapsed] = useState(false);
   const [completedPanelCollapsed, setCompletedPanelCollapsed] = useState(true);
   const [showCompletedFilter, setShowCompletedFilter] = useState(false);
@@ -51,14 +47,31 @@ const AdminMapPage = () => {
 
   const infoAction = async () => { toast({ title: "Info", description: "Use field agent view for this action" }); };
 
+  const handleMyLocation = () => {
+    if (!navigator.geolocation) {
+      toast({ title: "Unavailable", description: "Geolocation is not supported in this browser", variant: "destructive" });
+      return;
+    }
+    toast({ title: "Locating…", description: "Centering map on your current location" });
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        mapRef.current?.panToLocation(latitude, longitude);
+      },
+      (err) => {
+        toast({ title: "Location failed", description: err.message || "Unable to get your location", variant: "destructive" });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
   return (
     <div className="h-full flex flex-col min-h-0">
       {/* Tab switcher */}
       <div className="shrink-0 flex items-center gap-1 px-3 py-2 border-b bg-card/80 backdrop-blur-sm z-20">
         <Button
           size="sm"
-          variant={activeTab === "map" ? "default" : "ghost"}
-          onClick={() => setActiveTab("map")}
+          variant="default"
           className="gap-1.5 text-xs h-8"
         >
           <Map className="h-3.5 w-3.5" />
@@ -66,14 +79,15 @@ const AdminMapPage = () => {
         </Button>
         <Button
           size="sm"
-          variant={activeTab === "heatmap" ? "default" : "ghost"}
-          onClick={() => setActiveTab("heatmap")}
+          variant="ghost"
+          onClick={handleMyLocation}
           className="gap-1.5 text-xs h-8"
         >
-          <Flame className="h-3.5 w-3.5" />
-          Density Heatmap
+          <LocateFixed className="h-3.5 w-3.5" />
+          My Location
         </Button>
       </div>
+
 
       {/* Content */}
       <div className="flex-1 relative">
