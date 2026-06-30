@@ -92,10 +92,57 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
   const agentMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const leadMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const searchMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const userLocationMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const userWatchIdRef = useRef<number | null>(null);
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialBoundsFitRef = useRef(false);
   const missingAgentCountsRef = useRef<Map<string, number>>(new Map());
   const missingLeadCountsRef = useRef<Map<string, number>>(new Map());
+
+  // Inject CSS for the pulsing live-location dot (once)
+  useEffect(() => {
+    const id = "mapview-user-location-style";
+    if (document.getElementById(id)) return;
+    const style = document.createElement("style");
+    style.id = id;
+    style.innerHTML = `
+      .mv-user-location { position: relative; width: 20px; height: 20px; }
+      .mv-user-location .mv-dot {
+        position: absolute; inset: 4px; border-radius: 9999px;
+        background: #1d4ed8; border: 2px solid #ffffff;
+        box-shadow: 0 0 0 1px rgba(0,0,0,0.25), 0 2px 6px rgba(0,0,0,0.35);
+      }
+      .mv-user-location .mv-pulse {
+        position: absolute; inset: 0; border-radius: 9999px;
+        background: rgba(29, 78, 216, 0.35);
+        animation: mv-pulse 1.8s ease-out infinite;
+      }
+      @keyframes mv-pulse {
+        0% { transform: scale(0.6); opacity: 0.9; }
+        100% { transform: scale(2.6); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  }, []);
+
+  const upsertUserLocationMarker = useCallback((lat: number, lng: number) => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    if (userLocationMarkerRef.current) {
+      userLocationMarkerRef.current.setLngLat([lng, lat]);
+      return;
+    }
+    const el = document.createElement("div");
+    el.className = "mv-user-location";
+    el.innerHTML = '<div class="mv-pulse"></div><div class="mv-dot"></div>';
+    const popup = new mapboxgl.Popup({ offset: 14, closeButton: false }).setHTML(
+      '<div style="font-size:12px;font-weight:600;color:#1d4ed8;">You are here</div>'
+    );
+    userLocationMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: "center" })
+      .setLngLat([lng, lat])
+      .setPopup(popup)
+      .addTo(map);
+  }, []);
 
   const applyMapChromeBottomOffset = useCallback(() => {
     const root = mapRef.current;
@@ -257,6 +304,16 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
 
       // Cleanup realtime subscriptions
       cleanupSubscription?.();
+
+      // Stop watching live location
+      if (userWatchIdRef.current !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(userWatchIdRef.current);
+        userWatchIdRef.current = null;
+      }
+      if (userLocationMarkerRef.current) {
+        userLocationMarkerRef.current.remove();
+        userLocationMarkerRef.current = null;
+      }
 
       // Remove markers first (prevents dangling DOM nodes)
       clearAllMarkers();
@@ -473,12 +530,13 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
           clearTimeout(loadingTimeoutRef.current);
         }
 
-        // Auto-center on the user's current geolocation when available
+        // Auto-center on the user's current geolocation when available + start live tracking
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             (pos) => {
               const { latitude, longitude } = pos.coords;
               setCenter({ lat: latitude, lng: longitude });
+              upsertUserLocationMarker(latitude, longitude);
               try {
                 mapInstanceRef.current?.flyTo({
                   center: [longitude, latitude],
@@ -486,7 +544,6 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
                   duration: 1200,
                   essential: true,
                 });
-                // Skip the auto bounds-fit so we stay on the user's location
                 initialBoundsFitRef.current = true;
               } catch (e) {
                 console.warn('[MapView] auto-center flyTo failed', e);
@@ -497,6 +554,15 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
             },
             { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
           );
+
+          // Continuous live-location tracking — updates the pulsing dot
+          if (userWatchIdRef.current === null) {
+            userWatchIdRef.current = navigator.geolocation.watchPosition(
+              (pos) => upsertUserLocationMarker(pos.coords.latitude, pos.coords.longitude),
+              (err) => console.warn('[MapView] watchPosition error', err),
+              { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
+            );
+          }
         }
 
 
