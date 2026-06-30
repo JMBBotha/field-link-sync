@@ -520,12 +520,13 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
           clearTimeout(loadingTimeoutRef.current);
         }
 
-        // Auto-center on the user's current geolocation when available
+        // Auto-center on the user's current geolocation when available + start live tracking
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             (pos) => {
               const { latitude, longitude } = pos.coords;
               setCenter({ lat: latitude, lng: longitude });
+              upsertUserLocationMarker(latitude, longitude);
               try {
                 mapInstanceRef.current?.flyTo({
                   center: [longitude, latitude],
@@ -533,7 +534,6 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
                   duration: 1200,
                   essential: true,
                 });
-                // Skip the auto bounds-fit so we stay on the user's location
                 initialBoundsFitRef.current = true;
               } catch (e) {
                 console.warn('[MapView] auto-center flyTo failed', e);
@@ -544,6 +544,15 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
             },
             { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
           );
+
+          // Continuous live-location tracking — updates the pulsing dot
+          if (userWatchIdRef.current === null) {
+            userWatchIdRef.current = navigator.geolocation.watchPosition(
+              (pos) => upsertUserLocationMarker(pos.coords.latitude, pos.coords.longitude),
+              (err) => console.warn('[MapView] watchPosition error', err),
+              { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
+            );
+          }
         }
 
 
