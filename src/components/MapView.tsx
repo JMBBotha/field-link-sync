@@ -305,6 +305,16 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       // Cleanup realtime subscriptions
       cleanupSubscription?.();
 
+      // Stop watching live location
+      if (userWatchIdRef.current !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(userWatchIdRef.current);
+        userWatchIdRef.current = null;
+      }
+      if (userLocationMarkerRef.current) {
+        userLocationMarkerRef.current.remove();
+        userLocationMarkerRef.current = null;
+      }
+
       // Remove markers first (prevents dangling DOM nodes)
       clearAllMarkers();
 
