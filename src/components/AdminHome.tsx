@@ -1,11 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, FileText, BarChart3, ClipboardList, AlertTriangle, CheckCircle2, Clock, DollarSign, Users, Wrench, ChevronDown } from "lucide-react";
+import { Plus, FileText, BarChart3, ClipboardList, AlertTriangle, CheckCircle2, Clock, DollarSign, Users, Wrench, ChevronDown, UserPlus, Loader2 } from "lucide-react";
 import { Briefcase, UserCheck, Timer } from "lucide-react";
 import AdminAlertsPanel from "@/components/AdminAlertsPanel";
 import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
@@ -17,7 +17,8 @@ import { useState, useMemo } from "react";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 
 interface AdminHomeProps {
