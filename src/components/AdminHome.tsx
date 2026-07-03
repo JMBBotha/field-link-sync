@@ -92,7 +92,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   const { data: stats, isLoading } = useQuery({
     queryKey: ["admin-home-stats", today],
     queryFn: async () => {
-      const [leadsRes, quotesRes, activeJobsRes, overdueRes, revenueRes, agentsRes, recentRes, overdueMaintenanceRes] = await Promise.all([
+      const [leadsRes, quotesRes, activeJobsRes, overdueRes, revenueRes, agentsRes, recentRes, overdueMaintenanceRes, openLeadsRes, todayJobsRes] = await Promise.all([
         supabase.from("leads").select("id", { count: "exact", head: true }).gte("created_at", today + "T00:00:00").eq("status", "pending"),
         supabase.from("quotes").select("id", { count: "exact", head: true }).eq("status", "draft"),
         supabase.from("leads").select("id", { count: "exact", head: true }).in("status", ["accepted", "en_route", "on_site"]),
@@ -101,6 +101,8 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         supabase.from("profiles").select("id, full_name, availability_status").limit(20),
         supabase.from("notifications").select("id, type, title, body, created_at").order("created_at", { ascending: false }).limit(15),
         supabase.rpc("get_overdue_maintenance_count"),
+        supabase.from("leads").select("id, customer_name, service_type, address, status, created_at").in("status", ["pending", "new", "open"]).order("created_at", { ascending: false }).limit(6),
+        supabase.from("jobs").select("id, title, status, scheduled_start, customer_name, address").gte("scheduled_start", today + "T00:00:00").lt("scheduled_start", today + "T23:59:59").order("scheduled_start", { ascending: true }).limit(6),
       ]);
 
       const revenueToday = revenueRes.data?.reduce((sum, inv) => sum + Number(inv.grand_total || 0), 0) || 0;
@@ -114,10 +116,13 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         revenueToday,
         agents: agentsRes.data || [],
         recentActivity: recentRes.data || [],
+        openLeads: (openLeadsRes.data as any[]) || [],
+        todayJobs: (todayJobsRes.data as any[]) || [],
       };
     },
     refetchInterval: 30000,
   });
+
 
   // Fetch 7-day trend data for sparklines
   const sevenDaysAgo = subDays(new Date(), 6).toISOString().split("T")[0];
