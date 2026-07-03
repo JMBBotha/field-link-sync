@@ -28,6 +28,8 @@ interface CalendarEvent {
     serviceType: string;
     status: string;
     notes?: string;
+    locationLabel?: string;
+    locationAddress?: string;
   };
 }
 
@@ -55,7 +57,7 @@ const ScheduleCalendar = () => {
     }
   }, []);
 
-  // Realtime: refresh calendar when jobs, schedules, or assignments change
+  // Realtime: refresh calendar when jobs, schedules, assignments, or locations change
   useEffect(() => {
     const ch = supabase
       .channel("schedule-live")
@@ -64,6 +66,8 @@ const ScheduleCalendar = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, () =>
         queryClient.invalidateQueries({ queryKey: ["job-schedules"] }))
       .on("postgres_changes", { event: "*", schema: "public", table: "assignments" }, () =>
+        queryClient.invalidateQueries({ queryKey: ["job-schedules"] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "customer_locations" }, () =>
         queryClient.invalidateQueries({ queryKey: ["job-schedules"] }))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -86,9 +90,24 @@ const ScheduleCalendar = () => {
         .in("id", agentIds);
       const profileMap = new Map((profiles || []).map((p: any) => [p.id, p.full_name]));
 
+      // Fetch jobs linked to these leads to pull location labels
+      const leadIds = [...new Set(data.map((s: any) => s.lead_id).filter(Boolean))];
+      let jobByLead = new Map<string, any>();
+      if (leadIds.length) {
+        const { data: jobs } = await supabase
+          .from("jobs")
+          .select("id, lead_id, address, location_id, customer_locations:location_id(label, address)")
+          .in("lead_id", leadIds);
+        // Prefer the most-recent job per lead
+        (jobs || [])
+          .sort((a: any, b: any) => (a.created_at || "").localeCompare(b.created_at || ""))
+          .forEach((j: any) => jobByLead.set(j.lead_id, j));
+      }
+
       return data.map((s: any) => ({
         ...s,
         agent_name: profileMap.get(s.agent_id) || "Unknown",
+        job: jobByLead.get(s.lead_id) || null,
       }));
     },
   });
@@ -105,9 +124,16 @@ const ScheduleCalendar = () => {
         end.setHours(parseInt(endParts[0]), parseInt(endParts[1]), 0);
 
         const lead = s.leads;
+        const loc = s.job?.customer_locations;
+        const locationLabel: string | undefined = loc?.label || undefined;
+        const locationAddress: string | undefined = loc?.address || s.job?.address || undefined;
+        const customerName = lead?.customer_name || "Job";
+        const titleBase = `${customerName} — ${s.agent_name}`;
+        const title = locationLabel ? `${titleBase} · ${locationLabel}` : titleBase;
+
         return {
           id: s.id,
-          title: `${lead?.customer_name || "Job"} — ${s.agent_name}`,
+          title,
           start,
           end,
           resource: {
@@ -118,6 +144,8 @@ const ScheduleCalendar = () => {
             serviceType: lead?.service_type || "",
             status: lead?.status || "pending",
             notes: s.notes,
+            locationLabel,
+            locationAddress,
           },
         };
       }),
