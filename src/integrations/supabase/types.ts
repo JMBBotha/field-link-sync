@@ -719,6 +719,56 @@ export type Database = {
           },
         ]
       }
+      customer_locations: {
+        Row: {
+          address: string
+          company_id: string
+          created_at: string
+          customer_id: string
+          id: string
+          is_primary: boolean
+          label: string
+          latitude: number | null
+          longitude: number | null
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          company_id: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          is_primary?: boolean
+          label?: string
+          latitude?: number | null
+          longitude?: number | null
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          company_id?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          is_primary?: boolean
+          label?: string
+          latitude?: number | null
+          longitude?: number | null
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_locations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_tokens: {
         Row: {
           created_at: string
@@ -2262,6 +2312,7 @@ export type Database = {
           lat: number | null
           lead_id: string | null
           lng: number | null
+          location_id: string | null
           priority: string | null
           quote_id: string | null
           scheduled_for: string | null
@@ -2282,6 +2333,7 @@ export type Database = {
           lat?: number | null
           lead_id?: string | null
           lng?: number | null
+          location_id?: string | null
           priority?: string | null
           quote_id?: string | null
           scheduled_for?: string | null
@@ -2302,6 +2354,7 @@ export type Database = {
           lat?: number | null
           lead_id?: string | null
           lng?: number | null
+          location_id?: string | null
           priority?: string | null
           quote_id?: string | null
           scheduled_for?: string | null
@@ -2343,6 +2396,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "customer_locations"
             referencedColumns: ["id"]
           },
           {
@@ -4025,6 +4085,7 @@ export type Database = {
           discount_value: number | null
           id: string
           lead_id: string | null
+          location_id: string | null
           notes: string | null
           public_token: string | null
           quote_number: string | null
@@ -4055,6 +4116,7 @@ export type Database = {
           discount_value?: number | null
           id?: string
           lead_id?: string | null
+          location_id?: string | null
           notes?: string | null
           public_token?: string | null
           quote_number?: string | null
@@ -4085,6 +4147,7 @@ export type Database = {
           discount_value?: number | null
           id?: string
           lead_id?: string | null
+          location_id?: string | null
           notes?: string | null
           public_token?: string | null
           quote_number?: string | null
@@ -4129,6 +4192,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "customer_locations"
             referencedColumns: ["id"]
           },
         ]
