@@ -46,6 +46,7 @@ const ScheduleCalendar = () => {
   const [currentView, setCurrentView] = useState<(typeof Views)[keyof typeof Views]>(
     typeof window !== "undefined" && window.innerWidth < 640 ? Views.DAY : Views.WEEK
   );
+  const queryClient = useQueryClient();
 
   // Auto-switch to Day view on narrow screens (mobile)
   useEffect(() => {
@@ -53,6 +54,20 @@ const ScheduleCalendar = () => {
       setCurrentView(Views.DAY);
     }
   }, []);
+
+  // Realtime: refresh calendar when jobs, schedules, or assignments change
+  useEffect(() => {
+    const ch = supabase
+      .channel("schedule-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "job_schedules" }, () =>
+        queryClient.invalidateQueries({ queryKey: ["job-schedules"] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, () =>
+        queryClient.invalidateQueries({ queryKey: ["job-schedules"] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "assignments" }, () =>
+        queryClient.invalidateQueries({ queryKey: ["job-schedules"] }))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [queryClient]);
 
   const { data: schedules = [], refetch } = useQuery({
     queryKey: ["job-schedules"],
