@@ -59,6 +59,51 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     enabled: open && !!companyId,
   });
 
+  // Load this customer's saved locations
+  const { data: customerLocations = [] } = useQuery({
+    queryKey: ["job-customer-locations", customerId],
+    enabled: open && !!customerId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("customer_locations")
+        .select("id,label,address,latitude,longitude,is_primary")
+        .eq("customer_id", customerId)
+        .order("is_primary", { ascending: false });
+      return data || [];
+    },
+  });
+
+  // When customer changes or locations load, auto-pick primary
+  useEffect(() => {
+    if (!customerId || customerLocations.length === 0) return;
+    if (locationId) return;
+    const primary = customerLocations.find((l: any) => l.is_primary) || customerLocations[0];
+    if (primary) {
+      setLocationId(primary.id);
+      setAddress(primary.address || "");
+      if (primary.latitude != null && primary.longitude != null &&
+          Number(primary.latitude) !== 0 && Number(primary.longitude) !== 0) {
+        setLat(Number(primary.latitude));
+        setLng(Number(primary.longitude));
+        setGeoStatus("inherited");
+      }
+    }
+  }, [customerId, customerLocations]);
+
+  const applyLocation = (id: string) => {
+    setLocationId(id);
+    const loc = customerLocations.find((l: any) => l.id === id);
+    if (!loc) return;
+    setAddress(loc.address || "");
+    if (loc.latitude != null && loc.longitude != null && Number(loc.latitude) !== 0) {
+      setLat(Number(loc.latitude));
+      setLng(Number(loc.longitude));
+      setGeoStatus("inherited");
+    } else {
+      setLat(null); setLng(null); setGeoStatus("idle");
+    }
+  };
+
   // Preload from lead if provided
   useEffect(() => {
     if (!open || !leadId) return;
