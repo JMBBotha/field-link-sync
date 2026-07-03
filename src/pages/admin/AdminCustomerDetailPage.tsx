@@ -31,6 +31,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { cn } from "@/lib/utils";
 import { formatRand } from "@/utils/formatRand";
+import CustomerLocationsManager from "@/components/customers/CustomerLocationsManager";
 
 const LEAD_SOURCES = [
   "Manual", "Facebook Lead", "Website Form", "WhatsApp", "Phone Call", "Walk-in", "Referral",
