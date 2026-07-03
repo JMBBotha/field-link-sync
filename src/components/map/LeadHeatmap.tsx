@@ -65,31 +65,38 @@ const LeadHeatmap = () => {
 
   // Init map
   useEffect(() => {
-    const token = localStorage.getItem("mapbox_token");
-    if (!token || !token.startsWith("pk.")) {
-      setNoToken(true);
-      setLoading(false);
-      return;
-    }
-    if (!mapContainerRef.current) return;
+    let cancelled = false;
+    let map: mapboxgl.Map | null = null;
+    (async () => {
+      const { getMapboxToken, getMapboxTokenSync } = await import("@/lib/mapboxToken");
+      const token = getMapboxTokenSync() || (await getMapboxToken());
+      if (cancelled) return;
+      if (!token || !token.startsWith("pk.")) {
+        setNoToken(true);
+        setLoading(false);
+        return;
+      }
+      if (!mapContainerRef.current) return;
 
-    mapboxgl.accessToken = token;
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: "mapbox://styles/mapbox/dark-v11",
-      center: [24.0, -30.0],
-      zoom: 5,
-    });
+      mapboxgl.accessToken = token;
+      map = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: "mapbox://styles/mapbox/dark-v11",
+        center: [24.0, -30.0],
+        zoom: 5,
+      });
 
-    map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
+      map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
 
-    map.on("load", () => {
-      mapRef.current = map;
-      setMapLoaded(true);
-    });
+      map.on("load", () => {
+        mapRef.current = map;
+        setMapLoaded(true);
+      });
+    })();
 
     return () => {
-      map.remove();
+      cancelled = true;
+      map?.remove();
       mapRef.current = null;
       setMapLoaded(false);
     };
