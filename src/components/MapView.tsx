@@ -1301,12 +1301,11 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
                 {loadingTimeout ? <AlertCircle className="h-8 w-8 text-destructive mx-auto" /> : <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />}
                 <div>
                   <p className="text-sm font-medium">{loadingStatus}</p>
-                  {loadingTimeout && <p className="text-xs text-muted-foreground mt-1">Check your internet connection or try a different token.</p>}
+                  {loadingTimeout && <p className="text-xs text-muted-foreground mt-1">Check your internet connection.</p>}
                 </div>
                 {loadingTimeout && (
                   <div className="flex gap-2 justify-center pt-2">
-                    <Button size="sm" variant="outline" onClick={handleResetToken}>Change Token</Button>
-                    <Button size="sm" onClick={() => { const t = localStorage.getItem("mapbox_token"); if (t) initializeMap(t); }}>Retry</Button>
+                    <Button size="sm" onClick={handleRetryMap}>Retry</Button>
                   </div>
                 )}
               </div>
