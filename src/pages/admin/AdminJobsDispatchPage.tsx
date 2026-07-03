@@ -271,9 +271,13 @@ const AdminJobsDispatchPage = () => {
               <User className="h-3 w-3" /> {job.customers.name}
             </div>
           )}
-          {job.address && (
+          {(job.customer_locations?.address || job.address) && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground truncate">
-              <MapPin className="h-3 w-3 shrink-0" /> {job.address}
+              <MapPin className="h-3 w-3 shrink-0" />
+              {job.customer_locations?.label && (
+                <span className="font-medium text-foreground">{job.customer_locations.label}:</span>
+              )}
+              <span className="truncate">{job.customer_locations?.address || job.address}</span>
             </div>
           )}
           {job.scheduled_for && (
