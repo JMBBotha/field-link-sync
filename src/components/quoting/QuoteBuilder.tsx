@@ -18,6 +18,8 @@ import BeCoolLogo from "@/components/shared/BeCoolLogo";
 import DocumentHeader from "@/components/shared/DocumentHeader";
 import { generateDocumentPdf } from "@/lib/documentPdf";
 import { DEFAULT_TERMS } from "@/lib/defaultTerms";
+import LocationSelector from "@/components/locations/LocationSelector";
+import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 
 /* ────────── Types ────────── */
 
