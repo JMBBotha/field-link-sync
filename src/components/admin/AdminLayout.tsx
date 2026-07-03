@@ -166,21 +166,21 @@ const AdminLayout = () => {
       />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="shrink-0 h-14 border-b flex items-center justify-between px-4 bg-[#0077B6] dark:bg-gradient-to-r dark:from-[#070e1a] dark:via-[#183a66] dark:to-[#070e1a] border-[#006699] dark:border-[#153258]">
-          <div className="flex items-center gap-3">
+        <header className="shrink-0 h-14 border-b flex items-center justify-between px-2 sm:px-4 gap-2 bg-[#0077B6] dark:bg-gradient-to-r dark:from-[#070e1a] dark:via-[#183a66] dark:to-[#070e1a] border-[#006699] dark:border-[#153258]">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden text-white hover:bg-white/20"
+              className="lg:hidden text-white hover:bg-white/20 shrink-0 h-9 w-9"
             >
               <Menu className="h-5 w-5" />
             </Button>
-            <img src={logo} alt="Logo" className="h-12 lg:hidden" />
-            <h1 className="text-base font-semibold text-white">{pageTitle}</h1>
+            <img src={logo} alt="Logo" className="h-8 lg:hidden shrink-0" />
+            <h1 className="text-sm sm:text-base font-semibold text-white truncate">{pageTitle}</h1>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <Button
               variant="ghost"
               size="sm"
@@ -191,21 +191,15 @@ const AdminLayout = () => {
               <span className="text-xs">Search</span>
               <kbd className="ml-1 rounded border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px]">⌘K</kbd>
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSearchOpen(true)}
-              className="text-white hover:bg-white/20 sm:hidden"
-            >
-              <Search className="h-4 w-4" />
-            </Button>
-            <SubscriptionBadge />
+            <div className="hidden sm:block">
+              <SubscriptionBadge />
+            </div>
             <NotificationBell />
             <Button
               variant="ghost"
               size="icon"
               onClick={toggleTheme}
-              className="text-white hover:bg-white/20"
+              className="text-white hover:bg-white/20 h-9 w-9"
               title={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
             >
               {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}

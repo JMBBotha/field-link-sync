@@ -303,16 +303,16 @@ const AdminJobsDispatchPage = () => {
   };
 
   return (
-    <div className="space-y-4 p-4 md:p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Dispatch Board</h1>
-        <div className="flex items-center gap-3">
+    <div className="space-y-4 p-3 sm:p-4 md:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Dispatch Board</h1>
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 text-sm">
             <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Available only</span>
+            <span className="text-muted-foreground text-xs sm:text-sm">Available only</span>
             <Switch checked={showAvailableOnly} onCheckedChange={setShowAvailableOnly} />
           </div>
-          <Button onClick={() => setShowCreate(true)} className="gap-2">
+          <Button onClick={() => setShowCreate(true)} className="gap-2" size="sm">
             <Plus className="h-4 w-4" /> New Job
           </Button>
         </div>

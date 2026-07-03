@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { Calendar, dateFnsLocalizer, Views, SlotInfo } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { enUS } from "date-fns/locale/en-US";
@@ -42,7 +42,16 @@ const ScheduleCalendar = () => {
   const [selectedSlot, setSelectedSlot] = useState<{ date: Date; start?: Date; end?: Date } | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [currentView, setCurrentView] = useState<(typeof Views)[keyof typeof Views]>(Views.WEEK);
+  const [currentView, setCurrentView] = useState<(typeof Views)[keyof typeof Views]>(
+    typeof window !== "undefined" && window.innerWidth < 640 ? Views.DAY : Views.WEEK
+  );
+
+  // Auto-switch to Day view on narrow screens (mobile)
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 640) {
+      setCurrentView(Views.DAY);
+    }
+  }, []);
 
   const { data: schedules = [], refetch } = useQuery({
     queryKey: ["job-schedules"],
