@@ -29,7 +29,26 @@ interface AdminHomeProps {
 const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   const today = new Date().toISOString().split("T")[0];
   const [selectedKpi, setSelectedKpi] = useState<string | null>(null);
+  const [convertingId, setConvertingId] = useState<string | null>(null);
   const { companyId } = useUserCompanyId();
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleConvertLead = async (leadId: string) => {
+    setConvertingId(leadId);
+    try {
+      const { data, error } = await supabase.rpc("convert_lead_to_customer", { p_lead_id: leadId });
+      if (error) throw error;
+      toast({ title: "Lead converted", description: "Customer record created/linked." });
+      queryClient.invalidateQueries({ queryKey: ["admin-home-stats"] });
+      if (data) navigate(`/admin/customers/${data}`);
+    } catch (e: any) {
+      toast({ title: "Conversion failed", description: e.message, variant: "destructive" });
+    } finally {
+      setConvertingId(null);
+    }
+  };
 
   // Jobs & Assignments KPI query
   const { data: jobStats } = useQuery({
