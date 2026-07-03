@@ -230,10 +230,9 @@ const AdminCustomerDetailPage = () => {
       <Tabs defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="locations">Locations</TabsTrigger>
           <TabsTrigger value="relationship">Relationship</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="overview" className="mt-4 space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Contact card */}
             <Card className="lg:col-span-1 bg-card">
