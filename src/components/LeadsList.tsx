@@ -461,6 +461,27 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
                    <FileText className="h-4 w-4 mr-2" />
                    Create Quote
                  </DropdownMenuItem>
+                 {lead.customer_id ? (
+                   <DropdownMenuItem onClick={() => navigate(`/admin/customers/${lead.customer_id}`)}>
+                     <Users className="h-4 w-4 mr-2" />
+                     View Customer
+                   </DropdownMenuItem>
+                 ) : (
+                   <DropdownMenuItem
+                     onClick={async () => {
+                       const { data, error } = await supabase.rpc("convert_lead_to_customer", { p_lead_id: lead.id });
+                       if (error) {
+                         toast({ title: "Conversion failed", description: error.message, variant: "destructive" });
+                       } else {
+                         toast({ title: "Lead converted to Customer", description: "Opening customer page…" });
+                         if (data) navigate(`/admin/customers/${data}`);
+                       }
+                     }}
+                   >
+                     <Users className="h-4 w-4 mr-2" />
+                     Convert to Customer
+                   </DropdownMenuItem>
+                 )}
                 <DropdownMenuSeparator />
                 {statusOptions.map((status) => (
                   <DropdownMenuItem
