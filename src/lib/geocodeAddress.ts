@@ -1,28 +1,28 @@
-// Lightweight Mapbox forward-geocoder that reuses the token stored by LocationPicker.
+// Server-side geocoder via the `geocode-address` edge function.
+// No Mapbox token required in the client — the token lives on the server.
+import { supabase } from "@/integrations/supabase/client";
+
 export interface GeocodeResult {
   latitude: number;
   longitude: number;
   place_name?: string;
 }
 
-export const getMapboxToken = (): string =>
-  (typeof window !== "undefined" && localStorage.getItem("mapbox_token")) || "";
-
 export async function geocodeAddress(address: string): Promise<GeocodeResult | null> {
-  const token = getMapboxToken();
   const term = (address || "").trim();
-  if (!token || term.length < 3) return null;
+  if (term.length < 3) return null;
   try {
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-      term
-    )}.json?access_token=${token}&limit=1&country=za`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const data = await res.json();
-    const feat = data?.features?.[0];
-    if (!feat?.center) return null;
-    const [lng, lat] = feat.center as [number, number];
-    return { latitude: lat, longitude: lng, place_name: feat.place_name };
+    const { data, error } = await supabase.functions.invoke("geocode-address", {
+      body: { address: term },
+    });
+    if (error) return null;
+    if (!data || data.found === false) return null;
+    if (typeof data.latitude !== "number" || typeof data.longitude !== "number") return null;
+    return {
+      latitude: data.latitude,
+      longitude: data.longitude,
+      place_name: data.place_name,
+    };
   } catch {
     return null;
   }
