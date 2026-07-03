@@ -579,6 +579,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         discount_value: showDiscount ? discountValue : 0,
         reference_text: reference || null,
         lead_id: selectedLeadId || null,
+        location_id: selectedLocationId || null,
         ...(status !== "draft" ? { status, sent_at: new Date().toISOString() } : {}),
       };
 
