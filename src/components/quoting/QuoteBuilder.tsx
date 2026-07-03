@@ -109,6 +109,10 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  const [selectedLocationLabel, setSelectedLocationLabel] = useState<string>("");
+  const [locationLat, setLocationLat] = useState<number | null>(null);
+  const [locationLng, setLocationLng] = useState<number | null>(null);
 
   // Dates
   const [issueDate, setIssueDate] = useState(() => new Date().toISOString().split("T")[0]);
