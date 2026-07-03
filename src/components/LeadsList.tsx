@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Phone, MapPin, Clock, Trash2, MoreHorizontal, Navigation, ChevronDown, ChevronUp, RefreshCw, ArrowUp, Pencil, Timer, ImageIcon, CalendarDays, FileText } from "lucide-react";
+import { Phone, MapPin, Clock, Trash2, MoreHorizontal, Navigation, ChevronDown, ChevronUp, RefreshCw, ArrowUp, Pencil, Timer, ImageIcon, CalendarDays, FileText, Users } from "lucide-react";
 import BookingBadge from "./BookingBadge";
 import ClientInfoPopover from "./ClientInfoPopover";
 import LeadCardProgress from "./LeadCardProgress";
@@ -461,6 +461,27 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
                    <FileText className="h-4 w-4 mr-2" />
                    Create Quote
                  </DropdownMenuItem>
+                 {lead.customer_id ? (
+                   <DropdownMenuItem onClick={() => navigate(`/admin/customers/${lead.customer_id}`)}>
+                     <Users className="h-4 w-4 mr-2" />
+                     View Customer
+                   </DropdownMenuItem>
+                 ) : (
+                   <DropdownMenuItem
+                     onClick={async () => {
+                       const { data, error } = await supabase.rpc("convert_lead_to_customer", { p_lead_id: lead.id });
+                       if (error) {
+                         toast({ title: "Conversion failed", description: error.message, variant: "destructive" });
+                       } else {
+                         toast({ title: "Lead converted to Customer", description: "Opening customer page…" });
+                         if (data) navigate(`/admin/customers/${data}`);
+                       }
+                     }}
+                   >
+                     <Users className="h-4 w-4 mr-2" />
+                     Convert to Customer
+                   </DropdownMenuItem>
+                 )}
                 <DropdownMenuSeparator />
                 {statusOptions.map((status) => (
                   <DropdownMenuItem

@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, FileText, BarChart3, ClipboardList, AlertTriangle, CheckCircle2, Clock, DollarSign, Users, Wrench, ChevronDown, UserPlus, Loader2 } from "lucide-react";
+import { Plus, FileText, BarChart3, ClipboardList, AlertTriangle, CheckCircle2, Clock, DollarSign, Users, Wrench, ChevronDown, UserPlus, Loader2, UserCheck as UserCheckIcon } from "lucide-react";
 import { Briefcase, UserCheck, Timer } from "lucide-react";
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import AdminAlertsPanel from "@/components/AdminAlertsPanel";
 import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
 import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
@@ -35,19 +36,34 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleConvertLead = async (leadId: string) => {
+  const handleConvertLead = async (leadId: string, opts?: { thenCreateJob?: boolean }) => {
     setConvertingId(leadId);
     try {
       const { data, error } = await supabase.rpc("convert_lead_to_customer", { p_lead_id: leadId });
       if (error) throw error;
-      toast({ title: "Lead converted", description: "Customer record created/linked." });
+      toast({
+        title: "Lead converted to Customer",
+        description: opts?.thenCreateJob ? "Opening dispatch to create the job…" : "Opening customer page…",
+      });
       queryClient.invalidateQueries({ queryKey: ["admin-home-stats"] });
-      if (data) navigate(`/admin/customers/${data}`);
+      if (opts?.thenCreateJob) {
+        navigate(`/admin/jobs/dispatch?leadId=${leadId}${data ? `&customerId=${data}` : ""}`);
+      } else if (data) {
+        navigate(`/admin/customers/${data}`);
+      }
     } catch (e: any) {
       toast({ title: "Conversion failed", description: e.message, variant: "destructive" });
     } finally {
       setConvertingId(null);
     }
+  };
+
+  const handleCreateJobFromLead = async (lead: { id: string; customer_id?: string | null }) => {
+    if (lead.customer_id) {
+      navigate(`/admin/jobs/dispatch?leadId=${lead.id}&customerId=${lead.customer_id}`);
+      return;
+    }
+    await handleConvertLead(lead.id, { thenCreateJob: true });
   };
 
   // Jobs & Assignments KPI query
@@ -121,7 +137,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         supabase.from("profiles").select("id, full_name, availability_status").limit(20),
         supabase.from("notifications").select("id, type, title, body, created_at").order("created_at", { ascending: false }).limit(15),
         supabase.rpc("get_overdue_maintenance_count"),
-        supabase.from("leads").select("id, customer_name, service_type, customer_address, status, created_at").eq("status", "pending").order("created_at", { ascending: false }).limit(6),
+        supabase.from("leads").select("id, customer_name, service_type, customer_address, status, created_at, customer_id").eq("status", "pending").order("created_at", { ascending: false }).limit(6),
         supabase.from("jobs").select("id, title, status, scheduled_for, address, customer_id").gte("scheduled_for", today + "T00:00:00").lt("scheduled_for", today + "T23:59:59").order("scheduled_for", { ascending: true }).limit(6),
 
       ]);
@@ -300,23 +316,45 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                     <p className="text-[11px] text-muted-foreground">{format(new Date(lead.created_at), "dd MMM HH:mm")}</p>
                   </div>
                   <div className="flex flex-col gap-1 shrink-0">
+                    <TooltipProvider delayDuration={200}>
+                      {lead.customer_id ? (
+                        <UITooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => navigate(`/admin/customers/${lead.customer_id}`)}
+                            >
+                              <UserCheckIcon className="h-3 w-3 mr-1" />View Customer
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Open the linked customer record</TooltipContent>
+                        </UITooltip>
+                      ) : (
+                        <UITooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="default"
+                              disabled={convertingId === lead.id}
+                              onClick={() => handleConvertLead(lead.id)}
+                            >
+                              {convertingId === lead.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <><UserPlus className="h-3 w-3 mr-1" />Convert</>
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Creates or updates the matching Customer record and links this lead</TooltipContent>
+                        </UITooltip>
+                      )}
+                    </TooltipProvider>
                     <Button
                       size="sm"
                       variant="outline"
                       disabled={convertingId === lead.id}
-                      onClick={() => handleConvertLead(lead.id)}
-                      title="Create/link customer record"
-                    >
-                      {convertingId === lead.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <><UserPlus className="h-3 w-3 mr-1" />Convert</>
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => navigate(`/admin/jobs/dispatch?leadId=${lead.id}`)}
+                      onClick={() => handleCreateJobFromLead(lead)}
                     >
                       Create Job
                     </Button>
