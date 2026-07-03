@@ -247,27 +247,8 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         />
       )}
 
-      {/* Quick Actions */}
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={onCreateLead}><Plus className="mr-2 h-4 w-4" />New Lead</Button>
-        <Button variant="outline" onClick={() => onNavigate("quotes")}><FileText className="mr-2 h-4 w-4" />New Quote</Button>
-        <Button variant="outline" onClick={() => onNavigate("analytics")}><BarChart3 className="mr-2 h-4 w-4" />Analytics</Button>
-        <Button variant="outline" onClick={() => onNavigate("reports")}><ClipboardList className="mr-2 h-4 w-4" />Reports</Button>
-      </div>
-
-      {/* Quote Performance Widget */}
-      <QuotePerformanceWidget />
-
-      {/* Completed Leads */}
-      <CompletedLeadsList />
-
-      {/* Admin Alerts */}
-      <AdminAlertsPanel />
-
+      {/* Primary widgets — Recent Activity + Agent Status */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Sync Conflicts */}
-        <SyncConflictsSection />
-        {/* Recent Activity */}
         <Card>
           <CardHeader><CardTitle className="text-base">Recent Activity</CardTitle></CardHeader>
           <CardContent className="space-y-3 max-h-80 overflow-y-auto">
@@ -290,7 +271,6 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           </CardContent>
         </Card>
 
-        {/* Agent Status */}
         <Card>
           <CardHeader><CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4" />Agent Status</CardTitle></CardHeader>
           <CardContent className="space-y-3 max-h-80 overflow-y-auto">
@@ -309,8 +289,108 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Secondary insights — collapsible */}
+      <Collapsible open={showMore} onOpenChange={setShowMore}>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" className="w-full justify-between">
+            <span className="flex items-center gap-2 text-sm font-medium">
+              <BarChart3 className="h-4 w-4" />
+              More insights
+            </span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${showMore ? "rotate-180" : ""}`} />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-6 pt-4">
+          {/* Secondary KPIs */}
+          {stats && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Card className="rounded-xl border border-border">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <DollarSign className="h-4 w-4 text-primary" />
+                    <span className="text-xs text-muted-foreground">Revenue Today</span>
+                  </div>
+                  <p className="text-2xl font-bold">R {(stats.revenueToday ?? 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</p>
+                </CardContent>
+              </Card>
+              <Card className="rounded-xl border border-border">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Wrench className="h-4 w-4 text-destructive" />
+                    <span className="text-xs text-muted-foreground">Overdue Maintenance</span>
+                  </div>
+                  <p className="text-2xl font-bold">{stats.overdueMaintenance ?? 0}</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Jobs & Dispatch overview */}
+          {jobStats && (
+            <div>
+              <h3 className="text-sm font-semibold mb-2 flex items-center gap-2 text-muted-foreground">
+                <Briefcase className="h-4 w-4" /> Jobs & Dispatch
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {[
+                  { label: "Total Jobs", value: jobStats.totalJobs, icon: Briefcase, to: "/admin/jobs/dispatch" },
+                  { label: "Active Jobs", value: jobStats.activeJobs, icon: Clock, to: "/admin/jobs/dispatch" },
+                  { label: "Completed", value: jobStats.completedJobs, icon: CheckCircle2, to: "/admin/jobs/dispatch" },
+                  { label: "Pending Assign.", value: jobStats.pendingAssignments, icon: ClipboardList, to: "/admin/dispatch" },
+                  { label: "Active Agents", value: jobStats.activeFieldAgents, icon: UserCheck, to: "/admin/team" },
+                  { label: "Avg Completion", value: `${jobStats.avgCompletionDays}d`, icon: Timer, to: "/admin/analytics" },
+                ].map((card) => (
+                  <Link key={card.label} to={card.to} className="block focus:outline-none focus:ring-2 focus:ring-primary rounded-xl">
+                    <Card className="rounded-xl border border-border cursor-pointer hover:border-primary/30 hover:bg-muted/40 transition-colors">
+                      <CardContent className="p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <card.icon className="h-4 w-4 text-primary" />
+                          <span className="text-xs text-muted-foreground truncate">{card.label}</span>
+                        </div>
+                        <p className="text-xl font-bold">{card.value}</p>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Jobs by Status Chart */}
+          {jobStats && jobStats.statusBreakdown.length > 0 && (
+            <Card className="rounded-xl border border-border">
+              <CardHeader className="pb-2"><CardTitle className="text-base">Jobs by Status</CardTitle></CardHeader>
+              <CardContent>
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={jobStats.statusBreakdown} layout="vertical" margin={{ left: 80 }}>
+                      <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
+                      <YAxis type="category" dataKey="status" tick={{ fontSize: 12 }}
+                        tickFormatter={(v: string) => v.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())} />
+                      <Tooltip formatter={(value: number) => [value, "Jobs"]}
+                        labelFormatter={(v: string) => v.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())} />
+                      <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                        {jobStats.statusBreakdown.map((entry) => (
+                          <Cell key={entry.status} fill={statusColors[entry.status] || "hsl(var(--muted-foreground))"} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <QuotePerformanceWidget />
+          <CompletedLeadsList />
+          <AdminAlertsPanel />
+          <SyncConflictsSection />
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 };
 
 export default AdminHome;
+
