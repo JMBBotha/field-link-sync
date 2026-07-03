@@ -474,27 +474,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     };
   };
 
-  const handleTokenSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setTokenError("");
-
-    if (!tokenInput.trim()) {
-      setTokenError("Please enter a token");
-      return;
-    }
-
-    if (!tokenInput.startsWith('pk.')) {
-      setTokenError("Token must start with 'pk.'");
-      return;
-    }
-
-    localStorage.setItem('mapbox_token', tokenInput);
-    setShowTokenInput(false);
-    initializeMap(tokenInput);
-  };
-
-  const handleResetToken = () => {
-    localStorage.removeItem('mapbox_token');
+  const handleRetryMap = async () => {
     clearAllMarkers();
     if (mapInstanceRef.current) {
       mapInstanceRef.current.remove();
@@ -502,8 +482,9 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     }
     initialBoundsFitRef.current = false;
     setMapLoaded(false);
-    setShowTokenInput(true);
-    setTokenInput("");
+    setMapFailed(false);
+    const t = getMapboxTokenSync() || (await getMapboxToken());
+    if (t) initializeMap(t);
   };
 
   const initializeMap = (rawToken: string) => {
