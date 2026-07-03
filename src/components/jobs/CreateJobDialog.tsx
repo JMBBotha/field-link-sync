@@ -35,6 +35,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   const [customerId, setCustomerId] = useState(defaultCustomerId || "");
   const [leadId, setLeadId] = useState(defaultLeadId || "");
   const [quoteId, setQuoteId] = useState(defaultQuoteId || "");
+  const [locationId, setLocationId] = useState<string>("");
   const [address, setAddress] = useState("");
   const [scheduledFor, setScheduledFor] = useState("");
   const [duration, setDuration] = useState("2");
@@ -57,6 +58,51 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     },
     enabled: open && !!companyId,
   });
+
+  // Load this customer's saved locations
+  const { data: customerLocations = [] } = useQuery({
+    queryKey: ["job-customer-locations", customerId],
+    enabled: open && !!customerId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("customer_locations")
+        .select("id,label,address,latitude,longitude,is_primary")
+        .eq("customer_id", customerId)
+        .order("is_primary", { ascending: false });
+      return data || [];
+    },
+  });
+
+  // When customer changes or locations load, auto-pick primary
+  useEffect(() => {
+    if (!customerId || customerLocations.length === 0) return;
+    if (locationId) return;
+    const primary = customerLocations.find((l: any) => l.is_primary) || customerLocations[0];
+    if (primary) {
+      setLocationId(primary.id);
+      setAddress(primary.address || "");
+      if (primary.latitude != null && primary.longitude != null &&
+          Number(primary.latitude) !== 0 && Number(primary.longitude) !== 0) {
+        setLat(Number(primary.latitude));
+        setLng(Number(primary.longitude));
+        setGeoStatus("inherited");
+      }
+    }
+  }, [customerId, customerLocations]);
+
+  const applyLocation = (id: string) => {
+    setLocationId(id);
+    const loc = customerLocations.find((l: any) => l.id === id);
+    if (!loc) return;
+    setAddress(loc.address || "");
+    if (loc.latitude != null && loc.longitude != null && Number(loc.latitude) !== 0) {
+      setLat(Number(loc.latitude));
+      setLng(Number(loc.longitude));
+      setGeoStatus("inherited");
+    } else {
+      setLat(null); setLng(null); setGeoStatus("idle");
+    }
+  };
 
   // Preload from lead if provided
   useEffect(() => {
@@ -124,13 +170,34 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
         if (r) { finalLat = r.latitude; finalLng = r.longitude; }
       }
       const userId = user?.id;
-      const { data, error } = await supabase.from("jobs").insert({
+
+      // If no location selected but we have an address, auto-create one on the customer
+      let finalLocationId = locationId || null;
+      if (!finalLocationId && customerId && address) {
+        const { data: newLoc } = await (supabase as any)
+          .from("customer_locations")
+          .insert({
+            customer_id: customerId,
+            company_id: companyId!,
+            label: "Job site",
+            address,
+            latitude: finalLat,
+            longitude: finalLng,
+            is_primary: customerLocations.length === 0,
+          })
+          .select("id")
+          .single();
+        if (newLoc) finalLocationId = newLoc.id;
+      }
+
+      const { data, error } = await (supabase as any).from("jobs").insert({
         company_id: companyId!,
         title,
         description: description || null,
         customer_id: customerId || null,
         lead_id: leadId || null,
         quote_id: quoteId || null,
+        location_id: finalLocationId,
         address: address || null,
         lat: finalLat,
         lng: finalLng,
@@ -178,6 +245,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     setCustomerId("");
     setLeadId("");
     setQuoteId("");
+    setLocationId("");
     setAddress("");
     setScheduledFor("");
     setDuration("2");
@@ -228,7 +296,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
           </div>
           <div>
             <Label>Customer <span className="text-destructive">*</span></Label>
-            <Select value={customerId} onValueChange={(v) => { setCustomerId(v); setLat(null); setLng(null); setGeoStatus("idle"); }}>
+            <Select value={customerId} onValueChange={(v) => { setCustomerId(v); setLocationId(""); setLat(null); setLng(null); setGeoStatus("idle"); }}>
               <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
               <SelectContent>
                 {customers.map((c: any) => (
@@ -237,6 +305,24 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
               </SelectContent>
             </Select>
           </div>
+          {customerId && customerLocations.length > 0 && (
+            <div>
+              <Label>Location <span className="text-muted-foreground text-xs">(pick a saved site)</span></Label>
+              <Select value={locationId} onValueChange={applyLocation}>
+                <SelectTrigger><SelectValue placeholder="Choose a saved location" /></SelectTrigger>
+                <SelectContent>
+                  {customerLocations.map((l: any) => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.label}{l.is_primary ? " ⭐" : ""} — {l.address}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Or type a new address below to save it as a new location for this customer.
+              </p>
+            </div>
+          )}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label>Address <span className="text-destructive">*</span></Label>
@@ -246,7 +332,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
             </div>
             <Input
               value={address}
-              onChange={e => { setAddress(e.target.value); setGeoStatus("idle"); setLat(null); setLng(null); }}
+              onChange={e => { setAddress(e.target.value); setLocationId(""); setGeoStatus("idle"); setLat(null); setLng(null); }}
               placeholder="Job address"
             />
             {geoHint()}

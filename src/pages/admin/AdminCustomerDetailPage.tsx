@@ -31,6 +31,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { cn } from "@/lib/utils";
 import { formatRand } from "@/utils/formatRand";
+import CustomerLocationsManager from "@/components/customers/CustomerLocationsManager";
 
 const LEAD_SOURCES = [
   "Manual", "Facebook Lead", "Website Form", "WhatsApp", "Phone Call", "Walk-in", "Referral",
@@ -229,6 +230,7 @@ const AdminCustomerDetailPage = () => {
       <Tabs defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="locations">Locations</TabsTrigger>
           <TabsTrigger value="relationship">Relationship</TabsTrigger>
         </TabsList>
 
@@ -401,6 +403,18 @@ const AdminCustomerDetailPage = () => {
                   Estimates will appear here.
                 </TabsContent>
               </Tabs>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="locations" className="mt-4">
+          <Card className="bg-card">
+            <CardContent className="p-6">
+              {customer.company_id ? (
+                <CustomerLocationsManager customerId={customer.id} companyId={customer.company_id} />
+              ) : (
+                <p className="text-sm text-muted-foreground">Customer is missing a company reference.</p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
