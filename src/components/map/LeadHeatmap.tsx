@@ -217,9 +217,7 @@ const LeadHeatmap = () => {
   if (noToken) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground text-sm">
-          Set up your Mapbox token on the Map tab first.
-        </p>
+        <p className="text-muted-foreground text-sm">Map is temporarily unavailable.</p>
       </div>
     );
   }
