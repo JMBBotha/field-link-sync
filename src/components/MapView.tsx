@@ -1188,62 +1188,21 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
 
   return (
     <div className="h-full relative">
-      {showTokenInput ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-muted/50 p-6">
-          <div className="bg-card border rounded-lg p-6 max-w-md w-full shadow-lg">
-            <div className="flex items-center gap-2 mb-4">
-              <MapPin className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold">Mapbox Setup</h3>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Enter your Mapbox public token to enable the map. Get your free token from{" "}
-              <a
-                href="https://account.mapbox.com/access-tokens/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                mapbox.com
-              </a>
-            </p>
-            <form onSubmit={handleTokenSubmit} className="space-y-3">
-              <div className="relative">
-                <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="pk.eyJ1IjoieW91ci10b2tlbi1oZXJlIi4uLg=="
-                  value={tokenInput}
-                  onChange={(e) => setTokenInput(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              {tokenError && (
-                <p className="text-sm text-destructive">{tokenError}</p>
-              )}
-              <Button type="submit" className="w-full">
-                Save Token
-              </Button>
-            </form>
-          </div>
-        </div>
-      ) : mapFailed ? (
+      {mapFailed ? (
         <div className="absolute inset-0 bg-muted flex flex-col items-center justify-center p-6 text-center">
           <AlertCircle className="h-12 w-12 text-muted-foreground mb-3" />
           <h3 className="text-lg font-semibold text-foreground mb-1">Map Unavailable</h3>
           <p className="text-sm text-muted-foreground mb-4 max-w-xs">
-            Unable to load map tiles. Check your internet connection or Mapbox token.
+            Unable to load map tiles. Check your internet connection and try again.
           </p>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleResetToken}>Change Token</Button>
-            <Button size="sm" onClick={() => { setMapFailed(false); const t = localStorage.getItem("mapbox_token"); if (t) initializeMap(t); }}>Retry</Button>
+            <Button size="sm" onClick={handleRetryMap}>Retry</Button>
           </div>
         </div>
       ) : (
         <>
           <div ref={mapRef} className="w-full h-full" />
-          <Button variant="outline" size="sm" onClick={handleResetToken} className="absolute top-2 left-2 z-10">
-            Reset Token
-          </Button>
+
 
           {/* Map controls: traffic + route */}
           {mapLoaded && (
