@@ -2421,6 +2421,7 @@ export type Database = {
           broadcast_radius_km: number | null
           company_id: string | null
           completed_at: string | null
+          converted_at: string | null
           created_at: string | null
           customer_address: string
           customer_id: string | null
@@ -2452,6 +2453,7 @@ export type Database = {
           broadcast_radius_km?: number | null
           company_id?: string | null
           completed_at?: string | null
+          converted_at?: string | null
           created_at?: string | null
           customer_address: string
           customer_id?: string | null
@@ -2483,6 +2485,7 @@ export type Database = {
           broadcast_radius_km?: number | null
           company_id?: string | null
           completed_at?: string | null
+          converted_at?: string | null
           created_at?: string | null
           customer_address?: string
           customer_id?: string | null
@@ -5038,6 +5041,7 @@ export type Database = {
           primary_address_line1: string
         }[]
       }
+      convert_lead_to_customer: { Args: { p_lead_id: string }; Returns: string }
       convert_time_to_invoice_items: {
         Args: {
           p_hourly_rate?: number
@@ -5104,6 +5108,7 @@ export type Database = {
           broadcast_radius_km: number | null
           company_id: string | null
           completed_at: string | null
+          converted_at: string | null
           created_at: string | null
           customer_address: string
           customer_id: string | null
@@ -5359,6 +5364,7 @@ export type Database = {
           }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      unconvert_lead: { Args: { p_lead_id: string }; Returns: undefined }
       update_overdue_invoices: { Args: never; Returns: undefined }
       validate_customer_token: { Args: { p_token: string }; Returns: string }
     }
