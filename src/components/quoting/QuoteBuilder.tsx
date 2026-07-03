@@ -98,6 +98,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
     return () => { mountedRef.current = false; };
   }, []);
 
+  const { companyId } = useUserCompanyId();
   const [loading, setLoading] = useState(false);
   const [savedQuoteId, setSavedQuoteId] = useState<string | null>(quoteId || null);
   const [quoteNumber, setQuoteNumber] = useState<string>("");
