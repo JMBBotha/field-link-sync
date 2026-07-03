@@ -294,6 +294,22 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       setReference((quote as any).reference_text || "");
       setTerms((quote as any).terms_text || "");
 
+      // Load linked location (if any)
+      const linkedLocId = (quote as any).location_id;
+      if (linkedLocId) {
+        const { data: loc } = await (supabase as any)
+          .from("customer_locations")
+          .select("id,label,address,latitude,longitude")
+          .eq("id", linkedLocId)
+          .maybeSingle();
+        if (loc) {
+          setSelectedLocationId(loc.id);
+          setSelectedLocationLabel(loc.label);
+          setLocationLat(loc.latitude != null ? Number(loc.latitude) : null);
+          setLocationLng(loc.longitude != null ? Number(loc.longitude) : null);
+        }
+      }
+
       const dt = (quote as any).discount_type;
       if (dt === "percentage" || dt === "percent") {
         setDiscountType("percent");
