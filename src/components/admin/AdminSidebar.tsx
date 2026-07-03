@@ -359,20 +359,9 @@ const AdminSidebar = ({
 
       {/* Bottom actions */}
       <div className={cn("border-t border-primary-foreground/15 p-3 space-y-1", collapsed && "p-2")}>
-        {isFieldAgent && (
-          <button
-            onClick={() => { navigate("/field"); onMobileClose?.(); }}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-[13px] text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 transition-colors",
-              collapsed && "justify-center px-0"
-            )}
-          >
-            <Users className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>Field Agent View</span>}
-          </button>
-        )}
         <button
           onClick={() => { onSignOut(); onMobileClose?.(); }}
+
           className={cn(
             "w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-[13px] text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 transition-colors",
             collapsed && "justify-center px-0"
