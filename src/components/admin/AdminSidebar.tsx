@@ -217,7 +217,7 @@ const AdminSidebar = ({
 
       {/* Navigation groups */}
       <nav className="flex-1 overflow-y-auto px-2 py-1 space-y-1.5">
-        {navGroups.map((group) => (
+        {visibleGroups.map((group) => (
           <div key={group.title}>
             {!collapsed && (
               <p className="px-3 mb-0.5 text-[9px] font-semibold uppercase tracking-widest text-white/60">
@@ -270,7 +270,17 @@ const AdminSidebar = ({
             </div>
           </div>
         ))}
+
+        {isAdmin && !collapsed && (
+          <button
+            onClick={() => setShowAdvanced((v) => !v)}
+            className="w-full mt-2 px-3 py-1.5 text-[11px] font-medium text-white/60 hover:text-white transition-colors text-left"
+          >
+            {showAdvanced ? "− Hide advanced" : "+ Show advanced"}
+          </button>
+        )}
       </nav>
+
 
       {/* Bottom actions */}
       <div className={cn("border-t border-white/15 p-3 space-y-1", collapsed && "p-2")}>
