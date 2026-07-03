@@ -456,6 +456,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     return () => {
       supabase.removeChannel(agentChannel);
       supabase.removeChannel(leadChannel);
+      supabase.removeChannel(locChannel);
     };
   };
 
