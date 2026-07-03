@@ -316,23 +316,45 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                     <p className="text-[11px] text-muted-foreground">{format(new Date(lead.created_at), "dd MMM HH:mm")}</p>
                   </div>
                   <div className="flex flex-col gap-1 shrink-0">
+                    <TooltipProvider delayDuration={200}>
+                      {lead.customer_id ? (
+                        <UITooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => navigate(`/admin/customers/${lead.customer_id}`)}
+                            >
+                              <UserCheckIcon className="h-3 w-3 mr-1" />View Customer
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Open the linked customer record</TooltipContent>
+                        </UITooltip>
+                      ) : (
+                        <UITooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="default"
+                              disabled={convertingId === lead.id}
+                              onClick={() => handleConvertLead(lead.id)}
+                            >
+                              {convertingId === lead.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <><UserPlus className="h-3 w-3 mr-1" />Convert</>
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Creates or updates the matching Customer record and links this lead</TooltipContent>
+                        </UITooltip>
+                      )}
+                    </TooltipProvider>
                     <Button
                       size="sm"
                       variant="outline"
                       disabled={convertingId === lead.id}
-                      onClick={() => handleConvertLead(lead.id)}
-                      title="Create/link customer record"
-                    >
-                      {convertingId === lead.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <><UserPlus className="h-3 w-3 mr-1" />Convert</>
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => navigate(`/admin/jobs/dispatch?leadId=${lead.id}`)}
+                      onClick={() => handleCreateJobFromLead(lead)}
                     >
                       Create Job
                     </Button>
