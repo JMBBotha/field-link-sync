@@ -654,8 +654,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         }
         const status = (e as any)?.error?.status;
         if (status === 401 || status === 403) {
-          setTokenError("Invalid token. Please check your Mapbox public token.");
-          handleResetToken();
+          setMapFailed(true);
+          setLoadingStatus("Map token rejected by Mapbox.");
         } else {
           setMapFailed(true);
           setLoadingTimeout(true);
@@ -667,7 +667,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       if (loadingTimeoutRef.current) {
         clearTimeout(loadingTimeoutRef.current);
       }
-      setShowTokenInput(true);
+      setMapFailed(true);
     }
   };
 
