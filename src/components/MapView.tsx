@@ -408,6 +408,22 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       setAgents(freshAgents as any);
     }
     if (leadData) setLeads(leadData);
+
+    // Fetch customer locations for company (multi-site pins)
+    if (companyId) {
+      const { data: locData } = await (supabase as any)
+        .from("customer_locations")
+        .select("id, label, address, latitude, longitude, customer_id, customers(name)")
+        .eq("company_id", companyId);
+      if (locData) {
+        setCustomerLocations(
+          locData.filter((l: any) =>
+            l.latitude != null && l.longitude != null &&
+            Number(l.latitude) !== 0 && Number(l.longitude) !== 0
+          )
+        );
+      }
+    }
   };
 
   const subscribeToUpdates = () => {
