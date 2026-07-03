@@ -151,14 +151,16 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
     staleTime: 60000,
   });
 
+  // Core 4 KPIs — focused on Lead → Job → Invoice flow
   const kpiCards = useMemo(() => [
-    { key: "new_leads", label: "New Leads Today", value: stats?.newLeads ?? 0, icon: Plus, color: "text-blue-500", sparkKey: "leads" as const, sparkColor: "#3b82f6" },
+    { key: "new_leads", label: "New Leads Today", value: stats?.newLeads ?? 0, icon: Plus, color: "text-primary", sparkKey: "leads" as const, sparkColor: "#0077B6" },
     { key: "pending_quotes", label: "Pending Quotes", value: stats?.pendingQuotes ?? 0, icon: FileText, color: "text-orange-500", sparkKey: "leads" as const, sparkColor: "#f97316" },
     { key: "active_jobs", label: "Active Jobs", value: stats?.activeJobs ?? 0, icon: Clock, color: "text-green-500", sparkKey: "active" as const, sparkColor: "#22c55e" },
     { key: "overdue_invoices", label: "Overdue Invoices", value: stats?.overdueInvoices ?? 0, icon: AlertTriangle, color: "text-destructive", sparkKey: "leads" as const, sparkColor: "#ef4444" },
-    { key: "overdue_maintenance", label: "Overdue Maintenance", value: stats?.overdueMaintenance ?? 0, icon: Wrench, color: "text-red-500", sparkKey: "leads" as const, sparkColor: "#ef4444" },
-    { key: "revenue_today", label: "Revenue Today", value: `R ${(stats?.revenueToday ?? 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, icon: DollarSign, color: "text-primary", sparkKey: "revenue" as const, sparkColor: "#0077B6" },
   ], [stats]);
+
+  const [showMore, setShowMore] = useState(false);
+
 
   const activeKpi = kpiCards.find((k) => k.key === selectedKpi);
 
