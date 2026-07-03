@@ -14,8 +14,6 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 const locales = { "en-US": enUS };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
 
-const locales = { "en-US": enUS };
-const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
 
 interface CalendarEvent {
   id: string;
