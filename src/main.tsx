@@ -1,6 +1,10 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { primeMapboxToken } from "@/lib/mapboxToken";
+
+// Fetch shared Mapbox public token early so map components never prompt the user.
+primeMapboxToken();
 
 // Global unhandled error logging with context
 window.addEventListener("error", (event) => {
