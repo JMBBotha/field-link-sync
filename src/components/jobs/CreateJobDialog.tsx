@@ -170,13 +170,34 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
         if (r) { finalLat = r.latitude; finalLng = r.longitude; }
       }
       const userId = user?.id;
-      const { data, error } = await supabase.from("jobs").insert({
+
+      // If no location selected but we have an address, auto-create one on the customer
+      let finalLocationId = locationId || null;
+      if (!finalLocationId && customerId && address) {
+        const { data: newLoc } = await (supabase as any)
+          .from("customer_locations")
+          .insert({
+            customer_id: customerId,
+            company_id: companyId!,
+            label: "Job site",
+            address,
+            latitude: finalLat,
+            longitude: finalLng,
+            is_primary: customerLocations.length === 0,
+          })
+          .select("id")
+          .single();
+        if (newLoc) finalLocationId = newLoc.id;
+      }
+
+      const { data, error } = await (supabase as any).from("jobs").insert({
         company_id: companyId!,
         title,
         description: description || null,
         customer_id: customerId || null,
         lead_id: leadId || null,
         quote_id: quoteId || null,
+        location_id: finalLocationId,
         address: address || null,
         lat: finalLat,
         lng: finalLng,
