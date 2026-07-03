@@ -77,9 +77,10 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
       return data;
     },
     onSuccess: () => {
-      toast({ title: "Job created successfully" });
-      queryClient.invalidateQueries({ queryKey: ["jobs-list"] });
-      queryClient.invalidateQueries({ queryKey: ["jobs-dispatch"] });
+      toast({ title: "Job created", description: "Now visible in Dispatch, Schedule, My Jobs and Map." });
+      // Invalidate every view that shows jobs/leads/schedules
+      ["jobs-list","jobs-dispatch","my-jobs","job-schedules","dispatch-leads","dispatch-schedules","dispatch-agents","admin-home-stats","jobs-kpi-stats","leads","leads-map"]
+        .forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
       onOpenChange(false);
       resetForm();
     },
