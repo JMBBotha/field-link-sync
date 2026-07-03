@@ -453,6 +453,11 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       )
       .subscribe();
 
+    const locChannel = supabase
+      .channel("customer-locations-updates")
+      .on("postgres_changes", { event: "*", schema: "public", table: "customer_locations" }, () => fetchData())
+      .subscribe();
+
     return () => {
       supabase.removeChannel(agentChannel);
       supabase.removeChannel(leadChannel);
