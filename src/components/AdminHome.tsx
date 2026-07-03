@@ -35,19 +35,34 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleConvertLead = async (leadId: string) => {
+  const handleConvertLead = async (leadId: string, opts?: { thenCreateJob?: boolean }) => {
     setConvertingId(leadId);
     try {
       const { data, error } = await supabase.rpc("convert_lead_to_customer", { p_lead_id: leadId });
       if (error) throw error;
-      toast({ title: "Lead converted", description: "Customer record created/linked." });
+      toast({
+        title: "Lead converted to Customer",
+        description: opts?.thenCreateJob ? "Opening dispatch to create the job…" : "Opening customer page…",
+      });
       queryClient.invalidateQueries({ queryKey: ["admin-home-stats"] });
-      if (data) navigate(`/admin/customers/${data}`);
+      if (opts?.thenCreateJob) {
+        navigate(`/admin/jobs/dispatch?leadId=${leadId}${data ? `&customerId=${data}` : ""}`);
+      } else if (data) {
+        navigate(`/admin/customers/${data}`);
+      }
     } catch (e: any) {
       toast({ title: "Conversion failed", description: e.message, variant: "destructive" });
     } finally {
       setConvertingId(null);
     }
+  };
+
+  const handleCreateJobFromLead = async (lead: { id: string; customer_id?: string | null }) => {
+    if (lead.customer_id) {
+      navigate(`/admin/jobs/dispatch?leadId=${lead.id}&customerId=${lead.customer_id}`);
+      return;
+    }
+    await handleConvertLead(lead.id, { thenCreateJob: true });
   };
 
   // Jobs & Assignments KPI query
