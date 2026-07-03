@@ -94,7 +94,7 @@ const AdminSidebar = ({
     {
       title: "Main",
       items: [
-        { path: "/admin", label: "Home", icon: LayoutDashboard },
+        { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
         { path: "/admin/dispatch", label: "Leads", icon: Sparkles },
         { path: "/admin/customers", label: "Customers", icon: Users },
         {
@@ -108,31 +108,45 @@ const AdminSidebar = ({
             { path: "/admin/map", label: "Map", icon: MapPin },
           ],
         },
-        {
-          path: "/admin/quotes",
-          label: "Sales",
-          icon: FileText,
-          children: [
-            { path: "/admin/quotes", label: "Quotes", icon: FileText },
-            { path: "/admin/invoices", label: "Invoices", icon: Receipt },
-            { path: "/admin/agreements", label: "Agreements", icon: FileCheck },
-            { path: "/admin/templates", label: "Templates", icon: FileSignature },
-          ],
-        },
+      ],
+    },
+    {
+      title: "Sales",
+      roles: ["admin", "dispatcher", "viewer"],
+      items: [
+        { path: "/admin/quotes", label: "Quotes", icon: FileText },
+        { path: "/admin/agreements", label: "Agreements", icon: FileCheck },
+        { path: "/admin/invoices", label: "Invoices", icon: Receipt },
+        { path: "/admin/templates", label: "Templates", icon: FileSignature },
       ],
     },
     {
       title: "Operations",
       roles: ["admin", "dispatcher"],
       items: [
+        {
+          path: "/admin/inventory",
+          label: "Inventory",
+          icon: Package,
+          badge: lowStockCount > 0 ? lowStockCount : undefined,
+          children: [
+            { path: "/admin/inventory", label: "Stock", icon: Package },
+            { path: "/admin/catalog", label: "Catalog", icon: ShoppingBag },
+            { path: "/admin/consumables", label: "Consumables", icon: Package },
+          ],
+        },
         { path: "/admin/suppliers", label: "Suppliers", icon: Building2 },
-        { path: "/admin/inventory", label: "Inventory", icon: Package, badge: lowStockCount > 0 ? lowStockCount : undefined },
-        { path: "/admin/catalog", label: "Catalog", icon: ShoppingBag },
-        { path: "/admin/pdf-documents", label: "PDF Documents", icon: FileText },
-        { path: "/admin/brochures", label: "Brochures", icon: FileText },
         { path: "/admin/maintenance", label: "Maintenance", icon: CalendarDays },
-        { path: "/admin/consumables", label: "Consumables", icon: Package },
-        { path: "/admin/flat-rate", label: "Flat Rate", icon: DollarSign },
+        { path: "/admin/flat-rate", label: "Pricing", icon: DollarSign },
+        {
+          path: "/admin/pdf-documents",
+          label: "Resources",
+          icon: FileText,
+          children: [
+            { path: "/admin/pdf-documents", label: "PDF Documents", icon: FileText },
+            { path: "/admin/brochures", label: "Brochures", icon: FileText },
+          ],
+        },
       ],
     },
     {
@@ -149,16 +163,18 @@ const AdminSidebar = ({
       roles: ["admin"],
       items: [
         { path: "/admin/team", label: "Team", icon: Users },
-        { path: "/admin/notifications", label: "Notifications", icon: Bell, badge: pendingRequestsCount },
         { path: "/admin/billing", label: "Billing", icon: DollarSign },
-        { path: "/admin/settings", label: "Settings", icon: Settings },
+        { path: "/admin/notifications", label: "Notifications", icon: Bell, badge: pendingRequestsCount },
         { path: "/admin/audit", label: "Audit", icon: History },
         { path: "/admin/import", label: "Import", icon: Upload },
-        { path: "/admin/companies", label: "Companies", icon: Building2 },
         { path: "/admin/whatsapp", label: "WhatsApp", icon: MessageSquare },
+        { path: "/admin/companies", label: "Companies", icon: Building2 },
+        { path: "/admin/settings", label: "Settings", icon: Settings },
+        { path: "/field", label: "Field Agent View", icon: Users },
       ],
     },
   ];
+
 
   const hasRole = (allowed?: AppRole[]) => {
     if (!allowed || allowed.length === 0) return true;
@@ -343,20 +359,9 @@ const AdminSidebar = ({
 
       {/* Bottom actions */}
       <div className={cn("border-t border-primary-foreground/15 p-3 space-y-1", collapsed && "p-2")}>
-        {isFieldAgent && (
-          <button
-            onClick={() => { navigate("/field"); onMobileClose?.(); }}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-[13px] text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 transition-colors",
-              collapsed && "justify-center px-0"
-            )}
-          >
-            <Users className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>Field Agent View</span>}
-          </button>
-        )}
         <button
           onClick={() => { onSignOut(); onMobileClose?.(); }}
+
           className={cn(
             "w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-[13px] text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 transition-colors",
             collapsed && "justify-center px-0"
