@@ -35,6 +35,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   const [customerId, setCustomerId] = useState(defaultCustomerId || "");
   const [leadId, setLeadId] = useState(defaultLeadId || "");
   const [quoteId, setQuoteId] = useState(defaultQuoteId || "");
+  const [locationId, setLocationId] = useState<string>("");
   const [address, setAddress] = useState("");
   const [scheduledFor, setScheduledFor] = useState("");
   const [duration, setDuration] = useState("2");
