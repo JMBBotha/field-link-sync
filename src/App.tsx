@@ -152,30 +152,31 @@ const App = () => (
                     <Route path="invoices" element={<AdminInvoicesPage />} />
                     
                     <Route path="agreements" element={<ServiceAgreements />} />
-                    <Route path="catalog" element={<AdminCatalogPage />} />
-                    <Route path="maintenance" element={<AdminMaintenancePage />} />
+                    <Route path="catalog" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminCatalogPage /></RequireRole>} />
+                    <Route path="maintenance" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminMaintenancePage /></RequireRole>} />
                     <Route path="customers" element={<AdminCustomersPage />} />
                     <Route path="customers/:id" element={<AdminCustomerDetailPage />} />
-                    <Route path="inventory" element={<InventoryList />} />
-                    <Route path="flat-rate" element={<FlatRateBook />} />
-                    <Route path="reports" element={<ReportBuilder />} />
-                    <Route path="reports/advanced" element={<AdminAdvancedReportsPage />} />
-                    <Route path="analytics" element={<AnalyticsDashboard />} />
-                    <Route path="notifications" element={<AdminNotificationSettings />} />
+                    <Route path="inventory" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><InventoryList /></RequireRole>} />
+                    <Route path="flat-rate" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><FlatRateBook /></RequireRole>} />
+                    <Route path="reports" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]}><ReportBuilder /></RequireRole>} />
+                    <Route path="reports/advanced" element={<RequireRole allowedRoles={["admin"]}><AdminAdvancedReportsPage /></RequireRole>} />
+                    <Route path="analytics" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]}><AnalyticsDashboard /></RequireRole>} />
+                    <Route path="notifications" element={<RequireRole allowedRoles={["admin"]}><AdminNotificationSettings /></RequireRole>} />
                     <Route path="audit" element={<RequireRole allowedRoles={["admin"]}><AuditLogViewer /></RequireRole>} />
                     <Route path="import" element={<RequireRole allowedRoles={["admin"]}><AdminImportPage /></RequireRole>} />
-                    <Route path="settings" element={<AdminSettingsPage />} />
+                    <Route path="settings" element={<RequireRole allowedRoles={["admin"]}><AdminSettingsPage /></RequireRole>} />
                     <Route path="team" element={<RequireRole allowedRoles={["admin"]}><AdminTeamPage /></RequireRole>} />
                     <Route path="billing" element={<RequireRole allowedRoles={["admin"]}><AdminBillingPage /></RequireRole>} />
-                    <Route path="suppliers" element={<AdminSuppliersPage />} />
-                    <Route path="consumables" element={<AdminConsumablesPage />} />
-                    <Route path="whatsapp" element={<AdminWhatsAppPage />} />
-                    <Route path="pdf-documents" element={<AdminPDFDocumentsPage />} />
-                    <Route path="brochures" element={<AdminBrochuresPage />} />
-                    <Route path="overlay-debug" element={<AdminOverlayDebugPage />} />
+                    <Route path="suppliers" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminSuppliersPage /></RequireRole>} />
+                    <Route path="consumables" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminConsumablesPage /></RequireRole>} />
+                    <Route path="whatsapp" element={<RequireRole allowedRoles={["admin"]}><AdminWhatsAppPage /></RequireRole>} />
+                    <Route path="pdf-documents" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminPDFDocumentsPage /></RequireRole>} />
+                    <Route path="brochures" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminBrochuresPage /></RequireRole>} />
+                    <Route path="overlay-debug" element={<RequireRole allowedRoles={["admin"]}><AdminOverlayDebugPage /></RequireRole>} />
                     <Route path="companies" element={<RequireRole allowedRoles={["admin"]}><CompanyManagement /></RequireRole>} />
-                    <Route path="network-agents" element={<AdminNetworkAgentsPage />} />
+                    <Route path="network-agents" element={<RequireRole allowedRoles={["admin"]}><AdminNetworkAgentsPage /></RequireRole>} />
                   </Route>
+
 
                   {/* Full-page Quote Builder (outside AdminLayout for full-bleed) */}
                   <Route path="/admin/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><FBQuoteBuilderPage mode="admin" /></RequireRole>} />
