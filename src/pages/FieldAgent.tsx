@@ -13,6 +13,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
 import logo from "@/assets/logo.png";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -173,16 +174,23 @@ const FieldAgent = () => {
     if (!authLoading) checkAuth();
     startLocationTracking();
 
-    // Check for Mapbox token from localStorage
-    const storedToken = localStorage.getItem('mapbox_token');
-
-    if (storedToken && storedToken.startsWith('pk.')) {
-      setMapboxToken(storedToken);
-      setShowTokenInput(false);
-    } else {
-      setShowTokenInput(true);
-      setMapLoaded(false);
-    }
+    // Load Mapbox public token from shared source (env / edge function / cache)
+    (async () => {
+      const cached = getMapboxTokenSync();
+      if (cached && cached.startsWith("pk.")) {
+        setMapboxToken(cached);
+        setShowTokenInput(false);
+        return;
+      }
+      const fetched = await getMapboxToken();
+      if (fetched && fetched.startsWith("pk.")) {
+        setMapboxToken(fetched);
+        setShowTokenInput(false);
+      } else {
+        setShowTokenInput(false);
+        setMapLoaded(false);
+      }
+    })();
 
     // Start timer interval for live job time updates
     timerIntervalRef.current = window.setInterval(() => {
@@ -656,10 +664,9 @@ const FieldAgent = () => {
       return;
     }
 
-    const token = (localStorage.getItem("mapbox_token") || "").trim();
+    const token = (getMapboxTokenSync() || "").trim();
     if (!token || !token.startsWith("pk.")) {
-      console.error("[Mapbox] Missing/invalid token in localStorage");
-      setShowTokenInput(true);
+      console.error("[Mapbox] Missing/invalid public token");
       return;
     }
 
@@ -1213,40 +1220,7 @@ const FieldAgent = () => {
         {/* Main Content - Full Page Map with Overlays */}
         <div className="flex-1 relative">
           {/* Map Container */}
-          {showTokenInput ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-muted/50 p-6 z-10">
-              <div className="bg-card border rounded-lg p-6 max-w-md w-full shadow-lg">
-                <div className="text-center space-y-2 mb-4">
-                  <MapPin className="h-8 w-8 text-[#0077B6] mx-auto" />
-                  <h3 className="font-semibold">Mapbox Token Required</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Get your public token from{" "}
-                    <a
-                      href="https://account.mapbox.com/access-tokens/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#0077B6] underline"
-                    >
-                      Mapbox Account
-                    </a>
-                  </p>
-                </div>
-                <form onSubmit={handleTokenSubmit} className="space-y-3">
-                  <input
-                    type="text"
-                    name="token"
-                    placeholder="pk.eyJ..."
-                    className="w-full px-3 py-2 border-0 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0077B6] focus:ring-offset-2 placeholder:text-white/70"
-                    style={{ backgroundColor: '#0077B6', color: '#FFFFFF' }}
-                    required
-                  />
-                  <Button type="submit" className="w-full" style={{ backgroundColor: '#0077B6' }}>
-                    Load Map
-                  </Button>
-                </form>
-              </div>
-            </div>
-          ) : !locationEnabled ? (
+          {!locationEnabled ? (
             <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10">
               <div className="text-center space-y-2 bg-card p-6 rounded-lg border shadow-lg">
                 <Navigation className="h-8 w-8 text-[#0077B6] mx-auto animate-pulse" />
