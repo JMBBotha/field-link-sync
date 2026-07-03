@@ -106,6 +106,7 @@ const AdminSidebar = ({
             { path: "/admin/schedule", label: "Schedule", icon: CalendarDays },
             { path: "/admin/my-jobs", label: "My Jobs", icon: Briefcase },
             { path: "/admin/map", label: "Map", icon: MapPin },
+            { path: "/admin/maintenance", label: "Maintenance", icon: CalendarDays, roles: ["admin", "dispatcher"] },
           ],
         },
       ],
@@ -136,7 +137,6 @@ const AdminSidebar = ({
           ],
         },
         { path: "/admin/suppliers", label: "Suppliers", icon: Building2 },
-        { path: "/admin/maintenance", label: "Maintenance", icon: CalendarDays },
         { path: "/admin/flat-rate", label: "Pricing", icon: DollarSign },
         {
           path: "/admin/pdf-documents",
@@ -181,19 +181,18 @@ const AdminSidebar = ({
     return allowed.some((r) => roles.includes(r));
   };
 
-  // Field agents get a minimal focused view
+  // Field agents get a minimal focused view: Dashboard, Jobs (My Jobs, Schedule, Map)
   const fieldAgentOnlyPaths = new Set([
     "/admin",
+    "/admin/jobs",
     "/admin/my-jobs",
     "/admin/schedule",
     "/admin/map",
-    "/admin/customers",
   ]);
 
   const filterItem = (item: NavItem): NavItem | null => {
     if (!hasRole(item.roles)) return null;
     if (isFieldAgent && !isAdmin && !isDispatcher) {
-      // Only show minimal set to field agents
       const inSet =
         fieldAgentOnlyPaths.has(item.path) ||
         item.children?.some((c) => fieldAgentOnlyPaths.has(c.path));
