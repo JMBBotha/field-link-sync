@@ -132,7 +132,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
             </Select>
           </div>
           <div>
-            <Label>Customer</Label>
+            <Label>Customer <span className="text-destructive">*</span></Label>
             <Select value={customerId} onValueChange={setCustomerId}>
               <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
               <SelectContent>
@@ -143,12 +143,12 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
             </Select>
           </div>
           <div>
-            <Label>Address</Label>
+            <Label>Address <span className="text-destructive">*</span></Label>
             <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="Job address" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Scheduled Date/Time</Label>
+              <Label>Scheduled Date/Time <span className="text-destructive">*</span></Label>
               <Input type="datetime-local" value={scheduledFor} onChange={e => setScheduledFor(e.target.value)} />
             </div>
             <div>
