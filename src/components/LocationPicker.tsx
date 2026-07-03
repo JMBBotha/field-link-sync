@@ -337,13 +337,9 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                localStorage.removeItem("mapbox_token");
-                setToken("");
-                setMapError(null);
-              }}
+              onClick={() => setMapError(null)}
             >
-              Reset token
+              Dismiss
             </Button>
           </div>
         </div>
