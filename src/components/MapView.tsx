@@ -9,6 +9,7 @@ import { MapPin, Key, Loader2, AlertCircle, Layers, Navigation, LocateFixed } fr
 import { createTeardropMarkerElement } from "@/utils/MarkerUtils";
 import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilterButtons";
 import { Switch } from "@/components/ui/switch";
+import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
 
 interface AgentLocation {
   agent_id: string;
@@ -277,7 +278,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       }
     },
     getMapboxToken: () => {
-      return mapboxgl.accessToken || localStorage.getItem('mapbox_token');
+      return mapboxgl.accessToken || getMapboxTokenSync();
     },
   }), [mapLoaded]);
 
@@ -285,13 +286,21 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     fetchData();
     const cleanupSubscription = subscribeToUpdates();
 
-    // Check for Mapbox token from localStorage
-    const storedToken = localStorage.getItem("mapbox_token");
-    if (storedToken && storedToken.startsWith("pk.")) {
-      initializeMap(storedToken);
-    } else {
-      setShowTokenInput(true);
-    }
+    // Load Mapbox public token from shared source (env / edge function / cache)
+    (async () => {
+      const stored = getMapboxTokenSync();
+      if (stored && stored.startsWith("pk.")) {
+        initializeMap(stored);
+        return;
+      }
+      const fetched = await getMapboxToken();
+      if (fetched && fetched.startsWith("pk.")) {
+        initializeMap(fetched);
+      } else {
+        setMapFailed(true);
+        setLoadingStatus("Map token unavailable");
+      }
+    })();
 
     // Refresh markers every minute to update time badges (safe-guarded by updateMarkers)
     const intervalId = setInterval(() => {
