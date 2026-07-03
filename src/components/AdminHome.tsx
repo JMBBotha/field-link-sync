@@ -92,7 +92,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   const { data: stats, isLoading } = useQuery({
     queryKey: ["admin-home-stats", today],
     queryFn: async () => {
-      const [leadsRes, quotesRes, activeJobsRes, overdueRes, revenueRes, agentsRes, recentRes, overdueMaintenanceRes] = await Promise.all([
+      const [leadsRes, quotesRes, activeJobsRes, overdueRes, revenueRes, agentsRes, recentRes, overdueMaintenanceRes, openLeadsRes, todayJobsRes] = await Promise.all([
         supabase.from("leads").select("id", { count: "exact", head: true }).gte("created_at", today + "T00:00:00").eq("status", "pending"),
         supabase.from("quotes").select("id", { count: "exact", head: true }).eq("status", "draft"),
         supabase.from("leads").select("id", { count: "exact", head: true }).in("status", ["accepted", "en_route", "on_site"]),
@@ -101,6 +101,9 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         supabase.from("profiles").select("id, full_name, availability_status").limit(20),
         supabase.from("notifications").select("id, type, title, body, created_at").order("created_at", { ascending: false }).limit(15),
         supabase.rpc("get_overdue_maintenance_count"),
+        supabase.from("leads").select("id, customer_name, service_type, customer_address, status, created_at").eq("status", "pending").order("created_at", { ascending: false }).limit(6),
+        supabase.from("jobs").select("id, title, status, scheduled_for, address, customer_id").gte("scheduled_for", today + "T00:00:00").lt("scheduled_for", today + "T23:59:59").order("scheduled_for", { ascending: true }).limit(6),
+
       ]);
 
       const revenueToday = revenueRes.data?.reduce((sum, inv) => sum + Number(inv.grand_total || 0), 0) || 0;
@@ -114,10 +117,13 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         revenueToday,
         agents: agentsRes.data || [],
         recentActivity: recentRes.data || [],
+        openLeads: (openLeadsRes.data as any[]) || [],
+        todayJobs: (todayJobsRes.data as any[]) || [],
       };
     },
     refetchInterval: 30000,
   });
+
 
   // Fetch 7-day trend data for sparklines
   const sevenDaysAgo = subDays(new Date(), 6).toISOString().split("T")[0];
@@ -247,24 +253,40 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         />
       )}
 
-      {/* Primary widgets — Recent Activity + Agent Status */}
+      {/* Primary widgets — Recent Open Leads + Today's Dispatch */}
       <div className="grid md:grid-cols-2 gap-6">
         <Card>
-          <CardHeader><CardTitle className="text-base">Recent Activity</CardTitle></CardHeader>
-          <CardContent className="space-y-3 max-h-80 overflow-y-auto">
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Plus className="h-4 w-4 text-primary" /> Recent Open Leads
+            </CardTitle>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/admin">View all</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-2 max-h-80 overflow-y-auto">
             {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)
-            ) : stats?.recentActivity.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No recent activity</p>
+              Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)
+            ) : !stats?.openLeads?.length ? (
+              <p className="text-sm text-muted-foreground text-center py-6">No open leads</p>
             ) : (
-              stats?.recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50">
-                  <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              stats.openLeads.map((lead: any) => (
+                <div key={lead.id} className="flex items-center justify-between gap-2 p-2 rounded-md border border-border/50 hover:bg-muted/50">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{activity.title}</p>
-                    <p className="text-xs text-muted-foreground truncate">{activity.body}</p>
-                    <p className="text-xs text-muted-foreground">{format(new Date(activity.created_at), "dd MMM HH:mm")}</p>
+                    <p className="text-sm font-medium truncate">{lead.customer_name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {lead.service_type}{lead.customer_address ? ` · ${lead.customer_address}` : ""}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">{format(new Date(lead.created_at), "dd MMM HH:mm")}</p>
                   </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={() => onNavigate(`quotes?leadId=${lead.id}`)}
+                  >
+                    Convert
+                  </Button>
                 </div>
               ))
             )}
@@ -272,22 +294,44 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4" />Agent Status</CardTitle></CardHeader>
-          <CardContent className="space-y-3 max-h-80 overflow-y-auto">
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Briefcase className="h-4 w-4 text-primary" /> Today's Dispatch
+            </CardTitle>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/admin/jobs/dispatch">Dispatch board</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-2 max-h-80 overflow-y-auto">
             {isLoading ? (
-              Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)
+              Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)
+            ) : !stats?.todayJobs?.length ? (
+              <p className="text-sm text-muted-foreground text-center py-6">No jobs scheduled today</p>
             ) : (
-              stats?.agents.map((agent) => (
-                <div key={agent.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                  <span className="text-sm font-medium">{agent.full_name}</span>
-                  <Badge variant={agent.availability_status === "available" ? "default" : "secondary"}>
-                    {agent.availability_status || "offline"}
+              stats.todayJobs.map((job: any) => (
+                <Link
+                  key={job.id}
+                  to={`/admin/jobs/dispatch`}
+                  className="flex items-center justify-between gap-2 p-2 rounded-md border border-border/50 hover:bg-muted/50"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{job.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {job.address || "No address"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {job.scheduled_for ? format(new Date(job.scheduled_for), "HH:mm") : "—"}
+                    </p>
+                  </div>
+                  <Badge variant={job.status === "in_progress" ? "default" : "secondary"} className="shrink-0">
+                    {(job.status || "pending").replace(/_/g, " ")}
                   </Badge>
-                </div>
+                </Link>
               ))
             )}
           </CardContent>
         </Card>
+
       </div>
 
       {/* Secondary insights — collapsible */}
