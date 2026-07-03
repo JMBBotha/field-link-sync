@@ -67,7 +67,7 @@ const AdminJobsDispatchPage = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("jobs")
-        .select("*, customers(name, phone, address), assignments(id, profile_id, assignment_type, status, profiles(full_name, participant_type))")
+        .select("*, customers(name, phone, address), customer_locations!jobs_location_id_fkey(label, address, latitude, longitude), assignments(id, profile_id, assignment_type, status, profiles(full_name, participant_type))")
         .neq("status", "cancelled")
         .order("scheduled_for", { ascending: true, nullsFirst: false });
       if (error) throw error;
@@ -271,9 +271,13 @@ const AdminJobsDispatchPage = () => {
               <User className="h-3 w-3" /> {job.customers.name}
             </div>
           )}
-          {job.address && (
+          {(job.customer_locations?.address || job.address) && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground truncate">
-              <MapPin className="h-3 w-3 shrink-0" /> {job.address}
+              <MapPin className="h-3 w-3 shrink-0" />
+              {job.customer_locations?.label && (
+                <span className="font-medium text-foreground">{job.customer_locations.label}:</span>
+              )}
+              <span className="truncate">{job.customer_locations?.address || job.address}</span>
             </div>
           )}
           {job.scheduled_for && (
@@ -422,8 +426,16 @@ const AdminJobsDispatchPage = () => {
                 {detailJob.customers?.name && <div><span className="text-muted-foreground">Customer:</span> {detailJob.customers.name}</div>}
                 {detailJob.scheduled_for && <div><span className="text-muted-foreground">Scheduled:</span> {format(new Date(detailJob.scheduled_for), "dd MMM yyyy HH:mm")}</div>}
               </div>
-              {detailJob.address && (
-                <div className="text-sm"><span className="text-muted-foreground">Address:</span> {detailJob.address}</div>
+              {(detailJob.customer_locations?.address || detailJob.address) && (
+                <div className="text-sm flex items-start gap-1">
+                  <MapPin className="h-4 w-4 text-[#0066CC] mt-0.5" />
+                  <div>
+                    {detailJob.customer_locations?.label && (
+                      <span className="font-semibold">{detailJob.customer_locations.label}</span>
+                    )}
+                    <span className="text-muted-foreground"> — {detailJob.customer_locations?.address || detailJob.address}</span>
+                  </div>
+                </div>
               )}
               {detailJob.description && (
                 <div className="text-sm"><span className="text-muted-foreground">Description:</span> {detailJob.description}</div>

@@ -91,6 +91,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const agentMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const leadMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
+  const customerLocationMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
+  const [customerLocations, setCustomerLocations] = useState<any[]>([]);
   const searchMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const userLocationMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const userWatchIdRef = useRef<number | null>(null);
@@ -406,6 +408,22 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       setAgents(freshAgents as any);
     }
     if (leadData) setLeads(leadData);
+
+    // Fetch customer locations for company (multi-site pins)
+    if (companyId) {
+      const { data: locData } = await (supabase as any)
+        .from("customer_locations")
+        .select("id, label, address, latitude, longitude, customer_id, customers(name)")
+        .eq("company_id", companyId);
+      if (locData) {
+        setCustomerLocations(
+          locData.filter((l: any) =>
+            l.latitude != null && l.longitude != null &&
+            Number(l.latitude) !== 0 && Number(l.longitude) !== 0
+          )
+        );
+      }
+    }
   };
 
   const subscribeToUpdates = () => {
@@ -435,9 +453,15 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       )
       .subscribe();
 
+    const locChannel = supabase
+      .channel("customer-locations-updates")
+      .on("postgres_changes", { event: "*", schema: "public", table: "customer_locations" }, () => fetchData())
+      .subscribe();
+
     return () => {
       supabase.removeChannel(agentChannel);
       supabase.removeChannel(leadChannel);
+      supabase.removeChannel(locChannel);
     };
   };
 
@@ -767,6 +791,68 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
 
     source.setData({ type: "FeatureCollection", features: completedFeatures });
   }, [leads, statusFilters, mapLoaded]);
+
+  // Customer-location pins (multi-site). Rendered as small blue pins separate from leads.
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !mapLoaded) return;
+
+    const seen = new Set<string>();
+    customerLocations.forEach((loc: any) => {
+      seen.add(loc.id);
+      const lat = Number(loc.latitude);
+      const lng = Number(loc.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+      const custName = loc.customers?.name || "Customer";
+      const popupHTML =
+        `<div style="font-family:system-ui;font-size:12px;min-width:180px">
+           <div style="font-weight:600;color:#0066CC">📍 ${loc.label || "Location"}</div>
+           <div style="color:#111;margin-top:2px">${custName}</div>
+           <div style="color:#666;margin-top:2px">${loc.address || ""}</div>
+         </div>`;
+
+      let marker = customerLocationMarkersRef.current.get(loc.id);
+      if (!marker) {
+        const el = document.createElement("div");
+        el.style.width = "18px";
+        el.style.height = "18px";
+        el.style.borderRadius = "50%";
+        el.style.background = "#0066CC";
+        el.style.border = "2px solid white";
+        el.style.boxShadow = "0 1px 3px rgba(0,0,0,0.4)";
+        el.style.cursor = "pointer";
+        el.title = `${loc.label || "Location"} — ${custName}`;
+
+        const popup = new mapboxgl.Popup({ offset: 12, closeOnClick: false, maxWidth: "260px" }).setHTML(popupHTML);
+        marker = new mapboxgl.Marker({ element: el, anchor: "center" })
+          .setLngLat([lng, lat])
+          .setPopup(popup)
+          .addTo(map);
+        el.addEventListener("mouseenter", () => { if (!popup.isOpen()) marker!.togglePopup(); });
+        el.addEventListener("mouseleave", () => {
+          setTimeout(() => {
+            const pel = popup.getElement();
+            if (pel && pel.matches(":hover")) return;
+            if (popup.isOpen()) marker!.togglePopup();
+          }, 200);
+        });
+        customerLocationMarkersRef.current.set(loc.id, marker);
+      } else {
+        marker.setLngLat([lng, lat]);
+        marker.getPopup()?.setHTML(popupHTML);
+      }
+    });
+
+    // Remove pins for locations no longer present
+    customerLocationMarkersRef.current.forEach((m, id) => {
+      if (!seen.has(id)) {
+        try { m.remove(); } catch { /* noop */ }
+        customerLocationMarkersRef.current.delete(id);
+      }
+    });
+  }, [customerLocations, mapLoaded]);
+
 
   useEffect(() => {
     if (mapLoaded && mapInstanceRef.current && (agents.length > 0 || leads.length > 0)) {

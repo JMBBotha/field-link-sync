@@ -18,6 +18,8 @@ import BeCoolLogo from "@/components/shared/BeCoolLogo";
 import DocumentHeader from "@/components/shared/DocumentHeader";
 import { generateDocumentPdf } from "@/lib/documentPdf";
 import { DEFAULT_TERMS } from "@/lib/defaultTerms";
+import LocationSelector from "@/components/locations/LocationSelector";
+import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 
 /* ────────── Types ────────── */
 
@@ -96,6 +98,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
     return () => { mountedRef.current = false; };
   }, []);
 
+  const { companyId } = useUserCompanyId();
   const [loading, setLoading] = useState(false);
   const [savedQuoteId, setSavedQuoteId] = useState<string | null>(quoteId || null);
   const [quoteNumber, setQuoteNumber] = useState<string>("");
@@ -109,6 +112,10 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  const [selectedLocationLabel, setSelectedLocationLabel] = useState<string>("");
+  const [locationLat, setLocationLat] = useState<number | null>(null);
+  const [locationLng, setLocationLng] = useState<number | null>(null);
 
   // Dates
   const [issueDate, setIssueDate] = useState(() => new Date().toISOString().split("T")[0]);
@@ -287,6 +294,22 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       setValidUntil(quote.valid_until || validUntil);
       setReference((quote as any).reference_text || "");
       setTerms((quote as any).terms_text || "");
+
+      // Load linked location (if any)
+      const linkedLocId = (quote as any).location_id;
+      if (linkedLocId) {
+        const { data: loc } = await (supabase as any)
+          .from("customer_locations")
+          .select("id,label,address,latitude,longitude")
+          .eq("id", linkedLocId)
+          .maybeSingle();
+        if (loc) {
+          setSelectedLocationId(loc.id);
+          setSelectedLocationLabel(loc.label);
+          setLocationLat(loc.latitude != null ? Number(loc.latitude) : null);
+          setLocationLng(loc.longitude != null ? Number(loc.longitude) : null);
+        }
+      }
 
       const dt = (quote as any).discount_type;
       if (dt === "percentage" || dt === "percent") {
@@ -557,6 +580,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         discount_value: showDiscount ? discountValue : 0,
         reference_text: reference || null,
         lead_id: selectedLeadId || null,
+        location_id: selectedLocationId || null,
         ...(status !== "draft" ? { status, sent_at: new Date().toISOString() } : {}),
       };
 
@@ -824,6 +848,29 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
                   >
                     <Plus className="h-3 w-3" /> Create a Client
                   </button>
+                </div>
+              )}
+              {selectedCustomerId && (
+                <div data-pdf-hide className="mt-2 pt-2 border-t">
+                  <LocationSelector
+                    customerId={selectedCustomerId}
+                    companyId={companyId}
+                    compact
+                    value={{
+                      locationId: selectedLocationId,
+                      address: customerAddress,
+                      latitude: locationLat,
+                      longitude: locationLng,
+                      label: selectedLocationLabel,
+                    }}
+                    onChange={(v) => {
+                      setSelectedLocationId(v.locationId);
+                      setSelectedLocationLabel(v.label || "");
+                      setLocationLat(v.latitude);
+                      setLocationLng(v.longitude);
+                      if (v.address) setCustomerAddress(v.address);
+                    }}
+                  />
                 </div>
               )}
             </div>
