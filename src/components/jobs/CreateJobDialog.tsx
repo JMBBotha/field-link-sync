@@ -332,7 +332,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
             </div>
             <Input
               value={address}
-              onChange={e => { setAddress(e.target.value); setGeoStatus("idle"); setLat(null); setLng(null); }}
+              onChange={e => { setAddress(e.target.value); setLocationId(""); setGeoStatus("idle"); setLat(null); setLng(null); }}
               placeholder="Job address"
             />
             {geoHint()}
