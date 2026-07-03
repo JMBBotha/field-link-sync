@@ -312,6 +312,14 @@ const AdminJobsDispatchPage = () => {
             <span className="text-muted-foreground text-xs sm:text-sm">Available only</span>
             <Switch checked={showAvailableOnly} onCheckedChange={setShowAvailableOnly} />
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => queryClient.invalidateQueries({ queryKey: ["jobs-dispatch"] })}
+            className="gap-2"
+          >
+            <Loader2 className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} /> Refresh
+          </Button>
           <Button onClick={() => setShowCreate(true)} className="gap-2" size="sm">
             <Plus className="h-4 w-4" /> New Job
           </Button>
