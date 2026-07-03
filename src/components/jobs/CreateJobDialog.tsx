@@ -245,6 +245,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     setCustomerId("");
     setLeadId("");
     setQuoteId("");
+    setLocationId("");
     setAddress("");
     setScheduledFor("");
     setDuration("2");
