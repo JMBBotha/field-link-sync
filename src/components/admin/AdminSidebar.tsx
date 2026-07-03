@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useRole } from "@/hooks/useRole";
 import {
   LayoutDashboard,
   MapPin,
@@ -43,12 +44,15 @@ interface NavItem {
   label: string;
   icon: React.ElementType;
   badge?: number;
+  adminOnly?: boolean;
 }
 
 interface NavGroup {
   title: string;
+  adminOnly?: boolean;
   items: NavItem[];
 }
+
 
 interface AdminSidebarProps {
   onCreateLead: () => void;
@@ -66,8 +70,11 @@ const AdminSidebar = ({
   onMobileClose,
 }: AdminSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAdmin } = useRole();
+
 
   const { data: lowStockCount = 0 } = useQuery({
     queryKey: ["low-stock-count-sidebar"],
@@ -85,58 +92,81 @@ const AdminSidebar = ({
 
   const navGroups: NavGroup[] = [
     {
-      title: "Main",
+      title: "Overview",
       items: [
-        { path: "/admin", label: "Home", icon: LayoutDashboard },
-        { path: "/admin/customers", label: "Customers", icon: Users },
+        { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
         { path: "/admin/map", label: "Map", icon: MapPin },
+        { path: "/admin/customers", label: "Customers", icon: Users },
+      ],
+    },
+    {
+      title: "Jobs",
+      items: [
         { path: "/admin/jobs", label: "Jobs", icon: Briefcase },
         { path: "/admin/jobs/dispatch", label: "Dispatch Board", icon: ClipboardList },
-        { path: "/admin/my-jobs", label: "My Jobs", icon: Briefcase },
-        { path: "/admin/dispatch", label: "Legacy Dispatch", icon: LayoutGrid },
         { path: "/admin/schedule", label: "Schedule", icon: CalendarDays },
+        { path: "/admin/my-jobs", label: "My Jobs", icon: Briefcase },
       ],
     },
     {
       title: "Sales",
       items: [
         { path: "/admin/quotes", label: "Quotes", icon: FileText },
-        { path: "/admin/templates", label: "Templates", icon: FileSignature },
         { path: "/admin/invoices", label: "Invoices", icon: Receipt },
-        
         { path: "/admin/agreements", label: "Agreements", icon: FileCheck },
+        { path: "/admin/templates", label: "Templates", icon: FileSignature },
       ],
     },
     {
       title: "Operations",
       items: [
-        { path: "/admin/suppliers", label: "Suppliers", icon: Building2 },
-        { path: "/admin/pdf-documents", label: "PDF Documents", icon: FileText },
-        { path: "/admin/brochures", label: "Brochures", icon: FileText },
-        { path: "/admin/consumables", label: "Consumables", icon: Package },
-        { path: "/admin/catalog", label: "Catalog", icon: ShoppingBag },
-        { path: "/admin/maintenance", label: "Maintenance", icon: CalendarDays },
         { path: "/admin/inventory", label: "Inventory", icon: Package, badge: lowStockCount > 0 ? lowStockCount : undefined },
-        { path: "/admin/flat-rate", label: "Flat Rate", icon: DollarSign },
+        { path: "/admin/catalog", label: "Catalog", icon: ShoppingBag },
+        { path: "/admin/suppliers", label: "Suppliers", icon: Building2 },
+        { path: "/admin/maintenance", label: "Maintenance", icon: CalendarDays },
+      ],
+    },
+    {
+      title: "Reports",
+      items: [
         { path: "/admin/reports", label: "Reports", icon: BarChart3 },
-        { path: "/admin/reports/advanced", label: "Advanced Reports", icon: TrendingUp },
         { path: "/admin/analytics", label: "Analytics", icon: LineChart },
       ],
     },
     {
       title: "System",
+      adminOnly: true,
       items: [
         { path: "/admin/team", label: "Team", icon: Users },
-        { path: "/admin/billing", label: "Billing", icon: DollarSign },
         { path: "/admin/notifications", label: "Notifications", icon: Bell, badge: pendingRequestsCount },
+        { path: "/admin/billing", label: "Billing", icon: DollarSign },
+        { path: "/admin/settings", label: "Settings", icon: Settings },
         { path: "/admin/audit", label: "Audit", icon: History },
         { path: "/admin/import", label: "Import", icon: Upload },
-        { path: "/admin/whatsapp", label: "WhatsApp", icon: MessageSquare },
-        { path: "/admin/settings", label: "Settings", icon: Settings },
         { path: "/admin/companies", label: "Companies", icon: Building2 },
       ],
     },
+    {
+      title: "Advanced",
+      adminOnly: true,
+      items: [
+        { path: "/admin/consumables", label: "Consumables", icon: Package },
+        { path: "/admin/flat-rate", label: "Flat Rate", icon: DollarSign },
+        { path: "/admin/pdf-documents", label: "PDF Documents", icon: FileText },
+        { path: "/admin/brochures", label: "Brochures", icon: FileText },
+        { path: "/admin/reports/advanced", label: "Advanced Reports", icon: TrendingUp },
+        { path: "/admin/whatsapp", label: "WhatsApp", icon: MessageSquare },
+        { path: "/admin/dispatch", label: "Legacy Dispatch", icon: LayoutGrid },
+      ],
+    },
   ];
+
+  const visibleGroups = navGroups.filter((g) => {
+    if (g.adminOnly && !isAdmin) return false;
+    if (g.title === "Advanced" && !showAdvanced) return false;
+    return true;
+  });
+
 
   const isActive = (path: string) => {
     if (path === "/admin") return location.pathname === "/admin";
@@ -187,7 +217,7 @@ const AdminSidebar = ({
 
       {/* Navigation groups */}
       <nav className="flex-1 overflow-y-auto px-2 py-1 space-y-1.5">
-        {navGroups.map((group) => (
+        {visibleGroups.map((group) => (
           <div key={group.title}>
             {!collapsed && (
               <p className="px-3 mb-0.5 text-[9px] font-semibold uppercase tracking-widest text-white/60">
@@ -240,7 +270,17 @@ const AdminSidebar = ({
             </div>
           </div>
         ))}
+
+        {isAdmin && !collapsed && (
+          <button
+            onClick={() => setShowAdvanced((v) => !v)}
+            className="w-full mt-2 px-3 py-1.5 text-[11px] font-medium text-white/60 hover:text-white transition-colors text-left"
+          >
+            {showAdvanced ? "− Hide advanced" : "+ Show advanced"}
+          </button>
+        )}
       </nav>
+
 
       {/* Bottom actions */}
       <div className={cn("border-t border-white/15 p-3 space-y-1", collapsed && "p-2")}>
