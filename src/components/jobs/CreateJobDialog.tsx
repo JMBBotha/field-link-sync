@@ -296,7 +296,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
           </div>
           <div>
             <Label>Customer <span className="text-destructive">*</span></Label>
-            <Select value={customerId} onValueChange={(v) => { setCustomerId(v); setLat(null); setLng(null); setGeoStatus("idle"); }}>
+            <Select value={customerId} onValueChange={(v) => { setCustomerId(v); setLocationId(""); setLat(null); setLng(null); setGeoStatus("idle"); }}>
               <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
               <SelectContent>
                 {customers.map((c: any) => (
@@ -305,6 +305,24 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
               </SelectContent>
             </Select>
           </div>
+          {customerId && customerLocations.length > 0 && (
+            <div>
+              <Label>Location <span className="text-muted-foreground text-xs">(pick a saved site)</span></Label>
+              <Select value={locationId} onValueChange={applyLocation}>
+                <SelectTrigger><SelectValue placeholder="Choose a saved location" /></SelectTrigger>
+                <SelectContent>
+                  {customerLocations.map((l: any) => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.label}{l.is_primary ? " ⭐" : ""} — {l.address}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Or type a new address below to save it as a new location for this customer.
+              </p>
+            </div>
+          )}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label>Address <span className="text-destructive">*</span></Label>
