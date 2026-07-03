@@ -443,7 +443,7 @@ const AdminDispatchPage = () => {
       cancelled = true;
       markersRef.current.forEach(m => m.remove());
       markersRef.current = [];
-      map.remove();
+      mapRef.current?.remove();
       mapRef.current = null;
     };
   }, [showMapPane]);
