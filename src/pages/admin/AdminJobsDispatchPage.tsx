@@ -426,8 +426,16 @@ const AdminJobsDispatchPage = () => {
                 {detailJob.customers?.name && <div><span className="text-muted-foreground">Customer:</span> {detailJob.customers.name}</div>}
                 {detailJob.scheduled_for && <div><span className="text-muted-foreground">Scheduled:</span> {format(new Date(detailJob.scheduled_for), "dd MMM yyyy HH:mm")}</div>}
               </div>
-              {detailJob.address && (
-                <div className="text-sm"><span className="text-muted-foreground">Address:</span> {detailJob.address}</div>
+              {(detailJob.customer_locations?.address || detailJob.address) && (
+                <div className="text-sm flex items-start gap-1">
+                  <MapPin className="h-4 w-4 text-[#0066CC] mt-0.5" />
+                  <div>
+                    {detailJob.customer_locations?.label && (
+                      <span className="font-semibold">{detailJob.customer_locations.label}</span>
+                    )}
+                    <span className="text-muted-foreground"> — {detailJob.customer_locations?.address || detailJob.address}</span>
+                  </div>
+                </div>
               )}
               {detailJob.description && (
                 <div className="text-sm"><span className="text-muted-foreground">Description:</span> {detailJob.description}</div>
