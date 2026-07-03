@@ -4,10 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, FileText, BarChart3, ClipboardList, AlertTriangle, CheckCircle2, Clock, DollarSign, Users, Wrench } from "lucide-react";
-import { Briefcase, UserCheck, Timer, TrendingUp, TrendingDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Plus, FileText, BarChart3, ClipboardList, AlertTriangle, CheckCircle2, Clock, DollarSign, Users, Wrench, ChevronDown } from "lucide-react";
+import { Briefcase, UserCheck, Timer } from "lucide-react";
 import AdminAlertsPanel from "@/components/AdminAlertsPanel";
-// Jobs & Dispatch KPI dashboard section
 import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
 import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
 import KpiDetailDialog from "@/components/admin/KpiDetailDialog";
@@ -18,6 +18,7 @@ import { Area, AreaChart, ResponsiveContainer } from "recharts";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { Link } from "react-router-dom";
+
 
 interface AdminHomeProps {
   onNavigate: (tab: string) => void;
@@ -150,101 +151,50 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
     staleTime: 60000,
   });
 
+  // Core 4 KPIs — focused on Lead → Job → Invoice flow
   const kpiCards = useMemo(() => [
-    { key: "new_leads", label: "New Leads Today", value: stats?.newLeads ?? 0, icon: Plus, color: "text-blue-500", sparkKey: "leads" as const, sparkColor: "#3b82f6" },
+    { key: "new_leads", label: "New Leads Today", value: stats?.newLeads ?? 0, icon: Plus, color: "text-primary", sparkKey: "leads" as const, sparkColor: "#0077B6" },
     { key: "pending_quotes", label: "Pending Quotes", value: stats?.pendingQuotes ?? 0, icon: FileText, color: "text-orange-500", sparkKey: "leads" as const, sparkColor: "#f97316" },
     { key: "active_jobs", label: "Active Jobs", value: stats?.activeJobs ?? 0, icon: Clock, color: "text-green-500", sparkKey: "active" as const, sparkColor: "#22c55e" },
     { key: "overdue_invoices", label: "Overdue Invoices", value: stats?.overdueInvoices ?? 0, icon: AlertTriangle, color: "text-destructive", sparkKey: "leads" as const, sparkColor: "#ef4444" },
-    { key: "overdue_maintenance", label: "Overdue Maintenance", value: stats?.overdueMaintenance ?? 0, icon: Wrench, color: "text-red-500", sparkKey: "leads" as const, sparkColor: "#ef4444" },
-    { key: "revenue_today", label: "Revenue Today", value: `R ${(stats?.revenueToday ?? 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, icon: DollarSign, color: "text-primary", sparkKey: "revenue" as const, sparkColor: "#0077B6" },
   ], [stats]);
+
+  const [showMore, setShowMore] = useState(false);
+
 
   const activeKpi = kpiCards.find((k) => k.key === selectedKpi);
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
-      {/* KPI Cards */}
-      {/* Jobs & Dispatch KPIs */}
-      {jobStats && (
-        <>
-          <div>
-            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-              <Briefcase className="h-5 w-5 text-primary" /> Jobs & Dispatch Overview
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-              {[
-                { label: "Total Jobs", value: jobStats.totalJobs, icon: Briefcase, color: "text-primary", to: "/admin/jobs/dispatch" },
-                { label: "Active Jobs", value: jobStats.activeJobs, icon: Clock, color: "text-chart-1", to: "/admin/jobs/dispatch" },
-                { label: "Completed", value: jobStats.completedJobs, icon: CheckCircle2, color: "text-chart-3", to: "/admin/jobs/dispatch" },
-                { label: "Pending Assignments", value: jobStats.pendingAssignments, icon: ClipboardList, color: "text-chart-4", to: "/admin/dispatch" },
-                { label: "Active Agents", value: jobStats.activeFieldAgents, icon: UserCheck, color: "text-chart-2", to: "/admin/team" },
-                { label: "Avg Completion", value: `${jobStats.avgCompletionDays}d`, icon: Timer, color: "text-chart-5", to: "/admin/analytics" },
-              ].map((card) => (
-                <Link key={card.label} to={card.to} className="block focus:outline-none focus:ring-2 focus:ring-primary rounded-xl">
-                  <Card className="rounded-xl border border-border cursor-pointer transition-all duration-200 hover:border-primary/30 hover:bg-muted/40 hover:shadow-md">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <card.icon className={`h-4 w-4 ${card.color}`} />
-                        <span className="text-xs text-muted-foreground">{card.label}</span>
-                      </div>
-                      <p className="text-2xl font-bold">{card.value}</p>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          </div>
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Lead → Job → Invoice at a glance</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={onCreateLead}><Plus className="mr-2 h-4 w-4" />New Lead</Button>
+          <Button variant="outline" onClick={() => onNavigate("quotes")}><FileText className="mr-2 h-4 w-4" />New Quote</Button>
+        </div>
+      </div>
 
-          {/* Jobs by Status Chart */}
-          {jobStats.statusBreakdown.length > 0 && (
-            <Card className="rounded-xl border border-border">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Jobs by Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={jobStats.statusBreakdown} layout="vertical" margin={{ left: 80 }}>
-                      <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
-                      <YAxis
-                        type="category"
-                        dataKey="status"
-                        tick={{ fontSize: 12 }}
-                        tickFormatter={(v: string) => v.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
-                      />
-                      <Tooltip
-                        formatter={(value: number) => [value, "Jobs"]}
-                        labelFormatter={(v: string) => v.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
-                      />
-                      <Bar dataKey="count" radius={[0, 4, 4, 0]}>
-                        {jobStats.statusBreakdown.map((entry) => (
-                          <Cell key={entry.status} fill={statusColors[entry.status] || "hsl(var(--muted-foreground))"} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </>
-      )}
+      {/* Core 4 KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
 
-      {/* Existing KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         {isLoading
-          ? Array.from({ length: 6 }).map((_, i) => (
+          ? Array.from({ length: 4 }).map((_, i) => (
               <Card key={i}>
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-center gap-2">
-                    <Skeleton className="h-4 w-4 rounded dark:bg-slate-700/30" />
-                    <Skeleton className="h-3 w-20 dark:bg-slate-700/30" />
+                    <Skeleton className="h-4 w-4 rounded" />
+                    <Skeleton className="h-3 w-20" />
                   </div>
-                  <Skeleton className="h-8 w-16 dark:bg-slate-700/30" />
-                  <Skeleton className="h-6 w-full rounded dark:bg-slate-700/30" />
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-6 w-full rounded" />
                 </CardContent>
               </Card>
             ))
+
           : kpiCards.map((kpi) => (
               <Card
                 key={kpi.key}
@@ -297,27 +247,8 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         />
       )}
 
-      {/* Quick Actions */}
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={onCreateLead}><Plus className="mr-2 h-4 w-4" />New Lead</Button>
-        <Button variant="outline" onClick={() => onNavigate("quotes")}><FileText className="mr-2 h-4 w-4" />New Quote</Button>
-        <Button variant="outline" onClick={() => onNavigate("analytics")}><BarChart3 className="mr-2 h-4 w-4" />Analytics</Button>
-        <Button variant="outline" onClick={() => onNavigate("reports")}><ClipboardList className="mr-2 h-4 w-4" />Reports</Button>
-      </div>
-
-      {/* Quote Performance Widget */}
-      <QuotePerformanceWidget />
-
-      {/* Completed Leads */}
-      <CompletedLeadsList />
-
-      {/* Admin Alerts */}
-      <AdminAlertsPanel />
-
+      {/* Primary widgets — Recent Activity + Agent Status */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Sync Conflicts */}
-        <SyncConflictsSection />
-        {/* Recent Activity */}
         <Card>
           <CardHeader><CardTitle className="text-base">Recent Activity</CardTitle></CardHeader>
           <CardContent className="space-y-3 max-h-80 overflow-y-auto">
@@ -340,7 +271,6 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           </CardContent>
         </Card>
 
-        {/* Agent Status */}
         <Card>
           <CardHeader><CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4" />Agent Status</CardTitle></CardHeader>
           <CardContent className="space-y-3 max-h-80 overflow-y-auto">
@@ -359,8 +289,108 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Secondary insights — collapsible */}
+      <Collapsible open={showMore} onOpenChange={setShowMore}>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" className="w-full justify-between">
+            <span className="flex items-center gap-2 text-sm font-medium">
+              <BarChart3 className="h-4 w-4" />
+              More insights
+            </span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${showMore ? "rotate-180" : ""}`} />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-6 pt-4">
+          {/* Secondary KPIs */}
+          {stats && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Card className="rounded-xl border border-border">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <DollarSign className="h-4 w-4 text-primary" />
+                    <span className="text-xs text-muted-foreground">Revenue Today</span>
+                  </div>
+                  <p className="text-2xl font-bold">R {(stats.revenueToday ?? 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</p>
+                </CardContent>
+              </Card>
+              <Card className="rounded-xl border border-border">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Wrench className="h-4 w-4 text-destructive" />
+                    <span className="text-xs text-muted-foreground">Overdue Maintenance</span>
+                  </div>
+                  <p className="text-2xl font-bold">{stats.overdueMaintenance ?? 0}</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Jobs & Dispatch overview */}
+          {jobStats && (
+            <div>
+              <h3 className="text-sm font-semibold mb-2 flex items-center gap-2 text-muted-foreground">
+                <Briefcase className="h-4 w-4" /> Jobs & Dispatch
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {[
+                  { label: "Total Jobs", value: jobStats.totalJobs, icon: Briefcase, to: "/admin/jobs/dispatch" },
+                  { label: "Active Jobs", value: jobStats.activeJobs, icon: Clock, to: "/admin/jobs/dispatch" },
+                  { label: "Completed", value: jobStats.completedJobs, icon: CheckCircle2, to: "/admin/jobs/dispatch" },
+                  { label: "Pending Assign.", value: jobStats.pendingAssignments, icon: ClipboardList, to: "/admin/dispatch" },
+                  { label: "Active Agents", value: jobStats.activeFieldAgents, icon: UserCheck, to: "/admin/team" },
+                  { label: "Avg Completion", value: `${jobStats.avgCompletionDays}d`, icon: Timer, to: "/admin/analytics" },
+                ].map((card) => (
+                  <Link key={card.label} to={card.to} className="block focus:outline-none focus:ring-2 focus:ring-primary rounded-xl">
+                    <Card className="rounded-xl border border-border cursor-pointer hover:border-primary/30 hover:bg-muted/40 transition-colors">
+                      <CardContent className="p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <card.icon className="h-4 w-4 text-primary" />
+                          <span className="text-xs text-muted-foreground truncate">{card.label}</span>
+                        </div>
+                        <p className="text-xl font-bold">{card.value}</p>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Jobs by Status Chart */}
+          {jobStats && jobStats.statusBreakdown.length > 0 && (
+            <Card className="rounded-xl border border-border">
+              <CardHeader className="pb-2"><CardTitle className="text-base">Jobs by Status</CardTitle></CardHeader>
+              <CardContent>
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={jobStats.statusBreakdown} layout="vertical" margin={{ left: 80 }}>
+                      <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
+                      <YAxis type="category" dataKey="status" tick={{ fontSize: 12 }}
+                        tickFormatter={(v: string) => v.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())} />
+                      <Tooltip formatter={(value: number) => [value, "Jobs"]}
+                        labelFormatter={(v: string) => v.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())} />
+                      <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                        {jobStats.statusBreakdown.map((entry) => (
+                          <Cell key={entry.status} fill={statusColors[entry.status] || "hsl(var(--muted-foreground))"} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <QuotePerformanceWidget />
+          <CompletedLeadsList />
+          <AdminAlertsPanel />
+          <SyncConflictsSection />
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 };
 
 export default AdminHome;
+
