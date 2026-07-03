@@ -70,8 +70,11 @@ const AdminSidebar = ({
   onMobileClose,
 }: AdminSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAdmin } = useRole();
+
 
   const { data: lowStockCount = 0 } = useQuery({
     queryKey: ["low-stock-count-sidebar"],
