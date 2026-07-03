@@ -2,14 +2,17 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import { Calendar, dateFnsLocalizer, Views, SlotInfo } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { enUS } from "date-fns/locale/en-US";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Plus } from "lucide-react";
+import { CalendarDays, Plus, RefreshCw } from "lucide-react";
 import ScheduleJobModal from "./ScheduleJobModal";
 import "react-big-calendar/lib/css/react-big-calendar.css";
+
+const locales = { "en-US": enUS };
+const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
 
 const locales = { "en-US": enUS };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
