@@ -4,6 +4,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { AlertCircle, Crosshair, Loader2, Maximize2, Minimize2, Search, X, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
 
 const DEFAULT_CENTER: [number, number] = [18.4241, -33.9249]; // [lng, lat] Cape Town
 
@@ -31,8 +32,7 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
   const searchWrapRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<number | null>(null);
 
-  const [token, setToken] = useState<string>(getStoredToken());
-  const [tokenInput, setTokenInput] = useState<string>("");
+  const [token, setToken] = useState<string>(getMapboxTokenSync());
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
 
@@ -43,6 +43,16 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
   const [gpsLoading, setGpsLoading] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [dragPreview, setDragPreview] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Fetch shared token if not already cached
+  useEffect(() => {
+    if (token) return;
+    let cancelled = false;
+    getMapboxToken().then((t) => {
+      if (!cancelled && t) setToken(t);
+    });
+    return () => { cancelled = true; };
+  }, [token]);
 
   // Initialize / re-init map
   useEffect(() => {
