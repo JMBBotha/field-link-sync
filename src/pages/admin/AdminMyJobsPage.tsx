@@ -128,9 +128,26 @@ const AdminMyJobsPage = () => {
     [filter, myAssignments]
   );
 
+  // Realtime refresh on job / assignment changes
+  useEffect(() => {
+    const ch = supabase
+      .channel("my-jobs-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, () =>
+        queryClient.invalidateQueries({ queryKey: ["my-jobs"] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "assignments" }, () =>
+        queryClient.invalidateQueries({ queryKey: ["my-jobs"] }))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [queryClient]);
+
   return (
     <div className="space-y-4 p-4 md:p-6">
-      <h1 className="text-2xl font-bold text-foreground">My Jobs</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-foreground">My Jobs</h1>
+        <Button size="sm" variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ["my-jobs"] })}>
+          <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+        </Button>
+      </div>
 
       <div className="flex gap-2">
         <Button variant={filter === "active" ? "default" : "outline"} size="sm" onClick={() => setFilter("active")}>Active</Button>
