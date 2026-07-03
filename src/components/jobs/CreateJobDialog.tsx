@@ -12,7 +12,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, MapPin, AlertTriangle, CheckCircle2 } from "lucide-react";
+import LocationPicker from "@/components/LocationPicker";
+import { geocodeAddress } from "@/lib/geocodeAddress";
 
 interface Props {
   open: boolean;
@@ -38,26 +40,89 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   const [duration, setDuration] = useState("2");
   const [priority, setPriority] = useState("normal");
   const [jobType, setJobType] = useState("service");
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
+  const [geocoding, setGeocoding] = useState(false);
+  const [geoStatus, setGeoStatus] = useState<"idle" | "ok" | "failed" | "inherited">("idle");
+  const [showPicker, setShowPicker] = useState(false);
 
   const { data: customers = [] } = useQuery({
     queryKey: ["job-customers", companyId],
     queryFn: async () => {
-      const { data } = await supabase.from("customers").select("id, name, address").order("name");
+      const { data } = await supabase
+        .from("customers")
+        .select("id, name, address, latitude, longitude")
+        .order("name");
       return data || [];
     },
     enabled: open && !!companyId,
   });
 
-  // Auto-fill address when customer changes
+  // Preload from lead if provided
   useEffect(() => {
-    if (customerId) {
-      const cust = customers.find((c: any) => c.id === customerId);
-      if (cust?.address && !address) setAddress(cust.address);
+    if (!open || !leadId) return;
+    (async () => {
+      const { data } = await supabase
+        .from("leads")
+        .select("customer_id, customer_address, latitude, longitude")
+        .eq("id", leadId)
+        .maybeSingle();
+      if (!data) return;
+      if (data.customer_id && !customerId) setCustomerId(data.customer_id);
+      if (data.customer_address && !address) setAddress(data.customer_address);
+      if (data.latitude && data.longitude && Number(data.latitude) !== 0) {
+        setLat(Number(data.latitude));
+        setLng(Number(data.longitude));
+        setGeoStatus("inherited");
+      }
+    })();
+  }, [open, leadId]);
+
+  // Auto-fill address + inherit geo when customer changes
+  useEffect(() => {
+    if (!customerId) return;
+    const cust = customers.find((c: any) => c.id === customerId);
+    if (!cust) return;
+    if (cust.address && !address) setAddress(cust.address);
+    if (
+      cust.latitude != null && cust.longitude != null &&
+      Number(cust.latitude) !== 0 && Number(cust.longitude) !== 0 &&
+      lat == null && lng == null
+    ) {
+      setLat(Number(cust.latitude));
+      setLng(Number(cust.longitude));
+      setGeoStatus("inherited");
     }
   }, [customerId, customers]);
 
+  // Debounced geocode on address change (if we don't already have inherited coords)
+  useEffect(() => {
+    if (!address || address.length < 5) return;
+    if (geoStatus === "inherited") return;
+    const t = setTimeout(async () => {
+      setGeocoding(true);
+      const r = await geocodeAddress(address);
+      setGeocoding(false);
+      if (r) {
+        setLat(r.latitude);
+        setLng(r.longitude);
+        setGeoStatus("ok");
+      } else {
+        setGeoStatus("failed");
+      }
+    }, 700);
+    return () => clearTimeout(t);
+  }, [address]);
+
   const createMutation = useMutation({
     mutationFn: async () => {
+      // Final attempt to geocode if we still have no coords
+      let finalLat = lat;
+      let finalLng = lng;
+      if (finalLat == null || finalLng == null) {
+        const r = await geocodeAddress(address);
+        if (r) { finalLat = r.latitude; finalLng = r.longitude; }
+      }
       const userId = user?.id;
       const { data, error } = await supabase.from("jobs").insert({
         company_id: companyId!,
@@ -67,6 +132,8 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
         lead_id: leadId || null,
         quote_id: quoteId || null,
         address: address || null,
+        lat: finalLat,
+        lng: finalLng,
         scheduled_for: scheduledFor || null,
         estimated_duration: `${duration} hours`,
         priority,
@@ -74,11 +141,27 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
         created_by: userId || null,
       }).select().single();
       if (error) throw error;
-      return data;
+
+      // If we have coords and the customer had none, backfill customer geo
+      if (customerId && finalLat != null && finalLng != null) {
+        const cust = customers.find((c: any) => c.id === customerId);
+        if (cust && (!cust.latitude || Number(cust.latitude) === 0)) {
+          await supabase
+            .from("customers")
+            .update({ latitude: finalLat, longitude: finalLng })
+            .eq("id", customerId);
+        }
+      }
+      return { job: data, geocoded: finalLat != null };
     },
-    onSuccess: () => {
-      toast({ title: "Job created", description: "Now visible in Dispatch, Schedule, My Jobs and Map." });
-      // Invalidate every view that shows jobs/leads/schedules
+    onSuccess: ({ geocoded }) => {
+      toast({
+        title: "Job created",
+        description: geocoded
+          ? "Now visible in Dispatch, Schedule, My Jobs and Map."
+          : "Created without map coordinates — pin it from the Map view when possible.",
+        variant: geocoded ? "default" : "destructive",
+      });
       ["jobs-list","jobs-dispatch","my-jobs","job-schedules","dispatch-leads","dispatch-schedules","dispatch-agents","admin-home-stats","jobs-kpi-stats","leads","leads-map"]
         .forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
       onOpenChange(false);
@@ -100,6 +183,18 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     setDuration("2");
     setPriority("normal");
     setJobType("service");
+    setLat(null);
+    setLng(null);
+    setGeoStatus("idle");
+    setShowPicker(false);
+  };
+
+  const geoHint = () => {
+    if (geocoding) return <span className="flex items-center gap-1 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Locating address…</span>;
+    if (geoStatus === "ok") return <span className="flex items-center gap-1 text-xs text-green-600"><CheckCircle2 className="h-3 w-3" /> Address located — will pin on Map</span>;
+    if (geoStatus === "inherited") return <span className="flex items-center gap-1 text-xs text-green-600"><CheckCircle2 className="h-3 w-3" /> Using existing customer/lead coordinates</span>;
+    if (geoStatus === "failed") return <span className="flex items-center gap-1 text-xs text-amber-600"><AlertTriangle className="h-3 w-3" /> Couldn't locate address — <button type="button" className="underline" onClick={() => setShowPicker(true)}>place pin manually</button></span>;
+    return null;
   };
 
   return (
@@ -133,7 +228,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
           </div>
           <div>
             <Label>Customer <span className="text-destructive">*</span></Label>
-            <Select value={customerId} onValueChange={setCustomerId}>
+            <Select value={customerId} onValueChange={(v) => { setCustomerId(v); setLat(null); setLng(null); setGeoStatus("idle"); }}>
               <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
               <SelectContent>
                 {customers.map((c: any) => (
@@ -142,9 +237,31 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label>Address <span className="text-destructive">*</span></Label>
-            <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="Job address" />
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label>Address <span className="text-destructive">*</span></Label>
+              <Button type="button" size="sm" variant="ghost" className="h-6 text-xs gap-1" onClick={() => setShowPicker((v) => !v)}>
+                <MapPin className="h-3 w-3" /> {showPicker ? "Hide map" : "Pin on map"}
+              </Button>
+            </div>
+            <Input
+              value={address}
+              onChange={e => { setAddress(e.target.value); setGeoStatus("idle"); setLat(null); setLng(null); }}
+              placeholder="Job address"
+            />
+            {geoHint()}
+            {showPicker && (
+              <div className="mt-2">
+                <LocationPicker
+                  latitude={lat}
+                  longitude={lng}
+                  onLocationChange={(la, ln, addr) => {
+                    setLat(la); setLng(ln); setGeoStatus("ok");
+                    if (addr && !address) setAddress(addr);
+                  }}
+                />
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
