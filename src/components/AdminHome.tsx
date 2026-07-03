@@ -299,14 +299,28 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                     </p>
                     <p className="text-[11px] text-muted-foreground">{format(new Date(lead.created_at), "dd MMM HH:mm")}</p>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="shrink-0"
-                    onClick={() => onNavigate(`quotes?leadId=${lead.id}`)}
-                  >
-                    Convert
-                  </Button>
+                  <div className="flex flex-col gap-1 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={convertingId === lead.id}
+                      onClick={() => handleConvertLead(lead.id)}
+                      title="Create/link customer record"
+                    >
+                      {convertingId === lead.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <><UserPlus className="h-3 w-3 mr-1" />Convert</>
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => navigate(`/admin/jobs/dispatch?leadId=${lead.id}`)}
+                    >
+                      Create Job
+                    </Button>
+                  </div>
                 </div>
               ))
             )}
