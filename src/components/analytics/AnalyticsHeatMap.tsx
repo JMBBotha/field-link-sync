@@ -26,18 +26,13 @@ const AnalyticsHeatMap = () => {
   });
 
   useEffect(() => {
-    const fetchToken = async () => {
-      const { data } = await supabase
-        .from("admin_settings")
-        .select("setting_value")
-        .eq("setting_key", "mapbox_token")
-        .maybeSingle();
-      if (data?.setting_value) {
-        const val = typeof data.setting_value === "string" ? data.setting_value : (data.setting_value as any).token || "";
-        setMapboxToken(val);
-      }
-    };
-    fetchToken();
+    let cancelled = false;
+    (async () => {
+      const { getMapboxToken } = await import("@/lib/mapboxToken");
+      const t = await getMapboxToken();
+      if (!cancelled && t) setMapboxToken(t);
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
