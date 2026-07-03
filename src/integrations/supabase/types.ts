@@ -5366,6 +5366,18 @@ export type Database = {
       show_trgm: { Args: { "": string }; Returns: string[] }
       unconvert_lead: { Args: { p_lead_id: string }; Returns: undefined }
       update_overdue_invoices: { Args: never; Returns: undefined }
+      user_can_access_job_company: {
+        Args: { _job_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_can_update_assigned_job: {
+        Args: { _job_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_is_assigned_to_job: {
+        Args: { _job_id: string; _user_id: string }
+        Returns: boolean
+      }
       validate_customer_token: { Args: { p_token: string }; Returns: string }
     }
     Enums: {
