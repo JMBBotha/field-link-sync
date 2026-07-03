@@ -407,6 +407,18 @@ const AdminCustomerDetailPage = () => {
           </Card>
         </TabsContent>
 
+        <TabsContent value="locations" className="mt-4">
+          <Card className="bg-card">
+            <CardContent className="p-6">
+              {customer.company_id ? (
+                <CustomerLocationsManager customerId={customer.id} companyId={customer.company_id} />
+              ) : (
+                <p className="text-sm text-muted-foreground">Customer is missing a company reference.</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="relationship" className="mt-4">
           <Card className="bg-card">
             <CardContent className="p-6 space-y-3">
