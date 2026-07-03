@@ -77,9 +77,10 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
       return data;
     },
     onSuccess: () => {
-      toast({ title: "Job created successfully" });
-      queryClient.invalidateQueries({ queryKey: ["jobs-list"] });
-      queryClient.invalidateQueries({ queryKey: ["jobs-dispatch"] });
+      toast({ title: "Job created", description: "Now visible in Dispatch, Schedule, My Jobs and Map." });
+      // Invalidate every view that shows jobs/leads/schedules
+      ["jobs-list","jobs-dispatch","my-jobs","job-schedules","dispatch-leads","dispatch-schedules","dispatch-agents","admin-home-stats","jobs-kpi-stats","leads","leads-map"]
+        .forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
       onOpenChange(false);
       resetForm();
     },
@@ -131,7 +132,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
             </Select>
           </div>
           <div>
-            <Label>Customer</Label>
+            <Label>Customer <span className="text-destructive">*</span></Label>
             <Select value={customerId} onValueChange={setCustomerId}>
               <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
               <SelectContent>
@@ -142,12 +143,12 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
             </Select>
           </div>
           <div>
-            <Label>Address</Label>
+            <Label>Address <span className="text-destructive">*</span></Label>
             <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="Job address" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Scheduled Date/Time</Label>
+              <Label>Scheduled Date/Time <span className="text-destructive">*</span></Label>
               <Input type="datetime-local" value={scheduledFor} onChange={e => setScheduledFor(e.target.value)} />
             </div>
             <div>
@@ -170,7 +171,10 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={() => createMutation.mutate()} disabled={!title || !companyId || createMutation.isPending}>
+          <Button
+            onClick={() => createMutation.mutate()}
+            disabled={!title || !customerId || !address || !scheduledFor || !companyId || createMutation.isPending}
+          >
             {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Create Job
           </Button>

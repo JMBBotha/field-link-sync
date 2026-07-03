@@ -2,17 +2,18 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import { Calendar, dateFnsLocalizer, Views, SlotInfo } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { enUS } from "date-fns/locale/en-US";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Plus } from "lucide-react";
+import { CalendarDays, Plus, RefreshCw } from "lucide-react";
 import ScheduleJobModal from "./ScheduleJobModal";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
 const locales = { "en-US": enUS };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
+
 
 interface CalendarEvent {
   id: string;
@@ -45,6 +46,7 @@ const ScheduleCalendar = () => {
   const [currentView, setCurrentView] = useState<(typeof Views)[keyof typeof Views]>(
     typeof window !== "undefined" && window.innerWidth < 640 ? Views.DAY : Views.WEEK
   );
+  const queryClient = useQueryClient();
 
   // Auto-switch to Day view on narrow screens (mobile)
   useEffect(() => {
@@ -52,6 +54,20 @@ const ScheduleCalendar = () => {
       setCurrentView(Views.DAY);
     }
   }, []);
+
+  // Realtime: refresh calendar when jobs, schedules, or assignments change
+  useEffect(() => {
+    const ch = supabase
+      .channel("schedule-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "job_schedules" }, () =>
+        queryClient.invalidateQueries({ queryKey: ["job-schedules"] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, () =>
+        queryClient.invalidateQueries({ queryKey: ["job-schedules"] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "assignments" }, () =>
+        queryClient.invalidateQueries({ queryKey: ["job-schedules"] }))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [queryClient]);
 
   const { data: schedules = [], refetch } = useQuery({
     queryKey: ["job-schedules"],
@@ -148,6 +164,9 @@ const ScheduleCalendar = () => {
             <Badge className="bg-green-500 text-white text-xs">In Progress</Badge>
             <Badge className="bg-gray-500 text-white text-xs">Completed</Badge>
           </div>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+          </Button>
           <Button onClick={() => { setSelectedSlot({ date: new Date() }); setSelectedEvent(null); setModalOpen(true); }}>
             <Plus className="h-4 w-4 mr-2" /> Schedule Job
           </Button>
