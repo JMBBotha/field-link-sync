@@ -9,6 +9,7 @@ import { MapPin, Key, Loader2, AlertCircle, Layers, Navigation, LocateFixed } fr
 import { createTeardropMarkerElement } from "@/utils/MarkerUtils";
 import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilterButtons";
 import { Switch } from "@/components/ui/switch";
+import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
 
 interface AgentLocation {
   agent_id: string;
@@ -277,7 +278,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       }
     },
     getMapboxToken: () => {
-      return mapboxgl.accessToken || localStorage.getItem('mapbox_token');
+      return mapboxgl.accessToken || getMapboxTokenSync();
     },
   }), [mapLoaded]);
 
@@ -285,13 +286,21 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     fetchData();
     const cleanupSubscription = subscribeToUpdates();
 
-    // Check for Mapbox token from localStorage
-    const storedToken = localStorage.getItem("mapbox_token");
-    if (storedToken && storedToken.startsWith("pk.")) {
-      initializeMap(storedToken);
-    } else {
-      setShowTokenInput(true);
-    }
+    // Load Mapbox public token from shared source (env / edge function / cache)
+    (async () => {
+      const stored = getMapboxTokenSync();
+      if (stored && stored.startsWith("pk.")) {
+        initializeMap(stored);
+        return;
+      }
+      const fetched = await getMapboxToken();
+      if (fetched && fetched.startsWith("pk.")) {
+        initializeMap(fetched);
+      } else {
+        setMapFailed(true);
+        setLoadingStatus("Map token unavailable");
+      }
+    })();
 
     // Refresh markers every minute to update time badges (safe-guarded by updateMarkers)
     const intervalId = setInterval(() => {
@@ -465,27 +474,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     };
   };
 
-  const handleTokenSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setTokenError("");
-
-    if (!tokenInput.trim()) {
-      setTokenError("Please enter a token");
-      return;
-    }
-
-    if (!tokenInput.startsWith('pk.')) {
-      setTokenError("Token must start with 'pk.'");
-      return;
-    }
-
-    localStorage.setItem('mapbox_token', tokenInput);
-    setShowTokenInput(false);
-    initializeMap(tokenInput);
-  };
-
-  const handleResetToken = () => {
-    localStorage.removeItem('mapbox_token');
+  const handleRetryMap = async () => {
     clearAllMarkers();
     if (mapInstanceRef.current) {
       mapInstanceRef.current.remove();
@@ -493,8 +482,9 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     }
     initialBoundsFitRef.current = false;
     setMapLoaded(false);
-    setShowTokenInput(true);
-    setTokenInput("");
+    setMapFailed(false);
+    const t = getMapboxTokenSync() || (await getMapboxToken());
+    if (t) initializeMap(t);
   };
 
   const initializeMap = (rawToken: string) => {
@@ -664,8 +654,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         }
         const status = (e as any)?.error?.status;
         if (status === 401 || status === 403) {
-          setTokenError("Invalid token. Please check your Mapbox public token.");
-          handleResetToken();
+          setMapFailed(true);
+          setLoadingStatus("Map token rejected by Mapbox.");
         } else {
           setMapFailed(true);
           setLoadingTimeout(true);
@@ -677,7 +667,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       if (loadingTimeoutRef.current) {
         clearTimeout(loadingTimeoutRef.current);
       }
-      setShowTokenInput(true);
+      setMapFailed(true);
     }
   };
 
@@ -1198,62 +1188,21 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
 
   return (
     <div className="h-full relative">
-      {showTokenInput ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-muted/50 p-6">
-          <div className="bg-card border rounded-lg p-6 max-w-md w-full shadow-lg">
-            <div className="flex items-center gap-2 mb-4">
-              <MapPin className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold">Mapbox Setup</h3>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Enter your Mapbox public token to enable the map. Get your free token from{" "}
-              <a
-                href="https://account.mapbox.com/access-tokens/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                mapbox.com
-              </a>
-            </p>
-            <form onSubmit={handleTokenSubmit} className="space-y-3">
-              <div className="relative">
-                <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="pk.eyJ1IjoieW91ci10b2tlbi1oZXJlIi4uLg=="
-                  value={tokenInput}
-                  onChange={(e) => setTokenInput(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              {tokenError && (
-                <p className="text-sm text-destructive">{tokenError}</p>
-              )}
-              <Button type="submit" className="w-full">
-                Save Token
-              </Button>
-            </form>
-          </div>
-        </div>
-      ) : mapFailed ? (
+      {mapFailed ? (
         <div className="absolute inset-0 bg-muted flex flex-col items-center justify-center p-6 text-center">
           <AlertCircle className="h-12 w-12 text-muted-foreground mb-3" />
           <h3 className="text-lg font-semibold text-foreground mb-1">Map Unavailable</h3>
           <p className="text-sm text-muted-foreground mb-4 max-w-xs">
-            Unable to load map tiles. Check your internet connection or Mapbox token.
+            Unable to load map tiles. Check your internet connection and try again.
           </p>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleResetToken}>Change Token</Button>
-            <Button size="sm" onClick={() => { setMapFailed(false); const t = localStorage.getItem("mapbox_token"); if (t) initializeMap(t); }}>Retry</Button>
+            <Button size="sm" onClick={handleRetryMap}>Retry</Button>
           </div>
         </div>
       ) : (
         <>
           <div ref={mapRef} className="w-full h-full" />
-          <Button variant="outline" size="sm" onClick={handleResetToken} className="absolute top-2 left-2 z-10">
-            Reset Token
-          </Button>
+
 
           {/* Map controls: traffic + route */}
           {mapLoaded && (
@@ -1352,12 +1301,11 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
                 {loadingTimeout ? <AlertCircle className="h-8 w-8 text-destructive mx-auto" /> : <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />}
                 <div>
                   <p className="text-sm font-medium">{loadingStatus}</p>
-                  {loadingTimeout && <p className="text-xs text-muted-foreground mt-1">Check your internet connection or try a different token.</p>}
+                  {loadingTimeout && <p className="text-xs text-muted-foreground mt-1">Check your internet connection.</p>}
                 </div>
                 {loadingTimeout && (
                   <div className="flex gap-2 justify-center pt-2">
-                    <Button size="sm" variant="outline" onClick={handleResetToken}>Change Token</Button>
-                    <Button size="sm" onClick={() => { const t = localStorage.getItem("mapbox_token"); if (t) initializeMap(t); }}>Retry</Button>
+                    <Button size="sm" onClick={handleRetryMap}>Retry</Button>
                   </div>
                 )}
               </div>

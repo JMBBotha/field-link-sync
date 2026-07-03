@@ -21,6 +21,7 @@ import { format, addDays, startOfWeek, endOfWeek, isToday, isSameDay, parseISO }
 import { motion, AnimatePresence } from "framer-motion";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
 
 // ─── Types ───
 interface Lead {
@@ -422,24 +423,27 @@ const AdminDispatchPage = () => {
   // ─── Map ───
   useEffect(() => {
     if (!showMapPane || !mapContainerRef.current) return;
-    const token = localStorage.getItem("mapbox_token");
-    if (!token) return;
+    let cancelled = false;
+    (async () => {
+      const token = getMapboxTokenSync() || (await getMapboxToken());
+      if (cancelled || !token || !mapContainerRef.current) return;
 
-    mapboxgl.accessToken = token;
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: "mapbox://styles/mapbox/dark-v11",
-      center: [18.4241, -33.9249], // Cape Town
-      zoom: 11,
-    });
-    mapRef.current = map;
-
-    map.on("load", () => updateMapMarkers());
+      mapboxgl.accessToken = token;
+      const map = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: "mapbox://styles/mapbox/dark-v11",
+        center: [18.4241, -33.9249], // Cape Town
+        zoom: 11,
+      });
+      mapRef.current = map;
+      map.on("load", () => updateMapMarkers());
+    })();
 
     return () => {
+      cancelled = true;
       markersRef.current.forEach(m => m.remove());
       markersRef.current = [];
-      map.remove();
+      mapRef.current?.remove();
       mapRef.current = null;
     };
   }, [showMapPane]);
@@ -717,11 +721,6 @@ const AdminDispatchPage = () => {
           {showMapPane && (
             <div className="h-48 border-b shrink-0 relative">
               <div ref={mapContainerRef} className="w-full h-full" />
-              {!localStorage.getItem("mapbox_token") && (
-                <div className="absolute inset-0 flex items-center justify-center bg-muted">
-                  <p className="text-sm text-muted-foreground">Configure Mapbox token in Map view first</p>
-                </div>
-              )}
             </div>
           )}
 

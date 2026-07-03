@@ -4,6 +4,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { AlertCircle, Crosshair, Loader2, Maximize2, Minimize2, Search, X, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
 
 const DEFAULT_CENTER: [number, number] = [18.4241, -33.9249]; // [lng, lat] Cape Town
 
@@ -31,8 +32,7 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
   const searchWrapRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<number | null>(null);
 
-  const [token, setToken] = useState<string>(getStoredToken());
-  const [tokenInput, setTokenInput] = useState<string>("");
+  const [token, setToken] = useState<string>(getMapboxTokenSync());
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
 
@@ -43,6 +43,16 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
   const [gpsLoading, setGpsLoading] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [dragPreview, setDragPreview] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Fetch shared token if not already cached
+  useEffect(() => {
+    if (token) return;
+    let cancelled = false;
+    getMapboxToken().then((t) => {
+      if (!cancelled && t) setToken(t);
+    });
+    return () => { cancelled = true; };
+  }, [token]);
 
   // Initialize / re-init map
   useEffect(() => {
@@ -226,32 +236,12 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
     );
   };
 
-  const handleSaveToken = () => {
-    const t = tokenInput.trim();
-    if (!t.startsWith("pk.")) return;
-    localStorage.setItem("mapbox_token", t);
-    setToken(t);
-    setMapError(null);
-  };
-
   if (!token) {
     return (
       <div className="rounded-md border bg-muted/30 p-4 space-y-2">
         <div className="flex items-center gap-2 text-sm">
-          <AlertCircle className="h-4 w-4 text-amber-500" />
-          <span>Mapbox token required</span>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Paste your Mapbox public token (pk.…) to enable map & search.
-        </p>
-        <div className="flex gap-2">
-          <Input
-            value={tokenInput}
-            onChange={(e) => setTokenInput(e.target.value)}
-            placeholder="pk.eyJ..."
-            className="h-8 text-xs"
-          />
-          <Button size="sm" onClick={handleSaveToken}>Save</Button>
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <span>Loading map…</span>
         </div>
       </div>
     );
@@ -347,13 +337,9 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                localStorage.removeItem("mapbox_token");
-                setToken("");
-                setMapError(null);
-              }}
+              onClick={() => setMapError(null)}
             >
-              Reset token
+              Dismiss
             </Button>
           </div>
         </div>
