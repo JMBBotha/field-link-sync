@@ -69,25 +69,27 @@ const AdminMapPage = () => {
   return (
     <div className="h-full flex flex-col min-h-0">
       {/* Tab switcher */}
-      <div className="shrink-0 flex items-center gap-1 px-3 py-2 border-b bg-card/80 backdrop-blur-sm z-20">
-        <Button
-          size="sm"
-          variant="default"
-          className="gap-1.5 text-xs h-8"
-        >
-          <Map className="h-3.5 w-3.5" />
-          Live Map
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={handleMyLocation}
-          className="gap-1.5 text-xs h-8"
-        >
-          <LocateFixed className="h-3.5 w-3.5" />
-          My Location
-        </Button>
-        <div className="ml-auto">
+      <div className="shrink-0 flex flex-wrap items-center gap-2 px-3 py-2 border-b bg-card/80 backdrop-blur-sm z-20">
+        <div className="flex items-center gap-1">
+          <Button
+            size="sm"
+            variant="default"
+            className="gap-1.5 text-xs h-8"
+          >
+            <Map className="h-3.5 w-3.5" />
+            Live Map
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={handleMyLocation}
+            className="gap-1.5 text-xs h-8"
+          >
+            <LocateFixed className="h-3.5 w-3.5" />
+            My Location
+          </Button>
+        </div>
+        <div className="w-full sm:w-auto sm:ml-auto">
           <BusinessSearch
             getToken={() => mapRef.current?.getMapboxToken() ?? null}
             onSelect={(lat, lng, name, address) => {
