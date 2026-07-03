@@ -236,32 +236,12 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
     );
   };
 
-  const handleSaveToken = () => {
-    const t = tokenInput.trim();
-    if (!t.startsWith("pk.")) return;
-    localStorage.setItem("mapbox_token", t);
-    setToken(t);
-    setMapError(null);
-  };
-
   if (!token) {
     return (
       <div className="rounded-md border bg-muted/30 p-4 space-y-2">
         <div className="flex items-center gap-2 text-sm">
-          <AlertCircle className="h-4 w-4 text-amber-500" />
-          <span>Mapbox token required</span>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Paste your Mapbox public token (pk.…) to enable map & search.
-        </p>
-        <div className="flex gap-2">
-          <Input
-            value={tokenInput}
-            onChange={(e) => setTokenInput(e.target.value)}
-            placeholder="pk.eyJ..."
-            className="h-8 text-xs"
-          />
-          <Button size="sm" onClick={handleSaveToken}>Save</Button>
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <span>Loading map…</span>
         </div>
       </div>
     );
