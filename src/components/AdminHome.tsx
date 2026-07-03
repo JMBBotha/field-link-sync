@@ -101,8 +101,9 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         supabase.from("profiles").select("id, full_name, availability_status").limit(20),
         supabase.from("notifications").select("id, type, title, body, created_at").order("created_at", { ascending: false }).limit(15),
         supabase.rpc("get_overdue_maintenance_count"),
-        supabase.from("leads").select("id, customer_name, service_type, address, status, created_at").in("status", ["pending", "new", "open"]).order("created_at", { ascending: false }).limit(6),
-        supabase.from("jobs").select("id, title, status, scheduled_start, customer_name, address").gte("scheduled_start", today + "T00:00:00").lt("scheduled_start", today + "T23:59:59").order("scheduled_start", { ascending: true }).limit(6),
+        supabase.from("leads").select("id, customer_name, service_type, customer_address, status, created_at").eq("status", "pending").order("created_at", { ascending: false }).limit(6),
+        supabase.from("jobs").select("id, title, status, scheduled_for, address, customer_id").gte("scheduled_for", today + "T00:00:00").lt("scheduled_for", today + "T23:59:59").order("scheduled_for", { ascending: true }).limit(6),
+
       ]);
 
       const revenueToday = revenueRes.data?.reduce((sum, inv) => sum + Number(inv.grand_total || 0), 0) || 0;
