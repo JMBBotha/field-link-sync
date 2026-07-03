@@ -164,6 +164,9 @@ const ScheduleCalendar = () => {
             <Badge className="bg-green-500 text-white text-xs">In Progress</Badge>
             <Badge className="bg-gray-500 text-white text-xs">Completed</Badge>
           </div>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+          </Button>
           <Button onClick={() => { setSelectedSlot({ date: new Date() }); setSelectedEvent(null); setModalOpen(true); }}>
             <Plus className="h-4 w-4 mr-2" /> Schedule Job
           </Button>
