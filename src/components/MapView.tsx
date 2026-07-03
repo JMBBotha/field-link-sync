@@ -786,6 +786,68 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     source.setData({ type: "FeatureCollection", features: completedFeatures });
   }, [leads, statusFilters, mapLoaded]);
 
+  // Customer-location pins (multi-site). Rendered as small blue pins separate from leads.
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !mapLoaded) return;
+
+    const seen = new Set<string>();
+    customerLocations.forEach((loc: any) => {
+      seen.add(loc.id);
+      const lat = Number(loc.latitude);
+      const lng = Number(loc.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+      const custName = loc.customers?.name || "Customer";
+      const popupHTML =
+        `<div style="font-family:system-ui;font-size:12px;min-width:180px">
+           <div style="font-weight:600;color:#0066CC">📍 ${loc.label || "Location"}</div>
+           <div style="color:#111;margin-top:2px">${custName}</div>
+           <div style="color:#666;margin-top:2px">${loc.address || ""}</div>
+         </div>`;
+
+      let marker = customerLocationMarkersRef.current.get(loc.id);
+      if (!marker) {
+        const el = document.createElement("div");
+        el.style.width = "18px";
+        el.style.height = "18px";
+        el.style.borderRadius = "50%";
+        el.style.background = "#0066CC";
+        el.style.border = "2px solid white";
+        el.style.boxShadow = "0 1px 3px rgba(0,0,0,0.4)";
+        el.style.cursor = "pointer";
+        el.title = `${loc.label || "Location"} — ${custName}`;
+
+        const popup = new mapboxgl.Popup({ offset: 12, closeOnClick: false, maxWidth: "260px" }).setHTML(popupHTML);
+        marker = new mapboxgl.Marker({ element: el, anchor: "center" })
+          .setLngLat([lng, lat])
+          .setPopup(popup)
+          .addTo(map);
+        el.addEventListener("mouseenter", () => { if (!popup.isOpen()) marker!.togglePopup(); });
+        el.addEventListener("mouseleave", () => {
+          setTimeout(() => {
+            const pel = popup.getElement();
+            if (pel && pel.matches(":hover")) return;
+            if (popup.isOpen()) marker!.togglePopup();
+          }, 200);
+        });
+        customerLocationMarkersRef.current.set(loc.id, marker);
+      } else {
+        marker.setLngLat([lng, lat]);
+        marker.getPopup()?.setHTML(popupHTML);
+      }
+    });
+
+    // Remove pins for locations no longer present
+    customerLocationMarkersRef.current.forEach((m, id) => {
+      if (!seen.has(id)) {
+        try { m.remove(); } catch { /* noop */ }
+        customerLocationMarkersRef.current.delete(id);
+      }
+    });
+  }, [customerLocations, mapLoaded]);
+
+
   useEffect(() => {
     if (mapLoaded && mapInstanceRef.current && (agents.length > 0 || leads.length > 0)) {
       updateMarkers();
