@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useRole } from "@/hooks/useRole";
 import {
   LayoutDashboard,
   MapPin,
@@ -43,12 +44,15 @@ interface NavItem {
   label: string;
   icon: React.ElementType;
   badge?: number;
+  adminOnly?: boolean;
 }
 
 interface NavGroup {
   title: string;
+  adminOnly?: boolean;
   items: NavItem[];
 }
+
 
 interface AdminSidebarProps {
   onCreateLead: () => void;
