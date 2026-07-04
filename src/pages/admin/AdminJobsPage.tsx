@@ -135,6 +135,16 @@ const AdminJobsPage = () => {
                           {assignee.profiles?.full_name || "Assigned"}
                         </div>
                       )}
+                      {job.invoices?.id && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); navigate(`/admin/invoices/${job.invoices.id}`); }}
+                          className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 px-2 py-0.5 text-[10px] font-semibold hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors"
+                          title={`Invoice ${job.invoices.invoice_number || ""} · ${job.invoices.status || ""}`}
+                        >
+                          <FileText className="h-3 w-3" />
+                          {job.invoices.invoice_number || "Invoice"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
