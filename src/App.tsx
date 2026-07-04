@@ -150,6 +150,8 @@ const App = () => (
                     <Route path="quotes" element={<AdminQuotesPage />} />
                     <Route path="templates" element={<AdminProposalsPage />} />
                     <Route path="invoices" element={<AdminInvoicesPage />} />
+                    <Route path="help" element={<AdminHelpPage />} />
+
                     
                     <Route path="agreements" element={<ServiceAgreements />} />
                     <Route path="catalog" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminCatalogPage /></RequireRole>} />
