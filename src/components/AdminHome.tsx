@@ -277,7 +277,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           : kpiCards.map((kpi) => (
               <Card
                 key={kpi.key}
-                className="cursor-pointer rounded-xl border border-border transition-all duration-200 hover:border-primary/30 hover:bg-muted/40 dark:hover:bg-[#1a2a4a]/50 hover:shadow-md"
+                className="cursor-pointer rounded-xl border border-slate-700/60 bg-gradient-to-br from-slate-800 via-slate-800 to-slate-700 text-slate-100 transition-all duration-200 hover:border-primary/40 hover:shadow-md [--muted-foreground:215_20%_78%]"
                 onClick={() => setSelectedKpi(kpi.key)}
               >
                 <CardContent className="p-3 md:p-4">
