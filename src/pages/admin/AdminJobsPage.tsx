@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, MapPin, Clock, User, CalendarDays } from "lucide-react";
+import { Plus, Search, MapPin, Clock, User, CalendarDays, FileText } from "lucide-react";
 import { format } from "date-fns";
 import CreateJobDialog from "@/components/jobs/CreateJobDialog";
 import RequireRole from "@/components/RequireRole";
