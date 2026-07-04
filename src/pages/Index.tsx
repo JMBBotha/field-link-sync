@@ -60,7 +60,7 @@ const Index = () => {
 
       {/* Feature cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl w-full mb-10">
-        <div className="p-4 rounded-xl border border-white/15 bg-white/5 backdrop-blur-sm text-center">
+        <div className="p-4 rounded-xl border border-white/25 bg-[linear-gradient(135deg,hsl(204,100%,36%)_0%,hsl(204,45%,58%)_52%,hsl(210,28%,84%)_100%)] shadow-lg text-center">
           <div className="mx-auto mb-3 p-2 rounded-lg bg-[hsl(25,95%,53%)]/20 text-[hsl(25,95%,53%)] w-fit">
             <MapPin className="h-5 w-5" />
           </div>
@@ -68,7 +68,7 @@ const Index = () => {
           <p className="text-xs text-white/50 mt-1">Monitor agents in real-time on an interactive map</p>
         </div>
 
-        <div className="p-4 rounded-xl border border-white/15 bg-white/5 backdrop-blur-sm text-center">
+        <div className="p-4 rounded-xl border border-white/25 bg-[linear-gradient(135deg,hsl(204,100%,36%)_0%,hsl(204,45%,58%)_52%,hsl(210,28%,84%)_100%)] shadow-lg text-center">
           <div className="mx-auto mb-3 p-2 rounded-lg bg-[hsl(25,95%,53%)]/20 text-[hsl(25,95%,53%)] w-fit">
             <Navigation className="h-5 w-5" />
           </div>
@@ -76,7 +76,7 @@ const Index = () => {
           <p className="text-xs text-white/50 mt-1">Proximity-based lead routing to nearest agents</p>
         </div>
 
-        <div className="p-4 rounded-xl border border-white/15 bg-white/5 backdrop-blur-sm text-center">
+        <div className="p-4 rounded-xl border border-white/25 bg-[linear-gradient(135deg,hsl(204,100%,36%)_0%,hsl(204,45%,58%)_52%,hsl(210,28%,84%)_100%)] shadow-lg text-center">
           <div className="mx-auto mb-3 p-2 rounded-lg bg-[hsl(25,95%,53%)]/20 text-[hsl(25,95%,53%)] w-fit">
             <Users className="h-5 w-5" />
           </div>
