@@ -4,10 +4,11 @@ import { r2, VAT_RATE } from "@/utils/pricing";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search, Wand2, ChevronUp, ChevronDown, ArrowLeft, FileDown, Save,
-  Loader2, CheckCircle, PanelRightClose, PanelRightOpen, QrCode,
+  Loader2, CheckCircle, PanelRightClose, PanelRightOpen, QrCode, MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   DndContext, DragOverlay, closestCenter,
