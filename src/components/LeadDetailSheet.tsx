@@ -499,6 +499,19 @@ const LeadDetailSheet = ({
               currentLeadId={lead.id}
             />
 
+            {/* Create Draft Quote - available before completion */}
+            {lead?.status !== 'completed' && (
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full"
+                onClick={handleCreateDraftQuote}
+              >
+                <FileText className="mr-2 h-5 w-5" />
+                Create Draft Quote
+              </Button>
+            )}
+
             {/* Create Invoice - Completed leads only */}
             {lead?.status === 'completed' && (
               leadInvoice ? (
