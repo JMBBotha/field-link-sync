@@ -306,19 +306,33 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
       {/* Primary widgets — Recent Open Leads + Today's Dispatch */}
       <div className="grid md:grid-cols-2 gap-6">
         <Card>
-          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2 gap-2 flex-wrap">
             <CardTitle className="text-base flex items-center gap-2">
               <Plus className="h-4 w-4 text-primary" /> Recent Open Leads
             </CardTitle>
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/admin">View all</Link>
-            </Button>
+            <div className="flex items-center gap-1">
+              <div className="inline-flex rounded-md border border-border p-0.5 bg-muted/30">
+                {(["day", "week", "month"] as const).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setLeadsRange(r)}
+                    className={`text-[11px] px-2 py-0.5 rounded ${leadsRange === r ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+                  >
+                    {r === "day" ? "Today" : r === "week" ? "Week" : "Month"}
+                  </button>
+                ))}
+              </div>
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/admin">View all</Link>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-2 max-h-80 overflow-y-auto">
             {isLoading ? (
               Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)
             ) : !stats?.openLeads?.length ? (
-              <p className="text-sm text-muted-foreground text-center py-6">No open leads</p>
+              <p className="text-sm text-muted-foreground text-center py-6">No open leads {leadsRange === "day" ? "today" : leadsRange === "week" ? "this week" : "this month"}</p>
             ) : (
               stats.openLeads.map((lead: any) => (
                 <div key={lead.id} className="flex items-center justify-between gap-2 p-2 rounded-md border border-border/50 hover:bg-muted/50">
