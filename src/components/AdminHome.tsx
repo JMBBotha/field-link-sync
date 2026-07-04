@@ -33,6 +33,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   const [selectedKpi, setSelectedKpi] = useState<string | null>(null);
   const [convertingId, setConvertingId] = useState<string | null>(null);
   const [jobDialog, setJobDialog] = useState<{ open: boolean; leadId?: string; customerId?: string }>({ open: false });
+  const [leadsRange, setLeadsRange] = useState<"day" | "week" | "month">("day");
   const { companyId } = useUserCompanyId();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
