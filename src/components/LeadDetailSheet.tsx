@@ -559,7 +559,7 @@ const LeadDetailSheet = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-9 rounded-lg text-xs px-2"
+                  className="h-11 rounded-lg text-xs px-2"
                   onClick={() => photoInputRef.current?.click()}
                   disabled={photoUploading}
                 >
@@ -582,7 +582,7 @@ const LeadDetailSheet = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-9 rounded-lg text-xs px-2"
+                    className="h-11 rounded-lg text-xs px-2"
                     onClick={() => setShowEditDialog(true)}
                   >
                     <Pencil className="h-3.5 w-3.5 mr-1" />
@@ -594,7 +594,7 @@ const LeadDetailSheet = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-9 rounded-lg text-xs px-2"
+                    className="h-11 rounded-lg text-xs px-2"
                     onClick={() => setShowChangeRequestDialog(true)}
                   >
                     <ClockIcon className="h-3.5 w-3.5 mr-1" />

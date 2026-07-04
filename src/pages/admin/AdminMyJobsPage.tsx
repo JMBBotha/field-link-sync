@@ -141,77 +141,110 @@ const AdminMyJobsPage = () => {
   }, [queryClient]);
 
   return (
-    <div className="space-y-4 p-4 md:p-6">
+    <div className="space-y-4 p-4 md:p-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">My Jobs</h1>
+        <h1 className="page-title">My Jobs</h1>
         <Button size="sm" variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ["my-jobs"] })}>
           <RefreshCw className="h-4 w-4 mr-2" /> Refresh
         </Button>
       </div>
 
       <div className="flex gap-2">
-        <Button variant={filter === "active" ? "default" : "outline"} size="sm" onClick={() => setFilter("active")}>Active</Button>
-        <Button variant={filter === "completed" ? "default" : "outline"} size="sm" onClick={() => setFilter("completed")}>Completed</Button>
+        <Button
+          variant={filter === "active" ? "default" : "outline"}
+          className="flex-1 sm:flex-none"
+          onClick={() => setFilter("active")}
+        >
+          Active
+        </Button>
+        <Button
+          variant={filter === "completed" ? "default" : "outline"}
+          className="flex-1 sm:flex-none"
+          onClick={() => setFilter("completed")}
+        >
+          Completed
+        </Button>
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">Loading...</div>
+        <div className="grid gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-32 rounded-lg bg-muted animate-pulse" />
+          ))}
+        </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">No {filter} jobs</div>
+        <div className="flex flex-col items-center gap-2 text-center py-16 text-muted-foreground">
+          <CalendarDays className="h-10 w-10 opacity-40" />
+          <p className="text-sm">No {filter} jobs</p>
+        </div>
       ) : (
         <div className="grid gap-3">
           {filtered.map((assignment) => {
             const job = assignment.jobs;
             if (!job) return null;
             return (
-              <Card key={assignment.id}>
-                <CardContent className="p-4">
+              <Card key={assignment.id} className="overflow-hidden">
+                <CardContent className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 space-y-1">
+                    <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-foreground">{job.title}</span>
+                        <span className="font-semibold text-base leading-tight">{job.title}</span>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[assignment.status]}`}>
-                          {assignment.status}
+                          {assignment.status.replace(/_/g, " ")}
                         </span>
                       </div>
                       {job.customers?.name && (
                         <div className="text-sm text-muted-foreground">{job.customers.name}</div>
                       )}
                       {job.address && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <MapPin className="h-3.5 w-3.5" /> {job.address}
+                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <MapPin className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{job.address}</span>
                         </div>
                       )}
                       {job.scheduled_for && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <CalendarDays className="h-3.5 w-3.5" />
+                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <CalendarDays className="h-3.5 w-3.5 shrink-0" />
                           {format(new Date(job.scheduled_for), "dd MMM yyyy, HH:mm")}
                         </div>
                       )}
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                      {assignment.status === "proposed" && (
-                        <>
-                          <Button size="sm" className="gap-1 h-7 text-xs" onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "accepted" })}>
-                            <CheckCircle className="h-3 w-3" /> Accept
-                          </Button>
-                          <Button size="sm" variant="outline" className="gap-1 h-7 text-xs" onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "rejected" })}>
-                            <XCircle className="h-3 w-3" /> Reject
-                          </Button>
-                        </>
-                      )}
-                      {assignment.status === "accepted" && (
-                        <Button size="sm" className="gap-1 h-7 text-xs" onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "in_progress", jobStatus: "in_progress" })}>
-                          <Play className="h-3 w-3" /> Start
-                        </Button>
-                      )}
-                      {assignment.status === "in_progress" && (
-                        <Button size="sm" className="gap-1 h-7 text-xs" onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "completed", jobStatus: "completed" })}>
-                          <CheckCircle className="h-3 w-3" /> Complete
-                        </Button>
-                      )}
-                    </div>
                   </div>
+
+                  {/* Full-width action buttons — mobile-friendly touch targets */}
+                  {assignment.status === "proposed" && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        className="h-11 gap-1.5"
+                        onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "accepted" })}
+                      >
+                        <CheckCircle className="h-4 w-4" /> Accept
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-11 gap-1.5"
+                        onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "rejected" })}
+                      >
+                        <XCircle className="h-4 w-4" /> Reject
+                      </Button>
+                    </div>
+                  )}
+                  {assignment.status === "accepted" && (
+                    <Button
+                      className="w-full h-11 gap-1.5"
+                      onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "in_progress", jobStatus: "in_progress" })}
+                    >
+                      <Play className="h-4 w-4" /> Start Job
+                    </Button>
+                  )}
+                  {assignment.status === "in_progress" && (
+                    <Button
+                      className="w-full h-11 gap-1.5 bg-green-600 hover:bg-green-700"
+                      onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "completed", jobStatus: "completed" })}
+                    >
+                      <CheckCircle className="h-4 w-4" /> Complete Job
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             );
@@ -223,3 +256,4 @@ const AdminMyJobsPage = () => {
 };
 
 export default AdminMyJobsPage;
+
