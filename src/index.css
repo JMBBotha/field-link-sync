@@ -161,6 +161,22 @@ All colors MUST be HSL.
   }
 }
 
+/* Mobile touch-target minimums (WCAG AAA ≈ 44px) */
+@media (max-width: 767px) {
+  button:not([data-no-min]),
+  a[role="button"]:not([data-no-min]),
+  [role="tab"],
+  .touch-target {
+    min-height: 44px;
+  }
+  /* Slightly tighter page titles on small screens */
+  h1 { @apply text-xl; }
+  h2 { @apply text-lg; }
+  .page-title { @apply text-xl; }
+  .page-shell { @apply p-3 space-y-4; }
+}
+
+
 /* Refined skeleton shimmer */
 @keyframes shimmer {
   0%   { background-position: -200% 0; }

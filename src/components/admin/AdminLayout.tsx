@@ -14,6 +14,7 @@ import Footer from "@/components/Footer";
 
 import { useQuery } from "@tanstack/react-query";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import AdminBottomNav from "@/components/admin/AdminBottomNav";
 import IdleWarningModal from "@/components/IdleWarningModal";
 import GlobalSearchDialog from "@/components/GlobalSearchDialog";
 import { useIdleLogout } from "@/hooks/useIdleLogout";
@@ -219,7 +220,7 @@ const AdminLayout = () => {
           </button>
         </div>
 
-        <main className="flex-1 overflow-auto bg-background dark:bg-gradient-to-br dark:from-[#070e1a] dark:via-[#132f52]/40 dark:to-[#0b1a2e]">
+        <main className="flex-1 overflow-auto bg-background dark:bg-gradient-to-br dark:from-[#070e1a] dark:via-[#132f52]/40 dark:to-[#0b1a2e] pb-20 lg:pb-0">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
@@ -235,7 +236,9 @@ const AdminLayout = () => {
         </main>
 
         <Footer />
+        <AdminBottomNav onOpenMenu={() => setMobileMenuOpen(true)} />
       </div>
+
 
       <CreateLeadDialog open={showCreateLead} onOpenChange={setShowCreateLead} />
       <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
