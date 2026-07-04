@@ -232,6 +232,23 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
           </>
         )}
         <div className="space-y-2">
+          {prefillCustomerId && locations.length > 0 && (
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                <MapPin className="h-3 w-3" /> Location
+              </label>
+              <Select value={locationId || ""} onValueChange={(v) => setLocationId(v)}>
+                <SelectTrigger className="h-9 text-xs rounded-lg">
+                  <SelectValue placeholder="Select location..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map((l) => (
+                    <SelectItem key={l.id} value={l.id} className="text-xs">{l.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <Input
             placeholder="Quote name..."
             value={quoteName}
