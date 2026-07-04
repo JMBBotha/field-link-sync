@@ -161,13 +161,21 @@ All colors MUST be HSL.
   }
 }
 
+/* Shared card surface — unified radius, border, subtle shadow */
+.card-surface {
+  @apply rounded-xl border border-border/60 bg-card shadow-sm;
+}
+.card-surface-hover {
+  @apply transition-colors hover:border-border hover:shadow-md;
+}
+
 /* Shared empty-state pattern */
 .empty-state {
-  @apply flex flex-col items-center justify-center gap-3 text-center py-14 px-6 text-muted-foreground;
+  @apply flex flex-col items-center justify-center gap-2.5 text-center py-12 px-6 text-muted-foreground;
 }
-.empty-state svg { @apply h-10 w-10 opacity-40; }
+.empty-state svg { @apply h-9 w-9 opacity-40; }
 .empty-state-title { @apply text-sm font-medium text-foreground; }
-.empty-state-body  { @apply text-sm text-muted-foreground max-w-sm; }
+.empty-state-body  { @apply text-[13px] text-muted-foreground max-w-sm leading-relaxed; }
 
 /* Mobile touch-target minimums (WCAG AAA ≈ 44px) */
 @media (max-width: 767px) {
