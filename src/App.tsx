@@ -31,6 +31,7 @@ import AdminMaintenancePage from "./pages/admin/AdminMaintenancePage";
 import AdminCustomersPage from "./pages/admin/AdminCustomersPage";
 import AdminCustomerDetailPage from "./pages/admin/AdminCustomerDetailPage";
 import AdminJobsPage from "./pages/admin/AdminJobsPage";
+import AdminJobDetailPage from "./pages/admin/AdminJobDetailPage";
 import AdminJobsDispatchPage from "./pages/admin/AdminJobsDispatchPage";
 import AdminMyJobsPage from "./pages/admin/AdminMyJobsPage";
 
