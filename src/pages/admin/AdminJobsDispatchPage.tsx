@@ -252,51 +252,59 @@ const AdminJobsDispatchPage = () => {
     const assignee = job.assignments?.find((a: any) => a.status !== "rejected");
     return (
       <Card
-        className="cursor-pointer hover:shadow-md transition-shadow mb-2"
+        className="cursor-pointer hover:shadow-md active:scale-[0.99] transition-all mb-2"
         draggable
         onDragStart={e => { e.dataTransfer.setData("text/plain", job.id); setDragJobId(job.id); }}
         onDragEnd={() => setDragJobId(null)}
         onClick={() => setDetailJob(job)}
       >
-        <CardContent className="p-3 space-y-1.5">
+        <CardContent className="p-3.5 space-y-2">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-1.5">
-              <GripVertical className="h-3.5 w-3.5 text-muted-foreground cursor-grab" />
-              <span className="font-medium text-sm text-foreground truncate">{job.title}</span>
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab shrink-0 hidden sm:block" />
+              <span className="font-semibold text-[15px] leading-tight text-foreground truncate">{job.title}</span>
             </div>
-            <Badge variant={PRIORITY_VARIANT[job.priority]} className="text-[9px] shrink-0">{job.priority}</Badge>
+            <Badge variant={PRIORITY_VARIANT[job.priority]} className="text-[10px] shrink-0 uppercase">{job.priority}</Badge>
           </div>
+
           {job.customers?.name && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <User className="h-3 w-3" /> {job.customers.name}
+            <div className="flex items-center gap-1.5 text-sm text-foreground/80">
+              <User className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span className="truncate font-medium">{job.customers.name}</span>
             </div>
           )}
+
           {(job.customer_locations?.address || job.address) && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground truncate">
-              <MapPin className="h-3 w-3 shrink-0" />
-              {job.customer_locations?.label && (
-                <span className="font-medium text-foreground">{job.customer_locations.label}:</span>
-              )}
-              <span className="truncate">{job.customer_locations?.address || job.address}</span>
+            <div className="flex items-start gap-1.5 text-sm text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                {job.customer_locations?.label && (
+                  <div className="text-xs font-semibold text-foreground/90">{job.customer_locations.label}</div>
+                )}
+                <div className="truncate">{job.customer_locations?.address || job.address}</div>
+              </div>
             </div>
           )}
+
           {job.scheduled_for && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <CalendarDays className="h-3 w-3" /> {format(new Date(job.scheduled_for), "dd MMM HH:mm")}
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+              {format(new Date(job.scheduled_for), "dd MMM · HH:mm")}
             </div>
           )}
-          <div className="flex items-center justify-between pt-1">
+
+          <div className="flex items-center justify-between pt-1 border-t border-border/40">
             {assignee ? (
-              <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+              <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
                 {assignee.profiles?.full_name}
               </span>
             ) : (
-              <div className="flex gap-1">
-                <Button variant="outline" size="sm" className="h-6 text-[10px] px-2" onClick={e => { e.stopPropagation(); setAssignJobId(job.id); }}>
-                  <Users className="h-3 w-3 mr-1" /> Assign
+              <div className="flex gap-2 w-full">
+                <Button variant="outline" size="sm" className="h-9 flex-1 text-xs" onClick={e => { e.stopPropagation(); setAssignJobId(job.id); }}>
+                  <Users className="h-3.5 w-3.5 mr-1.5" /> Assign
                 </Button>
-                <Button variant="outline" size="sm" className="h-6 text-[10px] px-2" onClick={e => { e.stopPropagation(); autoDispatchMutation.mutate(job.id); }} disabled={autoDispatchMutation.isPending}>
-                  <Zap className="h-3 w-3 mr-1" /> Auto
+                <Button variant="outline" size="sm" className="h-9 flex-1 text-xs" onClick={e => { e.stopPropagation(); autoDispatchMutation.mutate(job.id); }} disabled={autoDispatchMutation.isPending}>
+                  <Zap className="h-3.5 w-3.5 mr-1.5" /> Auto
                 </Button>
               </div>
             )}
@@ -305,6 +313,7 @@ const AdminJobsDispatchPage = () => {
       </Card>
     );
   };
+
 
   return (
     <div className="space-y-4 p-3 sm:p-4 md:p-6">
