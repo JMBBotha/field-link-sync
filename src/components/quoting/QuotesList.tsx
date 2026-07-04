@@ -12,6 +12,7 @@ import QuoteStatusBadge from "./QuoteStatusBadge";
 
 import { useToast } from "@/hooks/use-toast";
 import WhatsAppShareButton from "@/components/WhatsAppShareButton";
+import HelpTip from "@/components/help/HelpTip";
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -71,6 +72,10 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold flex items-center gap-2">
           <FileText className="h-5 w-5" /> Quotes
+          <HelpTip title="Quotes" side="bottom">
+            Once a quote is <strong>Accepted</strong>, use the green <em>Convert to Invoice</em>
+            icon on the row to generate a draft invoice with the same customer, location and line items.
+          </HelpTip>
         </h2>
         <Button onClick={onCreateNew}>
           <Plus className="h-4 w-4 mr-2" /> New Quote

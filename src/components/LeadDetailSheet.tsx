@@ -4,6 +4,7 @@ import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Came
 import BookingBadge from "@/components/BookingBadge";
 import CustomerJobHistory from "@/components/CustomerJobHistory";
 import CreateInvoiceDialog from "@/components/invoicing/CreateInvoiceDialog";
+import HelpTip from "@/components/help/HelpTip";
 import { useJobPhotos, PhotoType } from "@/hooks/useJobPhotos";
 import { useOfflineContext } from "@/contexts/OfflineContext";
 import { Button } from "@/components/ui/button";
@@ -501,15 +502,22 @@ const LeadDetailSheet = ({
 
             {/* Create Draft Quote - available before completion */}
             {lead?.status !== 'completed' && (
-              <Button
-                variant="outline"
-                size="lg"
-                className="w-full"
-                onClick={handleCreateDraftQuote}
-              >
-                <FileText className="mr-2 h-5 w-5" />
-                Create Draft Quote
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="flex-1"
+                  onClick={handleCreateDraftQuote}
+                >
+                  <FileText className="mr-2 h-5 w-5" />
+                  Create Draft Quote
+                </Button>
+                <HelpTip title="Create Draft Quote" side="left">
+                  Auto-links (or creates) the customer, prompts if a possible
+                  duplicate is found, then opens the Quote Builder pre-filled
+                  with this lead's details.
+                </HelpTip>
+              </div>
             )}
 
             {/* Create Invoice - Completed leads only */}

@@ -34,6 +34,7 @@ import {
   Briefcase,
   ClipboardList,
   Sparkles,
+  HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -111,6 +112,7 @@ const AdminSidebar = ({
             { path: "/admin/maintenance", label: "Maintenance", icon: CalendarDays, roles: ["admin", "dispatcher"] },
           ],
         },
+        { path: "/admin/help", label: "Help", icon: HelpCircle },
       ],
     },
     {

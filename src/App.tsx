@@ -22,7 +22,7 @@ import ClientProposalView from "./components/client/ClientProposalView";
 
 // Admin layout + pages
 import AdminLayout from "./components/admin/AdminLayout";
-import { AdminHomePage, AdminMapPage, AdminQuotesPage, AdminProposalsPage, AdminInvoicesPage, AdminImportPage } from "./pages/admin";
+import { AdminHomePage, AdminMapPage, AdminQuotesPage, AdminProposalsPage, AdminInvoicesPage, AdminImportPage, AdminHelpPage } from "./pages/admin";
 import AdminQuoteBuilderPage from "./pages/admin/AdminQuoteBuilderPage";
 import AdminQuoteBuilderPageUnified from "./pages/admin/AdminQuoteBuilderPageUnified";
 import AdminCatalogPage from "./pages/admin/AdminCatalogPage";
@@ -150,6 +150,8 @@ const App = () => (
                     <Route path="quotes" element={<AdminQuotesPage />} />
                     <Route path="templates" element={<AdminProposalsPage />} />
                     <Route path="invoices" element={<AdminInvoicesPage />} />
+                    <Route path="help" element={<AdminHelpPage />} />
+
                     
                     <Route path="agreements" element={<ServiceAgreements />} />
                     <Route path="catalog" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminCatalogPage /></RequireRole>} />
