@@ -2342,6 +2342,7 @@ export type Database = {
           description: string | null
           estimated_duration: string | null
           id: string
+          invoice_id: string | null
           job_type: string | null
           lat: number | null
           lead_id: string | null
@@ -2363,6 +2364,7 @@ export type Database = {
           description?: string | null
           estimated_duration?: string | null
           id?: string
+          invoice_id?: string | null
           job_type?: string | null
           lat?: number | null
           lead_id?: string | null
@@ -2384,6 +2386,7 @@ export type Database = {
           description?: string | null
           estimated_duration?: string | null
           id?: string
+          invoice_id?: string | null
           job_type?: string | null
           lat?: number | null
           lead_id?: string | null
@@ -2423,6 +2426,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
           {
