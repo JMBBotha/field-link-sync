@@ -12,6 +12,7 @@ import QuoteStatusBadge from "./QuoteStatusBadge";
 
 import { useToast } from "@/hooks/use-toast";
 import WhatsAppShareButton from "@/components/WhatsAppShareButton";
+import HelpTip from "@/components/help/HelpTip";
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
