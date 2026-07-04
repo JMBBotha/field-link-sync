@@ -778,6 +778,18 @@ const LeadDetailSheet = ({
                   )}
                 </Button>
 
+                {canEdit && (
+                  <Button
+                    variant="outline"
+                    className="h-12 px-3 shrink-0"
+                    onClick={() => setShowEditDialog(true)}
+                    aria-label="Edit notes"
+                  >
+                    <Pencil className="h-5 w-5" />
+                  </Button>
+                )}
+
+
                 {isAvailable && (
                   <Button
                     className="flex-1 h-12 text-base font-semibold"
