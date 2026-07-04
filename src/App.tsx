@@ -146,6 +146,7 @@ const App = () => (
                     <Route path="dispatch" element={<AdminDispatchPage />} />
                     <Route path="jobs" element={<AdminJobsPage />} />
                     <Route path="jobs/dispatch" element={<AdminJobsDispatchPage />} />
+                    <Route path="jobs/:id" element={<AdminJobDetailPage />} />
                     <Route path="my-jobs" element={<AdminMyJobsPage />} />
                     <Route path="schedule" element={<ScheduleCalendar />} />
                     <Route path="quotes" element={<AdminQuotesPage />} />
