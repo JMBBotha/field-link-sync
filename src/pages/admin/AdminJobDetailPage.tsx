@@ -1,0 +1,236 @@
+import { useNavigate, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  ArrowLeft,
+  MapPin,
+  CalendarDays,
+  User,
+  FileText,
+  Clock,
+  Loader2,
+  Image as ImageIcon,
+} from "lucide-react";
+import { format } from "date-fns";
+import RequireRole from "@/components/RequireRole";
+import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
+import { PhotoGallery } from "@/components/PhotoGallery";
+import { useOfflineContext } from "@/contexts/OfflineContext";
+
+const STATUS_COLORS: Record<string, string> = {
+  scheduled: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+  dispatched: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  in_progress: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+  completed: "bg-muted text-muted-foreground",
+  cancelled: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+};
+
+const PRIORITY_VARIANT: Record<string, "destructive" | "default" | "secondary" | "outline"> = {
+  urgent: "destructive",
+  high: "destructive",
+  normal: "secondary",
+  low: "outline",
+};
+
+const AdminJobDetailPage = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { isOnline } = useOfflineContext();
+
+  const { data: job, isLoading } = useQuery({
+    queryKey: ["job-detail", id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("jobs")
+        .select(
+          "*, customers(id, name, phone), customer_locations!jobs_location_id_fkey(id, label, address_line1, city), invoices!jobs_invoice_id_fkey(id, invoice_number, status, grand_total)"
+        )
+        .eq("id", id!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-24 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading job…
+      </div>
+    );
+  }
+
+  if (!job) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto space-y-4">
+        <Button variant="ghost" size="sm" onClick={() => navigate("/admin/jobs")} className="gap-1.5">
+          <ArrowLeft className="h-4 w-4" /> Back to Jobs
+        </Button>
+        <Card>
+          <CardContent className="p-8 text-center text-muted-foreground">
+            Job not found or you don't have access.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const j: any = job;
+  const location = j.customer_locations;
+  const invoice = j.invoices;
+
+  return (
+    <div className="pb-28 md:pb-24">
+      <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-4">
+        {/* Header */}
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/admin/jobs")} className="gap-1.5 -ml-2">
+            <ArrowLeft className="h-4 w-4" /> Jobs
+          </Button>
+        </div>
+
+        {/* Job info */}
+        <Card>
+          <CardContent className="p-4 md:p-5 space-y-3">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-xl md:text-2xl font-bold leading-tight">{j.title}</h1>
+                <div className="flex items-center gap-2 flex-wrap mt-1.5">
+                  <span
+                    className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                      STATUS_COLORS[j.status] || "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {(j.status || "unknown").replace(/_/g, " ")}
+                  </span>
+                  {j.priority && (
+                    <Badge variant={PRIORITY_VARIANT[j.priority] || "secondary"} className="text-[10px]">
+                      {j.priority}
+                    </Badge>
+                  )}
+                  {j.job_type && (
+                    <Badge variant="outline" className="text-[10px]">
+                      {j.job_type}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {j.description && (
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{j.description}</p>
+            )}
+
+            <div className="grid gap-2 text-sm">
+              {j.customers?.name && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <User className="h-4 w-4 shrink-0" />
+                  <button
+                    onClick={() => navigate(`/admin/customers/${j.customers.id}`)}
+                    className="text-foreground hover:underline text-left"
+                  >
+                    {j.customers.name}
+                  </button>
+                  {j.customers.phone && <span className="text-xs">· {j.customers.phone}</span>}
+                </div>
+              )}
+              {(location?.label || location?.address_line1 || j.address) && (
+                <div className="flex items-start gap-2 text-muted-foreground">
+                  <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span className="text-foreground">
+                    {location?.label ? <strong>{location.label}</strong> : null}
+                    {location?.address_line1 && (
+                      <>
+                        {location?.label ? " · " : ""}
+                        {location.address_line1}
+                        {location.city ? `, ${location.city}` : ""}
+                      </>
+                    )}
+                    {!location && j.address}
+                  </span>
+                </div>
+              )}
+              {j.scheduled_for && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <CalendarDays className="h-4 w-4 shrink-0" />
+                  <span className="text-foreground">
+                    {format(new Date(j.scheduled_for), "EEE dd MMM yyyy · HH:mm")}
+                  </span>
+                </div>
+              )}
+              {j.estimated_duration && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Clock className="h-4 w-4 shrink-0" />
+                  <span className="text-foreground">Est. {j.estimated_duration}</span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Linked invoice */}
+        {invoice?.id && (
+          <Card>
+            <CardContent className="p-4 md:p-5 flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+                  Linked Invoice
+                </div>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  <span className="font-semibold">{invoice.invoice_number || "Invoice"}</span>
+                  <Badge variant="outline" className="text-[10px] capitalize">
+                    {(invoice.status || "").replace(/_/g, " ")}
+                  </Badge>
+                  {typeof invoice.grand_total === "number" && (
+                    <span className="text-sm text-muted-foreground">
+                      R {invoice.grand_total.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => navigate(`/admin/invoices/${invoice.id}`)}
+              >
+                <FileText className="h-4 w-4" /> View Invoice
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Photos (only when the job originated from a lead) */}
+        {j.lead_id && (
+          <Card>
+            <CardContent className="p-4 md:p-5 space-y-3">
+              <h3 className="font-semibold text-sm flex items-center gap-1.5">
+                <ImageIcon className="h-4 w-4 text-muted-foreground" /> Photos
+              </h3>
+              <PhotoGallery leadId={j.lead_id} isOnline={isOnline} compact />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Notes + activity */}
+        <Card>
+          <CardContent className="p-4 md:p-5">
+            <JobActivityTimeline jobId={j.id} />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+const AdminJobDetailPageGuarded = () => (
+  <RequireRole allowedRoles={["admin", "dispatcher", "field_agent"]}>
+    <AdminJobDetailPage />
+  </RequireRole>
+);
+
+export default AdminJobDetailPageGuarded;

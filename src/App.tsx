@@ -31,6 +31,7 @@ import AdminMaintenancePage from "./pages/admin/AdminMaintenancePage";
 import AdminCustomersPage from "./pages/admin/AdminCustomersPage";
 import AdminCustomerDetailPage from "./pages/admin/AdminCustomerDetailPage";
 import AdminJobsPage from "./pages/admin/AdminJobsPage";
+import AdminJobDetailPage from "./pages/admin/AdminJobDetailPage";
 import AdminJobsDispatchPage from "./pages/admin/AdminJobsDispatchPage";
 import AdminMyJobsPage from "./pages/admin/AdminMyJobsPage";
 
@@ -145,6 +146,7 @@ const App = () => (
                     <Route path="dispatch" element={<AdminDispatchPage />} />
                     <Route path="jobs" element={<AdminJobsPage />} />
                     <Route path="jobs/dispatch" element={<AdminJobsDispatchPage />} />
+                    <Route path="jobs/:id" element={<AdminJobDetailPage />} />
                     <Route path="my-jobs" element={<AdminMyJobsPage />} />
                     <Route path="schedule" element={<ScheduleCalendar />} />
                     <Route path="quotes" element={<AdminQuotesPage />} />
