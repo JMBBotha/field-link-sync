@@ -169,6 +169,7 @@ const AdminSidebar = ({
         { path: "/admin/billing", label: "Billing", icon: DollarSign },
         { path: "/admin/notifications", label: "Notifications", icon: Bell, badge: pendingRequestsCount },
         { path: "/admin/settings", label: "Settings", icon: Settings },
+        { path: "/admin/help", label: "Help", icon: HelpCircle },
         {
           // Collapsible "Advanced" bucket — rarely-used / legacy screens.
           // Everything here is still routed and reachable; just tucked away
