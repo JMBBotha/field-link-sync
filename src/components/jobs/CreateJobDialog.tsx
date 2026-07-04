@@ -110,12 +110,15 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     (async () => {
       const { data } = await supabase
         .from("leads")
-        .select("customer_id, customer_address, latitude, longitude")
+        .select("customer_id, customer_name, customer_address, service_type, description, notes, latitude, longitude, priority")
         .eq("id", leadId)
         .maybeSingle();
       if (!data) return;
       if (data.customer_id && !customerId) setCustomerId(data.customer_id);
       if (data.customer_address && !address) setAddress(data.customer_address);
+      setTitle((prev) => prev || [data.service_type, data.customer_name].filter(Boolean).join(" — ") || "");
+      setDescription((prev) => prev || data.description || data.notes || "");
+      if (data.priority) setPriority((prev) => prev === "normal" ? data.priority : prev);
       if (data.latitude && data.longitude && Number(data.latitude) !== 0) {
         setLat(Number(data.latitude));
         setLng(Number(data.longitude));
