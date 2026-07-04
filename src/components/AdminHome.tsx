@@ -339,7 +339,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-2 max-h-80 overflow-y-auto">
+          <CardContent className="space-y-2 max-h-80 overflow-y-auto p-3 pt-0 md:p-6 md:pt-0">
             {isLoading ? (
               Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)
             ) : !stats?.openLeads?.length ? (
