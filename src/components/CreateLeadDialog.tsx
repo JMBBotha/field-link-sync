@@ -29,13 +29,14 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Users, MapPin, Radio, CalendarIcon } from "lucide-react";
+import { Loader2, Users, MapPin, Radio, CalendarIcon, UserCheck, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import LocationPicker from "./LocationPicker";
 import { useNearbyAgents } from "@/hooks/useNearbyAgents";
 import { useBroadcastSettings } from "@/hooks/useBroadcastSettings";
 import { getBroadcastRadiusForType, formatDistance } from "@/lib/geolocation";
+import { findCustomerMatch, type CustomerMatch } from "@/lib/customerMatch";
 
 interface CreateLeadDialogProps {
   open: boolean;
@@ -79,6 +80,9 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
   const [longitude, setLongitude] = useState<number | null>(null);
   const [customRadius, setCustomRadius] = useState<number | null>(null);
   const [nearbyAgents, setNearbyAgents] = useState<NearbyAgent[]>([]);
+  const [customerMatch, setCustomerMatch] = useState<CustomerMatch | null>(null);
+  const [linkedCustomerId, setLinkedCustomerId] = useState<string | null>(null);
+  const [matchDismissed, setMatchDismissed] = useState(false);
   const { toast } = useToast();
   const { findNearbyAgents, loading: loadingAgents } = useNearbyAgents();
   const { settings: broadcastSettings } = useBroadcastSettings();
@@ -98,6 +102,27 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
     };
     fetchAgents();
   }, [latitude, longitude, effectiveRadius, findNearbyAgents]);
+
+  // Debounced customer dedup lookup by phone
+  useEffect(() => {
+    if (linkedCustomerId || matchDismissed) return;
+    const phone = formData.customer_phone.trim();
+    if (phone.length < 7) {
+      setCustomerMatch(null);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const companyId = await getUserCompanyId(user?.id);
+      if (!companyId || cancelled) return;
+      const match = await findCustomerMatch(companyId, phone, null);
+      if (!cancelled) setCustomerMatch(match);
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [formData.customer_phone, user?.id, linkedCustomerId, matchDismissed]);
 
   const isFormValid =
     formData.customer_name.trim() !== "" &&
@@ -141,6 +166,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
         scheduled_time: scheduledTime || null,
         status: "pending",
         company_id,
+        customer_id: linkedCustomerId,
       });
 
       if (error) throw error;
@@ -166,6 +192,9 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
       setScheduledDate(undefined);
       setScheduledTime("");
       setNearbyAgents([]);
+      setCustomerMatch(null);
+      setLinkedCustomerId(null);
+      setMatchDismissed(false);
 
       onOpenChange(false);
     } catch (error: any) {
@@ -235,7 +264,70 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
                 WhatsApp: {formatPhoneForWhatsApp(formData.customer_phone)}
               </p>
             )}
+
+            {/* Customer dedup prompt */}
+            {linkedCustomerId && customerMatch ? (
+              <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 p-2.5 text-xs">
+                <UserCheck className="h-4 w-4 text-primary shrink-0" />
+                <span className="flex-1">
+                  Linked to <strong>{customerMatch.name || "existing customer"}</strong>
+                </span>
+                <button
+                  type="button"
+                  className="text-primary hover:underline font-medium"
+                  onClick={() => {
+                    setLinkedCustomerId(null);
+                    setMatchDismissed(true);
+                  }}
+                >
+                  Unlink
+                </button>
+              </div>
+            ) : customerMatch && !matchDismissed ? (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5 space-y-2">
+                <div className="flex items-start gap-2 text-xs">
+                  <UserCheck className="h-4 w-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground">
+                      Possible match: {customerMatch.name || "Existing customer"}
+                    </p>
+                    <p className="text-muted-foreground truncate">
+                      {customerMatch.phone}
+                      {customerMatch.email ? ` · ${customerMatch.email}` : ""}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="default"
+                    className="h-8 text-xs flex-1"
+                    onClick={() => {
+                      setLinkedCustomerId(customerMatch.id);
+                      if (customerMatch.name && !formData.customer_name.trim()) {
+                        setFormData((p) => ({ ...p, customer_name: customerMatch.name! }));
+                      }
+                    }}
+                  >
+                    <UserCheck className="h-3.5 w-3.5 mr-1" />
+                    Link existing
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs flex-1"
+                    onClick={() => setMatchDismissed(true)}
+                  >
+                    <UserPlus className="h-3.5 w-3.5 mr-1" />
+                    Create new
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </div>
+
 
           <div className="space-y-2">
             <Label>
