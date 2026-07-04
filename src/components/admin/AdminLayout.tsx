@@ -18,6 +18,7 @@ import AdminBottomNav from "@/components/admin/AdminBottomNav";
 import IdleWarningModal from "@/components/IdleWarningModal";
 import GlobalSearchDialog from "@/components/GlobalSearchDialog";
 import { useIdleLogout } from "@/hooks/useIdleLogout";
+import { WelcomeTourDialog } from "@/components/admin/WelcomeTourDialog";
 import logo from "@/assets/logo.png";
 
 const AdminLayout = () => {
@@ -243,6 +244,7 @@ const AdminLayout = () => {
       <CreateLeadDialog open={showCreateLead} onOpenChange={setShowCreateLead} />
       <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
       <IdleWarningModal open={showWarning} secondsLeft={secondsLeft} onStayActive={stayActive} />
+      {currentUserId && <WelcomeTourDialog userId={currentUserId} />}
 
     </div>
   );
