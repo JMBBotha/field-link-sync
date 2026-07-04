@@ -405,24 +405,40 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         </Card>
 
         <Card>
-          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2 gap-2 flex-wrap">
             <CardTitle className="text-base flex items-center gap-2">
-              <Briefcase className="h-4 w-4 text-primary" /> Today's Dispatch
+              <Briefcase className="h-4 w-4 text-primary" /> Upcoming Jobs
             </CardTitle>
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/admin/jobs/dispatch">Dispatch board</Link>
-            </Button>
+            <div className="flex items-center gap-1">
+              <div className="inline-flex rounded-md border border-border p-0.5 bg-muted/30">
+                {(["day", "week", "month"] as const).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setJobsRange(r)}
+                    className={`text-[11px] px-2 py-0.5 rounded ${jobsRange === r ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+                  >
+                    {r === "day" ? "Today" : r === "week" ? "Week" : "Month"}
+                  </button>
+                ))}
+              </div>
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/admin/jobs/dispatch">Dispatch board</Link>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-2 max-h-80 overflow-y-auto">
             {isLoading ? (
               Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)
             ) : !stats?.todayJobs?.length ? (
-              <p className="text-sm text-muted-foreground text-center py-6">No jobs scheduled today</p>
+              <p className="text-sm text-muted-foreground text-center py-6">
+                No jobs scheduled {jobsRange === "day" ? "today" : jobsRange === "week" ? "this week" : "this month"}
+              </p>
             ) : (
               stats.todayJobs.map((job: any) => (
                 <Link
                   key={job.id}
-                  to={`/admin/jobs/dispatch`}
+                  to={`/admin/jobs/${job.id}`}
                   className="flex items-center justify-between gap-2 p-2 rounded-md border border-border/50 hover:bg-muted/50"
                 >
                   <div className="min-w-0 flex-1">
@@ -431,7 +447,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                       {job.address || "No address"}
                     </p>
                     <p className="text-[11px] text-muted-foreground">
-                      {job.scheduled_for ? format(new Date(job.scheduled_for), "HH:mm") : "—"}
+                      {job.scheduled_for ? format(new Date(job.scheduled_for), "dd MMM · HH:mm") : "—"}
                     </p>
                   </div>
                   <Badge variant={job.status === "in_progress" ? "default" : "secondary"} className="shrink-0">
