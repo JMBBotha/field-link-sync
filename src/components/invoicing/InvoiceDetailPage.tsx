@@ -35,6 +35,7 @@ const getStatusBadge = (status: string) => {
   const config: Record<string, { bg: string; text: string; label: string }> = {
     draft: { bg: "bg-muted", text: "text-muted-foreground", label: "Draft" },
     sent: { bg: "bg-blue-500", text: "text-white", label: "Sent" },
+    partially_paid: { bg: "bg-amber-500", text: "text-white", label: "Partially Paid" },
     paid: { bg: "bg-green-500", text: "text-white", label: "Paid" },
     overdue: { bg: "bg-red-500", text: "text-white", label: "Overdue" },
   };
