@@ -193,13 +193,14 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
     staleTime: 60000,
   });
 
-  // Core 4 KPIs — focused on Lead → Job → Invoice flow
+  // Core 5 KPIs — focused on Lead → Job → Invoice flow
   const kpiCards = useMemo(() => [
     { key: "new_leads", label: "New Leads Today", value: stats?.newLeads ?? 0, icon: Plus, color: "text-primary", sparkKey: "leads" as const, sparkColor: "#0077B6" },
+    { key: "active_jobs", label: "Today's Jobs", value: stats?.activeJobs ?? 0, icon: Clock, color: "text-green-500", sparkKey: "active" as const, sparkColor: "#22c55e" },
     { key: "pending_quotes", label: "Pending Quotes", value: stats?.pendingQuotes ?? 0, icon: FileText, color: "text-orange-500", sparkKey: "leads" as const, sparkColor: "#f97316" },
-    { key: "active_jobs", label: "Active Jobs", value: stats?.activeJobs ?? 0, icon: Clock, color: "text-green-500", sparkKey: "active" as const, sparkColor: "#22c55e" },
     { key: "overdue_invoices", label: "Overdue Invoices", value: stats?.overdueInvoices ?? 0, icon: AlertTriangle, color: "text-destructive", sparkKey: "leads" as const, sparkColor: "#ef4444" },
-  ], [stats]);
+    { key: "active_techs", label: "Active Techs", value: jobStats?.activeFieldAgents ?? 0, icon: UserCheck, color: "text-blue-500", sparkKey: "active" as const, sparkColor: "#3b82f6" },
+  ], [stats, jobStats]);
 
   const [showMore, setShowMore] = useState(false);
 
@@ -207,7 +208,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   const activeKpi = kpiCards.find((k) => k.key === selectedKpi);
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -220,8 +221,9 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         </div>
       </div>
 
-      {/* Core 4 KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* Core 5 KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+
 
         {isLoading
           ? Array.from({ length: 4 }).map((_, i) => (
