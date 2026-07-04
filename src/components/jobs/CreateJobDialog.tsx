@@ -47,6 +47,15 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   const [geoStatus, setGeoStatus] = useState<"idle" | "ok" | "failed" | "inherited">("idle");
   const [showPicker, setShowPicker] = useState(false);
 
+  // Sync incoming defaults whenever the dialog opens (dialog is mounted once
+  // and reused, so prop changes must be pushed into state here).
+  useEffect(() => {
+    if (!open) return;
+    setCustomerId((prev) => prev || defaultCustomerId || "");
+    setLeadId((prev) => prev || defaultLeadId || "");
+    setQuoteId((prev) => prev || defaultQuoteId || "");
+  }, [open, defaultCustomerId, defaultLeadId, defaultQuoteId]);
+
   const { data: customers = [] } = useQuery({
     queryKey: ["job-customers", companyId],
     queryFn: async () => {
