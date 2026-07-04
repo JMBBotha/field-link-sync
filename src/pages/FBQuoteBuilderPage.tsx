@@ -176,7 +176,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
         company_id,
         lead_id: prefillLeadId || null,
         customer_id: prefillCustomerId || null,
-        location_id: prefillLocationId || null,
+        location_id: locationId || null,
       }).select("id").single();
       if (error) throw error;
       setSavedId(data.id);
