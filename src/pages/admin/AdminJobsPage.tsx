@@ -40,7 +40,7 @@ const AdminJobsPage = () => {
     queryFn: async () => {
       let q = supabase
         .from("jobs")
-        .select("*, customers(name), assignments(id, profile_id, status, profiles(full_name))")
+        .select("*, customers(name), assignments(id, profile_id, status, profiles(full_name)), invoices!jobs_invoice_id_fkey(id, invoice_number, status)")
         .order("scheduled_for", { ascending: false, nullsFirst: false });
       if (statusFilter !== "all") q = q.eq("status", statusFilter);
       const { data, error } = await q;
