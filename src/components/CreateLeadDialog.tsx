@@ -192,6 +192,9 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
       setScheduledDate(undefined);
       setScheduledTime("");
       setNearbyAgents([]);
+      setCustomerMatch(null);
+      setLinkedCustomerId(null);
+      setMatchDismissed(false);
 
       onOpenChange(false);
     } catch (error: any) {
