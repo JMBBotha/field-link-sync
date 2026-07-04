@@ -231,7 +231,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   const activeKpi = kpiCards.find((k) => k.key === selectedKpi);
 
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto">
+    <div className="px-3 py-4 md:p-6 space-y-4 md:space-y-5 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -245,7 +245,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
       </div>
 
       {/* Core 5 KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3">
 
 
         {isLoading
@@ -268,7 +268,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                 className="cursor-pointer rounded-xl border border-border transition-all duration-200 hover:border-primary/30 hover:bg-muted/40 dark:hover:bg-[#1a2a4a]/50 hover:shadow-md"
                 onClick={() => setSelectedKpi(kpi.key)}
               >
-                <CardContent className="p-4">
+                <CardContent className="p-3 md:p-4">
                   <div className="flex items-center gap-2 mb-1">
                     <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
                     <span className="text-xs text-muted-foreground">{kpi.label}</span>
@@ -315,9 +315,9 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
       )}
 
       {/* Primary widgets — Recent Open Leads + Today's Dispatch */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-2 gap-3 md:gap-6">
         <Card>
-          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2 gap-2 flex-wrap">
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2 gap-2 flex-wrap p-3 md:p-6">
             <CardTitle className="text-base flex items-center gap-2">
               <Plus className="h-4 w-4 text-primary" /> Recent Open Leads
             </CardTitle>
@@ -339,7 +339,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-2 max-h-80 overflow-y-auto">
+          <CardContent className="space-y-2 max-h-80 overflow-y-auto p-3 pt-0 md:p-6 md:pt-0">
             {isLoading ? (
               Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)
             ) : !stats?.openLeads?.length ? (
@@ -405,7 +405,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         </Card>
 
         <Card>
-          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2 gap-2 flex-wrap">
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2 gap-2 flex-wrap p-3 md:p-6">
             <CardTitle className="text-base flex items-center gap-2">
               <Briefcase className="h-4 w-4 text-primary" /> Upcoming Jobs
             </CardTitle>
@@ -427,7 +427,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-2 max-h-80 overflow-y-auto">
+          <CardContent className="space-y-2 max-h-80 overflow-y-auto p-3 pt-0 md:p-6 md:pt-0">
             {isLoading ? (
               Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)
             ) : !stats?.todayJobs?.length ? (
