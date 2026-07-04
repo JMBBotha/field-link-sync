@@ -102,8 +102,13 @@ export async function convertQuoteToInvoice(quoteId: string, agentUserId: string
     .single();
   if (iErr || !inserted) throw iErr || new Error("Failed to create invoice");
 
-  // NOTE: jobs.invoice_id doesn't exist yet in schema — skipping job stamp for now.
-  // TODO Phase D+: add jobs.invoice_id FK migration, then re-enable job linkage.
+  // If a job already exists for this lead, stamp its invoice_id.
+  if (quote.lead_id) {
+    await supabase
+      .from("jobs")
+      .update({ invoice_id: inserted.id } as any)
+      .eq("lead_id", quote.lead_id);
+  }
 
   return inserted.id;
 }

@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { generateAndUploadPDF, downloadInvoicePDF, shareInvoice, sendViaWhatsApp } from "@/lib/invoicePDF";
+import PaymentRecorder from "@/components/invoicing/PaymentRecorder";
 
 interface LineItem {
   description: string;
@@ -34,6 +35,7 @@ const getStatusBadge = (status: string) => {
   const config: Record<string, { bg: string; text: string; label: string }> = {
     draft: { bg: "bg-muted", text: "text-muted-foreground", label: "Draft" },
     sent: { bg: "bg-blue-500", text: "text-white", label: "Sent" },
+    partially_paid: { bg: "bg-amber-500", text: "text-white", label: "Partially Paid" },
     paid: { bg: "bg-green-500", text: "text-white", label: "Paid" },
     overdue: { bg: "bg-red-500", text: "text-white", label: "Overdue" },
   };
@@ -310,6 +312,12 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
           </CardContent>
         </Card>
       )}
+
+      {/* Payments — record & history (auto-updates invoice status via DB trigger) */}
+      <PaymentRecorder invoiceId={invoice.id} invoiceTotal={Number(invoice.grand_total)} />
+
+      {/* Extra spacer so the fixed action bar doesn't cover payments */}
+      <div className="h-32" />
 
       {/* Fixed Action Buttons */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-md border-t z-50 max-w-lg mx-auto space-y-2">
