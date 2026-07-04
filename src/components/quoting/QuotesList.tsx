@@ -151,6 +151,21 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                       >
                         <Download className="h-3.5 w-3.5" />
                       </Button>
+                      {quote.status === "accepted" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-green-600 hover:text-green-700"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleConvertToInvoice(quote.id);
+                          }}
+                          disabled={converting === quote.id}
+                          title="Convert to Invoice"
+                        >
+                          <FileCheck2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                       {quote.public_token && (
                         <>
                           <Button
