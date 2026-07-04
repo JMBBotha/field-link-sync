@@ -166,6 +166,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
         scheduled_time: scheduledTime || null,
         status: "pending",
         company_id,
+        customer_id: linkedCustomerId,
       });
 
       if (error) throw error;
