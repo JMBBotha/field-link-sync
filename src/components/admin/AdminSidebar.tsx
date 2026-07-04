@@ -112,6 +112,7 @@ const AdminSidebar = ({
             { path: "/admin/maintenance", label: "Maintenance", icon: CalendarDays, roles: ["admin", "dispatcher"] },
           ],
         },
+        { path: "/admin/help", label: "Help", icon: HelpCircle },
       ],
     },
     {
