@@ -14,6 +14,7 @@ import Footer from "@/components/Footer";
 
 import { useQuery } from "@tanstack/react-query";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import AdminBottomNav from "@/components/admin/AdminBottomNav";
 import IdleWarningModal from "@/components/IdleWarningModal";
 import GlobalSearchDialog from "@/components/GlobalSearchDialog";
 import { useIdleLogout } from "@/hooks/useIdleLogout";
