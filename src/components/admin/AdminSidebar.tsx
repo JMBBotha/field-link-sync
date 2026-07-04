@@ -98,7 +98,9 @@ const AdminSidebar = ({
         { path: "/admin/dispatch", label: "Leads", icon: Sparkles },
         { path: "/admin/customers", label: "Customers", icon: Users },
         {
-          path: "/admin/jobs",
+          // Parent points at Dispatch Board so a collapsed-sidebar click
+          // lands on the current jobs surface (not the legacy flat list).
+          path: "/admin/jobs/dispatch",
           label: "Jobs",
           icon: Briefcase,
           children: [
@@ -175,6 +177,7 @@ const AdminSidebar = ({
           label: "Advanced",
           icon: Sparkles,
           children: [
+            { path: "/admin/jobs", label: "Legacy Jobs List", icon: ClipboardList },
             { path: "/admin/audit", label: "Audit Log", icon: History },
             { path: "/admin/import", label: "Import", icon: Upload },
             { path: "/admin/whatsapp", label: "WhatsApp", icon: MessageSquare },
