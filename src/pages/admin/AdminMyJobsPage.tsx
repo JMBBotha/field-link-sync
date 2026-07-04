@@ -3,9 +3,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useOfflineContext } from "@/contexts/OfflineContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, CalendarDays, CheckCircle, XCircle, Play, RefreshCw } from "lucide-react";
+import { MapPin, CalendarDays, CheckCircle, XCircle, Play, RefreshCw, CloudOff } from "lucide-react";
 import { format } from "date-fns";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -57,6 +58,7 @@ const AdminMyJobsPage = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { isOnline, queueOperation } = useOfflineContext();
   const [filter, setFilter] = useState<"active" | "completed">("active");
 
   const { data: myAssignments = [], isLoading } = useQuery<MyJobItem[]>({
@@ -102,20 +104,43 @@ const AdminMyJobsPage = () => {
       if (status === "in_progress") updates.started_at = new Date().toISOString();
       if (status === "completed") updates.completed_at = new Date().toISOString();
 
+      const assignment = myAssignments.find((a) => a.id === assignmentId);
+      const jobId = assignment?.job_id;
+
+      // OFFLINE PATH — queue the change and let the sync worker deliver later
+      if (!isOnline) {
+        await queueOperation("update_job_status", "assignments", assignmentId, updates);
+        if (jobStatus && jobId) {
+          await queueOperation("update_job_status", "jobs", jobId, {
+            status: jobStatus,
+            updated_at: new Date().toISOString(),
+          });
+        }
+        return { queued: true as const };
+      }
+
+      // ONLINE PATH
       const { error } = await supabase.from("assignments").update(updates).eq("id", assignmentId);
       if (error) throw error;
 
-      // Also update job status if needed
-      if (jobStatus) {
-        const assignment = myAssignments.find((a) => a.id === assignmentId);
-        if (assignment?.job_id) {
-          const { error: jobError } = await supabase.from("jobs").update({ status: jobStatus, updated_at: new Date().toISOString() }).eq("id", assignment.job_id);
-          if (jobError) throw jobError;
-        }
+      if (jobStatus && jobId) {
+        const { error: jobError } = await supabase
+          .from("jobs")
+          .update({ status: jobStatus, updated_at: new Date().toISOString() })
+          .eq("id", jobId);
+        if (jobError) throw jobError;
       }
+      return { queued: false as const };
     },
-    onSuccess: () => {
-      toast({ title: "Status updated" });
+    onSuccess: (result) => {
+      if (result?.queued) {
+        toast({
+          title: "Saved offline",
+          description: "Change will sync when you're back online",
+        });
+      } else {
+        toast({ title: "Status updated" });
+      }
       queryClient.invalidateQueries({ queryKey: ["my-jobs"] });
     },
     onError: (err: any) => toast({ title: "Update failed", description: err.message, variant: "destructive" }),
@@ -210,6 +235,11 @@ const AdminMyJobsPage = () => {
                       )}
                     </div>
                   </div>
+                  {!isOnline && ["proposed", "accepted", "in_progress"].includes(assignment.status) && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 rounded-md px-2 py-1">
+                      <CloudOff className="h-3 w-3" /> Offline — actions will queue and sync when you reconnect
+                    </div>
+                  )}
 
                   {/* Full-width action buttons — mobile-friendly touch targets */}
                   {assignment.status === "proposed" && (

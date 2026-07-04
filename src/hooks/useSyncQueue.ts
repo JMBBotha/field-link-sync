@@ -293,14 +293,23 @@ export function useSyncQueue(isOnline: boolean) {
             break;
           }
 
-          // Normalize status values before syncing
+          // Route by tableName — job status updates target assignments/jobs, not leads
+          const table = operation.tableName;
+          if (table === 'assignments' || table === 'jobs') {
+            const { error } = await supabase
+              .from(table as 'assignments' | 'jobs')
+              .update(operation.data as any)
+              .eq('id', operation.recordId);
+            if (error) throw error;
+            break;
+          }
+
+          // Default: lead update path (normalize status values)
           const normalizedData = normalizeLeadData(operation.data);
-          
           const { error } = await supabase
             .from('leads')
             .update(normalizedData)
             .eq('id', operation.recordId);
-          
           if (error) throw error;
           break;
         }
@@ -539,17 +548,21 @@ export function useSyncQueue(isOnline: boolean) {
       
       console.log('[Offline][Sync] Complete:', { successCount, failedCount });
       
-      if (successCount > 0) {
+      if (successCount > 0 && failedCount === 0) {
         toast({
-          title: "Changes Synced ✓",
-          description: `${successCount} change${successCount > 1 ? 's' : ''} synced successfully`,
+          title: "All caught up ✓",
+          description: `${successCount} offline change${successCount > 1 ? 's' : ''} synced`,
         });
-      }
-      
-      if (failedCount > 0) {
+      } else if (successCount > 0 && failedCount > 0) {
         toast({
-          title: "Some Changes Failed",
-          description: `${failedCount} change${failedCount > 1 ? 's' : ''} couldn't be synced. Will retry.`,
+          title: "Partial sync",
+          description: `${successCount} synced · ${failedCount} still pending — will retry automatically`,
+          variant: "destructive",
+        });
+      } else if (failedCount > 0) {
+        toast({
+          title: "Sync failed",
+          description: `${failedCount} change${failedCount > 1 ? 's' : ''} couldn't sync. Tap Retry or check your connection.`,
           variant: "destructive",
         });
       }
