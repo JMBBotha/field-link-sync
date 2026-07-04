@@ -65,7 +65,12 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
   onToggle: () => void;
 }) => {
   const { user } = useAuth();
-  const [quoteName, setQuoteName] = useState("");
+  const [searchParams] = useSearchParams();
+  const prefillLeadId = searchParams.get("leadId");
+  const prefillCustomerId = searchParams.get("customerId");
+  const prefillLocationId = searchParams.get("locationId");
+  const prefillQuoteName = searchParams.get("quoteName") || "";
+  const [quoteName, setQuoteName] = useState(prefillQuoteName);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
 
