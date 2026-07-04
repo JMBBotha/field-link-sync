@@ -235,6 +235,11 @@ const AdminMyJobsPage = () => {
                       )}
                     </div>
                   </div>
+                  {!isOnline && ["proposed", "accepted", "in_progress"].includes(assignment.status) && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 rounded-md px-2 py-1">
+                      <CloudOff className="h-3 w-3" /> Offline — actions will queue and sync when you reconnect
+                    </div>
+                  )}
 
                   {/* Full-width action buttons — mobile-friendly touch targets */}
                   {assignment.status === "proposed" && (
