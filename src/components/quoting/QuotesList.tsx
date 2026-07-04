@@ -4,7 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, FileText, Download, Link2 } from "lucide-react";
+import { Plus, Search, FileText, Download, Link2, FileCheck2 } from "lucide-react";
+import { convertQuoteToInvoice } from "@/lib/convertQuoteToInvoice";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import QuoteStatusBadge from "./QuoteStatusBadge";
 
 import { useToast } from "@/hooks/use-toast";
@@ -21,7 +24,25 @@ interface QuotesListProps {
 const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [converting, setConverting] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleConvertToInvoice = async (quoteId: string) => {
+    if (!user?.id) return;
+    setConverting(quoteId);
+    try {
+      const invoiceId = await convertQuoteToInvoice(quoteId, user.id);
+      toast({ title: "Invoice created", description: "Draft invoice generated from quote." });
+      navigate(`/admin/invoices?highlight=${invoiceId}`);
+    } catch (e: any) {
+      toast({ title: e.message || "Conversion failed", variant: "destructive" });
+    } finally {
+      setConverting(null);
+    }
+  };
+
 
   const { data: quotes = [], isLoading } = useQuery({
     queryKey: ["quotes", search, statusFilter],
@@ -130,6 +151,21 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                       >
                         <Download className="h-3.5 w-3.5" />
                       </Button>
+                      {quote.status === "accepted" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-green-600 hover:text-green-700"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleConvertToInvoice(quote.id);
+                          }}
+                          disabled={converting === quote.id}
+                          title="Convert to Invoice"
+                        >
+                          <FileCheck2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                       {quote.public_token && (
                         <>
                           <Button
