@@ -54,15 +54,31 @@ const AdminMapPage = () => {
       return;
     }
     toast({ title: "Locating…", description: "Centering map on your current location" });
+
+    const onSuccess = (pos: GeolocationPosition) => {
+      const { latitude, longitude } = pos.coords;
+      mapRef.current?.panToLocation(latitude, longitude);
+    };
+
+    // First try high accuracy (GPS). If it times out or fails, fall back to
+    // low-accuracy (IP/WiFi) with a longer timeout and a cached fix allowed.
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        mapRef.current?.panToLocation(latitude, longitude);
+      onSuccess,
+      () => {
+        navigator.geolocation.getCurrentPosition(
+          onSuccess,
+          (err) => {
+            const msg = err.code === err.PERMISSION_DENIED
+              ? "Location permission was denied. Enable it in your browser settings."
+              : err.code === err.POSITION_UNAVAILABLE
+                ? "Your device couldn't determine a location right now."
+                : err.message || "Unable to get your location";
+            toast({ title: "Location failed", description: msg, variant: "destructive" });
+          },
+          { enableHighAccuracy: false, timeout: 20000, maximumAge: 5 * 60 * 1000 }
+        );
       },
-      (err) => {
-        toast({ title: "Location failed", description: err.message || "Unable to get your location", variant: "destructive" });
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60 * 1000 }
     );
   };
 
