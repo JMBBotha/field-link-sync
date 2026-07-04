@@ -24,7 +24,25 @@ interface QuotesListProps {
 const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [converting, setConverting] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleConvertToInvoice = async (quoteId: string) => {
+    if (!user?.id) return;
+    setConverting(quoteId);
+    try {
+      const invoiceId = await convertQuoteToInvoice(quoteId, user.id);
+      toast({ title: "Invoice created", description: "Draft invoice generated from quote." });
+      navigate(`/admin/invoices?highlight=${invoiceId}`);
+    } catch (e: any) {
+      toast({ title: e.message || "Conversion failed", variant: "destructive" });
+    } finally {
+      setConverting(null);
+    }
+  };
+
 
   const { data: quotes = [], isLoading } = useQuery({
     queryKey: ["quotes", search, statusFilter],
