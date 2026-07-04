@@ -214,7 +214,7 @@ const AdminLayout = () => {
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
-            className="flex w-full items-center gap-2 rounded-md border border-input bg-muted/50 px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors"
+            className="flex w-full items-center gap-2 rounded-md border border-input bg-white px-3 py-2 text-sm text-muted-foreground hover:bg-white/90 transition-colors shadow-sm"
           >
             <Search className="h-4 w-4 shrink-0" />
             <span>Search agents, leads, customers…</span>
