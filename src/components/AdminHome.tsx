@@ -226,7 +226,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
 
 
         {isLoading
-          ? Array.from({ length: 4 }).map((_, i) => (
+          ? Array.from({ length: 5 }).map((_, i) => (
               <Card key={i}>
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-center gap-2">
