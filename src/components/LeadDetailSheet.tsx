@@ -756,7 +756,76 @@ const LeadDetailSheet = ({
               </TabsContent>
             </Tabs>
           </ScrollArea>
+
+          {/* Sticky bottom action bar — always visible, finger-friendly */}
+          {(isAvailable || isClaimed || isInProgress) && (
+            <div
+              className="shrink-0 border-t border-border/60 bg-background/95 backdrop-blur-md px-3 pt-3"
+              style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
+            >
+              <div className="flex items-stretch gap-2">
+                <Button
+                  variant="outline"
+                  className="h-12 px-3 shrink-0"
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={photoUploading}
+                  aria-label="Add photo"
+                >
+                  {photoUploading ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Camera className="h-5 w-5" />
+                  )}
+                </Button>
+
+                {isAvailable && (
+                  <Button
+                    className="flex-1 h-12 text-base font-semibold"
+                    style={{ backgroundColor: "#0077B6", color: "#FFFFFF" }}
+                    onClick={() => onAccept(lead.id)}
+                    disabled={!!loadingAction}
+                  >
+                    {loadingAction === "accept" ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Accepting…</>
+                    ) : (
+                      "Accept Lead"
+                    )}
+                  </Button>
+                )}
+
+                {isClaimed && (
+                  <Button
+                    className="flex-1 h-12 text-base font-semibold"
+                    style={{ backgroundColor: "#0077B6", color: "#FFFFFF" }}
+                    onClick={handleStartJobClick}
+                    disabled={!!loadingAction}
+                  >
+                    {loadingAction === "start" ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Starting…</>
+                    ) : (
+                      "Start Job"
+                    )}
+                  </Button>
+                )}
+
+                {isInProgress && (
+                  <Button
+                    className="flex-1 h-12 text-base font-semibold bg-green-600 hover:bg-green-700 text-white"
+                    onClick={handleCompleteClick}
+                    disabled={!!loadingAction}
+                  >
+                    {loadingAction === "complete" ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Completing…</>
+                    ) : (
+                      "Complete Job"
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </SheetContent>
+
       </Sheet>
 
       {/* Invoice Form */}
