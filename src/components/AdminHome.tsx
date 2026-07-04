@@ -229,9 +229,21 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
 
 
   const activeKpi = kpiCards.find((k) => k.key === selectedKpi);
+  const getCompactStatus = (status?: string | null) => {
+    const normalized = status || "pending";
+    const labels: Record<string, string> = {
+      pending: "Pending",
+      scheduled: "Sched",
+      dispatched: "Sent",
+      in_progress: "Active",
+      completed: "Done",
+      cancelled: "Cancel",
+    };
+    return labels[normalized] || normalized.replace(/_/g, " ");
+  };
 
   return (
-    <div className="px-3 py-4 md:p-6 space-y-4 md:space-y-5 max-w-7xl mx-auto">
+    <div className="w-full max-w-7xl overflow-x-hidden px-3 py-4 md:p-6 space-y-4 md:space-y-5 mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -315,38 +327,38 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
       )}
 
       {/* Primary widgets — Recent Open Leads + Today's Dispatch */}
-      <div className="grid md:grid-cols-2 gap-3 md:gap-6">
-        <Card>
-          <CardHeader className="space-y-2 pb-2 p-3 md:p-6">
-            <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-base flex items-center gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 min-w-0">
+        <Card className="min-w-0 overflow-hidden">
+          <CardHeader className="min-w-0 space-y-2 pb-2 p-3 md:p-6">
+            <div className="flex items-center justify-between gap-2 min-w-0">
+              <CardTitle className="text-sm md:text-base flex items-center gap-2 min-w-0 truncate">
                 <Plus className="h-4 w-4 text-primary" /> Open Leads
               </CardTitle>
-              <Button variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
+              <Button variant="ghost" size="sm" asChild className="h-7 shrink-0 px-2 text-xs">
                 <Link to="/admin">View all</Link>
               </Button>
             </div>
-            <div className="inline-flex rounded-md border border-border p-0.5 bg-muted/30 self-start">
+            <div className="grid w-full grid-cols-3 rounded-md border border-border p-0.5 bg-muted/30 md:inline-flex md:w-auto md:self-start">
               {(["day", "week", "month"] as const).map((r) => (
                 <button
                   key={r}
                   type="button"
                   onClick={() => setLeadsRange(r)}
-                  className={`text-[11px] px-2 py-0.5 rounded ${leadsRange === r ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+                  className={`min-w-0 text-[11px] px-1.5 py-0.5 rounded ${leadsRange === r ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
                 >
                   {r === "day" ? "Today" : r === "week" ? "Week" : "Month"}
                 </button>
               ))}
             </div>
           </CardHeader>
-          <CardContent className="space-y-2 max-h-80 overflow-y-auto p-3 pt-0 md:p-6 md:pt-0">
+          <CardContent className="min-w-0 space-y-2 max-h-80 overflow-y-auto overflow-x-hidden p-3 pt-0 md:p-6 md:pt-0">
             {isLoading ? (
               Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)
             ) : !stats?.openLeads?.length ? (
               <p className="text-sm text-muted-foreground text-center py-6">No open leads {leadsRange === "day" ? "today" : leadsRange === "week" ? "this week" : "this month"}</p>
             ) : (
               stats.openLeads.map((lead: any) => (
-                <div key={lead.id} className="flex items-center gap-2 p-2 rounded-md border border-border/50 hover:bg-muted/50">
+                <div key={lead.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 p-2 rounded-md border border-border/50 hover:bg-muted/50">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{lead.customer_name}</p>
                     <p className="text-xs text-muted-foreground truncate">
@@ -354,12 +366,12 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                     </p>
                     <p className="text-[11px] text-muted-foreground">{format(new Date(lead.created_at), "dd MMM HH:mm")}</p>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
+                   <div className="flex items-center gap-1 shrink-0">
                     {lead.customer_id ? (
                       <Button
                         size="icon"
                         variant="default"
-                        className="h-8 w-8"
+                        className="h-7 w-7 md:h-8 md:w-8"
                         title="View Customer"
                         onClick={() => navigate(`/admin/customers/${lead.customer_id}`)}
                       >
@@ -369,7 +381,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                       <Button
                         size="icon"
                         variant="default"
-                        className="h-8 w-8"
+                        className="h-7 w-7 md:h-8 md:w-8"
                         title="Convert to Customer"
                         disabled={convertingId === lead.id}
                         onClick={() => handleConvertLead(lead.id)}
@@ -380,7 +392,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                     <Button
                       size="icon"
                       variant="outline"
-                      className="h-8 w-8"
+                      className="h-7 w-7 md:h-8 md:w-8"
                       title="Create Job"
                       disabled={convertingId === lead.id}
                       onClick={() => handleCreateJobFromLead(lead)}
@@ -394,30 +406,30 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="space-y-2 pb-2 p-3 md:p-6">
-            <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-base flex items-center gap-2">
+        <Card className="min-w-0 overflow-hidden">
+          <CardHeader className="min-w-0 space-y-2 pb-2 p-3 md:p-6">
+            <div className="flex items-center justify-between gap-2 min-w-0">
+              <CardTitle className="text-sm md:text-base flex items-center gap-2 min-w-0 truncate">
                 <Briefcase className="h-4 w-4 text-primary" /> Upcoming Jobs
               </CardTitle>
-              <Button variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
+              <Button variant="ghost" size="sm" asChild className="h-7 shrink-0 px-2 text-xs">
                 <Link to="/admin/jobs/dispatch">Dispatch</Link>
               </Button>
             </div>
-            <div className="inline-flex rounded-md border border-border p-0.5 bg-muted/30 self-start">
+            <div className="grid w-full grid-cols-3 rounded-md border border-border p-0.5 bg-muted/30 md:inline-flex md:w-auto md:self-start">
               {(["day", "week", "month"] as const).map((r) => (
                 <button
                   key={r}
                   type="button"
                   onClick={() => setJobsRange(r)}
-                  className={`text-[11px] px-2 py-0.5 rounded ${jobsRange === r ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+                  className={`min-w-0 text-[11px] px-1.5 py-0.5 rounded ${jobsRange === r ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
                 >
                   {r === "day" ? "Today" : r === "week" ? "Week" : "Month"}
                 </button>
               ))}
             </div>
           </CardHeader>
-          <CardContent className="space-y-2 max-h-80 overflow-y-auto p-3 pt-0 md:p-6 md:pt-0">
+          <CardContent className="min-w-0 space-y-2 max-h-80 overflow-y-auto overflow-x-hidden p-3 pt-0 md:p-6 md:pt-0">
             {isLoading ? (
               Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)
             ) : !stats?.todayJobs?.length ? (
@@ -429,7 +441,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                 <Link
                   key={job.id}
                   to={`/admin/jobs/${job.id}`}
-                  className="flex items-center gap-2 p-2 rounded-md border border-border/50 hover:bg-muted/50"
+                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 p-2 rounded-md border border-border/50 hover:bg-muted/50"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{job.title}</p>
@@ -440,8 +452,8 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                       {job.scheduled_for ? format(new Date(job.scheduled_for), "dd MMM · HH:mm") : "—"}
                     </p>
                   </div>
-                  <Badge variant={job.status === "in_progress" ? "default" : "secondary"} className="shrink-0 text-[10px] px-1.5 py-0">
-                    {(job.status || "pending").replace(/_/g, " ")}
+                  <Badge variant={job.status === "in_progress" ? "default" : "secondary"} className="max-w-16 shrink-0 truncate text-[10px] px-1.5 py-0 capitalize">
+                    {getCompactStatus(job.status)}
                   </Badge>
                 </Link>
               ))
