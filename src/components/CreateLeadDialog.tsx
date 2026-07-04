@@ -80,6 +80,9 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
   const [longitude, setLongitude] = useState<number | null>(null);
   const [customRadius, setCustomRadius] = useState<number | null>(null);
   const [nearbyAgents, setNearbyAgents] = useState<NearbyAgent[]>([]);
+  const [customerMatch, setCustomerMatch] = useState<CustomerMatch | null>(null);
+  const [linkedCustomerId, setLinkedCustomerId] = useState<string | null>(null);
+  const [matchDismissed, setMatchDismissed] = useState(false);
   const { toast } = useToast();
   const { findNearbyAgents, loading: loadingAgents } = useNearbyAgents();
   const { settings: broadcastSettings } = useBroadcastSettings();
@@ -99,6 +102,27 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
     };
     fetchAgents();
   }, [latitude, longitude, effectiveRadius, findNearbyAgents]);
+
+  // Debounced customer dedup lookup by phone
+  useEffect(() => {
+    if (linkedCustomerId || matchDismissed) return;
+    const phone = formData.customer_phone.trim();
+    if (phone.length < 7) {
+      setCustomerMatch(null);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const companyId = await getUserCompanyId(user?.id);
+      if (!companyId || cancelled) return;
+      const match = await findCustomerMatch(companyId, phone, null);
+      if (!cancelled) setCustomerMatch(match);
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [formData.customer_phone, user?.id, linkedCustomerId, matchDismissed]);
 
   const isFormValid =
     formData.customer_name.trim() !== "" &&
