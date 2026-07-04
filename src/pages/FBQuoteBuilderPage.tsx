@@ -148,6 +148,9 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
         vat_amount: vatAmount,
         total: grandTotalInclVat, notes: quoteName, visual_sections: zonesData,
         company_id,
+        lead_id: prefillLeadId || null,
+        customer_id: prefillCustomerId || null,
+        location_id: prefillLocationId || null,
       }).select("id").single();
       if (error) throw error;
       setSavedId(data.id);
