@@ -138,8 +138,18 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
     return subDays(new Date(), days - 1).toISOString().split("T")[0] + "T00:00:00";
   }, [leadsRange]);
 
+  const jobsRangeBounds = useMemo(() => {
+    const now = new Date();
+    const startStr = now.toISOString().split("T")[0] + "T00:00:00";
+    const endDays = jobsRange === "day" ? 1 : jobsRange === "week" ? 7 : 30;
+    const end = new Date(now);
+    end.setDate(end.getDate() + endDays);
+    const endStr = end.toISOString().split("T")[0] + "T00:00:00";
+    return { start: startStr, end: endStr };
+  }, [jobsRange]);
+
   const { data: stats, isLoading } = useQuery({
-    queryKey: ["admin-home-stats", today, leadsRange],
+    queryKey: ["admin-home-stats", today, leadsRange, jobsRange],
     queryFn: async () => {
       const [leadsRes, quotesRes, activeJobsRes, overdueRes, revenueRes, agentsRes, recentRes, overdueMaintenanceRes, openLeadsRes, todayJobsRes] = await Promise.all([
         supabase.from("leads").select("id", { count: "exact", head: true }).gte("created_at", today + "T00:00:00").eq("status", "pending"),
@@ -151,7 +161,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         supabase.from("notifications").select("id, type, title, body, created_at").order("created_at", { ascending: false }).limit(15),
         supabase.rpc("get_overdue_maintenance_count"),
         supabase.from("leads").select("id, customer_name, service_type, customer_address, status, created_at, customer_id").eq("status", "pending").gte("created_at", leadsRangeSince).order("created_at", { ascending: false }).limit(20),
-        supabase.from("jobs").select("id, title, status, scheduled_for, address, customer_id").gte("scheduled_for", today + "T00:00:00").lt("scheduled_for", today + "T23:59:59").order("scheduled_for", { ascending: true }).limit(6),
+        supabase.from("jobs").select("id, title, status, scheduled_for, address, customer_id").gte("scheduled_for", jobsRangeBounds.start).lt("scheduled_for", jobsRangeBounds.end).order("scheduled_for", { ascending: true }).limit(20),
 
       ]);
 
