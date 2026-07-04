@@ -317,26 +317,26 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
       {/* Primary widgets — Recent Open Leads + Today's Dispatch */}
       <div className="grid md:grid-cols-2 gap-3 md:gap-6">
         <Card>
-          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2 gap-2 flex-wrap p-3 md:p-6">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Plus className="h-4 w-4 text-primary" /> Recent Open Leads
-            </CardTitle>
-            <div className="flex items-center gap-1">
-              <div className="inline-flex rounded-md border border-border p-0.5 bg-muted/30">
-                {(["day", "week", "month"] as const).map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setLeadsRange(r)}
-                    className={`text-[11px] px-2 py-0.5 rounded ${leadsRange === r ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
-                  >
-                    {r === "day" ? "Today" : r === "week" ? "Week" : "Month"}
-                  </button>
-                ))}
-              </div>
-              <Button variant="ghost" size="sm" asChild>
+          <CardHeader className="space-y-2 pb-2 p-3 md:p-6">
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Plus className="h-4 w-4 text-primary" /> Open Leads
+              </CardTitle>
+              <Button variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
                 <Link to="/admin">View all</Link>
               </Button>
+            </div>
+            <div className="inline-flex rounded-md border border-border p-0.5 bg-muted/30 self-start">
+              {(["day", "week", "month"] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setLeadsRange(r)}
+                  className={`text-[11px] px-2 py-0.5 rounded ${leadsRange === r ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+                >
+                  {r === "day" ? "Today" : r === "week" ? "Week" : "Month"}
+                </button>
+              ))}
             </div>
           </CardHeader>
           <CardContent className="space-y-2 max-h-80 overflow-y-auto p-3 pt-0 md:p-6 md:pt-0">
@@ -346,7 +346,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
               <p className="text-sm text-muted-foreground text-center py-6">No open leads {leadsRange === "day" ? "today" : leadsRange === "week" ? "this week" : "this month"}</p>
             ) : (
               stats.openLeads.map((lead: any) => (
-                <div key={lead.id} className="flex items-center justify-between gap-2 p-2 rounded-md border border-border/50 hover:bg-muted/50">
+                <div key={lead.id} className="flex items-center gap-2 p-2 rounded-md border border-border/50 hover:bg-muted/50">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{lead.customer_name}</p>
                     <p className="text-xs text-muted-foreground truncate">
@@ -354,48 +354,38 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                     </p>
                     <p className="text-[11px] text-muted-foreground">{format(new Date(lead.created_at), "dd MMM HH:mm")}</p>
                   </div>
-                  <div className="flex flex-col gap-1 shrink-0">
-                    <TooltipProvider delayDuration={200}>
-                      {lead.customer_id ? (
-                        <UITooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="default"
-                              onClick={() => navigate(`/admin/customers/${lead.customer_id}`)}
-                            >
-                              <UserCheckIcon className="h-3 w-3 mr-1" />View Customer
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Open the linked customer record</TooltipContent>
-                        </UITooltip>
-                      ) : (
-                        <UITooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="default"
-                              disabled={convertingId === lead.id}
-                              onClick={() => handleConvertLead(lead.id)}
-                            >
-                              {convertingId === lead.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <><UserPlus className="h-3 w-3 mr-1" />Convert</>
-                              )}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Creates or updates the matching Customer record and links this lead</TooltipContent>
-                        </UITooltip>
-                      )}
-                    </TooltipProvider>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {lead.customer_id ? (
+                      <Button
+                        size="icon"
+                        variant="default"
+                        className="h-8 w-8"
+                        title="View Customer"
+                        onClick={() => navigate(`/admin/customers/${lead.customer_id}`)}
+                      >
+                        <UserCheckIcon className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button
+                        size="icon"
+                        variant="default"
+                        className="h-8 w-8"
+                        title="Convert to Customer"
+                        disabled={convertingId === lead.id}
+                        onClick={() => handleConvertLead(lead.id)}
+                      >
+                        {convertingId === lead.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+                      </Button>
+                    )}
                     <Button
-                      size="sm"
+                      size="icon"
                       variant="outline"
+                      className="h-8 w-8"
+                      title="Create Job"
                       disabled={convertingId === lead.id}
                       onClick={() => handleCreateJobFromLead(lead)}
                     >
-                      Create Job
+                      <Briefcase className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -405,26 +395,26 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         </Card>
 
         <Card>
-          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2 gap-2 flex-wrap p-3 md:p-6">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Briefcase className="h-4 w-4 text-primary" /> Upcoming Jobs
-            </CardTitle>
-            <div className="flex items-center gap-1">
-              <div className="inline-flex rounded-md border border-border p-0.5 bg-muted/30">
-                {(["day", "week", "month"] as const).map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setJobsRange(r)}
-                    className={`text-[11px] px-2 py-0.5 rounded ${jobsRange === r ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
-                  >
-                    {r === "day" ? "Today" : r === "week" ? "Week" : "Month"}
-                  </button>
-                ))}
-              </div>
-              <Button variant="ghost" size="sm" asChild>
-                <Link to="/admin/jobs/dispatch">Dispatch board</Link>
+          <CardHeader className="space-y-2 pb-2 p-3 md:p-6">
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Briefcase className="h-4 w-4 text-primary" /> Upcoming Jobs
+              </CardTitle>
+              <Button variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
+                <Link to="/admin/jobs/dispatch">Dispatch</Link>
               </Button>
+            </div>
+            <div className="inline-flex rounded-md border border-border p-0.5 bg-muted/30 self-start">
+              {(["day", "week", "month"] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setJobsRange(r)}
+                  className={`text-[11px] px-2 py-0.5 rounded ${jobsRange === r ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+                >
+                  {r === "day" ? "Today" : r === "week" ? "Week" : "Month"}
+                </button>
+              ))}
             </div>
           </CardHeader>
           <CardContent className="space-y-2 max-h-80 overflow-y-auto p-3 pt-0 md:p-6 md:pt-0">
@@ -439,7 +429,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                 <Link
                   key={job.id}
                   to={`/admin/jobs/${job.id}`}
-                  className="flex items-center justify-between gap-2 p-2 rounded-md border border-border/50 hover:bg-muted/50"
+                  className="flex items-center gap-2 p-2 rounded-md border border-border/50 hover:bg-muted/50"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{job.title}</p>
@@ -450,7 +440,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                       {job.scheduled_for ? format(new Date(job.scheduled_for), "dd MMM · HH:mm") : "—"}
                     </p>
                   </div>
-                  <Badge variant={job.status === "in_progress" ? "default" : "secondary"} className="shrink-0">
+                  <Badge variant={job.status === "in_progress" ? "default" : "secondary"} className="shrink-0 text-[10px] px-1.5 py-0">
                     {(job.status || "pending").replace(/_/g, " ")}
                   </Badge>
                 </Link>
