@@ -34,6 +34,7 @@ import {
   Briefcase,
   ClipboardList,
   Sparkles,
+  HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
