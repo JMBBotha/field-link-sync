@@ -511,6 +511,13 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           <SyncConflictsSection />
         </CollapsibleContent>
       </Collapsible>
+
+      <CreateJobDialog
+        open={jobDialog.open}
+        onOpenChange={(o) => setJobDialog((s) => ({ ...s, open: o }))}
+        defaultLeadId={jobDialog.leadId}
+        defaultCustomerId={jobDialog.customerId}
+      />
     </div>
   );
 };
