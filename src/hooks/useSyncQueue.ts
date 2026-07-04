@@ -293,14 +293,23 @@ export function useSyncQueue(isOnline: boolean) {
             break;
           }
 
-          // Normalize status values before syncing
+          // Route by tableName — job status updates target assignments/jobs, not leads
+          const table = operation.tableName;
+          if (table === 'assignments' || table === 'jobs') {
+            const { error } = await supabase
+              .from(table as 'assignments' | 'jobs')
+              .update(operation.data as any)
+              .eq('id', operation.recordId);
+            if (error) throw error;
+            break;
+          }
+
+          // Default: lead update path (normalize status values)
           const normalizedData = normalizeLeadData(operation.data);
-          
           const { error } = await supabase
             .from('leads')
             .update(normalizedData)
             .eq('id', operation.recordId);
-          
           if (error) throw error;
           break;
         }
