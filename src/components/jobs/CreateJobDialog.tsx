@@ -215,7 +215,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
         title,
         description: description || null,
         customer_id: customerId || null,
-        lead_id: leadId || null,
+        lead_id: safeLeadId,
         quote_id: quoteId || null,
         location_id: finalLocationId,
         address: address || null,
