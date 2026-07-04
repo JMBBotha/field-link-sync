@@ -20,7 +20,7 @@ const AdminBottomNav = ({ onOpenMenu }: AdminBottomNavProps) => {
 
   return (
     <nav
-      className="lg:hidden fixed bottom-0 inset-x-0 z-40 h-16 border-t border-border bg-background/95 backdrop-blur-md"
+      className="lg:hidden fixed bottom-0 inset-x-0 z-40 h-16 border-t border-slate-700/60 bg-gradient-to-b from-slate-800 to-slate-900 text-slate-100 backdrop-blur-md [--muted-foreground:215_20%_75%] [--foreground:210_40%_98%]"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="grid grid-cols-4 h-full">
