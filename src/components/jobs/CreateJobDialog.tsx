@@ -183,6 +183,14 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
       }
       const userId = user?.id;
 
+      // Verify lead still exists (it may have been converted/deleted); avoid FK violation
+      let safeLeadId: string | null = leadId || null;
+      if (safeLeadId) {
+        const { data: leadRow } = await supabase
+          .from("leads").select("id").eq("id", safeLeadId).maybeSingle();
+        if (!leadRow) safeLeadId = null;
+      }
+
       // If no location selected but we have an address, auto-create one on the customer
       let finalLocationId = locationId || null;
       if (!finalLocationId && customerId && address) {
