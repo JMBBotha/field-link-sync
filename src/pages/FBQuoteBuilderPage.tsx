@@ -4,10 +4,11 @@ import { r2, VAT_RATE } from "@/utils/pricing";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search, Wand2, ChevronUp, ChevronDown, ArrowLeft, FileDown, Save,
-  Loader2, CheckCircle, PanelRightClose, PanelRightOpen, QrCode,
+  Loader2, CheckCircle, PanelRightClose, PanelRightOpen, QrCode, MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   DndContext, DragOverlay, closestCenter,
@@ -71,8 +72,33 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
   const prefillLocationId = searchParams.get("locationId");
   const prefillQuoteName = searchParams.get("quoteName") || "";
   const [quoteName, setQuoteName] = useState(prefillQuoteName);
+  const [locationId, setLocationId] = useState<string | null>(prefillLocationId || null);
+  const [locations, setLocations] = useState<Array<{ id: string; label: string }>>([]);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
+
+  // Load customer locations for picker
+  useEffect(() => {
+    if (!prefillCustomerId) { setLocations([]); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await (supabase.from("customer_locations") as any)
+        .select("id, label, address_line1, city")
+        .eq("customer_id", prefillCustomerId)
+        .order("is_primary", { ascending: false })
+        .order("created_at", { ascending: true });
+      if (cancelled) return;
+      const rows = ((data as any[]) || []).map((r) => ({
+        id: r.id,
+        label: r.label || [r.address_line1, r.city].filter(Boolean).join(", ") || "Location",
+      }));
+      setLocations(rows);
+      // Default to first location if nothing picked yet
+      if (!locationId && rows.length > 0) setLocationId(rows[0].id);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillCustomerId]);
 
   // PDF selection state for Visual Catalog checkboxes
   const [selectedFromPdf, setSelectedFromPdf] = useState<PdfSelectedProduct[]>([]);
@@ -150,7 +176,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
         company_id,
         lead_id: prefillLeadId || null,
         customer_id: prefillCustomerId || null,
-        location_id: prefillLocationId || null,
+        location_id: locationId || null,
       }).select("id").single();
       if (error) throw error;
       setSavedId(data.id);
@@ -206,6 +232,23 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
           </>
         )}
         <div className="space-y-2">
+          {prefillCustomerId && locations.length > 0 && (
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                <MapPin className="h-3 w-3" /> Location
+              </label>
+              <Select value={locationId || ""} onValueChange={(v) => setLocationId(v)}>
+                <SelectTrigger className="h-9 text-xs rounded-lg">
+                  <SelectValue placeholder="Select location..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map((l) => (
+                    <SelectItem key={l.id} value={l.id} className="text-xs">{l.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <Input
             placeholder="Quote name..."
             value={quoteName}

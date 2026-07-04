@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, MapPin, Clock, User, CalendarDays } from "lucide-react";
+import { Plus, Search, MapPin, Clock, User, CalendarDays, FileText } from "lucide-react";
 import { format } from "date-fns";
 import CreateJobDialog from "@/components/jobs/CreateJobDialog";
 import RequireRole from "@/components/RequireRole";
@@ -40,7 +40,7 @@ const AdminJobsPage = () => {
     queryFn: async () => {
       let q = supabase
         .from("jobs")
-        .select("*, customers(name), assignments(id, profile_id, status, profiles(full_name))")
+        .select("*, customers(name), assignments(id, profile_id, status, profiles(full_name)), invoices!jobs_invoice_id_fkey(id, invoice_number, status)")
         .order("scheduled_for", { ascending: false, nullsFirst: false });
       if (statusFilter !== "all") q = q.eq("status", statusFilter);
       const { data, error } = await q;
@@ -134,6 +134,16 @@ const AdminJobsPage = () => {
                           <Clock className="h-3.5 w-3.5" />
                           {assignee.profiles?.full_name || "Assigned"}
                         </div>
+                      )}
+                      {job.invoices?.id && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); navigate(`/admin/invoices/${job.invoices.id}`); }}
+                          className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 px-2 py-0.5 text-[10px] font-semibold hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors"
+                          title={`Invoice ${job.invoices.invoice_number || ""} · ${job.invoices.status || ""}`}
+                        >
+                          <FileText className="h-3 w-3" />
+                          {job.invoices.invoice_number || "Invoice"}
+                        </button>
                       )}
                     </div>
                   </div>
