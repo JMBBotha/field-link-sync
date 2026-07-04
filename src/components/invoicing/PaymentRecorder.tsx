@@ -62,16 +62,10 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal }: PaymentRecorderProps) => {
       });
       if (error) throw error;
 
-      // Auto-update invoice status if fully paid
-      if (Number(amount) >= outstanding) {
-        await supabase.from("invoices").update({
-          status: "paid",
-          paid_date: new Date().toISOString().split("T")[0],
-        }).eq("id", invoiceId);
-      }
-
+      // Invoice status is auto-updated by the recalc_invoice_status trigger.
       queryClient.invalidateQueries({ queryKey: ["payments", invoiceId] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["invoice", invoiceId] });
       setAmount("");
       setReference("");
       toast({ title: "Payment recorded" });
