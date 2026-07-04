@@ -231,7 +231,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   const activeKpi = kpiCards.find((k) => k.key === selectedKpi);
 
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto">
+    <div className="px-3 py-4 md:p-6 space-y-4 md:space-y-5 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
