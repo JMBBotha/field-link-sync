@@ -315,7 +315,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
       )}
 
       {/* Primary widgets — Recent Open Leads + Today's Dispatch */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-2 gap-3 md:gap-6">
         <Card>
           <CardHeader className="flex-row items-center justify-between space-y-0 pb-2 gap-2 flex-wrap">
             <CardTitle className="text-base flex items-center gap-2">
