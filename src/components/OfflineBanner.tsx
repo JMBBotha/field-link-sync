@@ -11,7 +11,10 @@ export function OfflineBanner() {
   // Online but still syncing queued ops → subtle blue pill
   if (isOnline && pending > 0) {
     return (
-      <div className="fixed top-0 left-0 right-0 z-[100] bg-blue-600/90 text-white p-2 text-center text-xs font-medium flex items-center justify-center gap-2 backdrop-blur-sm shadow-md">
+      <div
+        className="fixed top-0 left-0 right-0 z-[100] bg-blue-600/90 text-white text-center text-xs font-medium flex items-center justify-center gap-2 backdrop-blur-sm shadow-md px-2 pb-2"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
+      >
         <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin" />
         Syncing {pending} queued {pending === 1 ? "change" : "changes"}…
       </div>
@@ -19,7 +22,10 @@ export function OfflineBanner() {
   }
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-700/90 text-white p-2.5 text-center text-sm font-medium flex items-center justify-center gap-2 backdrop-blur-sm shadow-md">
+    <div
+      className="fixed top-0 left-0 right-0 z-[100] bg-amber-700/90 text-white text-center text-sm font-medium flex items-center justify-center gap-2 backdrop-blur-sm shadow-md px-2 pb-2.5"
+      style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.625rem)" }}
+    >
       <WifiOff className="h-4 w-4 shrink-0" />
       You're offline — changes will sync when back online
       {pending > 0 && (
