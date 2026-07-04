@@ -33,7 +33,8 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   const [selectedKpi, setSelectedKpi] = useState<string | null>(null);
   const [convertingId, setConvertingId] = useState<string | null>(null);
   const [jobDialog, setJobDialog] = useState<{ open: boolean; leadId?: string; customerId?: string }>({ open: false });
-  const [leadsRange, setLeadsRange] = useState<"day" | "week" | "month">("day");
+  const [leadsRange, setLeadsRange] = useState<"day" | "week" | "month">("week");
+  const [jobsRange, setJobsRange] = useState<"day" | "week" | "month">("day");
   const { companyId } = useUserCompanyId();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -137,8 +138,18 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
     return subDays(new Date(), days - 1).toISOString().split("T")[0] + "T00:00:00";
   }, [leadsRange]);
 
+  const jobsRangeBounds = useMemo(() => {
+    const now = new Date();
+    const startStr = now.toISOString().split("T")[0] + "T00:00:00";
+    const endDays = jobsRange === "day" ? 1 : jobsRange === "week" ? 7 : 30;
+    const end = new Date(now);
+    end.setDate(end.getDate() + endDays);
+    const endStr = end.toISOString().split("T")[0] + "T00:00:00";
+    return { start: startStr, end: endStr };
+  }, [jobsRange]);
+
   const { data: stats, isLoading } = useQuery({
-    queryKey: ["admin-home-stats", today, leadsRange],
+    queryKey: ["admin-home-stats", today, leadsRange, jobsRange],
     queryFn: async () => {
       const [leadsRes, quotesRes, activeJobsRes, overdueRes, revenueRes, agentsRes, recentRes, overdueMaintenanceRes, openLeadsRes, todayJobsRes] = await Promise.all([
         supabase.from("leads").select("id", { count: "exact", head: true }).gte("created_at", today + "T00:00:00").eq("status", "pending"),
@@ -150,7 +161,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         supabase.from("notifications").select("id, type, title, body, created_at").order("created_at", { ascending: false }).limit(15),
         supabase.rpc("get_overdue_maintenance_count"),
         supabase.from("leads").select("id, customer_name, service_type, customer_address, status, created_at, customer_id").eq("status", "pending").gte("created_at", leadsRangeSince).order("created_at", { ascending: false }).limit(20),
-        supabase.from("jobs").select("id, title, status, scheduled_for, address, customer_id").gte("scheduled_for", today + "T00:00:00").lt("scheduled_for", today + "T23:59:59").order("scheduled_for", { ascending: true }).limit(6),
+        supabase.from("jobs").select("id, title, status, scheduled_for, address, customer_id").gte("scheduled_for", jobsRangeBounds.start).lt("scheduled_for", jobsRangeBounds.end).order("scheduled_for", { ascending: true }).limit(20),
 
       ]);
 
@@ -394,24 +405,40 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         </Card>
 
         <Card>
-          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2 gap-2 flex-wrap">
             <CardTitle className="text-base flex items-center gap-2">
-              <Briefcase className="h-4 w-4 text-primary" /> Today's Dispatch
+              <Briefcase className="h-4 w-4 text-primary" /> Upcoming Jobs
             </CardTitle>
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/admin/jobs/dispatch">Dispatch board</Link>
-            </Button>
+            <div className="flex items-center gap-1">
+              <div className="inline-flex rounded-md border border-border p-0.5 bg-muted/30">
+                {(["day", "week", "month"] as const).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setJobsRange(r)}
+                    className={`text-[11px] px-2 py-0.5 rounded ${jobsRange === r ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+                  >
+                    {r === "day" ? "Today" : r === "week" ? "Week" : "Month"}
+                  </button>
+                ))}
+              </div>
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/admin/jobs/dispatch">Dispatch board</Link>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-2 max-h-80 overflow-y-auto">
             {isLoading ? (
               Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)
             ) : !stats?.todayJobs?.length ? (
-              <p className="text-sm text-muted-foreground text-center py-6">No jobs scheduled today</p>
+              <p className="text-sm text-muted-foreground text-center py-6">
+                No jobs scheduled {jobsRange === "day" ? "today" : jobsRange === "week" ? "this week" : "this month"}
+              </p>
             ) : (
               stats.todayJobs.map((job: any) => (
                 <Link
                   key={job.id}
-                  to={`/admin/jobs/dispatch`}
+                  to={`/admin/jobs/${job.id}`}
                   className="flex items-center justify-between gap-2 p-2 rounded-md border border-border/50 hover:bg-muted/50"
                 >
                   <div className="min-w-0 flex-1">
@@ -420,7 +447,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                       {job.address || "No address"}
                     </p>
                     <p className="text-[11px] text-muted-foreground">
-                      {job.scheduled_for ? format(new Date(job.scheduled_for), "HH:mm") : "—"}
+                      {job.scheduled_for ? format(new Date(job.scheduled_for), "dd MMM · HH:mm") : "—"}
                     </p>
                   </div>
                   <Badge variant={job.status === "in_progress" ? "default" : "secondary"} className="shrink-0">
