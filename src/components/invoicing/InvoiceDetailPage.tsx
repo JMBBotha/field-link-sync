@@ -315,6 +315,12 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
       )}
 
       {/* Payments — record & history (auto-updates invoice status via DB trigger) */}
+      <div className="flex items-center justify-end -mb-2">
+        <HelpTip title="Payments" side="left">
+          Recording a payment auto-updates this invoice's status: any payment →
+          <strong> Partially Paid</strong>, full balance → <strong>Paid</strong>. No manual toggling needed.
+        </HelpTip>
+      </div>
       <PaymentRecorder invoiceId={invoice.id} invoiceTotal={Number(invoice.grand_total)} />
 
       {/* Extra spacer so the fixed action bar doesn't cover payments */}
