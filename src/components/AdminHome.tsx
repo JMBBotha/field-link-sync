@@ -407,7 +407,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           </CardContent>
         </Card>
 
-        <Card className="min-w-0 overflow-hidden">
+        <Card className="min-w-0 overflow-hidden border-slate-700/60 bg-gradient-to-br from-slate-800 via-slate-800 to-primary/60 [--card-foreground:210_40%_98%] [--muted-foreground:215_20%_78%] [--border:215_20%_35%] [--secondary:215_25%_25%] [--secondary-foreground:210_40%_98%] [--accent:215_25%_28%] [--accent-foreground:210_40%_98%]">
           <CardHeader className="min-w-0 space-y-2 pb-2 p-3 md:p-6">
             <div className="flex items-center justify-between gap-2 min-w-0">
               <CardTitle className="text-sm md:text-base flex items-center gap-2 min-w-0 truncate">
