@@ -268,7 +268,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                 className="cursor-pointer rounded-xl border border-border transition-all duration-200 hover:border-primary/30 hover:bg-muted/40 dark:hover:bg-[#1a2a4a]/50 hover:shadow-md"
                 onClick={() => setSelectedKpi(kpi.key)}
               >
-                <CardContent className="p-4">
+                <CardContent className="p-3 md:p-4">
                   <div className="flex items-center gap-2 mb-1">
                     <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
                     <span className="text-xs text-muted-foreground">{kpi.label}</span>
