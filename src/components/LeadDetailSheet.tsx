@@ -247,6 +247,71 @@ const LeadDetailSheet = ({
     setShowDurationPicker(false);
   };
 
+  // Create Draft Quote from Lead - ensures a customer, then opens builder prefilled
+  const handleCreateDraftQuote = async () => {
+    try {
+      let customerId = lead.customer_id || null;
+
+      if (!customerId) {
+        const { findCustomerMatch } = await import("@/lib/customerMatch");
+        const { getUserCompanyId } = await import("@/lib/tenantUtils");
+        const companyId = await getUserCompanyId(currentUserId);
+        if (!companyId) {
+          toast({ title: "No company found", variant: "destructive" });
+          return;
+        }
+        const match = await findCustomerMatch(companyId, lead.customer_phone, null);
+        if (match) {
+          const ok = window.confirm(
+            `Possible existing customer found: ${match.name || match.phone}.\n\nLink this lead to that customer? (Cancel = create a new customer)`
+          );
+          if (ok) {
+            customerId = match.id;
+          } else {
+            const { data: newCust, error: cErr } = await supabase
+              .from("customers")
+              .insert({
+                company_id: companyId,
+                name: lead.customer_name,
+                phone: lead.customer_phone,
+                address: lead.customer_address,
+              })
+              .select("id")
+              .single();
+            if (cErr) throw cErr;
+            customerId = newCust.id;
+          }
+        } else {
+          const { data: newCust, error: cErr } = await supabase
+            .from("customers")
+            .insert({
+              company_id: companyId,
+              name: lead.customer_name,
+              phone: lead.customer_phone,
+              address: lead.customer_address,
+            })
+            .select("id")
+            .single();
+          if (cErr) throw cErr;
+          customerId = newCust.id;
+        }
+
+        // Persist link on the lead
+        await supabase.from("leads").update({ customer_id: customerId }).eq("id", lead.id);
+      }
+
+      const params = new URLSearchParams({
+        leadId: lead.id,
+        customerId: customerId!,
+        quoteName: `${lead.service_type || "Quote"} - ${lead.customer_name}`,
+      });
+      onClose();
+      navigate(`/admin/quote-builder?${params.toString()}`);
+    } catch (err: any) {
+      toast({ title: err.message || "Failed to create draft quote", variant: "destructive" });
+    }
+  };
+
   // Handle extending job time
   const handleExtendTime = async (additionalMinutes: number) => {
     try {
@@ -433,6 +498,19 @@ const LeadDetailSheet = ({
               customerPhone={lead.customer_phone}
               currentLeadId={lead.id}
             />
+
+            {/* Create Draft Quote - available before completion */}
+            {lead?.status !== 'completed' && (
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full"
+                onClick={handleCreateDraftQuote}
+              >
+                <FileText className="mr-2 h-5 w-5" />
+                Create Draft Quote
+              </Button>
+            )}
 
             {/* Create Invoice - Completed leads only */}
             {lead?.status === 'completed' && (

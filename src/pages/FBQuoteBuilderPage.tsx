@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import { r2, VAT_RATE } from "@/utils/pricing";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search, Wand2, ChevronUp, ChevronDown, ArrowLeft, FileDown, Save,
   Loader2, CheckCircle, PanelRightClose, PanelRightOpen, QrCode,
@@ -65,7 +65,12 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
   onToggle: () => void;
 }) => {
   const { user } = useAuth();
-  const [quoteName, setQuoteName] = useState("");
+  const [searchParams] = useSearchParams();
+  const prefillLeadId = searchParams.get("leadId");
+  const prefillCustomerId = searchParams.get("customerId");
+  const prefillLocationId = searchParams.get("locationId");
+  const prefillQuoteName = searchParams.get("quoteName") || "";
+  const [quoteName, setQuoteName] = useState(prefillQuoteName);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
 
@@ -143,6 +148,9 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
         vat_amount: vatAmount,
         total: grandTotalInclVat, notes: quoteName, visual_sections: zonesData,
         company_id,
+        lead_id: prefillLeadId || null,
+        customer_id: prefillCustomerId || null,
+        location_id: prefillLocationId || null,
       }).select("id").single();
       if (error) throw error;
       setSavedId(data.id);
