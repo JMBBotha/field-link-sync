@@ -13,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { MapPin, Clock, User, GripVertical, CalendarDays, Users, Loader2, Plus, Zap } from "lucide-react";
+import { MapPin, Clock, User, GripVertical, CalendarDays, Users, Loader2, Plus, Zap, Route } from "lucide-react";
 import { Filter } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
