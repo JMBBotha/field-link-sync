@@ -177,6 +177,7 @@ const AdminSidebar = ({
           label: "Advanced",
           icon: Sparkles,
           children: [
+            { path: "/admin/jobs", label: "Legacy Jobs List", icon: ClipboardList },
             { path: "/admin/audit", label: "Audit Log", icon: History },
             { path: "/admin/import", label: "Import", icon: Upload },
             { path: "/admin/whatsapp", label: "WhatsApp", icon: MessageSquare },
