@@ -202,9 +202,14 @@ export type Database = {
           id: string
           job_id: string
           notes: string | null
+          optimized_at: string | null
           profile_id: string
+          route_id: string | null
+          route_order: number | null
           started_at: string | null
           status: string | null
+          travel_meters: number | null
+          travel_seconds: number | null
         }
         Insert: {
           assigned_by?: string | null
@@ -215,9 +220,14 @@ export type Database = {
           id?: string
           job_id: string
           notes?: string | null
+          optimized_at?: string | null
           profile_id: string
+          route_id?: string | null
+          route_order?: number | null
           started_at?: string | null
           status?: string | null
+          travel_meters?: number | null
+          travel_seconds?: number | null
         }
         Update: {
           assigned_by?: string | null
@@ -228,9 +238,14 @@ export type Database = {
           id?: string
           job_id?: string
           notes?: string | null
+          optimized_at?: string | null
           profile_id?: string
+          route_id?: string | null
+          route_order?: number | null
           started_at?: string | null
           status?: string | null
+          travel_meters?: number | null
+          travel_seconds?: number | null
         }
         Relationships: [
           {
@@ -2158,6 +2173,9 @@ export type Database = {
           id: string
           lead_id: string
           notes: string | null
+          optimized_at: string | null
+          route_id: string | null
+          route_order: number | null
           scheduled_date: string
           start_time: string
           updated_at: string
@@ -2169,6 +2187,9 @@ export type Database = {
           id?: string
           lead_id: string
           notes?: string | null
+          optimized_at?: string | null
+          route_id?: string | null
+          route_order?: number | null
           scheduled_date: string
           start_time: string
           updated_at?: string
@@ -2180,6 +2201,9 @@ export type Database = {
           id?: string
           lead_id?: string
           notes?: string | null
+          optimized_at?: string | null
+          route_id?: string | null
+          route_order?: number | null
           scheduled_date?: string
           start_time?: string
           updated_at?: string

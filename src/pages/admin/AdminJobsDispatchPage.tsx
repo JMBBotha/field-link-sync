@@ -13,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { MapPin, Clock, User, GripVertical, CalendarDays, Users, Loader2, Plus, Zap } from "lucide-react";
+import { MapPin, Clock, User, GripVertical, CalendarDays, Users, Loader2, Plus, Zap, Route } from "lucide-react";
 import { Filter } from "lucide-react";
+
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
@@ -325,6 +326,25 @@ const AdminJobsDispatchPage = () => {
             <span className="text-muted-foreground text-xs sm:text-sm">Available only</span>
             <Switch checked={showAvailableOnly} onCheckedChange={setShowAvailableOnly} />
           </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span tabIndex={0}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled
+                  className="gap-2 cursor-not-allowed"
+                  aria-label="Optimize Route (coming soon)"
+                >
+                  <Route className="h-4 w-4" />
+                  <span className="hidden sm:inline">Optimize Route</span>
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[220px] text-xs">
+              Auto-sequence today's assignments by drive time. Coming soon.
+            </TooltipContent>
+          </Tooltip>
           <Button
             variant="outline"
             size="sm"
