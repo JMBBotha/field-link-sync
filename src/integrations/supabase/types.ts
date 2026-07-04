@@ -1921,6 +1921,7 @@ export type Database = {
           issue_date: string
           lead_id: string | null
           line_items: Json
+          location_id: string | null
           notes: string | null
           paid_date: string | null
           payfast_payment_id: string | null
@@ -1952,6 +1953,7 @@ export type Database = {
           issue_date?: string
           lead_id?: string | null
           line_items?: Json
+          location_id?: string | null
           notes?: string | null
           paid_date?: string | null
           payfast_payment_id?: string | null
@@ -1983,6 +1985,7 @@ export type Database = {
           issue_date?: string
           lead_id?: string | null
           line_items?: Json
+          location_id?: string | null
           notes?: string | null
           paid_date?: string | null
           payfast_payment_id?: string | null
@@ -2031,6 +2034,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "customer_locations"
             referencedColumns: ["id"]
           },
           {
