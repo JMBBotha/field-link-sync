@@ -104,20 +104,43 @@ const AdminMyJobsPage = () => {
       if (status === "in_progress") updates.started_at = new Date().toISOString();
       if (status === "completed") updates.completed_at = new Date().toISOString();
 
+      const assignment = myAssignments.find((a) => a.id === assignmentId);
+      const jobId = assignment?.job_id;
+
+      // OFFLINE PATH — queue the change and let the sync worker deliver later
+      if (!isOnline) {
+        await queueOperation("update_job_status", "assignments", assignmentId, updates);
+        if (jobStatus && jobId) {
+          await queueOperation("update_job_status", "jobs", jobId, {
+            status: jobStatus,
+            updated_at: new Date().toISOString(),
+          });
+        }
+        return { queued: true as const };
+      }
+
+      // ONLINE PATH
       const { error } = await supabase.from("assignments").update(updates).eq("id", assignmentId);
       if (error) throw error;
 
-      // Also update job status if needed
-      if (jobStatus) {
-        const assignment = myAssignments.find((a) => a.id === assignmentId);
-        if (assignment?.job_id) {
-          const { error: jobError } = await supabase.from("jobs").update({ status: jobStatus, updated_at: new Date().toISOString() }).eq("id", assignment.job_id);
-          if (jobError) throw jobError;
-        }
+      if (jobStatus && jobId) {
+        const { error: jobError } = await supabase
+          .from("jobs")
+          .update({ status: jobStatus, updated_at: new Date().toISOString() })
+          .eq("id", jobId);
+        if (jobError) throw jobError;
       }
+      return { queued: false as const };
     },
-    onSuccess: () => {
-      toast({ title: "Status updated" });
+    onSuccess: (result) => {
+      if (result?.queued) {
+        toast({
+          title: "Saved offline",
+          description: "Change will sync when you're back online",
+        });
+      } else {
+        toast({ title: "Status updated" });
+      }
       queryClient.invalidateQueries({ queryKey: ["my-jobs"] });
     },
     onError: (err: any) => toast({ title: "Update failed", description: err.message, variant: "destructive" }),
