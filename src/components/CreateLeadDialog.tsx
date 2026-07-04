@@ -29,13 +29,14 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Users, MapPin, Radio, CalendarIcon } from "lucide-react";
+import { Loader2, Users, MapPin, Radio, CalendarIcon, UserCheck, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import LocationPicker from "./LocationPicker";
 import { useNearbyAgents } from "@/hooks/useNearbyAgents";
 import { useBroadcastSettings } from "@/hooks/useBroadcastSettings";
 import { getBroadcastRadiusForType, formatDistance } from "@/lib/geolocation";
+import { findCustomerMatch, type CustomerMatch } from "@/lib/customerMatch";
 
 interface CreateLeadDialogProps {
   open: boolean;
