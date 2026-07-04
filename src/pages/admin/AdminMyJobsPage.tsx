@@ -58,6 +58,7 @@ const AdminMyJobsPage = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { isOnline, queueOperation } = useOfflineContext();
   const [filter, setFilter] = useState<"active" | "completed">("active");
 
   const { data: myAssignments = [], isLoading } = useQuery<MyJobItem[]>({
