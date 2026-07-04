@@ -72,8 +72,33 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
   const prefillLocationId = searchParams.get("locationId");
   const prefillQuoteName = searchParams.get("quoteName") || "";
   const [quoteName, setQuoteName] = useState(prefillQuoteName);
+  const [locationId, setLocationId] = useState<string | null>(prefillLocationId || null);
+  const [locations, setLocations] = useState<Array<{ id: string; label: string }>>([]);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
+
+  // Load customer locations for picker
+  useEffect(() => {
+    if (!prefillCustomerId) { setLocations([]); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await (supabase.from("customer_locations") as any)
+        .select("id, label, address_line1, city")
+        .eq("customer_id", prefillCustomerId)
+        .order("is_primary", { ascending: false })
+        .order("created_at", { ascending: true });
+      if (cancelled) return;
+      const rows = ((data as any[]) || []).map((r) => ({
+        id: r.id,
+        label: r.label || [r.address_line1, r.city].filter(Boolean).join(", ") || "Location",
+      }));
+      setLocations(rows);
+      // Default to first location if nothing picked yet
+      if (!locationId && rows.length > 0) setLocationId(rows[0].id);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillCustomerId]);
 
   // PDF selection state for Visual Catalog checkboxes
   const [selectedFromPdf, setSelectedFromPdf] = useState<PdfSelectedProduct[]>([]);
