@@ -4,6 +4,7 @@ import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Came
 import BookingBadge from "@/components/BookingBadge";
 import CustomerJobHistory from "@/components/CustomerJobHistory";
 import CreateInvoiceDialog from "@/components/invoicing/CreateInvoiceDialog";
+import HelpTip from "@/components/help/HelpTip";
 import { useJobPhotos, PhotoType } from "@/hooks/useJobPhotos";
 import { useOfflineContext } from "@/contexts/OfflineContext";
 import { Button } from "@/components/ui/button";
