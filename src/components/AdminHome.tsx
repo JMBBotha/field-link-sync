@@ -13,6 +13,7 @@ import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
 import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
 import KpiDetailDialog from "@/components/admin/KpiDetailDialog";
 import QuotePerformanceWidget from "@/components/analytics/QuotePerformanceWidget";
+import CreateJobDialog from "@/components/jobs/CreateJobDialog";
 import { format, subDays } from "date-fns";
 import { useState, useMemo } from "react";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
