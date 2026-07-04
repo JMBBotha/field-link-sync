@@ -165,12 +165,25 @@ const AdminSidebar = ({
         { path: "/admin/team", label: "Team", icon: Users },
         { path: "/admin/billing", label: "Billing", icon: DollarSign },
         { path: "/admin/notifications", label: "Notifications", icon: Bell, badge: pendingRequestsCount },
-        { path: "/admin/audit", label: "Audit", icon: History },
-        { path: "/admin/import", label: "Import", icon: Upload },
-        { path: "/admin/whatsapp", label: "WhatsApp", icon: MessageSquare },
-        { path: "/admin/companies", label: "Companies", icon: Building2 },
         { path: "/admin/settings", label: "Settings", icon: Settings },
-        { path: "/field", label: "Field Agent View", icon: Users },
+        {
+          // Collapsible "Advanced" bucket — rarely-used / legacy screens.
+          // Everything here is still routed and reachable; just tucked away
+          // to reduce nav bloat. Move an item back into System.items to
+          // restore top-level visibility.
+          path: "/admin/settings#advanced",
+          label: "Advanced",
+          icon: Sparkles,
+          children: [
+            { path: "/admin/audit", label: "Audit Log", icon: History },
+            { path: "/admin/import", label: "Import", icon: Upload },
+            { path: "/admin/whatsapp", label: "WhatsApp", icon: MessageSquare },
+            { path: "/admin/companies", label: "Companies", icon: Building2 },
+            { path: "/admin/network-agents", label: "Network Agents", icon: Users },
+            { path: "/admin/overlay-debug", label: "Overlay Debug", icon: LayoutGrid },
+            { path: "/field", label: "Field Agent View", icon: Users },
+          ],
+        },
       ],
     },
   ];
