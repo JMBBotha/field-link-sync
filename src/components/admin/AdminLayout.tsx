@@ -244,6 +244,7 @@ const AdminLayout = () => {
       <CreateLeadDialog open={showCreateLead} onOpenChange={setShowCreateLead} />
       <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
       <IdleWarningModal open={showWarning} secondsLeft={secondsLeft} onStayActive={stayActive} />
+      {currentUserId && <WelcomeTourDialog userId={currentUserId} />}
 
     </div>
   );
