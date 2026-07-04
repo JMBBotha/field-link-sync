@@ -131,9 +131,52 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Unified typographic hierarchy */
+  h1 { @apply text-2xl font-semibold tracking-tight text-balance; }
+  h2 { @apply text-xl font-semibold tracking-tight text-balance; }
+  h3 { @apply text-base font-semibold tracking-tight; }
+  h4 { @apply text-sm font-semibold; }
+  p  { @apply leading-relaxed; }
+
+  /* Small uppercase labels used across cards/sections */
+  .label-eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-wider text-muted-foreground;
+  }
+
+  /* Consistent page-level chrome */
+  .page-shell   { @apply p-4 md:p-6 space-y-5 max-w-7xl mx-auto; }
+  .page-header  { @apply flex items-center justify-between flex-wrap gap-3; }
+  .page-title   { @apply text-2xl font-semibold tracking-tight; }
+  .page-subtitle{ @apply text-sm text-muted-foreground; }
+
+  /* Focus ring consistency */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 }
+
+/* Refined skeleton shimmer */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-pulse {
+  background-image: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 0%,
+    hsl(var(--muted-foreground) / 0.08) 50%,
+    hsl(var(--muted)) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
 
 /* Mapbox popup styling */
 .mapboxgl-popup-content {
