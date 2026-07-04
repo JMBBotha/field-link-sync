@@ -313,6 +313,12 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         </Card>
       )}
 
+      {/* Payments — record & history (auto-updates invoice status via DB trigger) */}
+      <PaymentRecorder invoiceId={invoice.id} invoiceTotal={Number(invoice.grand_total)} />
+
+      {/* Extra spacer so the fixed action bar doesn't cover payments */}
+      <div className="h-32" />
+
       {/* Fixed Action Buttons */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-md border-t z-50 max-w-lg mx-auto space-y-2">
         {/* Primary action based on status */}
