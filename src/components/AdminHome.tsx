@@ -13,6 +13,7 @@ import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
 import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
 import KpiDetailDialog from "@/components/admin/KpiDetailDialog";
 import QuotePerformanceWidget from "@/components/analytics/QuotePerformanceWidget";
+import CreateJobDialog from "@/components/jobs/CreateJobDialog";
 import { format, subDays } from "date-fns";
 import { useState, useMemo } from "react";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
@@ -31,10 +32,15 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   const today = new Date().toISOString().split("T")[0];
   const [selectedKpi, setSelectedKpi] = useState<string | null>(null);
   const [convertingId, setConvertingId] = useState<string | null>(null);
+  const [jobDialog, setJobDialog] = useState<{ open: boolean; leadId?: string; customerId?: string }>({ open: false });
   const { companyId } = useUserCompanyId();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const openCreateJobDialog = (leadId: string, customerId?: string | null) => {
+    setJobDialog({ open: true, leadId, customerId: customerId || undefined });
+  };
 
   const handleConvertLead = async (leadId: string, opts?: { thenCreateJob?: boolean }) => {
     setConvertingId(leadId);
@@ -43,11 +49,11 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
       if (error) throw error;
       toast({
         title: "Lead converted to Customer",
-        description: opts?.thenCreateJob ? "Opening dispatch to create the job…" : "Opening customer page…",
+        description: opts?.thenCreateJob ? "Opening job details…" : "Opening customer page…",
       });
       queryClient.invalidateQueries({ queryKey: ["admin-home-stats"] });
       if (opts?.thenCreateJob) {
-        navigate(`/admin/jobs/dispatch?leadId=${leadId}${data ? `&customerId=${data}` : ""}`);
+        openCreateJobDialog(leadId, data as string | undefined);
       } else if (data) {
         navigate(`/admin/customers/${data}`);
       }
@@ -60,7 +66,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
 
   const handleCreateJobFromLead = async (lead: { id: string; customer_id?: string | null }) => {
     if (lead.customer_id) {
-      navigate(`/admin/jobs/dispatch?leadId=${lead.id}&customerId=${lead.customer_id}`);
+      openCreateJobDialog(lead.id, lead.customer_id);
       return;
     }
     await handleConvertLead(lead.id, { thenCreateJob: true });
@@ -506,6 +512,13 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           <SyncConflictsSection />
         </CollapsibleContent>
       </Collapsible>
+
+      <CreateJobDialog
+        open={jobDialog.open}
+        onOpenChange={(o) => setJobDialog((s) => ({ ...s, open: o }))}
+        defaultLeadId={jobDialog.leadId}
+        defaultCustomerId={jobDialog.customerId}
+      />
     </div>
   );
 };
