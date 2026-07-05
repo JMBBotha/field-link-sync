@@ -530,7 +530,7 @@ const QuoteBuilder = ({ quoteId, leadId, customerId, templateId, initialQuoteNam
       if (b.account_type) parts.push(`Type: ${b.account_type}`);
     }
     setTerms(parts.join("\n"));
-  }, [companySettings, quoteId]);
+  }, [companySettings, quoteId, templateId]);
 
   /* ─── Logo URL ─── */
   const logoUrl = useMemo(() => {
