@@ -7,6 +7,7 @@ import { useOfflineContext } from "@/contexts/OfflineContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MapPin, CalendarDays, CheckCircle, XCircle, Play, RefreshCw, CloudOff } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 import { format } from "date-fns";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -242,39 +243,59 @@ const AdminMyJobsPage = () => {
                   )}
 
                   {/* Full-width action buttons — mobile-friendly touch targets */}
-                  {assignment.status === "proposed" && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        className="h-11 gap-1.5"
-                        onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "accepted" })}
-                      >
-                        <CheckCircle className="h-4 w-4" /> Accept
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-11 gap-1.5"
-                        onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "rejected" })}
-                      >
-                        <XCircle className="h-4 w-4" /> Reject
-                      </Button>
-                    </div>
-                  )}
-                  {assignment.status === "accepted" && (
-                    <Button
-                      className="w-full h-11 gap-1.5"
-                      onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "in_progress", jobStatus: "in_progress" })}
-                    >
-                      <Play className="h-4 w-4" /> Start Job
-                    </Button>
-                  )}
-                  {assignment.status === "in_progress" && (
-                    <Button
-                      className="w-full h-11 gap-1.5 bg-green-600 hover:bg-green-700"
-                      onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "completed", jobStatus: "completed" })}
-                    >
-                      <CheckCircle className="h-4 w-4" /> Complete Job
-                    </Button>
-                  )}
+                  {(() => {
+                    const pendingVars = updateMutation.isPending
+                      ? (updateMutation.variables as { assignmentId: string; status: string } | undefined)
+                      : undefined;
+                    const isPendingFor = (status: string) =>
+                      pendingVars?.assignmentId === assignment.id && pendingVars?.status === status;
+                    const anyPendingForThis = pendingVars?.assignmentId === assignment.id;
+                    return (
+                      <>
+                        {assignment.status === "proposed" && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button
+                              className="h-11 gap-1.5"
+                              disabled={anyPendingForThis}
+                              onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "accepted" })}
+                            >
+                              {isPendingFor("accepted") ? <Spinner /> : <CheckCircle className="h-4 w-4" />}
+                              {isPendingFor("accepted") ? "Accepting…" : "Accept"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="h-11 gap-1.5"
+                              disabled={anyPendingForThis}
+                              onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "rejected" })}
+                            >
+                              {isPendingFor("rejected") ? <Spinner /> : <XCircle className="h-4 w-4" />}
+                              {isPendingFor("rejected") ? "Rejecting…" : "Reject"}
+                            </Button>
+                          </div>
+                        )}
+                        {assignment.status === "accepted" && (
+                          <Button
+                            className="w-full h-11 gap-1.5"
+                            disabled={anyPendingForThis}
+                            onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "in_progress", jobStatus: "in_progress" })}
+                          >
+                            {isPendingFor("in_progress") ? <Spinner /> : <Play className="h-4 w-4" />}
+                            {isPendingFor("in_progress") ? "Starting…" : "Start Job"}
+                          </Button>
+                        )}
+                        {assignment.status === "in_progress" && (
+                          <Button
+                            className="w-full h-11 gap-1.5 bg-green-600 hover:bg-green-700"
+                            disabled={anyPendingForThis}
+                            onClick={() => updateMutation.mutate({ assignmentId: assignment.id, status: "completed", jobStatus: "completed" })}
+                          >
+                            {isPendingFor("completed") ? <Spinner /> : <CheckCircle className="h-4 w-4" />}
+                            {isPendingFor("completed") ? "Completing…" : "Complete Job"}
+                          </Button>
+                        )}
+                      </>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             );

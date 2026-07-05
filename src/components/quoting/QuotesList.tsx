@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Search, FileText, Download, Link2, FileCheck2 } from "lucide-react";
+import { Spinner, LoadingSection } from "@/components/ui/spinner";
 import { convertQuoteToInvoice } from "@/lib/convertQuoteToInvoice";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -132,7 +133,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
 
       {/* List */}
       {isLoading ? (
-        <div className="text-center py-8 text-muted-foreground">Loading quotes...</div>
+        <LoadingSection label="Loading quotes…" />
       ) : quotes.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <FileText className="h-10 w-10 mx-auto mb-2 opacity-50" />
@@ -190,7 +191,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                           disabled={converting === quote.id}
                           title="Convert to Invoice"
                         >
-                          <FileCheck2 className="h-3.5 w-3.5" />
+                          {converting === quote.id ? <Spinner size="xs" /> : <FileCheck2 className="h-3.5 w-3.5" />}
                         </Button>
                       )}
                       {quote.public_token && (
