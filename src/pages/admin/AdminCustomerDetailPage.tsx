@@ -79,36 +79,50 @@ const AdminCustomerDetailPage = () => {
   });
 
   const { data: invoices = [] } = useQuery({
-    queryKey: ["customer-invoices", id],
+    queryKey: ["customer-invoices", id, customer?.name],
     enabled: !!id,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     queryFn: async () => {
+      const orParts = [`customer_id.eq.${id}`];
+      if (customer?.name) orParts.push(`customer_name.ilike.${customer.name}`);
       const { data, error } = await supabase
         .from("invoices")
-        .select("id, invoice_number, notes, issue_date, due_date, grand_total, status, created_at")
-        .eq("customer_id", id!)
+        .select("id, invoice_number, notes, issue_date, due_date, grand_total, status, created_at, customer_id, customer_name")
+        .or(orParts.join(","))
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data || [];
+      const seen = new Set<string>();
+      return (data || []).filter((r: any) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
     },
   });
 
   const { data: quotes = [] } = useQuery({
-    queryKey: ["customer-quotes", id],
+    queryKey: ["customer-quotes", id, customer?.name],
     enabled: !!id,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     queryFn: async () => {
+      const orParts = [`customer_id.eq.${id}`];
+      if (customer?.name) orParts.push(`customer_name.ilike.${customer.name}`);
       const { data, error } = await supabase
         .from("quotes")
-        .select("id, quote_number, notes, total, status, created_at")
-        .eq("customer_id", id!)
+        .select("id, quote_number, notes, total, status, created_at, customer_id, customer_name")
+        .or(orParts.join(","))
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data || [];
+      const seen = new Set<string>();
+      return (data || []).filter((r: any) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
     },
   });
 
   const { data: jobs = [] } = useQuery({
     queryKey: ["customer-jobs-detail", id],
     enabled: !!id,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("jobs")
