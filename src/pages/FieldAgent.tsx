@@ -1980,25 +1980,7 @@ const FieldAgent = () => {
         </Dialog>
 
         {/* Fixed Bottom Navigation - Mobile Only */}
-        {isMobile && (
-          <FieldAgentBottomNav
-            activeTab={showMapOnMobile ? "map" : mobileTab === "available" ? "available" : mobileTab === "active" ? "active" : "available"}
-            onTabChange={(tab) => {
-              if (tab === "quote") {
-                navigate("/field/quote-builder");
-              } else if (tab === "jobs") {
-                navigate("/field/my-jobs");
-              } else if (tab === "map") {
-                setShowMapOnMobile(true);
-                setMobileSheetOpen(false);
-              } else {
-                setShowMapOnMobile(false);
-                setMobileSheetOpen(true);
-                setMobileTab(tab as "available" | "active");
-              }
-            }}
-          />
-        )}
+        {isMobile && <FieldAgentBottomNav />}
       </div>
     </Layout>
   );
