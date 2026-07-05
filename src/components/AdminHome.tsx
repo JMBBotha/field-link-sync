@@ -257,7 +257,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         <div className="flex flex-wrap gap-2">
           <Button onClick={onCreateLead}><Plus className="mr-2 h-4 w-4" />New Lead</Button>
           <Button onClick={() => onNavigate("quotes")}><Plus className="mr-2 h-4 w-4" />New Quote</Button>
-          <Button variant="outline" onClick={() => onNavigate("quotes")}><FileText className="mr-2 h-4 w-4" />Blank Quote</Button>
+          
         </div>
       </div>
 
