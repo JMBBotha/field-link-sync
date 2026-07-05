@@ -166,6 +166,7 @@ const LeadDetailSheet = ({
   const [showExpandedGallery, setShowExpandedGallery] = useState(false);
   const [showInlineInvoice, setShowInlineInvoice] = useState(false);
   const { toast } = useToast();
+  const qc = useQueryClient();
   const navigate = useNavigate();
   const { isOnline, queueOperation: contextQueueOp } = useOfflineContext();
   const [timeRefreshKey, setTimeRefreshKey] = useState(0);
