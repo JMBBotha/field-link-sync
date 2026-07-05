@@ -15,6 +15,8 @@ import {
   Image as ImageIcon,
   Play,
   CheckCircle2,
+  Phone,
+  Navigation,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -271,33 +273,74 @@ const AdminJobDetailPage = () => {
         </Card>
       </div>
 
-      {/* Sticky action bar — Start / Complete (mobile-first) */}
+      {/* Sticky action bar — mobile-first: Call · Navigate · Start/Complete */}
       {(j.status === "scheduled" || j.status === "dispatched" || j.status === "in_progress") && (
         <div className="sticky-action-bar">
           <div className="sticky-action-bar-inner">
+            {/* Quick action: Call customer */}
+            {j.customers?.phone ? (
+              <a
+                href={`tel:${j.customers.phone}`}
+                aria-label="Call customer"
+                className="sticky-action-icon"
+              >
+                <Phone className="h-5 w-5 text-primary" />
+              </a>
+            ) : (
+              <button aria-label="No phone" disabled className="sticky-action-icon">
+                <Phone className="h-5 w-5" />
+              </button>
+            )}
+
+            {/* Quick action: Navigate (opens native maps) */}
+            {(() => {
+              const addr = location?.address_line1
+                ? [location.address_line1, location.city].filter(Boolean).join(", ")
+                : j.address;
+              const href = addr
+                ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`
+                : null;
+              return href ? (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Navigate to job"
+                  className="sticky-action-icon"
+                >
+                  <Navigation className="h-5 w-5 text-primary" />
+                </a>
+              ) : (
+                <button aria-label="No address" disabled className="sticky-action-icon">
+                  <Navigation className="h-5 w-5" />
+                </button>
+              );
+            })()}
+
+            {/* Primary contextual action */}
             {(j.status === "scheduled" || j.status === "dispatched") && (
               <Button
-                className="flex-1 h-11 gap-2 bg-primary hover:bg-primary/90 text-white"
+                className="sticky-action-primary bg-primary hover:bg-primary/90 text-white"
                 onClick={() => changeStatus("in_progress")}
                 disabled={pendingStatus !== null}
               >
                 {pendingStatus === "in_progress" ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
+                  <><Loader2 className="h-5 w-5 animate-spin" /> Saving…</>
                 ) : (
-                  <><Play className="h-4 w-4" /> Start Job</>
+                  <><Play className="h-5 w-5" /> Start Job</>
                 )}
               </Button>
             )}
             {j.status === "in_progress" && (
               <Button
-                className="flex-1 h-11 gap-2 bg-green-600 hover:bg-green-700 text-white"
+                className="sticky-action-primary bg-green-600 hover:bg-green-700 text-white"
                 onClick={() => changeStatus("completed")}
                 disabled={pendingStatus !== null}
               >
                 {pendingStatus === "completed" ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
+                  <><Loader2 className="h-5 w-5 animate-spin" /> Saving…</>
                 ) : (
-                  <><CheckCircle2 className="h-4 w-4" /> Complete Job</>
+                  <><CheckCircle2 className="h-5 w-5" /> Complete Job</>
                 )}
               </Button>
             )}
