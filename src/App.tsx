@@ -35,6 +35,7 @@ import AdminJobsPage from "./pages/admin/AdminJobsPage";
 import AdminJobDetailPage from "./pages/admin/AdminJobDetailPage";
 import AdminJobsDispatchPage from "./pages/admin/AdminJobsDispatchPage";
 import AdminMyJobsPage from "./pages/admin/AdminMyJobsPage";
+import FieldSchedulePage from "./pages/FieldSchedulePage";
 
 // Lazy-loaded admin pages (simple wrappers)
 import ScheduleCalendar from "./components/scheduling/ScheduleCalendar";
