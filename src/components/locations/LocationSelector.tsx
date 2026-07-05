@@ -113,9 +113,6 @@ const LocationSelector = ({ customerId, companyId, value, onChange, compact }: P
           <Button type="button" size="sm" variant="ghost" className="h-6 text-xs gap-1" onClick={() => setShowAdd((v) => !v)}>
             <Plus className="h-3 w-3" /> {showAdd ? "Cancel" : "New"}
           </Button>
-          <Button type="button" size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setShowPicker((v) => !v)}>
-            {showPicker ? "Hide map" : "Show map"}
-          </Button>
         </div>
       </div>
 
