@@ -71,7 +71,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
 
   // ── Pre-fill client from ?fromLead=<leadId> — one-click Lead → Draft Quote ──
   const [searchParams, setSearchParams] = useSearchParams();
-  const fromLead = searchParams.get("fromLead");
+  const fromLead = searchParams.get("fromLead") || searchParams.get("leadId");
   useEffect(() => {
     if (!fromLead || selectedClientId || clients.length === 0) return;
     const match = clients.find(
