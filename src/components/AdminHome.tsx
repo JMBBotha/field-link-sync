@@ -255,9 +255,17 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button onClick={onCreateLead}><Plus className="mr-2 h-4 w-4" />New Lead</Button>
-          <Button variant="outline" onClick={() => onNavigate("quotes")}><FileText className="mr-2 h-4 w-4" />New Quote</Button>
+          <Button onClick={() => setShowTemplatePicker(true)} className="border-l-4 border-l-accent-yellow">
+            <Sparkles className="mr-2 h-4 w-4" />Quote from Template
+          </Button>
+          <Button variant="outline" onClick={() => onNavigate("quotes")}><FileText className="mr-2 h-4 w-4" />Blank Quote</Button>
         </div>
       </div>
+
+      <QuickTemplateDialog
+        open={showTemplatePicker}
+        onClose={() => setShowTemplatePicker(false)}
+      />
 
       {/* Core 5 KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3">
