@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,10 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const rawNext = searchParams.get("next") ?? "";
+  // Only accept same-origin relative paths to avoid open redirects.
+  const nextPath = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "";
   const { toast } = useToast();
   const { session } = useAuth();
 
@@ -31,6 +35,11 @@ const Auth = () => {
       setRedirecting(true);
 
       try {
+        if (nextPath) {
+          window.location.replace(nextPath);
+          return;
+        }
+
         const { data: profile, error: profileErr } = await supabase
           .from("profiles")
           .select("onboarding_completed")
@@ -60,7 +69,7 @@ const Auth = () => {
     };
 
     redirectUser(session.user.id);
-  }, [session, navigate]);
+  }, [session, navigate, nextPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,12 +81,15 @@ const Auth = () => {
         if (error) throw error;
         toast({ title: "Welcome back!", description: "You've successfully logged in." });
       } else {
+        const emailRedirectTo = nextPath
+          ? `${window.location.origin}/login?next=${encodeURIComponent(nextPath)}`
+          : `${window.location.origin}/`;
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: { full_name: fullName },
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo,
           },
         });
         if (error) throw error;
