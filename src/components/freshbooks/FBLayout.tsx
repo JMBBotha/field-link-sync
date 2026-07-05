@@ -196,7 +196,7 @@ const FBLayout = () => {
                 className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10"
                 onClick={toggleTheme}
               >
-                {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                {resolvedTheme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               </Button>
             </div>
           </div>
