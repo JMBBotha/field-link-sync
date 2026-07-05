@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, CalendarDays, CheckCircle, XCircle, Play, RefreshCw, CloudOff } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { JobCardListSkeleton } from "@/components/ui/skeletons";
+import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
 import { format } from "date-fns";
 
 const STATUS_COLORS: Record<string, string> = {
