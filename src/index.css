@@ -235,6 +235,38 @@ All colors MUST be HSL.
 /* Give scrollable content underneath enough space so the bar never covers it */
 .has-sticky-action-bar { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
 
+/* ─── Yellow accent highlight ─────────────────────────────────────
+   Thin brand-yellow line used to mark active tabs, selected cards,
+   important alerts. Pair sparingly — one per screen region. */
+.accent-line-left {
+  @apply relative;
+  box-shadow: inset 3px 0 0 0 hsl(var(--accent-yellow));
+}
+.accent-line-top {
+  @apply relative;
+  box-shadow: inset 0 3px 0 0 hsl(var(--accent-yellow));
+}
+.accent-line-bottom {
+  @apply relative;
+  box-shadow: inset 0 -2px 0 0 hsl(var(--accent-yellow));
+}
+/* Active tab underline (use on TabsTrigger[data-state=active]) */
+[data-state="active"].accent-tab {
+  box-shadow: inset 0 -2px 0 0 hsl(var(--accent-yellow));
+}
+
+/* Selected card treatment — yellow left rail + primary tint border */
+.card-selected {
+  @apply border-primary/40;
+  box-shadow: inset 3px 0 0 0 hsl(var(--accent-yellow)), 0 1px 2px 0 hsl(var(--primary) / 0.06);
+}
+
+/* Subtle grey gradient surface for secondary panels */
+.surface-gradient {
+  background: var(--gradient-surface);
+}
+
+
 
 /* Mobile touch-target minimums (WCAG AAA ≈ 44px) */
 @media (max-width: 767px) {
