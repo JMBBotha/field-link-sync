@@ -188,6 +188,49 @@ const AdminCustomerDetailPage = () => {
     [quotes],
   );
 
+  // ---------- Status summaries for each section ----------
+  const quoteSummary = useMemo(() => {
+    const s = { draft: 0, sent: 0, accepted: 0, declined: 0, openValue: 0, acceptedValue: 0 };
+    for (const q of quotes as any[]) {
+      const st = (q.status || "draft").toLowerCase();
+      const total = Number(q.total || 0);
+      if (st === "draft") s.draft++;
+      else if (st === "sent" || st === "viewed" || st === "pending") s.sent++;
+      else if (st === "accepted") { s.accepted++; s.acceptedValue += total; }
+      else if (st === "declined") s.declined++;
+      if (["draft", "sent", "viewed", "pending"].includes(st)) s.openValue += total;
+    }
+    return s;
+  }, [quotes]);
+
+  const jobSummary = useMemo(() => {
+    const s = { scheduled: 0, inProgress: 0, completed: 0, other: 0 };
+    for (const j of jobs as any[]) {
+      const st = (j.status || "").toLowerCase();
+      if (st === "scheduled" || st === "pending") s.scheduled++;
+      else if (st === "in_progress" || st === "in progress" || st === "active") s.inProgress++;
+      else if (st === "completed" || st === "done") s.completed++;
+      else s.other++;
+    }
+    return s;
+  }, [jobs]);
+
+  const invoiceSummary = useMemo(() => {
+    const s = { draft: 0, sent: 0, paid: 0, overdue: 0, outstanding: 0, paidValue: 0 };
+    const now = new Date();
+    for (const inv of invoices as any[]) {
+      const st = (inv.status || "draft").toLowerCase();
+      const total = Number(inv.grand_total || 0);
+      const overdue = st !== "paid" && inv.due_date && new Date(inv.due_date) < now;
+      if (st === "paid") { s.paid++; s.paidValue += total; }
+      else if (overdue) { s.overdue++; s.outstanding += total; }
+      else if (st === "sent" || st === "viewed") { s.sent++; s.outstanding += total; }
+      else if (st === "draft") s.draft++;
+      else s.outstanding += total;
+    }
+    return s;
+  }, [invoices]);
+
   if (isLoading) {
     return <DetailPageSkeleton />;
   }
