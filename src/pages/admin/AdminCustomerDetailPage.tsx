@@ -188,6 +188,49 @@ const AdminCustomerDetailPage = () => {
     [quotes],
   );
 
+  // ---------- Status summaries for each section ----------
+  const quoteSummary = useMemo(() => {
+    const s = { draft: 0, sent: 0, accepted: 0, declined: 0, openValue: 0, acceptedValue: 0 };
+    for (const q of quotes as any[]) {
+      const st = (q.status || "draft").toLowerCase();
+      const total = Number(q.total || 0);
+      if (st === "draft") s.draft++;
+      else if (st === "sent" || st === "viewed" || st === "pending") s.sent++;
+      else if (st === "accepted") { s.accepted++; s.acceptedValue += total; }
+      else if (st === "declined") s.declined++;
+      if (["draft", "sent", "viewed", "pending"].includes(st)) s.openValue += total;
+    }
+    return s;
+  }, [quotes]);
+
+  const jobSummary = useMemo(() => {
+    const s = { scheduled: 0, inProgress: 0, completed: 0, other: 0 };
+    for (const j of jobs as any[]) {
+      const st = (j.status || "").toLowerCase();
+      if (st === "scheduled" || st === "pending") s.scheduled++;
+      else if (st === "in_progress" || st === "in progress" || st === "active") s.inProgress++;
+      else if (st === "completed" || st === "done") s.completed++;
+      else s.other++;
+    }
+    return s;
+  }, [jobs]);
+
+  const invoiceSummary = useMemo(() => {
+    const s = { draft: 0, sent: 0, paid: 0, overdue: 0, outstanding: 0, paidValue: 0 };
+    const now = new Date();
+    for (const inv of invoices as any[]) {
+      const st = (inv.status || "draft").toLowerCase();
+      const total = Number(inv.grand_total || 0);
+      const overdue = st !== "paid" && inv.due_date && new Date(inv.due_date) < now;
+      if (st === "paid") { s.paid++; s.paidValue += total; }
+      else if (overdue) { s.overdue++; s.outstanding += total; }
+      else if (st === "sent" || st === "viewed") { s.sent++; s.outstanding += total; }
+      else if (st === "draft") s.draft++;
+      else s.outstanding += total;
+    }
+    return s;
+  }, [invoices]);
+
   if (isLoading) {
     return <DetailPageSkeleton />;
   }
@@ -347,9 +390,15 @@ const AdminCustomerDetailPage = () => {
               <Tabs defaultValue="quotes">
                 <div className="border-b overflow-x-auto">
                   <TabsList className="m-3 md:m-4 flex-nowrap w-max">
-                    <TabsTrigger value="invoices">Invoices</TabsTrigger>
-                    <TabsTrigger value="quotes">Quotes</TabsTrigger>
-                    <TabsTrigger value="jobs">Jobs</TabsTrigger>
+                    <TabsTrigger value="invoices">
+                      Invoices {invoices.length > 0 && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted">{invoices.length}</span>}
+                    </TabsTrigger>
+                    <TabsTrigger value="quotes">
+                      Quotes {quotes.length > 0 && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted">{quotes.length}</span>}
+                    </TabsTrigger>
+                    <TabsTrigger value="jobs">
+                      Jobs {jobs.length > 0 && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted">{jobs.length}</span>}
+                    </TabsTrigger>
                     <TabsTrigger value="contacts">Contacts</TabsTrigger>
                     <TabsTrigger value="credits">Credits</TabsTrigger>
                     <TabsTrigger value="estimates">Estimates</TabsTrigger>
@@ -358,6 +407,14 @@ const AdminCustomerDetailPage = () => {
 
                 <TabsContent value="invoices" className="p-0 mt-0">
                   <SectionHeader title="Invoices" onNew={() => navigate("/admin/invoices")} cta="+ New Invoice" />
+                  <SummaryChips
+                    items={[
+                      { label: "Outstanding", value: formatRand(invoiceSummary.outstanding), tone: invoiceSummary.outstanding > 0 ? "amber" : "slate" },
+                      { label: "Overdue", value: String(invoiceSummary.overdue), tone: invoiceSummary.overdue > 0 ? "rose" : "slate" },
+                      { label: "Paid", value: `${invoiceSummary.paid} · ${formatRand(invoiceSummary.paidValue)}`, tone: "emerald" },
+                      { label: "Draft", value: String(invoiceSummary.draft), tone: "slate" },
+                    ]}
+                  />
                   <div className="max-h-[560px] overflow-auto px-2 md:px-4 pb-6">
                     <Table>
                       <TableHeader>
@@ -372,7 +429,7 @@ const AdminCustomerDetailPage = () => {
                       </TableHeader>
                       <TableBody>
                         {invoices.map((inv: any) => (
-                          <TableRow key={inv.id}>
+                          <TableRow key={inv.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/invoices/${inv.id}`)}>
                             <TableCell className="font-medium">{inv.invoice_number || "—"}</TableCell>
                             <TableCell className="max-w-[260px] truncate text-muted-foreground text-xs">{inv.notes || "—"}</TableCell>
                             <TableCell className="text-xs">{inv.issue_date ? format(new Date(inv.issue_date), "dd MMM yyyy") : "—"}</TableCell>
@@ -389,6 +446,15 @@ const AdminCustomerDetailPage = () => {
 
                 <TabsContent value="quotes" className="p-0 mt-0">
                   <SectionHeader title="Quotes" onNew={() => setShowTemplatePicker(true)} cta="+ Quote from Template" />
+                  <SummaryChips
+                    items={[
+                      { label: "Open value", value: formatRand(quoteSummary.openValue), tone: quoteSummary.openValue > 0 ? "blue" : "slate" },
+                      { label: "Sent", value: String(quoteSummary.sent), tone: "blue" },
+                      { label: "Accepted", value: `${quoteSummary.accepted} · ${formatRand(quoteSummary.acceptedValue)}`, tone: "emerald" },
+                      { label: "Draft", value: String(quoteSummary.draft), tone: "slate" },
+                      { label: "Declined", value: String(quoteSummary.declined), tone: quoteSummary.declined > 0 ? "rose" : "slate" },
+                    ]}
+                  />
                   <div className="max-h-[560px] overflow-auto px-2 md:px-4 pb-6">
                     <Table>
                       <TableHeader>
@@ -402,7 +468,7 @@ const AdminCustomerDetailPage = () => {
                       </TableHeader>
                       <TableBody>
                         {quotes.map((q: any) => (
-                          <TableRow key={q.id}>
+                          <TableRow key={q.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/quotes/${q.id}`)}>
                             <TableCell className="font-medium">{q.quote_number || "—"}</TableCell>
                             <TableCell className="max-w-[260px] truncate text-muted-foreground text-xs">{q.notes || "—"}</TableCell>
                             <TableCell className="text-xs">{q.created_at ? format(new Date(q.created_at), "dd MMM yyyy") : "—"}</TableCell>
@@ -418,6 +484,14 @@ const AdminCustomerDetailPage = () => {
 
                 <TabsContent value="jobs" className="p-0 mt-0">
                   <SectionHeader title="Jobs" onNew={() => navigate("/admin/jobs")} cta="+ New Job" />
+                  <SummaryChips
+                    items={[
+                      { label: "Scheduled", value: String(jobSummary.scheduled), tone: "blue" },
+                      { label: "In progress", value: String(jobSummary.inProgress), tone: jobSummary.inProgress > 0 ? "amber" : "slate" },
+                      { label: "Completed", value: String(jobSummary.completed), tone: "emerald" },
+                      { label: "Other", value: String(jobSummary.other), tone: "slate" },
+                    ]}
+                  />
                   <div className="max-h-[560px] overflow-auto px-2 md:px-4 pb-6">
                     <Table>
                       <TableHeader>
@@ -430,7 +504,7 @@ const AdminCustomerDetailPage = () => {
                       </TableHeader>
                       <TableBody>
                         {jobs.map((j: any) => (
-                          <TableRow key={j.id}>
+                          <TableRow key={j.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/jobs/${j.id}`)}>
                             <TableCell className="font-medium">{j.title || "Untitled"}</TableCell>
                             <TableCell className="max-w-[260px] truncate text-muted-foreground text-xs">{j.description || "—"}</TableCell>
                             <TableCell className="text-xs">{(j.scheduled_for || j.created_at) ? format(new Date((j.scheduled_for || j.created_at)!), "dd MMM yyyy") : "—"}</TableCell>
@@ -494,6 +568,30 @@ const AdminCustomerDetailPage = () => {
     </div>
   );
 };
+
+type ChipTone = "slate" | "blue" | "emerald" | "amber" | "rose";
+const CHIP_TONES: Record<ChipTone, string> = {
+  slate:   "bg-slate-50 text-slate-700 border-slate-200",
+  blue:    "bg-blue-50 text-blue-700 border-blue-200",
+  emerald: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  amber:   "bg-amber-50 text-amber-800 border-amber-200",
+  rose:    "bg-rose-50 text-rose-700 border-rose-200",
+};
+
+const SummaryChips = ({ items }: { items: { label: string; value: string; tone: ChipTone }[] }) => (
+  <div className="flex gap-2 overflow-x-auto px-4 pb-3 -mt-1">
+    {items.map((it) => (
+      <div
+        key={it.label}
+        className={cn("shrink-0 rounded-lg border px-3 py-2 min-w-[110px]", CHIP_TONES[it.tone])}
+      >
+        <p className="text-[10px] uppercase tracking-wide opacity-80">{it.label}</p>
+        <p className="text-sm font-bold leading-tight mt-0.5">{it.value}</p>
+      </div>
+    ))}
+  </div>
+);
+
 
 const Stat = ({ label, value }: { label: string; value: string }) => (
   <div>
