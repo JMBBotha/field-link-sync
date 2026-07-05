@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -147,6 +147,12 @@ const FieldAgent = () => {
   const watchIdRef = useRef<number | null>(null);
   const timerIntervalRef = useRef<number | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  // Bottom-nav "Map" tab drives /field?view=map; keep the map sheet in sync.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setShowMapOnMobile(params.get("view") === "map");
+  }, [location.search]);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -1980,25 +1986,7 @@ const FieldAgent = () => {
         </Dialog>
 
         {/* Fixed Bottom Navigation - Mobile Only */}
-        {isMobile && (
-          <FieldAgentBottomNav
-            activeTab={showMapOnMobile ? "map" : mobileTab === "available" ? "available" : mobileTab === "active" ? "active" : "available"}
-            onTabChange={(tab) => {
-              if (tab === "quote") {
-                navigate("/field/quote-builder");
-              } else if (tab === "jobs") {
-                navigate("/field/my-jobs");
-              } else if (tab === "map") {
-                setShowMapOnMobile(true);
-                setMobileSheetOpen(false);
-              } else {
-                setShowMapOnMobile(false);
-                setMobileSheetOpen(true);
-                setMobileTab(tab as "available" | "active");
-              }
-            }}
-          />
-        )}
+        {isMobile && <FieldAgentBottomNav />}
       </div>
     </Layout>
   );
