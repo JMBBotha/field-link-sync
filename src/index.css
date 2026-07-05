@@ -265,17 +265,37 @@ All colors MUST be HSL.
 .btn-action-success   { @apply btn-action bg-success text-white hover:bg-success/90; }
 .btn-action-outline   { @apply btn-action border border-border bg-background hover:bg-muted; }
 
-/* Sticky bottom action bar — safe-area aware for iOS, offset for desktop sidebar */
+/* Sticky bottom action bar — safe-area aware, mobile-first thumb-zone sizing.
+   Larger touch targets on phone, offset for desktop sidebar. */
 .sticky-action-bar {
   @apply fixed bottom-0 inset-x-0 z-40 border-t bg-background/95 backdrop-blur
-         supports-[backdrop-filter]:bg-background/80 md:left-64;
+         supports-[backdrop-filter]:bg-background/80 md:left-64
+         shadow-[0_-8px_20px_-8px_rgba(0,0,0,0.15)];
   padding-bottom: env(safe-area-inset-bottom);
+  /* Yellow accent line — signals "primary action zone" for field techs */
+  box-shadow: inset 0 2px 0 0 hsl(var(--accent-yellow) / 0.6),
+              0 -8px 20px -8px rgba(0,0,0,0.15);
 }
 .sticky-action-bar-inner {
-  @apply max-w-3xl mx-auto px-4 py-3 flex gap-2;
+  @apply max-w-3xl mx-auto px-3 py-3 md:px-4 md:py-3 flex items-stretch gap-2 md:gap-3;
+}
+/* Primary action button in a sticky bar — 56px on mobile, 48px on desktop */
+.sticky-action-primary {
+  @apply flex-1 min-h-[56px] md:min-h-[48px] text-base md:text-sm font-semibold
+         gap-2 rounded-xl shadow-sm active:scale-[0.98] transition-transform;
+}
+/* Secondary icon-only quick action (Call, Navigate) — 56x56 mobile */
+.sticky-action-icon {
+  @apply shrink-0 h-14 w-14 md:h-12 md:w-12 rounded-xl border border-border
+         bg-background text-foreground flex items-center justify-center
+         hover:bg-muted active:scale-[0.95] transition-transform
+         disabled:opacity-40 disabled:pointer-events-none;
 }
 /* Give scrollable content underneath enough space so the bar never covers it */
-.has-sticky-action-bar { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+.has-sticky-action-bar { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+@media (min-width: 768px) {
+  .has-sticky-action-bar { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+}
 
 /* ─── Yellow accent highlight ─────────────────────────────────────
    Thin brand-yellow line used to mark active tabs, selected cards,
