@@ -299,8 +299,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     setQuoteId("");
     setLocationId("");
     setAddress("");
-    setScheduledFor("");
-    setDuration("2");
+    setAppt({ date: "", startTime: "", durationMinutes: 120, agentId: "" });
     setPriority("normal");
     setJobType("service");
     setLat(null);
