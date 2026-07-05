@@ -147,6 +147,12 @@ const FieldAgent = () => {
   const watchIdRef = useRef<number | null>(null);
   const timerIntervalRef = useRef<number | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  // Bottom-nav "Map" tab drives /field?view=map; keep the map sheet in sync.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setShowMapOnMobile(params.get("view") === "map");
+  }, [location.search]);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
