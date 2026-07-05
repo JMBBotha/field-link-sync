@@ -132,12 +132,6 @@ const LocationSelector = ({ customerId, companyId, value, onChange, compact }: P
         </Select>
       )}
 
-      {value.locationId && (
-        <p className="text-[11px] text-muted-foreground">
-          {value.label ? `📍 ${value.label} — ${value.address}` : `📍 ${value.address}`}
-          {(value.latitude == null || value.longitude == null) && " • ⚠️ no coordinates yet"}
-        </p>
-      )}
 
       {showAdd && (
         <div className="rounded-md border p-3 space-y-2 bg-muted/30">
