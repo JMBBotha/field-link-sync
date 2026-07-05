@@ -69,6 +69,7 @@ const AdminCustomerDetailPage = () => {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [showEdit, setShowEdit] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
 
   const { data: customer, isLoading } = useQuery({
     queryKey: ["customer-detail", id],
