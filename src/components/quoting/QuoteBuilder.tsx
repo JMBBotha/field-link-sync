@@ -987,7 +987,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
 
         {/* ── TERMS ── */}
         <div className="space-y-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Terms</p>
+          
           <div className="space-y-2 text-sm leading-relaxed">
             {TERMS_BLOCKS.map((block, i) => {
               if (block.type === "spacer") return <div key={i} className="h-2" />;
