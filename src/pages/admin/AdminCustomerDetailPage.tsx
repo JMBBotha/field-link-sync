@@ -230,7 +230,10 @@ const AdminCustomerDetailPage = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => navigate("/admin/quotes")}>New Quote</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowTemplatePicker(true)}>
+                Quote from Template
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate(`/admin/quotes?customerId=${id}`)}>New Blank Quote</DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/admin/invoices")}>New Invoice</DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/admin/jobs")}>New Job</DropdownMenuItem>
             </DropdownMenuContent>
