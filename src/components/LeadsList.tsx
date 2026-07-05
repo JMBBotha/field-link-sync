@@ -442,6 +442,28 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
               </span>
             )}
             {getStatusBadge(lead.status)}
+            <Button
+              size="sm"
+              className="h-8 gap-1.5 px-2.5 hidden sm:inline-flex"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/admin/quotes?fromLead=${lead.id}`);
+              }}
+              title="Start a draft quote pre-filled with this lead's details"
+            >
+              <FileText className="h-3.5 w-3.5" /> Draft Quote
+            </Button>
+            <Button
+              size="icon"
+              className="h-8 w-8 sm:hidden"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/admin/quotes?fromLead=${lead.id}`);
+              }}
+              title="Draft Quote"
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8">
