@@ -360,7 +360,7 @@ const AdminCustomerDetailPage = () => {
                 </TabsContent>
 
                 <TabsContent value="quotes" className="p-0 mt-0">
-                  <SectionHeader title="Quotes" onNew={() => navigate("/admin/quotes")} cta="+ New Quote" />
+                  <SectionHeader title="Quotes" onNew={() => setShowTemplatePicker(true)} cta="+ Quote from Template" />
                   <div className="max-h-[560px] overflow-auto px-2 md:px-4 pb-6">
                     <Table>
                       <TableHeader>
