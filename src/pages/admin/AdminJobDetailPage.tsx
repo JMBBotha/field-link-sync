@@ -15,6 +15,8 @@ import {
   Image as ImageIcon,
   Play,
   CheckCircle2,
+  Phone,
+  Navigation,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
