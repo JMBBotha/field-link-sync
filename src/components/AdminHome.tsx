@@ -13,6 +13,7 @@ import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
 import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
 import KpiDetailDialog from "@/components/admin/KpiDetailDialog";
 import QuotePerformanceWidget from "@/components/analytics/QuotePerformanceWidget";
+import PipelineMetrics from "@/components/analytics/PipelineMetrics";
 import QuickTemplateDialog from "@/components/quoting/QuickTemplateDialog";
 import { Sparkles } from "lucide-react";
 import CreateJobDialog from "@/components/jobs/CreateJobDialog";
@@ -324,6 +325,9 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
               </Card>
             ))}
       </div>
+
+      {/* Pipeline health metrics — 90-day window */}
+      <PipelineMetrics />
 
       {/* KPI Detail Dialog */}
       {activeKpi && (
