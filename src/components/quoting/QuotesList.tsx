@@ -134,7 +134,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
 
       {/* List */}
       {isLoading ? (
-        <LoadingSection label="Loading quotes…" />
+        <ListSkeleton rows={5} />
       ) : quotes.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <FileText className="h-10 w-10 mx-auto mb-2 opacity-50" />
