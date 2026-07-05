@@ -316,7 +316,22 @@ const AdminCustomerDetailPage = () => {
           {/* Bottom tabs */}
           <Card className="bg-card">
             <CardContent className="p-0">
-              <Tabs defaultValue="invoices">
+              <Tabs defaultValue="quotes">
+                <div className="border-b overflow-x-auto">
+                  <TabsList className="m-4 flex-nowrap w-max">
+                    <TabsTrigger value="invoices">Invoices</TabsTrigger>
+                    <TabsTrigger value="quotes">Quotes</TabsTrigger>
+                    <TabsTrigger value="jobs">Jobs</TabsTrigger>
+                    <TabsTrigger value="contacts">Contacts</TabsTrigger>
+                    <TabsTrigger value="credits">Credits</TabsTrigger>
+                    <TabsTrigger value="estimates">Estimates</TabsTrigger>
+                  </TabsList>
+                </div>
+
+                <TabsContent value="invoices" className="p-0 mt-0">
+                  <SectionHeader title="Invoices" onNew={() => navigate("/admin/invoices")} cta="+ New Invoice" />
+                  <div className="max-h-[520px] overflow-y-auto px-2 pb-4">
+                  <Table>
                 <TabsList className="m-4">
                   <TabsTrigger value="invoices">Invoices</TabsTrigger>
                   <TabsTrigger value="quotes">Quotes</TabsTrigger>
