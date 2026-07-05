@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, MapPin, AlertTriangle, CheckCircle2 } from "lucide-react";
 import LocationPicker from "@/components/LocationPicker";
 import { geocodeAddress } from "@/lib/geocodeAddress";
+import AppointmentPicker, { type AppointmentValue } from "@/components/scheduling/AppointmentPicker";
 
 interface Props {
   open: boolean;
@@ -37,8 +38,12 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   const [quoteId, setQuoteId] = useState(defaultQuoteId || "");
   const [locationId, setLocationId] = useState<string>("");
   const [address, setAddress] = useState("");
-  const [scheduledFor, setScheduledFor] = useState("");
-  const [duration, setDuration] = useState("2");
+  const [appt, setAppt] = useState<AppointmentValue>(() => ({
+    date: "",
+    startTime: "",
+    durationMinutes: 120,
+    agentId: "",
+  }));
   const [priority, setPriority] = useState("normal");
   const [jobType, setJobType] = useState("service");
   const [lat, setLat] = useState<number | null>(null);
@@ -221,13 +226,40 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
         address: address || null,
         lat: finalLat,
         lng: finalLng,
-        scheduled_for: scheduledFor || null,
-        estimated_duration: `${duration} hours`,
+        scheduled_for: appt.date && appt.startTime ? `${appt.date}T${appt.startTime}:00` : null,
+        estimated_duration: `${(appt.durationMinutes / 60).toFixed(2)} hours`,
         priority,
         job_type: jobType,
         created_by: userId || null,
       }).select().single();
       if (error) throw error;
+
+      // If an agent was picked, create an assignment + schedule row
+      if (data?.id && appt.agentId && appt.date && appt.startTime) {
+        const endTimeParts = (() => {
+          const [h, m] = appt.startTime.split(":").map(Number);
+          const total = h * 60 + m + appt.durationMinutes;
+          const eh = Math.floor(total / 60) % 24;
+          const em = total % 60;
+          return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+        })();
+        await (supabase as any).from("assignments").insert({
+          job_id: data.id,
+          profile_id: appt.agentId,
+          assigned_by: userId || null,
+          assignment_type: "primary",
+          status: "assigned",
+        });
+        if (safeLeadId) {
+          await supabase.from("job_schedules").insert({
+            lead_id: safeLeadId,
+            agent_id: appt.agentId,
+            scheduled_date: appt.date,
+            start_time: appt.startTime,
+            end_time: endTimeParts,
+          });
+        }
+      }
 
       // If we have coords and the customer had none, backfill customer geo
       if (customerId && finalLat != null && finalLng != null) {
@@ -267,8 +299,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     setQuoteId("");
     setLocationId("");
     setAddress("");
-    setScheduledFor("");
-    setDuration("2");
+    setAppt({ date: "", startTime: "", durationMinutes: 120, agentId: "" });
     setPriority("normal");
     setJobType("service");
     setLat(null);
@@ -369,15 +400,16 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
               </div>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Scheduled Date/Time <span className="text-destructive">*</span></Label>
-              <Input type="datetime-local" value={scheduledFor} onChange={e => setScheduledFor(e.target.value)} />
+          <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-semibold">
+                Schedule <span className="text-destructive">*</span>
+              </Label>
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Date · Time · Technician
+              </span>
             </div>
-            <div>
-              <Label>Estimated Duration (hrs)</Label>
-              <Input type="number" min="0.5" step="0.5" value={duration} onChange={e => setDuration(e.target.value)} />
-            </div>
+            <AppointmentPicker value={appt} onChange={setAppt} />
           </div>
           <div>
             <Label>Priority</Label>
@@ -396,7 +428,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
             onClick={() => createMutation.mutate()}
-            disabled={!title || !customerId || !address || !scheduledFor || !companyId || createMutation.isPending}
+            disabled={!title || !customerId || !address || !appt.date || !appt.startTime || !companyId || createMutation.isPending}
           >
             {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Create Job
