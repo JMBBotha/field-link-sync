@@ -546,10 +546,11 @@ const AdminDispatchPage = () => {
 
   if (isInitialLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-12">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Loading dispatch board...</p>
+      <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto">
+        <KpiGridSkeleton count={4} />
+        <div className="grid gap-4 md:grid-cols-2">
+          <JobCardListSkeleton rows={3} />
+          <JobCardListSkeleton rows={3} />
         </div>
       </div>
     );
