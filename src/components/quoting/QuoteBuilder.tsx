@@ -1033,7 +1033,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
           {selectedBrochures.length > 0 && (
             <div className="space-y-1">
               {selectedBrochures.map((b) => (
-                <div key={b.id} className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-1.5 text-sm">
+                <div key={b.id} className="flex items-center justify-between rounded-md border bg-white px-3 py-1.5 text-sm">
                   <span className="flex items-center gap-1.5">
                     <Check className="h-3.5 w-3.5 text-primary" />
                     {b.name}
@@ -1058,7 +1058,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
               <Plus className="h-4 w-4" /> Add Brochure
             </button>
           ) : (
-            <div className="space-y-2 border rounded-md p-3 bg-muted/20">
+            <div className="space-y-2 border rounded-md p-3 bg-white">
               <div className="relative">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <input

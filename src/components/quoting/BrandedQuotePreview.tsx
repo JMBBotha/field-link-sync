@@ -131,7 +131,7 @@ const BrandedQuotePreview = ({ open, onOpenChange, quote }: BrandedQuotePreviewP
             </thead>
             <tbody>
               {quote.line_items.map((item, i) => (
-                <tr key={i} className={i % 2 === 0 ? "bg-muted/30" : ""}>
+                <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-white"}>
                   <td className="py-2.5 px-3">{item.description}</td>
                   <td className="py-2.5 px-3 text-center">{item.quantity}</td>
                   <td className="py-2.5 px-3 text-right">{formatZAR(item.unit_price)}</td>
@@ -176,7 +176,7 @@ const BrandedQuotePreview = ({ open, onOpenChange, quote }: BrandedQuotePreviewP
         {quote.visual_sections?.length > 0 && (
           <div className="border-t">
             {quote.visual_sections.map((section, idx) => (
-              <div key={idx} className={`px-8 py-6 ${idx % 2 === 1 ? "bg-muted/20" : ""}`}>
+              <div key={idx} className="px-8 py-6 bg-white">
                 {section.heading && (
                   <h3 className="text-xl font-bold mb-3 text-primary">{section.heading}</h3>
                 )}
@@ -220,14 +220,14 @@ const BrandedQuotePreview = ({ open, onOpenChange, quote }: BrandedQuotePreviewP
 
         {/* ── Notes ── */}
         {quote.notes && (
-          <div className="px-8 py-4 border-t bg-muted/10">
+          <div className="px-8 py-4 border-t bg-white">
             <p className="text-xs uppercase text-muted-foreground font-semibold mb-1">Notes</p>
             <p className="text-sm whitespace-pre-wrap">{quote.notes}</p>
           </div>
         )}
 
         {/* ── Terms ── */}
-        <div className="px-8 py-5 border-t bg-muted/30">
+        <div className="px-8 py-5 border-t bg-white">
           <p className="text-xs uppercase text-muted-foreground font-semibold mb-2">
             Terms & Conditions
           </p>
