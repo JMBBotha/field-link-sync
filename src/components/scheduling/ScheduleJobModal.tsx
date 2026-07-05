@@ -30,10 +30,12 @@ const ScheduleJobModal = ({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [leadId, setLeadId] = useState("");
-  const [agentId, setAgentId] = useState("");
-  const [date, setDate] = useState("");
-  const [startTime, setStartTime] = useState("08:00");
-  const [endTime, setEndTime] = useState("10:00");
+  const [appt, setAppt] = useState<AppointmentValue>({
+    date: "",
+    startTime: "08:00",
+    durationMinutes: 120,
+    agentId: "",
+  });
   const [notes, setNotes] = useState("");
   const [conflict, setConflict] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
