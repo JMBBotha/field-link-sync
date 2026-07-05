@@ -7,6 +7,7 @@ import { useOfflineContext } from "@/contexts/OfflineContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MapPin, CalendarDays, CheckCircle, XCircle, Play, RefreshCw, CloudOff } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 import { format } from "date-fns";
 
 const STATUS_COLORS: Record<string, string> = {
