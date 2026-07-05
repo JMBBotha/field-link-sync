@@ -23,6 +23,19 @@ interface ScheduleJobModalProps {
   onSaved: () => void;
 }
 
+const computeEndTime = (start: string, durationMinutes: number) => {
+  if (!start) return "";
+  const parsed = parse(start, "HH:mm", new Date());
+  return format(addMinutes(parsed, durationMinutes), "HH:mm");
+};
+
+const minutesBetween = (start: string, end: string) => {
+  if (!start || !end) return 120;
+  const s = parse(start, "HH:mm", new Date());
+  const e = parse(end, "HH:mm", new Date());
+  return Math.max(15, Math.round((e.getTime() - s.getTime()) / 60000));
+};
+
 const ScheduleJobModal = ({
   open, onOpenChange, selectedDate, selectedStart, selectedEnd,
   existingEvent, existingSchedules, onSaved,
@@ -43,22 +56,21 @@ const ScheduleJobModal = ({
   useEffect(() => {
     if (existingEvent) {
       setLeadId(existingEvent.leadId);
-      setAgentId(existingEvent.agentId);
       setNotes(existingEvent.notes || "");
     } else {
       setLeadId("");
-      setAgentId("");
       setNotes("");
     }
-    if (selectedDate) {
-      setDate(selectedDate.toISOString().split("T")[0]);
-    }
-    if (selectedStart) {
-      setStartTime(`${String(selectedStart.getHours()).padStart(2, "0")}:${String(selectedStart.getMinutes()).padStart(2, "0")}`);
-    }
-    if (selectedEnd) {
-      setEndTime(`${String(selectedEnd.getHours()).padStart(2, "0")}:${String(selectedEnd.getMinutes()).padStart(2, "0")}`);
-    }
+    setAppt((prev) => ({
+      date: selectedDate ? selectedDate.toISOString().split("T")[0] : prev.date,
+      startTime: selectedStart
+        ? `${String(selectedStart.getHours()).padStart(2, "0")}:${String(selectedStart.getMinutes()).padStart(2, "0")}`
+        : prev.startTime || "08:00",
+      durationMinutes: selectedStart && selectedEnd
+        ? Math.max(15, Math.round((selectedEnd.getTime() - selectedStart.getTime()) / 60000))
+        : prev.durationMinutes || 120,
+      agentId: existingEvent?.agentId ?? prev.agentId,
+    }));
     setConflict(null);
   }, [open, existingEvent, selectedDate, selectedStart, selectedEnd]);
 
@@ -77,46 +89,41 @@ const ScheduleJobModal = ({
     enabled: open,
   });
 
-  // Fetch agents
-  const { data: agents = [] } = useQuery({
-    queryKey: ["schedule-agents"],
-    queryFn: async () => {
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "field_agent");
-      if (!roles?.length) return [];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", roles.map((r: any) => r.user_id));
-      return profiles || [];
-    },
-    enabled: open,
-  });
-
-  // Check conflicts
+  // Conflict detection against provided schedules
   useEffect(() => {
-    if (!agentId || !date || !startTime || !endTime) {
+    const { agentId, date, startTime, durationMinutes } = appt;
+    if (!agentId || !date || !startTime) {
       setConflict(null);
       return;
     }
+    const endTime = computeEndTime(startTime, durationMinutes);
     const conflicting = existingSchedules.find((s: any) => {
       if (existingEvent && s.id === existingEvent.id) return false;
       if (s.agent_id !== agentId || s.scheduled_date !== date) return false;
       return startTime < s.end_time && endTime > s.start_time;
     });
-    setConflict(conflicting ? `Conflicts with ${conflicting.leads?.customer_name || "another job"} (${conflicting.start_time}–${conflicting.end_time})` : null);
-  }, [agentId, date, startTime, endTime, existingSchedules, existingEvent]);
+    setConflict(conflicting
+      ? `Conflicts with ${conflicting.leads?.customer_name || "another job"} (${conflicting.start_time}–${conflicting.end_time})`
+      : null);
+  }, [appt, existingSchedules, existingEvent]);
 
   const handleSave = async () => {
-    if (!leadId || !agentId || !date || !startTime || !endTime) {
+    const { agentId, date, startTime, durationMinutes } = appt;
+    if (!leadId || !agentId || !date || !startTime) {
       toast({ title: "Please fill all required fields", variant: "destructive" });
       return;
     }
     setSaving(true);
     try {
-      const payload = { lead_id: leadId, agent_id: agentId, scheduled_date: date, start_time: startTime, end_time: endTime, notes: notes || null };
+      const endTime = computeEndTime(startTime, durationMinutes);
+      const payload = {
+        lead_id: leadId,
+        agent_id: agentId,
+        scheduled_date: date,
+        start_time: startTime,
+        end_time: endTime,
+        notes: notes || null,
+      };
       if (existingEvent) {
         const { error } = await supabase.from("job_schedules").update(payload).eq("id", existingEvent.id);
         if (error) throw error;
@@ -124,8 +131,11 @@ const ScheduleJobModal = ({
         const { error } = await supabase.from("job_schedules").insert(payload);
         if (error) throw error;
       }
-      // Also update lead scheduled_date
-      await supabase.from("leads").update({ scheduled_date: date, scheduled_time: startTime, assigned_agent_id: agentId }).eq("id", leadId);
+      await supabase.from("leads").update({
+        scheduled_date: date,
+        scheduled_time: startTime,
+        assigned_agent_id: agentId,
+      }).eq("id", leadId);
 
       toast({ title: existingEvent ? "Schedule updated" : "Job scheduled" });
       queryClient.invalidateQueries({ queryKey: ["job-schedules"] });
@@ -157,7 +167,7 @@ const ScheduleJobModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{existingEvent ? "Edit Schedule" : "Schedule Job"}</DialogTitle>
         </DialogHeader>
@@ -175,32 +185,8 @@ const ScheduleJobModal = ({
             </Select>
           </div>
 
-          <div>
-            <Label>Agent</Label>
-            <Select value={agentId} onValueChange={setAgentId}>
-              <SelectTrigger><SelectValue placeholder="Select agent..." /></SelectTrigger>
-              <SelectContent>
-                {agents.map((a: any) => (
-                  <SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label>Date</Label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Start Time</Label>
-              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-            </div>
-            <div>
-              <Label>End Time</Label>
-              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
-            </div>
+          <div className="rounded-lg border border-border bg-muted/30 p-3">
+            <AppointmentPicker value={appt} onChange={setAppt} />
           </div>
 
           {conflict && (
