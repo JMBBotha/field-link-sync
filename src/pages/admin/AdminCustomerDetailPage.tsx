@@ -33,6 +33,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { cn } from "@/lib/utils";
 import { formatRand } from "@/utils/formatRand";
 import CustomerLocationsManager from "@/components/customers/CustomerLocationsManager";
+import QuickTemplateDialog from "@/components/quoting/QuickTemplateDialog";
 
 const LEAD_SOURCES = [
   "Manual", "Facebook Lead", "Website Form", "WhatsApp", "Phone Call", "Walk-in", "Referral",
@@ -68,6 +69,7 @@ const AdminCustomerDetailPage = () => {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [showEdit, setShowEdit] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
 
   const { data: customer, isLoading } = useQuery({
     queryKey: ["customer-detail", id],
@@ -228,7 +230,10 @@ const AdminCustomerDetailPage = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => navigate("/admin/quotes")}>New Quote</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowTemplatePicker(true)}>
+                Quote from Template
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate(`/admin/quotes?customerId=${id}`)}>New Blank Quote</DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/admin/invoices")}>New Invoice</DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/admin/jobs")}>New Job</DropdownMenuItem>
             </DropdownMenuContent>
@@ -355,7 +360,7 @@ const AdminCustomerDetailPage = () => {
                 </TabsContent>
 
                 <TabsContent value="quotes" className="p-0 mt-0">
-                  <SectionHeader title="Quotes" onNew={() => navigate("/admin/quotes")} cta="+ New Quote" />
+                  <SectionHeader title="Quotes" onNew={() => setShowTemplatePicker(true)} cta="+ Quote from Template" />
                   <div className="max-h-[560px] overflow-auto px-2 md:px-4 pb-6">
                     <Table>
                       <TableHeader>
@@ -451,6 +456,12 @@ const AdminCustomerDetailPage = () => {
         onOpenChange={setShowEdit}
         customer={customer}
         onSaved={() => qc.invalidateQueries({ queryKey: ["customer-detail", id] })}
+      />
+      <QuickTemplateDialog
+        open={showTemplatePicker}
+        onClose={() => setShowTemplatePicker(false)}
+        customerId={id}
+        quoteName={customer?.name ? `Quote - ${customer.name}` : undefined}
       />
     </div>
   );

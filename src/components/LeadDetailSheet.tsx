@@ -34,6 +34,7 @@ import CommunicationTimeline from "./communication/CommunicationTimeline";
 import UsedPartsSection from "./UsedPartsSection";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, DollarSign } from "lucide-react";
+import QuickTemplateDialog from "./quoting/QuickTemplateDialog";
 
 interface Lead {
   id: string;
@@ -165,6 +166,8 @@ const LeadDetailSheet = ({
   const [uploadingMultiple, setUploadingMultiple] = useState(false);
   const [showExpandedGallery, setShowExpandedGallery] = useState(false);
   const [showInlineInvoice, setShowInlineInvoice] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [templateCustomerId, setTemplateCustomerId] = useState<string | null>(null);
   const { toast } = useToast();
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -249,83 +252,102 @@ const LeadDetailSheet = ({
     setShowDurationPicker(false);
   };
 
+  // Ensure lead has a linked customer; returns customer id or null on failure.
+  const ensureLeadCustomerId = async (): Promise<string | null> => {
+    let customerId = lead.customer_id || null;
+    if (customerId) return customerId;
+
+    const { findCustomerMatch } = await import("@/lib/customerMatch");
+    const { getUserCompanyId } = await import("@/lib/tenantUtils");
+    const companyId = await getUserCompanyId(currentUserId);
+    if (!companyId) {
+      toast({ title: "No company found", variant: "destructive" });
+      return null;
+    }
+    const match = await findCustomerMatch(companyId, lead.customer_phone, null);
+    if (match) {
+      const ok = window.confirm(
+        `Possible existing customer found: ${match.name || match.phone}.\n\nLink this lead to that customer? (Cancel = create a new customer)`
+      );
+      if (ok) {
+        customerId = match.id;
+      } else {
+        const { data: newCust, error: cErr } = await supabase
+          .from("customers")
+          .insert({
+            company_id: companyId,
+            name: lead.customer_name,
+            phone: lead.customer_phone,
+            address: lead.customer_address,
+          })
+          .select("id")
+          .single();
+        if (cErr) {
+          toast({ title: cErr.message, variant: "destructive" });
+          return null;
+        }
+        customerId = newCust.id;
+      }
+    } else {
+      const { data: newCust, error: cErr } = await supabase
+        .from("customers")
+        .insert({
+          company_id: companyId,
+          name: lead.customer_name,
+          phone: lead.customer_phone,
+          address: lead.customer_address,
+        })
+        .select("id")
+        .single();
+      if (cErr) {
+        toast({ title: cErr.message, variant: "destructive" });
+        return null;
+      }
+      customerId = newCust.id;
+    }
+
+    await supabase.from("leads").update({ customer_id: customerId }).eq("id", lead.id);
+    const linkedId = customerId!;
+    qc.getQueriesData<any[]>({ queryKey: ["leads"] }).forEach(([k, list]) => {
+      if (!Array.isArray(list)) return;
+      qc.setQueryData(
+        k,
+        list.map((l: any) => (l.id === lead.id ? { ...l, customer_id: linkedId } : l)),
+      );
+    });
+    qc.setQueryData(["lead", lead.id], (prev: any) =>
+      prev ? { ...prev, customer_id: linkedId } : prev,
+    );
+    qc.invalidateQueries({ queryKey: ["unified-clients"] });
+    return customerId;
+  };
+
   // Create Draft Quote from Lead - ensures a customer, then opens builder prefilled
   const handleCreateDraftQuote = async () => {
     try {
-      let customerId = lead.customer_id || null;
-
-      if (!customerId) {
-        const { findCustomerMatch } = await import("@/lib/customerMatch");
-        const { getUserCompanyId } = await import("@/lib/tenantUtils");
-        const companyId = await getUserCompanyId(currentUserId);
-        if (!companyId) {
-          toast({ title: "No company found", variant: "destructive" });
-          return;
-        }
-        const match = await findCustomerMatch(companyId, lead.customer_phone, null);
-        if (match) {
-          const ok = window.confirm(
-            `Possible existing customer found: ${match.name || match.phone}.\n\nLink this lead to that customer? (Cancel = create a new customer)`
-          );
-          if (ok) {
-            customerId = match.id;
-          } else {
-            const { data: newCust, error: cErr } = await supabase
-              .from("customers")
-              .insert({
-                company_id: companyId,
-                name: lead.customer_name,
-                phone: lead.customer_phone,
-                address: lead.customer_address,
-              })
-              .select("id")
-              .single();
-            if (cErr) throw cErr;
-            customerId = newCust.id;
-          }
-        } else {
-          const { data: newCust, error: cErr } = await supabase
-            .from("customers")
-            .insert({
-              company_id: companyId,
-              name: lead.customer_name,
-              phone: lead.customer_phone,
-              address: lead.customer_address,
-            })
-            .select("id")
-            .single();
-          if (cErr) throw cErr;
-          customerId = newCust.id;
-        }
-
-        // Persist link on the lead
-        await supabase.from("leads").update({ customer_id: customerId }).eq("id", lead.id);
-
-        // Optimistically patch every cached ["leads", ...] list and ["lead", id] so the
-        // UI reflects the link before any refetch fires.
-        const linkedId = customerId;
-        qc.getQueriesData<any[]>({ queryKey: ["leads"] }).forEach(([k, list]) => {
-          if (!Array.isArray(list)) return;
-          qc.setQueryData(
-            k,
-            list.map((l: any) => (l.id === lead.id ? { ...l, customer_id: linkedId } : l)),
-          );
-        });
-        qc.setQueryData(["lead", lead.id], (prev: any) =>
-          prev ? { ...prev, customer_id: linkedId } : prev,
-        );
-        qc.invalidateQueries({ queryKey: ["unified-clients"] });
-      }
-
+      const customerId = await ensureLeadCustomerId();
+      if (!customerId) return;
       const params = new URLSearchParams({
         leadId: lead.id,
-        customerId: customerId!,
+        customerId,
         quoteName: `${lead.service_type || "Quote"} - ${lead.customer_name}`,
       });
       onClose();
       navigate(`/admin/quote-builder?${params.toString()}`);
     } catch (err: any) {
       toast({ title: err.message || "Failed to create draft quote", variant: "destructive" });
+    }
+  };
+
+  // Open Template picker → routes through classic Quote Builder with prefilled items/terms
+  const handleQuoteFromTemplate = async () => {
+    try {
+      const customerId = await ensureLeadCustomerId();
+      if (!customerId) return;
+      setTemplateCustomerId(customerId);
+      setShowTemplatePicker(true);
+    } catch (err: any) {
+      toast({ title: err.message || "Failed to open template picker", variant: "destructive" });
     }
   };
 
@@ -518,21 +540,30 @@ const LeadDetailSheet = ({
 
             {/* Create Draft Quote - available before completion */}
             {lead?.status !== 'completed' && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="flex-1"
+                    onClick={handleCreateDraftQuote}
+                  >
+                    <FileText className="mr-2 h-5 w-5" />
+                    Blank Draft Quote
+                  </Button>
+                  <HelpTip title="Create Draft Quote" side="left">
+                    Auto-links (or creates) the customer, then opens the Quote
+                    Builder pre-filled with this lead's details.
+                  </HelpTip>
+                </div>
                 <Button
-                  variant="outline"
                   size="lg"
-                  className="flex-1"
-                  onClick={handleCreateDraftQuote}
+                  className="w-full border-l-4 border-l-accent-yellow"
+                  onClick={handleQuoteFromTemplate}
                 >
                   <FileText className="mr-2 h-5 w-5" />
-                  Create Draft Quote
+                  Quote from Template
                 </Button>
-                <HelpTip title="Create Draft Quote" side="left">
-                  Auto-links (or creates) the customer, prompts if a possible
-                  duplicate is found, then opens the Quote Builder pre-filled
-                  with this lead's details.
-                </HelpTip>
               </div>
             )}
 
@@ -1111,6 +1142,13 @@ const LeadDetailSheet = ({
           }}
         />
       )}
+      <QuickTemplateDialog
+        open={showTemplatePicker}
+        onClose={() => setShowTemplatePicker(false)}
+        leadId={lead.id}
+        customerId={templateCustomerId}
+        quoteName={`${lead.service_type || "Quote"} - ${lead.customer_name}`}
+      />
     </>
   );
 };

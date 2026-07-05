@@ -13,6 +13,8 @@ import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
 import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
 import KpiDetailDialog from "@/components/admin/KpiDetailDialog";
 import QuotePerformanceWidget from "@/components/analytics/QuotePerformanceWidget";
+import QuickTemplateDialog from "@/components/quoting/QuickTemplateDialog";
+import { Sparkles } from "lucide-react";
 import CreateJobDialog from "@/components/jobs/CreateJobDialog";
 import { format, subDays } from "date-fns";
 import { useState, useMemo } from "react";
@@ -35,6 +37,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   const [jobDialog, setJobDialog] = useState<{ open: boolean; leadId?: string; customerId?: string }>({ open: false });
   const [leadsRange, setLeadsRange] = useState<"day" | "week" | "month">("week");
   const [jobsRange, setJobsRange] = useState<"day" | "week" | "month">("day");
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const { companyId } = useUserCompanyId();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -252,9 +255,17 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button onClick={onCreateLead}><Plus className="mr-2 h-4 w-4" />New Lead</Button>
-          <Button variant="outline" onClick={() => onNavigate("quotes")}><FileText className="mr-2 h-4 w-4" />New Quote</Button>
+          <Button onClick={() => setShowTemplatePicker(true)} className="border-l-4 border-l-accent-yellow">
+            <Sparkles className="mr-2 h-4 w-4" />Quote from Template
+          </Button>
+          <Button variant="outline" onClick={() => onNavigate("quotes")}><FileText className="mr-2 h-4 w-4" />Blank Quote</Button>
         </div>
       </div>
+
+      <QuickTemplateDialog
+        open={showTemplatePicker}
+        onClose={() => setShowTemplatePicker(false)}
+      />
 
       {/* Core 5 KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3">

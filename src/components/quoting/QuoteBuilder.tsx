@@ -50,6 +50,9 @@ interface Lead {
 interface QuoteBuilderProps {
   quoteId?: string | null;
   leadId?: string | null;
+  customerId?: string | null;
+  templateId?: string | null;
+  initialQuoteName?: string | null;
   onBack: () => void;
 }
 
@@ -85,7 +88,7 @@ const GhostInput = ({
 
 /* ────────── Main Component ────────── */
 
-const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
+const QuoteBuilder = ({ quoteId, leadId, customerId, templateId, initialQuoteName, onBack }: QuoteBuilderProps) => {
   const { session, user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -414,6 +417,80 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
     loadLead();
   }, [leadId, quoteId]);
 
+  // Pre-populate customer from customerId (when opening from Customer detail)
+  useEffect(() => {
+    if (!customerId || quoteId || leadId) return;
+    setSelectedCustomerId(customerId);
+  }, [customerId, quoteId, leadId]);
+
+  // Prefill reference from initialQuoteName
+  useEffect(() => {
+    if (quoteId) return;
+    if (initialQuoteName && !reference) setReference(initialQuoteName);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuoteName, quoteId]);
+
+  // Pre-populate line items / terms / notes from a template
+  useEffect(() => {
+    if (!templateId || quoteId) return;
+    let cancelled = false;
+    (async () => {
+      const { data: template } = await supabase
+        .from("quote_templates")
+        .select("*")
+        .eq("id", templateId)
+        .maybeSingle();
+      if (cancelled || !template) return;
+
+      // Line items – prefer new jsonb column, fall back to legacy table
+      let items: any[] = [];
+      const tItems = (template as any).line_items;
+      if (Array.isArray(tItems) && tItems.length > 0) {
+        items = tItems;
+      } else {
+        const { data: legacy } = await supabase
+          .from("quote_template_items")
+          .select("*")
+          .eq("template_id", templateId);
+        items = legacy || [];
+      }
+
+      if (items.length > 0 && !cancelled) {
+        setLineItems(
+          items.map((it: any) => {
+            const quantity = Number(it.quantity) || 1;
+            const rate = Number(it.unit_price) || 0;
+            return {
+              service_id: it.service_id || null,
+              description: it.description || "",
+              quantity,
+              rate,
+              markup: 0,
+              amount: quantity * rate,
+            };
+          })
+        );
+      }
+
+      // Terms & notes
+      const tTerms = (template as any).terms_text;
+      if (tTerms && !cancelled) setTerms(tTerms);
+      const tNotes = (template as any).notes;
+      if (tNotes && !cancelled) setNotes(tNotes);
+
+      // Use template name as reference if none set yet
+      if (!cancelled && !reference && !initialQuoteName && (template as any).name) {
+        setReference((template as any).name);
+      }
+
+      if (!cancelled) {
+        toast({ title: `Template loaded: ${(template as any).name || ""}` });
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateId, quoteId]);
+
   // Prefill customer email when customer changes
   useEffect(() => {
     const cid = selectedCustomerId;
@@ -436,6 +513,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
   // Terms from company settings
   useEffect(() => {
     if (quoteId) return;
+    if (templateId) return; // template supplies its own terms
     const parts: string[] = [];
     parts.push("1. This quotation is valid for 30 days from the date of issue.");
     parts.push("2. A 50% deposit is required upon acceptance.");
@@ -452,7 +530,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       if (b.account_type) parts.push(`Type: ${b.account_type}`);
     }
     setTerms(parts.join("\n"));
-  }, [companySettings, quoteId]);
+  }, [companySettings, quoteId, templateId]);
 
   /* ─── Logo URL ─── */
   const logoUrl = useMemo(() => {
