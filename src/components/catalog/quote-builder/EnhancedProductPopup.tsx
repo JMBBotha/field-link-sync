@@ -208,7 +208,7 @@ const EnhancedProductPopup = ({
         data-no-dnd="true"
       >
         {/* Header */}
-        <div className="flex items-start gap-3 p-4 border-b bg-muted/20">
+        <div className="flex items-start gap-3 p-4 border-b bg-white">
           <div className={`shrink-0 rounded-lg p-2 ${getCategoryBg(product.product_category)}`}>
             {getCategoryIcon(product.product_category, "h-5 w-5")}
           </div>
@@ -316,7 +316,7 @@ const EnhancedProductPopup = ({
         </ScrollArea>
 
         {/* Footer */}
-        <div className="border-t p-3 bg-muted/10 flex items-center gap-2">
+        <div className="border-t p-3 bg-white flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"

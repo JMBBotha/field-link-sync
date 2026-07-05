@@ -554,7 +554,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
         {/* RIGHT: PDF Viewer */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
-          <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/30 shrink-0">
+          <div className="flex items-center gap-2 px-3 py-2 border-b bg-white shrink-0">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <FileImage className="h-4 w-4 text-primary shrink-0" />
               <div className="min-w-0 flex-1">
@@ -781,7 +781,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
 
           {/* Status bar */}
           {pages.length > 0 && (
-            <div className="border-t bg-muted/20 px-3 py-1 shrink-0 flex items-center gap-2">
+            <div className="border-t bg-white px-3 py-1 shrink-0 flex items-center gap-2">
               <ScanSearch className="h-3 w-3 text-muted-foreground" />
               {!anyPageHasPdfSource ? (
                 <span className="text-[10px] text-muted-foreground flex items-center gap-2">
@@ -1343,7 +1343,7 @@ const LazyPdfPage = ({
           )}
         </>
       ) : (
-        <div className="flex items-center justify-center h-[600px] bg-muted/5">
+        <div className="flex items-center justify-center h-[600px] bg-white">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/40" />
         </div>
       )}

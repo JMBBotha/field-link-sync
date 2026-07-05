@@ -58,7 +58,7 @@ const QuoteItemPopup = memo(({ open, onClose, onAdd, prefill, supplierName }: Qu
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
+        <div className="flex items-center justify-between px-4 py-3 border-b bg-white">
           <div className="flex items-center gap-2">
             <ShoppingCart className="h-4 w-4 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">
@@ -166,7 +166,7 @@ const QuoteItemPopup = memo(({ open, onClose, onAdd, prefill, supplierName }: Qu
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t bg-muted/20">
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t bg-white">
           <Button variant="outline" size="sm" onClick={onClose} className="text-xs">
             Cancel
           </Button>

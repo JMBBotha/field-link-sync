@@ -349,7 +349,7 @@ function AreaUnitSelector({
 
       {/* Consumables & Materials (expanded section) */}
       {expanded && totalExtras > 0 && (
-        <div className="space-y-1 rounded-lg border border-border/50 bg-muted/20 p-2">
+        <div className="space-y-1 rounded-lg border border-border/50 bg-white p-2">
           <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
             Materials & Consumables
           </div>
