@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -136,6 +136,34 @@ const AdminCustomerDetailPage = () => {
       return data || [];
     },
   });
+
+  // Realtime auto-sync — Lead → Quote → Job → Invoice.
+  // Any insert/update/delete on the related tables invalidates this customer's
+  // tab data so the latest records + statuses appear without a manual refresh.
+  useEffect(() => {
+    if (!id) return;
+    const filter = `customer_id=eq.${id}`;
+    const channel = supabase
+      .channel(`customer-sync-${id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "quotes", filter }, () => {
+        qc.invalidateQueries({ queryKey: ["customer-quotes", id] });
+        qc.invalidateQueries({ queryKey: ["customer-detail", id] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "jobs", filter }, () => {
+        qc.invalidateQueries({ queryKey: ["customer-jobs-detail", id] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "invoices", filter }, () => {
+        qc.invalidateQueries({ queryKey: ["customer-invoices", id] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads", filter }, () => {
+        // Lead status changes (e.g. lead converted) can affect the customer summary.
+        qc.invalidateQueries({ queryKey: ["customer-detail", id] });
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id, qc]);
 
   // 6-month revenue chart
   const chartData = useMemo(() => {
