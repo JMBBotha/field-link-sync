@@ -200,7 +200,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
           <>
             <div className="space-y-2">
               {summary.zoneBreakdown.map((z) => (
-                <div key={z.name} className="rounded-xl border border-border/60 bg-muted/30 p-3">
+                <div key={z.name} className="rounded-xl border border-border/60 bg-white p-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-foreground">{z.name}</span>
                     <span className="text-xs font-bold text-foreground">
@@ -211,7 +211,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
                 </div>
               ))}
             </div>
-            <div className="rounded-xl border border-border/60 bg-muted/30 p-3 space-y-2">
+            <div className="rounded-xl border border-border/60 bg-white p-3 space-y-2">
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Total items</span>
                 <span>{summary.totalItems} ({summary.totalQty} qty)</span>

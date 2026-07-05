@@ -245,7 +245,7 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-4 py-3 border-t shrink-0 bg-muted/30">
+        <div className="flex items-center justify-between px-4 py-3 border-t shrink-0 bg-white">
           <div className="flex items-center gap-2">
             <div className="text-xs text-muted-foreground hidden sm:block">
               {areas.length > 0 && `${areas.length} area${areas.length !== 1 ? "s" : ""} · R ${grandTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`}

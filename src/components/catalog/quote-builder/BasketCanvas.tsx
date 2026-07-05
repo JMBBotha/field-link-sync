@@ -193,7 +193,7 @@ const BasketCanvas = ({
   const showClearAll = hasAreaBuilder ? areaCount > 0 : baskets.length > 0;
 
   return (
-    <div className="flex flex-col h-full rounded-lg border bg-muted/30 overflow-hidden">
+    <div className="flex flex-col h-full rounded-lg border bg-white overflow-hidden">
       <div className={`flex items-center justify-between border-b shrink-0 ${isCompact ? "px-2 py-1.5" : "p-3"}`}>
         <h3 className={`font-semibold text-foreground ${isCompact ? "text-xs" : "text-sm"}`}>
           {isCompact ? "Zones" : "Build Area Quote"}

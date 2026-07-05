@@ -347,7 +347,7 @@ function MaterialPicker({
   }, [products, debouncedSearch, section]);
 
   return (
-    <div className="space-y-2 rounded border bg-muted/20 p-2">
+    <div className="space-y-2 rounded border bg-white p-2">
       <div className="relative">
         <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
         <Input
@@ -446,7 +446,7 @@ function BundlePicker({
   }), [bundles]);
 
   return (
-    <div className="space-y-2 rounded border bg-muted/20 p-2">
+    <div className="space-y-2 rounded border bg-white p-2">
       <div className="flex items-center justify-between">
         <Label className="text-xs font-medium">Select Bundle</Label>
         <button onClick={onClose} className="h-5 w-5 rounded flex items-center justify-center hover:bg-accent" aria-label="Close bundle picker">
