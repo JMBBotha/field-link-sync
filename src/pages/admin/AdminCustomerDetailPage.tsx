@@ -33,6 +33,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { cn } from "@/lib/utils";
 import { formatRand } from "@/utils/formatRand";
 import CustomerLocationsManager from "@/components/customers/CustomerLocationsManager";
+import QuickTemplateDialog from "@/components/quoting/QuickTemplateDialog";
 
 const LEAD_SOURCES = [
   "Manual", "Facebook Lead", "Website Form", "WhatsApp", "Phone Call", "Walk-in", "Referral",
