@@ -491,6 +491,8 @@ const QuoteBuilder = ({ quoteId, leadId, customerId, templateId, initialQuoteNam
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId, quoteId]);
 
+  // Prefill customer email when customer changes
+  useEffect(() => {
     const cid = selectedCustomerId;
     if (!cid) return;
     supabase
