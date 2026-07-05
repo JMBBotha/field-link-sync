@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, MapPin, AlertTriangle, CheckCircle2 } from "lucide-react";
 import LocationPicker from "@/components/LocationPicker";
 import { geocodeAddress } from "@/lib/geocodeAddress";
+import AppointmentPicker, { type AppointmentValue } from "@/components/scheduling/AppointmentPicker";
 
 interface Props {
   open: boolean;
