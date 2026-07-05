@@ -19,7 +19,7 @@ import NotFound from "./pages/NotFound";
 import UnifiedOnboarding from "./pages/UnifiedOnboarding";
 import IndependentSignup from "./pages/IndependentSignup";
 import ClientProposalView from "./components/client/ClientProposalView";
-import OAuthConsent from "./pages/OAuthConsent";
+
 
 // Admin layout + pages
 import AdminLayout from "./components/admin/AdminLayout";
@@ -107,7 +107,7 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Auth />} />
                 <Route path="/auth" element={<Navigate to="/login" replace />} />
-                <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+                
                 <Route path="/onboarding" element={<UnifiedOnboarding />} />
                 <Route path="/signup/independent" element={<IndependentSignup />} />
 
