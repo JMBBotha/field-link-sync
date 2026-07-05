@@ -191,7 +191,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                           disabled={converting === quote.id}
                           title="Convert to Invoice"
                         >
-                          <FileCheck2 className="h-3.5 w-3.5" />
+                          {converting === quote.id ? <Spinner size="xs" /> : <FileCheck2 className="h-3.5 w-3.5" />}
                         </Button>
                       )}
                       {quote.public_token && (
