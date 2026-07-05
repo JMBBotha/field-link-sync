@@ -88,7 +88,7 @@ const GhostInput = ({
 
 /* ────────── Main Component ────────── */
 
-const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
+const QuoteBuilder = ({ quoteId, leadId, customerId, templateId, initialQuoteName, onBack }: QuoteBuilderProps) => {
   const { session, user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
