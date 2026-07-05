@@ -791,7 +791,7 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
       )}
 
       {/* ── Scrollable content area ── */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto bg-slate-100">
 
       {/* ── A4 Card ── */}
       <div data-pdf-capture-root="quote" className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
