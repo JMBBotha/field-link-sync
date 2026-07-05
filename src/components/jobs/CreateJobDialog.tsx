@@ -38,8 +38,12 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   const [quoteId, setQuoteId] = useState(defaultQuoteId || "");
   const [locationId, setLocationId] = useState<string>("");
   const [address, setAddress] = useState("");
-  const [scheduledFor, setScheduledFor] = useState("");
-  const [duration, setDuration] = useState("2");
+  const [appt, setAppt] = useState<AppointmentValue>(() => ({
+    date: "",
+    startTime: "",
+    durationMinutes: 120,
+    agentId: "",
+  }));
   const [priority, setPriority] = useState("normal");
   const [jobType, setJobType] = useState("service");
   const [lat, setLat] = useState<number | null>(null);
