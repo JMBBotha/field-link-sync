@@ -159,13 +159,7 @@ const AdminCustomerDetailPage = () => {
   );
 
   if (isLoading) {
-    return (
-      <div className="p-6 space-y-4 max-w-6xl mx-auto">
-        <Skeleton className="h-8 w-32" />
-        <Skeleton className="h-32" />
-        <Skeleton className="h-64" />
-      </div>
-    );
+    return <DetailPageSkeleton />;
   }
 
   if (!customer) {
