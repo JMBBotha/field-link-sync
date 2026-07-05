@@ -985,8 +985,8 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
           <Textarea placeholder="Notes — any relevant information not already covered" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[60px] text-sm border-transparent hover:border-border focus:border-primary" />
         </div>
 
-        {/* ── TERMS ── */}
-        <div className="space-y-3">
+        {/* ── TERMS (on-screen only; PDF appends styled T&C pages separately) ── */}
+        <div data-pdf-hide className="space-y-3">
           
           <div className="space-y-2 text-sm leading-relaxed">
             {TERMS_BLOCKS.map((block, i) => {
