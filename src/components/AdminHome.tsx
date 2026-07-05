@@ -326,6 +326,9 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
             ))}
       </div>
 
+      {/* Pipeline health metrics — 90-day window */}
+      <PipelineMetrics />
+
       {/* KPI Detail Dialog */}
       {activeKpi && (
         <KpiDetailDialog
