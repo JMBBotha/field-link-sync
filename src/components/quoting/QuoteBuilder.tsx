@@ -50,6 +50,9 @@ interface Lead {
 interface QuoteBuilderProps {
   quoteId?: string | null;
   leadId?: string | null;
+  customerId?: string | null;
+  templateId?: string | null;
+  initialQuoteName?: string | null;
   onBack: () => void;
 }
 
