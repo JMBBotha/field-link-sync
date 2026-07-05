@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Search, FileText, Download, Link2, FileCheck2 } from "lucide-react";
-import { Spinner, LoadingSection } from "@/components/ui/spinner";
+import { Spinner } from "@/components/ui/spinner";
+import { ListSkeleton } from "@/components/ui/skeletons";
 import { convertQuoteToInvoice } from "@/lib/convertQuoteToInvoice";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -133,7 +134,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
 
       {/* List */}
       {isLoading ? (
-        <LoadingSection label="Loading quotes…" />
+        <ListSkeleton rows={5} />
       ) : quotes.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <FileText className="h-10 w-10 mx-auto mb-2 opacity-50" />

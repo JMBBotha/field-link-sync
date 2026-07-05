@@ -23,6 +23,7 @@ import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
 import { PhotoGallery } from "@/components/PhotoGallery";
 import { useOfflineContext } from "@/contexts/OfflineContext";
 import { useToast } from "@/hooks/use-toast";
+import { JobDetailSkeleton } from "@/components/ui/skeletons";
 
 const STATUS_COLORS: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -107,11 +108,7 @@ const AdminJobDetailPage = () => {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-24 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading job…
-      </div>
-    );
+    return <JobDetailSkeleton />;
   }
 
   if (!job) {

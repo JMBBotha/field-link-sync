@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DetailPageSkeleton } from "@/components/ui/skeletons";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -158,13 +159,7 @@ const AdminCustomerDetailPage = () => {
   );
 
   if (isLoading) {
-    return (
-      <div className="p-6 space-y-4 max-w-6xl mx-auto">
-        <Skeleton className="h-8 w-32" />
-        <Skeleton className="h-32" />
-        <Skeleton className="h-64" />
-      </div>
-    );
+    return <DetailPageSkeleton />;
   }
 
   if (!customer) {

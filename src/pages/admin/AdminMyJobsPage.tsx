@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MapPin, CalendarDays, CheckCircle, XCircle, Play, RefreshCw, CloudOff } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
+import { JobCardListSkeleton } from "@/components/ui/skeletons";
 import { format } from "date-fns";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -193,11 +194,7 @@ const AdminMyJobsPage = () => {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-32 rounded-lg bg-muted animate-pulse" />
-          ))}
-        </div>
+        <JobCardListSkeleton rows={3} />
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-2 text-center py-16 text-muted-foreground">
           <CalendarDays className="h-10 w-10 opacity-40" />
