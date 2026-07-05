@@ -92,7 +92,7 @@ const SidebarNav = ({ companyId, company, onNavClick, onLogout, onBackToAdmin }:
 const FBLayout = () => {
   const { company, loading, companyId } = useCompany();
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const isMobile = useIsMobile();
 

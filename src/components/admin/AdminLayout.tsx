@@ -34,7 +34,7 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { theme, toggleTheme } = useTheme();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const { showWarning, secondsLeft, stayActive } = useIdleLogout();
 
   // Global Cmd+K shortcut
@@ -202,9 +202,9 @@ const AdminLayout = () => {
               size="icon"
               onClick={toggleTheme}
               className="text-white hover:bg-white/20 h-9 w-9"
-              title={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+              title={resolvedTheme === "light" ? "Switch to dark mode" : "Switch to light mode"}
             >
-              {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+              {resolvedTheme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
             </Button>
           </div>
         </header>
