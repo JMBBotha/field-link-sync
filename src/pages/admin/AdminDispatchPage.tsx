@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
+import { KpiGridSkeleton, JobCardListSkeleton } from "@/components/ui/skeletons";
 
 // ─── Types ───
 interface Lead {
