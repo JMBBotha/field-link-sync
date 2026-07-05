@@ -1,5 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, CreditCard, Wrench, Users, MapPin, Database, BarChart3 } from "lucide-react";
+import { Building2, CreditCard, Wrench, Users, MapPin, Database, BarChart3, Palette } from "lucide-react";
+import AppearanceTab from "@/components/settings/AppearanceTab";
 import CompanyProfileTab from "@/components/settings/CompanyProfileTab";
 import BillingTab from "@/components/settings/BillingTab";
 import ServicesTab from "@/components/settings/ServicesTab";
