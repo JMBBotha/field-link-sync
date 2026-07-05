@@ -132,7 +132,7 @@ const AdminJobDetailPage = () => {
 
   return (
     <div className="pb-28 md:pb-24">
-      <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-4">
+      <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-4 has-sticky-action-bar">
         {/* Header */}
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={() => navigate("/admin/jobs")} className="gap-1.5 -ml-2">
