@@ -256,9 +256,6 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button onClick={onCreateLead}><Plus className="mr-2 h-4 w-4" />New Lead</Button>
-          <Button onClick={() => setShowTemplatePicker(true)} className="border-l-4 border-l-accent-yellow">
-            <Sparkles className="mr-2 h-4 w-4" />Quote from Template
-          </Button>
           <Button variant="outline" onClick={() => onNavigate("quotes")}><FileText className="mr-2 h-4 w-4" />Blank Quote</Button>
         </div>
       </div>
