@@ -69,6 +69,24 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
   const clientInputRef = useRef<HTMLInputElement>(null);
   const { data: clients = [] } = useUnifiedClients();
 
+  // ── Pre-fill client from ?fromLead=<leadId> — one-click Lead → Draft Quote ──
+  const [searchParams, setSearchParams] = useSearchParams();
+  const fromLead = searchParams.get("fromLead");
+  useEffect(() => {
+    if (!fromLead || selectedClientId || clients.length === 0) return;
+    const match = clients.find(
+      (c) => c.lead_id === fromLead || c.id === `lead-${fromLead}`,
+    );
+    if (match) {
+      setSelectedClientId(match.customer_id || match.id);
+      if (!quoteName) setQuoteName(`Quote for ${match.name}`);
+      toast({ title: "Draft quote started", description: `Pre-filled from lead: ${match.name}` });
+      // Clean the URL so refresh doesn't re-toast
+      searchParams.delete("fromLead");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [fromLead, clients, selectedClientId, quoteName, searchParams, setSearchParams]);
+
   const filteredClients = useMemo(() => {
     if (!clientSearch.trim()) return clients.slice(0, 8);
     const q = clientSearch.toLowerCase();
