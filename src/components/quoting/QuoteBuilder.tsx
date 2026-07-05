@@ -850,29 +850,6 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
                   </button>
                 </div>
               )}
-              {selectedCustomerId && (
-                <div data-pdf-hide className="mt-2 pt-2 border-t">
-                  <LocationSelector
-                    customerId={selectedCustomerId}
-                    companyId={companyId}
-                    compact
-                    value={{
-                      locationId: selectedLocationId,
-                      address: customerAddress,
-                      latitude: locationLat,
-                      longitude: locationLng,
-                      label: selectedLocationLabel,
-                    }}
-                    onChange={(v) => {
-                      setSelectedLocationId(v.locationId);
-                      setSelectedLocationLabel(v.label || "");
-                      setLocationLat(v.latitude);
-                      setLocationLng(v.longitude);
-                      if (v.address) setCustomerAddress(v.address);
-                    }}
-                  />
-                </div>
-              )}
             </div>
 
             <div className="space-y-1">
