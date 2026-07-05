@@ -34,6 +34,7 @@ import CommunicationTimeline from "./communication/CommunicationTimeline";
 import UsedPartsSection from "./UsedPartsSection";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, DollarSign } from "lucide-react";
+import QuickTemplateDialog from "./quoting/QuickTemplateDialog";
 
 interface Lead {
   id: string;
