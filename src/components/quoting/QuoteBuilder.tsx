@@ -513,6 +513,7 @@ const QuoteBuilder = ({ quoteId, leadId, customerId, templateId, initialQuoteNam
   // Terms from company settings
   useEffect(() => {
     if (quoteId) return;
+    if (templateId) return; // template supplies its own terms
     const parts: string[] = [];
     parts.push("1. This quotation is valid for 30 days from the date of issue.");
     parts.push("2. A 50% deposit is required upon acceptance.");
