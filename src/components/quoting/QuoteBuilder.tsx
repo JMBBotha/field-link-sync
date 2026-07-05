@@ -986,9 +986,17 @@ const QuoteBuilder = ({ quoteId, leadId, onBack }: QuoteBuilderProps) => {
         </div>
 
         {/* ── TERMS ── */}
-        <div className="space-y-2">
+        <div className="space-y-3">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Terms</p>
-          <Textarea value={terms} onChange={(e) => setTerms(e.target.value)} className="min-h-[80px] text-sm border-transparent hover:border-border focus:border-primary" />
+          <div className="space-y-2 text-sm leading-relaxed">
+            {TERMS_BLOCKS.map((block, i) => {
+              if (block.type === "spacer") return <div key={i} className="h-2" />;
+              if (block.type === "title") return <p key={i} className="text-center font-bold text-base">{block.text}</p>;
+              if (block.type === "heading") return <p key={i} className="font-semibold mt-2">{block.text}</p>;
+              if (block.type === "banking") return <p key={i} className="font-medium">{block.text}</p>;
+              return <p key={i}>{block.text}</p>;
+            })}
+          </div>
         </div>
 
         
