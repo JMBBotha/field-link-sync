@@ -400,15 +400,16 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
               </div>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Scheduled Date/Time <span className="text-destructive">*</span></Label>
-              <Input type="datetime-local" value={scheduledFor} onChange={e => setScheduledFor(e.target.value)} />
+          <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-semibold">
+                Schedule <span className="text-destructive">*</span>
+              </Label>
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Date · Time · Technician
+              </span>
             </div>
-            <div>
-              <Label>Estimated Duration (hrs)</Label>
-              <Input type="number" min="0.5" step="0.5" value={duration} onChange={e => setDuration(e.target.value)} />
-            </div>
+            <AppointmentPicker value={appt} onChange={setAppt} />
           </div>
           <div>
             <Label>Priority</Label>
