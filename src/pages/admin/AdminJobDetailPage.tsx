@@ -23,6 +23,7 @@ import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
 import { PhotoGallery } from "@/components/PhotoGallery";
 import { useOfflineContext } from "@/contexts/OfflineContext";
 import { useToast } from "@/hooks/use-toast";
+import { JobDetailSkeleton } from "@/components/ui/skeletons";
 
 const STATUS_COLORS: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
