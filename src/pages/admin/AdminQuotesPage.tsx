@@ -10,31 +10,47 @@ const AdminQuotesPage = () => {
   const [view, setView] = useState<"list" | "builder">("list");
   const [editQuoteId, setEditQuoteId] = useState<string | null>(null);
   const [presetLeadId, setPresetLeadId] = useState<string | null>(null);
+  const [presetCustomerId, setPresetCustomerId] = useState<string | null>(null);
+  const [presetTemplateId, setPresetTemplateId] = useState<string | null>(null);
+  const [presetQuoteName, setPresetQuoteName] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Auto-open builder if leadId is in URL params
+  // Auto-open builder if any prefill params are in URL
   useEffect(() => {
     const leadId = searchParams.get("leadId");
-    if (leadId) {
+    const customerId = searchParams.get("customerId");
+    const templateId = searchParams.get("templateId");
+    const quoteName = searchParams.get("quoteName");
+    if (leadId || customerId || templateId) {
       setPresetLeadId(leadId);
+      setPresetCustomerId(customerId);
+      setPresetTemplateId(templateId);
+      setPresetQuoteName(quoteName);
       setEditQuoteId(null);
       setView("builder");
       setSearchParams({}, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 
+  const clearPresets = () => {
+    setEditQuoteId(null);
+    setPresetLeadId(null);
+    setPresetCustomerId(null);
+    setPresetTemplateId(null);
+    setPresetQuoteName(null);
+  };
+
   return (
     <>
       {view === "list" ? (
         <QuotesList
           onCreateNew={() => {
-            setEditQuoteId(null);
-            setPresetLeadId(null);
+            clearPresets();
             setView("builder");
           }}
           onEditQuote={(id) => {
+            clearPresets();
             setEditQuoteId(id);
-            setPresetLeadId(null);
             setView("builder");
           }}
         />
@@ -42,9 +58,11 @@ const AdminQuotesPage = () => {
         <QuoteBuilder
           quoteId={editQuoteId}
           leadId={presetLeadId}
+          customerId={presetCustomerId}
+          templateId={presetTemplateId}
+          initialQuoteName={presetQuoteName}
           onBack={() => {
-            setEditQuoteId(null);
-            setPresetLeadId(null);
+            clearPresets();
             setView("list");
           }}
         />
