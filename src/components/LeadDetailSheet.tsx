@@ -1141,6 +1141,13 @@ const LeadDetailSheet = ({
           }}
         />
       )}
+      <QuickTemplateDialog
+        open={showTemplatePicker}
+        onClose={() => setShowTemplatePicker(false)}
+        leadId={lead.id}
+        customerId={templateCustomerId}
+        quoteName={`${lead.service_type || "Quote"} - ${lead.customer_name}`}
+      />
     </>
   );
 };
