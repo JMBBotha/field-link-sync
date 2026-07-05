@@ -457,6 +457,12 @@ const AdminCustomerDetailPage = () => {
         customer={customer}
         onSaved={() => qc.invalidateQueries({ queryKey: ["customer-detail", id] })}
       />
+      <QuickTemplateDialog
+        open={showTemplatePicker}
+        onClose={() => setShowTemplatePicker(false)}
+        customerId={id}
+        quoteName={customer?.name ? `Quote - ${customer.name}` : undefined}
+      />
     </div>
   );
 };
