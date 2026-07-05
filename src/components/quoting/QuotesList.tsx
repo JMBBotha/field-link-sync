@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,20 +29,42 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const qc = useQueryClient();
 
   const handleConvertToInvoice = async (quoteId: string) => {
     if (!user?.id) return;
     setConverting(quoteId);
+
+    // Optimistic: flip status → accepted immediately in every ["quotes", ...] cache.
+    const affected = qc.getQueriesData<any[]>({ queryKey: ["quotes"] });
+    const snapshots = affected.map(([k, v]) => [k, v] as const);
+    affected.forEach(([k, list]) => {
+      if (!Array.isArray(list)) return;
+      qc.setQueryData(
+        k,
+        list.map((q: any) => (q.id === quoteId ? { ...q, status: "accepted" } : q)),
+      );
+    });
+
     try {
       const invoiceId = await convertQuoteToInvoice(quoteId, user.id);
       toast({ title: "Invoice created", description: "Draft invoice generated from quote." });
+      qc.invalidateQueries({ queryKey: ["quotes"] });
+      qc.invalidateQueries({ queryKey: ["invoices"] });
       navigate(`/admin/invoices?highlight=${invoiceId}`);
     } catch (e: any) {
-      toast({ title: e.message || "Conversion failed", variant: "destructive" });
+      // Rollback
+      snapshots.forEach(([k, v]) => qc.setQueryData(k, v));
+      toast({
+        title: e.message || "Conversion failed",
+        description: "Reverted the quote. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setConverting(null);
     }
   };
+
 
 
   const { data: quotes = [], isLoading } = useQuery({

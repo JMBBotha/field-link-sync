@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,12 +13,16 @@ import {
   Clock,
   Loader2,
   Image as ImageIcon,
+  Play,
+  CheckCircle2,
 } from "lucide-react";
 import { format } from "date-fns";
+import { useState } from "react";
 import RequireRole from "@/components/RequireRole";
 import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
 import { PhotoGallery } from "@/components/PhotoGallery";
 import { useOfflineContext } from "@/contexts/OfflineContext";
+import { useToast } from "@/hooks/use-toast";
 
 const STATUS_COLORS: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -39,6 +43,9 @@ const AdminJobDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isOnline } = useOfflineContext();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
   const { data: job, isLoading } = useQuery({
     queryKey: ["job-detail", id],
@@ -55,6 +62,49 @@ const AdminJobDetailPage = () => {
       return data;
     },
   });
+
+  const changeStatus = async (nextStatus: "in_progress" | "completed") => {
+    if (!id || !job) return;
+    setPendingStatus(nextStatus);
+
+    const detailKey = ["job-detail", id];
+    const prevDetail = qc.getQueryData<any>(detailKey);
+    const prevLists = qc.getQueriesData<any[]>({ queryKey: ["jobs"] });
+
+    // Optimistic patch
+    qc.setQueryData(detailKey, (prev: any) =>
+      prev ? { ...prev, status: nextStatus } : prev,
+    );
+    prevLists.forEach(([k, list]) => {
+      if (!Array.isArray(list)) return;
+      qc.setQueryData(
+        k,
+        list.map((j: any) => (j.id === id ? { ...j, status: nextStatus } : j)),
+      );
+    });
+
+    try {
+      const patch: any = { status: nextStatus };
+      if (nextStatus === "in_progress") patch.started_at = new Date().toISOString();
+      if (nextStatus === "completed") patch.completed_at = new Date().toISOString();
+      const { error } = await supabase.from("jobs").update(patch).eq("id", id);
+      if (error) throw error;
+      toast({ title: nextStatus === "in_progress" ? "Job started" : "Job completed" });
+      qc.invalidateQueries({ queryKey: detailKey });
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+    } catch (err: any) {
+      // Rollback
+      if (prevDetail) qc.setQueryData(detailKey, prevDetail);
+      prevLists.forEach(([k, v]) => qc.setQueryData(k, v));
+      toast({
+        title: "Couldn't update job",
+        description: err.message || "Reverted.",
+        variant: "destructive",
+      });
+    } finally {
+      setPendingStatus(null);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -223,6 +273,40 @@ const AdminJobDetailPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Sticky action bar — Start / Complete (mobile-first) */}
+      {(j.status === "scheduled" || j.status === "dispatched" || j.status === "in_progress") && (
+        <div className="fixed bottom-0 inset-x-0 z-40 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:left-64">
+          <div className="max-w-3xl mx-auto px-4 py-3 flex gap-2">
+            {(j.status === "scheduled" || j.status === "dispatched") && (
+              <Button
+                className="flex-1 h-11 gap-2 bg-[#0077B6] hover:bg-[#0066a0] text-white"
+                onClick={() => changeStatus("in_progress")}
+                disabled={pendingStatus !== null}
+              >
+                {pendingStatus === "in_progress" ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
+                ) : (
+                  <><Play className="h-4 w-4" /> Start Job</>
+                )}
+              </Button>
+            )}
+            {j.status === "in_progress" && (
+              <Button
+                className="flex-1 h-11 gap-2 bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => changeStatus("completed")}
+                disabled={pendingStatus !== null}
+              >
+                {pendingStatus === "completed" ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
+                ) : (
+                  <><CheckCircle2 className="h-4 w-4" /> Complete Job</>
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

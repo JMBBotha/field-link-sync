@@ -32,7 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSingleLeadPhotoCount } from "@/hooks/useLeadPhotoCount";
 import CommunicationTimeline from "./communication/CommunicationTimeline";
 import UsedPartsSection from "./UsedPartsSection";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, DollarSign } from "lucide-react";
 
 interface Lead {
@@ -166,6 +166,7 @@ const LeadDetailSheet = ({
   const [showExpandedGallery, setShowExpandedGallery] = useState(false);
   const [showInlineInvoice, setShowInlineInvoice] = useState(false);
   const { toast } = useToast();
+  const qc = useQueryClient();
   const navigate = useNavigate();
   const { isOnline, queueOperation: contextQueueOp } = useOfflineContext();
   const [timeRefreshKey, setTimeRefreshKey] = useState(0);
@@ -299,6 +300,21 @@ const LeadDetailSheet = ({
 
         // Persist link on the lead
         await supabase.from("leads").update({ customer_id: customerId }).eq("id", lead.id);
+
+        // Optimistically patch every cached ["leads", ...] list and ["lead", id] so the
+        // UI reflects the link before any refetch fires.
+        const linkedId = customerId;
+        qc.getQueriesData<any[]>({ queryKey: ["leads"] }).forEach(([k, list]) => {
+          if (!Array.isArray(list)) return;
+          qc.setQueryData(
+            k,
+            list.map((l: any) => (l.id === lead.id ? { ...l, customer_id: linkedId } : l)),
+          );
+        });
+        qc.setQueryData(["lead", lead.id], (prev: any) =>
+          prev ? { ...prev, customer_id: linkedId } : prev,
+        );
+        qc.invalidateQueries({ queryKey: ["unified-clients"] });
       }
 
       const params = new URLSearchParams({
