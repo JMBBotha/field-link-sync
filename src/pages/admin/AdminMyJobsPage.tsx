@@ -172,7 +172,7 @@ const AdminMyJobsPage = () => {
   }, [queryClient]);
 
   return (
-    <div className="space-y-4 p-4 md:p-6 max-w-3xl mx-auto">
+    <div className={`space-y-4 p-4 md:p-6 max-w-3xl mx-auto ${isFieldContext ? "pb-32" : ""}`}>
       <div className="flex items-center justify-between">
         <h1 className="page-title">My Jobs</h1>
         <Button size="sm" variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ["my-jobs"] })}>
