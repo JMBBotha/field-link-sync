@@ -108,7 +108,6 @@ const AdminJobDetailPage = () => {
   };
 
   if (isLoading) {
-    const { JobDetailSkeleton } = require("@/components/ui/skeletons");
     return <JobDetailSkeleton />;
   }
 
