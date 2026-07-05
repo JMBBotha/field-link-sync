@@ -83,6 +83,7 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
       toast({ title: "Draft quote started", description: `Pre-filled from lead: ${match.name}` });
       // Clean the URL so refresh doesn't re-toast
       searchParams.delete("fromLead");
+      searchParams.delete("leadId");
       setSearchParams(searchParams, { replace: true });
     }
   }, [fromLead, clients, selectedClientId, quoteName, searchParams, setSearchParams]);
