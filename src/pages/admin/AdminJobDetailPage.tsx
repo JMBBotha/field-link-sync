@@ -273,6 +273,40 @@ const AdminJobDetailPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Sticky action bar — Start / Complete (mobile-first) */}
+      {(j.status === "scheduled" || j.status === "dispatched" || j.status === "in_progress") && (
+        <div className="fixed bottom-0 inset-x-0 z-40 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:left-64">
+          <div className="max-w-3xl mx-auto px-4 py-3 flex gap-2">
+            {(j.status === "scheduled" || j.status === "dispatched") && (
+              <Button
+                className="flex-1 h-11 gap-2 bg-[#0077B6] hover:bg-[#0066a0] text-white"
+                onClick={() => changeStatus("in_progress")}
+                disabled={pendingStatus !== null}
+              >
+                {pendingStatus === "in_progress" ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
+                ) : (
+                  <><Play className="h-4 w-4" /> Start Job</>
+                )}
+              </Button>
+            )}
+            {j.status === "in_progress" && (
+              <Button
+                className="flex-1 h-11 gap-2 bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => changeStatus("completed")}
+                disabled={pendingStatus !== null}
+              >
+                {pendingStatus === "completed" ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
+                ) : (
+                  <><CheckCircle2 className="h-4 w-4" /> Complete Job</>
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
