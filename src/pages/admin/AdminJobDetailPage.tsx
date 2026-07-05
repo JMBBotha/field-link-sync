@@ -132,7 +132,7 @@ const AdminJobDetailPage = () => {
 
   return (
     <div className="pb-28 md:pb-24">
-      <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-4">
+      <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-4 has-sticky-action-bar">
         {/* Header */}
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={() => navigate("/admin/jobs")} className="gap-1.5 -ml-2">
@@ -273,8 +273,8 @@ const AdminJobDetailPage = () => {
 
       {/* Sticky action bar — Start / Complete (mobile-first) */}
       {(j.status === "scheduled" || j.status === "dispatched" || j.status === "in_progress") && (
-        <div className="fixed bottom-0 inset-x-0 z-40 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:left-64">
-          <div className="max-w-3xl mx-auto px-4 py-3 flex gap-2">
+        <div className="sticky-action-bar">
+          <div className="sticky-action-bar-inner">
             {(j.status === "scheduled" || j.status === "dispatched") && (
               <Button
                 className="flex-1 h-11 gap-2 bg-[#0077B6] hover:bg-[#0066a0] text-white"

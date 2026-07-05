@@ -177,6 +177,55 @@ All colors MUST be HSL.
 .empty-state-title { @apply text-sm font-medium text-foreground; }
 .empty-state-body  { @apply text-[13px] text-muted-foreground max-w-sm leading-relaxed; }
 
+/* ─── Shared component utilities ──────────────────────────────────── */
+
+/* Section header inside a page (below page-header) */
+.section-title {
+  @apply text-sm font-semibold tracking-tight text-foreground flex items-center gap-2;
+}
+.section-subtitle {
+  @apply text-xs text-muted-foreground;
+}
+
+/* Consistent form row spacing (label + input pair) */
+.form-row   { @apply space-y-1.5; }
+.form-grid  { @apply grid gap-3 sm:grid-cols-2; }
+.form-label { @apply text-xs font-medium text-muted-foreground; }
+
+/* Status badge base — pair with a color modifier below */
+.status-badge {
+  @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none;
+}
+.status-badge-success { @apply border-transparent bg-success/15 text-success dark:bg-success/20; }
+.status-badge-warning { @apply border-transparent bg-warning/15 text-amber-800 dark:text-amber-300 dark:bg-warning/20; }
+.status-badge-info    { @apply border-transparent bg-primary/15 text-primary dark:bg-primary/20; }
+.status-badge-muted   { @apply border-border/60 bg-muted text-muted-foreground; }
+.status-badge-danger  { @apply border-transparent bg-destructive/15 text-destructive dark:bg-destructive/20; }
+
+/* Mobile-friendly action button sizing (already 44px min via touch-target rule) */
+.btn-action {
+  @apply inline-flex items-center justify-center gap-2 rounded-md px-4 h-11 text-sm font-medium
+         transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
+         focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50
+         disabled:pointer-events-none;
+}
+.btn-action-primary   { @apply btn-action bg-primary text-primary-foreground hover:bg-primary/90; }
+.btn-action-success   { @apply btn-action bg-success text-white hover:bg-success/90; }
+.btn-action-outline   { @apply btn-action border border-border bg-background hover:bg-muted; }
+
+/* Sticky bottom action bar — safe-area aware for iOS, offset for desktop sidebar */
+.sticky-action-bar {
+  @apply fixed bottom-0 inset-x-0 z-40 border-t bg-background/95 backdrop-blur
+         supports-[backdrop-filter]:bg-background/80 md:left-64;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.sticky-action-bar-inner {
+  @apply max-w-3xl mx-auto px-4 py-3 flex gap-2;
+}
+/* Give scrollable content underneath enough space so the bar never covers it */
+.has-sticky-action-bar { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+
+
 /* Mobile touch-target minimums (WCAG AAA ≈ 44px) */
 @media (max-width: 767px) {
 
