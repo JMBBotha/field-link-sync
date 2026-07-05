@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { r2, VAT_RATE, inclVatFromExcl } from "@/utils/pricing";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search, Wand2, ChevronUp, ChevronDown, ArrowLeft, FileDown, Save,
   Loader2, CheckCircle, PanelRightClose, PanelRightOpen, Users, X,
@@ -68,6 +68,25 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const clientInputRef = useRef<HTMLInputElement>(null);
   const { data: clients = [] } = useUnifiedClients();
+
+  // ── Pre-fill client from ?fromLead=<leadId> — one-click Lead → Draft Quote ──
+  const [searchParams, setSearchParams] = useSearchParams();
+  const fromLead = searchParams.get("fromLead") || searchParams.get("leadId");
+  useEffect(() => {
+    if (!fromLead || selectedClientId || clients.length === 0) return;
+    const match = clients.find(
+      (c) => c.lead_id === fromLead || c.id === `lead-${fromLead}`,
+    );
+    if (match) {
+      setSelectedClientId(match.customer_id || match.id);
+      if (!quoteName) setQuoteName(`Quote for ${match.name}`);
+      toast({ title: "Draft quote started", description: `Pre-filled from lead: ${match.name}` });
+      // Clean the URL so refresh doesn't re-toast
+      searchParams.delete("fromLead");
+      searchParams.delete("leadId");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [fromLead, clients, selectedClientId, quoteName, searchParams, setSearchParams]);
 
   const filteredClients = useMemo(() => {
     if (!clientSearch.trim()) return clients.slice(0, 8);
