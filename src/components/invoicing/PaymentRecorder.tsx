@@ -50,12 +50,53 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal }: PaymentRecorderProps) => {
   const outstanding = invoiceTotal - totalPaid;
 
   const addPayment = async () => {
-    if (!amount || Number(amount) <= 0) return;
+    const amt = Number(amount);
+    if (!amount || amt <= 0) return;
     setAdding(true);
+
+    const paymentsKey = ["payments", invoiceId];
+    const invoiceKey = ["invoice", invoiceId];
+
+    // Snapshot for rollback
+    const prevPayments = queryClient.getQueryData<any[]>(paymentsKey);
+    const prevInvoice = queryClient.getQueryData<any>(invoiceKey);
+    const prevInvoicesLists = queryClient.getQueriesData<any[]>({ queryKey: ["invoices"] });
+
+    // Optimistic patch: prepend a temp payment row + flip invoice status if fully paid.
+    const tempId = `temp-${Date.now()}`;
+    const optimisticPayment = {
+      id: tempId,
+      invoice_id: invoiceId,
+      amount: amt,
+      method,
+      reference: reference || null,
+      payment_date: new Date().toISOString(),
+      _optimistic: true,
+    };
+    queryClient.setQueryData<any[]>(paymentsKey, (prev) => [optimisticPayment, ...(prev || [])]);
+
+    const newPaid = totalPaid + amt;
+    const nextStatus =
+      newPaid + 0.005 >= invoiceTotal ? "paid" : newPaid > 0 ? "partially_paid" : prevInvoice?.status;
+
+    if (prevInvoice) {
+      queryClient.setQueryData(invoiceKey, { ...prevInvoice, status: nextStatus, amount_paid: newPaid });
+    }
+    prevInvoicesLists.forEach(([k, list]) => {
+      if (!Array.isArray(list)) return;
+      queryClient.setQueryData(
+        k,
+        list.map((inv: any) => (inv.id === invoiceId ? { ...inv, status: nextStatus } : inv)),
+      );
+    });
+
+    setAmount("");
+    setReference("");
+
     try {
       const { error } = await supabase.from("payments").insert({
         invoice_id: invoiceId,
-        amount: Number(amount),
+        amount: amt,
         method,
         reference: reference || null,
         created_by: user?.id,
@@ -63,14 +104,20 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal }: PaymentRecorderProps) => {
       if (error) throw error;
 
       // Invoice status is auto-updated by the recalc_invoice_status trigger.
-      queryClient.invalidateQueries({ queryKey: ["payments", invoiceId] });
+      queryClient.invalidateQueries({ queryKey: paymentsKey });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["invoice", invoiceId] });
-      setAmount("");
-      setReference("");
+      queryClient.invalidateQueries({ queryKey: invoiceKey });
       toast({ title: "Payment recorded" });
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      // Rollback
+      queryClient.setQueryData(paymentsKey, prevPayments);
+      if (prevInvoice) queryClient.setQueryData(invoiceKey, prevInvoice);
+      prevInvoicesLists.forEach(([k, v]) => queryClient.setQueryData(k, v));
+      toast({
+        title: "Payment failed",
+        description: err.message || "Reverted. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setAdding(false);
     }
