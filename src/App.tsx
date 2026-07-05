@@ -193,6 +193,9 @@ const App = () => (
                   {/* Field agent My Jobs — accessible without AdminLayout */}
                   <Route path="/field/my-jobs" element={<RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><AdminMyJobsPage /></RequireRole>} />
 
+                  {/* Field agent Schedule (agenda view) */}
+                  <Route path="/field/schedule" element={<RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><FieldSchedulePage /></RequireRole>} />
+
                   {/* Field Agent */}
                   <Route path="/field" element={<FieldAgent />} />
 
