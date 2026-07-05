@@ -197,7 +197,7 @@ All colors MUST be HSL.
   @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none;
 }
 .status-badge-success { @apply border-transparent bg-success/15 text-success dark:bg-success/20; }
-.status-badge-warning { @apply border-transparent bg-warning/15 text-warning-foreground text-amber-800 dark:text-amber-300 dark:bg-warning/20; }
+.status-badge-warning { @apply border-transparent bg-warning/15 text-amber-800 dark:text-amber-300 dark:bg-warning/20; }
 .status-badge-info    { @apply border-transparent bg-primary/15 text-primary dark:bg-primary/20; }
 .status-badge-muted   { @apply border-border/60 bg-muted text-muted-foreground; }
 .status-badge-danger  { @apply border-transparent bg-destructive/15 text-destructive dark:bg-destructive/20; }
