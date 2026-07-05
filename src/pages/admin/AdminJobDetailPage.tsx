@@ -277,7 +277,7 @@ const AdminJobDetailPage = () => {
           <div className="sticky-action-bar-inner">
             {(j.status === "scheduled" || j.status === "dispatched") && (
               <Button
-                className="flex-1 h-11 gap-2 bg-[#0077B6] hover:bg-[#0066a0] text-white"
+                className="flex-1 h-11 gap-2 bg-primary hover:bg-primary/90 text-white"
                 onClick={() => changeStatus("in_progress")}
                 disabled={pendingStatus !== null}
               >

@@ -227,7 +227,7 @@ const AdminCustomersPage = () => {
                   <CardContent className="p-4 space-y-2">
                     <div className="flex items-start gap-3">
                       <Avatar className="h-10 w-10">
-                        <AvatarFallback className="bg-[#0066CC]/10 text-[#0066CC] font-semibold text-sm">
+                        <AvatarFallback className="bg-[#0066CC]/10 text-primary font-semibold text-sm">
                           {getInitials(c.first_name, c.last_name, c.company_name)}
                         </AvatarFallback>
                       </Avatar>
@@ -317,7 +317,7 @@ const AdminCustomersPage = () => {
                             <TableCell>
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-8 w-8">
-                                  <AvatarFallback className="bg-[#0066CC]/10 text-[#0066CC] text-xs font-semibold">
+                                  <AvatarFallback className="bg-[#0066CC]/10 text-primary text-xs font-semibold">
                                     {getInitials(c.first_name, c.last_name, c.company_name)}
                                   </AvatarFallback>
                                 </Avatar>

@@ -143,7 +143,7 @@ const JobCompletionFlow = ({ leadId, customerId, open, onClose, onComplete }: Jo
                   className="w-full h-14 justify-start gap-3 rounded-xl"
                   onClick={() => handleChoice("existing")}
                 >
-                  <Wrench className="h-5 w-5 text-[#0077B6]" />
+                  <Wrench className="h-5 w-5 text-primary" />
                   <div className="text-left">
                     <p className="font-medium">Existing Equipment</p>
                     <p className="text-xs text-muted-foreground">
@@ -157,7 +157,7 @@ const JobCompletionFlow = ({ leadId, customerId, open, onClose, onComplete }: Jo
                   className="w-full h-14 justify-start gap-3 rounded-xl"
                   onClick={() => handleChoice("new")}
                 >
-                  <Plus className="h-5 w-5 text-[#0077B6]" />
+                  <Plus className="h-5 w-5 text-primary" />
                   <div className="text-left">
                     <p className="font-medium">New Installation</p>
                     <p className="text-xs text-muted-foreground">
@@ -185,7 +185,7 @@ const JobCompletionFlow = ({ leadId, customerId, open, onClose, onComplete }: Jo
                       key={eq.id}
                       className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
                         selectedEquipmentId === eq.id 
-                          ? "border-[#0077B6] bg-[#0077B6]/10" 
+                          ? "border-primary bg-primary/10" 
                           : "hover:bg-accent/50"
                       }`}
                       onClick={() => setSelectedEquipmentId(eq.id)}

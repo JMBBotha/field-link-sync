@@ -129,7 +129,7 @@ const InvoiceDetail = ({ invoiceId, open, onClose, onUpdate }: InvoiceDetailProp
 
         {loading ? (
           <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-[#0077B6]" />
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : invoice ? (
           <div className="flex-1 overflow-y-auto px-1 pb-4 space-y-4">

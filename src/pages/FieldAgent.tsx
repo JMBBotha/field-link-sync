@@ -1088,7 +1088,7 @@ const FieldAgent = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-2">
-          <Loader2 className="h-8 w-8 animate-spin text-[#0077B6]" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">Loading...</p>
         </div>
       </div>
@@ -1223,7 +1223,7 @@ const FieldAgent = () => {
           {!locationEnabled ? (
             <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10">
               <div className="text-center space-y-2 bg-card p-6 rounded-lg border shadow-lg">
-                <Navigation className="h-8 w-8 text-[#0077B6] mx-auto animate-pulse" />
+                <Navigation className="h-8 w-8 text-primary mx-auto animate-pulse" />
                 <p className="text-sm font-medium">Waiting for location access...</p>
                 <p className="text-xs text-muted-foreground">Please allow location permissions</p>
               </div>
@@ -1235,7 +1235,7 @@ const FieldAgent = () => {
               {!mapLoaded && (
                 <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10">
                   <div className="text-center space-y-2 bg-card p-6 rounded-lg border shadow-lg">
-                    <Loader2 className="h-8 w-8 animate-spin text-[#0077B6] mx-auto" />
+                    <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
                     <p className="text-sm text-muted-foreground">Loading map...</p>
                   </div>
                 </div>

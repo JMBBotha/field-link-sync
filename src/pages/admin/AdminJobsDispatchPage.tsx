@@ -457,7 +457,7 @@ const AdminJobsDispatchPage = () => {
               </div>
               {(detailJob.customer_locations?.address || detailJob.address) && (
                 <div className="text-sm flex items-start gap-1">
-                  <MapPin className="h-4 w-4 text-[#0066CC] mt-0.5" />
+                  <MapPin className="h-4 w-4 text-primary mt-0.5" />
                   <div>
                     {detailJob.customer_locations?.label && (
                       <span className="font-semibold">{detailJob.customer_locations.label}</span>

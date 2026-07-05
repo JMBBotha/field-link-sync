@@ -145,7 +145,7 @@ const CustomerInvoiceView = () => {
     return (
       <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
         {/* Header */}
-        <header className="bg-[#0077B6] text-white p-4 shadow-md print:hidden">
+        <header className="bg-primary text-white p-4 shadow-md print:hidden">
           <div className="max-w-2xl mx-auto flex items-center gap-4">
             <Button
               variant="ghost"
@@ -270,7 +270,7 @@ const CustomerInvoiceView = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       {/* Header */}
-      <header className="bg-[#0077B6] text-white p-4 shadow-md">
+      <header className="bg-primary text-white p-4 shadow-md">
         <div className="max-w-2xl mx-auto flex items-center gap-4">
           <Button
             variant="ghost"

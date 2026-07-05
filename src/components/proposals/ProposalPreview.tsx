@@ -53,7 +53,7 @@ const renderMarkdown = (md: string) => {
 };
 
 const sectionBgColors: Record<string, string> = {
-  cover: "bg-[#0077B6] text-white",
+  cover: "bg-primary text-white",
   pricing: "bg-primary/5",
   terms: "bg-muted/50",
   warranty: "bg-green-50",
@@ -82,7 +82,7 @@ const ProposalPreview = ({ open, onOpenChange, sections, quote }: ProposalPrevie
           // Cover page - special layout
           if (section.section_type === "cover") {
             return (
-              <div key={index} className="bg-[#0077B6] text-white p-8 sm:p-12 text-center">
+              <div key={index} className="bg-primary text-white p-8 sm:p-12 text-center">
                 <h1 className="text-3xl sm:text-4xl font-bold mb-2">AC Super Service</h1>
                 <p className="text-blue-200 text-lg mb-6">0800-BE-COOL</p>
                 <Separator className="bg-blue-300/30 my-6" />

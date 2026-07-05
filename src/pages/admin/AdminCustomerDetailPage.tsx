@@ -187,7 +187,7 @@ const AdminCustomerDetailPage = () => {
       {/* Breadcrumb */}
       <Link
         to="/admin/customers"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-[#0066CC]"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary"
       >
         <ArrowLeft className="h-4 w-4" /> Clients
       </Link>
@@ -263,16 +263,16 @@ const AdminCustomerDetailPage = () => {
                 </div>
                 <div className="space-y-2 text-sm">
                   {customer.email && (
-                    <div className="flex items-start gap-2"><Mail className="h-4 w-4 text-[#0066CC] mt-0.5 shrink-0" /><span className="break-all">{customer.email}</span></div>
+                    <div className="flex items-start gap-2"><Mail className="h-4 w-4 text-primary mt-0.5 shrink-0" /><span className="break-all">{customer.email}</span></div>
                   )}
                   {customer.phone && (
-                    <div className="flex items-start gap-2"><Phone className="h-4 w-4 text-[#0066CC] mt-0.5 shrink-0" /><span>{customer.phone}</span></div>
+                    <div className="flex items-start gap-2"><Phone className="h-4 w-4 text-primary mt-0.5 shrink-0" /><span>{customer.phone}</span></div>
                   )}
                   {fullAddress && (
-                    <div className="flex items-start gap-2"><MapPin className="h-4 w-4 text-[#0066CC] mt-0.5 shrink-0" /><span>{fullAddress}</span></div>
+                    <div className="flex items-start gap-2"><MapPin className="h-4 w-4 text-primary mt-0.5 shrink-0" /><span>{fullAddress}</span></div>
                   )}
                   {customer.vat_number && (
-                    <div className="flex items-start gap-2"><FileText className="h-4 w-4 text-[#0066CC] mt-0.5 shrink-0" /><span>VAT: {customer.vat_number}</span></div>
+                    <div className="flex items-start gap-2"><FileText className="h-4 w-4 text-primary mt-0.5 shrink-0" /><span>VAT: {customer.vat_number}</span></div>
                   )}
                 </div>
               </CardContent>
