@@ -303,6 +303,7 @@ const AdminMyJobsPage = () => {
           })}
         </div>
       )}
+      {isFieldContext && <FieldAgentBottomNav />}
     </div>
   );
 };
