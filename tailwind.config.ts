@@ -49,6 +49,10 @@ export default {
         },
         success: "hsl(var(--success))",
         warning: "hsl(var(--warning))",
+        "accent-yellow": {
+          DEFAULT: "hsl(var(--accent-yellow))",
+          foreground: "hsl(var(--accent-yellow-foreground))",
+        },
         available: "hsl(var(--available))",
         enroute: "hsl(var(--enroute))",
         onsite: "hsl(var(--onsite))",
