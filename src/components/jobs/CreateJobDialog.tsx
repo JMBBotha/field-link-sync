@@ -428,7 +428,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
             onClick={() => createMutation.mutate()}
-            disabled={!title || !customerId || !address || !scheduledFor || !companyId || createMutation.isPending}
+            disabled={!title || !customerId || !address || !appt.date || !appt.startTime || !companyId || createMutation.isPending}
           >
             {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Create Job
