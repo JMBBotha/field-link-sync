@@ -1,5 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, CreditCard, Wrench, Users, MapPin, Database, BarChart3 } from "lucide-react";
+import { Building2, CreditCard, Wrench, Users, MapPin, Database, BarChart3, Palette } from "lucide-react";
+import AppearanceTab from "@/components/settings/AppearanceTab";
 import CompanyProfileTab from "@/components/settings/CompanyProfileTab";
 import BillingTab from "@/components/settings/BillingTab";
 import ServicesTab from "@/components/settings/ServicesTab";
@@ -14,7 +15,7 @@ const AdminSettingsPage = () => {
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
       <h2 className="text-xl font-semibold mb-4">Settings</h2>
       <Tabs defaultValue="company">
-        <TabsList className="grid grid-cols-7 w-full max-w-3xl">
+        <TabsList className="grid grid-cols-4 md:grid-cols-8 w-full max-w-4xl">
           <TabsTrigger value="company" className="gap-1 text-xs md:text-sm">
             <Building2 className="h-4 w-4 hidden sm:block" />Company
           </TabsTrigger>
@@ -36,6 +37,9 @@ const AdminSettingsPage = () => {
           <TabsTrigger value="usage" className="gap-1 text-xs md:text-sm">
             <BarChart3 className="h-4 w-4 hidden sm:block" />Usage
           </TabsTrigger>
+          <TabsTrigger value="appearance" className="gap-1 text-xs md:text-sm">
+            <Palette className="h-4 w-4 hidden sm:block" />Appearance
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="company"><CompanyProfileTab /></TabsContent>
         <TabsContent value="billing"><BillingTab /></TabsContent>
@@ -44,6 +48,7 @@ const AdminSettingsPage = () => {
         <TabsContent value="geofence"><GeofenceSettings /></TabsContent>
         <TabsContent value="data"><SampleDataLoader /></TabsContent>
         <TabsContent value="usage"><AppUsageTab /></TabsContent>
+        <TabsContent value="appearance"><AppearanceTab /></TabsContent>
       </Tabs>
     </div>
   );
