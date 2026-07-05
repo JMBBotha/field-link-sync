@@ -50,7 +50,7 @@ const QuotePreviewModal = ({ open, onOpenChange, quote }: QuotePreviewProps) => 
         </DialogHeader>
 
         {/* Company Header */}
-        <div className="text-center py-4 bg-[#0077B6] text-white rounded-lg">
+        <div className="text-center py-4 bg-primary text-white rounded-lg">
           <h2 className="text-xl font-bold">AC Super Service</h2>
           <p className="text-sm text-blue-100">0800-BE-COOL</p>
         </div>

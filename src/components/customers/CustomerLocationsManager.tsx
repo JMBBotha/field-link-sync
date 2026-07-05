@@ -109,7 +109,7 @@ const CustomerLocationsManager = ({ customerId, companyId }: Props) => {
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-[#0066CC]" />
+                    <MapPin className="h-4 w-4 text-primary" />
                     <span className="font-semibold text-sm">{loc.label}</span>
                     {loc.is_primary && (
                       <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">

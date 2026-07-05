@@ -277,7 +277,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           : kpiCards.map((kpi) => (
               <Card
                 key={kpi.key}
-                className="cursor-pointer rounded-xl border border-[#0077B6]/50 !bg-[linear-gradient(135deg,#0077B6_0%,#5E9BBE_48%,#CBD5E1_100%)] text-slate-950 shadow-sm transition-all duration-200 hover:border-[#0077B6] hover:shadow-md [--muted-foreground:210_25%_22%]"
+                className="cursor-pointer rounded-xl border border-primary/50 !bg-[linear-gradient(135deg,#0077B6_0%,#5E9BBE_48%,#CBD5E1_100%)] text-slate-950 shadow-sm transition-all duration-200 hover:border-primary hover:shadow-md [--muted-foreground:210_25%_22%]"
                 onClick={() => setSelectedKpi(kpi.key)}
               >
                 <CardContent className="p-3 md:p-4">
@@ -328,7 +328,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
 
       {/* Primary widgets — Recent Open Leads + Today's Dispatch */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 min-w-0">
-        <Card className="min-w-0 overflow-hidden border-[#0077B6]/50 !bg-[linear-gradient(135deg,#0077B6_0%,#5E9BBE_48%,#CBD5E1_100%)] [--card-foreground:210_30%_8%] [--muted-foreground:210_25%_22%] [--border:204_70%_35%] [--secondary:204_40%_86%] [--secondary-foreground:210_30%_8%] [--accent:204_55%_82%] [--accent-foreground:210_30%_8%]">
+        <Card className="min-w-0 overflow-hidden border-primary/50 !bg-[linear-gradient(135deg,#0077B6_0%,#5E9BBE_48%,#CBD5E1_100%)] [--card-foreground:210_30%_8%] [--muted-foreground:210_25%_22%] [--border:204_70%_35%] [--secondary:204_40%_86%] [--secondary-foreground:210_30%_8%] [--accent:204_55%_82%] [--accent-foreground:210_30%_8%]">
 
           <CardHeader className="min-w-0 space-y-2 pb-2 p-3 md:p-6">
             <div className="flex items-center justify-between gap-2 min-w-0">
@@ -407,7 +407,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           </CardContent>
         </Card>
 
-        <Card className="min-w-0 overflow-hidden border-[#0077B6]/50 !bg-[linear-gradient(135deg,#0077B6_0%,#5E9BBE_48%,#CBD5E1_100%)] [--card-foreground:210_30%_8%] [--muted-foreground:210_25%_22%] [--border:204_70%_35%] [--secondary:204_40%_86%] [--secondary-foreground:210_30%_8%] [--accent:204_55%_82%] [--accent-foreground:210_30%_8%]">
+        <Card className="min-w-0 overflow-hidden border-primary/50 !bg-[linear-gradient(135deg,#0077B6_0%,#5E9BBE_48%,#CBD5E1_100%)] [--card-foreground:210_30%_8%] [--muted-foreground:210_25%_22%] [--border:204_70%_35%] [--secondary:204_40%_86%] [--secondary-foreground:210_30%_8%] [--accent:204_55%_82%] [--accent-foreground:210_30%_8%]">
           <CardHeader className="min-w-0 space-y-2 pb-2 p-3 md:p-6">
             <div className="flex items-center justify-between gap-2 min-w-0">
               <CardTitle className="text-sm md:text-base flex items-center gap-2 min-w-0 truncate">

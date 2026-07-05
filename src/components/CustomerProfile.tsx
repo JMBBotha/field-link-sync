@@ -210,15 +210,15 @@ const CustomerProfile = ({ customerId, open, onClose }: CustomerProfileProps) =>
 
           {loading ? (
             <div className="flex-1 flex items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-[#0077B6]" />
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : customer ? (
             <>
               {/* Customer Header */}
               <div className="px-1 pb-3 flex-shrink-0">
                 <div className="flex items-start gap-3 p-4 rounded-xl bg-background/50 border">
-                  <div className="h-12 w-12 rounded-full bg-[#0077B6]/20 flex items-center justify-center">
-                    <User className="h-6 w-6 text-[#0077B6]" />
+                  <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center">
+                    <User className="h-6 w-6 text-primary" />
                   </div>
                   <div className="flex-1">
                     <h2 className="text-lg font-bold">{customer.name}</h2>
@@ -257,8 +257,8 @@ const CustomerProfile = ({ customerId, open, onClose }: CustomerProfileProps) =>
                       href={`tel:${customer.phone}`}
                       className="flex items-center gap-3 p-3 rounded-xl bg-background/50 hover:bg-background/80 transition-colors"
                     >
-                      <div className="h-10 w-10 rounded-full bg-[#0077B6]/20 flex items-center justify-center">
-                        <Phone className="h-5 w-5 text-[#0077B6]" />
+                      <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                        <Phone className="h-5 w-5 text-primary" />
                       </div>
                       <div>
                         <p className="text-sm font-medium">{customer.phone}</p>
@@ -271,8 +271,8 @@ const CustomerProfile = ({ customerId, open, onClose }: CustomerProfileProps) =>
                         href={`mailto:${customer.email}`}
                         className="flex items-center gap-3 p-3 rounded-xl bg-background/50 hover:bg-background/80 transition-colors"
                       >
-                        <div className="h-10 w-10 rounded-full bg-[#0077B6]/20 flex items-center justify-center">
-                          <Mail className="h-5 w-5 text-[#0077B6]" />
+                        <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                          <Mail className="h-5 w-5 text-primary" />
                         </div>
                         <div>
                           <p className="text-sm font-medium">{customer.email}</p>
@@ -283,8 +283,8 @@ const CustomerProfile = ({ customerId, open, onClose }: CustomerProfileProps) =>
 
                     {customer.address && (
                       <div className="flex items-start gap-3 p-3 rounded-xl bg-background/50">
-                        <div className="h-10 w-10 rounded-full bg-[#0077B6]/20 flex items-center justify-center">
-                          <MapPin className="h-5 w-5 text-[#0077B6]" />
+                        <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                          <MapPin className="h-5 w-5 text-primary" />
                         </div>
                         <div>
                           <p className="text-sm font-medium">{customer.address}</p>
@@ -294,8 +294,8 @@ const CustomerProfile = ({ customerId, open, onClose }: CustomerProfileProps) =>
                     )}
 
                     <div className="flex items-center gap-3 p-3 rounded-xl bg-background/50">
-                      <div className="h-10 w-10 rounded-full bg-[#0077B6]/20 flex items-center justify-center">
-                        <Calendar className="h-5 w-5 text-[#0077B6]" />
+                      <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                        <Calendar className="h-5 w-5 text-primary" />
                       </div>
                       <div>
                         <p className="text-sm font-medium">{formatDate(customer.created_at)}</p>

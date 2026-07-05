@@ -104,7 +104,7 @@ const EquipmentList = ({ customerId, onSelectEquipment, compact = false }: Equip
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin text-[#0077B6]" />
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     );
   }

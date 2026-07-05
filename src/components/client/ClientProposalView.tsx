@@ -212,7 +212,7 @@ const ClientProposalView = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       {/* Cover Header */}
-      <header className="bg-[#0077B6] text-white px-4 py-8">
+      <header className="bg-primary text-white px-4 py-8">
         <div className="max-w-3xl mx-auto text-center">
           <img src={logo} alt="Be Cool" className="h-16 mx-auto mb-4" />
           <h1 className="text-2xl md:text-3xl font-bold">Service Proposal</h1>
