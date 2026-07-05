@@ -116,7 +116,7 @@ const QuotePreviewModal = ({ open, onOpenChange, quote }: QuotePreviewProps) => 
         </div>
 
         {quote.notes && (
-          <div className="mt-4 p-3 bg-muted rounded-md text-sm">
+          <div className="mt-4 p-3 bg-white border rounded-md text-sm">
             <p className="text-xs uppercase text-muted-foreground mb-1">Notes</p>
             <p>{quote.notes}</p>
           </div>
