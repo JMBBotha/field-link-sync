@@ -251,83 +251,102 @@ const LeadDetailSheet = ({
     setShowDurationPicker(false);
   };
 
+  // Ensure lead has a linked customer; returns customer id or null on failure.
+  const ensureLeadCustomerId = async (): Promise<string | null> => {
+    let customerId = lead.customer_id || null;
+    if (customerId) return customerId;
+
+    const { findCustomerMatch } = await import("@/lib/customerMatch");
+    const { getUserCompanyId } = await import("@/lib/tenantUtils");
+    const companyId = await getUserCompanyId(currentUserId);
+    if (!companyId) {
+      toast({ title: "No company found", variant: "destructive" });
+      return null;
+    }
+    const match = await findCustomerMatch(companyId, lead.customer_phone, null);
+    if (match) {
+      const ok = window.confirm(
+        `Possible existing customer found: ${match.name || match.phone}.\n\nLink this lead to that customer? (Cancel = create a new customer)`
+      );
+      if (ok) {
+        customerId = match.id;
+      } else {
+        const { data: newCust, error: cErr } = await supabase
+          .from("customers")
+          .insert({
+            company_id: companyId,
+            name: lead.customer_name,
+            phone: lead.customer_phone,
+            address: lead.customer_address,
+          })
+          .select("id")
+          .single();
+        if (cErr) {
+          toast({ title: cErr.message, variant: "destructive" });
+          return null;
+        }
+        customerId = newCust.id;
+      }
+    } else {
+      const { data: newCust, error: cErr } = await supabase
+        .from("customers")
+        .insert({
+          company_id: companyId,
+          name: lead.customer_name,
+          phone: lead.customer_phone,
+          address: lead.customer_address,
+        })
+        .select("id")
+        .single();
+      if (cErr) {
+        toast({ title: cErr.message, variant: "destructive" });
+        return null;
+      }
+      customerId = newCust.id;
+    }
+
+    await supabase.from("leads").update({ customer_id: customerId }).eq("id", lead.id);
+    const linkedId = customerId!;
+    qc.getQueriesData<any[]>({ queryKey: ["leads"] }).forEach(([k, list]) => {
+      if (!Array.isArray(list)) return;
+      qc.setQueryData(
+        k,
+        list.map((l: any) => (l.id === lead.id ? { ...l, customer_id: linkedId } : l)),
+      );
+    });
+    qc.setQueryData(["lead", lead.id], (prev: any) =>
+      prev ? { ...prev, customer_id: linkedId } : prev,
+    );
+    qc.invalidateQueries({ queryKey: ["unified-clients"] });
+    return customerId;
+  };
+
   // Create Draft Quote from Lead - ensures a customer, then opens builder prefilled
   const handleCreateDraftQuote = async () => {
     try {
-      let customerId = lead.customer_id || null;
-
-      if (!customerId) {
-        const { findCustomerMatch } = await import("@/lib/customerMatch");
-        const { getUserCompanyId } = await import("@/lib/tenantUtils");
-        const companyId = await getUserCompanyId(currentUserId);
-        if (!companyId) {
-          toast({ title: "No company found", variant: "destructive" });
-          return;
-        }
-        const match = await findCustomerMatch(companyId, lead.customer_phone, null);
-        if (match) {
-          const ok = window.confirm(
-            `Possible existing customer found: ${match.name || match.phone}.\n\nLink this lead to that customer? (Cancel = create a new customer)`
-          );
-          if (ok) {
-            customerId = match.id;
-          } else {
-            const { data: newCust, error: cErr } = await supabase
-              .from("customers")
-              .insert({
-                company_id: companyId,
-                name: lead.customer_name,
-                phone: lead.customer_phone,
-                address: lead.customer_address,
-              })
-              .select("id")
-              .single();
-            if (cErr) throw cErr;
-            customerId = newCust.id;
-          }
-        } else {
-          const { data: newCust, error: cErr } = await supabase
-            .from("customers")
-            .insert({
-              company_id: companyId,
-              name: lead.customer_name,
-              phone: lead.customer_phone,
-              address: lead.customer_address,
-            })
-            .select("id")
-            .single();
-          if (cErr) throw cErr;
-          customerId = newCust.id;
-        }
-
-        // Persist link on the lead
-        await supabase.from("leads").update({ customer_id: customerId }).eq("id", lead.id);
-
-        // Optimistically patch every cached ["leads", ...] list and ["lead", id] so the
-        // UI reflects the link before any refetch fires.
-        const linkedId = customerId;
-        qc.getQueriesData<any[]>({ queryKey: ["leads"] }).forEach(([k, list]) => {
-          if (!Array.isArray(list)) return;
-          qc.setQueryData(
-            k,
-            list.map((l: any) => (l.id === lead.id ? { ...l, customer_id: linkedId } : l)),
-          );
-        });
-        qc.setQueryData(["lead", lead.id], (prev: any) =>
-          prev ? { ...prev, customer_id: linkedId } : prev,
-        );
-        qc.invalidateQueries({ queryKey: ["unified-clients"] });
-      }
-
+      const customerId = await ensureLeadCustomerId();
+      if (!customerId) return;
       const params = new URLSearchParams({
         leadId: lead.id,
-        customerId: customerId!,
+        customerId,
         quoteName: `${lead.service_type || "Quote"} - ${lead.customer_name}`,
       });
       onClose();
       navigate(`/admin/quote-builder?${params.toString()}`);
     } catch (err: any) {
       toast({ title: err.message || "Failed to create draft quote", variant: "destructive" });
+    }
+  };
+
+  // Open Template picker → routes through classic Quote Builder with prefilled items/terms
+  const handleQuoteFromTemplate = async () => {
+    try {
+      const customerId = await ensureLeadCustomerId();
+      if (!customerId) return;
+      setTemplateCustomerId(customerId);
+      setShowTemplatePicker(true);
+    } catch (err: any) {
+      toast({ title: err.message || "Failed to open template picker", variant: "destructive" });
     }
   };
 
