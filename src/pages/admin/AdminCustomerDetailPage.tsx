@@ -79,36 +79,50 @@ const AdminCustomerDetailPage = () => {
   });
 
   const { data: invoices = [] } = useQuery({
-    queryKey: ["customer-invoices", id],
+    queryKey: ["customer-invoices", id, customer?.name],
     enabled: !!id,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     queryFn: async () => {
+      const orParts = [`customer_id.eq.${id}`];
+      if (customer?.name) orParts.push(`customer_name.ilike.${customer.name}`);
       const { data, error } = await supabase
         .from("invoices")
-        .select("id, invoice_number, notes, issue_date, due_date, grand_total, status, created_at")
-        .eq("customer_id", id!)
+        .select("id, invoice_number, notes, issue_date, due_date, grand_total, status, created_at, customer_id, customer_name")
+        .or(orParts.join(","))
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data || [];
+      const seen = new Set<string>();
+      return (data || []).filter((r: any) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
     },
   });
 
   const { data: quotes = [] } = useQuery({
-    queryKey: ["customer-quotes", id],
+    queryKey: ["customer-quotes", id, customer?.name],
     enabled: !!id,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     queryFn: async () => {
+      const orParts = [`customer_id.eq.${id}`];
+      if (customer?.name) orParts.push(`customer_name.ilike.${customer.name}`);
       const { data, error } = await supabase
         .from("quotes")
-        .select("id, quote_number, notes, total, status, created_at")
-        .eq("customer_id", id!)
+        .select("id, quote_number, notes, total, status, created_at, customer_id, customer_name")
+        .or(orParts.join(","))
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data || [];
+      const seen = new Set<string>();
+      return (data || []).filter((r: any) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
     },
   });
 
   const { data: jobs = [] } = useQuery({
     queryKey: ["customer-jobs-detail", id],
     enabled: !!id,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("jobs")
@@ -302,95 +316,103 @@ const AdminCustomerDetailPage = () => {
           {/* Bottom tabs */}
           <Card className="bg-card">
             <CardContent className="p-0">
-              <Tabs defaultValue="invoices">
-                <TabsList className="m-4">
-                  <TabsTrigger value="invoices">Invoices</TabsTrigger>
-                  <TabsTrigger value="quotes">Quotes</TabsTrigger>
-                  <TabsTrigger value="jobs">Jobs</TabsTrigger>
-                  <TabsTrigger value="contacts">Contacts</TabsTrigger>
-                  <TabsTrigger value="credits">Credits</TabsTrigger>
-                  <TabsTrigger value="estimates">Estimates</TabsTrigger>
-                </TabsList>
+              <Tabs defaultValue="quotes">
+                <div className="border-b overflow-x-auto">
+                  <TabsList className="m-3 md:m-4 flex-nowrap w-max">
+                    <TabsTrigger value="invoices">Invoices</TabsTrigger>
+                    <TabsTrigger value="quotes">Quotes</TabsTrigger>
+                    <TabsTrigger value="jobs">Jobs</TabsTrigger>
+                    <TabsTrigger value="contacts">Contacts</TabsTrigger>
+                    <TabsTrigger value="credits">Credits</TabsTrigger>
+                    <TabsTrigger value="estimates">Estimates</TabsTrigger>
+                  </TabsList>
+                </div>
 
                 <TabsContent value="invoices" className="p-0 mt-0">
                   <SectionHeader title="Invoices" onNew={() => navigate("/admin/invoices")} cta="+ New Invoice" />
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Invoice #</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Issued</TableHead>
-                        <TableHead>Due</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {invoices.map(inv => (
-                        <TableRow key={inv.id}>
-                          <TableCell className="font-medium">{inv.invoice_number || "—"}</TableCell>
-                          <TableCell className="max-w-[260px] truncate text-muted-foreground text-xs">{inv.notes || "—"}</TableCell>
-                          <TableCell className="text-xs">{inv.issue_date ? format(new Date(inv.issue_date), "dd MMM yyyy") : "—"}</TableCell>
-                          <TableCell className="text-xs">{inv.due_date ? format(new Date(inv.due_date), "dd MMM yyyy") : "—"}</TableCell>
-                          <TableCell className="text-right font-medium">{formatRand(Number(inv.grand_total || 0))}</TableCell>
-                          <TableCell><Badge variant="outline" className={cn("text-[10px]", statusBadge(inv.status))}>{inv.status || "draft"}</Badge></TableCell>
+                  <div className="max-h-[560px] overflow-auto px-2 md:px-4 pb-6">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Invoice #</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead>Issued</TableHead>
+                          <TableHead>Due</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead>Status</TableHead>
                         </TableRow>
-                      ))}
-                      {invoices.length === 0 && <EmptyRow cols={6} text="No invoices yet." />}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {invoices.map((inv: any) => (
+                          <TableRow key={inv.id}>
+                            <TableCell className="font-medium">{inv.invoice_number || "—"}</TableCell>
+                            <TableCell className="max-w-[260px] truncate text-muted-foreground text-xs">{inv.notes || "—"}</TableCell>
+                            <TableCell className="text-xs">{inv.issue_date ? format(new Date(inv.issue_date), "dd MMM yyyy") : "—"}</TableCell>
+                            <TableCell className="text-xs">{inv.due_date ? format(new Date(inv.due_date), "dd MMM yyyy") : "—"}</TableCell>
+                            <TableCell className="text-right font-medium">{formatRand(Number(inv.grand_total || 0))}</TableCell>
+                            <TableCell><Badge variant="outline" className={cn("text-[10px]", statusBadge(inv.status))}>{inv.status || "draft"}</Badge></TableCell>
+                          </TableRow>
+                        ))}
+                        {invoices.length === 0 && <EmptyRow cols={6} text="No invoices yet." />}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="quotes" className="p-0 mt-0">
                   <SectionHeader title="Quotes" onNew={() => navigate("/admin/quotes")} cta="+ New Quote" />
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Quote #</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {quotes.map(q => (
-                        <TableRow key={q.id}>
-                          <TableCell className="font-medium">{q.quote_number || "—"}</TableCell>
-                          <TableCell className="max-w-[260px] truncate text-muted-foreground text-xs">{q.notes || "—"}</TableCell>
-                          <TableCell className="text-xs">{q.created_at ? format(new Date(q.created_at), "dd MMM yyyy") : "—"}</TableCell>
-                          <TableCell className="text-right font-medium">{formatRand(Number(q.total || 0))}</TableCell>
-                          <TableCell><Badge variant="outline" className={cn("text-[10px]", statusBadge(q.status))}>{q.status || "draft"}</Badge></TableCell>
+                  <div className="max-h-[560px] overflow-auto px-2 md:px-4 pb-6">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Quote #</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead>Status</TableHead>
                         </TableRow>
-                      ))}
-                      {quotes.length === 0 && <EmptyRow cols={5} text="No quotes yet." />}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {quotes.map((q: any) => (
+                          <TableRow key={q.id}>
+                            <TableCell className="font-medium">{q.quote_number || "—"}</TableCell>
+                            <TableCell className="max-w-[260px] truncate text-muted-foreground text-xs">{q.notes || "—"}</TableCell>
+                            <TableCell className="text-xs">{q.created_at ? format(new Date(q.created_at), "dd MMM yyyy") : "—"}</TableCell>
+                            <TableCell className="text-right font-medium">{formatRand(Number(q.total || 0))}</TableCell>
+                            <TableCell><Badge variant="outline" className={cn("text-[10px]", statusBadge(q.status))}>{q.status || "draft"}</Badge></TableCell>
+                          </TableRow>
+                        ))}
+                        {quotes.length === 0 && <EmptyRow cols={5} text="No quotes yet." />}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="jobs" className="p-0 mt-0">
                   <SectionHeader title="Jobs" onNew={() => navigate("/admin/jobs")} cta="+ New Job" />
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Job</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {jobs.map(j => (
-                        <TableRow key={j.id}>
-                          <TableCell className="font-medium">{j.title || "Untitled"}</TableCell>
-                          <TableCell className="max-w-[260px] truncate text-muted-foreground text-xs">{j.description || "—"}</TableCell>
-                          <TableCell className="text-xs">{(j.scheduled_for || j.created_at) ? format(new Date((j.scheduled_for || j.created_at)!), "dd MMM yyyy") : "—"}</TableCell>
-                          <TableCell><Badge variant="outline" className={cn("text-[10px]", statusBadge(j.status))}>{j.status || "pending"}</Badge></TableCell>
+                  <div className="max-h-[560px] overflow-auto px-2 md:px-4 pb-6">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Job</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Status</TableHead>
                         </TableRow>
-                      ))}
-                      {jobs.length === 0 && <EmptyRow cols={4} text="No jobs yet." />}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {jobs.map((j: any) => (
+                          <TableRow key={j.id}>
+                            <TableCell className="font-medium">{j.title || "Untitled"}</TableCell>
+                            <TableCell className="max-w-[260px] truncate text-muted-foreground text-xs">{j.description || "—"}</TableCell>
+                            <TableCell className="text-xs">{(j.scheduled_for || j.created_at) ? format(new Date((j.scheduled_for || j.created_at)!), "dd MMM yyyy") : "—"}</TableCell>
+                            <TableCell><Badge variant="outline" className={cn("text-[10px]", statusBadge(j.status))}>{j.status || "pending"}</Badge></TableCell>
+                          </TableRow>
+                        ))}
+                        {jobs.length === 0 && <EmptyRow cols={4} text="No jobs yet." />}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="contacts" className="p-6 text-sm text-muted-foreground">
