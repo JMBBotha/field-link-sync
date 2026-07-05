@@ -32,7 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSingleLeadPhotoCount } from "@/hooks/useLeadPhotoCount";
 import CommunicationTimeline from "./communication/CommunicationTimeline";
 import UsedPartsSection from "./UsedPartsSection";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, DollarSign } from "lucide-react";
 
 interface Lead {
