@@ -1,17 +1,7 @@
-import JobsMapCard from "@/components/admin/JobsMapCard";
-import RequireRole from "@/components/RequireRole";
+import AdminMapPage from "./AdminMapPage";
 
-const AdminJobsMapPage = () => (
-  <div className="p-4 md:p-6 space-y-4">
-    <h1 className="text-2xl font-bold text-foreground">Jobs Map</h1>
-    <JobsMapCard fullPage />
-  </div>
-);
+// Jobs Map full page — reuses the same live map as the sidebar "Map" link
+// so both views show identical data, side panels, and controls.
+const AdminJobsMapPage = () => <AdminMapPage />;
 
-const Guarded = () => (
-  <RequireRole allowedRoles={["admin"]}>
-    <AdminJobsMapPage />
-  </RequireRole>
-);
-
-export default Guarded;
+export default AdminJobsMapPage;
