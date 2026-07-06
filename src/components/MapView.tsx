@@ -1102,8 +1102,16 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       const leadColor = getLeadColor(lead.status);
       const content = lead.status === "completed" ? "$" : undefined;
 
+      // If status changed on an existing marker, rebuild it to guarantee correct visuals
+      if (marker && marker.getElement().dataset.status !== lead.status) {
+        try { marker.remove(); } catch { /* ignore */ }
+        leadMarkersRef.current.delete(lead.id);
+        marker = undefined;
+      }
+
       if (!marker) {
         const el = createTeardropMarkerElement(leadColor, content);
+        el.dataset.status = lead.status;
 
         // Add time badge if needed (custom addition to the wrapper)
         const timeBadge = document.createElement("div");
