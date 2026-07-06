@@ -1245,7 +1245,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
 
           {/* Map controls: traffic + route */}
           {mapLoaded && (
-            <div className="absolute top-2 right-2 z-10 flex flex-col gap-2">
+            <div className="absolute top-16 right-2 z-10 flex flex-col gap-2">
               <div className="bg-card/90 backdrop-blur-sm border rounded-lg px-3 py-2 flex items-center gap-2 shadow-md">
                 <Layers className="h-4 w-4 text-muted-foreground" />
                 <span className="text-xs font-medium">Traffic</span>
