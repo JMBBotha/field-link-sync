@@ -105,6 +105,8 @@ const QuoteBuilder = ({ quoteId, leadId, customerId, templateId, initialQuoteNam
   const [loading, setLoading] = useState(false);
   const [savedQuoteId, setSavedQuoteId] = useState<string | null>(quoteId || null);
   const [quoteNumber, setQuoteNumber] = useState<string>("");
+  const [loadedStatus, setLoadedStatus] = useState<string>("draft");
+  const hidePricingInternals = loadedStatus !== "draft";
 
   // Customer
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
