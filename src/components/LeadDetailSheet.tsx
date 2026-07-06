@@ -657,13 +657,6 @@ const LeadDetailSheet = ({
               )
             )}
 
-            {/* Notes */}
-            {lead.notes && (
-              <div className="p-2.5 rounded-xl bg-background/50">
-                <p className="text-[10px] text-muted-foreground mb-0.5">Notes</p>
-                <p className="text-xs">{lead.notes}</p>
-              </div>
-            )}
 
             {/* Job Schedule Display - shows dates and times */}
             <JobScheduleDisplay
