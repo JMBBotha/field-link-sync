@@ -316,8 +316,8 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
   };
 
   const isCardExpanded = (leadId: string) => {
-    // On desktop, always expanded. On mobile/tablet, check state (default collapsed)
-    return !isMobile || expandedCards.has(leadId);
+    // On desktop, always expanded. On tablet/mobile, check state (default collapsed)
+    return !useCompact || expandedCards.has(leadId);
   };
 
   // Render compact card header for mobile (2-line layout)
