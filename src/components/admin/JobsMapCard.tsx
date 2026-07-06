@@ -247,7 +247,7 @@ const JobsMapCard = ({ fullPage = false }: { fullPage?: boolean }) => {
           </span>
         </div>
 
-        <div className="relative w-full h-[420px] md:h-[520px] rounded-lg overflow-hidden border border-border bg-muted">
+        <div className={`relative w-full ${fullPage ? "h-[calc(100vh-220px)] min-h-[420px]" : "h-[420px] md:h-[520px]"} rounded-lg overflow-hidden border border-border bg-muted`}>
           <div ref={containerRef} className="absolute inset-0" />
           {(isLoading || (!tokenReady && !tokenError)) && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm">
