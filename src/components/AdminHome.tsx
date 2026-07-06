@@ -11,6 +11,7 @@ import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger }
 import AdminAlertsPanel from "@/components/AdminAlertsPanel";
 import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
 import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
+import JobsMapCard from "@/components/admin/JobsMapCard";
 import KpiDetailDialog from "@/components/admin/KpiDetailDialog";
 import QuotePerformanceWidget from "@/components/analytics/QuotePerformanceWidget";
 import PipelineMetrics from "@/components/analytics/PipelineMetrics";
