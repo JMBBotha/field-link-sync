@@ -1,6 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Map, LocateFixed } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Map, LocateFixed, Maximize2, Minimize2, ExternalLink, Layers } from "lucide-react";
+
 import MapView, { MapViewHandle } from "@/components/MapView";
 import BusinessSearch from "@/components/map/BusinessSearch";
 import LeadsList from "@/components/LeadsList";
