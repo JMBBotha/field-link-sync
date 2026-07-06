@@ -152,17 +152,17 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono text-sm font-bold">
-                        {quote.quote_number || <span className="text-amber-600 text-xs">No number – draft</span>}
+                      <span className="font-mono text-sm font-bold text-primary">
+                        {quote.quote_number || <span className="text-amber-600 dark:text-amber-400 text-xs">No number – draft</span>}
                       </span>
                       <QuoteStatusBadge status={quote.status} />
                     </div>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {quote.customers?.name || "No customer"} • {quote.customers?.phone || ""}
+                    <p className="text-sm text-foreground/80 truncate">
+                      {quote.customers?.name || "No customer"} <span className="text-muted-foreground">• {quote.customers?.phone || ""}</span>
                     </p>
                   </div>
                   <div className="text-right ml-4 flex flex-col items-end gap-1">
-                    <p className="font-bold">{formatZAR(Number(quote.total))}</p>
+                    <p className="font-bold text-primary">{formatZAR(Number(quote.total))}</p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(quote.created_at).toLocaleDateString("en-ZA")}
                     </p>
