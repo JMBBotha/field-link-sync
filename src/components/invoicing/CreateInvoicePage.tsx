@@ -521,7 +521,7 @@ const CreateInvoicePage = ({
       </div>
 
       {/* ── A4 Card ── */}
-      <div className="max-w-3xl mx-auto my-8 bg-background shadow-lg rounded-lg border p-8 md:p-12 space-y-8">
+      <div className="max-w-3xl mx-auto my-8 bg-white shadow-lg rounded-lg border p-8 md:p-12 space-y-8 text-slate-900 [&_.text-foreground]:!text-slate-900 [&_.text-muted-foreground]:!text-slate-500 [&_input]:!text-slate-900 [&_textarea]:!text-slate-900 [&_select]:!text-slate-900 [&_input::placeholder]:!text-slate-400 [&_textarea::placeholder]:!text-slate-400">
         {/* ── HEADER ROW ── */}
         <DocumentHeader
           logoUrl={logoUrl}
