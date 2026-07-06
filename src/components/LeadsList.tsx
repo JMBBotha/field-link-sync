@@ -75,6 +75,9 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
   const [clickedCardId, setClickedCardId] = useState<string | null>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const isTabletOrBelow = useIsTabletOrBelow();
+  // Compact mode: mobile OR tablet — reduces card height & lets the map show through.
+  const useCompact = isMobile || isTabletOrBelow;
   
   // Get photo counts for all leads
   const leadIds = leads.map(l => l.id);
