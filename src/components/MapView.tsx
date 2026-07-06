@@ -1389,6 +1389,12 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
                 compact
                 className="!bg-transparent !border-0 !shadow-none !backdrop-blur-none !rounded-none !p-0 flex-nowrap overflow-x-auto scrollbar-hide max-w-[min(92vw,32rem)]"
                 activeFilters={statusFilters}
+                counts={{
+                  pending: leads.filter((l) => l.status === "pending").length,
+                  accepted: leads.filter((l) => l.status === "accepted" || l.status === "claimed").length,
+                  in_progress: leads.filter((l) => l.status === "in_progress").length,
+                  completed: leads.filter((l) => l.status === "completed").length,
+                }}
                 onToggle={(status) => {
                   setStatusFilters((prev) => {
                     const next = new Set(prev);
