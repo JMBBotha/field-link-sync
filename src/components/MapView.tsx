@@ -38,13 +38,17 @@ export interface MapViewHandle {
   panToLocationAndOpenPopup: (lat: number, lng: number, leadId: string) => void;
   showSearchResult: (lat: number, lng: number, name: string, address?: string) => void;
   getMapboxToken: () => string | null;
+  setTrafficEnabled: (enabled: boolean) => void;
+  getTrafficEnabled: () => boolean;
 }
 
 interface MapViewProps {
   onStatusFiltersChange?: (filters: Set<LeadStatusFilter>) => void;
   onLeadClick?: (lead: Lead) => void;
   showAllAgents?: boolean;
+  hideChromeControls?: boolean;
 }
+
 
 const formatTimeAgo = (createdAt: string): string => {
   const now = new Date();
