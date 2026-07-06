@@ -28,6 +28,7 @@ import AdminQuoteBuilderPage from "./pages/admin/AdminQuoteBuilderPage";
 import AdminQuoteBuilderPageUnified from "./pages/admin/AdminQuoteBuilderPageUnified";
 import AdminCatalogPage from "./pages/admin/AdminCatalogPage";
 import AdminDispatchPage from "./pages/admin/AdminDispatchPage";
+import AdminJobsMapPage from "./pages/admin/AdminJobsMapPage";
 import AdminMaintenancePage from "./pages/admin/AdminMaintenancePage";
 import AdminCustomersPage from "./pages/admin/AdminCustomersPage";
 import AdminCustomerDetailPage from "./pages/admin/AdminCustomerDetailPage";
