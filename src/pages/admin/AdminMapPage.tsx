@@ -42,6 +42,37 @@ const AdminMapPage = () => {
   const currentUserId = user?.id;
   const mapRef = useRef<MapViewHandle>(null);
   const { toast } = useToast();
+  const pageRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [trafficEnabled, setTrafficEnabledState] = useState(false);
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await pageRef.current?.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (e) {
+      console.error("Fullscreen error:", e);
+    }
+  };
+
+  const openInNewWindow = () => {
+    window.open("/admin/map", "_blank", "width=1400,height=900,noopener,noreferrer");
+  };
+
+  const handleTrafficToggle = (v: boolean) => {
+    setTrafficEnabledState(v);
+    mapRef.current?.setTrafficEnabled(v);
+  };
+
 
   const handleLeadClick = (lead: Lead) => {
     setSelectedLead(lead);
