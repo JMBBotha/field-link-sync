@@ -545,8 +545,12 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
             </div>
           )}
 
-          {/* Jobs Map — past 90 days + upcoming week/month */}
-          <JobsMapCard />
+          {/* Live Map — same view as the sidebar "Map" page */}
+          <Card className="rounded-xl border border-border overflow-hidden">
+            <div className="relative w-full h-[70vh] min-h-[480px]">
+              <AdminMapPage />
+            </div>
+          </Card>
 
           <QuotePerformanceWidget />
           <CompletedLeadsList />
