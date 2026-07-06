@@ -147,6 +147,7 @@ const App = () => (
                   <Route path="/admin" element={<AdminLayout />}>
                     <Route index element={<AdminHomePage />} />
                     <Route path="map" element={<AdminMapPage />} />
+                    <Route path="jobs-map" element={<AdminJobsMapPage />} />
                     <Route path="dispatch" element={<AdminDispatchPage />} />
                     <Route path="jobs" element={<AdminJobsPage />} />
                     <Route path="jobs/dispatch" element={<AdminJobsDispatchPage />} />
