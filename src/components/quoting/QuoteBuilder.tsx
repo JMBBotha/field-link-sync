@@ -105,6 +105,8 @@ const QuoteBuilder = ({ quoteId, leadId, customerId, templateId, initialQuoteNam
   const [loading, setLoading] = useState(false);
   const [savedQuoteId, setSavedQuoteId] = useState<string | null>(quoteId || null);
   const [quoteNumber, setQuoteNumber] = useState<string>("");
+  const [loadedStatus, setLoadedStatus] = useState<string>("draft");
+  const hidePricingInternals = loadedStatus !== "draft";
 
   // Customer
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
@@ -292,6 +294,7 @@ const QuoteBuilder = ({ quoteId, leadId, customerId, templateId, initialQuoteNam
       const { data: items } = await supabase.from("quote_line_items").select("*").eq("quote_id", quoteId);
 
       setQuoteNumber(quote.quote_number || "");
+      setLoadedStatus((quote as any).status || "draft");
       setSelectedCustomerId(quote.customer_id || null);
       setNotes(quote.notes || "");
       setValidUntil(quote.valid_until || validUntil);
@@ -968,30 +971,31 @@ const QuoteBuilder = ({ quoteId, leadId, customerId, templateId, initialQuoteNam
 
         {/* ── LINE ITEMS TABLE ── */}
         <div>
-          <div className="grid grid-cols-[1fr_80px_50px_60px_80px_30px] gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2 mb-1">
+          <div className={cn("grid gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2 mb-1", hidePricingInternals ? "grid-cols-[1fr_50px_80px_30px]" : "grid-cols-[1fr_80px_50px_60px_80px_30px]")}>
             <div>Description</div>
-            <div className="text-right">Cost</div>
+            {!hidePricingInternals && <div data-pdf-hide-cost className="text-right">Cost</div>}
             <div className="text-right">Qty</div>
-            <div data-pdf-hide-markup className="text-right">Markup%</div>
+            {!hidePricingInternals && <div data-pdf-hide-markup className="text-right">Markup%</div>}
             <div className="text-right">Total</div>
             <div />
           </div>
 
           {lineItems.map((item, idx) => (
-            <div key={idx} className="grid grid-cols-[1fr_80px_50px_60px_80px_30px] gap-2 items-center py-1 group relative">
+            <div key={idx} className={cn("grid gap-2 items-center py-1 group relative", hidePricingInternals ? "grid-cols-[1fr_50px_80px_30px]" : "grid-cols-[1fr_80px_50px_60px_80px_30px]")}>
               <div className="relative">
                 <ProductSearchDropdown value={item.description} allOptions={allOptions} onChange={(val) => updateLineItem(idx, "description", val)} onSelect={(opt) => pickOption(opt, idx)} />
                 <span data-pdf-static className="hidden px-2 py-1.5 text-sm">{item.description || ""}</span>
               </div>
-              <div><GhostInput type="number" min="0" step="0.01" className="text-right" value={item.rate || ""} onChange={(e) => updateLineItem(idx, "rate", e.target.value)} placeholder="0.00" /></div>
+              {!hidePricingInternals && <div data-pdf-hide-cost><GhostInput type="number" min="0" step="0.01" className="text-right" value={item.rate || ""} onChange={(e) => updateLineItem(idx, "rate", e.target.value)} placeholder="0.00" /></div>}
               <div><GhostInput type="number" min="0" step="1" className="text-right" value={item.quantity || ""} onChange={(e) => updateLineItem(idx, "quantity", e.target.value)} placeholder="1" /></div>
-              <div data-pdf-hide-markup><GhostInput type="number" min="0" step="1" className="text-right" value={item.markup || ""} onChange={(e) => updateLineItem(idx, "markup", e.target.value)} placeholder="0" /></div>
+              {!hidePricingInternals && <div data-pdf-hide-markup><GhostInput type="number" min="0" step="1" className="text-right" value={item.markup || ""} onChange={(e) => updateLineItem(idx, "markup", e.target.value)} placeholder="0" /></div>}
               <div className="text-right text-sm font-medium py-1.5 px-2">{formatCurrency(item.amount)}</div>
               <div className="flex justify-center">
                 <button onClick={() => removeLineItem(idx)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"><X className="h-4 w-4" /></button>
               </div>
             </div>
           ))}
+
 
           <button data-pdf-hide onClick={addLineItem} className="w-full text-left px-2 py-2.5 text-sm text-primary hover:bg-primary/5 rounded mt-1 flex items-center gap-1.5 transition-colors">
             <Plus className="h-4 w-4" /> Add a Line
