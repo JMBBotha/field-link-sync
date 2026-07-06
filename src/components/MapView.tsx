@@ -1060,7 +1060,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     // Filter leads based on active status filters
     const shouldShowLead = (lead: Lead): boolean => {
       if (lead.status === "pending") return statusFilters.has("pending");
-      if (lead.status === "accepted") return statusFilters.has("accepted");
+      if (lead.status === "accepted" || lead.status === "claimed") return statusFilters.has("accepted");
       if (lead.status === "in_progress") return statusFilters.has("in_progress");
       if (lead.status === "completed") return statusFilters.has("completed");
       return false;
