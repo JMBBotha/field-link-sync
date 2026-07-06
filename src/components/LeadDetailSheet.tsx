@@ -1151,6 +1151,25 @@ const LeadDetailSheet = ({
         customerId={templateCustomerId}
         quoteName={`${lead.service_type || "Quote"} - ${lead.customer_name}`}
       />
+      <AcceptLeadDialog
+        lead={lead ? {
+          id: lead.id,
+          customer_id: lead.customer_id,
+          customer_name: lead.customer_name,
+          customer_address: lead.customer_address,
+          service_type: lead.service_type,
+          latitude: lead.latitude,
+          longitude: lead.longitude,
+          priority: lead.priority,
+          notes: lead.notes,
+        } : null}
+        open={showAcceptDialog}
+        onOpenChange={setShowAcceptDialog}
+        onDone={() => {
+          onLeadUpdated?.();
+          onClose();
+        }}
+      />
     </>
   );
 };
