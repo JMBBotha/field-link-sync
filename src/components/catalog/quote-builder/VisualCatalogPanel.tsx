@@ -1153,11 +1153,16 @@ const LazyPdfPage = ({
     return [];
   }, [liveRegions, ocrRegions, storedRegions, activeProducts, page.id]);
 
-  // ─── OVERLAY REGIONS: live extraction wins; OCR/stored regions only when live returns nothing ───
+  // ─── OVERLAY REGIONS: prefer whichever source found more product rows ───
   const overlayRegions: OverlayRegion[] = useMemo(() => {
-    // Single, predictable priority: live text extraction → fallback (OCR / stored only).
-    // No supplier-specific overrides — the locked extractor is responsible for correctness.
-    const sourceRegions = liveRegions.length > 0 ? liveRegions : fallbackRegions;
+    // Prefer live text extraction, BUT if stored OCR bboxes cover meaningfully more
+    // rows than live (e.g. OSS/consumables PDFs where the locked text extractor
+    // only detects a handful of rows), fall back to the richer OCR source so every
+    // priced row still gets an icon pair. Never modify the locked extractor for this.
+    const ocrCount = fallbackRegions.length;
+    const liveCount = liveRegions.length;
+    const useOcr = liveCount === 0 || ocrCount > liveCount + 3;
+    const sourceRegions = useOcr ? fallbackRegions : liveRegions;
     const result: OverlayRegion[] = [];
 
     const seenOnPage = new Set<string>();
