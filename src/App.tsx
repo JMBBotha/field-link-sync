@@ -28,6 +28,7 @@ import AdminQuoteBuilderPage from "./pages/admin/AdminQuoteBuilderPage";
 import AdminQuoteBuilderPageUnified from "./pages/admin/AdminQuoteBuilderPageUnified";
 import AdminCatalogPage from "./pages/admin/AdminCatalogPage";
 import AdminDispatchPage from "./pages/admin/AdminDispatchPage";
+import AdminJobsMapPage from "./pages/admin/AdminJobsMapPage";
 import AdminMaintenancePage from "./pages/admin/AdminMaintenancePage";
 import AdminCustomersPage from "./pages/admin/AdminCustomersPage";
 import AdminCustomerDetailPage from "./pages/admin/AdminCustomerDetailPage";
@@ -146,6 +147,7 @@ const App = () => (
                   <Route path="/admin" element={<AdminLayout />}>
                     <Route index element={<AdminHomePage />} />
                     <Route path="map" element={<AdminMapPage />} />
+                    <Route path="jobs-map" element={<AdminJobsMapPage />} />
                     <Route path="dispatch" element={<AdminDispatchPage />} />
                     <Route path="jobs" element={<AdminJobsPage />} />
                     <Route path="jobs/dispatch" element={<AdminJobsDispatchPage />} />

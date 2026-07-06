@@ -6,7 +6,7 @@ import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, Loader2 } from "lucide-react";
+import { MapPin, Loader2, Maximize2 } from "lucide-react";
 import { getMapboxToken } from "@/lib/mapboxToken";
 import { format, addDays, addMonths, subDays } from "date-fns";
 import { useNavigate } from "react-router-dom";
@@ -48,7 +48,7 @@ const escapeHtml = (s: string | null | undefined) => {
   return d.innerHTML;
 };
 
-const JobsMapCard = () => {
+const JobsMapCard = ({ fullPage = false }: { fullPage?: boolean }) => {
   const { companyId } = useUserCompanyId();
   const navigate = useNavigate();
   const [range, setRange] = useState<Range>("week");
@@ -215,6 +215,17 @@ const JobsMapCard = () => {
           >
             Month
           </Button>
+          {!fullPage && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-xs"
+              onClick={() => navigate("/admin/jobs-map")}
+              title="Open full page"
+            >
+              <Maximize2 className="h-3.5 w-3.5 mr-1" /> Expand
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
@@ -236,7 +247,7 @@ const JobsMapCard = () => {
           </span>
         </div>
 
-        <div className="relative w-full h-[420px] md:h-[520px] rounded-lg overflow-hidden border border-border bg-muted">
+        <div className={`relative w-full ${fullPage ? "h-[calc(100vh-220px)] min-h-[420px]" : "h-[420px] md:h-[520px]"} rounded-lg overflow-hidden border border-border bg-muted`}>
           <div ref={containerRef} className="absolute inset-0" />
           {(isLoading || (!tokenReady && !tokenError)) && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm">
