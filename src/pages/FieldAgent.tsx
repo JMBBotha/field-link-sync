@@ -1970,6 +1970,27 @@ const FieldAgent = () => {
 
         {/* Fixed Bottom Navigation - Mobile Only */}
         {isMobile && <FieldAgentBottomNav />}
+
+        <AcceptLeadDialog
+          lead={acceptDialogLead ? {
+            id: acceptDialogLead.id,
+            customer_id: acceptDialogLead.customer_id,
+            customer_name: acceptDialogLead.customer_name,
+            customer_address: acceptDialogLead.customer_address,
+            service_type: acceptDialogLead.service_type,
+            latitude: acceptDialogLead.latitude,
+            longitude: acceptDialogLead.longitude,
+            priority: acceptDialogLead.priority,
+            notes: acceptDialogLead.notes,
+          } : null}
+          open={!!acceptDialogLead}
+          onOpenChange={(o) => { if (!o) setAcceptDialogLead(null); }}
+          onDone={() => {
+            const l = acceptDialogLead;
+            setAcceptDialogLead(null);
+            if (l) handleAcceptDialogDone(l.id, l.customer_id);
+          }}
+        />
       </div>
     </Layout>
   );
