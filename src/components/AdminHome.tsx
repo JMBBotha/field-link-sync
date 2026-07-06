@@ -544,30 +544,8 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
             </div>
           )}
 
-          {/* Jobs by Status Chart */}
-          {jobStats && jobStats.statusBreakdown.length > 0 && (
-            <Card className="rounded-xl border border-border">
-              <CardHeader className="pb-2"><CardTitle className="text-base">Jobs by Status</CardTitle></CardHeader>
-              <CardContent>
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={jobStats.statusBreakdown} layout="vertical" margin={{ left: 80 }}>
-                      <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
-                      <YAxis type="category" dataKey="status" tick={{ fontSize: 12 }}
-                        tickFormatter={(v: string) => v.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())} />
-                      <Tooltip formatter={(value: number) => [value, "Jobs"]}
-                        labelFormatter={(v: string) => v.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())} />
-                      <Bar dataKey="count" radius={[0, 4, 4, 0]}>
-                        {jobStats.statusBreakdown.map((entry) => (
-                          <Cell key={entry.status} fill={statusColors[entry.status] || "hsl(var(--muted-foreground))"} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {/* Jobs Map — past 90 days + upcoming week/month */}
+          <JobsMapCard />
 
           <QuotePerformanceWidget />
           <CompletedLeadsList />
