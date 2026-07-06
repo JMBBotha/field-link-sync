@@ -323,7 +323,10 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     getMapboxToken: () => {
       return mapboxgl.accessToken || getMapboxTokenSync();
     },
-  }), [mapLoaded]);
+    setTrafficEnabled: (enabled: boolean) => setTrafficEnabled(enabled),
+    getTrafficEnabled: () => trafficEnabled,
+  }), [mapLoaded, trafficEnabled]);
+
 
   useEffect(() => {
     fetchData();
