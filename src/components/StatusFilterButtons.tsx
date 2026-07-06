@@ -42,6 +42,7 @@ const StatusFilterButtons = ({
   onToggle,
   className,
   compact = false,
+  counts,
 }: StatusFilterButtonsProps) => {
   const statuses: LeadStatusFilter[] = ["pending", "accepted", "in_progress", "completed"];
 
