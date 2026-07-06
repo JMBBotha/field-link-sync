@@ -908,6 +908,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         case "pending":
           return "#ef4444"; // Red
         case "accepted":
+        case "claimed":
           return "#eab308"; // Yellow
         case "in_progress":
           return "#22c55e"; // Green
@@ -1060,7 +1061,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     // Filter leads based on active status filters
     const shouldShowLead = (lead: Lead): boolean => {
       if (lead.status === "pending") return statusFilters.has("pending");
-      if (lead.status === "accepted") return statusFilters.has("accepted");
+      if (lead.status === "accepted" || lead.status === "claimed") return statusFilters.has("accepted");
       if (lead.status === "in_progress") return statusFilters.has("in_progress");
       if (lead.status === "completed") return statusFilters.has("completed");
       return false;
