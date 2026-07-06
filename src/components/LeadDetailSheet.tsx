@@ -159,6 +159,7 @@ const LeadDetailSheet = ({
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [showChangeRequestDialog, setShowChangeRequestDialog] = useState(false);
+  const [showAcceptDialog, setShowAcceptDialog] = useState(false);
   const [showTimeEditDialog, setShowTimeEditDialog] = useState(false);
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null);
   const [showPhotoTypePicker, setShowPhotoTypePicker] = useState(false);
