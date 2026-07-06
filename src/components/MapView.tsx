@@ -1334,12 +1334,13 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
           {/* Status Filter Buttons — merged into bottom bar as a notched tab */}
           {mapLoaded && (
             <div
-              className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 max-w-[calc(100%-1rem)] bg-gradient-to-b from-slate-800 to-slate-900 border-t border-x border-slate-700/60 shadow-lg pt-1.5 pb-1.5 px-4 sm:px-5 pointer-events-auto"
+              className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-30 max-w-[calc(100%-1rem)] border-t border-x border-[#0077B6]/60 shadow-xl pt-2 pb-2 px-4 sm:px-6 pointer-events-auto"
               style={{
+                background: "linear-gradient(180deg, #0077B6 0%, #005B8C 100%)",
                 clipPath:
-                  "polygon(14px 0, calc(100% - 14px) 0, 100% 100%, 0 100%)",
-                borderTopLeftRadius: "1rem",
-                borderTopRightRadius: "1rem",
+                  "polygon(16px 0, calc(100% - 16px) 0, 100% 100%, 0 100%)",
+                borderTopLeftRadius: "1.25rem",
+                borderTopRightRadius: "1.25rem",
               }}
             >
               <StatusFilterButtons
