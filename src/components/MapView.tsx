@@ -1331,10 +1331,19 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
 
 
 
-          {/* Status Filter Buttons */}
+          {/* Status Filter Buttons — merged into bottom bar as a notched tab */}
           {mapLoaded && (
-            <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10">
+            <div
+              className="absolute bottom-0 left-1/2 -translate-x-1/2 z-10 bg-gradient-to-b from-slate-800 to-slate-900 border-t border-x border-slate-700/60 shadow-lg pt-2 pb-2 px-5"
+              style={{
+                clipPath:
+                  "polygon(18px 0, calc(100% - 18px) 0, 100% 100%, 0 100%)",
+                borderTopLeftRadius: "1rem",
+                borderTopRightRadius: "1rem",
+              }}
+            >
               <StatusFilterButtons
+                className="!bg-transparent !border-0 !shadow-none !backdrop-blur-none !rounded-none !p-0"
                 activeFilters={statusFilters}
                 onToggle={(status) => {
                   setStatusFilters((prev) => {
