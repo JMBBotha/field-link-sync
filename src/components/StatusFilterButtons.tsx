@@ -7,6 +7,7 @@ interface StatusFilterButtonsProps {
   onToggle: (status: LeadStatusFilter) => void;
   className?: string;
   compact?: boolean;
+  counts?: Partial<Record<LeadStatusFilter, number>>;
 }
 
 const statusConfig: Record<LeadStatusFilter, { label: string; bgColor: string; textColor: string; inactiveText: string }> = {
