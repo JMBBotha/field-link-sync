@@ -609,21 +609,30 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete PDF pages?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Delete all PDF pages for <strong>{currentSupplierName}</strong>? This cannot be undone.
+                        Choose what to remove for <strong>{currentSupplierName}</strong>. This also clears any duplicate legacy rows for the same supplier. Cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
+                    <AlertDialogFooter className="flex-col sm:flex-row gap-2">
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      {currentFilename && (
+                        <AlertDialogAction
+                          className="bg-destructive/80 text-destructive-foreground hover:bg-destructive"
+                          onClick={() => handleDeleteSupplierPdf(currentPage.supplier_id, { filename: currentFilename })}
+                        >
+                          Delete this PDF only
+                        </AlertDialogAction>
+                      )}
                       <AlertDialogAction
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         onClick={() => handleDeleteSupplierPdf(currentPage.supplier_id)}
                       >
-                        Delete
+                        Delete ALL PDFs for supplier
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
               )}
+
             </div>
 
             {/* Page indicator + quick-jump buttons */}
