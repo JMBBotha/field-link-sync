@@ -5,7 +5,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapPin, Key, Loader2, AlertCircle, Layers, Navigation, LocateFixed } from "lucide-react";
+import { MapPin, Key, Loader2, AlertCircle, Layers, Navigation, LocateFixed, Maximize2, Minimize2, ExternalLink } from "lucide-react";
 import { createTeardropMarkerElement } from "@/utils/MarkerUtils";
 import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilterButtons";
 import { Switch } from "@/components/ui/switch";
@@ -1225,8 +1225,34 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     }
   };
 
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await containerRef.current?.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+      setTimeout(() => mapInstanceRef.current?.resize(), 200);
+    } catch (e) {
+      console.error("Fullscreen error:", e);
+    }
+  };
+
+  const openInNewWindow = () => {
+    window.open("/admin/map", "_blank", "width=1400,height=900,noopener,noreferrer");
+  };
+
   return (
-    <div className="h-full relative">
+    <div ref={containerRef} className="h-full relative bg-background">
       {mapFailed ? (
         <div className="absolute inset-0 bg-muted flex flex-col items-center justify-center p-6 text-center">
           <AlertCircle className="h-12 w-12 text-muted-foreground mb-3" />
@@ -1246,6 +1272,26 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
           {/* Map controls: traffic + route */}
           {mapLoaded && (
             <div className="absolute top-16 right-2 z-10 flex flex-col gap-2">
+              <div className="bg-card/90 backdrop-blur-sm border rounded-lg px-2 py-1.5 flex items-center gap-1 shadow-md">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7"
+                  onClick={toggleFullscreen}
+                  title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                >
+                  {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7"
+                  onClick={openInNewWindow}
+                  title="Open map in new window"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </div>
               <div className="bg-card/90 backdrop-blur-sm border rounded-lg px-3 py-2 flex items-center gap-2 shadow-md">
                 <Layers className="h-4 w-4 text-muted-foreground" />
                 <span className="text-xs font-medium">Traffic</span>
@@ -1271,6 +1317,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
               )}
             </div>
           )}
+
 
           {/* Status Filter Buttons */}
           {mapLoaded && (
