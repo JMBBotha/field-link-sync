@@ -5,7 +5,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapPin, Key, Loader2, AlertCircle, Layers, Navigation, LocateFixed } from "lucide-react";
+import { MapPin, Key, Loader2, AlertCircle, Layers, Navigation, LocateFixed, Maximize2, Minimize2, ExternalLink } from "lucide-react";
 import { createTeardropMarkerElement } from "@/utils/MarkerUtils";
 import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilterButtons";
 import { Switch } from "@/components/ui/switch";
