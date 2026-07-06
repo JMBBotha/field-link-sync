@@ -38,13 +38,17 @@ export interface MapViewHandle {
   panToLocationAndOpenPopup: (lat: number, lng: number, leadId: string) => void;
   showSearchResult: (lat: number, lng: number, name: string, address?: string) => void;
   getMapboxToken: () => string | null;
+  setTrafficEnabled: (enabled: boolean) => void;
+  getTrafficEnabled: () => boolean;
 }
 
 interface MapViewProps {
   onStatusFiltersChange?: (filters: Set<LeadStatusFilter>) => void;
   onLeadClick?: (lead: Lead) => void;
   showAllAgents?: boolean;
+  hideChromeControls?: boolean;
 }
+
 
 const formatTimeAgo = (createdAt: string): string => {
   const now = new Date();
@@ -69,7 +73,7 @@ const escapeHtml = (text: string | null | undefined): string => {
   return div.innerHTML;
 };
 
-const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange, onLeadClick, showAllAgents = false }, ref) => {
+const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange, onLeadClick, showAllAgents = false, hideChromeControls = false }, ref) => {
   const MAP_CHROME_BOTTOM_OFFSET_PX = 64;
   const { user } = useAuth();
   const [agents, setAgents] = useState<AgentLocation[]>([]);
@@ -319,7 +323,10 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     getMapboxToken: () => {
       return mapboxgl.accessToken || getMapboxTokenSync();
     },
-  }), [mapLoaded]);
+    setTrafficEnabled: (enabled: boolean) => setTrafficEnabled(enabled),
+    getTrafficEnabled: () => trafficEnabled,
+  }), [mapLoaded, trafficEnabled]);
+
 
   useEffect(() => {
     fetchData();
@@ -1272,31 +1279,35 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
           {/* Map controls: traffic + route */}
           {mapLoaded && (
             <div className="absolute top-16 right-2 z-10 flex flex-col gap-2">
-              <div className="bg-card/90 backdrop-blur-sm border rounded-lg px-2 py-1.5 flex items-center gap-1 shadow-md">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-7 w-7"
-                  onClick={toggleFullscreen}
-                  title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-                >
-                  {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-7 w-7"
-                  onClick={openInNewWindow}
-                  title="Open map in new window"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="bg-card/90 backdrop-blur-sm border rounded-lg px-3 py-2 flex items-center gap-2 shadow-md">
-                <Layers className="h-4 w-4 text-muted-foreground" />
-                <span className="text-xs font-medium">Traffic</span>
-                <Switch checked={trafficEnabled} onCheckedChange={setTrafficEnabled} className="scale-75" />
-              </div>
+              {!hideChromeControls && (
+                <>
+                  <div className="bg-card/90 backdrop-blur-sm border rounded-lg px-2 py-1.5 flex items-center gap-1 shadow-md">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7"
+                      onClick={toggleFullscreen}
+                      title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                    >
+                      {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7"
+                      onClick={openInNewWindow}
+                      title="Open map in new window"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="bg-card/90 backdrop-blur-sm border rounded-lg px-3 py-2 flex items-center gap-2 shadow-md">
+                    <Layers className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xs font-medium">Traffic</span>
+                    <Switch checked={trafficEnabled} onCheckedChange={setTrafficEnabled} className="scale-75" />
+                  </div>
+                </>
+              )}
               {agents.length > 0 && (
                 <div className="bg-card/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-md">
                   <div className="flex items-center gap-2 mb-1">
@@ -1317,6 +1328,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
               )}
             </div>
           )}
+
 
 
           {/* Status Filter Buttons */}

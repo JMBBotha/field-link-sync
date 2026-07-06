@@ -1,6 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Map, LocateFixed } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Map, LocateFixed, Maximize2, Minimize2, ExternalLink, Layers } from "lucide-react";
+
 import MapView, { MapViewHandle } from "@/components/MapView";
 import BusinessSearch from "@/components/map/BusinessSearch";
 import LeadsList from "@/components/LeadsList";
@@ -40,6 +42,37 @@ const AdminMapPage = () => {
   const currentUserId = user?.id;
   const mapRef = useRef<MapViewHandle>(null);
   const { toast } = useToast();
+  const pageRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [trafficEnabled, setTrafficEnabledState] = useState(false);
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await pageRef.current?.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (e) {
+      console.error("Fullscreen error:", e);
+    }
+  };
+
+  const openInNewWindow = () => {
+    window.open("/admin/map", "_blank", "width=1400,height=900,noopener,noreferrer");
+  };
+
+  const handleTrafficToggle = (v: boolean) => {
+    setTrafficEnabledState(v);
+    mapRef.current?.setTrafficEnabled(v);
+  };
+
 
   const handleLeadClick = (lead: Lead) => {
     setSelectedLead(lead);
@@ -83,7 +116,7 @@ const AdminMapPage = () => {
   };
 
   return (
-    <div className="h-full flex flex-col min-h-0">
+    <div ref={pageRef} className="h-full flex flex-col min-h-0 bg-background">
       {/* Tab switcher */}
       <div className="shrink-0 flex flex-wrap items-center gap-2 px-3 py-2 border-b bg-card/80 backdrop-blur-sm z-20">
         <div className="flex items-center gap-1">
@@ -104,6 +137,31 @@ const AdminMapPage = () => {
             <LocateFixed className="h-3.5 w-3.5" />
             My Location
           </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={toggleFullscreen}
+            className="gap-1.5 text-xs h-8"
+            title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+          >
+            {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={openInNewWindow}
+            className="gap-1.5 text-xs h-8"
+            title="Open map in new window"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            New Window
+          </Button>
+          <div className="flex items-center gap-1.5 h-8 px-2 rounded-md hover:bg-accent/50">
+            <Layers className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-xs font-medium">Traffic</span>
+            <Switch checked={trafficEnabled} onCheckedChange={handleTrafficToggle} className="scale-75" />
+          </div>
         </div>
         <div className="w-full sm:w-auto sm:ml-auto">
           <BusinessSearch
@@ -123,12 +181,14 @@ const AdminMapPage = () => {
             <MapView
               ref={mapRef}
               showAllAgents={true}
+              hideChromeControls={true}
               onStatusFiltersChange={(filters) => {
                 const hasCompleted = filters.has("completed");
                 setShowCompletedFilter(hasCompleted);
                 if (hasCompleted) setCompletedPanelCollapsed(false);
                 else setCompletedPanelCollapsed(true);
               }}
+
               onLeadClick={handleLeadClick}
             />
           </div>
