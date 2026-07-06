@@ -1100,12 +1100,10 @@ const LazyPdfPage = ({
     staleTime: 120000,
   });
 
-  // ─── FALLBACK REGIONS: only used when no live extraction available ───
+  // ─── FALLBACK REGIONS: always compute so overlayRegions can pick the richer source ───
   const fallbackRegions: OverlayRegion[] = useMemo(() => {
-    // Live extraction always wins when it returns regions.
-    // Fallback (OCR / stored regions / even-distribution) only kicks in when
-    // live extraction returned nothing — e.g. true scanned/image PDFs.
-    if (liveRegions.length > 0) return [];
+    // OCR-stored bboxes and stored regions are always computed; the overlayRegions
+    // memo decides whether they win over the live text extraction based on coverage.
 
     // Primary fallback: OCR-extracted bboxes stored on supplier_products
     // (handles scanned/image PDFs e.g. Daikin where client-side text extraction fails)
@@ -1153,11 +1151,16 @@ const LazyPdfPage = ({
     return [];
   }, [liveRegions, ocrRegions, storedRegions, activeProducts, page.id]);
 
-  // ─── OVERLAY REGIONS: live extraction wins; OCR/stored regions only when live returns nothing ───
+  // ─── OVERLAY REGIONS: prefer whichever source found more product rows ───
   const overlayRegions: OverlayRegion[] = useMemo(() => {
-    // Single, predictable priority: live text extraction → fallback (OCR / stored only).
-    // No supplier-specific overrides — the locked extractor is responsible for correctness.
-    const sourceRegions = liveRegions.length > 0 ? liveRegions : fallbackRegions;
+    // Prefer live text extraction, BUT if stored OCR bboxes cover meaningfully more
+    // rows than live (e.g. OSS/consumables PDFs where the locked text extractor
+    // only detects a handful of rows), fall back to the richer OCR source so every
+    // priced row still gets an icon pair. Never modify the locked extractor for this.
+    const ocrCount = fallbackRegions.length;
+    const liveCount = liveRegions.length;
+    const useOcr = liveCount === 0 || ocrCount > liveCount + 3;
+    const sourceRegions = useOcr ? fallbackRegions : liveRegions;
     const result: OverlayRegion[] = [];
 
     const seenOnPage = new Set<string>();
