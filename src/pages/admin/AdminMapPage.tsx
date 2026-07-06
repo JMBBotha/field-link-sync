@@ -138,8 +138,9 @@ const AdminMapPage = () => {
               variant="ghost"
               size="icon"
               onClick={() => setCompletedPanelCollapsed(!completedPanelCollapsed)}
-              className="flex absolute top-4 z-20 bg-white/80 backdrop-blur-md shadow-md hover:bg-white/90 rounded-md border transition-all duration-300"
-              style={{ left: completedPanelCollapsed ? '0.5rem' : 'calc(min(72vw, 22rem) + 0.5rem)' }}
+              className={`flex absolute top-4 z-20 bg-white/80 backdrop-blur-md shadow-md hover:bg-white/90 rounded-md border transition-all duration-300 ${
+                completedPanelCollapsed ? 'left-2' : 'left-[calc(min(72vw,22rem)+0.5rem)] sm:left-[calc(20rem+0.5rem)] md:left-[calc(24rem+0.5rem)]'
+              }`}
             >
               {completedPanelCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
             </Button>
