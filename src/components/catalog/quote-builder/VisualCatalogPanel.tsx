@@ -118,23 +118,53 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const [activeCategory, setActiveCategory] = useState<string | undefined>();
   const [categoryPageMap, setCategoryPageMap] = useState<Map<string, number>>(new Map());
 
-  const handleDeleteSupplierPdf = useCallback(async (supplierId: string) => {
+  const handleDeleteSupplierPdf = useCallback(async (supplierId: string, opts?: { filename?: string }) => {
     setDeleting(true);
     try {
-      const { data: pagesToDelete } = await (supabase.from("supplier_pdf_pages") as any)
-        .select("id, pdf_storage_path")
-        .eq("supplier_id", supplierId);
-      const storagePaths = (pagesToDelete || []).map((p: any) => p.pdf_storage_path).filter(Boolean);
-      if (storagePaths.length > 0) {
-        await supabase.storage.from("supplier-pdfs").remove(storagePaths);
+      // Build alias list — legacy rows may use supplier NAME text instead of UUID.
+      const aliases = new Set<string>([supplierId]);
+      // Look up the display name for this supplier_id and include it as an alias.
+      const { data: supplierRow } = await supabase.from("suppliers").select("name").eq("id", supplierId).maybeSingle();
+      const supplierName = (supplierRow as any)?.name?.trim();
+      if (supplierName) {
+        aliases.add(supplierName);
+        aliases.add(supplierName.toUpperCase());
       }
-      const { error } = await (supabase.from("supplier_pdf_pages") as any).delete().eq("supplier_id", supplierId);
+      const aliasArr = Array.from(aliases);
+
+      // Fetch matching rows
+      let selectQ = (supabase.from("supplier_pdf_pages") as any)
+        .select("id, pdf_storage_path, page_image_url, pdf_filename, supplier_id")
+        .in("supplier_id", aliasArr);
+      if (opts?.filename) selectQ = selectQ.eq("pdf_filename", opts.filename);
+      const { data: pagesToDelete } = await selectQ;
+
+      // Remove storage objects (best-effort)
+      const storagePaths = new Set<string>();
+      for (const p of (pagesToDelete || []) as any[]) {
+        for (const url of [p.page_image_url, p.pdf_storage_path]) {
+          if (!url) continue;
+          const m = String(url).match(/\/storage\/v1\/object\/(?:public|sign)\/supplier-pdf-pages\/(.+?)(?:\?|$)/);
+          if (m) storagePaths.add(decodeURIComponent(m[1]));
+        }
+      }
+      if (storagePaths.size > 0) {
+        try { await supabase.storage.from("supplier-pdf-pages").remove(Array.from(storagePaths)); } catch {}
+      }
+
+      // Delete rows
+      let delQ = (supabase.from("supplier_pdf_pages") as any).delete().in("supplier_id", aliasArr);
+      if (opts?.filename) delQ = delQ.eq("pdf_filename", opts.filename);
+      const { error } = await delQ;
       if (error) throw error;
+
       queryClient.invalidateQueries({ queryKey: ["visual-panel-pages"] });
       queryClient.invalidateQueries({ queryKey: ["visual-panel-suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["visual-panel-supplier-names"] });
       queryClient.invalidateQueries({ queryKey: ["visual-catalog-pages"] });
       queryClient.invalidateQueries({ queryKey: ["visual-catalog-suppliers"] });
-      toast({ title: "PDF pages deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["pdf-uploads-manager"] });
+      toast({ title: opts?.filename ? `Deleted ${opts.filename}` : "Deleted all PDF pages for supplier" });
     } catch (err) {
       console.error("Delete PDF failed:", err);
       toast({ title: "Failed to delete PDF pages", variant: "destructive" });
@@ -142,6 +172,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       setDeleting(false);
     }
   }, [queryClient]);
+
 
   const isFullWidth = isMobile || (expanded && !isDraggingExternal);
   const panelWidth = isDraggingExternal ? "w-2/5" : isFullWidth ? "w-full" : "w-full";
