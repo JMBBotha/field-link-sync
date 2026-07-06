@@ -249,14 +249,14 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
                       </span>
                       {getStatusBadge(invoice.status)}
                     </div>
-                    <p className="text-sm font-medium truncate">{invoice.customer_name}</p>
+                    <p className="text-sm font-medium truncate text-foreground/90">{invoice.customer_name}</p>
                     <p className="text-[11px] text-muted-foreground">
                       {formatDate(invoice.created_at)}
                       {invoice.due_date && ` • Due ${formatDate(invoice.due_date)}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-bold text-base">
+                    <span className="font-bold text-base text-primary">
                       {formatCurrency(invoice.grand_total)}
                     </span>
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
