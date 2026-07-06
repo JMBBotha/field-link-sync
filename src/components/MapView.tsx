@@ -31,6 +31,7 @@ interface Lead {
   longitude: number;
   status: string;
   created_at: string;
+  assigned_agent_id?: string | null;
 }
 
 export interface MapViewHandle {
