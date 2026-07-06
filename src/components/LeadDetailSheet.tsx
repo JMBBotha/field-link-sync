@@ -929,7 +929,7 @@ const LeadDetailSheet = ({
                   <Button
                     className="flex-1 h-12 text-base font-semibold"
                     style={{ backgroundColor: "#0077B6", color: "#FFFFFF" }}
-                    onClick={() => onAccept(lead.id)}
+                    onClick={() => setShowAcceptDialog(true)}
                     disabled={!!loadingAction}
                   >
                     {loadingAction === "accept" ? (
