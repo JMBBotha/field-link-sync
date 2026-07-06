@@ -98,6 +98,10 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
   const userLocationMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const userWatchIdRef = useRef<number | null>(null);
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const leadsRef = useRef<Lead[]>([]);
+  const statusFiltersRef = useRef<Set<LeadStatusFilter>>(new Set(["pending", "accepted", "in_progress"]));
+  useEffect(() => { leadsRef.current = leads; }, [leads]);
+  useEffect(() => { statusFiltersRef.current = statusFilters; }, [statusFilters]);
   const initialBoundsFitRef = useRef(false);
   const missingAgentCountsRef = useRef<Map<string, number>>(new Map());
   const missingLeadCountsRef = useRef<Map<string, number>>(new Map());
