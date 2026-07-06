@@ -1100,12 +1100,10 @@ const LazyPdfPage = ({
     staleTime: 120000,
   });
 
-  // ─── FALLBACK REGIONS: only used when no live extraction available ───
+  // ─── FALLBACK REGIONS: always compute so overlayRegions can pick the richer source ───
   const fallbackRegions: OverlayRegion[] = useMemo(() => {
-    // Live extraction always wins when it returns regions.
-    // Fallback (OCR / stored regions / even-distribution) only kicks in when
-    // live extraction returned nothing — e.g. true scanned/image PDFs.
-    if (liveRegions.length > 0) return [];
+    // OCR-stored bboxes and stored regions are always computed; the overlayRegions
+    // memo decides whether they win over the live text extraction based on coverage.
 
     // Primary fallback: OCR-extracted bboxes stored on supplier_products
     // (handles scanned/image PDFs e.g. Daikin where client-side text extraction fails)
