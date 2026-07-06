@@ -6,7 +6,7 @@ import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, Loader2 } from "lucide-react";
+import { MapPin, Loader2, Maximize2 } from "lucide-react";
 import { getMapboxToken } from "@/lib/mapboxToken";
 import { format, addDays, addMonths, subDays } from "date-fns";
 import { useNavigate } from "react-router-dom";
