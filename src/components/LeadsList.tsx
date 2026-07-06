@@ -679,7 +679,7 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
             </Card>
           ) : (
             leads.map((lead) => (
-              isMobile ? renderMobileCard(lead) : renderDesktopCard(lead)
+              useCompact ? renderMobileCard(lead) : renderDesktopCard(lead)
             ))
           )}
         </div>
