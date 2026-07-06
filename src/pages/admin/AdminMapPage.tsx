@@ -168,8 +168,8 @@ const AdminMapPage = () => {
             variant="ghost"
             size="icon"
             onClick={() => setLeadsCollapsed(!leadsCollapsed)}
-            className="hidden md:flex absolute top-4 z-20 bg-white/80 backdrop-blur-md shadow-md hover:bg-white/90 rounded-md border transition-all duration-300"
-            style={{ right: leadsCollapsed ? '1rem' : 'calc(24rem + 1rem)' }}
+            className="flex absolute top-4 z-20 bg-white/80 backdrop-blur-md shadow-md hover:bg-white/90 rounded-md border transition-all duration-300"
+            style={{ right: leadsCollapsed ? '0.5rem' : 'calc(min(72vw, 22rem) + 0.5rem)' }}
           >
             {leadsCollapsed ? <PanelRightOpen className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />}
           </Button>
