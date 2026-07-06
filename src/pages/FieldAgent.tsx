@@ -43,6 +43,7 @@ import CompletedJobsFilterDrawer from "@/components/CompletedJobsFilterDrawer";
 import { useCompletedJobsFilter } from "@/hooks/useCompletedJobsFilter";
 import { Filter } from "lucide-react";
 import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
+import AcceptLeadDialog from "@/components/leads/AcceptLeadDialog";
 
 interface Lead {
   id: string;
