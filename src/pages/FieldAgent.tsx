@@ -123,6 +123,7 @@ const FieldAgent = () => {
   const [mobileTab, setMobileTab] = useState<"available" | "active" | "completed">("available");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+  const [acceptDialogLead, setAcceptDialogLead] = useState<Lead | null>(null);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const { session, loading: authLoading } = useAuth();
   const currentUserId = session?.user.id;
