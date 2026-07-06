@@ -17,3 +17,23 @@ export function useIsMobile() {
 
   return !!isMobile;
 }
+
+const TABLET_MAX_BREAKPOINT = 1024;
+
+/**
+ * Returns true when the viewport is <= tablet width (<= 1024px).
+ * Use for enabling compact/collapsed layouts on tablet + mobile.
+ */
+export function useIsTabletOrBelow() {
+  const [isTabletOrBelow, setIsTabletOrBelow] = React.useState<boolean | undefined>(undefined);
+
+  React.useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${TABLET_MAX_BREAKPOINT}px)`);
+    const onChange = () => setIsTabletOrBelow(window.innerWidth <= TABLET_MAX_BREAKPOINT);
+    mql.addEventListener("change", onChange);
+    setIsTabletOrBelow(window.innerWidth <= TABLET_MAX_BREAKPOINT);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
+  return !!isTabletOrBelow;
+}

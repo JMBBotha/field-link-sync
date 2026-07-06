@@ -12,7 +12,7 @@ import CustomerJobHistory from "./CustomerJobHistory";
 import { format, formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useLeadPhotoCount } from "@/hooks/useLeadPhotoCount";
 import {
@@ -75,6 +75,9 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
   const [clickedCardId, setClickedCardId] = useState<string | null>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const isTabletOrBelow = useIsTabletOrBelow();
+  // Compact mode: mobile OR tablet — reduces card height & lets the map show through.
+  const useCompact = isMobile || isTabletOrBelow;
   
   // Get photo counts for all leads
   const leadIds = leads.map(l => l.id);
@@ -313,8 +316,8 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
   };
 
   const isCardExpanded = (leadId: string) => {
-    // On desktop, always expanded. On mobile/tablet, check state (default collapsed)
-    return !isMobile || expandedCards.has(leadId);
+    // On desktop, always expanded. On tablet/mobile, check state (default collapsed)
+    return !useCompact || expandedCards.has(leadId);
   };
 
   // Render compact card header for mobile (2-line layout)
@@ -539,7 +542,7 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
       onOpenChange={() => toggleCardExpansion(lead.id)}
     >
       <Card 
-        className={`bg-gradient-to-r from-blue-100 to-slate-50 dark:from-[#0a1628]/60 dark:via-[#1a3a6a]/50 dark:to-[#0a1628]/60 dark:backdrop-blur-md dark:border-blue-400/20 border-border/50 hover:from-blue-50 hover:to-white dark:hover:from-[#0f2240]/65 dark:hover:via-[#1e4d8a]/55 dark:hover:to-[#0f2240]/65 transition-all duration-200 shadow-md overflow-hidden w-full max-w-full cursor-pointer hover:scale-[1.01] hover:shadow-lg ${
+        className={`bg-gradient-to-r from-blue-100/60 to-slate-50/50 dark:from-[#0a1628]/40 dark:via-[#1a3a6a]/35 dark:to-[#0a1628]/40 backdrop-blur-sm dark:border-blue-400/20 border-border/40 hover:from-blue-50/70 hover:to-white/60 dark:hover:from-[#0f2240]/50 dark:hover:via-[#1e4d8a]/45 dark:hover:to-[#0f2240]/50 transition-all duration-200 shadow-sm overflow-hidden w-full max-w-full cursor-pointer hover:scale-[1.01] hover:shadow-md ${
           clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
         }`}
         onClick={() => {
@@ -676,7 +679,7 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
             </Card>
           ) : (
             leads.map((lead) => (
-              isMobile ? renderMobileCard(lead) : renderDesktopCard(lead)
+              useCompact ? renderMobileCard(lead) : renderDesktopCard(lead)
             ))
           )}
         </div>
