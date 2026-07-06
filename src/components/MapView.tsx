@@ -931,7 +931,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
 
     const buildLeadPopupHTML = (lead: Lead) => {
       const statusColor = statusColors[lead.status] || "#6b7280";
-      const statusLabel = (lead.status || "").replace("_", " ");
+      const rawLabel = (lead.status || "").replace("_", " ");
+      const statusLabel = (lead.status === "accepted" || lead.status === "claimed") ? "Claimed" : rawLabel;
       const safeName = escapeHtml(lead.customer_name);
       const safeService = escapeHtml(lead.service_type);
       const safeAddress = escapeHtml(lead.customer_address);
@@ -939,6 +940,11 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       const safeNotes = escapeHtml(lead.notes);
       const encodedAddress = encodeURIComponent(lead.customer_address);
       const navigationUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+      const isClaimed = lead.status === "accepted" || lead.status === "claimed";
+      const assignedAgentName = lead.assigned_agent_id
+        ? (agents.find((a) => a.agent_id === lead.assigned_agent_id)?.profiles?.full_name || "Assigned agent")
+        : null;
+      const safeAgent = escapeHtml(assignedAgentName);
 
       return `
         <div style="min-width: 240px; font-family: system-ui, -apple-system, sans-serif;">
