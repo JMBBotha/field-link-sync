@@ -900,8 +900,9 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     const map = mapInstanceRef.current;
     // Guard against calling while map is being re-initialized.
     if (!map) return;
-    if (typeof (map as any).loaded === "function" && !(map as any).loaded()) return;
     if (typeof (map as any).getCanvasContainer === "function" && !(map as any).getCanvasContainer()) return;
+
+
 
     const getLeadColor = (status: string) => {
       switch (status) {
