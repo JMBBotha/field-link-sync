@@ -294,6 +294,7 @@ const QuoteBuilder = ({ quoteId, leadId, customerId, templateId, initialQuoteNam
       const { data: items } = await supabase.from("quote_line_items").select("*").eq("quote_id", quoteId);
 
       setQuoteNumber(quote.quote_number || "");
+      setLoadedStatus((quote as any).status || "draft");
       setSelectedCustomerId(quote.customer_id || null);
       setNotes(quote.notes || "");
       setValidUntil(quote.valid_until || validUntil);
