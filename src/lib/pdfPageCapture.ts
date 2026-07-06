@@ -103,9 +103,43 @@ export async function capturePdfPages(
   console.log(`[PDF Capture] PDF loaded, ${pdf.numPages} pages`);
   const numPages = pdf.numPages;
 
+  // ── Pre-delete: remove ALL prior page rows for this supplier so a new
+  //    upload truly replaces the old PDF. Handles both new UUID-keyed rows
+  //    and legacy rows keyed by the supplier name text (e.g. "ONE STOP SHOP").
+  try {
+    const aliases = Array.from(
+      new Set([supplierId, supplierName, supplierName?.trim(), supplierName?.toUpperCase()].filter(Boolean) as string[])
+    );
+    if (aliases.length > 0) {
+      const { data: stale } = await (supabase.from("supplier_pdf_pages") as any)
+        .select("id, page_image_url, pdf_storage_path, supplier_id, pdf_filename")
+        .in("supplier_id", aliases);
+      const rows = (stale || []) as Array<{ id: string; page_image_url?: string | null; pdf_storage_path?: string | null; supplier_id: string; pdf_filename: string }>;
+      if (rows.length > 0) {
+        console.log(`[PDF Capture] Purging ${rows.length} stale page rows for supplier aliases`, aliases);
+        // Best-effort storage cleanup
+        const paths = new Set<string>();
+        for (const r of rows) {
+          for (const url of [r.page_image_url, r.pdf_storage_path]) {
+            if (!url) continue;
+            const m = url.match(/\/storage\/v1\/object\/(?:public|sign)\/supplier-pdf-pages\/(.+?)(?:\?|$)/);
+            if (m) paths.add(decodeURIComponent(m[1]));
+          }
+        }
+        if (paths.size > 0) {
+          try { await supabase.storage.from("supplier-pdf-pages").remove(Array.from(paths)); } catch (e) { console.warn("[PDF Capture] storage cleanup warn", e); }
+        }
+        await (supabase.from("supplier_pdf_pages") as any).delete().in("supplier_id", aliases);
+      }
+    }
+  } catch (e) {
+    console.warn("[PDF Capture] Pre-delete of stale pages failed (non-blocking):", e);
+  }
+
   let pagesStored = 0;
   let errors = 0;
   const SCALE = 2.25;
+
 
   for (let pageNum = 1; pageNum <= numPages; pageNum++) {
     onProgress?.(pageNum, numPages);
