@@ -48,7 +48,7 @@ const escapeHtml = (s: string | null | undefined) => {
   return d.innerHTML;
 };
 
-const JobsMapCard = () => {
+const JobsMapCard = ({ fullPage = false }: { fullPage?: boolean }) => {
   const { companyId } = useUserCompanyId();
   const navigate = useNavigate();
   const [range, setRange] = useState<Range>("week");
