@@ -215,6 +215,17 @@ const JobsMapCard = ({ fullPage = false }: { fullPage?: boolean }) => {
           >
             Month
           </Button>
+          {!fullPage && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-xs"
+              onClick={() => navigate("/admin/jobs-map")}
+              title="Open full page"
+            >
+              <Maximize2 className="h-3.5 w-3.5 mr-1" /> Expand
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
