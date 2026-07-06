@@ -149,9 +149,9 @@ const AdminMapPage = () => {
             className={`absolute top-0 left-0 h-full z-10 overflow-y-auto backdrop-blur-md border-r shadow-xl transition-all duration-300 ease-out ${
               completedPanelCollapsed || !showCompletedFilter
                 ? 'w-0 opacity-0 pointer-events-none translate-x-[-100%]'
-                : 'w-full md:w-96 opacity-100 translate-x-0'
+                : 'w-[72vw] max-w-[22rem] sm:w-80 md:w-96 opacity-100 translate-x-0'
             }`}
-            style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(34, 197, 94, 0.08) 100%)' }}
+            style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(34, 197, 94, 0.10) 100%)' }}
           >
             {!completedPanelCollapsed && showCompletedFilter && (
               <CompletedLeadsPanel
