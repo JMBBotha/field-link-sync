@@ -247,7 +247,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   };
 
   return (
-    <div className="w-full max-w-7xl overflow-x-hidden px-3 py-4 md:p-6 space-y-4 md:space-y-5 mx-auto">
+    <div className="w-full max-w-7xl overflow-x-hidden px-3 py-4 md:p-6 pb-32 md:pb-32 lg:pb-8 space-y-4 md:space-y-5 mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
