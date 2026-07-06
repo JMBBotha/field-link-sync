@@ -975,6 +975,17 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
             </div>
             ` : ""}
 
+            ${isClaimed ? `
+            <div style="display: flex; align-items: center; gap: 6px; margin-top: 6px; padding: 6px 8px; background: #fef3c7; border: 1px solid #fde68a; border-radius: 6px;">
+              <svg style="width: 14px; height: 14px; color: #b45309; flex-shrink: 0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+              <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+                <span style="font-size: 10px; color: #92400e; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600;">Claimed by</span>
+                <span style="font-size: 12px; color: #78350f; font-weight: 600;">${safeAgent || "Unassigned"}</span>
+              </div>
+            </div>
+            ` : ""}
+
+
             <div style="display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 10px; color: #9ca3af;">
               <svg style="width: 12px; height: 12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               ${lead.created_at ? formatTimeAgo(lead.created_at) : ""}
