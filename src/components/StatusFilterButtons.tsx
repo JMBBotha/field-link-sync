@@ -47,7 +47,7 @@ const StatusFilterButtons = ({
   return (
     <div
       className={cn(
-        "bg-card/95 backdrop-blur-md border border-border/50 rounded-full px-1 py-1 sm:px-1.5 sm:py-1.5 shadow-lg flex items-center gap-0.5 sm:gap-1",
+        "bg-card/95 backdrop-blur-md border border-border/50 rounded-full px-1 py-1 sm:px-1.5 sm:py-1.5 shadow-lg flex items-center gap-2 sm:gap-3",
         className
       )}
     >
