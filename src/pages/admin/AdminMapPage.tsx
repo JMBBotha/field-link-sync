@@ -138,8 +138,9 @@ const AdminMapPage = () => {
               variant="ghost"
               size="icon"
               onClick={() => setCompletedPanelCollapsed(!completedPanelCollapsed)}
-              className="hidden md:flex absolute top-4 z-20 bg-white/80 backdrop-blur-md shadow-md hover:bg-white/90 rounded-md border transition-all duration-300"
-              style={{ left: completedPanelCollapsed ? '1rem' : 'calc(24rem + 1rem)' }}
+              className={`flex absolute top-4 z-20 bg-white/80 backdrop-blur-md shadow-md hover:bg-white/90 rounded-md border transition-all duration-300 ${
+                completedPanelCollapsed ? 'left-2' : 'left-[calc(min(72vw,22rem)+0.5rem)] sm:left-[calc(20rem+0.5rem)] md:left-[calc(24rem+0.5rem)]'
+              }`}
             >
               {completedPanelCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
             </Button>
@@ -149,9 +150,9 @@ const AdminMapPage = () => {
             className={`absolute top-0 left-0 h-full z-10 overflow-y-auto backdrop-blur-md border-r shadow-xl transition-all duration-300 ease-out ${
               completedPanelCollapsed || !showCompletedFilter
                 ? 'w-0 opacity-0 pointer-events-none translate-x-[-100%]'
-                : 'w-full md:w-96 opacity-100 translate-x-0'
+                : 'w-[72vw] max-w-[22rem] sm:w-80 md:w-96 opacity-100 translate-x-0'
             }`}
-            style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(34, 197, 94, 0.08) 100%)' }}
+            style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(34, 197, 94, 0.10) 100%)' }}
           >
             {!completedPanelCollapsed && showCompletedFilter && (
               <CompletedLeadsPanel
@@ -168,8 +169,9 @@ const AdminMapPage = () => {
             variant="ghost"
             size="icon"
             onClick={() => setLeadsCollapsed(!leadsCollapsed)}
-            className="hidden md:flex absolute top-4 z-20 bg-white/80 backdrop-blur-md shadow-md hover:bg-white/90 rounded-md border transition-all duration-300"
-            style={{ right: leadsCollapsed ? '1rem' : 'calc(24rem + 1rem)' }}
+            className={`flex absolute top-4 z-20 bg-white/80 backdrop-blur-md shadow-md hover:bg-white/90 rounded-md border transition-all duration-300 ${
+              leadsCollapsed ? 'right-2' : 'right-[calc(min(72vw,22rem)+0.5rem)] sm:right-[calc(20rem+0.5rem)] md:right-[calc(24rem+0.5rem)]'
+            }`}
           >
             {leadsCollapsed ? <PanelRightOpen className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />}
           </Button>
@@ -178,9 +180,9 @@ const AdminMapPage = () => {
             className={`absolute top-0 right-0 h-full z-10 overflow-y-auto backdrop-blur-md border-l shadow-xl transition-all duration-300 ease-out ${
               leadsCollapsed
                 ? 'w-0 opacity-0 pointer-events-none translate-x-[100%]'
-                : 'w-full md:w-96 opacity-100 translate-x-0'
+                : 'w-[72vw] max-w-[22rem] sm:w-80 md:w-96 opacity-100 translate-x-0'
             }`}
-            style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(34, 197, 94, 0.08) 100%)' }}
+            style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(34, 197, 94, 0.10) 100%)' }}
           >
             {!leadsCollapsed && (
               <LeadsList
