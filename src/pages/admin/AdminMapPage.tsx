@@ -116,7 +116,7 @@ const AdminMapPage = () => {
   };
 
   return (
-    <div className="h-full flex flex-col min-h-0">
+    <div ref={pageRef} className="h-full flex flex-col min-h-0 bg-background">
       {/* Tab switcher */}
       <div className="shrink-0 flex flex-wrap items-center gap-2 px-3 py-2 border-b bg-card/80 backdrop-blur-sm z-20">
         <div className="flex items-center gap-1">
@@ -137,6 +137,31 @@ const AdminMapPage = () => {
             <LocateFixed className="h-3.5 w-3.5" />
             My Location
           </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={toggleFullscreen}
+            className="gap-1.5 text-xs h-8"
+            title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+          >
+            {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={openInNewWindow}
+            className="gap-1.5 text-xs h-8"
+            title="Open map in new window"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            New Window
+          </Button>
+          <div className="flex items-center gap-1.5 h-8 px-2 rounded-md hover:bg-accent/50">
+            <Layers className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-xs font-medium">Traffic</span>
+            <Switch checked={trafficEnabled} onCheckedChange={handleTrafficToggle} className="scale-75" />
+          </div>
         </div>
         <div className="w-full sm:w-auto sm:ml-auto">
           <BusinessSearch
@@ -156,12 +181,14 @@ const AdminMapPage = () => {
             <MapView
               ref={mapRef}
               showAllAgents={true}
+              hideChromeControls={true}
               onStatusFiltersChange={(filters) => {
                 const hasCompleted = filters.has("completed");
                 setShowCompletedFilter(hasCompleted);
                 if (hasCompleted) setCompletedPanelCollapsed(false);
                 else setCompletedPanelCollapsed(true);
               }}
+
               onLeadClick={handleLeadClick}
             />
           </div>
