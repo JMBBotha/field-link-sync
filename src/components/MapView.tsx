@@ -98,6 +98,10 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
   const userLocationMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const userWatchIdRef = useRef<number | null>(null);
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const leadsRef = useRef<Lead[]>([]);
+  const statusFiltersRef = useRef<Set<LeadStatusFilter>>(new Set(["pending", "accepted", "in_progress"]));
+  useEffect(() => { leadsRef.current = leads; }, [leads]);
+  useEffect(() => { statusFiltersRef.current = statusFilters; }, [statusFilters]);
   const initialBoundsFitRef = useRef(false);
   const missingAgentCountsRef = useRef<Map<string, number>>(new Map());
   const missingLeadCountsRef = useRef<Map<string, number>>(new Map());
@@ -227,31 +231,66 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         });
         console.log('[MapView] panToLocationAndOpenPopup: flyTo initiated');
 
-        // Open popup after fly animation completes
-        setTimeout(() => {
+        // Open popup after fly animation completes. If the marker is filtered
+        // out of the current view, enable that lead's status filter first so
+        // its pin is rendered, then retry.
+        const openPopupFor = (retries = 6) => {
           const marker = leadMarkersRef.current.get(leadId);
-          console.log('[MapView] Looking for marker:', leadId, 'Found:', !!marker);
-          
-          if (marker) {
-            // Close all other popups first
-            leadMarkersRef.current.forEach((m, id) => {
-              if (id !== leadId) m.getPopup()?.remove();
-            });
-            agentMarkersRef.current.forEach((m) => m.getPopup()?.remove());
+          console.log('[MapView] Looking for marker:', leadId, 'Found:', !!marker, 'retriesLeft:', retries);
 
-            // Open this popup
-            marker.togglePopup();
-
-            // Add pulse animation to marker
-            const el = marker.getElement();
-            if (el) {
-              el.style.animation = "pulse 0.6s ease-out 3";
-              setTimeout(() => {
-                el.style.animation = "";
-              }, 1800);
+          if (!marker) {
+            // Try to unhide by enabling the lead's status filter.
+            const lead = leadsRef.current.find((l) => l.id === leadId);
+            const status = lead?.status as LeadStatusFilter | undefined;
+            if (status && !statusFiltersRef.current.has(status)) {
+              console.log('[MapView] Enabling status filter to reveal lead:', status);
+              setStatusFilters((prev) => {
+                const next = new Set(prev);
+                next.add(status);
+                return next;
+              });
             }
+            if (retries > 0) {
+              setTimeout(() => openPopupFor(retries - 1), 250);
+            } else if (lead) {
+              // Final fallback: drop a temporary highlight pin so the user
+              // still sees a marker at the lead's location.
+              if (searchMarkerRef.current) {
+                searchMarkerRef.current.remove();
+                searchMarkerRef.current = null;
+              }
+              const popup = new mapboxgl.Popup({ offset: 28, closeButton: true }).setHTML(
+                `<div style="font-family:inherit;min-width:180px"><div style="font-weight:600;font-size:13px;margin-bottom:2px">${escapeHtml(lead.customer_name)}</div>${lead.customer_address ? `<div style="font-size:12px;color:#555">${escapeHtml(lead.customer_address)}</div>` : ''}</div>`
+              );
+              searchMarkerRef.current = new mapboxgl.Marker({ color: '#0077B6' })
+                .setLngLat([lng, lat])
+                .setPopup(popup)
+                .addTo(mapInstanceRef.current!);
+              searchMarkerRef.current.togglePopup();
+            }
+            return;
           }
-        }, 1100);
+
+          // Close all other popups first
+          leadMarkersRef.current.forEach((m, id) => {
+            if (id !== leadId) m.getPopup()?.remove();
+          });
+          agentMarkersRef.current.forEach((m) => m.getPopup()?.remove());
+
+          // Open this popup
+          marker.togglePopup();
+
+          // Add pulse animation to marker
+          const el = marker.getElement();
+          if (el) {
+            el.style.animation = "pulse 0.6s ease-out 3";
+            setTimeout(() => {
+              el.style.animation = "";
+            }, 1800);
+          }
+        };
+
+        setTimeout(() => openPopupFor(), 1100);
       } catch (error) {
         console.error('[MapView] panToLocationAndOpenPopup: flyTo failed', error);
       }
