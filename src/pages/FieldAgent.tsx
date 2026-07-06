@@ -396,48 +396,29 @@ const FieldAgent = () => {
     }
   };
 
-  // Accept/Claim a lead - Now uses offline-first approach
+  // Accept/Claim a lead → open the schedule-and-assign dialog.
+  // The dialog handles the DB write, assignment, and job creation.
   const handleAcceptLead = async (leadId: string) => {
-    // Check subscription before allowing claim
     if (!subscription.canCreateJobs) {
       setShowUpgradeModal(true);
       return;
     }
-    setLoadingAction('accept');
+    const lead = leads.find((l) => l.id === leadId);
+    if (!lead) return;
+    setAcceptDialogLead(lead);
+  };
 
-    try {
-      // Find the lead to get customer_id for notification
-      const lead = leads.find(l => l.id === leadId);
-
-      await offlineLeads.acceptLead(leadId);
-
-      // Send WhatsApp notification (only if online and customer_id exists)
-      if (isOnline && lead?.customer_id) {
-        notifyJobAssigned(
-          lead.customer_id,
-          leadId,
-          userName || "Your technician",
-          "within 2 hours"
-        ).catch(err => console.error('[Notification] Job assigned error:', err));
-      }
-
-      // Close detail sheet and switch to active tab
-      setDetailSheetOpen(false);
-      setMobileTab('active');
-
-      toast({
-        title: "Lead Claimed! 🎉",
-        description: isOnline ? "You've been assigned to this lead" : "Saved offline - will sync when connected",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to accept lead",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingAction(null);
+  const handleAcceptDialogDone = (leadId: string, customerId?: string | null) => {
+    if (isOnline && customerId) {
+      notifyJobAssigned(
+        customerId,
+        leadId,
+        userName || "Your technician",
+        "within 2 hours",
+      ).catch((err) => console.error("[Notification] Job assigned error:", err));
     }
+    setDetailSheetOpen(false);
+    setMobileTab("active");
   };
 
   // Start job - Now uses offline-first approach with duration tracking
