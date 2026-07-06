@@ -1246,40 +1246,6 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
           {/* Map controls: traffic + route */}
           {mapLoaded && (
             <div className="absolute top-2 right-2 z-10 flex flex-col gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (!navigator.geolocation) {
-                    console.warn('[MapView] Geolocation not supported');
-                    return;
-                  }
-                  setLoadingStatus("Locating you…");
-                  navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                      const { latitude, longitude } = pos.coords;
-                      setCenter({ lat: latitude, lng: longitude });
-                      if (mapInstanceRef.current) {
-                        mapInstanceRef.current.flyTo({
-                          center: [longitude, latitude],
-                          zoom: 14,
-                          duration: 1000,
-                          essential: true,
-                        });
-                      }
-                    },
-                    (err) => {
-                      console.error('[MapView] Geolocation error', err);
-                    },
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                  );
-                }}
-                className="bg-card/90 backdrop-blur-sm shadow-md gap-2"
-                title="Recenter on my location"
-              >
-                <LocateFixed className="h-4 w-4" />
-                <span className="text-xs">My location</span>
-              </Button>
               <div className="bg-card/90 backdrop-blur-sm border rounded-lg px-3 py-2 flex items-center gap-2 shadow-md">
                 <Layers className="h-4 w-4 text-muted-foreground" />
                 <span className="text-xs font-medium">Traffic</span>
