@@ -60,12 +60,13 @@ const StatusFilterButtons = ({
             key={status}
             onClick={() => onToggle(status)}
             className={cn(
-              "relative flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold",
+              "relative flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold -translate-y-[2px]",
               "transition-all duration-300 ease-out transform",
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
               isActive
                 ? `${config.bgColor} ${config.textColor} shadow-md scale-100`
-                : `bg-transparent ${config.inactiveText} hover:bg-muted/50 scale-95 opacity-70 hover:opacity-100 hover:scale-100`
+                : `bg-transparent ${config.inactiveText} hover:bg-muted/50 scale-95 opacity-70 hover:opacity-100 hover:scale-100`,
+              status === "completed" && "border border-current"
             )}
           >
             {/* Indicator dot with pulse animation when active */}
