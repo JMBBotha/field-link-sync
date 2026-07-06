@@ -35,6 +35,7 @@ import UsedPartsSection from "./UsedPartsSection";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, DollarSign } from "lucide-react";
 import QuickTemplateDialog from "./quoting/QuickTemplateDialog";
+import AcceptLeadDialog from "./leads/AcceptLeadDialog";
 
 interface Lead {
   id: string;
@@ -158,6 +159,7 @@ const LeadDetailSheet = ({
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [showChangeRequestDialog, setShowChangeRequestDialog] = useState(false);
+  const [showAcceptDialog, setShowAcceptDialog] = useState(false);
   const [showTimeEditDialog, setShowTimeEditDialog] = useState(false);
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null);
   const [showPhotoTypePicker, setShowPhotoTypePicker] = useState(false);
@@ -741,7 +743,7 @@ const LeadDetailSheet = ({
                 <Button
                   className="w-full h-11 rounded-lg text-sm font-semibold"
                   style={{ backgroundColor: '#0077B6', color: '#FFFFFF' }}
-                  onClick={() => onAccept(lead.id)}
+                  onClick={() => setShowAcceptDialog(true)}
                   disabled={!!loadingAction}
                 >
                   {loadingAction === 'accept' ? (
@@ -927,7 +929,7 @@ const LeadDetailSheet = ({
                   <Button
                     className="flex-1 h-12 text-base font-semibold"
                     style={{ backgroundColor: "#0077B6", color: "#FFFFFF" }}
-                    onClick={() => onAccept(lead.id)}
+                    onClick={() => setShowAcceptDialog(true)}
                     disabled={!!loadingAction}
                   >
                     {loadingAction === "accept" ? (
@@ -1148,6 +1150,25 @@ const LeadDetailSheet = ({
         leadId={lead.id}
         customerId={templateCustomerId}
         quoteName={`${lead.service_type || "Quote"} - ${lead.customer_name}`}
+      />
+      <AcceptLeadDialog
+        lead={lead ? {
+          id: lead.id,
+          customer_id: lead.customer_id,
+          customer_name: lead.customer_name,
+          customer_address: lead.customer_address,
+          service_type: lead.service_type,
+          latitude: lead.latitude,
+          longitude: lead.longitude,
+          priority: lead.priority,
+          notes: lead.notes,
+        } : null}
+        open={showAcceptDialog}
+        onOpenChange={setShowAcceptDialog}
+        onDone={() => {
+          onLeadUpdated?.();
+          onClose();
+        }}
       />
     </>
   );

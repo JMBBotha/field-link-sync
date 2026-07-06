@@ -43,6 +43,7 @@ import CompletedJobsFilterDrawer from "@/components/CompletedJobsFilterDrawer";
 import { useCompletedJobsFilter } from "@/hooks/useCompletedJobsFilter";
 import { Filter } from "lucide-react";
 import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
+import AcceptLeadDialog from "@/components/leads/AcceptLeadDialog";
 
 interface Lead {
   id: string;
@@ -122,6 +123,7 @@ const FieldAgent = () => {
   const [mobileTab, setMobileTab] = useState<"available" | "active" | "completed">("available");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+  const [acceptDialogLead, setAcceptDialogLead] = useState<Lead | null>(null);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const { session, loading: authLoading } = useAuth();
   const currentUserId = session?.user.id;
@@ -394,48 +396,29 @@ const FieldAgent = () => {
     }
   };
 
-  // Accept/Claim a lead - Now uses offline-first approach
+  // Accept/Claim a lead → open the schedule-and-assign dialog.
+  // The dialog handles the DB write, assignment, and job creation.
   const handleAcceptLead = async (leadId: string) => {
-    // Check subscription before allowing claim
     if (!subscription.canCreateJobs) {
       setShowUpgradeModal(true);
       return;
     }
-    setLoadingAction('accept');
+    const lead = leads.find((l) => l.id === leadId);
+    if (!lead) return;
+    setAcceptDialogLead(lead);
+  };
 
-    try {
-      // Find the lead to get customer_id for notification
-      const lead = leads.find(l => l.id === leadId);
-
-      await offlineLeads.acceptLead(leadId);
-
-      // Send WhatsApp notification (only if online and customer_id exists)
-      if (isOnline && lead?.customer_id) {
-        notifyJobAssigned(
-          lead.customer_id,
-          leadId,
-          userName || "Your technician",
-          "within 2 hours"
-        ).catch(err => console.error('[Notification] Job assigned error:', err));
-      }
-
-      // Close detail sheet and switch to active tab
-      setDetailSheetOpen(false);
-      setMobileTab('active');
-
-      toast({
-        title: "Lead Claimed! 🎉",
-        description: isOnline ? "You've been assigned to this lead" : "Saved offline - will sync when connected",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to accept lead",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingAction(null);
+  const handleAcceptDialogDone = (leadId: string, customerId?: string | null) => {
+    if (isOnline && customerId) {
+      notifyJobAssigned(
+        customerId,
+        leadId,
+        userName || "Your technician",
+        "within 2 hours",
+      ).catch((err) => console.error("[Notification] Job assigned error:", err));
     }
+    setDetailSheetOpen(false);
+    setMobileTab("active");
   };
 
   // Start job - Now uses offline-first approach with duration tracking
@@ -1987,6 +1970,27 @@ const FieldAgent = () => {
 
         {/* Fixed Bottom Navigation - Mobile Only */}
         {isMobile && <FieldAgentBottomNav />}
+
+        <AcceptLeadDialog
+          lead={acceptDialogLead ? {
+            id: acceptDialogLead.id,
+            customer_id: acceptDialogLead.customer_id,
+            customer_name: acceptDialogLead.customer_name,
+            customer_address: acceptDialogLead.customer_address,
+            service_type: acceptDialogLead.service_type,
+            latitude: acceptDialogLead.latitude,
+            longitude: acceptDialogLead.longitude,
+            priority: acceptDialogLead.priority,
+            notes: acceptDialogLead.notes,
+          } : null}
+          open={!!acceptDialogLead}
+          onOpenChange={(o) => { if (!o) setAcceptDialogLead(null); }}
+          onDone={() => {
+            const l = acceptDialogLead;
+            setAcceptDialogLead(null);
+            if (l) handleAcceptDialogDone(l.id, l.customer_id);
+          }}
+        />
       </div>
     </Layout>
   );
