@@ -7,6 +7,7 @@ interface StatusFilterButtonsProps {
   onToggle: (status: LeadStatusFilter) => void;
   className?: string;
   compact?: boolean;
+  counts?: Partial<Record<LeadStatusFilter, number>>;
 }
 
 const statusConfig: Record<LeadStatusFilter, { label: string; bgColor: string; textColor: string; inactiveText: string }> = {
@@ -41,6 +42,7 @@ const StatusFilterButtons = ({
   onToggle,
   className,
   compact = false,
+  counts,
 }: StatusFilterButtonsProps) => {
   const statuses: LeadStatusFilter[] = ["pending", "accepted", "in_progress", "completed"];
 
@@ -89,6 +91,20 @@ const StatusFilterButtons = ({
             >
               {config.label}
             </span>
+
+            {typeof counts?.[status] === "number" && (
+              <span
+                className={cn(
+                  "ml-0.5 min-w-[1.25rem] px-1 rounded-full text-[9px] sm:text-[10px] font-bold tabular-nums text-center",
+                  isActive
+                    ? "bg-black/15 dark:bg-white/20"
+                    : "bg-current/10 opacity-80"
+                )}
+              >
+                {counts[status]}
+              </span>
+            )}
+
 
             {/* Active indicator glow effect */}
             {isActive && (
