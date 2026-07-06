@@ -235,13 +235,16 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     queryKey: ["visual-panel-supplier-names", supplierOptions],
     enabled: open && supplierOptions.length > 0,
     queryFn: async () => {
-      const { data } = await supabase.from("suppliers").select("id, name, supplier_type").in("id", supplierOptions);
       const map: Record<string, string> = {};
-      // Also map supplier_id text values (like "Daikin", "Samsung ") directly
-      for (const opt of supplierOptions) {
-        map[opt] = opt; // fallback to raw supplier_id text
+      // Fallback: raw supplier_id text (used for legacy name-keyed rows)
+      for (const opt of supplierOptions) map[opt] = opt;
+      // Only query suppliers table with real UUIDs — passing non-UUID text
+      // makes Postgres reject the entire .in() query.
+      const uuidOpts = supplierOptions.filter((s) => UUID_PATTERN.test(s));
+      if (uuidOpts.length > 0) {
+        const { data } = await supabase.from("suppliers").select("id, name").in("id", uuidOpts);
+        (data || []).forEach((s: any) => { map[s.id] = (s.name || "").trim() || s.id; });
       }
-      (data || []).forEach((s: any) => { map[s.id] = s.name; });
       return map;
     },
     staleTime: 60000,
@@ -252,13 +255,16 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     queryKey: ["visual-panel-supplier-types", supplierOptions],
     enabled: open && supplierOptions.length > 0,
     queryFn: async () => {
-      const { data } = await supabase.from("suppliers").select("id, supplier_type").in("id", supplierOptions);
       const map: Record<string, string> = {};
+      const uuidOpts = supplierOptions.filter((s) => UUID_PATTERN.test(s));
+      if (uuidOpts.length === 0) return map;
+      const { data } = await supabase.from("suppliers").select("id, supplier_type").in("id", uuidOpts);
       (data || []).forEach((s: any) => { if (s.supplier_type) map[s.id] = s.supplier_type; });
       return map;
     },
     staleTime: 60000,
   });
+
 
   const { data: pages = [], isLoading: pagesLoading } = useQuery<PdfPage[]>({
     queryKey: ["visual-panel-pages", selectedSupplier],
