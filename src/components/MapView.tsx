@@ -908,6 +908,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         case "pending":
           return "#ef4444"; // Red
         case "accepted":
+        case "claimed":
           return "#eab308"; // Yellow
         case "in_progress":
           return "#22c55e"; // Green
