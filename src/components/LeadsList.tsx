@@ -369,6 +369,33 @@ const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
         <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
         <a href={`tel:${lead.customer_phone}`} className="text-xs text-primary hover:underline truncate min-w-0" onClick={(e) => e.stopPropagation()}>{lead.customer_phone}</a>
       </div>
+      {/* Service type + Priority */}
+      <div className="flex items-center flex-wrap gap-1.5 min-w-0">
+        <Badge variant="secondary" className="text-[10px] font-medium">
+          {lead.service_type}
+        </Badge>
+        {lead.priority && lead.priority !== 'normal' && (
+          <Badge
+            variant="outline"
+            className={`text-[10px] font-medium ${
+              lead.priority === 'urgent' || lead.priority === 'high'
+                ? 'border-destructive text-destructive'
+                : lead.priority === 'low'
+                ? 'border-muted-foreground text-muted-foreground'
+                : ''
+            }`}
+          >
+            {lead.priority} priority
+          </Badge>
+        )}
+      </div>
+      {/* Issue description / notes preview */}
+      {lead.notes && (
+        <div className="p-2 rounded-md bg-muted/40 border border-border/40">
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Issue description</p>
+          <p className="text-xs text-foreground whitespace-pre-wrap line-clamp-3">{lead.notes}</p>
+        </div>
+      )}
       {lead.profiles && (
         <div className="flex items-center gap-2 min-w-0">
           <Badge variant="outline" className="text-xs truncate max-w-full">
