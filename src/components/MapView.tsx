@@ -31,6 +31,7 @@ interface Lead {
   longitude: number;
   status: string;
   created_at: string;
+  assigned_agent_id?: string | null;
 }
 
 export interface MapViewHandle {
@@ -1121,6 +1122,26 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         timeBadge.style.zIndex = "2";
         el.appendChild(timeBadge);
 
+        // Add name badge (below marker) for claimed/accepted leads
+        const nameBadge = document.createElement("div");
+        nameBadge.dataset.role = "name-badge";
+        nameBadge.style.backgroundColor = "#eab308";
+        nameBadge.style.color = "#111827";
+        nameBadge.style.fontSize = "10px";
+        nameBadge.style.fontWeight = "700";
+        nameBadge.style.padding = "2px 6px";
+        nameBadge.style.borderRadius = "6px";
+        nameBadge.style.whiteSpace = "nowrap";
+        nameBadge.style.position = "absolute";
+        nameBadge.style.top = "52px"; // Below marker (marker height ~50)
+        nameBadge.style.left = "50%";
+        nameBadge.style.transform = "translateX(-50%)";
+        nameBadge.style.zIndex = "2";
+        nameBadge.style.boxShadow = "0 1px 3px rgba(0,0,0,0.25)";
+        nameBadge.style.display = "none";
+        el.appendChild(nameBadge);
+
+
         // Add click handler for onLeadClick callback
         if (onLeadClick) {
           el.style.cursor = "pointer";
@@ -1213,6 +1234,21 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         } else {
           timeBadge.style.display = "none";
           timeBadge.textContent = "";
+        }
+      }
+
+      const nameBadge = el.querySelector('[data-role="name-badge"]') as HTMLDivElement | null;
+      if (nameBadge) {
+        const isClaimed = lead.status === "accepted" || lead.status === "claimed";
+        if (isClaimed && isVisible) {
+          const assignedName = lead.assigned_agent_id
+            ? agents.find((a) => a.agent_id === lead.assigned_agent_id)?.profiles?.full_name
+            : null;
+          nameBadge.textContent = assignedName || lead.customer_name || "Unassigned";
+          nameBadge.style.display = "block";
+        } else {
+          nameBadge.style.display = "none";
+          nameBadge.textContent = "";
         }
       }
     });
