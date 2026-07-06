@@ -1279,31 +1279,35 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
           {/* Map controls: traffic + route */}
           {mapLoaded && (
             <div className="absolute top-16 right-2 z-10 flex flex-col gap-2">
-              <div className="bg-card/90 backdrop-blur-sm border rounded-lg px-2 py-1.5 flex items-center gap-1 shadow-md">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-7 w-7"
-                  onClick={toggleFullscreen}
-                  title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-                >
-                  {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-7 w-7"
-                  onClick={openInNewWindow}
-                  title="Open map in new window"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="bg-card/90 backdrop-blur-sm border rounded-lg px-3 py-2 flex items-center gap-2 shadow-md">
-                <Layers className="h-4 w-4 text-muted-foreground" />
-                <span className="text-xs font-medium">Traffic</span>
-                <Switch checked={trafficEnabled} onCheckedChange={setTrafficEnabled} className="scale-75" />
-              </div>
+              {!hideChromeControls && (
+                <>
+                  <div className="bg-card/90 backdrop-blur-sm border rounded-lg px-2 py-1.5 flex items-center gap-1 shadow-md">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7"
+                      onClick={toggleFullscreen}
+                      title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                    >
+                      {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7"
+                      onClick={openInNewWindow}
+                      title="Open map in new window"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="bg-card/90 backdrop-blur-sm border rounded-lg px-3 py-2 flex items-center gap-2 shadow-md">
+                    <Layers className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xs font-medium">Traffic</span>
+                    <Switch checked={trafficEnabled} onCheckedChange={setTrafficEnabled} className="scale-75" />
+                  </div>
+                </>
+              )}
               {agents.length > 0 && (
                 <div className="bg-card/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-md">
                   <div className="flex items-center gap-2 mb-1">
@@ -1324,6 +1328,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
               )}
             </div>
           )}
+
 
 
           {/* Status Filter Buttons */}
