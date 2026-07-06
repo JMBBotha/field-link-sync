@@ -125,7 +125,7 @@ export function useAcceptLead() {
             lead_id: lead.id,
             created_by: user.id,
             job_type: lead.service_type || "service_call",
-          })
+          } as any)
           .select("id")
           .single();
         if (insErr) throw insErr;
