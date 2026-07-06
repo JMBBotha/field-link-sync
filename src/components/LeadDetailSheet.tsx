@@ -35,6 +35,7 @@ import UsedPartsSection from "./UsedPartsSection";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, DollarSign } from "lucide-react";
 import QuickTemplateDialog from "./quoting/QuickTemplateDialog";
+import AcceptLeadDialog from "./leads/AcceptLeadDialog";
 
 interface Lead {
   id: string;
