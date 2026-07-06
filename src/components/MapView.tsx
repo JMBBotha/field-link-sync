@@ -1235,6 +1235,21 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
           timeBadge.textContent = "";
         }
       }
+
+      const nameBadge = el.querySelector('[data-role="name-badge"]') as HTMLDivElement | null;
+      if (nameBadge) {
+        const isClaimed = lead.status === "accepted" || lead.status === "claimed";
+        if (isClaimed && isVisible) {
+          const assignedName = lead.assigned_agent_id
+            ? agents.find((a) => a.agent_id === lead.assigned_agent_id)?.profiles?.full_name
+            : null;
+          nameBadge.textContent = assignedName || lead.customer_name || "Unassigned";
+          nameBadge.style.display = "block";
+        } else {
+          nameBadge.style.display = "none";
+          nameBadge.textContent = "";
+        }
+      }
     });
 
     // Adjust map bounds to show both agents AND leads (only on initial load)
