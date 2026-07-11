@@ -53,6 +53,7 @@ const AcceptLeadDialog = ({
   open,
   onOpenChange,
   onDone,
+  defaultAgentId,
 }: AcceptLeadDialogProps) => {
   const { acceptAndSchedule, submitting } = useAcceptLead();
   const [appt, setAppt] = useState<AppointmentValue>(defaultAppointment());
@@ -67,7 +68,7 @@ const AcceptLeadDialog = ({
     if (!open || !lead) return;
     setAppt({
       ...defaultAppointment(),
-      agentId: "",
+      agentId: defaultAgentId || "",
     });
     setTitle(lead.service_type || `Job for ${lead.customer_name || "customer"}`);
     setDescription(lead.notes || "");
