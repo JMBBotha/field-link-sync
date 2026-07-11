@@ -33,6 +33,8 @@ interface AcceptLeadDialogProps {
   onOpenChange: (open: boolean) => void;
   /** Called after successful accept, with the resulting job id. */
   onDone?: (jobId: string) => void;
+  /** Pre-select this agent (e.g. current user on Field Agent view). */
+  defaultAgentId?: string;
 }
 
 const defaultAppointment = (): AppointmentValue => {
@@ -51,6 +53,7 @@ const AcceptLeadDialog = ({
   open,
   onOpenChange,
   onDone,
+  defaultAgentId,
 }: AcceptLeadDialogProps) => {
   const { acceptAndSchedule, submitting } = useAcceptLead();
   const [appt, setAppt] = useState<AppointmentValue>(defaultAppointment());
@@ -65,7 +68,7 @@ const AcceptLeadDialog = ({
     if (!open || !lead) return;
     setAppt({
       ...defaultAppointment(),
-      agentId: "",
+      agentId: defaultAgentId || "",
     });
     setTitle(lead.service_type || `Job for ${lead.customer_name || "customer"}`);
     setDescription(lead.notes || "");

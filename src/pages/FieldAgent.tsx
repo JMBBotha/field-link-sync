@@ -1984,6 +1984,7 @@ const FieldAgent = () => {
             notes: acceptDialogLead.notes,
           } : null}
           open={!!acceptDialogLead}
+          defaultAgentId={currentUserId}
           onOpenChange={(o) => { if (!o) setAcceptDialogLead(null); }}
           onDone={() => {
             const l = acceptDialogLead;
