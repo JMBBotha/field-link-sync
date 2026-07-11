@@ -33,6 +33,8 @@ interface AcceptLeadDialogProps {
   onOpenChange: (open: boolean) => void;
   /** Called after successful accept, with the resulting job id. */
   onDone?: (jobId: string) => void;
+  /** Pre-select this agent (e.g. current user on Field Agent view). */
+  defaultAgentId?: string;
 }
 
 const defaultAppointment = (): AppointmentValue => {
