@@ -309,9 +309,53 @@ serve(async (req) => {
 
       console.log(`[vapi-server-event] Lead: ${callerName} (${callerPhone}), ${serviceType}, ${urgency}, ${durationSeconds}s`);
 
-      // ─── Create customer + lead via receive-vapi-lead ───
+      // ─── Dedup: did twilio-inbound-call already create a lead for this CallSid? ───
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const apiKey = Deno.env.get("VAPI_WEBHOOK_SECRET")!;
+      const callSid = call.id || "";
+
+      if (callSid) {
+        try {
+          const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+          const supabaseAdmin = createClient(supabaseUrl, serviceKey);
+          const { data: existing } = await supabaseAdmin
+            .from("leads")
+            .select("id, customer_id, notes")
+            .eq("customer_phone", callerPhone)
+            .ilike("notes", `%CallSid: ${callSid}%`)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (existing) {
+            console.log(`[vapi-server-event] Lead already exists for CallSid ${callSid}: ${existing.id} — enriching notes only`);
+            const enriched = [
+              existing.notes || "",
+              "",
+              `--- End-of-call update (${durationSeconds}s, ${endedReason}) ---`,
+              summary || "",
+              transcript ? `Transcript: ${transcript.slice(0, 2000)}` : "",
+              recordingUrl ? `Recording: ${recordingUrl}` : "",
+            ].filter(Boolean).join("\n");
+
+            await supabaseAdmin
+              .from("leads")
+              .update({ notes: enriched, service_type: serviceType, priority: mapPriority(urgency) })
+              .eq("id", existing.id);
+
+            return new Response(JSON.stringify({
+              ok: true,
+              event: "end-of-call-report",
+              lead: { success: true, lead_id: existing.id, customer_id: existing.customer_id, deduped: true },
+              caller: { name: callerName, phone: callerPhone, service: serviceType, urgency, duration_seconds: durationSeconds },
+            }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+        } catch (dedupErr) {
+          console.warn("[vapi-server-event] Dedup check failed, proceeding to create:", dedupErr);
+        }
+      }
+
+      // ─── Create customer + lead via receive-vapi-lead ───
 
       const leadPayload = {
         caller_name: callerName,
