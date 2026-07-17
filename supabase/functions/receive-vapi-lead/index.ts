@@ -197,7 +197,39 @@ serve(async (req) => {
       }
     }
 
-    // --- Step 2: Create the lead ---
+    // --- Step 2: Dedup by CallSid and by phone-in-last-10-minutes ---
+    if (vapi_call_id) {
+      const { data: sidHit } = await supabase
+        .from("leads")
+        .select("id")
+        .ilike("notes", `%${vapi_call_id}%`)
+        .limit(1)
+        .maybeSingle();
+      if (sidHit) {
+        console.log(`[receive-vapi-lead] Dedup CallSid=${vapi_call_id} → lead ${sidHit.id}, skipping`);
+        return new Response(JSON.stringify({
+          success: true, deduped: true, lead_id: sidHit.id, customer_id: customerId,
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { data: recentHit } = await supabase
+      .from("leads")
+      .select("id, created_at")
+      .eq("customer_phone", normalizedPhone)
+      .gte("created_at", tenMinAgo)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (recentHit) {
+      console.log(`[receive-vapi-lead] Dedup rapid-repeat → lead ${recentHit.id} at ${recentHit.created_at}, skipping`);
+      return new Response(JSON.stringify({
+        success: true, deduped: true, lead_id: recentHit.id, customer_id: customerId,
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // --- Step 3: Create the lead ---
+    // TODO: geocode customer address and backfill latitude/longitude for map view.
     const leadData: Record<string, any> = {
       customer_name: customerName,
       customer_phone: normalizedPhone,
@@ -206,9 +238,8 @@ serve(async (req) => {
       status: "pending",
       priority: mapPriority(urgency),
       notes: [
+        `Source: ${source} | CallSid: ${vapi_call_id || "unknown"} | Caller: ${normalizedPhone}`,
         notes || "",
-        `Source: ${source}`,
-        vapi_call_id ? `Vapi Call ID: ${vapi_call_id}` : "",
         call_duration_seconds ? `Call duration: ${call_duration_seconds}s` : "",
         call_recording_url ? `Recording: ${call_recording_url}` : "",
         callerIdNormalized && callerIdNormalized !== normalizedPhone
