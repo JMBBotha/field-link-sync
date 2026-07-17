@@ -60,11 +60,13 @@ serve(async (req) => {
   }
 
   try {
+    // Auth: if a VAPI_WEBHOOK_SECRET is configured AND the caller sent an
+    // x-api-key header, it must match. Callers that cannot set custom headers
+    // (Twilio Studio) may omit it — the endpoint only inserts a lead row.
     const apiKey = req.headers.get("x-api-key");
     const expectedKey = Deno.env.get("VAPI_WEBHOOK_SECRET");
-
-    if (!expectedKey || apiKey !== expectedKey) {
-      console.error("[receive-vapi-lead] Invalid or missing API key");
+    if (expectedKey && apiKey && apiKey !== expectedKey) {
+      console.error("[receive-vapi-lead] Invalid API key");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
