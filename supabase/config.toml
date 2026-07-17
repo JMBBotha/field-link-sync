@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.parse-brochure-grok]
 verify_jwt = false
+
+[functions.twilio-inbound-call]
+verify_jwt = false
