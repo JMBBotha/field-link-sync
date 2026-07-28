@@ -271,9 +271,13 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
    */
   const initialBaskets = useMemo<Basket[] | null>(() => {
     if (ctxLoading) return null;
-    // Ignore legacy_placeholder rows — they exist only to preserve the recorded
-    // total on orphaned legacy quotes and must not render as real basket items.
-    const realItems = ctxItems.filter((i) => i.source !== "legacy_placeholder");
+    // Real = non-placeholder AND has qty/rate. Zero-value non-placeholder rows
+    // must not hydrate (mirrors reuse rule).
+    const realItems = ctxItems.filter(
+      (i) =>
+        i.source !== "legacy_placeholder" &&
+        ((i.quantity ?? 0) > 0 || (i.unit_price ?? 0) > 0 || (i.total_price ?? 0) > 0)
+    );
     if (realItems.length === 0 && ctxAreas.length === 0) {
       return [{ id: "basket-1", name: "Zone 1", items: [] }];
     }
