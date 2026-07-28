@@ -114,7 +114,9 @@ const AdminCustomerDetailPage = () => {
         .from("quotes")
         .select("id, quote_number, notes, total, status, created_at, customer_id, customer_name")
         .or(orParts.join(","))
+        .neq("status", "superseded")
         .order("created_at", { ascending: false });
+
       if (error) throw error;
       const seen = new Set<string>();
       return (data || []).filter((r: any) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
