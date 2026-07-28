@@ -35,6 +35,8 @@ import { createEmptyArea, computeAreaSubtotal, detectBTU } from "@/components/ca
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
 import { calculateBasketSubtotal } from "@/utils/basketCalc";
 import { useQuoteLiveTotals } from "@/stores/quoteLiveTotalsStore";
+import { areasToBaskets } from "@/components/catalog/quote-builder/QuoteBuilderPopup";
+
 
 export type QuoteBuilderMode = "admin" | "agent";
 
