@@ -759,6 +759,14 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         products={products}
         bundles={bundles}
         onSave={handleWizardSave}
+        onLivePreview={(preview) => {
+          // Merge popup preview into shared baskets slot so header totals reflect it live.
+          setBaskets((prev) => {
+            const kept = prev.filter((b) => !b.id.startsWith("wizard-popup-"));
+            const tagged = preview.map((b) => ({ ...b, id: `wizard-popup-${b.id}` }));
+            return [...kept, ...tagged];
+          });
+        }}
         triggerItem={null} />
 
     </div>);
