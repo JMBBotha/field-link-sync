@@ -72,9 +72,9 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
 
   // Exclude non-real rows from user-visible counts.
   const topLevel = items.filter((i) => !i.parent_item_id && isRealItem(i));
-  const totalItems = topLevel.length;
+  const dbItems = topLevel.length;
   // Total still includes placeholder value so the recorded legacy total remains visible.
-  const totalCost = items
+  const dbCost = items
     .filter((i) => !i.parent_item_id)
     .reduce((s, i) => s + (i.total_price ?? i.unit_price * i.quantity), 0);
   // Zone count = declared areas + a synthetic "General" zone when items have no area_id.
@@ -85,7 +85,13 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
     else hasUnassigned = true;
   }
   for (const a of areas) zoneIds.add(a.id);
-  const zoneCount = zoneIds.size + (hasUnassigned ? 1 : 0);
+  const dbZones = zoneIds.size + (hasUnassigned ? 1 : 0);
+
+  // Prefer live in-progress builder totals so header reflects unsaved edits
+  // BEFORE they hit the DB. Falls back to persisted totals when idle.
+  const totalItems = live.hasLiveData ? live.items : dbItems;
+  const zoneCount = live.hasLiveData ? live.zones : dbZones;
+  const totalCost = live.hasLiveData ? live.subtotal : dbCost;
 
 
   return (
