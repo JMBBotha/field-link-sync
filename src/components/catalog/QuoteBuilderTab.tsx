@@ -927,7 +927,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
       </DndContext>
 
       {/* Sticky collapsible quote summary at bottom */}
-      <StickyQuoteSummary baskets={baskets} />
+      <StickyQuoteSummary baskets={displayBaskets} />
 
       <ACOptionsModal
         open={acModalOpen}
@@ -941,11 +941,12 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
 
       <QuoteBuilderPopup
         open={wizardOpen}
-        onClose={() => {setWizardOpen(false);setWizardTriggerItem(null);}}
+        onClose={() => {setWizardOpen(false);setWizardTriggerItem(null);setWizardPreviewBaskets([]);}}
         products={products}
         bundles={bundles}
         onSave={handleWizardSave}
-        triggerItem={wizardTriggerItem} />
+        triggerItem={wizardTriggerItem}
+        onLivePreview={setWizardPreviewBaskets} />
 
     </div>);
 
