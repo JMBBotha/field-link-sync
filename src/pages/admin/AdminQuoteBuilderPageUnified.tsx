@@ -1237,8 +1237,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
   }, [paramQuoteId, paramLeadId, paramCustomerId, navigate, mode, createDraft]);
 
   const handleClientPicked = useCallback(
-    async (customerId: string) => {
-      // eslint-disable-next-line no-console
+    async (customerId: string, customerName?: string) => {
       console.log("[QuoteBuilder] handleClientPicked received customerId:", customerId);
       if (!customerId || String(customerId).startsWith("lead-")) {
         toast({
@@ -1254,7 +1253,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
         const { data: userData } = await supabase.auth.getUser();
         const userId = userData?.user?.id;
         if (!userId) throw new Error("You must be logged in.");
-        const newId = await createDraft(userId, customerId, pendingSupersedeRef.current);
+        const newId = await createDraft(userId, customerId, pendingSupersedeRef.current, customerName);
         pendingSupersedeRef.current = [];
         setQuoteId(newId);
         setCreating(false);
