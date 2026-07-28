@@ -107,7 +107,7 @@ function clearDraftStorage() {
   }
 }
 
-export default function QuoteBuilderPopup({ open, onClose, products, bundles, onSave, triggerItem, onPdfSearch }: Props) {
+export default function QuoteBuilderPopup({ open, onClose, products, bundles, onSave, triggerItem, onPdfSearch, onLivePreview }: Props) {
   const [currentStep, setCurrentStep] = useState(0);
   const [areas, setAreas] = useState<QuoteArea[]>([]);
 
@@ -148,6 +148,19 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Live preview: push wizard-in-progress baskets to parent on every areas change
+  useEffect(() => {
+    if (!onLivePreview) return;
+    if (!open) return;
+    onLivePreview(areasToBaskets(areas));
+  }, [areas, open, onLivePreview]);
+
+  // Clear preview when wizard closes
+  useEffect(() => {
+    if (open || !onLivePreview) return;
+    onLivePreview([]);
+  }, [open, onLivePreview]);
+
   const handleSaveDraft = useCallback(() => {
     saveDraftToStorage(areas, currentStep);
     hapticTap("medium");
@@ -175,31 +188,7 @@ export default function QuoteBuilderPopup({ open, onClose, products, bundles, on
   }, [currentStep]);
 
   const handleSave = useCallback(() => {
-    // Convert areas to baskets
-    const baskets: Basket[] = [];
-    for (const area of areas) {
-      const allItems: BasketItem[] = [
-        ...area.acUnits.map((u) => ({
-          instanceId: `${u.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          product: u.product,
-          quantity: u.quantity,
-        })),
-        ...area.materials.map((m) => ({
-          instanceId: `${m.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          product: m.product,
-          quantity: m.pricingMode === "unit" ? m.unitQuantity : 1,
-          ...(m.pricingMode === "length" ? { length: m.adjustedLength } : {}),
-        })),
-        ...area.consumables.map((c) => ({
-          instanceId: `${c.product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          product: c.product,
-          quantity: c.quantity,
-        })),
-      ];
-      if (allItems.length > 0) {
-        baskets.push({ id: `basket-${Date.now()}-${area.id}`, name: area.name, items: allItems });
-      }
-    }
+    const baskets = areasToBaskets(areas);
     onSave(baskets);
     clearDraftStorage();
     onClose();
