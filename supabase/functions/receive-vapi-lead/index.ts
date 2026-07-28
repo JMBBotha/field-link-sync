@@ -197,7 +197,63 @@ serve(async (req) => {
       }
     }
 
-    // --- Step 2: Dedup by CallSid and by phone-in-last-10-minutes ---
+    // --- Step 2: Enrichment-based dedup ---
+    // The twilio-inbound-call function creates a placeholder lead the moment
+    // the phone rings (before Vapi has a transcript). That placeholder uses
+    // Twilio's CallSid, which is *different* from Vapi's `call.id`, so we
+    // cannot rely on ID matching. Instead: if we find a recent lead on the
+    // same phone, ENRICH it with the Vapi transcript/summary/recording/
+    // service_type/priority rather than silently discarding this payload.
+    const mergedServiceType = mapServiceType(service_type);
+    const mergedPriority = mapPriority(urgency);
+    const vapiNotesBlock = [
+      `--- Vapi end-of-call update ---`,
+      `Source: ${source} | Vapi call: ${vapi_call_id || "unknown"} | Caller: ${normalizedPhone}`,
+      notes || "",
+      call_duration_seconds ? `Call duration: ${call_duration_seconds}s` : "",
+      call_recording_url ? `Recording: ${call_recording_url}` : "",
+      callerIdNormalized && callerIdNormalized !== normalizedPhone
+        ? `Caller ID: ${callerIdNormalized} (different from provided number)`
+        : "",
+    ].filter(Boolean).join("\n");
+
+    async function enrichExistingLead(existingLeadId: string) {
+      const { data: existing } = await supabase
+        .from("leads")
+        .select("id, customer_id, notes, service_type, priority, customer_address")
+        .eq("id", existingLeadId)
+        .maybeSingle();
+      if (!existing) return null;
+
+      const patch: Record<string, any> = {
+        notes: [existing.notes || "", "", vapiNotesBlock].filter(Boolean).join("\n"),
+      };
+      // Upgrade placeholders written by twilio-inbound-call.
+      if (!existing.service_type || existing.service_type === "General Inquiry") {
+        patch.service_type = mergedServiceType;
+      }
+      if (!existing.priority || existing.priority === "medium") {
+        patch.priority = mergedPriority;
+      }
+      if (
+        address &&
+        (!existing.customer_address ||
+          existing.customer_address === "Address pending — inbound call" ||
+          existing.customer_address === "Address pending — WhatsApp confirmation sent")
+      ) {
+        patch.customer_address = address;
+      }
+      if (customerId && !existing.customer_id) {
+        patch.customer_id = customerId;
+      }
+
+      const { error: updErr } = await supabase.from("leads").update(patch).eq("id", existingLeadId);
+      if (updErr) console.error("[receive-vapi-lead] Enrich update error:", updErr);
+
+      return { id: existingLeadId, customer_id: existing.customer_id ?? customerId };
+    }
+
+    // (a) Match by Vapi call id if we've seen it before.
     if (vapi_call_id) {
       const { data: sidHit } = await supabase
         .from("leads")
@@ -206,12 +262,16 @@ serve(async (req) => {
         .limit(1)
         .maybeSingle();
       if (sidHit) {
-        console.log(`[receive-vapi-lead] Dedup CallSid=${vapi_call_id} → lead ${sidHit.id}, skipping`);
-        return new Response(JSON.stringify({
-          success: true, deduped: true, lead_id: sidHit.id, customer_id: customerId,
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        console.log(`[receive-vapi-lead] Enrich by Vapi call id ${vapi_call_id} → lead ${sidHit.id}`);
+        const enriched = await enrichExistingLead(sidHit.id);
+        // Continue on to WhatsApp queueing below by short-circuiting the create-branch.
+        if (enriched) {
+          return await finalizeEnriched(enriched.id, enriched.customer_id);
+        }
       }
     }
+    // (b) Match by phone in the last 10 minutes — this catches the Twilio
+    //     placeholder lead that was created seconds before Vapi finished.
     const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
     const { data: recentHit } = await supabase
       .from("leads")
@@ -222,11 +282,59 @@ serve(async (req) => {
       .limit(1)
       .maybeSingle();
     if (recentHit) {
-      console.log(`[receive-vapi-lead] Dedup rapid-repeat → lead ${recentHit.id} at ${recentHit.created_at}, skipping`);
+      console.log(`[receive-vapi-lead] Enrich recent lead ${recentHit.id} (created ${recentHit.created_at})`);
+      const enriched = await enrichExistingLead(recentHit.id);
+      if (enriched) {
+        return await finalizeEnriched(enriched.id, enriched.customer_id);
+      }
+    }
+
+    // Small helper that mirrors the WhatsApp queue + response envelope used
+    // by the create-branch below, so an enriched lead still gets the
+    // confirmation message and returns the same JSON shape.
+    async function finalizeEnriched(leadId: string, custId: string | null) {
+      let whatsappQueued = false;
+      const shouldSendWhatsapp = whatsapp_consent !== false &&
+        (call_duration_seconds === undefined || call_duration_seconds > 15);
+      if (shouldSendWhatsapp && custId) {
+        // Only queue if we don't already have a pending confirmation for this lead.
+        const { data: existingQueue } = await supabase
+          .from("notification_queue")
+          .select("id")
+          .eq("lead_id", leadId)
+          .eq("notification_type", "lead_confirmation")
+          .in("status", ["pending", "sent"])
+          .limit(1)
+          .maybeSingle();
+        if (!existingQueue) {
+          const { error: notifError } = await supabase.from("notification_queue").insert({
+            customer_id: custId,
+            lead_id: leadId,
+            notification_type: "lead_confirmation",
+            channel: "whatsapp",
+            recipient_phone: normalizedPhone,
+            body: `Hi ${customerName.split(" ")[0]}! 👋 Thanks for calling 0800BeCool. ` +
+              `We've received your ${mergedServiceType.toLowerCase()} request. ` +
+              `Could you please confirm your address so we can get someone to you as quickly as possible? ` +
+              `Reply with your street address and suburb. 🏠`,
+            variables: { customer_name: customerName, service_type: mergedServiceType, lead_id: leadId },
+            status: "pending",
+            scheduled_at: new Date().toISOString(),
+            max_attempts: 5,
+          });
+          if (notifError) console.error("[receive-vapi-lead] WhatsApp queue error (enrich):", notifError);
+          else whatsappQueued = true;
+        }
+      }
       return new Response(JSON.stringify({
-        success: true, deduped: true, lead_id: recentHit.id, customer_id: customerId,
+        success: true,
+        enriched: true,
+        lead_id: leadId,
+        customer_id: custId,
+        whatsapp_queued: whatsappQueued,
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
 
     // --- Step 3: Create the lead ---
     // TODO: geocode customer address and backfill latitude/longitude for map view.
