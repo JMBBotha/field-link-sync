@@ -316,8 +316,12 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         ((i.quantity ?? 0) > 0 || (i.unit_price ?? 0) > 0 || (i.total_price ?? 0) > 0)
     );
     if (realItems.length === 0 && ctxAreas.length === 0) {
-      return [{ id: "basket-1", name: "Zone 1", items: [] }];
+      // No real data: start EMPTY so the inline Area/Wizard builder is the
+      // sole source of zones. Avoids a ghost "Zone 1" appearing alongside
+      // wizard-applied templates (root cause of the totals split-brain).
+      return [];
     }
+
     const productById = new Map(products.map((p) => [p.id, p]));
     const stub = (it: typeof ctxItems[number]): PaletteProduct => ({
       id: it.product_id || it.id,
