@@ -309,51 +309,90 @@ serve(async (req) => {
 
       console.log(`[vapi-server-event] Lead: ${callerName} (${callerPhone}), ${serviceType}, ${urgency}, ${durationSeconds}s`);
 
-      // ─── Dedup: did twilio-inbound-call already create a lead for this CallSid? ───
+      // ─── Enrichment-based dedup ───
+      // twilio-inbound-call creates a placeholder lead the moment the phone
+      // rings, tagged with the Twilio CallSid (which is NOT the same as
+      // Vapi's call.id). We therefore look up an existing lead in two ways:
+      //   (1) by the Vapi call.id in notes (in case a previous attempt tagged it), and
+      //   (2) by the caller's phone number in the last 10 minutes — this is
+      //       what actually catches the Twilio placeholder.
+      // If found, enrich in place instead of creating a duplicate lead.
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const apiKey = Deno.env.get("VAPI_WEBHOOK_SECRET")!;
       const callSid = call.id || "";
 
-      if (callSid) {
-        try {
-          const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-          const supabaseAdmin = createClient(supabaseUrl, serviceKey);
-          const { data: existing } = await supabaseAdmin
+      try {
+        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabaseAdmin = createClient(supabaseUrl, serviceKey);
+
+        let existing: { id: string; customer_id: string | null; notes: string | null; service_type: string | null; priority: string | null; customer_address: string | null } | null = null;
+
+        if (callSid) {
+          const { data } = await supabaseAdmin
             .from("leads")
-            .select("id, customer_id, notes")
+            .select("id, customer_id, notes, service_type, priority, customer_address")
             .eq("customer_phone", callerPhone)
-            .ilike("notes", `%CallSid: ${callSid}%`)
+            .ilike("notes", `%${callSid}%`)
             .order("created_at", { ascending: false })
             .limit(1)
             .maybeSingle();
-
-          if (existing) {
-            console.log(`[vapi-server-event] Lead already exists for CallSid ${callSid}: ${existing.id} — enriching notes only`);
-            const enriched = [
-              existing.notes || "",
-              "",
-              `--- End-of-call update (${durationSeconds}s, ${endedReason}) ---`,
-              summary || "",
-              transcript ? `Transcript: ${transcript.slice(0, 2000)}` : "",
-              recordingUrl ? `Recording: ${recordingUrl}` : "",
-            ].filter(Boolean).join("\n");
-
-            await supabaseAdmin
-              .from("leads")
-              .update({ notes: enriched, service_type: serviceType, priority: mapPriority(urgency) })
-              .eq("id", existing.id);
-
-            return new Response(JSON.stringify({
-              ok: true,
-              event: "end-of-call-report",
-              lead: { success: true, lead_id: existing.id, customer_id: existing.customer_id, deduped: true },
-              caller: { name: callerName, phone: callerPhone, service: serviceType, urgency, duration_seconds: durationSeconds },
-            }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-          }
-        } catch (dedupErr) {
-          console.warn("[vapi-server-event] Dedup check failed, proceeding to create:", dedupErr);
+          existing = data ?? null;
         }
+
+        if (!existing) {
+          const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+          const { data } = await supabaseAdmin
+            .from("leads")
+            .select("id, customer_id, notes, service_type, priority, customer_address")
+            .eq("customer_phone", callerPhone)
+            .gte("created_at", tenMinAgo)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          existing = data ?? null;
+        }
+
+        if (existing) {
+          console.log(`[vapi-server-event] Enriching existing lead ${existing.id} for CallSid ${callSid || "n/a"}`);
+          const enrichedNotes = [
+            existing.notes || "",
+            "",
+            `--- End-of-call update (${durationSeconds}s, ${endedReason}) ---`,
+            `Vapi call: ${callSid || "unknown"}`,
+            summary || "",
+            transcript ? `Transcript: ${transcript.slice(0, 2000)}` : "",
+            recordingUrl ? `Recording: ${recordingUrl}` : "",
+          ].filter(Boolean).join("\n");
+
+          const patch: Record<string, any> = { notes: enrichedNotes };
+          if (!existing.service_type || existing.service_type === "General Inquiry") {
+            patch.service_type = serviceType;
+          }
+          if (!existing.priority || existing.priority === "medium") {
+            patch.priority = mapPriority(urgency);
+          }
+          if (
+            callerInfo.address &&
+            (!existing.customer_address ||
+              existing.customer_address === "Address pending — inbound call" ||
+              existing.customer_address === "Address pending — WhatsApp confirmation sent")
+          ) {
+            patch.customer_address = callerInfo.address;
+          }
+
+          await supabaseAdmin.from("leads").update(patch).eq("id", existing.id);
+
+          return new Response(JSON.stringify({
+            ok: true,
+            event: "end-of-call-report",
+            lead: { success: true, lead_id: existing.id, customer_id: existing.customer_id, enriched: true },
+            caller: { name: callerName, phone: callerPhone, service: serviceType, urgency, duration_seconds: durationSeconds },
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      } catch (dedupErr) {
+        console.warn("[vapi-server-event] Enrichment check failed, proceeding to create:", dedupErr);
       }
+
 
       // ─── Create customer + lead via receive-vapi-lead ───
 
