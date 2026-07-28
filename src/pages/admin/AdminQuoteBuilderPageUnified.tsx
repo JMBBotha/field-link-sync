@@ -773,20 +773,37 @@ function NewQuoteClientPicker({
               No matching clients. Create the customer first from the Customers page.
             </div>
           ) : (
-            filtered.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => onPicked(c.customer_id as string, c.name)}
-                className="w-full text-left px-4 py-2.5 hover:bg-muted/50 border-b last:border-b-0"
-              >
-                <p className="text-sm font-medium truncate">{c.name}</p>
-                <p className="text-[11px] text-muted-foreground">
-                  {c.phone}
-                  {c.email ? ` · ${c.email}` : ""}
-                </p>
-              </button>
-            ))
+            filtered.map((c) => {
+              // Resolve the real customer UUID: prefer customer_id, fall back
+              // to c.id only when it's not a lead-prefixed synthetic id.
+              const resolvedId =
+                c.customer_id && !String(c.customer_id).startsWith("lead-")
+                  ? c.customer_id
+                  : !String(c.id).startsWith("lead-")
+                  ? c.id
+                  : null;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  disabled={!resolvedId}
+                  onClick={() => {
+                    if (!resolvedId) return;
+                    // eslint-disable-next-line no-console
+                    console.log("[QuoteBuilder] Client picked:", { name: c.name, resolvedId, raw: c });
+                    onPicked(resolvedId, c.name);
+                  }}
+                  className="w-full text-left px-4 py-2.5 hover:bg-muted/50 border-b last:border-b-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <p className="text-sm font-medium truncate">{c.name}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {c.phone}
+                    {c.email ? ` · ${c.email}` : ""}
+                    {!resolvedId ? " · (lead-only — create customer first)" : ""}
+                  </p>
+                </button>
+              );
+            })
           )}
         </div>
       </div>
