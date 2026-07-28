@@ -471,10 +471,19 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
       {/* Tab content */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        {activeTab === "normal" &&
+        {ctxLoading && (
+          <div className="h-full flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-white" />
+              <p className="text-sm text-white/80">Loading quote…</p>
+            </div>
+          </div>
+        )}
+        {!ctxLoading && activeTab === "normal" &&
         <div className="h-full flex">
             <div className="flex-1 min-w-0 overflow-y-auto">
               <QuoteBuilderTab
+                initialBaskets={initialBaskets}
                 onBasketsChange={setBaskets}
                 pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
                 onPopOutSelected={() => setFloatingOpen(true)}
