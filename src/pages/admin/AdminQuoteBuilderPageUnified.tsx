@@ -208,41 +208,31 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   const [baskets, setBaskets] = useState<Basket[]>([]);
   const [wizardAreas, setWizardAreas] = useState<QuoteArea[]>([]);
 
+  // Single canonical source of truth for on-screen totals while the user is
+  // editing an unsaved quote: merge Normal-tab baskets with the inline
+  // wizard's areas-as-baskets. Every display (header pill, "Quote Total" bar,
+  // sidebar) reads from THIS list — no parallel calculations.
+  const wizardBaskets = useMemo(() => areasToBaskets(wizardAreas), [wizardAreas]);
+  const displayBaskets = useMemo(
+    () => [...baskets, ...wizardBaskets],
+    [baskets, wizardBaskets],
+  );
+
   // Publish live in-progress totals so the header/summary reflect unsaved
   // wizard/basket edits BEFORE they're persisted. Cleared on unmount.
   const setLive = useQuoteLiveTotals((s) => s.set);
   const resetLive = useQuoteLiveTotals((s) => s.reset);
   useEffect(() => {
-    const basketItemsCount = baskets.reduce(
+    const nonEmpty = displayBaskets.filter((b) => b.items.length > 0);
+    const items = nonEmpty.reduce(
       (s, b) => s + b.items.reduce((qs, i) => qs + i.quantity, 0),
       0,
     );
-    const basketSubtotal = baskets.reduce((s, b) => s + calculateBasketSubtotal(b.items), 0);
-    const nonEmptyBaskets = baskets.filter((b) => b.items.length > 0).length;
-
-    const wizardItemsCount = wizardAreas.reduce(
-      (s, a) =>
-        s +
-        a.acUnits.reduce((q, u) => q + u.quantity, 0) +
-        a.materials.reduce(
-          (q, m) => q + (m.pricingMode === "unit" ? m.unitQuantity : 1),
-          0,
-        ) +
-        a.consumables.reduce((q, c) => q + c.quantity, 0),
-      0,
-    );
-    const wizardSubtotal = wizardAreas.reduce((s, a) => s + computeAreaSubtotal(a), 0);
-    const nonEmptyWizardAreas = wizardAreas.filter(
-      (a) => a.acUnits.length + a.materials.length + a.consumables.length > 0,
-    ).length;
-
-    setLive({
-      items: basketItemsCount + wizardItemsCount,
-      zones: nonEmptyBaskets + nonEmptyWizardAreas,
-      subtotal: basketSubtotal + wizardSubtotal,
-    });
-  }, [baskets, wizardAreas, setLive]);
+    const subtotal = nonEmpty.reduce((s, b) => s + calculateBasketSubtotal(b.items), 0);
+    setLive({ items, zones: nonEmpty.length, subtotal });
+  }, [displayBaskets, setLive]);
   useEffect(() => () => resetLive(), [resetLive]);
+
 
   // Area tab palette state
   const [areaSearch, setAreaSearch] = useState("");
