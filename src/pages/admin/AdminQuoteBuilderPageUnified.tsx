@@ -720,6 +720,80 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
 }
 
+/* ─── Client picker shown when a new quote is requested without a client ─── */
+function NewQuoteClientPicker({
+  onPicked,
+  onCancel,
+}: {
+  onPicked: (customerId: string, customerName: string) => void;
+  onCancel: () => void;
+}) {
+  const { data: clients = [], isLoading } = useUnifiedClients();
+  const [search, setSearch] = useState("");
+  const filtered = useMemo(() => {
+    const list = clients.filter((c) => !!c.customer_id); // exclude lead-only records with no customer row
+    if (!search.trim()) return list.slice(0, 30);
+    const q = search.toLowerCase();
+    return list
+      .filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          c.phone.includes(q) ||
+          (c.email && c.email.toLowerCase().includes(q))
+      )
+      .slice(0, 30);
+  }, [clients, search]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "linear-gradient(135deg, #1e6bb8 0%, #d0d0d0 100%)" }}>
+      <div className="w-full max-w-md rounded-2xl bg-background shadow-2xl overflow-hidden">
+        <div className="px-5 py-4 border-b flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold">Select a client</h2>
+            <p className="text-xs text-muted-foreground">A quote must be linked to a client before it can be created.</p>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onCancel} className="h-8 w-8">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="p-4">
+          <Input
+            autoFocus
+            placeholder="Search by name, phone or email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-9 text-sm"
+          />
+        </div>
+        <div className="max-h-80 overflow-y-auto border-t">
+          {isLoading ? (
+            <div className="p-6 text-center text-xs text-muted-foreground">Loading clients…</div>
+          ) : filtered.length === 0 ? (
+            <div className="p-6 text-center text-xs text-muted-foreground">
+              No matching clients. Create the customer first from the Customers page.
+            </div>
+          ) : (
+            filtered.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => onPicked(c.customer_id as string, c.name)}
+                className="w-full text-left px-4 py-2.5 hover:bg-muted/50 border-b last:border-b-0"
+              >
+                <p className="text-sm font-medium truncate">{c.name}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {c.phone}
+                  {c.email ? ` · ${c.email}` : ""}
+                </p>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Outer wrapper: loads existing / finds latest draft / creates new, then mounts provider ─── */
 const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderMode }) => {
   const [searchParams] = useSearchParams();
@@ -728,12 +802,45 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
   const paramCustomerId = searchParams.get("customerId");
   const [quoteId, setQuoteId] = useState<string | null>(paramQuoteId);
   const [creating, setCreating] = useState(!paramQuoteId);
+  // Set when the resolver determines it needs a client from the user before it can insert.
+  const [needsClient, setNeedsClient] = useState(false);
+  // Stash the drafts that should be superseded once the user picks a client & we insert.
+  const pendingSupersedeRef = useRef<string[]>([]);
   const navigate = useNavigate();
+
+  // Insert the draft with a resolved customer_id, then supersede any stale drafts.
+  const createDraft = useCallback(
+    async (userId: string, resolvedCustomerId: string, toSupersede: string[]) => {
+      const insertPayload: Record<string, unknown> = {
+        sales_engineer_id: userId,
+        status: "draft",
+        subtotal: 0,
+        vat_rate: 0.15,
+        vat_amount: 0,
+        total: 0,
+        customer_id: resolvedCustomerId,
+      };
+      if (paramLeadId) insertPayload.lead_id = paramLeadId;
+
+      const { data, error } = await (supabase.from("quotes") as any)
+        .insert(insertPayload)
+        .select("id")
+        .single();
+      if (error) throw error;
+
+      for (const oldId of toSupersede) {
+        await (supabase.from("quotes") as any)
+          .update({ status: "superseded", superseded_by: data.id })
+          .eq("id", oldId);
+      }
+      return data.id as string;
+    },
+    [paramLeadId]
+  );
 
   // Resolve the quote to open: prefer explicit quoteId; else find an
   // existing draft for the lead/customer (empty-quote safeguard); else
-  // create a new draft. This guarantees one quote per lead/customer/draft
-  // instead of a fresh blank quote every time.
+  // create a new draft — but only when a customer_id can be resolved.
   useEffect(() => {
     if (paramQuoteId) return;
     let cancelled = false;
@@ -750,18 +857,13 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
 
         const RECENT_EMPTY_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
 
-        // A draft has "real" data only if it has at least one non-placeholder
-        // item with qty > 0 or rate > 0, OR at least one real area.
         const draftHasRealData = async (draftId: string): Promise<boolean> => {
           const [itemsRes, areasRes] = await Promise.all([
             supabase
               .from("quote_items")
               .select("id, source, quantity, unit_price, total_price")
               .eq("quote_id", draftId),
-            supabase
-              .from("quote_areas")
-              .select("id")
-              .eq("quote_id", draftId),
+            supabase.from("quote_areas").select("id").eq("quote_id", draftId),
           ]);
           const realItems = (itemsRes.data ?? []).filter((i: any) => {
             if (!i || i.source === "legacy_placeholder") return false;
@@ -774,9 +876,6 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
           return realItems.length > 0 || realAreas.length > 0;
         };
 
-        // Empty drafts created recently by the current user are still reusable
-        // — this stops "start quote → navigate away → come back" from spawning
-        // duplicate blank drafts every time.
         const isRecentEmptyDraft = (draft: {
           created_at?: string | null;
           sales_engineer_id?: string | null;
@@ -787,13 +886,22 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
           return age >= 0 && age <= RECENT_EMPTY_WINDOW_MS;
         };
 
-        // Supersede an old placeholder-only draft, pointing it at the new one.
-        // Uses status='superseded' so list/KPI queries can exclude it cleanly.
         const supersedeDraft = async (draftId: string, newQuoteId: string) => {
           await (supabase.from("quotes") as any)
             .update({ status: "superseded", superseded_by: newQuoteId })
             .eq("id", draftId);
         };
+
+        // Resolve customer_id up front: explicit param wins; else derive from lead.
+        let resolvedCustomerId: string | null = paramCustomerId || null;
+        if (!resolvedCustomerId && paramLeadId) {
+          const { data: leadRow } = await supabase
+            .from("leads")
+            .select("customer_id")
+            .eq("id", paramLeadId)
+            .maybeSingle();
+          resolvedCustomerId = (leadRow?.customer_id as string) || null;
+        }
 
         // Fetch recent drafts scoped to this lead/customer.
         const fetchDrafts = async () => {
@@ -803,19 +911,17 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
               .select("id, created_at, sales_engineer_id")
               .eq("lead_id", paramLeadId)
               .eq("status", "draft")
-              .neq("status", "superseded")
               .order("created_at", { ascending: false })
               .limit(5);
             return data ?? [];
           }
-          if (paramCustomerId) {
+          if (resolvedCustomerId) {
             const { data } = await supabase
               .from("quotes")
               .select("id, created_at, sales_engineer_id")
-              .eq("customer_id", paramCustomerId)
+              .eq("customer_id", resolvedCustomerId)
               .is("lead_id", null)
               .eq("status", "draft")
-              .neq("status", "superseded")
               .order("created_at", { ascending: false })
               .limit(5);
             return data ?? [];
@@ -830,8 +936,6 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
         for (const d of drafts) {
           const hasReal = await draftHasRealData(d.id);
           if (hasReal || isRecentEmptyDraft(d as any)) {
-            // Reuse this draft; supersede any older placeholder-only drafts
-            // we already decided to drop, pointing them at the reused id.
             for (const oldId of toSupersede) await supersedeDraft(oldId, d.id);
             if (!cancelled) {
               setQuoteId(d.id);
@@ -842,43 +946,71 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
           toSupersede.push(d.id);
         }
 
-        // Pass 2: nothing reusable — create the new draft FIRST, then
-        // supersede stale drafts pointing at the new id. Only then flip
-        // state so the builder mounts against the correct quoteId.
-        const insertPayload: Record<string, unknown> = {
-          sales_engineer_id: userId,
-          status: "draft",
-          subtotal: 0,
-          vat_rate: 0.15,
-          vat_amount: 0,
-          total: 0,
-        };
-        if (paramLeadId) insertPayload.lead_id = paramLeadId;
-        if (paramCustomerId) insertPayload.customer_id = paramCustomerId;
-
-        const { data, error } = await (supabase.from("quotes") as any)
-          .insert(insertPayload)
-          .select("id")
-          .single();
-
-        if (error) throw error;
-
-        // Supersede stale placeholder-only drafts, linked to the new quote.
-        for (const oldId of toSupersede) await supersedeDraft(oldId, data.id);
-
-        if (!cancelled) {
-          setQuoteId(data.id);
-          setCreating(false);
+        // Pass 2: no reusable draft. We must have a customer_id to insert —
+        // the DB trigger `enforce_quote_customer_id` rejects NULLs. If none
+        // was resolved, prompt the user to pick a client instead of hitting
+        // the raw constraint error.
+        if (!resolvedCustomerId) {
+          if (!cancelled) {
+            pendingSupersedeRef.current = toSupersede;
+            setNeedsClient(true);
+            setCreating(false);
+          }
+          return;
         }
 
+        const newId = await createDraft(userId, resolvedCustomerId, toSupersede);
+        if (!cancelled) {
+          setQuoteId(newId);
+          setCreating(false);
+        }
       } catch (err: any) {
-        toast({ title: "Failed to open quote", description: err.message, variant: "destructive" });
+        toast({
+          title: "Failed to open quote",
+          description: err?.message || "Please try again.",
+          variant: "destructive",
+        });
         if (!cancelled) navigate(mode === "agent" ? "/field" : "/admin/quotes");
       }
     })();
 
-    return () => { cancelled = true; };
-  }, [paramQuoteId, paramLeadId, paramCustomerId, navigate, mode]);
+    return () => {
+      cancelled = true;
+    };
+  }, [paramQuoteId, paramLeadId, paramCustomerId, navigate, mode, createDraft]);
+
+  const handleClientPicked = useCallback(
+    async (customerId: string) => {
+      setNeedsClient(false);
+      setCreating(true);
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData?.user?.id;
+        if (!userId) throw new Error("You must be logged in.");
+        const newId = await createDraft(userId, customerId, pendingSupersedeRef.current);
+        pendingSupersedeRef.current = [];
+        setQuoteId(newId);
+        setCreating(false);
+      } catch (err: any) {
+        toast({
+          title: "Failed to create quote",
+          description: err?.message || "Please try again.",
+          variant: "destructive",
+        });
+        navigate(mode === "agent" ? "/field" : "/admin/quotes");
+      }
+    },
+    [createDraft, navigate, mode]
+  );
+
+  if (needsClient) {
+    return (
+      <NewQuoteClientPicker
+        onPicked={handleClientPicked}
+        onCancel={() => navigate(mode === "agent" ? "/field" : "/admin/quotes")}
+      />
+    );
+  }
 
   if (creating || !quoteId) {
     return (
