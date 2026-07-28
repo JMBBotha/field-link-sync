@@ -522,16 +522,22 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
 }
 
-/* ─── Outer wrapper: creates/loads quote, then mounts provider ─── */
+/* ─── Outer wrapper: loads existing / finds latest draft / creates new, then mounts provider ─── */
 const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderMode }) => {
   const [searchParams] = useSearchParams();
-  const [quoteId, setQuoteId] = useState<string | null>(searchParams.get("quoteId"));
-  const [creating, setCreating] = useState(!quoteId);
+  const paramQuoteId = searchParams.get("quoteId");
+  const paramLeadId = searchParams.get("leadId");
+  const paramCustomerId = searchParams.get("customerId");
+  const [quoteId, setQuoteId] = useState<string | null>(paramQuoteId);
+  const [creating, setCreating] = useState(!paramQuoteId);
   const navigate = useNavigate();
 
-  // Auto-create a draft quote if no quoteId is provided
+  // Resolve the quote to open: prefer explicit quoteId; else find an
+  // existing draft for the lead/customer (empty-quote safeguard); else
+  // create a new draft. This guarantees one quote per lead/customer/draft
+  // instead of a fresh blank quote every time.
   useEffect(() => {
-    if (quoteId) return;
+    if (paramQuoteId) return;
     let cancelled = false;
 
     (async () => {
@@ -544,17 +550,57 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
           return;
         }
 
-        const { data, error } = await (supabase.from("quotes") as any).
-        insert({
+        // 1) Existing draft for this lead? Reuse it.
+        if (paramLeadId) {
+          const { data: existing } = await supabase
+            .from("quotes")
+            .select("id")
+            .eq("lead_id", paramLeadId)
+            .eq("status", "draft")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (!cancelled && existing?.id) {
+            setQuoteId(existing.id);
+            setCreating(false);
+            return;
+          }
+        }
+
+        // 2) Existing draft for this customer (no lead attached)? Reuse it.
+        if (!paramLeadId && paramCustomerId) {
+          const { data: existing } = await supabase
+            .from("quotes")
+            .select("id")
+            .eq("customer_id", paramCustomerId)
+            .is("lead_id", null)
+            .eq("status", "draft")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (!cancelled && existing?.id) {
+            setQuoteId(existing.id);
+            setCreating(false);
+            return;
+          }
+        }
+
+        // 3) Nothing to reuse — create a fresh draft, pre-linking lead/customer.
+        const insertPayload: Record<string, unknown> = {
           sales_engineer_id: userId,
           status: "draft",
           subtotal: 0,
           vat_rate: 0.15,
           vat_amount: 0,
-          total: 0
-        }).
-        select("id").
-        single();
+          total: 0,
+        };
+        if (paramLeadId) insertPayload.lead_id = paramLeadId;
+        if (paramCustomerId) insertPayload.customer_id = paramCustomerId;
+
+        const { data, error } = await (supabase.from("quotes") as any)
+          .insert(insertPayload)
+          .select("id")
+          .single();
 
         if (error) throw error;
         if (!cancelled) {
@@ -562,13 +608,13 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
           setCreating(false);
         }
       } catch (err: any) {
-        toast({ title: "Failed to create quote", description: err.message, variant: "destructive" });
+        toast({ title: "Failed to open quote", description: err.message, variant: "destructive" });
         if (!cancelled) navigate(mode === "agent" ? "/field" : "/admin/quotes");
       }
     })();
 
-    return () => {cancelled = true;};
-  }, [quoteId, navigate]);
+    return () => { cancelled = true; };
+  }, [paramQuoteId, paramLeadId, paramCustomerId, navigate, mode]);
 
   if (creating || !quoteId) {
     return (

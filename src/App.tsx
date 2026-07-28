@@ -187,11 +187,12 @@ const App = () => (
                   </Route>
 
 
-                  {/* Full-page Quote Builder (outside AdminLayout for full-bleed) */}
-                  <Route path="/admin/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><FBQuoteBuilderPage mode="admin" /></RequireRole>} />
+                  {/* Unified Quote Builder — single source of truth (quote_items + quote_areas). */}
+                  <Route path="/admin/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminQuoteBuilderPageUnified mode="admin" /></RequireRole>} />
 
                   {/* Agent Quote Builder — same component, agent mode */}
-                  <Route path="/field/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher", "field_agent"]}><FBQuoteBuilderPage mode="agent" /></RequireRole>} />
+                  <Route path="/field/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher", "field_agent"]}><AdminQuoteBuilderPageUnified mode="agent" /></RequireRole>} />
+
 
                   {/* Field agent My Jobs — accessible without AdminLayout */}
                   <Route path="/field/my-jobs" element={<RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><AdminMyJobsPage /></RequireRole>} />
