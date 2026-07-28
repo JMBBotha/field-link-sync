@@ -168,6 +168,7 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
 /* ─── Inner content (needs context) ─── */
 function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode }) {
   const navigate = useNavigate();
+  const { items: ctxItems, areas: ctxAreas, loading: ctxLoading } = useQuoteContext();
   const [activeTab, setActiveTab] = useState("normal");
   const [areaWizardOpen, setAreaWizardOpen] = useState(false);
   const pdfSearchRef = useRef<((term: string) => void) | null>(null);
@@ -238,6 +239,76 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   }, [products, areaCategoryFilter, areaDebouncedSearch]);
 
   const areaFavorites = useMemo(() => new Set(products.filter((p) => p.is_pinned).map((p) => p.id)), [products]);
+
+  /**
+   * Hydrate baskets from the unified quote (context items+areas) so the
+   * "Build" tab body reflects the same data the header summary reads. Without
+   * this, opening an existing quote left the body at its default empty basket
+   * even though the header showed the real totals — the split-brain bug.
+   *
+   * We build stub PaletteProducts using the stored unit_price so per-item
+   * totals match `quote_items.total_price` exactly (no markup recompute).
+   */
+  const initialBaskets = useMemo<Basket[] | null>(() => {
+    if (ctxLoading) return null;
+    if (ctxItems.length === 0 && ctxAreas.length === 0) {
+      return [{ id: "basket-1", name: "Zone 1", items: [] }];
+    }
+    const productById = new Map(products.map((p) => [p.id, p]));
+    const stub = (it: typeof ctxItems[number]): PaletteProduct => ({
+      id: it.product_id || it.id,
+      product_code: it.item_number || "",
+      short_name: it.item_name,
+      brand: "",
+      product_category: it.item_type || "",
+      category: it.item_type || "",
+      description: it.description || "",
+      cost_price: it.unit_price,
+      cost_excl_vat: it.unit_price,
+      cost_incl_vat: 0,
+      selling_price: it.unit_price,
+      supplier_name: it.supplier || "",
+      supplier_type: "both",
+      supplier_discount_percent: null,
+      markup_percent: 0,
+      default_markup_percent: 0,
+      is_pinned: false,
+      pin_order: null,
+      price_per_metre: it.length ? it.unit_price : null,
+      sold_in_length: !!it.length,
+      unit_length: it.length || null,
+      pipe_size: null,
+      is_material_favorite: false,
+      pack_qty: null,
+    } as unknown as PaletteProduct);
+    const toItem = (it: typeof ctxItems[number]) => {
+      const product = (it.product_id && productById.get(it.product_id)) || stub(it);
+      return {
+        instanceId: it.id,
+        product: stub(it), // always use stub so total = stored unit_price * qty
+        quantity: it.quantity,
+        ...(it.length ? { length: it.length } : {}),
+        ...(it.is_bundle ? { isBundle: true } : {}),
+      };
+    };
+    const groups = new Map<string, typeof ctxItems>();
+    for (const a of ctxAreas) groups.set(a.id, [] as any);
+    const unassigned: typeof ctxItems = [] as any;
+    for (const it of ctxItems) {
+      if (it.parent_item_id) continue;
+      if (it.area_id && groups.has(it.area_id)) (groups.get(it.area_id) as any).push(it);
+      else (unassigned as any).push(it);
+    }
+    const result: Basket[] = ctxAreas.map((a) => ({
+      id: a.id,
+      name: a.name,
+      items: (groups.get(a.id) || []).map(toItem),
+    }));
+    if (unassigned.length) result.push({ id: "unassigned", name: "General", items: unassigned.map(toItem) });
+    if (result.length === 0) result.push({ id: "basket-1", name: "Zone 1", items: [] });
+    return result;
+  }, [ctxLoading, ctxItems, ctxAreas, products]);
+
 
   // Refs to the inline builder's methods
   const areaAddProductRef = useRef<((product: PaletteProduct) => void) | null>(null);
@@ -400,10 +471,19 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
       {/* Tab content */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        {activeTab === "normal" &&
+        {ctxLoading && (
+          <div className="h-full flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-white" />
+              <p className="text-sm text-white/80">Loading quote…</p>
+            </div>
+          </div>
+        )}
+        {!ctxLoading && activeTab === "normal" &&
         <div className="h-full flex">
             <div className="flex-1 min-w-0 overflow-y-auto">
               <QuoteBuilderTab
+                initialBaskets={initialBaskets}
                 onBasketsChange={setBaskets}
                 pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
                 onPopOutSelected={() => setFloatingOpen(true)}
@@ -436,7 +516,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             </div>
           </div>
         }
-        {activeTab === "visual" &&
+        {!ctxLoading && activeTab === "visual" &&
         <div className="h-full flex">
             <div className="flex-1 min-w-0 overflow-hidden">
               <VisualCatalogPanel
@@ -457,7 +537,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             </div>
           </div>
         }
-        {activeTab === "area" &&
+        {!ctxLoading && activeTab === "area" &&
         <div className="h-full flex">
             {/* Product Palette - left sidebar */}
             <div className="w-[280px] shrink-0 flex flex-col min-h-0 overflow-hidden pl-2 py-1">
