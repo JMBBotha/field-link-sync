@@ -168,6 +168,7 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
 /* ─── Inner content (needs context) ─── */
 function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode }) {
   const navigate = useNavigate();
+  const { items: ctxItems, areas: ctxAreas, loading: ctxLoading } = useQuoteContext();
   const [activeTab, setActiveTab] = useState("normal");
   const [areaWizardOpen, setAreaWizardOpen] = useState(false);
   const pdfSearchRef = useRef<((term: string) => void) | null>(null);
