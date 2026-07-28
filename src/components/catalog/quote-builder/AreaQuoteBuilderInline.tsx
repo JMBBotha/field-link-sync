@@ -46,6 +46,9 @@ interface Props {
   /** Ref that parent can use to clear all areas */
   onClearAllRef?: React.MutableRefObject<(() => void) | null>;
   pdfSelection?: PdfSelectionHandlers;
+  /** Seed areas from an existing quote so the wizard reflects real DB items
+   *  instead of an empty "Additional Items/Services" placeholder. */
+  initialAreas?: QuoteArea[] | null;
 }
 
 const DRAFT_STORAGE_KEY = "quote-builder-draft";
@@ -70,13 +73,24 @@ function clearDraftStorage() {
   try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch { /* ignore */ }
 }
 
-export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPdfSearch, onAreasChange, onAddProductRef, onDropProductToAreaRef, onDropBundleToAreaRef, onAddAreaRef, onApplyTemplateRef, onClearAllRef, pdfSelection }: Props) {
+export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPdfSearch, onAreasChange, onAddProductRef, onDropProductToAreaRef, onDropBundleToAreaRef, onAddAreaRef, onApplyTemplateRef, onClearAllRef, pdfSelection, initialAreas }: Props) {
   const [currentStep, setCurrentStep] = useState(0);
   const [areas, setAreas] = useState<QuoteArea[]>(() => {
+    if (initialAreas && initialAreas.length > 0) return initialAreas;
     const draft = loadDraftFromStorage();
     if (draft) return draft.areas;
     return [createEmptyArea("Additional Items/Services")];
   });
+
+  // Hydrate from parent-provided areas exactly once when they arrive
+  // (i.e. after the quote finishes loading from the DB).
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    if (!initialAreas || initialAreas.length === 0) return;
+    hydratedRef.current = true;
+    setAreas(initialAreas);
+  }, [initialAreas]);
 
   // Load draft step on mount
   const initialised = useRef(false);
@@ -84,7 +98,7 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
     if (initialised.current) return;
     initialised.current = true;
     const draft = loadDraftFromStorage();
-    if (draft) {
+    if (draft && !hydratedRef.current) {
       setCurrentStep(draft.step);
       toast.info("Draft restored from last session");
     }

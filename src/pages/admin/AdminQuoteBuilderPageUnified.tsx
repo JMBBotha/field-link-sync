@@ -31,6 +31,7 @@ import AreaQuoteBuilderInline from "@/components/catalog/quote-builder/AreaQuote
 import AreaQuoteSummary from "@/components/catalog/quote-builder/AreaQuoteSummary";
 import FloatingSelectedItems from "@/components/catalog/quote-builder/FloatingSelectedItems";
 import type { QuoteArea } from "@/components/catalog/quote-builder/quoteWizardTypes";
+import { createEmptyArea, computeAreaSubtotal, detectBTU } from "@/components/catalog/quote-builder/quoteWizardTypes";
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
 
 export type QuoteBuilderMode = "admin" | "agent";
@@ -60,10 +61,19 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
     slice(0, 8);
   }, [clients, clientSearch]);
 
-  const totalItems = items.filter((i) => !i.parent_item_id).length;
-  const totalCost = items.
-  filter((i) => !i.parent_item_id).
-  reduce((s, i) => s + (i.total_price ?? i.unit_price * i.quantity), 0);
+  const topLevel = items.filter((i) => !i.parent_item_id);
+  const totalItems = topLevel.length;
+  const totalCost = topLevel.reduce((s, i) => s + (i.total_price ?? i.unit_price * i.quantity), 0);
+  // Zone count = declared areas + a synthetic "General" zone when items have no area_id.
+  // Matches the body's grouping so the header badge and body always agree.
+  const zoneIds = new Set<string>();
+  let hasUnassigned = false;
+  for (const it of topLevel) {
+    if (it.area_id) zoneIds.add(it.area_id);
+    else hasUnassigned = true;
+  }
+  for (const a of areas) zoneIds.add(a.id);
+  const zoneCount = zoneIds.size + (hasUnassigned ? 1 : 0);
 
   return (
     <header className="shrink-0 h-14 flex items-center justify-between px-4 shadow-sm" style={{ backgroundColor: "#0077B6" }}>
@@ -148,7 +158,7 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
 
         <div className="hidden md:flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5">
           <span className="text-xs text-white/70">
-            {totalItems} items · {areas.length} zones
+            {totalItems} items · {zoneCount} zones
           </span>
           <span className="text-sm font-bold text-white ml-1">
             R{totalCost.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
@@ -307,6 +317,89 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     if (unassigned.length) result.push({ id: "unassigned", name: "General", items: unassigned.map(toItem) });
     if (result.length === 0) result.push({ id: "basket-1", name: "Zone 1", items: [] });
     return result;
+  }, [ctxLoading, ctxItems, ctxAreas, products]);
+
+  /**
+   * Seed the Area/Wizard builder with real DB items so the Areas step shows
+   * the actual line items rather than the "Additional Items/Services"
+   * placeholder. We classify each item into acUnits / materials / consumables
+   * based on category and length.
+   */
+  const initialWizardAreas = useMemo<QuoteArea[] | null>(() => {
+    if (ctxLoading) return null;
+    if (ctxItems.length === 0 && ctxAreas.length === 0) return null;
+    const productById = new Map(products.map((p) => [p.id, p]));
+    const stubProduct = (it: typeof ctxItems[number]): PaletteProduct => ({
+      id: it.product_id || it.id,
+      product_code: it.item_number || "",
+      short_name: it.item_name,
+      brand: "",
+      product_category: it.item_type || "",
+      category: it.item_type || "",
+      description: it.description || "",
+      cost_price: it.unit_price,
+      cost_excl_vat: it.unit_price,
+      cost_incl_vat: 0,
+      selling_price: it.unit_price,
+      supplier_name: it.supplier || "",
+      supplier_type: "both",
+      supplier_discount_percent: null,
+      markup_percent: 0,
+      default_markup_percent: 0,
+      is_pinned: false,
+      pin_order: null,
+      price_per_metre: it.length ? it.unit_price : null,
+      sold_in_length: !!it.length,
+      unit_length: it.length || null,
+      pipe_size: null,
+      is_material_favorite: false,
+      pack_qty: null,
+    } as unknown as PaletteProduct);
+    const topLevel = ctxItems.filter((i) => !i.parent_item_id);
+    // Group items by area_id (null → default "General" bucket)
+    const buckets = new Map<string | null, typeof ctxItems>();
+    for (const a of ctxAreas) buckets.set(a.id, [] as any);
+    for (const it of topLevel) {
+      const key = it.area_id && buckets.has(it.area_id) ? it.area_id : null;
+      if (!buckets.has(key)) buckets.set(key, [] as any);
+      (buckets.get(key) as any).push(it);
+    }
+    const areaNameFor = (id: string | null): string => {
+      if (!id) return ctxAreas.length === 0 ? "Additional Items/Services" : "General";
+      return ctxAreas.find((a) => a.id === id)?.name || "General";
+    };
+    const result: QuoteArea[] = [];
+    for (const [key, list] of buckets) {
+      const base = createEmptyArea(areaNameFor(key));
+      for (const it of list) {
+        const product = (it.product_id && productById.get(it.product_id)) || stubProduct(it);
+        const cat = (product.product_category || product.category || "").toLowerCase();
+        const isAC = cat.includes("air") || cat.includes(" ac") || cat === "ac" || cat.includes("hvac");
+        if (isAC) {
+          base.acUnits.push({ id: it.id, product: stubProduct(it), btu: detectBTU(product), quantity: it.quantity });
+        } else if (it.length && it.length > 0) {
+          const perM = it.unit_price;
+          base.materials.push({
+            id: it.id,
+            product: stubProduct(it),
+            defaultLength: it.length,
+            adjustedLength: it.length,
+            costPerMeter: perM,
+            totalCost: perM * it.length,
+            pricingMode: "length",
+            unitQuantity: 1,
+          });
+        } else {
+          base.consumables.push({ id: it.id, product: stubProduct(it), quantity: it.quantity });
+        }
+      }
+      base.subtotal = computeAreaSubtotal(base);
+      // Only include non-empty areas, plus any explicitly declared ctxAreas
+      if (base.acUnits.length || base.materials.length || base.consumables.length || key) {
+        result.push(base);
+      }
+    }
+    return result.length > 0 ? result : null;
   }, [ctxLoading, ctxItems, ctxAreas, products]);
 
 
@@ -501,6 +594,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
                     onApplyTemplateRef={areaApplyTemplateRef}
                     onClearAllRef={areaClearAllRef}
                     pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
+                    initialAreas={initialWizardAreas}
                   />
                 }
                 areaAddZone={() => areaAddZoneRef.current?.()}
@@ -571,6 +665,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
                 onAreasChange={setWizardAreas}
                 onAddProductRef={areaAddProductRef}
                 pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
+                initialAreas={initialWizardAreas}
               />
             </div>
             {/* Summary - right sidebar */}
