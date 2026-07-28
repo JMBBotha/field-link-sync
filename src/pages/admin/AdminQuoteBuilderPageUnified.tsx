@@ -336,7 +336,9 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
    */
   const initialWizardAreas = useMemo<QuoteArea[] | null>(() => {
     if (ctxLoading) return null;
-    if (ctxItems.length === 0 && ctxAreas.length === 0) return null;
+    // Legacy placeholder rows are not real items — never hydrate them into the wizard.
+    const realItems = ctxItems.filter((i) => i.source !== "legacy_placeholder" && !i.parent_item_id);
+    if (realItems.length === 0 && ctxAreas.length === 0) return null;
     const productById = new Map(products.map((p) => [p.id, p]));
     const stubProduct = (it: typeof ctxItems[number]): PaletteProduct => ({
       id: it.product_id || it.id,
