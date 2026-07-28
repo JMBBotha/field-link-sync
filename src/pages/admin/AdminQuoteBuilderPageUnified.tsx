@@ -373,9 +373,9 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       items: (groups.get(a.id) || []).map(toItem),
     }));
     if (unassigned.length) result.push({ id: "unassigned", name: "General", items: unassigned.map(toItem) });
-    if (result.length === 0) result.push({ id: "basket-1", name: "Zone 1", items: [] });
     return result;
   }, [ctxLoading, ctxItems, ctxAreas, products]);
+
 
   /**
    * Seed the Area/Wizard builder with real DB items so the Areas step shows
