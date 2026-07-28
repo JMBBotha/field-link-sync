@@ -748,78 +748,103 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
           return;
         }
 
-        // Helper: only reuse a draft if it has real items or real areas.
-        // Placeholder-only drafts (legacy_placeholder rows) must not be reused.
+        const RECENT_EMPTY_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+        // A draft has "real" data only if it has at least one non-placeholder
+        // item with qty > 0 or rate > 0, OR at least one real area.
         const draftHasRealData = async (draftId: string): Promise<boolean> => {
           const [itemsRes, areasRes] = await Promise.all([
             supabase
               .from("quote_items")
-              .select("id, source")
+              .select("id, source, quantity, unit_price, total_price")
               .eq("quote_id", draftId),
             supabase
               .from("quote_areas")
               .select("id")
               .eq("quote_id", draftId),
           ]);
-          const realItems = (itemsRes.data ?? []).filter(
-            (i: any) => i && i.source !== "legacy_placeholder"
-          );
+          const realItems = (itemsRes.data ?? []).filter((i: any) => {
+            if (!i || i.source === "legacy_placeholder") return false;
+            const qty = Number(i.quantity ?? 0);
+            const rate = Number(i.unit_price ?? 0);
+            const total = Number(i.total_price ?? 0);
+            return qty > 0 || rate > 0 || total > 0;
+          });
           const realAreas = (areasRes.data ?? []).filter(Boolean);
           return realItems.length > 0 || realAreas.length > 0;
         };
 
-        // Mark a placeholder-only draft as superseded so it isn't picked again.
-        const supersedeDraft = async (draftId: string) => {
+        // Empty drafts created recently by the current user are still reusable
+        // — this stops "start quote → navigate away → come back" from spawning
+        // duplicate blank drafts every time.
+        const isRecentEmptyDraft = (draft: {
+          created_at?: string | null;
+          sales_engineer_id?: string | null;
+        }): boolean => {
+          if (draft.sales_engineer_id !== userId) return false;
+          if (!draft.created_at) return false;
+          const age = Date.now() - new Date(draft.created_at).getTime();
+          return age >= 0 && age <= RECENT_EMPTY_WINDOW_MS;
+        };
+
+        // Supersede an old placeholder-only draft, pointing it at the new one.
+        // Uses status='superseded' so list/KPI queries can exclude it cleanly.
+        const supersedeDraft = async (draftId: string, newQuoteId: string) => {
           await (supabase.from("quotes") as any)
-            .update({ status: "archived" })
+            .update({ status: "superseded", superseded_by: newQuoteId })
             .eq("id", draftId);
         };
 
-        // 1) Existing draft for this lead? Reuse only if it has real data.
-        if (paramLeadId) {
-          const { data: drafts } = await supabase
-            .from("quotes")
-            .select("id")
-            .eq("lead_id", paramLeadId)
-            .eq("status", "draft")
-            .order("created_at", { ascending: false })
-            .limit(5);
-          for (const d of drafts ?? []) {
-            if (await draftHasRealData(d.id)) {
-              if (!cancelled) {
-                setQuoteId(d.id);
-                setCreating(false);
-              }
-              return;
-            }
-            await supersedeDraft(d.id);
+        // Fetch recent drafts scoped to this lead/customer.
+        const fetchDrafts = async () => {
+          if (paramLeadId) {
+            const { data } = await supabase
+              .from("quotes")
+              .select("id, created_at, sales_engineer_id")
+              .eq("lead_id", paramLeadId)
+              .eq("status", "draft")
+              .neq("status", "superseded")
+              .order("created_at", { ascending: false })
+              .limit(5);
+            return data ?? [];
           }
+          if (paramCustomerId) {
+            const { data } = await supabase
+              .from("quotes")
+              .select("id, created_at, sales_engineer_id")
+              .eq("customer_id", paramCustomerId)
+              .is("lead_id", null)
+              .eq("status", "draft")
+              .neq("status", "superseded")
+              .order("created_at", { ascending: false })
+              .limit(5);
+            return data ?? [];
+          }
+          return [];
+        };
+
+        const drafts = await fetchDrafts();
+
+        // Pass 1: reuse a draft with real data OR a recent-empty draft of ours.
+        const toSupersede: string[] = [];
+        for (const d of drafts) {
+          const hasReal = await draftHasRealData(d.id);
+          if (hasReal || isRecentEmptyDraft(d as any)) {
+            // Reuse this draft; supersede any older placeholder-only drafts
+            // we already decided to drop, pointing them at the reused id.
+            for (const oldId of toSupersede) await supersedeDraft(oldId, d.id);
+            if (!cancelled) {
+              setQuoteId(d.id);
+              setCreating(false);
+            }
+            return;
+          }
+          toSupersede.push(d.id);
         }
 
-        // 2) Existing draft for this customer (no lead attached)? Same rule.
-        if (!paramLeadId && paramCustomerId) {
-          const { data: drafts } = await supabase
-            .from("quotes")
-            .select("id")
-            .eq("customer_id", paramCustomerId)
-            .is("lead_id", null)
-            .eq("status", "draft")
-            .order("created_at", { ascending: false })
-            .limit(5);
-          for (const d of drafts ?? []) {
-            if (await draftHasRealData(d.id)) {
-              if (!cancelled) {
-                setQuoteId(d.id);
-                setCreating(false);
-              }
-              return;
-            }
-            await supersedeDraft(d.id);
-          }
-        }
-
-
-        // 3) Nothing to reuse — create a fresh draft, pre-linking lead/customer.
+        // Pass 2: nothing reusable — create the new draft FIRST, then
+        // supersede stale drafts pointing at the new id. Only then flip
+        // state so the builder mounts against the correct quoteId.
         const insertPayload: Record<string, unknown> = {
           sales_engineer_id: userId,
           status: "draft",
@@ -837,10 +862,15 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
           .single();
 
         if (error) throw error;
+
+        // Supersede stale placeholder-only drafts, linked to the new quote.
+        for (const oldId of toSupersede) await supersedeDraft(oldId, data.id);
+
         if (!cancelled) {
           setQuoteId(data.id);
           setCreating(false);
         }
+
       } catch (err: any) {
         toast({ title: "Failed to open quote", description: err.message, variant: "destructive" });
         if (!cancelled) navigate(mode === "agent" ? "/field" : "/admin/quotes");
