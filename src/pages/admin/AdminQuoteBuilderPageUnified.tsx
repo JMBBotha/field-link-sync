@@ -730,8 +730,19 @@ function NewQuoteClientPicker({
 }) {
   const { data: clients = [], isLoading } = useUnifiedClients();
   const [search, setSearch] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    contact_person: "",
+    address: "",
+  });
+  const [dupes, setDupes] = useState<Array<{ id: string; name: string; phone: string | null; email: string | null }>>([]);
+
   const filtered = useMemo(() => {
-    const list = clients.filter((c) => !!c.customer_id); // exclude lead-only records with no customer row
+    const list = clients.filter((c) => !!c.customer_id);
     if (!search.trim()) return list.slice(0, 30);
     const q = search.toLowerCase();
     return list
@@ -744,68 +755,271 @@ function NewQuoteClientPicker({
       .slice(0, 30);
   }, [clients, search]);
 
+  useEffect(() => {
+    if (!showForm) return;
+    const name = form.name.trim();
+    if (name.length < 2) {
+      setDupes([]);
+      return;
+    }
+    const handle = setTimeout(async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+      if (!userId) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", userId)
+        .maybeSingle();
+      const companyId = (profile?.company_id as string | null) || null;
+      if (!companyId) return;
+      const { data } = await supabase
+        .from("customers")
+        .select("id, name, phone, email")
+        .eq("company_id", companyId)
+        .ilike("name", `%${name}%`)
+        .limit(5);
+      setDupes((data as any[]) || []);
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [form.name, showForm]);
+
+  const canSubmit =
+    form.name.trim().length > 0 &&
+    (form.phone.trim().length > 0 || form.email.trim().length > 0) &&
+    !submitting;
+
+  const resetForm = () => {
+    setForm({ name: "", phone: "", email: "", contact_person: "", address: "" });
+    setDupes([]);
+  };
+
+  const handleCreate = async () => {
+    if (!canSubmit) return;
+    setSubmitting(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+      if (!userId) throw new Error("You must be logged in.");
+      const { data: profile, error: profileErr } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", userId)
+        .maybeSingle();
+      if (profileErr) throw profileErr;
+      const companyId = (profile?.company_id as string | null) || null;
+      if (!companyId) throw new Error("Your account is not linked to a company.");
+
+      const name = form.name.trim();
+      const payload: Record<string, unknown> = {
+        name,
+        first_name: name.split(" ")[0] || name,
+        last_name: name.split(" ").slice(1).join(" ") || null,
+        phone: form.phone.trim(),
+        email: form.email.trim() || null,
+        address: form.address.trim() || null,
+        primary_address_line1: form.address.trim() || null,
+        notes: form.contact_person.trim() ? `Contact: ${form.contact_person.trim()}` : null,
+        company_id: companyId,
+        created_by: userId,
+        lead_source: "quote_picker",
+        status: "lead",
+      };
+
+      const { data, error } = await (supabase.from("customers") as any)
+        .insert(payload)
+        .select("id, name")
+        .single();
+      if (error) throw error;
+      onPicked(data.id as string, data.name as string);
+    } catch (err: any) {
+      toast({
+        title: "Failed to add client",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "linear-gradient(135deg, #1e6bb8 0%, #d0d0d0 100%)" }}>
       <div className="w-full max-w-md rounded-2xl bg-background shadow-2xl overflow-hidden">
         <div className="px-5 py-4 border-b flex items-center justify-between">
           <div>
-            <h2 className="text-base font-semibold">Select a client</h2>
-            <p className="text-xs text-muted-foreground">A quote must be linked to a client before it can be created.</p>
+            <h2 className="text-base font-semibold">
+              {showForm ? "Add new client" : "Select a client"}
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              {showForm ? "Fields marked * are required." : "A quote must be linked to a client before it can be created."}
+            </p>
           </div>
           <Button variant="ghost" size="icon" onClick={onCancel} className="h-8 w-8">
             <X className="h-4 w-4" />
           </Button>
         </div>
-        <div className="p-4">
-          <Input
-            autoFocus
-            placeholder="Search by name, phone or email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-9 text-sm"
-          />
-        </div>
-        <div className="max-h-80 overflow-y-auto border-t">
-          {isLoading ? (
-            <div className="p-6 text-center text-xs text-muted-foreground">Loading clients…</div>
-          ) : filtered.length === 0 ? (
-            <div className="p-6 text-center text-xs text-muted-foreground">
-              No matching clients. Create the customer first from the Customers page.
+
+        {!showForm ? (
+          <>
+            <div className="p-4">
+              <Input
+                autoFocus
+                placeholder="Search by name, phone or email..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-9 text-sm"
+              />
             </div>
-          ) : (
-            filtered.map((c) => {
-              // Resolve the real customer UUID: prefer customer_id, fall back
-              // to c.id only when it's not a lead-prefixed synthetic id.
-              const resolvedId =
-                c.customer_id && !String(c.customer_id).startsWith("lead-")
-                  ? c.customer_id
-                  : !String(c.id).startsWith("lead-")
-                  ? c.id
-                  : null;
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  disabled={!resolvedId}
-                  onClick={() => {
-                    if (!resolvedId) return;
-                    // eslint-disable-next-line no-console
-                    console.log("[QuoteBuilder] Client picked:", { name: c.name, resolvedId, raw: c });
-                    onPicked(resolvedId, c.name);
-                  }}
-                  className="w-full text-left px-4 py-2.5 hover:bg-muted/50 border-b last:border-b-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <p className="text-sm font-medium truncate">{c.name}</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {c.phone}
-                    {c.email ? ` · ${c.email}` : ""}
-                    {!resolvedId ? " · (lead-only — create customer first)" : ""}
-                  </p>
-                </button>
-              );
-            })
-          )}
-        </div>
+            <div className="max-h-72 overflow-y-auto border-t">
+              {isLoading ? (
+                <div className="p-6 text-center text-xs text-muted-foreground">Loading clients…</div>
+              ) : filtered.length === 0 ? (
+                <div className="p-6 text-center text-xs text-muted-foreground">
+                  No matching clients. Use "Add new client" below.
+                </div>
+              ) : (
+                filtered.map((c) => {
+                  const resolvedId =
+                    c.customer_id && !String(c.customer_id).startsWith("lead-")
+                      ? c.customer_id
+                      : !String(c.id).startsWith("lead-")
+                      ? c.id
+                      : null;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      disabled={!resolvedId}
+                      onClick={() => {
+                        if (!resolvedId) return;
+                        onPicked(resolvedId, c.name);
+                      }}
+                      className="w-full text-left px-4 py-2.5 hover:bg-muted/50 border-b last:border-b-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <p className="text-sm font-medium truncate">{c.name}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {c.phone}
+                        {c.email ? ` · ${c.email}` : ""}
+                        {!resolvedId ? " · (lead-only — create customer first)" : ""}
+                      </p>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+            <div className="p-3 border-t bg-muted/30">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full h-9"
+                onClick={() => setShowForm(true)}
+              >
+                + Add new client
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Name *</label>
+              <Input
+                autoFocus
+                value={form.name}
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                placeholder="Client or company name"
+                className="h-9 text-sm"
+              />
+            </div>
+            {dupes.length > 0 && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-2 space-y-1">
+                <p className="text-[11px] font-medium text-amber-800 dark:text-amber-300">
+                  Similar existing clients:
+                </p>
+                {dupes.map((d) => (
+                  <div key={d.id} className="flex items-center justify-between gap-2 text-xs">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{d.name}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {d.phone}{d.email ? ` · ${d.email}` : ""}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[11px]"
+                      onClick={() => onPicked(d.id, d.name)}
+                    >
+                      Use existing
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Phone</label>
+                <Input
+                  value={form.phone}
+                  onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+                  placeholder="082 123 4567"
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Email</label>
+                <Input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+                  placeholder="name@example.com"
+                  className="h-9 text-sm"
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Contact person</label>
+              <Input
+                value={form.contact_person}
+                onChange={(e) => setForm((p) => ({ ...p, contact_person: e.target.value }))}
+                placeholder="Optional"
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Address / Suburb</label>
+              <Input
+                value={form.address}
+                onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
+                placeholder="Optional"
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 h-9"
+                onClick={() => {
+                  setShowForm(false);
+                  resetForm();
+                }}
+                disabled={submitting}
+              >
+                Back to list
+              </Button>
+              <Button
+                type="button"
+                className="flex-1 h-9"
+                onClick={handleCreate}
+                disabled={!canSubmit}
+              >
+                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Create & continue
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -827,7 +1041,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
 
   // Insert the draft with a resolved customer_id, then supersede any stale drafts.
   const createDraft = useCallback(
-    async (userId: string, resolvedCustomerId: string, toSupersede: string[]) => {
+    async (userId: string, resolvedCustomerId: string, toSupersede: string[], customerName?: string) => {
       if (!resolvedCustomerId) {
         // Guard: never hit the DB trigger with a null customer_id.
         throw new Error("Cannot create quote: no customer linked. Please select a client first.");
@@ -856,6 +1070,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
         customer_id: resolvedCustomerId,
       };
       if (paramLeadId) insertPayload.lead_id = paramLeadId;
+      if (customerName && customerName.trim()) insertPayload.customer_name = customerName.trim();
 
       // eslint-disable-next-line no-console
       console.log("[QuoteBuilder] Inserting draft payload:", insertPayload);
@@ -1023,8 +1238,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
   }, [paramQuoteId, paramLeadId, paramCustomerId, navigate, mode, createDraft]);
 
   const handleClientPicked = useCallback(
-    async (customerId: string) => {
-      // eslint-disable-next-line no-console
+    async (customerId: string, customerName?: string) => {
       console.log("[QuoteBuilder] handleClientPicked received customerId:", customerId);
       if (!customerId || String(customerId).startsWith("lead-")) {
         toast({
@@ -1040,7 +1254,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
         const { data: userData } = await supabase.auth.getUser();
         const userId = userData?.user?.id;
         if (!userId) throw new Error("You must be logged in.");
-        const newId = await createDraft(userId, customerId, pendingSupersedeRef.current);
+        const newId = await createDraft(userId, customerId, pendingSupersedeRef.current, customerName);
         pendingSupersedeRef.current = [];
         setQuoteId(newId);
         setCreating(false);
