@@ -31,6 +31,7 @@ import AreaQuoteBuilderInline from "@/components/catalog/quote-builder/AreaQuote
 import AreaQuoteSummary from "@/components/catalog/quote-builder/AreaQuoteSummary";
 import FloatingSelectedItems from "@/components/catalog/quote-builder/FloatingSelectedItems";
 import type { QuoteArea } from "@/components/catalog/quote-builder/quoteWizardTypes";
+import { createEmptyArea, computeAreaSubtotal, detectBTU } from "@/components/catalog/quote-builder/quoteWizardTypes";
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
 
 export type QuoteBuilderMode = "admin" | "agent";
