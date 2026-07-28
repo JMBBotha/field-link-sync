@@ -262,6 +262,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
   const [visualPanelOpen, setVisualPanelOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardTriggerItem, setWizardTriggerItem] = useState<WizardTriggerItem | null>(null);
+  const [wizardPreviewBaskets, setWizardPreviewBaskets] = useState<Basket[]>([]);
   const queryClient = useQueryClient();
   const { usageMap, trackUsage } = useProductUsageStats();
   const canvasRef = useRef<HTMLDivElement>(null);
