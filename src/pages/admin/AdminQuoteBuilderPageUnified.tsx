@@ -1005,6 +1005,16 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
 
   const handleClientPicked = useCallback(
     async (customerId: string) => {
+      // eslint-disable-next-line no-console
+      console.log("[QuoteBuilder] handleClientPicked received customerId:", customerId);
+      if (!customerId || String(customerId).startsWith("lead-")) {
+        toast({
+          title: "Invalid client selection",
+          description: "That entry has no customer record yet. Create the customer first from the Customers page.",
+          variant: "destructive",
+        });
+        return;
+      }
       setNeedsClient(false);
       setCreating(true);
       try {
