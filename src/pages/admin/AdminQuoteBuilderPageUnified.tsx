@@ -366,11 +366,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       is_material_favorite: false,
       pack_qty: null,
     } as unknown as PaletteProduct);
-    const topLevel = ctxItems.filter((i) => !i.parent_item_id);
     // Group items by area_id (null → default "General" bucket)
     const buckets = new Map<string | null, typeof ctxItems>();
     for (const a of ctxAreas) buckets.set(a.id, [] as any);
-    for (const it of topLevel) {
+    for (const it of realItems) {
       const key = it.area_id && buckets.has(it.area_id) ? it.area_id : null;
       if (!buckets.has(key)) buckets.set(key, [] as any);
       (buckets.get(key) as any).push(it);
