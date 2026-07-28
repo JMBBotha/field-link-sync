@@ -35,6 +35,8 @@ import { createEmptyArea, computeAreaSubtotal, detectBTU } from "@/components/ca
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
 import { calculateBasketSubtotal } from "@/utils/basketCalc";
 import { useQuoteLiveTotals } from "@/stores/quoteLiveTotalsStore";
+import { areasToBaskets } from "@/components/catalog/quote-builder/QuoteBuilderPopup";
+
 
 export type QuoteBuilderMode = "admin" | "agent";
 
@@ -206,41 +208,31 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   const [baskets, setBaskets] = useState<Basket[]>([]);
   const [wizardAreas, setWizardAreas] = useState<QuoteArea[]>([]);
 
+  // Single canonical source of truth for on-screen totals while the user is
+  // editing an unsaved quote: merge Normal-tab baskets with the inline
+  // wizard's areas-as-baskets. Every display (header pill, "Quote Total" bar,
+  // sidebar) reads from THIS list — no parallel calculations.
+  const wizardBaskets = useMemo(() => areasToBaskets(wizardAreas), [wizardAreas]);
+  const displayBaskets = useMemo(
+    () => [...baskets, ...wizardBaskets],
+    [baskets, wizardBaskets],
+  );
+
   // Publish live in-progress totals so the header/summary reflect unsaved
   // wizard/basket edits BEFORE they're persisted. Cleared on unmount.
   const setLive = useQuoteLiveTotals((s) => s.set);
   const resetLive = useQuoteLiveTotals((s) => s.reset);
   useEffect(() => {
-    const basketItemsCount = baskets.reduce(
+    const nonEmpty = displayBaskets.filter((b) => b.items.length > 0);
+    const items = nonEmpty.reduce(
       (s, b) => s + b.items.reduce((qs, i) => qs + i.quantity, 0),
       0,
     );
-    const basketSubtotal = baskets.reduce((s, b) => s + calculateBasketSubtotal(b.items), 0);
-    const nonEmptyBaskets = baskets.filter((b) => b.items.length > 0).length;
-
-    const wizardItemsCount = wizardAreas.reduce(
-      (s, a) =>
-        s +
-        a.acUnits.reduce((q, u) => q + u.quantity, 0) +
-        a.materials.reduce(
-          (q, m) => q + (m.pricingMode === "unit" ? m.unitQuantity : 1),
-          0,
-        ) +
-        a.consumables.reduce((q, c) => q + c.quantity, 0),
-      0,
-    );
-    const wizardSubtotal = wizardAreas.reduce((s, a) => s + computeAreaSubtotal(a), 0);
-    const nonEmptyWizardAreas = wizardAreas.filter(
-      (a) => a.acUnits.length + a.materials.length + a.consumables.length > 0,
-    ).length;
-
-    setLive({
-      items: basketItemsCount + wizardItemsCount,
-      zones: nonEmptyBaskets + nonEmptyWizardAreas,
-      subtotal: basketSubtotal + wizardSubtotal,
-    });
-  }, [baskets, wizardAreas, setLive]);
+    const subtotal = nonEmpty.reduce((s, b) => s + calculateBasketSubtotal(b.items), 0);
+    setLive({ items, zones: nonEmpty.length, subtotal });
+  }, [displayBaskets, setLive]);
   useEffect(() => () => resetLive(), [resetLive]);
+
 
   // Area tab palette state
   const [areaSearch, setAreaSearch] = useState("");
@@ -324,8 +316,12 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         ((i.quantity ?? 0) > 0 || (i.unit_price ?? 0) > 0 || (i.total_price ?? 0) > 0)
     );
     if (realItems.length === 0 && ctxAreas.length === 0) {
-      return [{ id: "basket-1", name: "Zone 1", items: [] }];
+      // No real data: start EMPTY so the inline Area/Wizard builder is the
+      // sole source of zones. Avoids a ghost "Zone 1" appearing alongside
+      // wizard-applied templates (root cause of the totals split-brain).
+      return [];
     }
+
     const productById = new Map(products.map((p) => [p.id, p]));
     const stub = (it: typeof ctxItems[number]): PaletteProduct => ({
       id: it.product_id || it.id,
@@ -377,9 +373,9 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       items: (groups.get(a.id) || []).map(toItem),
     }));
     if (unassigned.length) result.push({ id: "unassigned", name: "General", items: unassigned.map(toItem) });
-    if (result.length === 0) result.push({ id: "basket-1", name: "Zone 1", items: [] });
     return result;
   }, [ctxLoading, ctxItems, ctxAreas, products]);
+
 
   /**
    * Seed the Area/Wizard builder with real DB items so the Areas step shows
@@ -671,10 +667,12 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
                 areaCount={wizardAreas.length}
                 areaDropProductToArea={(areaId, product) => areaDropProductToAreaRef.current?.(areaId, product)}
                 areaDropBundleToArea={(areaId, bundle) => areaDropBundleToAreaRef.current?.(areaId, bundle)}
+                extraBaskets={wizardBaskets}
               />
             </div>
             <div className="w-[320px] shrink-0 border-l overflow-y-auto p-3 mx-[5px] my-[4px] bg-transparent">
-              <QuoteSummaryPanel baskets={baskets} />
+              <QuoteSummaryPanel baskets={displayBaskets} />
+
             </div>
           </div>
         }

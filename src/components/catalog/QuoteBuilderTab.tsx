@@ -218,14 +218,19 @@ interface QuoteBuilderTabProps {
   /** Baskets seeded from an existing quote — hydrates body state so it matches
    *  the header summary (fixes split-brain where body showed 0 items). */
   initialBaskets?: Basket[] | null;
+  /** Extra baskets from the inline Area/Wizard builder — merged into the
+   *  Quote Total bar so every displayed total (header, bar, sidebar) reads
+   *  the same combined set. Not added to `baskets` state. */
+  extraBaskets?: Basket[];
 }
 
-const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, areaBuilderNode, areaAddZone, areaApplyTemplate, areaClearAll, areaCount, areaDropProductToArea, areaDropBundleToArea, initialBaskets }: QuoteBuilderTabProps = {}) => {
+const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, areaBuilderNode, areaAddZone, areaApplyTemplate, areaClearAll, areaCount, areaDropProductToArea, areaDropBundleToArea, initialBaskets, extraBaskets }: QuoteBuilderTabProps = {}) => {
   const [baskets, setBasketsInternal] = useState<Basket[]>(() =>
-    initialBaskets && initialBaskets.length > 0
+    initialBaskets != null
       ? initialBaskets
       : [{ id: "basket-1", name: "Zone 1", items: [] }]
   );
+
   const setBaskets: typeof setBasketsInternal = useCallback((action) => {
     setBasketsInternal((prev) => {
       const next = typeof action === "function" ? action(prev) : action;
@@ -243,11 +248,12 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
   const hydratedRef = useRef(false);
   useEffect(() => {
     if (hydratedRef.current) return;
-    if (!initialBaskets || initialBaskets.length === 0) return;
+    if (initialBaskets == null) return;
     hydratedRef.current = true;
     setBasketsInternal(initialBaskets);
     onBasketsChange?.(initialBaskets);
   }, [initialBaskets, onBasketsChange]);
+
   const [activeProduct, setActiveProduct] = useState<PaletteProduct | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -790,9 +796,14 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
    *  merge its in-progress preview baskets so totals update live on every
    *  selection/quantity change — matching what the user is building on screen. */
   const displayBaskets = useMemo(
-    () => (wizardOpen ? [...baskets, ...wizardPreviewBaskets] : baskets),
-    [baskets, wizardPreviewBaskets, wizardOpen]
+    () => {
+      const extras = extraBaskets ?? [];
+      if (wizardOpen) return [...baskets, ...wizardPreviewBaskets, ...extras];
+      return [...baskets, ...extras];
+    },
+    [baskets, wizardPreviewBaskets, wizardOpen, extraBaskets]
   );
+
 
   const totalCost = useMemo(() => {
     return displayBaskets.reduce(
@@ -839,7 +850,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
       <div className="border bg-card p-3 z-10 shadow-sm shrink-0 rounded-sm py-[6px] mx-[4px] my-[8px] flex flex-col gap-[6px]">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-muted-foreground">
-            Quote Total ({totalItems} items across {displayBaskets.length} zones)
+            Quote Total ({totalItems} items across {displayBaskets.filter((b) => b.items.length > 0).length} zones)
           </span>
           <span className="text-lg font-bold text-foreground">
             R {totalCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
