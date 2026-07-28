@@ -839,7 +839,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
       <div className="border bg-card p-3 z-10 shadow-sm shrink-0 rounded-sm py-[6px] mx-[4px] my-[8px] flex flex-col gap-[6px]">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-muted-foreground">
-            Quote Total ({totalItems} items across {baskets.length} zones)
+            Quote Total ({totalItems} items across {displayBaskets.length} zones)
           </span>
           <span className="text-lg font-bold text-foreground">
             R {totalCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
