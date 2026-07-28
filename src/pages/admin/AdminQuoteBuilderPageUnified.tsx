@@ -33,6 +33,8 @@ import FloatingSelectedItems from "@/components/catalog/quote-builder/FloatingSe
 import type { QuoteArea } from "@/components/catalog/quote-builder/quoteWizardTypes";
 import { createEmptyArea, computeAreaSubtotal, detectBTU } from "@/components/catalog/quote-builder/quoteWizardTypes";
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
+import { calculateBasketSubtotal } from "@/utils/basketCalc";
+import { useQuoteLiveTotals } from "@/stores/quoteLiveTotalsStore";
 
 export type QuoteBuilderMode = "admin" | "agent";
 
