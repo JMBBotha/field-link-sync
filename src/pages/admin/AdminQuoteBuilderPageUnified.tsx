@@ -33,12 +33,15 @@ import FloatingSelectedItems from "@/components/catalog/quote-builder/FloatingSe
 import type { QuoteArea } from "@/components/catalog/quote-builder/quoteWizardTypes";
 import { createEmptyArea, computeAreaSubtotal, detectBTU } from "@/components/catalog/quote-builder/quoteWizardTypes";
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
+import { calculateBasketSubtotal } from "@/utils/basketCalc";
+import { useQuoteLiveTotals } from "@/stores/quoteLiveTotalsStore";
 
 export type QuoteBuilderMode = "admin" | "agent";
 
 /* ─── Shared Header with client selector ─── */
 function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
   const { meta, updateQuote, areas, items } = useQuoteContext();
+  const live = useQuoteLiveTotals();
   const { data: clients = [] } = useUnifiedClients();
   const [clientSearch, setClientSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
@@ -69,9 +72,9 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
 
   // Exclude non-real rows from user-visible counts.
   const topLevel = items.filter((i) => !i.parent_item_id && isRealItem(i));
-  const totalItems = topLevel.length;
+  const dbItems = topLevel.length;
   // Total still includes placeholder value so the recorded legacy total remains visible.
-  const totalCost = items
+  const dbCost = items
     .filter((i) => !i.parent_item_id)
     .reduce((s, i) => s + (i.total_price ?? i.unit_price * i.quantity), 0);
   // Zone count = declared areas + a synthetic "General" zone when items have no area_id.
@@ -82,7 +85,13 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
     else hasUnassigned = true;
   }
   for (const a of areas) zoneIds.add(a.id);
-  const zoneCount = zoneIds.size + (hasUnassigned ? 1 : 0);
+  const dbZones = zoneIds.size + (hasUnassigned ? 1 : 0);
+
+  // Prefer live in-progress builder totals so header reflects unsaved edits
+  // BEFORE they hit the DB. Falls back to persisted totals when idle.
+  const totalItems = live.hasLiveData ? live.items : dbItems;
+  const zoneCount = live.hasLiveData ? live.zones : dbZones;
+  const totalCost = live.hasLiveData ? live.subtotal : dbCost;
 
 
   return (
@@ -196,6 +205,42 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   // Shared baskets state for cross-tab data
   const [baskets, setBaskets] = useState<Basket[]>([]);
   const [wizardAreas, setWizardAreas] = useState<QuoteArea[]>([]);
+
+  // Publish live in-progress totals so the header/summary reflect unsaved
+  // wizard/basket edits BEFORE they're persisted. Cleared on unmount.
+  const setLive = useQuoteLiveTotals((s) => s.set);
+  const resetLive = useQuoteLiveTotals((s) => s.reset);
+  useEffect(() => {
+    const basketItemsCount = baskets.reduce(
+      (s, b) => s + b.items.reduce((qs, i) => qs + i.quantity, 0),
+      0,
+    );
+    const basketSubtotal = baskets.reduce((s, b) => s + calculateBasketSubtotal(b.items), 0);
+    const nonEmptyBaskets = baskets.filter((b) => b.items.length > 0).length;
+
+    const wizardItemsCount = wizardAreas.reduce(
+      (s, a) =>
+        s +
+        a.acUnits.reduce((q, u) => q + u.quantity, 0) +
+        a.materials.reduce(
+          (q, m) => q + (m.pricingMode === "unit" ? m.unitQuantity : 1),
+          0,
+        ) +
+        a.consumables.reduce((q, c) => q + c.quantity, 0),
+      0,
+    );
+    const wizardSubtotal = wizardAreas.reduce((s, a) => s + computeAreaSubtotal(a), 0);
+    const nonEmptyWizardAreas = wizardAreas.filter(
+      (a) => a.acUnits.length + a.materials.length + a.consumables.length > 0,
+    ).length;
+
+    setLive({
+      items: basketItemsCount + wizardItemsCount,
+      zones: nonEmptyBaskets + nonEmptyWizardAreas,
+      subtotal: basketSubtotal + wizardSubtotal,
+    });
+  }, [baskets, wizardAreas, setLive]);
+  useEffect(() => () => resetLive(), [resetLive]);
 
   // Area tab palette state
   const [areaSearch, setAreaSearch] = useState("");
@@ -714,6 +759,14 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         products={products}
         bundles={bundles}
         onSave={handleWizardSave}
+        onLivePreview={(preview) => {
+          // Merge popup preview into shared baskets slot so header totals reflect it live.
+          setBaskets((prev) => {
+            const kept = prev.filter((b) => !b.id.startsWith("wizard-popup-"));
+            const tagged = preview.map((b) => ({ ...b, id: `wizard-popup-${b.id}` }));
+            return [...kept, ...tagged];
+          });
+        }}
         triggerItem={null} />
 
     </div>);
