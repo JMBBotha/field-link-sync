@@ -786,8 +786,16 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     }
   }, [baskets, addProductToBasket]);
 
+  /** Baskets used for header + sidebar totals. While the wizard is open, we
+   *  merge its in-progress preview baskets so totals update live on every
+   *  selection/quantity change — matching what the user is building on screen. */
+  const displayBaskets = useMemo(
+    () => (wizardOpen ? [...baskets, ...wizardPreviewBaskets] : baskets),
+    [baskets, wizardPreviewBaskets, wizardOpen]
+  );
+
   const totalCost = useMemo(() => {
-    return baskets.reduce(
+    return displayBaskets.reduce(
       (sum, b) =>
       sum +
       b.items.reduce((s, i) => {
@@ -803,9 +811,12 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
       }, 0),
       0
     );
-  }, [baskets]);
+  }, [displayBaskets]);
 
-  const totalItems = baskets.reduce((s, b) => s + b.items.reduce((qs, i) => qs + i.quantity, 0), 0);
+  const totalItems = useMemo(
+    () => displayBaskets.reduce((s, b) => s + b.items.reduce((qs, i) => qs + i.quantity, 0), 0),
+    [displayBaskets]
+  );
 
   const handleClearAll = useCallback(() => {
     setBaskets([]);
@@ -813,6 +824,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
 
   const handleWizardSave = useCallback((newBaskets: Basket[]) => {
     setBaskets((prev) => [...prev, ...newBaskets]);
+    setWizardPreviewBaskets([]);
     toast({ title: `Added ${newBaskets.length} zones from Area Quote Builder` });
   }, []);
 
