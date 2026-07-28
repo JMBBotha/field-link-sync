@@ -318,6 +318,89 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     return result;
   }, [ctxLoading, ctxItems, ctxAreas, products]);
 
+  /**
+   * Seed the Area/Wizard builder with real DB items so the Areas step shows
+   * the actual line items rather than the "Additional Items/Services"
+   * placeholder. We classify each item into acUnits / materials / consumables
+   * based on category and length.
+   */
+  const initialWizardAreas = useMemo<WizardAreaType[] | null>(() => {
+    if (ctxLoading) return null;
+    if (ctxItems.length === 0 && ctxAreas.length === 0) return null;
+    const productById = new Map(products.map((p) => [p.id, p]));
+    const stubProduct = (it: typeof ctxItems[number]): PaletteProduct => ({
+      id: it.product_id || it.id,
+      product_code: it.item_number || "",
+      short_name: it.item_name,
+      brand: "",
+      product_category: it.item_type || "",
+      category: it.item_type || "",
+      description: it.description || "",
+      cost_price: it.unit_price,
+      cost_excl_vat: it.unit_price,
+      cost_incl_vat: 0,
+      selling_price: it.unit_price,
+      supplier_name: it.supplier || "",
+      supplier_type: "both",
+      supplier_discount_percent: null,
+      markup_percent: 0,
+      default_markup_percent: 0,
+      is_pinned: false,
+      pin_order: null,
+      price_per_metre: it.length ? it.unit_price : null,
+      sold_in_length: !!it.length,
+      unit_length: it.length || null,
+      pipe_size: null,
+      is_material_favorite: false,
+      pack_qty: null,
+    } as unknown as PaletteProduct);
+    const topLevel = ctxItems.filter((i) => !i.parent_item_id);
+    // Group items by area_id (null → default "General" bucket)
+    const buckets = new Map<string | null, typeof ctxItems>();
+    for (const a of ctxAreas) buckets.set(a.id, [] as any);
+    for (const it of topLevel) {
+      const key = it.area_id && buckets.has(it.area_id) ? it.area_id : null;
+      if (!buckets.has(key)) buckets.set(key, [] as any);
+      (buckets.get(key) as any).push(it);
+    }
+    const areaNameFor = (id: string | null): string => {
+      if (!id) return ctxAreas.length === 0 ? "Additional Items/Services" : "General";
+      return ctxAreas.find((a) => a.id === id)?.name || "General";
+    };
+    const result: WizardAreaType[] = [];
+    for (const [key, list] of buckets) {
+      const base = createEmptyArea(areaNameFor(key));
+      for (const it of list) {
+        const product = (it.product_id && productById.get(it.product_id)) || stubProduct(it);
+        const cat = (product.product_category || product.category || "").toLowerCase();
+        const isAC = cat.includes("air") || cat.includes(" ac") || cat === "ac" || cat.includes("hvac");
+        if (isAC) {
+          base.acUnits.push({ id: it.id, product: stubProduct(it), btu: detectBTU(product), quantity: it.quantity });
+        } else if (it.length && it.length > 0) {
+          const perM = it.unit_price;
+          base.materials.push({
+            id: it.id,
+            product: stubProduct(it),
+            defaultLength: it.length,
+            adjustedLength: it.length,
+            costPerMeter: perM,
+            totalCost: perM * it.length,
+            pricingMode: "length",
+            unitQuantity: 1,
+          });
+        } else {
+          base.consumables.push({ id: it.id, product: stubProduct(it), quantity: it.quantity });
+        }
+      }
+      base.subtotal = computeAreaSubtotal(base);
+      // Only include non-empty areas, plus any explicitly declared ctxAreas
+      if (base.acUnits.length || base.materials.length || base.consumables.length || key) {
+        result.push(base);
+      }
+    }
+    return result.length > 0 ? result : null;
+  }, [ctxLoading, ctxItems, ctxAreas, products]);
+
 
   // Refs to the inline builder's methods
   const areaAddProductRef = useRef<((product: PaletteProduct) => void) | null>(null);
