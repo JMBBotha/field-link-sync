@@ -537,7 +537,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             </div>
           </div>
         }
-        {activeTab === "area" &&
+        {!ctxLoading && activeTab === "area" &&
         <div className="h-full flex">
             {/* Product Palette - left sidebar */}
             <div className="w-[280px] shrink-0 flex flex-col min-h-0 overflow-hidden pl-2 py-1">
