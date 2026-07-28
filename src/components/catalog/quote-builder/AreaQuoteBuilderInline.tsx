@@ -46,6 +46,9 @@ interface Props {
   /** Ref that parent can use to clear all areas */
   onClearAllRef?: React.MutableRefObject<(() => void) | null>;
   pdfSelection?: PdfSelectionHandlers;
+  /** Seed areas from an existing quote so the wizard reflects real DB items
+   *  instead of an empty "Additional Items/Services" placeholder. */
+  initialAreas?: QuoteArea[] | null;
 }
 
 const DRAFT_STORAGE_KEY = "quote-builder-draft";
