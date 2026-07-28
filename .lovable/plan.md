@@ -1,53 +1,58 @@
-## Goal
-When a lead/job is accepted, don't just flip a status — immediately open a "Schedule & Assign" dialog that captures the essentials, then create/update the linked Job in one shot.
+# Unified Quote System — Single Source of Truth
 
-## New shared component
+Consolidate on `quote_items` + `quote_areas` (the richer model). Legacy `quote_line_items` becomes read-only, then retired. Every surface reads and writes through one path.
 
-`src/components/leads/AcceptLeadDialog.tsx`
+## 1. Database migration (one migration, transactional)
 
-Opens when the user clicks Accept. Reuses the existing `AppointmentPicker` (already wraps date/time + technician suggestions) and `LocationSelector`. Fields:
+- **Sequence + RPC for quote numbers** — Add `quote_number_seq` and a security-definer function `generate_quote_number()` returning `Q-YYYY-XXXX`. Wire an `auto_assign_quote_number` BEFORE INSERT trigger so every new `quotes` row gets a number immediately (no more nulls like Cape Estates).
+- **Backfill quote numbers** on existing rows where `quote_number IS NULL`.
+- **Migrate `quote_line_items` → `quote_items`** for every quote that has zero `quote_items` rows. Each legacy row becomes a top-level item (no `area_id`, no `parent_item_id`, `item_type='line'`, `source='legacy'`).
+- **Orphan quotes (like Cape Estates)** — quotes with totals but zero items in either table get a synthetic "Legacy quote — please re-enter items" placeholder `quote_items` row plus a metadata flag, so the user sees the old total and knows to rebuild. Totals stay untouched.
+- **Recompute totals** trigger on `quote_items` (insert/update/delete) so `quotes.subtotal / vat_amount / total` always reflect actual items — no more phantom totals.
+- **Lock legacy table** — revoke INSERT/UPDATE/DELETE on `quote_line_items` from `authenticated`. Keep SELECT for a short read-only grace period, then drop in a follow-up migration once no code references it.
 
-- **Scheduled date & time** — required. Prefilled to "today + 1h".
-- **Assigned technician** — dropdown of company members with role `field_agent` / `technician`. AppointmentPicker already returns `agent_id`.
-- **Job type / title** — prefilled from lead `service_type`.
-- **Description / notes** — prefilled from lead `notes`.
-- **Location** — only shown when the customer has >1 saved location; defaults to the lead's address. Uses existing `LocationSelector`.
-- **Priority** — inherits from lead, editable.
+## 2. Shared fetch hook — one query, everywhere
 
-On submit:
-1. `UPDATE leads SET status='accepted', assigned_agent_id=…, started_at=now()` (only on first accept).
-2. If the lead already has a linked job → `UPDATE jobs` with scheduled_for / assignee / address / notes / status='scheduled'.
-   Otherwise → `INSERT jobs` linked via `lead_id` + `customer_id`, then `INSERT assignments` for the technician with status='accepted'.
-3. Write to `job_activity_log` ("Lead accepted and scheduled").
-4. Toast + invalidate `["leads"]`, `["jobs*"]`, `["my-jobs"]`, `["dispatch"]`.
-5. Optionally navigate to `/admin/jobs/:id` on desktop (skip on field-agent mobile).
+Create `src/hooks/useQuote.ts` exposing a single query keyed by `["quote", id]`:
 
-Cancel closes the dialog and leaves the lead in its previous status — no partial writes.
+```
+quotes + quote_areas + quote_items + customers + leads
+```
 
-## Wire the dialog into every accept surface
+`.eq("id", quoteId).maybeSingle()` — used by Quotes list detail, Quote Builder, Lead detail, Customer detail, Job view, PDF, and the client-facing proposal view. All writes call `queryClient.invalidateQueries({ queryKey: ["quote", id] })` so every surface refreshes instantly.
 
-Same component, same handler everywhere:
+## 3. One Quote Builder
 
-| Surface | File | Change |
-|---|---|---|
-| Lead detail sheet (admin map + leads list) | `src/components/LeadDetailSheet.tsx` | Replace direct `onAccept(lead.id)` calls (lines 744, 930) with opening `AcceptLeadDialog`. |
-| Admin map page | `src/pages/admin/AdminMapPage.tsx` | Replace the current `infoAction` stub passed as `onAccept` with the real handler that opens the dialog. |
-| Field agent card / list | `src/components/FieldAgentLeadCard.tsx` + `src/pages/FieldAgent.tsx` (`handleAcceptLead`, line 398) | Route the button through the dialog before calling `offlineLeads.acceptLead`. Mobile-friendly: dialog uses `Sheet` on `useIsMobile()`.  |
-| Dispatch board | `src/pages/admin/AdminDispatchPage.tsx` (+ `AdminJobsDispatchPage.tsx`) | When a card is dragged/clicked to "Accepted" lane, open the dialog. |
-| Job detail (mobile) | `src/pages/admin/AdminJobDetailPage.tsx` | Change status → "Accepted/Scheduled" opens the same dialog, prefilled from the existing job. |
+- **Promote `AdminQuoteBuilderPageUnified` + `QuoteContext`** to be the canonical builder.
+- **Route `/admin/quotes/:id` and every "Open quote" / "Edit quote" link** (Quotes list, Lead detail, Customer detail, Job detail, Proposal builder, Global search) through the unified builder with the real `quote.id`.
+- **Retire `src/components/quoting/QuoteBuilder.tsx`** — replace its body with a thin redirect to the unified builder. This kills the destructive `DELETE FROM quote_line_items` save path that was wiping data.
+- **Empty-quote safeguard** — when the builder mounts with a `leadId` or `customerId` but no `quoteId`, look up the latest existing draft for that lead/customer first; only create a new row if none exists.
 
-## Data / backend
+## 4. Read-side rewire
 
-No schema change needed — `jobs`, `assignments`, `job_activity_log`, `customer_locations` already have everything. RLS on `jobs`/`assignments` already scoped by `company_id`.
+- **QuotesList, Lead detail, Customer detail, Job detail, PDF, ProposalBuilder, ClientProposalView** all read line data from `quote_items` (grouped by `quote_areas`). Legacy fallback removed.
+- **PDF renderer** groups items by area, honours `parent_item_id` for bundle nesting, and hides Cost/Markup on non-draft quotes (existing behaviour preserved).
+- **Convert-to-invoice** (`convertQuoteToInvoice.ts`) reads from `quote_items` instead of `quote_line_items`.
 
-Offline path: `useOfflineLeads.acceptLead` stays; the dialog just calls it with the extra fields, and the sync queue already replays writes.
+## 5. Verification checklist (run after deploy)
 
-## Tech details
+- Open Cape Estates from Quotes list, Lead, and Customer surfaces → all three show identical data (placeholder row + preserved total, with rebuild prompt).
+- Open Brendon Behnke Q-2026-0019 from all surfaces → identical, migrated line item, total unchanged.
+- Create a new quote → receives next `Q-2026-XXXX`, appears in list, lead, customer views immediately.
+- Edit an item in the builder → change reflects on Lead detail and Customer detail without manual refresh.
+- Attempt an insert into `quote_line_items` as `authenticated` → rejected.
 
-- Zod schema validates required scheduled_for + agent_id.
-- One `useAcceptLead` hook centralises the mutation so every surface stays consistent.
-- Skeleton diff: ~1 new component (~250 LoC), ~1 new hook (~120 LoC), 6 small call-site edits.
+## Technical details
 
-## Verification
+- Migration is a single transactional file. RPC uses `SECURITY DEFINER SET search_path = public`.
+- Grants on new sequence + function: `usage` to `authenticated`, `all` to `service_role`.
+- No RLS changes needed on `quote_items` / `quote_areas` (existing policies scope by company via join to `quotes`).
+- React Query key contract: `["quote", id]` for a single quote, `["quotes", filters]` for the list. Writes invalidate both.
+- Realtime subscription in `QuoteContext` already covers `quote_items` + `quote_areas`; no change.
+- `QuoteBuilder.tsx` stub keeps its exported props so no callers break; it renders `<Navigate to={"/admin/quote-builder?quoteId=..."} replace />` (or equivalent).
 
-Manual: accept the "Jules Harding" lead from (a) admin map lead sheet, (b) leads list, (c) dispatch board, (d) field agent mobile card, (e) job detail page — each opens the dialog, submits, and shows the resulting scheduled job on `/admin/jobs` and on the schedule calendar.
+## Out of scope for this change
+
+- Redesigning the builder UI, area/bundle editing UX, or PDF layout.
+- Touching `pdfTextExtractor.ts` (locked).
+- Migrating `quote_line_items` schema deletion — done in a follow-up once monitoring shows zero reads for a week.
