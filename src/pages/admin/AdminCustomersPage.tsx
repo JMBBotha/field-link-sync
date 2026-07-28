@@ -106,7 +106,9 @@ const AdminCustomersPage = () => {
         .from("quotes")
         .select("id, total, status")
         .eq("status", "draft")
+        .neq("status", "superseded")
         .limit(2000);
+
       if (error) throw error;
       return data || [];
     },
