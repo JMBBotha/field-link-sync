@@ -325,7 +325,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
    * placeholder. We classify each item into acUnits / materials / consumables
    * based on category and length.
    */
-  const initialWizardAreas = useMemo<WizardAreaType[] | null>(() => {
+  const initialWizardAreas = useMemo<QuoteArea[] | null>(() => {
     if (ctxLoading) return null;
     if (ctxItems.length === 0 && ctxAreas.length === 0) return null;
     const productById = new Map(products.map((p) => [p.id, p]));
@@ -368,7 +368,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       if (!id) return ctxAreas.length === 0 ? "Additional Items/Services" : "General";
       return ctxAreas.find((a) => a.id === id)?.name || "General";
     };
-    const result: WizardAreaType[] = [];
+    const result: QuoteArea[] = [];
     for (const [key, list] of buckets) {
       const base = createEmptyArea(areaNameFor(key));
       for (const it of list) {
