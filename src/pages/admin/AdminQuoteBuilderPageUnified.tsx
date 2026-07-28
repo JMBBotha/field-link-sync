@@ -61,17 +61,20 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
     slice(0, 8);
   }, [clients, clientSearch]);
 
-  // Exclude legacy_placeholder rows from user-visible counts — they exist only
-  // to preserve the recorded total for orphaned legacy quotes and should not
-  // be counted as real line items in the header or wizard.
-  const topLevel = items.filter((i) => !i.parent_item_id && i.source !== "legacy_placeholder");
+  // A quote_item is "real" only when it's not a legacy placeholder AND has
+  // meaningful qty/rate. Zero-value non-placeholder rows must not count.
+  const isRealItem = (i: typeof items[number]) =>
+    i.source !== "legacy_placeholder" &&
+    ((i.quantity ?? 0) > 0 || (i.unit_price ?? 0) > 0 || (i.total_price ?? 0) > 0);
+
+  // Exclude non-real rows from user-visible counts.
+  const topLevel = items.filter((i) => !i.parent_item_id && isRealItem(i));
   const totalItems = topLevel.length;
   // Total still includes placeholder value so the recorded legacy total remains visible.
   const totalCost = items
     .filter((i) => !i.parent_item_id)
     .reduce((s, i) => s + (i.total_price ?? i.unit_price * i.quantity), 0);
   // Zone count = declared areas + a synthetic "General" zone when items have no area_id.
-  // Matches the body's grouping so the header badge and body always agree.
   const zoneIds = new Set<string>();
   let hasUnassigned = false;
   for (const it of topLevel) {
@@ -80,6 +83,7 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
   }
   for (const a of areas) zoneIds.add(a.id);
   const zoneCount = zoneIds.size + (hasUnassigned ? 1 : 0);
+
 
   return (
     <header className="shrink-0 h-14 flex items-center justify-between px-4 shadow-sm" style={{ backgroundColor: "#0077B6" }}>
