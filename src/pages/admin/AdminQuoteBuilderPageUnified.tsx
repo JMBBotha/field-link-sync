@@ -313,7 +313,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     const groups = new Map<string, typeof ctxItems>();
     for (const a of ctxAreas) groups.set(a.id, [] as any);
     const unassigned: typeof ctxItems = [] as any;
-    for (const it of ctxItems) {
+    for (const it of realItems) {
       if (it.parent_item_id) continue;
       if (it.area_id && groups.has(it.area_id)) (groups.get(it.area_id) as any).push(it);
       else (unassigned as any).push(it);
