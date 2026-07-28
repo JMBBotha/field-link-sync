@@ -665,6 +665,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
                 onAreasChange={setWizardAreas}
                 onAddProductRef={areaAddProductRef}
                 pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
+                initialAreas={initialWizardAreas}
               />
             </div>
             {/* Summary - right sidebar */}
