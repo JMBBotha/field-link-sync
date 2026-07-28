@@ -22,6 +22,7 @@ const Proposals = () => {
       const { data, error } = await supabase
         .from("quotes")
         .select("*, customers(name), proposal_sections(id)")
+        .neq("status", "superseded")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
