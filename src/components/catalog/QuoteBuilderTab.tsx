@@ -796,9 +796,14 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
    *  merge its in-progress preview baskets so totals update live on every
    *  selection/quantity change — matching what the user is building on screen. */
   const displayBaskets = useMemo(
-    () => (wizardOpen ? [...baskets, ...wizardPreviewBaskets] : baskets),
-    [baskets, wizardPreviewBaskets, wizardOpen]
+    () => {
+      const extras = extraBaskets ?? [];
+      if (wizardOpen) return [...baskets, ...wizardPreviewBaskets, ...extras];
+      return [...baskets, ...extras];
+    },
+    [baskets, wizardPreviewBaskets, wizardOpen, extraBaskets]
   );
+
 
   const totalCost = useMemo(() => {
     return displayBaskets.reduce(
