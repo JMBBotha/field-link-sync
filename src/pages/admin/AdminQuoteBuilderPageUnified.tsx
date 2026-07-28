@@ -60,10 +60,19 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
     slice(0, 8);
   }, [clients, clientSearch]);
 
-  const totalItems = items.filter((i) => !i.parent_item_id).length;
-  const totalCost = items.
-  filter((i) => !i.parent_item_id).
-  reduce((s, i) => s + (i.total_price ?? i.unit_price * i.quantity), 0);
+  const topLevel = items.filter((i) => !i.parent_item_id);
+  const totalItems = topLevel.length;
+  const totalCost = topLevel.reduce((s, i) => s + (i.total_price ?? i.unit_price * i.quantity), 0);
+  // Zone count = declared areas + a synthetic "General" zone when items have no area_id.
+  // Matches the body's grouping so the header badge and body always agree.
+  const zoneIds = new Set<string>();
+  let hasUnassigned = false;
+  for (const it of topLevel) {
+    if (it.area_id) zoneIds.add(it.area_id);
+    else hasUnassigned = true;
+  }
+  for (const a of areas) zoneIds.add(a.id);
+  const zoneCount = zoneIds.size + (hasUnassigned ? 1 : 0);
 
   return (
     <header className="shrink-0 h-14 flex items-center justify-between px-4 shadow-sm" style={{ backgroundColor: "#0077B6" }}>
