@@ -832,8 +832,22 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
         // Guard: never hit the DB trigger with a null customer_id.
         throw new Error("Cannot create quote: no customer linked. Please select a client first.");
       }
+      // Resolve the user's company_id — required by the quotes RLS insert
+      // policy. Without it Postgres rejects the row before it's written.
+      const { data: profile, error: profileErr } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", userId)
+        .maybeSingle();
+      if (profileErr) throw profileErr;
+      const companyId = (profile?.company_id as string | null) || null;
+      if (!companyId) {
+        throw new Error("Your account is not linked to a company. Contact an admin.");
+      }
+
       const insertPayload: Record<string, unknown> = {
         sales_engineer_id: userId,
+        company_id: companyId,
         status: "draft",
         subtotal: 0,
         vat_rate: 0.15,
@@ -844,13 +858,18 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
       if (paramLeadId) insertPayload.lead_id = paramLeadId;
 
       // eslint-disable-next-line no-console
-      console.log("[QuoteBuilder] Inserting draft with customer_id:", resolvedCustomerId, "leadId:", paramLeadId);
+      console.log("[QuoteBuilder] Inserting draft payload:", insertPayload);
 
       const { data, error } = await (supabase.from("quotes") as any)
         .insert(insertPayload)
         .select("id")
         .single();
-      if (error) throw error;
+      if (error) {
+        // eslint-disable-next-line no-console
+        console.error("[QuoteBuilder] Insert error:", error);
+        throw error;
+      }
+
 
       for (const oldId of toSupersede) {
         await (supabase.from("quotes") as any)
