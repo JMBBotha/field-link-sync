@@ -1041,7 +1041,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
 
   // Insert the draft with a resolved customer_id, then supersede any stale drafts.
   const createDraft = useCallback(
-    async (userId: string, resolvedCustomerId: string, toSupersede: string[]) => {
+    async (userId: string, resolvedCustomerId: string, toSupersede: string[], customerName?: string) => {
       if (!resolvedCustomerId) {
         // Guard: never hit the DB trigger with a null customer_id.
         throw new Error("Cannot create quote: no customer linked. Please select a client first.");
