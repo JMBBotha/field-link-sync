@@ -248,11 +248,12 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
   const hydratedRef = useRef(false);
   useEffect(() => {
     if (hydratedRef.current) return;
-    if (!initialBaskets || initialBaskets.length === 0) return;
+    if (initialBaskets == null) return;
     hydratedRef.current = true;
     setBasketsInternal(initialBaskets);
     onBasketsChange?.(initialBaskets);
   }, [initialBaskets, onBasketsChange]);
+
   const [activeProduct, setActiveProduct] = useState<PaletteProduct | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
