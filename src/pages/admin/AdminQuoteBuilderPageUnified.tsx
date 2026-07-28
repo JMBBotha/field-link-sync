@@ -267,7 +267,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
    */
   const initialBaskets = useMemo<Basket[] | null>(() => {
     if (ctxLoading) return null;
-    if (ctxItems.length === 0 && ctxAreas.length === 0) {
+    // Ignore legacy_placeholder rows — they exist only to preserve the recorded
+    // total on orphaned legacy quotes and must not render as real basket items.
+    const realItems = ctxItems.filter((i) => i.source !== "legacy_placeholder");
+    if (realItems.length === 0 && ctxAreas.length === 0) {
       return [{ id: "basket-1", name: "Zone 1", items: [] }];
     }
     const productById = new Map(products.map((p) => [p.id, p]));
