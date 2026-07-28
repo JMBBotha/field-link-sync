@@ -667,10 +667,12 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
                 areaCount={wizardAreas.length}
                 areaDropProductToArea={(areaId, product) => areaDropProductToAreaRef.current?.(areaId, product)}
                 areaDropBundleToArea={(areaId, bundle) => areaDropBundleToAreaRef.current?.(areaId, bundle)}
+                extraBaskets={wizardBaskets}
               />
             </div>
             <div className="w-[320px] shrink-0 border-l overflow-y-auto p-3 mx-[5px] my-[4px] bg-transparent">
-              <QuoteSummaryPanel baskets={baskets} />
+              <QuoteSummaryPanel baskets={displayBaskets} />
+
             </div>
           </div>
         }
