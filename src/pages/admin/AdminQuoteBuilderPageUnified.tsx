@@ -61,9 +61,15 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
     slice(0, 8);
   }, [clients, clientSearch]);
 
-  const topLevel = items.filter((i) => !i.parent_item_id);
+  // Exclude legacy_placeholder rows from user-visible counts — they exist only
+  // to preserve the recorded total for orphaned legacy quotes and should not
+  // be counted as real line items in the header or wizard.
+  const topLevel = items.filter((i) => !i.parent_item_id && i.source !== "legacy_placeholder");
   const totalItems = topLevel.length;
-  const totalCost = topLevel.reduce((s, i) => s + (i.total_price ?? i.unit_price * i.quantity), 0);
+  // Total still includes placeholder value so the recorded legacy total remains visible.
+  const totalCost = items
+    .filter((i) => !i.parent_item_id)
+    .reduce((s, i) => s + (i.total_price ?? i.unit_price * i.quantity), 0);
   // Zone count = declared areas + a synthetic "General" zone when items have no area_id.
   // Matches the body's grouping so the header badge and body always agree.
   const zoneIds = new Set<string>();
