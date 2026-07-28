@@ -40,7 +40,7 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
     queryKey: ["global-search-items"],
     queryFn: async () => {
       const [quotes, invoices, customers, leads] = await Promise.all([
-        supabase.from("quotes").select("id, quote_number, status, total").limit(300),
+        supabase.from("quotes").select("id, quote_number, status, total").neq("status", "superseded").limit(300),
         supabase.from("invoices").select("id, invoice_number, customer_name, grand_total, status").limit(300),
         supabase.from("customers").select("id, name, phone, email").limit(300),
         supabase.from("leads").select("id, customer_name, service_type, status").limit(300),

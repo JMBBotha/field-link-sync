@@ -126,6 +126,7 @@ export async function findLatestDraftForLead(leadId: string): Promise<string | n
     .select("id")
     .eq("lead_id", leadId)
     .eq("status", "draft")
+    .neq("status", "superseded")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -143,8 +144,10 @@ export async function findLatestDraftForCustomer(customerId: string): Promise<st
     .eq("customer_id", customerId)
     .is("lead_id", null)
     .eq("status", "draft")
+    .neq("status", "superseded")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   return data?.id ?? null;
 }
+

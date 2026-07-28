@@ -102,7 +102,7 @@ export function useClientDetails(customerId: string | null) {
       const [customerRes, leadsRes, quotesRes, invoicesRes, feedbackRes] = await Promise.all([
         supabase.from("customers").select("*").eq("id", customerId).single(),
         supabase.from("leads").select("id, service_type, status, created_at, completed_at").eq("customer_id", customerId).order("created_at", { ascending: false }).limit(20),
-        supabase.from("quotes").select("id, quote_number, status, total, created_at").eq("customer_id", customerId).order("created_at", { ascending: false }).limit(20),
+        supabase.from("quotes").select("id, quote_number, status, total, created_at").eq("customer_id", customerId).neq("status", "superseded").order("created_at", { ascending: false }).limit(20),
         supabase.from("invoices").select("id, invoice_number, status, grand_total, created_at, paid_date").eq("customer_id", customerId).order("created_at", { ascending: false }).limit(20),
         supabase.from("customer_feedback").select("rating, comment, created_at").eq("customer_id", customerId).order("created_at", { ascending: false }).limit(10),
       ]);

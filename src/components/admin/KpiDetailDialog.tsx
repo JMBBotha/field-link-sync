@@ -95,8 +95,10 @@ async function fetchDetail(kpiKey: string, today: string): Promise<DetailRow[]> 
         .from("quotes")
         .select("id, quote_number, total, created_at, customers(name)")
         .eq("status", "draft")
+        .neq("status", "superseded")
         .order("created_at", { ascending: false })
         .limit(50);
+
       return (data || []).map((q) => {
         const custName = (q.customers as any)?.name || q.quote_number;
         return {

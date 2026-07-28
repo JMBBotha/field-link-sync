@@ -4175,6 +4175,7 @@ export type Database = {
           sent_at: string | null
           status: string
           subtotal: number
+          superseded_by: string | null
           terms_text: string | null
           total: number
           updated_at: string
@@ -4207,6 +4208,7 @@ export type Database = {
           sent_at?: string | null
           status?: string
           subtotal?: number
+          superseded_by?: string | null
           terms_text?: string | null
           total?: number
           updated_at?: string
@@ -4239,6 +4241,7 @@ export type Database = {
           sent_at?: string | null
           status?: string
           subtotal?: number
+          superseded_by?: string | null
           terms_text?: string | null
           total?: number
           updated_at?: string
@@ -4282,6 +4285,13 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "customer_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "quotes"
             referencedColumns: ["id"]
           },
         ]

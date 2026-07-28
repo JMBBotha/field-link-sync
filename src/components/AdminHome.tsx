@@ -158,7 +158,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
     queryFn: async () => {
       const [leadsRes, quotesRes, activeJobsRes, overdueRes, revenueRes, agentsRes, recentRes, overdueMaintenanceRes, openLeadsRes, todayJobsRes] = await Promise.all([
         supabase.from("leads").select("id", { count: "exact", head: true }).gte("created_at", today + "T00:00:00").eq("status", "pending"),
-        supabase.from("quotes").select("id", { count: "exact", head: true }).eq("status", "draft"),
+        supabase.from("quotes").select("id", { count: "exact", head: true }).eq("status", "draft").neq("status", "superseded"),
         supabase.from("leads").select("id", { count: "exact", head: true }).in("status", ["accepted", "en_route", "on_site"]),
         supabase.from("invoices").select("id", { count: "exact", head: true }).eq("status", "overdue"),
         supabase.from("invoices").select("grand_total").eq("status", "paid").gte("paid_date", today),
