@@ -41,6 +41,7 @@ export type QuoteBuilderMode = "admin" | "agent";
 /* ─── Shared Header with client selector ─── */
 function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
   const { meta, updateQuote, areas, items } = useQuoteContext();
+  const live = useQuoteLiveTotals();
   const { data: clients = [] } = useUnifiedClients();
   const [clientSearch, setClientSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
