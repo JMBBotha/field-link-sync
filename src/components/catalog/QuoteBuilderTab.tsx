@@ -218,14 +218,19 @@ interface QuoteBuilderTabProps {
   /** Baskets seeded from an existing quote — hydrates body state so it matches
    *  the header summary (fixes split-brain where body showed 0 items). */
   initialBaskets?: Basket[] | null;
+  /** Extra baskets from the inline Area/Wizard builder — merged into the
+   *  Quote Total bar so every displayed total (header, bar, sidebar) reads
+   *  the same combined set. Not added to `baskets` state. */
+  extraBaskets?: Basket[];
 }
 
-const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, areaBuilderNode, areaAddZone, areaApplyTemplate, areaClearAll, areaCount, areaDropProductToArea, areaDropBundleToArea, initialBaskets }: QuoteBuilderTabProps = {}) => {
+const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, areaBuilderNode, areaAddZone, areaApplyTemplate, areaClearAll, areaCount, areaDropProductToArea, areaDropBundleToArea, initialBaskets, extraBaskets }: QuoteBuilderTabProps = {}) => {
   const [baskets, setBasketsInternal] = useState<Basket[]>(() =>
-    initialBaskets && initialBaskets.length > 0
+    initialBaskets != null
       ? initialBaskets
       : [{ id: "basket-1", name: "Zone 1", items: [] }]
   );
+
   const setBaskets: typeof setBasketsInternal = useCallback((action) => {
     setBasketsInternal((prev) => {
       const next = typeof action === "function" ? action(prev) : action;
