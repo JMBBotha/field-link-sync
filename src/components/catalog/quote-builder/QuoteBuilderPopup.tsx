@@ -43,6 +43,38 @@ interface Props {
   triggerItem?: WizardTriggerItem | null;
   /** Trigger PDF scroll in background Visual Catalog */
   onPdfSearch?: (term: string) => void;
+  /** Live preview of in-progress wizard baskets — fires on every areas change */
+  onLivePreview?: (baskets: Basket[]) => void;
+}
+
+/** Convert wizard areas → baskets. Stable IDs derived from area/item IDs so
+ *  totals memos in the parent do not churn on every render. */
+export function areasToBaskets(areas: QuoteArea[]): Basket[] {
+  const baskets: Basket[] = [];
+  for (const area of areas) {
+    const allItems: BasketItem[] = [
+      ...area.acUnits.map((u) => ({
+        instanceId: `wizard-${area.id}-ac-${u.id}`,
+        product: u.product,
+        quantity: u.quantity,
+      })),
+      ...area.materials.map((m) => ({
+        instanceId: `wizard-${area.id}-mat-${m.id}`,
+        product: m.product,
+        quantity: m.pricingMode === "unit" ? m.unitQuantity : 1,
+        ...(m.pricingMode === "length" ? { length: m.adjustedLength } : {}),
+      })),
+      ...area.consumables.map((c) => ({
+        instanceId: `wizard-${area.id}-con-${c.id}`,
+        product: c.product,
+        quantity: c.quantity,
+      })),
+    ];
+    if (allItems.length > 0) {
+      baskets.push({ id: `wizard-basket-${area.id}`, name: area.name, items: allItems });
+    }
+  }
+  return baskets;
 }
 
 const DRAFT_STORAGE_KEY = "quote-builder-draft";
