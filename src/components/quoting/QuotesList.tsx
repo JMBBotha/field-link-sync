@@ -75,7 +75,9 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
       let query = supabase
         .from("quotes")
         .select("*, customers(name, phone)")
+        .neq("status", "superseded")
         .order("created_at", { ascending: false });
+
 
       if (statusFilter !== "all") {
         query = query.eq("status", statusFilter);
