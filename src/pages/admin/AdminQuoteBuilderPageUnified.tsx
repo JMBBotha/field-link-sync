@@ -344,8 +344,13 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
    */
   const initialWizardAreas = useMemo<QuoteArea[] | null>(() => {
     if (ctxLoading) return null;
-    // Legacy placeholder rows are not real items — never hydrate them into the wizard.
-    const realItems = ctxItems.filter((i) => i.source !== "legacy_placeholder" && !i.parent_item_id);
+    // Same "real item" rule as reuse/hydration guards.
+    const realItems = ctxItems.filter(
+      (i) =>
+        i.source !== "legacy_placeholder" &&
+        !i.parent_item_id &&
+        ((i.quantity ?? 0) > 0 || (i.unit_price ?? 0) > 0 || (i.total_price ?? 0) > 0)
+    );
     if (realItems.length === 0 && ctxAreas.length === 0) return null;
     const productById = new Map(products.map((p) => [p.id, p]));
     const stubProduct = (it: typeof ctxItems[number]): PaletteProduct => ({
