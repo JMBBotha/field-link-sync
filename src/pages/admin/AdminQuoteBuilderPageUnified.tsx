@@ -61,9 +61,15 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
     slice(0, 8);
   }, [clients, clientSearch]);
 
-  const topLevel = items.filter((i) => !i.parent_item_id);
+  // Exclude legacy_placeholder rows from user-visible counts — they exist only
+  // to preserve the recorded total for orphaned legacy quotes and should not
+  // be counted as real line items in the header or wizard.
+  const topLevel = items.filter((i) => !i.parent_item_id && i.source !== "legacy_placeholder");
   const totalItems = topLevel.length;
-  const totalCost = topLevel.reduce((s, i) => s + (i.total_price ?? i.unit_price * i.quantity), 0);
+  // Total still includes placeholder value so the recorded legacy total remains visible.
+  const totalCost = items
+    .filter((i) => !i.parent_item_id)
+    .reduce((s, i) => s + (i.total_price ?? i.unit_price * i.quantity), 0);
   // Zone count = declared areas + a synthetic "General" zone when items have no area_id.
   // Matches the body's grouping so the header badge and body always agree.
   const zoneIds = new Set<string>();
@@ -261,7 +267,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
    */
   const initialBaskets = useMemo<Basket[] | null>(() => {
     if (ctxLoading) return null;
-    if (ctxItems.length === 0 && ctxAreas.length === 0) {
+    // Ignore legacy_placeholder rows — they exist only to preserve the recorded
+    // total on orphaned legacy quotes and must not render as real basket items.
+    const realItems = ctxItems.filter((i) => i.source !== "legacy_placeholder");
+    if (realItems.length === 0 && ctxAreas.length === 0) {
       return [{ id: "basket-1", name: "Zone 1", items: [] }];
     }
     const productById = new Map(products.map((p) => [p.id, p]));
@@ -304,7 +313,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     const groups = new Map<string, typeof ctxItems>();
     for (const a of ctxAreas) groups.set(a.id, [] as any);
     const unassigned: typeof ctxItems = [] as any;
-    for (const it of ctxItems) {
+    for (const it of realItems) {
       if (it.parent_item_id) continue;
       if (it.area_id && groups.has(it.area_id)) (groups.get(it.area_id) as any).push(it);
       else (unassigned as any).push(it);
@@ -327,7 +336,9 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
    */
   const initialWizardAreas = useMemo<QuoteArea[] | null>(() => {
     if (ctxLoading) return null;
-    if (ctxItems.length === 0 && ctxAreas.length === 0) return null;
+    // Legacy placeholder rows are not real items — never hydrate them into the wizard.
+    const realItems = ctxItems.filter((i) => i.source !== "legacy_placeholder" && !i.parent_item_id);
+    if (realItems.length === 0 && ctxAreas.length === 0) return null;
     const productById = new Map(products.map((p) => [p.id, p]));
     const stubProduct = (it: typeof ctxItems[number]): PaletteProduct => ({
       id: it.product_id || it.id,
@@ -355,11 +366,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       is_material_favorite: false,
       pack_qty: null,
     } as unknown as PaletteProduct);
-    const topLevel = ctxItems.filter((i) => !i.parent_item_id);
     // Group items by area_id (null → default "General" bucket)
     const buckets = new Map<string | null, typeof ctxItems>();
     for (const a of ctxAreas) buckets.set(a.id, [] as any);
-    for (const it of topLevel) {
+    for (const it of realItems) {
       const key = it.area_id && buckets.has(it.area_id) ? it.area_id : null;
       if (!buckets.has(key)) buckets.set(key, [] as any);
       (buckets.get(key) as any).push(it);
