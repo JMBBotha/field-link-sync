@@ -811,6 +811,10 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
   // Insert the draft with a resolved customer_id, then supersede any stale drafts.
   const createDraft = useCallback(
     async (userId: string, resolvedCustomerId: string, toSupersede: string[]) => {
+      if (!resolvedCustomerId) {
+        // Guard: never hit the DB trigger with a null customer_id.
+        throw new Error("Cannot create quote: no customer linked. Please select a client first.");
+      }
       const insertPayload: Record<string, unknown> = {
         sales_engineer_id: userId,
         status: "draft",
@@ -821,6 +825,9 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
         customer_id: resolvedCustomerId,
       };
       if (paramLeadId) insertPayload.lead_id = paramLeadId;
+
+      // eslint-disable-next-line no-console
+      console.log("[QuoteBuilder] Inserting draft with customer_id:", resolvedCustomerId, "leadId:", paramLeadId);
 
       const { data, error } = await (supabase.from("quotes") as any)
         .insert(insertPayload)
