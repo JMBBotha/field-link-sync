@@ -594,6 +594,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
                     onApplyTemplateRef={areaApplyTemplateRef}
                     onClearAllRef={areaClearAllRef}
                     pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
+                    initialAreas={initialWizardAreas}
                   />
                 }
                 areaAddZone={() => areaAddZoneRef.current?.()}
