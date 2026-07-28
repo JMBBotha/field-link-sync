@@ -516,7 +516,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             </div>
           </div>
         }
-        {activeTab === "visual" &&
+        {!ctxLoading && activeTab === "visual" &&
         <div className="h-full flex">
             <div className="flex-1 min-w-0 overflow-hidden">
               <VisualCatalogPanel
