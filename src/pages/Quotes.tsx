@@ -1,34 +1,29 @@
-import { useState } from "react";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import QuotesList from "@/components/quoting/QuotesList";
-import QuoteBuilder from "@/components/quoting/QuoteBuilder";
 
+/**
+ * Legacy /quotes route wrapper. Kept for existing links only — all builder
+ * actions route to /admin/quote-builder (the single source of truth).
+ */
 const Quotes = () => {
-  const [view, setView] = useState<"list" | "builder">("list");
-  const [editQuoteId, setEditQuoteId] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  // If the app is opened at /quotes directly, forward to the admin surface.
+  useEffect(() => {
+    // Only redirect if we're actually on /quotes (not embedded).
+    if (window.location.pathname === "/quotes") {
+      navigate("/admin/quotes", { replace: true });
+    }
+  }, [navigate]);
 
   return (
     <Layout>
-      {view === "list" ? (
-        <QuotesList
-          onCreateNew={() => {
-            setEditQuoteId(null);
-            setView("builder");
-          }}
-          onEditQuote={(id) => {
-            setEditQuoteId(id);
-            setView("builder");
-          }}
-        />
-      ) : (
-        <QuoteBuilder
-          quoteId={editQuoteId}
-          onBack={() => {
-            setEditQuoteId(null);
-            setView("list");
-          }}
-        />
-      )}
+      <QuotesList
+        onCreateNew={() => navigate("/admin/quote-builder")}
+        onEditQuote={(id) => navigate(`/admin/quote-builder?quoteId=${id}`)}
+      />
     </Layout>
   );
 };

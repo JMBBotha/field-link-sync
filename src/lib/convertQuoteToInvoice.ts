@@ -36,24 +36,55 @@ export async function convertQuoteToInvoice(quoteId: string, agentUserId: string
     .maybeSingle();
   if (existing?.id) return existing.id;
 
-  // Flatten zones → line items.
-  const zones: any[] = Array.isArray(quote.visual_sections) ? (quote.visual_sections as any[]) : [];
+  // Prefer the unified quote_items table (single source of truth). Fall back
+  // to the legacy visual_sections JSON blob only when there are no items rows
+  // (older quotes created before the unification migration).
   const lineItems: Array<{ description: string; quantity: number; rate: number; amount: number }> = [];
-  zones.forEach((z) => {
-    const items: any[] = Array.isArray(z?.items) ? z.items : [];
-    items.forEach((i) => {
-      const qty = Number(i.quantity ?? i.length ?? 1) || 1;
-      const rate = Number(i.unitPrice ?? i.pricePerMetre ?? 0) || 0;
-      const amount = Number((qty * rate).toFixed(2));
-      const zonePrefix = z?.name ? `[${z.name}] ` : "";
+
+  const [{ data: items }, { data: areas }] = await Promise.all([
+    supabase
+      .from("quote_items")
+      .select("item_name, description, quantity, unit_price, total_price, area_id, parent_item_id, sort_order")
+      .eq("quote_id", quoteId)
+      .is("parent_item_id", null)
+      .order("sort_order"),
+    supabase.from("quote_areas").select("id, name").eq("quote_id", quoteId),
+  ]);
+
+  const areaName = new Map<string, string>((areas || []).map((a: any) => [a.id, a.name]));
+
+  if (items && items.length > 0) {
+    items.forEach((i: any) => {
+      const qty = Number(i.quantity) || 1;
+      const rate = Number(i.unit_price) || 0;
+      const amount =
+        i.total_price != null ? Number(i.total_price) : Number((qty * rate).toFixed(2));
+      const prefix = i.area_id && areaName.get(i.area_id) ? `[${areaName.get(i.area_id)}] ` : "";
       lineItems.push({
-        description: `${zonePrefix}${i.productName || i.productCode || "Item"}`,
+        description: `${prefix}${i.item_name || i.description || "Item"}`,
         quantity: qty,
         rate,
         amount,
       });
     });
-  });
+  } else {
+    const zones: any[] = Array.isArray(quote.visual_sections) ? (quote.visual_sections as any[]) : [];
+    zones.forEach((z) => {
+      const zItems: any[] = Array.isArray(z?.items) ? z.items : [];
+      zItems.forEach((i) => {
+        const qty = Number(i.quantity ?? i.length ?? 1) || 1;
+        const rate = Number(i.unitPrice ?? i.pricePerMetre ?? 0) || 0;
+        const amount = Number((qty * rate).toFixed(2));
+        const zonePrefix = z?.name ? `[${z.name}] ` : "";
+        lineItems.push({
+          description: `${zonePrefix}${i.productName || i.productCode || "Item"}`,
+          quantity: qty,
+          rate,
+          amount,
+        });
+      });
+    });
+  }
 
   // Look up customer contact bits for legacy denormalised columns.
   let customer_phone: string | null = null;

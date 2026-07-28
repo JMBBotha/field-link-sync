@@ -62,7 +62,16 @@ const sectionBgColors: Record<string, string> = {
 
 const ProposalPreview = ({ open, onOpenChange, sections, quote }: ProposalPreviewProps) => {
   const customer = quote?.customers;
-  const lineItems = quote?.quote_line_items || [];
+  // Prefer unified quote_items; fall back to legacy quote_line_items so any
+  // caller that still passes the old shape keeps rendering.
+  const rawItems: any[] = quote?.quote_items || quote?.quote_line_items || [];
+  const lineItems = rawItems
+    .filter((i) => !i.parent_item_id)
+    .map((i) => ({
+      description: i.item_name || i.description || "Item",
+      quantity: Number(i.quantity) || 0,
+      unit_price: Number(i.unit_price) || 0,
+    }));
 
   const categoryColors: Record<string, string> = {
     installation: "border-blue-400 bg-blue-50",

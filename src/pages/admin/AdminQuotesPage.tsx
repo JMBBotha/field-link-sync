@@ -1,74 +1,45 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { PenTool } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import QuotesList from "@/components/quoting/QuotesList";
-import QuoteBuilder from "@/components/quoting/QuoteBuilder";
 
+/**
+ * Quotes list page. Every "Open quote" / "New quote" action routes to the
+ * unified builder at `/admin/quote-builder` — the single write surface.
+ * No local builder is rendered here.
+ */
 const AdminQuotesPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [view, setView] = useState<"list" | "builder">("list");
-  const [editQuoteId, setEditQuoteId] = useState<string | null>(null);
-  const [presetLeadId, setPresetLeadId] = useState<string | null>(null);
-  const [presetCustomerId, setPresetCustomerId] = useState<string | null>(null);
-  const [presetTemplateId, setPresetTemplateId] = useState<string | null>(null);
-  const [presetQuoteName, setPresetQuoteName] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Auto-open builder if any prefill params are in URL
+  // If arriving with prefill params (from Lead / Customer / template links),
+  // forward them straight to the unified builder so we never render a legacy
+  // builder shell that could double-write.
   useEffect(() => {
     const leadId = searchParams.get("leadId");
     const customerId = searchParams.get("customerId");
     const templateId = searchParams.get("templateId");
     const quoteName = searchParams.get("quoteName");
-    if (leadId || customerId || templateId) {
-      setPresetLeadId(leadId);
-      setPresetCustomerId(customerId);
-      setPresetTemplateId(templateId);
-      setPresetQuoteName(quoteName);
-      setEditQuoteId(null);
-      setView("builder");
+    if (leadId || customerId || templateId || quoteName) {
+      const q = new URLSearchParams();
+      if (leadId) q.set("leadId", leadId);
+      if (customerId) q.set("customerId", customerId);
+      if (templateId) q.set("templateId", templateId);
+      if (quoteName) q.set("quoteName", quoteName);
       setSearchParams({}, { replace: true });
+      navigate(`/admin/quote-builder?${q.toString()}`, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
-
-  const clearPresets = () => {
-    setEditQuoteId(null);
-    setPresetLeadId(null);
-    setPresetCustomerId(null);
-    setPresetTemplateId(null);
-    setPresetQuoteName(null);
-  };
+  }, [searchParams, setSearchParams, navigate]);
 
   return (
     <>
-      {view === "list" ? (
-        <QuotesList
-          onCreateNew={() => {
-            clearPresets();
-            setView("builder");
-          }}
-          onEditQuote={(id) => {
-            clearPresets();
-            setEditQuoteId(id);
-            setView("builder");
-          }}
-        />
-      ) : (
-        <QuoteBuilder
-          quoteId={editQuoteId}
-          leadId={presetLeadId}
-          customerId={presetCustomerId}
-          templateId={presetTemplateId}
-          initialQuoteName={presetQuoteName}
-          onBack={() => {
-            clearPresets();
-            setView("list");
-          }}
-        />
-      )}
+      <QuotesList
+        onCreateNew={() => navigate("/admin/quote-builder")}
+        onEditQuote={(id) => navigate(`/admin/quote-builder?quoteId=${id}`)}
+      />
 
-      {/* Floating button to open full-page Quote Builder */}
+      {/* Floating button to open the unified Quote Builder */}
       <Button
         onClick={() => navigate("/admin/quote-builder")}
         className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all"

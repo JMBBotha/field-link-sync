@@ -78,13 +78,25 @@ const ClientProposalView = () => {
       if (!q) { setError("Quote not found."); return; }
       setQuote(q);
 
-      // Fetch line items and proposal sections in parallel
+      // Fetch line items (unified quote_items) and proposal sections in parallel.
       const [itemsRes, sectionsRes] = await Promise.all([
-        supabase.from("quote_line_items").select("id, description, quantity, unit_price").eq("quote_id", quoteId),
+        supabase
+          .from("quote_items")
+          .select("id, item_name, description, quantity, unit_price, total_price, parent_item_id, area_id, sort_order")
+          .eq("quote_id", quoteId)
+          .is("parent_item_id", null)
+          .order("sort_order"),
         supabase.from("proposal_sections").select("id, section_type, title, content, sort_order").eq("quote_id", quoteId).order("sort_order"),
       ]);
 
-      setLineItems(itemsRes.data || []);
+      // Normalize to the shape the rest of this view expects.
+      const items = (itemsRes.data || []).map((it: any) => ({
+        id: it.id,
+        description: it.item_name || it.description || "Item",
+        quantity: Number(it.quantity) || 0,
+        unit_price: Number(it.unit_price) || 0,
+      }));
+      setLineItems(items);
       setSections(sectionsRes.data || []);
     } catch {
       setError("Something went wrong.");
