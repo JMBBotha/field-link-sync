@@ -638,6 +638,42 @@ export type Database = {
           },
         ]
       }
+      company_quote_counters: {
+        Row: {
+          company_id: string
+          last_value: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          company_id: string
+          last_value?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          company_id?: string
+          last_value?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_quote_counters_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_quote_counters_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
       company_settings: {
         Row: {
           banking_details: Json | null
@@ -4129,6 +4165,7 @@ export type Database = {
           discount_value: number | null
           id: string
           lead_id: string | null
+          legacy_original_total: number | null
           location_id: string | null
           notes: string | null
           public_token: string | null
@@ -4160,6 +4197,7 @@ export type Database = {
           discount_value?: number | null
           id?: string
           lead_id?: string | null
+          legacy_original_total?: number | null
           location_id?: string | null
           notes?: string | null
           public_token?: string | null
@@ -4191,6 +4229,7 @@ export type Database = {
           discount_value?: number | null
           id?: string
           lead_id?: string | null
+          legacy_original_total?: number | null
           location_id?: string | null
           notes?: string | null
           public_token?: string | null
@@ -5175,7 +5214,9 @@ export type Database = {
         Returns: number
       }
       generate_proposal_number: { Args: never; Returns: string }
-      generate_quote_number: { Args: never; Returns: string }
+      generate_quote_number:
+        | { Args: never; Returns: string }
+        | { Args: { p_company_id?: string }; Returns: string }
       get_agents_within_radius: {
         Args: { lead_lat: number; lead_lng: number; radius_km: number }
         Returns: {
