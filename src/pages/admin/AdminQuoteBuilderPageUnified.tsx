@@ -735,40 +735,76 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
           return;
         }
 
-        // 1) Existing draft for this lead? Reuse it.
+        // Helper: only reuse a draft if it has real items or real areas.
+        // Placeholder-only drafts (legacy_placeholder rows) must not be reused.
+        const draftHasRealData = async (draftId: string): Promise<boolean> => {
+          const [itemsRes, areasRes] = await Promise.all([
+            supabase
+              .from("quote_items")
+              .select("id, source")
+              .eq("quote_id", draftId),
+            supabase
+              .from("quote_areas")
+              .select("id")
+              .eq("quote_id", draftId),
+          ]);
+          const realItems = (itemsRes.data ?? []).filter(
+            (i: any) => i && i.source !== "legacy_placeholder"
+          );
+          const realAreas = (areasRes.data ?? []).filter(Boolean);
+          return realItems.length > 0 || realAreas.length > 0;
+        };
+
+        // Mark a placeholder-only draft as superseded so it isn't picked again.
+        const supersedeDraft = async (draftId: string) => {
+          await (supabase.from("quotes") as any)
+            .update({ status: "archived" })
+            .eq("id", draftId);
+        };
+
+        // 1) Existing draft for this lead? Reuse only if it has real data.
         if (paramLeadId) {
-          const { data: existing } = await supabase
+          const { data: drafts } = await supabase
             .from("quotes")
             .select("id")
             .eq("lead_id", paramLeadId)
             .eq("status", "draft")
             .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          if (!cancelled && existing?.id) {
-            setQuoteId(existing.id);
-            setCreating(false);
-            return;
+            .limit(5);
+          for (const d of drafts ?? []) {
+            if (await draftHasRealData(d.id)) {
+              if (!cancelled) {
+                setQuoteId(d.id);
+                setCreating(false);
+              }
+              return;
+            }
+            await supersedeDraft(d.id);
           }
         }
 
-        // 2) Existing draft for this customer (no lead attached)? Reuse it.
+        // 2) Existing draft for this customer (no lead attached)? Same rule.
         if (!paramLeadId && paramCustomerId) {
-          const { data: existing } = await supabase
+          const { data: drafts } = await supabase
             .from("quotes")
             .select("id")
             .eq("customer_id", paramCustomerId)
             .is("lead_id", null)
             .eq("status", "draft")
             .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          if (!cancelled && existing?.id) {
-            setQuoteId(existing.id);
-            setCreating(false);
-            return;
+            .limit(5);
+          for (const d of drafts ?? []) {
+            if (await draftHasRealData(d.id)) {
+              if (!cancelled) {
+                setQuoteId(d.id);
+                setCreating(false);
+              }
+              return;
+            }
+            await supersedeDraft(d.id);
           }
         }
+
 
         // 3) Nothing to reuse — create a fresh draft, pre-linking lead/customer.
         const insertPayload: Record<string, unknown> = {
