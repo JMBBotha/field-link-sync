@@ -215,11 +215,16 @@ interface QuoteBuilderTabProps {
   areaDropProductToArea?: (areaId: string, product: PaletteProduct) => void;
   /** Ref-based handler to drop a bundle into a specific wizard area */
   areaDropBundleToArea?: (areaId: string, bundle: any) => void;
+  /** Baskets seeded from an existing quote — hydrates body state so it matches
+   *  the header summary (fixes split-brain where body showed 0 items). */
+  initialBaskets?: Basket[] | null;
 }
 
-const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, areaBuilderNode, areaAddZone, areaApplyTemplate, areaClearAll, areaCount, areaDropProductToArea, areaDropBundleToArea }: QuoteBuilderTabProps = {}) => {
-  const [baskets, setBasketsInternal] = useState<Basket[]>([
-  { id: "basket-1", name: "Zone 1", items: [] }]
+const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, areaBuilderNode, areaAddZone, areaApplyTemplate, areaClearAll, areaCount, areaDropProductToArea, areaDropBundleToArea, initialBaskets }: QuoteBuilderTabProps = {}) => {
+  const [baskets, setBasketsInternal] = useState<Basket[]>(() =>
+    initialBaskets && initialBaskets.length > 0
+      ? initialBaskets
+      : [{ id: "basket-1", name: "Zone 1", items: [] }]
   );
   const setBaskets: typeof setBasketsInternal = useCallback((action) => {
     setBasketsInternal((prev) => {
@@ -233,6 +238,16 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     onBasketsChange?.(baskets);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Hydrate from parent-provided baskets exactly once when they arrive
+  // (e.g. after the quote finishes loading from the DB).
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    if (!initialBaskets || initialBaskets.length === 0) return;
+    hydratedRef.current = true;
+    setBasketsInternal(initialBaskets);
+    onBasketsChange?.(initialBaskets);
+  }, [initialBaskets, onBasketsChange]);
   const [activeProduct, setActiveProduct] = useState<PaletteProduct | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
