@@ -262,6 +262,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
   const [visualPanelOpen, setVisualPanelOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardTriggerItem, setWizardTriggerItem] = useState<WizardTriggerItem | null>(null);
+  const [wizardPreviewBaskets, setWizardPreviewBaskets] = useState<Basket[]>([]);
   const queryClient = useQueryClient();
   const { usageMap, trackUsage } = useProductUsageStats();
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -785,8 +786,16 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     }
   }, [baskets, addProductToBasket]);
 
+  /** Baskets used for header + sidebar totals. While the wizard is open, we
+   *  merge its in-progress preview baskets so totals update live on every
+   *  selection/quantity change — matching what the user is building on screen. */
+  const displayBaskets = useMemo(
+    () => (wizardOpen ? [...baskets, ...wizardPreviewBaskets] : baskets),
+    [baskets, wizardPreviewBaskets, wizardOpen]
+  );
+
   const totalCost = useMemo(() => {
-    return baskets.reduce(
+    return displayBaskets.reduce(
       (sum, b) =>
       sum +
       b.items.reduce((s, i) => {
@@ -802,9 +811,12 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
       }, 0),
       0
     );
-  }, [baskets]);
+  }, [displayBaskets]);
 
-  const totalItems = baskets.reduce((s, b) => s + b.items.reduce((qs, i) => qs + i.quantity, 0), 0);
+  const totalItems = useMemo(
+    () => displayBaskets.reduce((s, b) => s + b.items.reduce((qs, i) => qs + i.quantity, 0), 0),
+    [displayBaskets]
+  );
 
   const handleClearAll = useCallback(() => {
     setBaskets([]);
@@ -812,6 +824,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
 
   const handleWizardSave = useCallback((newBaskets: Basket[]) => {
     setBaskets((prev) => [...prev, ...newBaskets]);
+    setWizardPreviewBaskets([]);
     toast({ title: `Added ${newBaskets.length} zones from Area Quote Builder` });
   }, []);
 
@@ -826,7 +839,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
       <div className="border bg-card p-3 z-10 shadow-sm shrink-0 rounded-sm py-[6px] mx-[4px] my-[8px] flex flex-col gap-[6px]">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-muted-foreground">
-            Quote Total ({totalItems} items across {baskets.length} zones)
+            Quote Total ({totalItems} items across {displayBaskets.length} zones)
           </span>
           <span className="text-lg font-bold text-foreground">
             R {totalCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -914,7 +927,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
       </DndContext>
 
       {/* Sticky collapsible quote summary at bottom */}
-      <StickyQuoteSummary baskets={baskets} />
+      <StickyQuoteSummary baskets={displayBaskets} />
 
       <ACOptionsModal
         open={acModalOpen}
@@ -928,11 +941,12 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
 
       <QuoteBuilderPopup
         open={wizardOpen}
-        onClose={() => {setWizardOpen(false);setWizardTriggerItem(null);}}
+        onClose={() => {setWizardOpen(false);setWizardTriggerItem(null);setWizardPreviewBaskets([]);}}
         products={products}
         bundles={bundles}
         onSave={handleWizardSave}
-        triggerItem={wizardTriggerItem} />
+        triggerItem={wizardTriggerItem}
+        onLivePreview={setWizardPreviewBaskets} />
 
     </div>);
 
