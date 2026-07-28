@@ -1070,6 +1070,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
         customer_id: resolvedCustomerId,
       };
       if (paramLeadId) insertPayload.lead_id = paramLeadId;
+      if (customerName && customerName.trim()) insertPayload.customer_name = customerName.trim();
 
       // eslint-disable-next-line no-console
       console.log("[QuoteBuilder] Inserting draft payload:", insertPayload);
