@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { calcSellingPrice, VAT_RATE } from "@/utils/pricing";
-import { computeProductPricing } from "@/lib/pricing";
-import { computeLineTotal, formatUnitPrice, resolvePricingUnit, unitSuffix } from "@/lib/pricingUnits";
+import { computeLineTotal, resolvePricingUnit, unitSuffix } from "@/lib/pricingUnits";
 import { RotateCcw, FileDown, Loader2, Mail, Check, TrendingUp, ChevronDown, ChevronRight, Package, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -350,11 +349,11 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
           const unitPrice = unitPriceOf(mat.product);
           const qty = isLen ? mat.adjustedLength : mat.unitQuantity;
           const lineTotal = isLen ? mat.totalCost : lineTotalOf(mat.product, mat.unitQuantity);
-          subItems.push({ name: mat.product.short_name || mat.product.product_code, quantity: qty, unitPrice, lineTotal, pricingMode: formatUnitPrice(unitPrice, resolvePricingUnit(mat.product)) });
+          subItems.push({ name: mat.product.short_name || mat.product.product_code, quantity: qty, unitPrice, lineTotal, pricingMode: isLen ? "per-meter" : "per-unit" });
         }
         for (const cons of (li.area.consumables ?? [])) {
           const price = unitPriceOf(cons.product);
-          subItems.push({ name: cons.product.short_name || cons.product.product_code, quantity: cons.quantity, unitPrice: price, lineTotal: lineTotalOf(cons.product, cons.quantity), pricingMode: formatUnitPrice(price, resolvePricingUnit(cons.product)) });
+          subItems.push({ name: cons.product.short_name || cons.product.product_code, quantity: cons.quantity, unitPrice: price, lineTotal: lineTotalOf(cons.product, cons.quantity), pricingMode: "per-unit" });
         }
         for (const br of li.area.brackets) {
           subItems.push({ name: `Bracket ${br.size}`, quantity: br.quantity, unitPrice: br.price, lineTotal: br.price * br.quantity, pricingMode: "per-unit" });
