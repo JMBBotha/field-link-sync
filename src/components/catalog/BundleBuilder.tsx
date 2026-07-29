@@ -461,7 +461,34 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
       </StickyActionBar>
 
 
-      {/* Product Picker Dialog */}
+      {/* Pricing Unit Dialog */}
+      <Dialog open={unitEditorIdx !== null} onOpenChange={(o) => !o && setUnitEditorIdx(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pricing Unit</DialogTitle>
+          </DialogHeader>
+          {unitEditorIdx !== null && items[unitEditorIdx] && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">{items[unitEditorIdx].description}</p>
+              <PricingUnitEditor
+                value={items[unitEditorIdx].unit}
+                unitPrice={items[unitEditorIdx].unit_price}
+                onChange={(u) => setItemUnit(unitEditorIdx, u)}
+              />
+              <p className="text-xs text-muted-foreground">
+                {formatQty(items[unitEditorIdx].entered_qty, items[unitEditorIdx].unit)}{" "}
+                {items[unitEditorIdx].unit.unit_type} at {formatUnitPrice(items[unitEditorIdx].unit_price, items[unitEditorIdx].unit)} ={" "}
+                <span className="font-semibold text-foreground">R{getLineTotal(items[unitEditorIdx]).toFixed(2)}</span>
+              </p>
+              <div className="flex justify-end">
+                <Button size="sm" onClick={() => setUnitEditorIdx(null)}>Done</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
