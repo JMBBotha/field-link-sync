@@ -80,13 +80,15 @@ function PopoverBody({
 
   const rows = nonOptional.map((item) => {
     const { unitCost, unitSell, isPackItem, packQty } = getEffectiveUnitPrices(item.product, item.isLengthItem);
+    const pricingUnit = resolvePricingUnit(item.product);
     const qtyOrLen = item.isLengthItem ? (item.length || 1) : item.quantity;
     const markupAmt = unitSell - unitCost;
     const markupPct = unitCost > 0 ? (markupAmt / unitCost) * 100 : 0;
     const hasMarkup = markupAmt > 0.01;
-    const lineTotal = unitSell * qtyOrLen;
-    const lineCost = unitCost * qtyOrLen;
-    const lineMarkup = markupAmt * qtyOrLen;
+    const lineTotal = computeLineTotal(qtyOrLen, unitSell, pricingUnit);
+    const lineCost = computeLineTotal(qtyOrLen, unitCost, pricingUnit);
+    const lineMarkup = lineTotal - lineCost;
+
 
     return {
       item,
