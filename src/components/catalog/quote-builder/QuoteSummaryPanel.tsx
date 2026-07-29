@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatRand } from "@/utils/formatRand";
 import type { Basket } from "../QuoteBuilderTab";
-import { computeBasketsQuoteTotals } from "../QuoteBuilderTab";
+import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
 import QuoteBrochureSection from "@/components/brochures/QuoteBrochureSection";
 import type { QuoteTotals } from "@/utils/quoteTransformers";
 

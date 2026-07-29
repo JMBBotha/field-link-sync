@@ -21,7 +21,7 @@ import { toast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
 
 // Real builder components
-import QuoteBuilderTab, { computeBasketsQuoteTotals } from "@/components/catalog/QuoteBuilderTab";
+import QuoteBuilderTab from "@/components/catalog/QuoteBuilderTab";
 import type { PaletteProduct, Basket } from "@/components/catalog/QuoteBuilderTab";
 import VisualCatalogPanel from "@/components/catalog/quote-builder/VisualCatalogPanel";
 import type { WizardTriggerItem } from "@/components/catalog/quote-builder/QuoteBuilderPopup";
@@ -35,6 +35,7 @@ import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPa
 import { useQuoteLiveTotals } from "@/stores/quoteLiveTotalsStore";
 import { areasToBaskets } from "@/components/catalog/quote-builder/QuoteBuilderPopup";
 import { computeQuoteTotals } from "@/utils/quoteTransformers";
+import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
 
 
 export type QuoteBuilderMode = "admin" | "agent";

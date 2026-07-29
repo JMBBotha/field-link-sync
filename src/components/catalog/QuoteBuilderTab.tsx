@@ -39,8 +39,7 @@ import { allTermsMatchBlob } from "./searchSynonyms";
 import QuoteBuilderPopup from "./quote-builder/QuoteBuilderPopup";
 import type { WizardTriggerItem } from "./quote-builder/QuoteBuilderPopup";
 import { computeBundlePricing } from "./quote-builder/BundleItemsPopover";
-import type { QuoteArea as UnifiedQuoteArea, QuoteItem } from "@/types/quote";
-import { computeQuoteTotals } from "@/utils/quoteTransformers";
+import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
 import type { QuoteTotals } from "@/utils/quoteTransformers";
 
 type QuoteBuilderBundle = PaletteBundle & {
@@ -136,76 +135,6 @@ export interface Basket {
   id: string;
   name: string;
   items: BasketItem[];
-}
-
-export function calculateBasketItemSell(item: BasketItem): number {
-  if (item.isBundle && item.bundleUnitPrice) {
-    return item.bundlePricingType === "p/meter"
-      ? item.bundleUnitPrice * (item.length || 1)
-      : item.bundleUnitPrice * item.quantity;
-  }
-  if (item.product.sold_in_length && item.product.price_per_metre && item.length) {
-    const { unitSell } = getEffectiveUnitPrices(item.product, true);
-    return unitSell * item.length;
-  }
-  const { unitSell } = getEffectiveUnitPrices(item.product);
-  return unitSell * item.quantity;
-}
-
-function itemMarkupPercent(item: BasketItem): number {
-  const explicit = Number(item.product.default_markup_percent ?? item.product.markup_percent ?? 0);
-  if (Number.isFinite(explicit) && explicit > 0) return explicit;
-  if (item.bundleUnitCost && item.bundleUnitCost > 0 && item.bundleUnitPrice) {
-    return ((item.bundleUnitPrice - item.bundleUnitCost) / item.bundleUnitCost) * 100;
-  }
-  return 0;
-}
-
-export function basketsToQuoteState(baskets: Basket[]): { areas: UnifiedQuoteArea[]; items: QuoteItem[] } {
-  const areas: UnifiedQuoteArea[] = baskets.map((basket, index) => ({
-    id: basket.id,
-    quote_id: "live",
-    name: basket.name,
-    sort_order: index,
-    created_at: "",
-    updated_at: "",
-  }));
-
-  const items: QuoteItem[] = baskets.flatMap((basket, basketIndex) =>
-    basket.items.map((item, itemIndex) => {
-      const totalPrice = calculateBasketItemSell(item);
-      return {
-        id: item.instanceId,
-        quote_id: "live",
-        area_id: basket.id,
-        parent_item_id: null,
-        product_id: item.product.id,
-        item_name: item.bundleName || item.product.short_name || item.product.product_code || "Item",
-        item_number: item.product.product_code || null,
-        description: item.product.description || null,
-        quantity: item.quantity,
-        length: item.length ?? null,
-        unit_price: item.quantity > 0 ? totalPrice / item.quantity : totalPrice,
-        total_price: totalPrice,
-        is_bundle: !!item.isBundle,
-        item_type: item.product.product_category || item.product.category || null,
-        metadata: { markup_percent: itemMarkupPercent(item) },
-        sort_order: basketIndex * 1000 + itemIndex,
-        notes: null,
-        source: "builder_live",
-        supplier: item.product.supplier_name || null,
-        created_at: "",
-        updated_at: "",
-      } satisfies QuoteItem;
-    })
-  );
-
-  return { areas, items };
-}
-
-export function computeBasketsQuoteTotals(baskets: Basket[]): QuoteTotals {
-  const { items, areas } = basketsToQuoteState(baskets);
-  return computeQuoteTotals(items, areas);
 }
 
 // Custom shouldHandleEvent to skip data-no-dnd elements
