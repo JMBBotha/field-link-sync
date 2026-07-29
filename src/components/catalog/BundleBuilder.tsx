@@ -75,6 +75,8 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [visualPickerOpen, setVisualPickerOpen] = useState(false);
+  const [unitEditorIdx, setUnitEditorIdx] = useState<number | null>(null);
+
 
   // Load existing bundle
   const { data: existingBundle } = useQuery({
