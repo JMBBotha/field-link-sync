@@ -187,14 +187,15 @@ export function RegularItemCard({
           <Badge variant="outline" className="text-[7px] px-1 py-0 h-3 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up</Badge>
           <ProductInfoDialog product={item.product} />
         </div>
-        {isLengthItem ? (
+        {isMeasured ? (
           <div className="flex items-center gap-0.5 shrink-0">
-            <Input type="number" min={0.1} step={0.5} value={item.length || 1}
-              onChange={(e) => onUpdateLength(parseFloat(e.target.value) || 0.1)}
+            <Input {...qtyInputProps(unit)} value={formatQty(item.length || 1, unit)}
+              onChange={(e) => onUpdateLength(sanitizeQty(parseFloat(e.target.value), unit))}
               className="h-4 w-10 text-[10px] text-center px-0.5" />
-            <span className="text-[8px] text-muted-foreground">m</span>
+            <span className="text-[8px] text-muted-foreground">{unit.unit_type === "roll" ? "m" : unit.unit_type}</span>
           </div>
         ) : (
+
           <div className="flex items-center gap-0 shrink-0">
             <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => onUpdateQuantity(item.quantity - 1)} disabled={item.quantity <= 1}>
               <Minus className="h-2 w-2" />
