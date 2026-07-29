@@ -172,8 +172,10 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
 
           if (item.is_length_item) {
             const unit = resolvePricingUnit(product);
-            const unitPrice = product.price_per_metre || product.selling_price || product.cost_incl_vat || 0;
+            // Always re-resolve from the live catalog record — never a cached bundle_item snapshot
+            const unitPrice = product.cost_price || product.cost_excl_vat || product.price_per_metre || product.selling_price || 0;
             const per = unit.price_per_unit_qty > 0 ? unit.price_per_unit_qty : 1;
+
             const length = item.length_metres || 3;
             newMaterials.push({
               id: lineId,

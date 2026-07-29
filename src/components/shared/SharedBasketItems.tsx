@@ -122,9 +122,12 @@ export function CollapsibleBundleCard({
             const subQty = sub.isLengthItem
               ? (sub.length || 1) * multiplier
               : sub.quantity * multiplier;
-            const subPrice = sub.isLengthItem
-              ? (sub.product.price_per_metre || 0) * subQty
-              : (sub.product.selling_price || (sub.product as any).discounted_cost || sub.product.cost_excl_vat || 0) * subQty;
+            const subUnit = resolvePricingUnit(sub.product);
+            const subUnitPrice = sub.isLengthItem
+              ? (sub.product.price_per_metre || 0)
+              : (sub.product.selling_price || (sub.product as any).discounted_cost || sub.product.cost_excl_vat || 0);
+            const subPrice = computeLineTotal(subQty, subUnitPrice, subUnit);
+
             return (
               <div key={idx} className="flex items-center justify-between text-[10px] text-muted-foreground">
                 <span className="truncate flex-1 min-w-0 pl-4">

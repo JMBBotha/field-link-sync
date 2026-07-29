@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { getProductDisplayName } from "./productDisplayUtils";
 import type { PaletteProduct } from "../QuoteBuilderTab";
 import { getEffectiveUnitPrices } from "../QuoteBuilderTab";
+import { computeLineTotal, resolvePricingUnit } from "@/lib/pricingUnits";
+
 
 export interface BundleSubItem {
   product: PaletteProduct;
@@ -47,22 +49,21 @@ export function computeBundlePricing(items: BundleSubItem[]): {
   // Mixed or all per-unit
   const totalSell = nonOptional.reduce((sum, i) => {
     const { unitSell } = getEffectiveUnitPrices(i.product, i.isLengthItem);
-    if (i.isLengthItem) {
-      return sum + unitSell * (i.length || 1);
-    }
-    return sum + unitSell * i.quantity;
+    const unit = resolvePricingUnit(i.product);
+    const qty = i.isLengthItem ? (i.length || 1) : i.quantity;
+    return sum + computeLineTotal(qty, unitSell, unit);
   }, 0);
 
   const totalCost = nonOptional.reduce((sum, i) => {
     const { unitCost } = getEffectiveUnitPrices(i.product, i.isLengthItem);
-    if (i.isLengthItem) {
-      return sum + unitCost * (i.length || 1);
-    }
-    return sum + unitCost * i.quantity;
+    const unit = resolvePricingUnit(i.product);
+    const qty = i.isLengthItem ? (i.length || 1) : i.quantity;
+    return sum + computeLineTotal(qty, unitCost, unit);
   }, 0);
 
   return { pricingType: "p/qty", unitPrice: totalSell, unitCost: totalCost };
 }
+
 
 const fmt = (v: number) => v.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -79,13 +80,15 @@ function PopoverBody({
 
   const rows = nonOptional.map((item) => {
     const { unitCost, unitSell, isPackItem, packQty } = getEffectiveUnitPrices(item.product, item.isLengthItem);
+    const pricingUnit = resolvePricingUnit(item.product);
     const qtyOrLen = item.isLengthItem ? (item.length || 1) : item.quantity;
     const markupAmt = unitSell - unitCost;
     const markupPct = unitCost > 0 ? (markupAmt / unitCost) * 100 : 0;
     const hasMarkup = markupAmt > 0.01;
-    const lineTotal = unitSell * qtyOrLen;
-    const lineCost = unitCost * qtyOrLen;
-    const lineMarkup = markupAmt * qtyOrLen;
+    const lineTotal = computeLineTotal(qtyOrLen, unitSell, pricingUnit);
+    const lineCost = computeLineTotal(qtyOrLen, unitCost, pricingUnit);
+    const lineMarkup = lineTotal - lineCost;
+
 
     return {
       item,
