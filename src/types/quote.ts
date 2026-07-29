@@ -2,6 +2,8 @@
  * Unified Quote Types — single source of truth for all three builders.
  * Maps directly to the quote_areas and quote_items Supabase tables.
  */
+import type { UnitType } from "@/lib/pricingUnits";
+
 
 export interface QuoteArea {
   id: string;
