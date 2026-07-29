@@ -32,7 +32,16 @@ interface Product {
   discounted_cost?: number | null;
   supplier_discount_percent?: number | null;
   cost_excl_vat?: number | null;
+  unit_type?: string | null;
+  price_per_unit_qty?: number | null;
+  price_per_unit_label?: string | null;
+  allows_decimal_qty?: boolean | null;
+  qty_step?: number | null;
+  min_qty?: number | null;
+  sold_in_length?: boolean | null;
+  price_per_metre?: number | null;
 }
+
 
 interface Props {
   product: Product | null;
