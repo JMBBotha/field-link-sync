@@ -15,6 +15,17 @@ import { FileImage } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import VisualPdfBundlePicker from "./VisualPdfBundlePicker";
 import StickyActionBar, { STICKY_ACTION_BAR_SPACER } from "@/components/shared/StickyActionBar";
+import PricingUnitEditor from "./PricingUnitEditor";
+import {
+  computeLineTotal,
+  formatUnitPrice,
+  qtyInputProps,
+  resolvePricingUnit,
+  sanitizeQty,
+  formatQty,
+  type PricingUnit,
+} from "@/lib/pricingUnits";
+
 
 const BUNDLE_TYPES = [
   { value: "piping_kit", label: "Piping Kit", desc: "Copper + Lagging" },
@@ -39,7 +50,14 @@ type BundleItemLocal = {
   supplier_name?: string;
   pipe_size?: string;
   short_name?: string;
+  /** Unit-based pricing */
+  unit: PricingUnit;
+  /** Price that covers unit.price_per_unit_qty of the item */
+  unit_price: number;
+  /** Quantity the user entered, expressed in unit.unit_type */
+  entered_qty: number;
 };
+
 
 type Props = {
   bundleId: string | null;
@@ -57,6 +75,8 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [visualPickerOpen, setVisualPickerOpen] = useState(false);
+  const [unitEditorIdx, setUnitEditorIdx] = useState<number | null>(null);
+
 
   // Load existing bundle
   const { data: existingBundle } = useQuery({
@@ -79,7 +99,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bundle_items")
-        .select("*, supplier_products(description, product_code, cost_price, price_per_metre, sold_in_length, pipe_size, short_name, suppliers(name))")
+        .select("*, supplier_products(description, product_code, cost_price, price_per_metre, sold_in_length, pipe_size, short_name, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, suppliers(name))")
         .eq("bundle_id", bundleId!)
         .order("sort_order");
       if (error) throw error;
@@ -97,24 +117,39 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
 
   useEffect(() => {
     if (existingItems) {
-      setItems(existingItems.map((item: any) => ({
-        id: item.id,
-        supplier_product_id: item.supplier_product_id,
-        quantity: item.quantity,
-        length_metres: item.length_metres,
-        is_length_item: item.is_length_item,
-        is_optional: item.is_optional ?? false,
-        notes: item.notes || "",
-        sort_order: item.sort_order,
-        description: item.supplier_products?.description || "",
-        product_code: item.supplier_products?.product_code || "",
-        cost_price: item.supplier_products?.cost_price || 0,
-        price_per_metre: item.supplier_products?.price_per_metre,
-        sold_in_length: item.supplier_products?.sold_in_length || false,
-        supplier_name: item.supplier_products?.suppliers?.name,
-        pipe_size: item.supplier_products?.pipe_size,
-        short_name: item.supplier_products?.short_name,
-      })));
+      setItems(existingItems.map((item: any) => {
+        const product = item.supplier_products || {};
+        // Prefer unit fields stored on the bundle item, else fall back to the product
+        const unit = resolvePricingUnit(
+          item.unit_type ? item : { ...product, sold_in_length: item.is_length_item || product.sold_in_length }
+        );
+        const isLen = unit.unit_type === "m" || unit.unit_type === "roll";
+        const unitPrice = isLen && product.price_per_metre
+          ? product.price_per_metre * unit.price_per_unit_qty
+          : product.cost_price || 0;
+        return {
+          id: item.id,
+          supplier_product_id: item.supplier_product_id,
+          quantity: item.quantity,
+          length_metres: item.length_metres,
+          is_length_item: item.is_length_item,
+          is_optional: item.is_optional ?? false,
+          notes: item.notes || "",
+          sort_order: item.sort_order,
+          description: product.description || "",
+          product_code: product.product_code || "",
+          cost_price: product.cost_price || 0,
+          price_per_metre: product.price_per_metre,
+          sold_in_length: product.sold_in_length || false,
+          supplier_name: product.suppliers?.name,
+          pipe_size: product.pipe_size,
+          short_name: product.short_name,
+          unit,
+          unit_price: unitPrice,
+          entered_qty: sanitizeQty(isLen ? (item.length_metres ?? item.quantity ?? 1) : (item.quantity ?? 1), unit),
+        } satisfies BundleItemLocal;
+      }));
+
     }
   }, [existingItems]);
 
@@ -133,7 +168,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
 
       const { data, error } = await supabase
         .from("supplier_products")
-        .select("id, description, product_code, cost_price, price_per_metre, sold_in_length, pipe_size, short_name, brand, category, suppliers(name)")
+        .select("id, description, product_code, cost_price, price_per_metre, sold_in_length, pipe_size, short_name, brand, category, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, suppliers(name)")
         .or("archived.is.null,archived.eq.false")
         .or(orFilter)
         .limit(300);
@@ -159,11 +194,17 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
       toast.info("Item already in bundle");
       return;
     }
+    const unit = resolvePricingUnit(product);
+    const isLen = unit.unit_type === "m" || unit.unit_type === "roll";
+    const unitPrice = isLen && product.price_per_metre
+      ? product.price_per_metre * unit.price_per_unit_qty
+      : product.cost_price || 0;
+    const startQty = sanitizeQty(isLen ? 4 : Math.max(unit.min_qty, unit.qty_step), unit);
     setItems(prev => [...prev, {
       supplier_product_id: product.id,
-      quantity: product.sold_in_length ? 1 : 1,
-      length_metres: product.sold_in_length ? 4 : null,
-      is_length_item: product.sold_in_length || false,
+      quantity: isLen ? 1 : startQty,
+      length_metres: isLen ? startQty : null,
+      is_length_item: isLen,
       is_optional: false,
       notes: "",
       sort_order: prev.length,
@@ -175,6 +216,9 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
       supplier_name: product.suppliers?.name,
       pipe_size: product.pipe_size,
       short_name: product.short_name,
+      unit,
+      unit_price: unitPrice,
+      entered_qty: startQty,
     }]);
     setPickerOpen(false);
     setSearch("");
@@ -188,12 +232,18 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
     setItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
   };
 
-  const getLineTotal = (item: BundleItemLocal) => {
-    if (item.is_length_item && item.length_metres) {
-      return item.length_metres * (item.price_per_metre || 0);
-    }
-    return item.quantity * item.cost_price;
+  const setItemUnit = (index: number, unit: PricingUnit) => {
+    setItems(prev => prev.map((item, i) =>
+      i === index
+        ? { ...item, unit, entered_qty: sanitizeQty(item.entered_qty, unit), is_length_item: unit.unit_type === "m" || unit.unit_type === "roll" }
+        : item
+    ));
   };
+
+  /** One formula for every item: (enteredQty / price_per_unit_qty) * unitPrice */
+  const getLineTotal = (item: BundleItemLocal) =>
+    computeLineTotal(item.entered_qty, item.unit_price, item.unit);
+
 
   const bundleTotal = items.reduce((sum, item) => sum + getLineTotal(item), 0);
 
@@ -229,13 +279,20 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
         const itemRows = items.map((item, i) => ({
           bundle_id: bid,
           supplier_product_id: item.supplier_product_id,
-          quantity: item.quantity,
-          length_metres: item.length_metres,
+          quantity: item.entered_qty,
+          length_metres: item.is_length_item ? item.entered_qty : null,
           is_length_item: item.is_length_item,
           is_optional: item.is_optional,
           notes: item.notes || null,
           sort_order: i,
+          unit_type: item.unit.unit_type,
+          price_per_unit_qty: item.unit.price_per_unit_qty,
+          price_per_unit_label: item.unit.price_per_unit_label,
+          allows_decimal_qty: item.unit.allows_decimal_qty,
+          qty_step: item.unit.qty_step,
+          min_qty: item.unit.min_qty,
         }));
+
         const { error: iErr } = await supabase.from("bundle_items").insert(itemRows);
         if (iErr) throw iErr;
       }
@@ -309,8 +366,8 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
                 <tr className="text-muted-foreground border-b">
                   <th className="text-left font-medium py-1.5 w-20">Code</th>
                   <th className="text-left font-medium py-1.5">Description</th>
-                  <th className="text-right font-medium py-1.5 w-24">Length / Qty</th>
-                  <th className="text-right font-medium py-1.5 w-20">Cost/m</th>
+                  <th className="text-right font-medium py-1.5 w-28">Qty</th>
+                  <th className="text-right font-medium py-1.5 w-28">Unit Price</th>
                   <th className="text-right font-medium py-1.5 w-20">Line Total</th>
                   <th className="text-center font-medium py-1.5 w-16">Optional</th>
                   <th className="w-8"></th>
@@ -318,7 +375,6 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
               </thead>
               <tbody>
                 {items.map((item, idx) => {
-                  const unitCost = item.is_length_item ? (item.price_per_metre || 0) : item.cost_price;
                   const lineTotal = getLineTotal(item);
                   return (
                     <tr key={idx} className="border-b border-dashed">
@@ -327,37 +383,47 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
                       </td>
                       <td className="py-1.5">
                         <div className="font-medium truncate max-w-[220px] text-xs">{item.description?.slice(0, 50)}</div>
-                        {item.pipe_size && (
-                          <span className="text-[10px] text-muted-foreground">⌀ {item.pipe_size}</span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {item.pipe_size && (
+                            <span className="text-[10px] text-muted-foreground">⌀ {item.pipe_size}</span>
+                          )}
+                          <button
+                            type="button"
+                            className="text-[10px] text-primary hover:underline"
+                            onClick={() => setUnitEditorIdx(idx)}
+                          >
+                            {formatUnitPrice(item.unit_price, item.unit)} · change unit
+                          </button>
+                        </div>
                       </td>
                       <td className="text-right py-1.5">
-                        {item.is_length_item ? (
-                          <div className="flex items-center justify-end gap-1">
-                            <Input
-                              type="number"
-                              step="0.5"
-                              min="0.5"
-                              value={item.length_metres || ""}
-                              onChange={e => updateItem(idx, "length_metres", parseFloat(e.target.value) || 0)}
-                              className="h-6 w-16 text-xs text-right px-1"
-                            />
-                            <span className="text-muted-foreground">m</span>
-                          </div>
-                        ) : (
+                        <div className="flex items-center justify-end gap-1">
+                          <Input
+                            {...qtyInputProps(item.unit)}
+                            value={item.entered_qty}
+                            onChange={e => {
+                              const raw = parseFloat(e.target.value);
+                              updateItem(idx, "entered_qty", sanitizeQty(Number.isFinite(raw) ? raw : item.unit.min_qty, item.unit));
+                            }}
+                            className="h-6 w-16 text-xs text-right px-1"
+                          />
+                          <span className="text-muted-foreground text-[10px]">{item.unit.unit_type === "each" ? "ea" : item.unit.unit_type}</span>
+                        </div>
+                      </td>
+                      <td className="text-right py-1.5">
+                        <div className="flex items-center justify-end gap-1">
                           <Input
                             type="number"
-                            step="1"
-                            min="1"
-                            value={item.quantity}
-                            onChange={e => updateItem(idx, "quantity", parseInt(e.target.value) || 1)}
-                            className="h-6 w-14 text-xs text-right px-1 ml-auto"
+                            step="any"
+                            min={0}
+                            value={item.unit_price}
+                            onChange={e => updateItem(idx, "unit_price", parseFloat(e.target.value) || 0)}
+                            className="h-6 w-20 text-xs text-right px-1"
                           />
-                        )}
+                          <span className="text-muted-foreground text-[10px]">/{item.unit.price_per_unit_label}</span>
+                        </div>
                       </td>
-                      <td className="text-right py-1.5 text-muted-foreground">
-                        R{unitCost.toFixed(2)}{item.is_length_item ? "/m" : ""}
-                      </td>
+
                       <td className="text-right py-1.5 font-medium">R{lineTotal.toFixed(2)}</td>
                       <td className="text-center py-1.5">
                         <Checkbox
@@ -395,7 +461,34 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
       </StickyActionBar>
 
 
-      {/* Product Picker Dialog */}
+      {/* Pricing Unit Dialog */}
+      <Dialog open={unitEditorIdx !== null} onOpenChange={(o) => !o && setUnitEditorIdx(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pricing Unit</DialogTitle>
+          </DialogHeader>
+          {unitEditorIdx !== null && items[unitEditorIdx] && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">{items[unitEditorIdx].description}</p>
+              <PricingUnitEditor
+                value={items[unitEditorIdx].unit}
+                unitPrice={items[unitEditorIdx].unit_price}
+                onChange={(u) => setItemUnit(unitEditorIdx, u)}
+              />
+              <p className="text-xs text-muted-foreground">
+                {formatQty(items[unitEditorIdx].entered_qty, items[unitEditorIdx].unit)}{" "}
+                {items[unitEditorIdx].unit.unit_type} at {formatUnitPrice(items[unitEditorIdx].unit_price, items[unitEditorIdx].unit)} ={" "}
+                <span className="font-semibold text-foreground">R{getLineTotal(items[unitEditorIdx]).toFixed(2)}</span>
+              </p>
+              <div className="flex justify-end">
+                <Button size="sm" onClick={() => setUnitEditorIdx(null)}>Done</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>

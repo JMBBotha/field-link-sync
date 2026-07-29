@@ -10,6 +10,16 @@ import BundleItemsPopover from "@/components/catalog/quote-builder/BundleItemsPo
 import type { BasketItem } from "@/components/catalog/QuoteBuilderTab";
 import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
 import { normalizeMarkupPercent } from "@/lib/pricing";
+import {
+  resolvePricingUnit,
+  computeLineTotal,
+  formatUnitPrice,
+  qtyInputProps,
+  sanitizeQty,
+  formatQty,
+  stepQty,
+} from "@/lib/pricingUnits";
+
 
 interface SharedBasketItemProps {
   item: BasketItem;
@@ -143,7 +153,9 @@ export function RegularItemCard({
   onUpdateQuantity,
   onUpdateLength,
 }: SharedBasketItemProps) {
-  const isLengthItem = item.product.sold_in_length && !!item.product.price_per_metre;
+  const unit = resolvePricingUnit(item.product);
+  /** Measured units (m, g, kg, l, ml, roll, custom) use the length field as the entered qty. */
+  const isMeasured = !["each", "box", "pack"].includes(unit.unit_type);
   const [markupAdj, setMarkupAdj] = useState(0);
   const baseMarkup = normalizeMarkupPercent((item.product as any).default_markup_percent ?? (item.product as any).markup_percent ?? 0.35);
   const effectiveMarkup = baseMarkup + markupAdj;
@@ -153,14 +165,19 @@ export function RegularItemCard({
   const markupMultiplier = markupAdj !== 0 ? (1 + effectiveMarkup / 100) / (1 + baseMarkup / 100) : 1;
   const unitSell = rawUnitSell * markupMultiplier;
 
-  const price = isLengthItem
-    ? (item.product.price_per_metre || 0) * markupMultiplier * (item.length || 1)
-    : unitSell * item.quantity;
+  /** Price covering unit.price_per_unit_qty of the item, markup applied. */
+  const unitPrice = isMeasured && item.product.price_per_metre
+    ? (item.product.price_per_metre || 0) * unit.price_per_unit_qty * markupMultiplier
+    : unitSell;
+  const enteredQty = isMeasured ? (item.length || 1) : item.quantity;
+
+  const price = computeLineTotal(enteredQty, unitPrice, unit);
   const displayPrice = item.isBundle
     ? item.bundlePricingType === "p/meter"
       ? (item.bundleUnitPrice || 0) * (item.length || 1)
       : (item.bundleUnitPrice || 0) * item.quantity
     : price;
+
 
   if (isCompact) {
     return (
@@ -170,14 +187,15 @@ export function RegularItemCard({
           <Badge variant="outline" className="text-[7px] px-1 py-0 h-3 border-green-500/40 text-green-600 shrink-0">{effectiveMarkup}% M/Up</Badge>
           <ProductInfoDialog product={item.product} />
         </div>
-        {isLengthItem ? (
+        {isMeasured ? (
           <div className="flex items-center gap-0.5 shrink-0">
-            <Input type="number" min={0.1} step={0.5} value={item.length || 1}
-              onChange={(e) => onUpdateLength(parseFloat(e.target.value) || 0.1)}
+            <Input {...qtyInputProps(unit)} value={formatQty(item.length || 1, unit)}
+              onChange={(e) => onUpdateLength(sanitizeQty(parseFloat(e.target.value), unit))}
               className="h-4 w-10 text-[10px] text-center px-0.5" />
-            <span className="text-[8px] text-muted-foreground">m</span>
+            <span className="text-[8px] text-muted-foreground">{unit.unit_type === "roll" ? "m" : unit.unit_type}</span>
           </div>
         ) : (
+
           <div className="flex items-center gap-0 shrink-0">
             <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => onUpdateQuantity(item.quantity - 1)} disabled={item.quantity <= 1}>
               <Minus className="h-2 w-2" />
@@ -227,27 +245,28 @@ export function RegularItemCard({
           <p className="text-[10px] font-mono font-medium text-primary/80 truncate">
             {item.product.product_code}
           </p>
-          {isLengthItem && (
+          {isMeasured && (
             <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 gap-0.5 border-orange-400/40 text-orange-600">
               <Ruler className="h-2 w-2" />
-              R{(item.product.price_per_metre || 0).toFixed(2)}/m
+              {formatUnitPrice(unitPrice, unit)}
             </Badge>
           )}
-          {!isLengthItem && isPackItem && (
+          {!isMeasured && isPackItem && (
             <Badge variant="outline" className="text-[7px] px-0.5 py-0 h-3 border-muted-foreground/40 text-muted-foreground">
               pk/{packQty} · R{unitSell.toFixed(2)}/ea
             </Badge>
           )}
         </div>
       </div>
-      {isLengthItem ? (
+      {isMeasured ? (
         <div className="flex items-center gap-1 shrink-0">
-          <Input type="number" min={0.1} step={0.5} value={item.length || 1}
-            onChange={(e) => onUpdateLength(parseFloat(e.target.value) || 0.1)}
+          <Input {...qtyInputProps(unit)} value={formatQty(item.length || 1, unit)}
+            onChange={(e) => onUpdateLength(sanitizeQty(parseFloat(e.target.value), unit))}
             className="h-6 w-14 text-xs text-center px-1" />
-          <span className="text-[10px] text-muted-foreground">m</span>
+          <span className="text-[10px] text-muted-foreground">{unit.unit_type === "roll" ? "m" : unit.unit_type}</span>
         </div>
       ) : (
+
         <div className="flex items-center gap-0.5 shrink-0">
           <Button variant="outline" size="icon" className="h-5 w-5" onClick={() => onUpdateQuantity(item.quantity - 1)} disabled={item.quantity <= 1}>
             <Minus className="h-2.5 w-2.5" />

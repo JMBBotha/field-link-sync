@@ -2,6 +2,8 @@
  * Unified Quote Types — single source of truth for all three builders.
  * Maps directly to the quote_areas and quote_items Supabase tables.
  */
+import type { UnitType } from "@/lib/pricingUnits";
+
 
 export interface QuoteArea {
   id: string;
@@ -32,9 +34,17 @@ export interface QuoteItem {
   notes: string | null;
   source: string;
   supplier: string | null;
+  /** Unit-based pricing (see src/lib/pricingUnits.ts) */
+  unit_type?: UnitType;
+  price_per_unit_qty?: number;
+  price_per_unit_label?: string;
+  allows_decimal_qty?: boolean;
+  qty_step?: number;
+  min_qty?: number;
   created_at: string;
   updated_at: string;
 }
+
 
 export interface QuoteMeta {
   id: string;

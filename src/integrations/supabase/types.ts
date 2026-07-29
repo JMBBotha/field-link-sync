@@ -348,40 +348,58 @@ export type Database = {
       }
       bundle_items: {
         Row: {
+          allows_decimal_qty: boolean
           bundle_id: string
           created_at: string
           id: string
           is_length_item: boolean
           is_optional: boolean
           length_metres: number | null
+          min_qty: number
           notes: string | null
+          price_per_unit_label: string
+          price_per_unit_qty: number
+          qty_step: number
           quantity: number
           sort_order: number
           supplier_product_id: string
+          unit_type: Database["public"]["Enums"]["pricing_unit_type"]
         }
         Insert: {
+          allows_decimal_qty?: boolean
           bundle_id: string
           created_at?: string
           id?: string
           is_length_item?: boolean
           is_optional?: boolean
           length_metres?: number | null
+          min_qty?: number
           notes?: string | null
+          price_per_unit_label?: string
+          price_per_unit_qty?: number
+          qty_step?: number
           quantity?: number
           sort_order?: number
           supplier_product_id: string
+          unit_type?: Database["public"]["Enums"]["pricing_unit_type"]
         }
         Update: {
+          allows_decimal_qty?: boolean
           bundle_id?: string
           created_at?: string
           id?: string
           is_length_item?: boolean
           is_optional?: boolean
           length_metres?: number | null
+          min_qty?: number
           notes?: string | null
+          price_per_unit_label?: string
+          price_per_unit_qty?: number
+          qty_step?: number
           quantity?: number
           sort_order?: number
           supplier_product_id?: string
+          unit_type?: Database["public"]["Enums"]["pricing_unit_type"]
         }
         Relationships: [
           {
@@ -3917,6 +3935,7 @@ export type Database = {
       }
       quote_items: {
         Row: {
+          allows_decimal_qty: boolean
           area_id: string | null
           created_at: string
           description: string | null
@@ -3927,9 +3946,13 @@ export type Database = {
           item_type: string | null
           length: number | null
           metadata: Json
+          min_qty: number
           notes: string | null
           parent_item_id: string | null
+          price_per_unit_label: string
+          price_per_unit_qty: number
           product_id: string | null
+          qty_step: number
           quantity: number
           quote_id: string | null
           sort_order: number
@@ -3937,9 +3960,11 @@ export type Database = {
           supplier: string | null
           total_price: number | null
           unit_price: number
+          unit_type: Database["public"]["Enums"]["pricing_unit_type"]
           updated_at: string
         }
         Insert: {
+          allows_decimal_qty?: boolean
           area_id?: string | null
           created_at?: string
           description?: string | null
@@ -3950,9 +3975,13 @@ export type Database = {
           item_type?: string | null
           length?: number | null
           metadata?: Json
+          min_qty?: number
           notes?: string | null
           parent_item_id?: string | null
+          price_per_unit_label?: string
+          price_per_unit_qty?: number
           product_id?: string | null
+          qty_step?: number
           quantity?: number
           quote_id?: string | null
           sort_order?: number
@@ -3960,9 +3989,11 @@ export type Database = {
           supplier?: string | null
           total_price?: number | null
           unit_price?: number
+          unit_type?: Database["public"]["Enums"]["pricing_unit_type"]
           updated_at?: string
         }
         Update: {
+          allows_decimal_qty?: boolean
           area_id?: string | null
           created_at?: string
           description?: string | null
@@ -3973,9 +4004,13 @@ export type Database = {
           item_type?: string | null
           length?: number | null
           metadata?: Json
+          min_qty?: number
           notes?: string | null
           parent_item_id?: string | null
+          price_per_unit_label?: string
+          price_per_unit_qty?: number
           product_id?: string | null
+          qty_step?: number
           quantity?: number
           quote_id?: string | null
           sort_order?: number
@@ -3983,6 +4018,7 @@ export type Database = {
           supplier?: string | null
           total_price?: number | null
           unit_price?: number
+          unit_type?: Database["public"]["Enums"]["pricing_unit_type"]
           updated_at?: string
         }
         Relationships: [
@@ -4705,6 +4741,7 @@ export type Database = {
       }
       supplier_products: {
         Row: {
+          allows_decimal_qty: boolean
           archived: boolean
           archived_at: string | null
           brand: string | null
@@ -4732,6 +4769,7 @@ export type Database = {
           list_price_raw: number | null
           markup_percent: number | null
           min_cut_length: number
+          min_qty: number
           model: string | null
           model_range: string | null
           name: string | null
@@ -4749,10 +4787,13 @@ export type Database = {
           price_excl_vat: number | null
           price_includes_vat: boolean | null
           price_per_metre: number | null
+          price_per_unit_label: string
+          price_per_unit_qty: number
           pricing_mode: string
           product_category: string
           product_code: string
           product_type: string
+          qty_step: number
           quote_usage_count: number
           refrigerant_type: string | null
           row_bbox: Json | null
@@ -4772,6 +4813,7 @@ export type Database = {
           vat_rate: number
         }
         Insert: {
+          allows_decimal_qty?: boolean
           archived?: boolean
           archived_at?: string | null
           brand?: string | null
@@ -4799,6 +4841,7 @@ export type Database = {
           list_price_raw?: number | null
           markup_percent?: number | null
           min_cut_length?: number
+          min_qty?: number
           model?: string | null
           model_range?: string | null
           name?: string | null
@@ -4816,10 +4859,13 @@ export type Database = {
           price_excl_vat?: number | null
           price_includes_vat?: boolean | null
           price_per_metre?: number | null
+          price_per_unit_label?: string
+          price_per_unit_qty?: number
           pricing_mode?: string
           product_category?: string
           product_code: string
           product_type?: string
+          qty_step?: number
           quote_usage_count?: number
           refrigerant_type?: string | null
           row_bbox?: Json | null
@@ -4839,6 +4885,7 @@ export type Database = {
           vat_rate?: number
         }
         Update: {
+          allows_decimal_qty?: boolean
           archived?: boolean
           archived_at?: string | null
           brand?: string | null
@@ -4866,6 +4913,7 @@ export type Database = {
           list_price_raw?: number | null
           markup_percent?: number | null
           min_cut_length?: number
+          min_qty?: number
           model?: string | null
           model_range?: string | null
           name?: string | null
@@ -4883,10 +4931,13 @@ export type Database = {
           price_excl_vat?: number | null
           price_includes_vat?: boolean | null
           price_per_metre?: number | null
+          price_per_unit_label?: string
+          price_per_unit_qty?: number
           pricing_mode?: string
           product_category?: string
           product_code?: string
           product_type?: string
+          qty_step?: number
           quote_usage_count?: number
           refrigerant_type?: string | null
           row_bbox?: Json | null
@@ -5561,6 +5612,17 @@ export type Database = {
         | "heat_pump"
         | "furnace"
         | "other"
+      pricing_unit_type:
+        | "each"
+        | "m"
+        | "g"
+        | "kg"
+        | "l"
+        | "ml"
+        | "roll"
+        | "box"
+        | "pack"
+        | "custom"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -5698,6 +5760,18 @@ export const Constants = {
       ],
       availability_status: ["available", "busy", "offline"],
       equipment_type: ["ac", "heater", "vent", "heat_pump", "furnace", "other"],
+      pricing_unit_type: [
+        "each",
+        "m",
+        "g",
+        "kg",
+        "l",
+        "ml",
+        "roll",
+        "box",
+        "pack",
+        "custom",
+      ],
     },
   },
 } as const

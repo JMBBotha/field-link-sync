@@ -15,6 +15,9 @@ export function useQuoteBuilderProducts() {
           sold_in_length, unit_length, pipe_size, is_material_favorite,
           suggested_consumables, pack_qty, supplier_discount_percent,
           markup_percent, btu_rating,
+          unit_type, price_per_unit_qty, price_per_unit_label,
+          allows_decimal_qty, qty_step, min_qty,
+
           suppliers(name, supplier_type)
         `)
         .or("archived.is.null,archived.eq.false")

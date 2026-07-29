@@ -5,6 +5,9 @@ import { Separator } from "@/components/ui/separator";
 import { X, ChevronLeft, ChevronRight, Plus, Cpu, Wind, Ruler, Upload, ImageIcon, Loader2, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import PricingUnitEditor from "./PricingUnitEditor";
+import { resolvePricingUnit, formatUnitPrice, type PricingUnit } from "@/lib/pricingUnits";
+
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -29,7 +32,16 @@ interface Product {
   discounted_cost?: number | null;
   supplier_discount_percent?: number | null;
   cost_excl_vat?: number | null;
+  unit_type?: string | null;
+  price_per_unit_qty?: number | null;
+  price_per_unit_label?: string | null;
+  allows_decimal_qty?: boolean | null;
+  qty_step?: number | null;
+  min_qty?: number | null;
+  sold_in_length?: boolean | null;
+  price_per_metre?: number | null;
 }
+
 
 interface Props {
   product: Product | null;
@@ -69,10 +81,40 @@ const ProductSlideOverPanel = ({
   const [uploadingImage, setUploadingImage] = useState(false);
   const [enhancingImage, setEnhancingImage] = useState(false);
   const [localImageUrl, setLocalImageUrl] = useState<string | null>(null);
+  const [unit, setUnit] = useState<PricingUnit>(() => resolvePricingUnit(product));
+  const [savingUnit, setSavingUnit] = useState(false);
 
   useEffect(() => {
     setLocalImageUrl(product?.image_url || null);
   }, [product?.id, product?.image_url]);
+
+  useEffect(() => {
+    setUnit(resolvePricingUnit(product));
+  }, [product?.id]);
+
+  const saveUnit = async () => {
+    if (!product) return;
+    setSavingUnit(true);
+    try {
+      const { error } = await (supabase.from("supplier_products") as any)
+        .update({
+          unit_type: unit.unit_type,
+          price_per_unit_qty: unit.price_per_unit_qty,
+          price_per_unit_label: unit.price_per_unit_label,
+          allows_decimal_qty: unit.allows_decimal_qty,
+          qty_step: unit.qty_step,
+          min_qty: unit.min_qty,
+        })
+        .eq("id", product.id);
+      if (error) throw error;
+      toast({ title: "Pricing unit saved" });
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingUnit(false);
+    }
+  };
+
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -275,7 +317,22 @@ const ProductSlideOverPanel = ({
                 </div>
               </div>
             )}
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Sold at {formatUnitPrice(product.selling_price, unit)}
+            </p>
           </div>
+
+          <Separator />
+
+          {/* Pricing Unit — how this item is sold */}
+          <div className="space-y-3">
+            <PricingUnitEditor value={unit} onChange={setUnit} unitPrice={product.selling_price} />
+            <Button size="sm" variant="outline" className="w-full" onClick={saveUnit} disabled={savingUnit}>
+              {savingUnit ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+              Save Pricing Unit
+            </Button>
+          </div>
+
 
           {/* Add to quote */}
           {onAddToQuote && !product.is_price_on_request && (
