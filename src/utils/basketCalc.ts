@@ -1,5 +1,6 @@
 import type { BasketItem } from "@/components/catalog/QuoteBuilderTab";
 import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
+import { computeLineTotal, resolvePricingUnit } from "@/lib/pricingUnits";
 
 /** Shared basket subtotal calculation — single source of truth for zones */
 export function calculateBasketSubtotal(items: BasketItem[]): number {
@@ -9,11 +10,13 @@ export function calculateBasketSubtotal(items: BasketItem[]): number {
         ? i.bundleUnitPrice * (i.length || 1)
         : i.bundleUnitPrice * i.quantity);
     }
+    const unit = resolvePricingUnit(i.product);
     if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
       const { unitSell } = getEffectiveUnitPrices(i.product, true);
-      return s + unitSell * i.length;
+      return s + computeLineTotal(i.length, unitSell, unit);
     }
     const { unitSell } = getEffectiveUnitPrices(i.product);
-    return s + unitSell * i.quantity;
+    return s + computeLineTotal(i.quantity, unitSell, unit);
   }, 0);
 }
+
