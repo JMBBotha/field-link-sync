@@ -36,7 +36,7 @@ export interface BundleProduct extends SupplierProductRow {
 
 type BundleProductMap = Record<string, BundleProduct>;
 
-const SUPPLIER_PRODUCT_SELECT = "id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, pack_qty, default_markup_percent, btu_rating, suppliers(name, supplier_type)";
+const SUPPLIER_PRODUCT_SELECT = "id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, pack_qty, default_markup_percent, btu_rating, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, suppliers(name, supplier_type)";
 
 const toBundleProduct = (p: SupplierProductRow): BundleProduct => ({
   ...p,
