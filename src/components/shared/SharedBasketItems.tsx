@@ -153,7 +153,9 @@ export function RegularItemCard({
   onUpdateQuantity,
   onUpdateLength,
 }: SharedBasketItemProps) {
-  const isLengthItem = item.product.sold_in_length && !!item.product.price_per_metre;
+  const unit = resolvePricingUnit(item.product);
+  /** Measured units (m, g, kg, l, ml, roll, custom) use the length field as the entered qty. */
+  const isMeasured = !["each", "box", "pack"].includes(unit.unit_type);
   const [markupAdj, setMarkupAdj] = useState(0);
   const baseMarkup = normalizeMarkupPercent((item.product as any).default_markup_percent ?? (item.product as any).markup_percent ?? 0.35);
   const effectiveMarkup = baseMarkup + markupAdj;
@@ -163,14 +165,19 @@ export function RegularItemCard({
   const markupMultiplier = markupAdj !== 0 ? (1 + effectiveMarkup / 100) / (1 + baseMarkup / 100) : 1;
   const unitSell = rawUnitSell * markupMultiplier;
 
-  const price = isLengthItem
-    ? (item.product.price_per_metre || 0) * markupMultiplier * (item.length || 1)
-    : unitSell * item.quantity;
+  /** Price covering unit.price_per_unit_qty of the item, markup applied. */
+  const unitPrice = isMeasured && item.product.price_per_metre
+    ? (item.product.price_per_metre || 0) * unit.price_per_unit_qty * markupMultiplier
+    : unitSell;
+  const enteredQty = isMeasured ? (item.length || 1) : item.quantity;
+
+  const price = computeLineTotal(enteredQty, unitPrice, unit);
   const displayPrice = item.isBundle
     ? item.bundlePricingType === "p/meter"
       ? (item.bundleUnitPrice || 0) * (item.length || 1)
       : (item.bundleUnitPrice || 0) * item.quantity
     : price;
+
 
   if (isCompact) {
     return (
