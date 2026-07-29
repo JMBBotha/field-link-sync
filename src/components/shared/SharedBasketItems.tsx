@@ -245,27 +245,28 @@ export function RegularItemCard({
           <p className="text-[10px] font-mono font-medium text-primary/80 truncate">
             {item.product.product_code}
           </p>
-          {isLengthItem && (
+          {isMeasured && (
             <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 gap-0.5 border-orange-400/40 text-orange-600">
               <Ruler className="h-2 w-2" />
-              R{(item.product.price_per_metre || 0).toFixed(2)}/m
+              {formatUnitPrice(unitPrice, unit)}
             </Badge>
           )}
-          {!isLengthItem && isPackItem && (
+          {!isMeasured && isPackItem && (
             <Badge variant="outline" className="text-[7px] px-0.5 py-0 h-3 border-muted-foreground/40 text-muted-foreground">
               pk/{packQty} · R{unitSell.toFixed(2)}/ea
             </Badge>
           )}
         </div>
       </div>
-      {isLengthItem ? (
+      {isMeasured ? (
         <div className="flex items-center gap-1 shrink-0">
-          <Input type="number" min={0.1} step={0.5} value={item.length || 1}
-            onChange={(e) => onUpdateLength(parseFloat(e.target.value) || 0.1)}
+          <Input {...qtyInputProps(unit)} value={formatQty(item.length || 1, unit)}
+            onChange={(e) => onUpdateLength(sanitizeQty(parseFloat(e.target.value), unit))}
             className="h-6 w-14 text-xs text-center px-1" />
-          <span className="text-[10px] text-muted-foreground">m</span>
+          <span className="text-[10px] text-muted-foreground">{unit.unit_type === "roll" ? "m" : unit.unit_type}</span>
         </div>
       ) : (
+
         <div className="flex items-center gap-0.5 shrink-0">
           <Button variant="outline" size="icon" className="h-5 w-5" onClick={() => onUpdateQuantity(item.quantity - 1)} disabled={item.quantity <= 1}>
             <Minus className="h-2.5 w-2.5" />
