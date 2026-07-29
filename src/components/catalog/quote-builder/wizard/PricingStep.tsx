@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { calcSellingPrice, VAT_RATE } from "@/utils/pricing";
-import { computeProductPricing } from "@/lib/pricing";
+import { computeLineTotal, resolvePricingUnit, unitSuffix } from "@/lib/pricingUnits";
 import { RotateCcw, FileDown, Loader2, Mail, Check, TrendingUp, ChevronDown, ChevronRight, Package, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,14 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(value);
 }
 
+function unitPriceOf(product: any): number {
+  return product?.cost_price || product?.cost_excl_vat || product?.price_per_metre || product?.selling_price || 0;
+}
+
+function lineTotalOf(product: any, qty: number): number {
+  return computeLineTotal(qty, unitPriceOf(product), resolvePricingUnit(product));
+}
+
 interface AreaPricing {
   areaId: string;
   quantity: number;
@@ -51,14 +59,16 @@ function AreaSubItems({ area }: { area: QuoteArea }) {
 
   for (const mat of area.materials) {
     const isLen = mat.pricingMode === "length";
-    const unitPrice = isLen ? mat.costPerMeter : (computeProductPricing(mat.product).sellExVat);
+    const unit = resolvePricingUnit(mat.product);
+    const unitPrice = unitPriceOf(mat.product);
     const qty = isLen ? mat.adjustedLength : mat.unitQuantity;
-    const lineTotal = isLen ? mat.totalCost : unitPrice * mat.unitQuantity;
-    items.push({ name: mat.product.short_name || mat.product.product_code, qty, unitPrice, lineTotal, mode: isLen ? "/m" : "ea" });
+    const lineTotal = isLen ? mat.totalCost : lineTotalOf(mat.product, mat.unitQuantity);
+    items.push({ name: mat.product.short_name || mat.product.product_code, qty, unitPrice, lineTotal, mode: isLen ? unitSuffix(unit) : unit.price_per_unit_label });
   }
   for (const cons of (area.consumables ?? [])) {
-    const price = computeProductPricing(cons.product).sellExVat;
-    items.push({ name: cons.product.short_name || cons.product.product_code, qty: cons.quantity, unitPrice: price, lineTotal: price * cons.quantity, mode: "ea" });
+    const unit = resolvePricingUnit(cons.product);
+    const price = unitPriceOf(cons.product);
+    items.push({ name: cons.product.short_name || cons.product.product_code, qty: cons.quantity, unitPrice: price, lineTotal: lineTotalOf(cons.product, cons.quantity), mode: unit.price_per_unit_label });
   }
   for (const br of area.brackets) {
     items.push({ name: `Bracket ${br.size}`, qty: br.quantity, unitPrice: br.price, lineTotal: br.price * br.quantity, mode: "ea" });
@@ -71,8 +81,8 @@ function AreaSubItems({ area }: { area: QuoteArea }) {
       {items.map((item, i) => (
         <div key={i} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 text-[10px] text-muted-foreground items-center">
           <span className="truncate">{item.name}</span>
-          <span className="text-center tabular-nums">{item.qty}{item.mode === "/m" ? "m" : ` ${item.mode}`}</span>
-          <span className="text-right tabular-nums">{formatCurrency(item.unitPrice)}{item.mode === "/m" ? "/m" : ""}</span>
+          <span className="text-center tabular-nums">{item.qty} {item.mode}</span>
+          <span className="text-right tabular-nums">{formatCurrency(item.unitPrice)} / {item.mode}</span>
           <span className="text-right tabular-nums font-medium">{formatCurrency(item.lineTotal)}</span>
         </div>
       ))}
@@ -292,14 +302,14 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
       let subItemsCost = 0;
       for (const mat of area.materials) {
         if (mat.pricingMode === "unit") {
-          subItemsCost += getCost(mat.product) * mat.unitQuantity;
+          subItemsCost += computeLineTotal(mat.unitQuantity, getCost(mat.product), resolvePricingUnit(mat.product));
         } else {
           const perM = mat.costPerMeter || getCost(mat.product);
           subItemsCost += mat.totalCost || perM * mat.adjustedLength;
         }
       }
       for (const cons of (area.consumables ?? [])) {
-        subItemsCost += getCost(cons.product) * cons.quantity;
+        subItemsCost += computeLineTotal(cons.quantity, getCost(cons.product), resolvePricingUnit(cons.product));
       }
       for (const br of area.brackets) {
         subItemsCost += br.price * br.quantity;
@@ -336,14 +346,14 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
         const subItems: QuotePDFSubItem[] = [];
         for (const mat of li.area.materials) {
           const isLen = mat.pricingMode === "length";
-          const unitPrice = isLen ? mat.costPerMeter : (computeProductPricing(mat.product).sellExVat);
+          const unitPrice = unitPriceOf(mat.product);
           const qty = isLen ? mat.adjustedLength : mat.unitQuantity;
-          const lineTotal = isLen ? mat.totalCost : unitPrice * mat.unitQuantity;
+          const lineTotal = isLen ? mat.totalCost : lineTotalOf(mat.product, mat.unitQuantity);
           subItems.push({ name: mat.product.short_name || mat.product.product_code, quantity: qty, unitPrice, lineTotal, pricingMode: isLen ? "per-meter" : "per-unit" });
         }
         for (const cons of (li.area.consumables ?? [])) {
-          const price = computeProductPricing(cons.product).sellExVat;
-          subItems.push({ name: cons.product.short_name || cons.product.product_code, quantity: cons.quantity, unitPrice: price, lineTotal: price * cons.quantity, pricingMode: "per-unit" });
+          const price = unitPriceOf(cons.product);
+          subItems.push({ name: cons.product.short_name || cons.product.product_code, quantity: cons.quantity, unitPrice: price, lineTotal: lineTotalOf(cons.product, cons.quantity), pricingMode: "per-unit" });
         }
         for (const br of li.area.brackets) {
           subItems.push({ name: `Bracket ${br.size}`, quantity: br.quantity, unitPrice: br.price, lineTotal: br.price * br.quantity, pricingMode: "per-unit" });

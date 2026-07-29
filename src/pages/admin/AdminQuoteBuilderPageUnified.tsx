@@ -502,7 +502,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       if (!bundleData || bundleData.length === 0) return [];
 
       const { data: itemsData, error: iErr } = await (supabase.from("bundle_items") as any).
-      select("id, bundle_id, supplier_product_id, quantity, length_metres, is_length_item, is_optional, sort_order, supplier_products(id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, suppliers(name))").
+      select("id, bundle_id, supplier_product_id, quantity, length_metres, is_length_item, is_optional, sort_order, supplier_products(id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, cost_price, default_markup_percent, supplier_discount_percent, markup_percent, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, suppliers(name))").
       order("sort_order");
       if (iErr) throw iErr;
 
@@ -523,7 +523,17 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             supplier_name: sp.suppliers?.name || "",
             price_per_metre: sp.price_per_metre || null,
             sold_in_length: sp.sold_in_length || false,
-            unit_length: sp.unit_length || null
+            unit_length: sp.unit_length || null,
+            cost_price: sp.cost_price ?? 0,
+            default_markup_percent: sp.default_markup_percent ?? 35,
+            supplier_discount_percent: sp.supplier_discount_percent ?? null,
+            markup_percent: sp.markup_percent ?? null,
+            unit_type: sp.unit_type || null,
+            price_per_unit_qty: sp.price_per_unit_qty ?? 1,
+            price_per_unit_label: sp.price_per_unit_label || "each",
+            allows_decimal_qty: sp.allows_decimal_qty ?? false,
+            qty_step: sp.qty_step ?? 1,
+            min_qty: sp.min_qty ?? 1
           } : null
         });
       });

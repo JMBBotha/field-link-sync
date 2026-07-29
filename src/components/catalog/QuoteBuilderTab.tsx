@@ -75,6 +75,12 @@ export interface PaletteProduct {
   supplier_discount_percent: number | null;
   /** @deprecated use default_markup_percent */
   markup_percent: number | null;
+  unit_type?: string | null;
+  price_per_unit_qty?: number | null;
+  price_per_unit_label?: string | null;
+  allows_decimal_qty?: boolean | null;
+  qty_step?: number | null;
+  min_qty?: number | null;
 }
 
 /** Returns the effective per-unit prices for a product, using computePricing
@@ -274,7 +280,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     queryKey: ["quote-builder-products"],
     queryFn: async () => {
       const { data, error } = await (supabase.from("supplier_products") as any).
-      select("id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, suggested_consumables, pack_qty, default_markup_percent, btu_rating, suppliers(name, supplier_type)").
+      select("id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, suggested_consumables, pack_qty, default_markup_percent, btu_rating, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, suppliers(name, supplier_type)").
       or("archived.is.null,archived.eq.false").
       order("is_pinned", { ascending: false }).
       order("pin_order", { ascending: true, nullsFirst: false }).
@@ -337,7 +343,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
       if (!bundleData || bundleData.length === 0) return [];
 
       const { data: itemsData, error: iErr } = await (supabase.from("bundle_items") as any).
-      select("id, bundle_id, supplier_product_id, quantity, length_metres, is_length_item, is_optional, sort_order, supplier_products(id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, suppliers(name))").
+      select("id, bundle_id, supplier_product_id, quantity, length_metres, is_length_item, is_optional, sort_order, supplier_products(id, product_code, short_name, brand, product_category, category, cost_excl_vat, cost_incl_vat, cost_price, default_markup_percent, supplier_discount_percent, markup_percent, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, suppliers(name))").
       order("sort_order");
       if (iErr) throw iErr;
 
@@ -358,7 +364,17 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
             supplier_name: sp.suppliers?.name || "",
             price_per_metre: sp.price_per_metre || null,
             sold_in_length: sp.sold_in_length || false,
-            unit_length: sp.unit_length || null
+            unit_length: sp.unit_length || null,
+            cost_price: sp.cost_price ?? 0,
+            default_markup_percent: sp.default_markup_percent ?? 35,
+            supplier_discount_percent: sp.supplier_discount_percent ?? null,
+            markup_percent: sp.markup_percent ?? null,
+            unit_type: sp.unit_type || null,
+            price_per_unit_qty: sp.price_per_unit_qty ?? 1,
+            price_per_unit_label: sp.price_per_unit_label || "each",
+            allows_decimal_qty: sp.allows_decimal_qty ?? false,
+            qty_step: sp.qty_step ?? 1,
+            min_qty: sp.min_qty ?? 1
           } : null
         });
       });

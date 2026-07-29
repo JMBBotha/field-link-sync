@@ -17,7 +17,7 @@ import { toast } from "sonner";
 
 /** Single source of truth for a bundle/material/consumable unit price. */
 function unitPriceOf(product: any): number {
-  return product?.selling_price || product?.price_per_metre || product?.cost_incl_vat || product?.cost_price || 0;
+  return product?.cost_price || product?.cost_excl_vat || product?.price_per_metre || product?.selling_price || 0;
 }
 
 /** lineTotal for any area line, honouring the product's pricing unit (per 100, per roll, ...) */
