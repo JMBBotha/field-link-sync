@@ -364,8 +364,8 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
                 <tr className="text-muted-foreground border-b">
                   <th className="text-left font-medium py-1.5 w-20">Code</th>
                   <th className="text-left font-medium py-1.5">Description</th>
-                  <th className="text-right font-medium py-1.5 w-24">Length / Qty</th>
-                  <th className="text-right font-medium py-1.5 w-20">Cost/m</th>
+                  <th className="text-right font-medium py-1.5 w-28">Qty</th>
+                  <th className="text-right font-medium py-1.5 w-28">Unit Price</th>
                   <th className="text-right font-medium py-1.5 w-20">Line Total</th>
                   <th className="text-center font-medium py-1.5 w-16">Optional</th>
                   <th className="w-8"></th>
@@ -373,7 +373,6 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
               </thead>
               <tbody>
                 {items.map((item, idx) => {
-                  const unitCost = item.is_length_item ? (item.price_per_metre || 0) : item.cost_price;
                   const lineTotal = getLineTotal(item);
                   return (
                     <tr key={idx} className="border-b border-dashed">
@@ -382,37 +381,47 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
                       </td>
                       <td className="py-1.5">
                         <div className="font-medium truncate max-w-[220px] text-xs">{item.description?.slice(0, 50)}</div>
-                        {item.pipe_size && (
-                          <span className="text-[10px] text-muted-foreground">⌀ {item.pipe_size}</span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {item.pipe_size && (
+                            <span className="text-[10px] text-muted-foreground">⌀ {item.pipe_size}</span>
+                          )}
+                          <button
+                            type="button"
+                            className="text-[10px] text-primary hover:underline"
+                            onClick={() => setUnitEditorIdx(idx)}
+                          >
+                            {formatUnitPrice(item.unit_price, item.unit)} · change unit
+                          </button>
+                        </div>
                       </td>
                       <td className="text-right py-1.5">
-                        {item.is_length_item ? (
-                          <div className="flex items-center justify-end gap-1">
-                            <Input
-                              type="number"
-                              step="0.5"
-                              min="0.5"
-                              value={item.length_metres || ""}
-                              onChange={e => updateItem(idx, "length_metres", parseFloat(e.target.value) || 0)}
-                              className="h-6 w-16 text-xs text-right px-1"
-                            />
-                            <span className="text-muted-foreground">m</span>
-                          </div>
-                        ) : (
+                        <div className="flex items-center justify-end gap-1">
+                          <Input
+                            {...qtyInputProps(item.unit)}
+                            value={item.entered_qty}
+                            onChange={e => {
+                              const raw = parseFloat(e.target.value);
+                              updateItem(idx, "entered_qty", sanitizeQty(Number.isFinite(raw) ? raw : item.unit.min_qty, item.unit));
+                            }}
+                            className="h-6 w-16 text-xs text-right px-1"
+                          />
+                          <span className="text-muted-foreground text-[10px]">{item.unit.unit_type === "each" ? "ea" : item.unit.unit_type}</span>
+                        </div>
+                      </td>
+                      <td className="text-right py-1.5">
+                        <div className="flex items-center justify-end gap-1">
                           <Input
                             type="number"
-                            step="1"
-                            min="1"
-                            value={item.quantity}
-                            onChange={e => updateItem(idx, "quantity", parseInt(e.target.value) || 1)}
-                            className="h-6 w-14 text-xs text-right px-1 ml-auto"
+                            step="any"
+                            min={0}
+                            value={item.unit_price}
+                            onChange={e => updateItem(idx, "unit_price", parseFloat(e.target.value) || 0)}
+                            className="h-6 w-20 text-xs text-right px-1"
                           />
-                        )}
+                          <span className="text-muted-foreground text-[10px]">/{item.unit.price_per_unit_label}</span>
+                        </div>
                       </td>
-                      <td className="text-right py-1.5 text-muted-foreground">
-                        R{unitCost.toFixed(2)}{item.is_length_item ? "/m" : ""}
-                      </td>
+
                       <td className="text-right py-1.5 font-medium">R{lineTotal.toFixed(2)}</td>
                       <td className="text-center py-1.5">
                         <Checkbox
