@@ -250,7 +250,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
   };
 
   return (
-    <div className="space-y-4 pb-28 lg:pb-24">
+    <div className={`space-y-4 ${STICKY_ACTION_BAR_SPACER}`}>
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
           <ArrowLeft className="h-4 w-4" />
