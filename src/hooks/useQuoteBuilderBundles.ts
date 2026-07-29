@@ -22,8 +22,11 @@ export function useQuoteBuilderBundles() {
           is_length_item, is_optional, sort_order,
           supplier_products(
             id, product_code, short_name, brand, product_category, category,
-            cost_excl_vat, cost_incl_vat, selling_price, description, is_pinned,
+            cost_excl_vat, cost_incl_vat, cost_price, default_markup_percent,
+            supplier_discount_percent, markup_percent, selling_price, description, is_pinned,
             pin_order, price_per_metre, sold_in_length, unit_length,
+            unit_type, price_per_unit_qty, price_per_unit_label,
+            allows_decimal_qty, qty_step, min_qty,
             suppliers(name)
           )
         `)
@@ -55,6 +58,16 @@ export function useQuoteBuilderBundles() {
               price_per_metre: (sp.price_per_metre as number | null) || null,
               sold_in_length: (sp.sold_in_length as boolean) || false,
               unit_length: (sp.unit_length as number | null) || null,
+              cost_price: (sp.cost_price as number | null) ?? 0,
+              default_markup_percent: (sp.default_markup_percent as number | null) ?? 35,
+              supplier_discount_percent: (sp.supplier_discount_percent as number | null) ?? null,
+              markup_percent: (sp.markup_percent as number | null) ?? null,
+              unit_type: (sp.unit_type as string | null) || null,
+              price_per_unit_qty: (sp.price_per_unit_qty as number | null) ?? 1,
+              price_per_unit_label: (sp.price_per_unit_label as string | null) || "each",
+              allows_decimal_qty: (sp.allows_decimal_qty as boolean | null) ?? false,
+              qty_step: (sp.qty_step as number | null) ?? 1,
+              min_qty: (sp.min_qty as number | null) ?? 1,
             } as unknown as PaletteBundle["items"][number]["product"])
           : (null as unknown as PaletteBundle["items"][number]["product"]);
         itemsByBundle[item.bundle_id].push({
