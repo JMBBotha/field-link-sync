@@ -403,11 +403,12 @@ function AreaUnitSelector({
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">{getProductDisplayName(m.product) || m.product.product_code}</div>
                 <div className="text-[10px] text-muted-foreground">
-                  {m.pricingMode === "length" ? `${m.adjustedLength}m @ R${m.costPerMeter.toFixed(2)}/m` : `×${m.unitQuantity}`}
+                  {m.pricingMode === "length" ? `${m.adjustedLength}m @ R${m.costPerMeter.toFixed(2)}/m` : `×${m.unitQuantity} @ ${formatUnitPrice(unitPriceOf(m.product), resolvePricingUnit(m.product))}`}
                 </div>
               </div>
               <span className="text-[10px] font-medium shrink-0">
-                {formatZAR(m.pricingMode === "length" ? m.totalCost : (m.product.selling_price || 0) * m.unitQuantity)}
+                {formatZAR(m.pricingMode === "length" ? m.totalCost : lineTotalOf(m.product, m.unitQuantity))}
+
               </span>
               <button
                 className="h-5 w-5 rounded-full flex items-center justify-center hover:bg-destructive/20 shrink-0"
