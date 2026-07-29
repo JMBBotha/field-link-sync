@@ -97,16 +97,17 @@ export function computeAreaSubtotal(area: QuoteArea): number {
     if (p?.cost_excl_vat > 0) return p.cost_excl_vat;
     return p?.selling_price || p?.price_per_metre || 0;
   };
-  const acCost = area.acUnits.reduce((s, u) => s + getCost(u.product) * u.quantity, 0);
+  const acCost = area.acUnits.reduce((s, u) => s + computeLineTotal(u.quantity, getCost(u.product), resolvePricingUnit(u.product)), 0);
   const matCost = area.materials.reduce((s, m) => {
     if (m.pricingMode === "unit") {
-      return s + getCost(m.product) * m.unitQuantity;
+      return s + computeLineTotal(m.unitQuantity, getCost(m.product), resolvePricingUnit(m.product));
     }
     const perM = m.costPerMeter || getCost(m.product);
     return s + (m.totalCost || perM * m.adjustedLength);
   }, 0);
   const bracketCost = area.brackets.reduce((s, b) => s + b.price * b.quantity, 0);
-  const consCost = area.consumables.reduce((s, c) => s + getCost(c.product) * c.quantity, 0);
+  const consCost = area.consumables.reduce((s, c) => s + computeLineTotal(c.quantity, getCost(c.product), resolvePricingUnit(c.product)), 0);
+
   return acCost + matCost + bracketCost + consCost;
 }
 
