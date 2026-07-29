@@ -1131,7 +1131,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
 
       {/* Floating compare button */}
       {compareIds.length >= 2 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30">
+        <div className="fixed bottom-20 lg:bottom-16 left-1/2 -translate-x-1/2 z-30">
           <Button
             className="shadow-lg rounded-full px-6 gap-2"
             onClick={() => setCompareOpen(true)}

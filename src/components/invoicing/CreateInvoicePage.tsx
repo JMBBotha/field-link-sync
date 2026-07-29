@@ -17,6 +17,7 @@ import UnsavedQuoteDialog from "@/components/shared/UnsavedQuoteDialog";
 import BeCoolLogo from "@/components/shared/BeCoolLogo";
 import DocumentHeader from "@/components/shared/DocumentHeader";
 import { generateDocumentPdf } from "@/lib/documentPdf";
+import StickyActionBar from "@/components/shared/StickyActionBar";
 
 /* ────────── Types ────────── */
 
@@ -495,7 +496,7 @@ const CreateInvoicePage = ({
 
   /* ─── Render ─── */
   return (
-    <div className="min-h-screen bg-muted/40">
+    <div className="min-h-screen bg-muted/40 pb-28 lg:pb-24">
       <UnsavedQuoteDialog
         open={exitGuard.showModal}
         onContinue={exitGuard.confirmContinue}
@@ -741,7 +742,7 @@ const CreateInvoicePage = ({
       </div>
 
       {/* ── Bottom action bar ── */}
-      <div className="sticky bottom-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2">
+      <StickyActionBar>
         <Button variant="outline" size="sm" onClick={() => generateDocumentPdf({
           docType: "Invoice", docNumber: invoiceNumber, companyName: companySettings.company_name || "Your Company",
           companyAddress: companySettings.physical_address || "", vatNumber: companySettings.vat_number || "",
@@ -766,7 +767,7 @@ const CreateInvoicePage = ({
           {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
           Send Invoice
         </Button>
-      </div>
+      </StickyActionBar>
     </div>
   );
 };

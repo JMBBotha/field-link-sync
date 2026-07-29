@@ -14,6 +14,7 @@ import { ArrowLeft, Plus, Trash2, Search, X } from "lucide-react";
 import { FileImage } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import VisualPdfBundlePicker from "./VisualPdfBundlePicker";
+import StickyActionBar, { STICKY_ACTION_BAR_SPACER } from "@/components/shared/StickyActionBar";
 
 const BUNDLE_TYPES = [
   { value: "piping_kit", label: "Piping Kit", desc: "Copper + Lagging" },
@@ -249,7 +250,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
   };
 
   return (
-    <div className="space-y-4 pb-28 lg:pb-24">
+    <div className={`space-y-4 ${STICKY_ACTION_BAR_SPACER}`}>
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
           <ArrowLeft className="h-4 w-4" />
@@ -386,12 +387,12 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
       </Card>
 
       {/* Actions — sticky above the fixed app footer/bottom nav */}
-      <div className="sticky bottom-16 lg:bottom-12 z-20 -mx-4 px-4 py-3 flex justify-end gap-2 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <StickyActionBar>
         <Button variant="outline" onClick={onClose}>Cancel</Button>
         <Button onClick={handleSave} disabled={saving}>
           {saving ? "Saving..." : isEditing ? "Update Bundle" : "Save Bundle"}
         </Button>
-      </div>
+      </StickyActionBar>
 
 
       {/* Product Picker Dialog */}
