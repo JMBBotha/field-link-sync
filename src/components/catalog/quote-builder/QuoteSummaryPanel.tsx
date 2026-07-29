@@ -3,54 +3,20 @@ import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatRand } from "@/utils/formatRand";
-import { r2, VAT_RATE } from "@/utils/pricing";
 import type { Basket } from "../QuoteBuilderTab";
-import { getEffectiveUnitPrices } from "../QuoteBuilderTab";
+import { computeBasketsQuoteTotals } from "../QuoteBuilderTab";
 import QuoteBrochureSection from "@/components/brochures/QuoteBrochureSection";
+import type { QuoteTotals } from "@/utils/quoteTransformers";
 
 interface QuoteSummaryPanelProps {
   baskets: Basket[];
+  totals?: QuoteTotals;
   onGenerateQuote?: () => void;
   quoteId?: string | null;
 }
 
-const QuoteSummaryPanel = ({ baskets, onGenerateQuote, quoteId }: QuoteSummaryPanelProps) => {
-  const summary = useMemo(() => {
-    let grandTotal = 0;
-    let totalCost = 0;
-
-    baskets.forEach((b) => {
-      b.items.forEach((i) => {
-        if (i.isBundle && i.bundleUnitPrice) {
-          const sell = i.bundlePricingType === "p/meter"
-            ? i.bundleUnitPrice * (i.length || 1)
-            : i.bundleUnitPrice * i.quantity;
-          const cost = i.bundleUnitCost
-            ? (i.bundlePricingType === "p/meter"
-              ? i.bundleUnitCost * (i.length || 1)
-              : i.bundleUnitCost * i.quantity)
-            : sell * 0.7;
-          grandTotal += sell;
-          totalCost += cost;
-        } else if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
-          const { unitSell, unitCost } = getEffectiveUnitPrices(i.product, true);
-          grandTotal += unitSell * i.length;
-          totalCost += unitCost * i.length;
-        } else {
-          // selling_price already has discount+markup baked in — just multiply by qty
-          const { unitSell, unitCost } = getEffectiveUnitPrices(i.product);
-          grandTotal += unitSell * i.quantity;
-          totalCost += unitCost * i.quantity;
-        }
-      });
-    });
-
-    const subtotal = r2(grandTotal);
-    const vat = r2(grandTotal * VAT_RATE);
-    const markup = totalCost > 0 ? ((grandTotal - totalCost) / totalCost) * 100 : 0;
-
-    return { subtotal, vat, grandTotal: r2(subtotal + vat), markup };
-  }, [baskets]);
+const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId }: QuoteSummaryPanelProps) => {
+  const summary = useMemo(() => totals ?? computeBasketsQuoteTotals(baskets), [baskets, totals]);
 
   // Extract model codes from basket items for brochure matching
   const lineItemModelCodes = useMemo(() => {
@@ -68,11 +34,11 @@ const QuoteSummaryPanel = ({ baskets, onGenerateQuote, quoteId }: QuoteSummaryPa
     return codes;
   }, [baskets]);
 
-  const markupCapped = Math.min(summary.markup, 55);
+  const markupCapped = Math.min(summary.avgMarkup, 55);
   const markupPercent = Math.max(0, (markupCapped / 55) * 100);
 
-  const markupLabel = summary.markup >= 25 && summary.markup <= 50 ? "Standard" : 
-                      summary.markup < 25 ? "Low" : "High";
+  const markupLabel = summary.avgMarkup >= 25 && summary.avgMarkup <= 50 ? "Standard" : 
+                      summary.avgMarkup < 25 ? "Low" : "High";
 
   const markupBadgeVariant = markupLabel === "Standard" ? "default" as const
     : markupLabel === "Low" ? "destructive" as const
@@ -95,20 +61,20 @@ const QuoteSummaryPanel = ({ baskets, onGenerateQuote, quoteId }: QuoteSummaryPa
       {/* VAT */}
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted-foreground">VAT (15%)</span>
-        <span className="font-medium text-foreground tabular-nums">{formatRand(summary.vat)}</span>
+        <span className="font-medium text-foreground tabular-nums">{formatRand(summary.vatAmount)}</span>
       </div>
 
       {/* Total banner */}
       <div className="flex items-center justify-between rounded-lg px-4 py-3 bg-primary/10">
         <span className="text-sm font-bold text-primary">Total Incl. VAT</span>
-        <span className="text-lg font-bold text-primary tabular-nums">{formatRand(summary.grandTotal)}</span>
+        <span className="text-lg font-bold text-primary tabular-nums">{formatRand(summary.total)}</span>
       </div>
 
       {/* Markup bar */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-xs">
           <span className="text-muted-foreground">
-            Avg. Markup: <span className="font-semibold text-foreground">{summary.markup.toFixed(0)}%</span>
+            Avg. Markup: <span className="font-semibold text-foreground">{summary.avgMarkup.toFixed(0)}%</span>
           </span>
           <Badge variant="outline" className={`text-[10px] font-medium px-1.5 py-0.5 ${markupBadgeClass}`}>
             {markupLabel}

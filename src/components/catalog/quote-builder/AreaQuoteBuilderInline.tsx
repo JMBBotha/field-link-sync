@@ -64,7 +64,7 @@ function loadDraftFromStorage(): { areas: QuoteArea[]; step: number } | null {
     const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (parsed?.areas?.length > 0) return parsed;
+    if (parsed?.areas?.length > 0 && parsed.areas.some(hasAreaContent)) return parsed;
   } catch { /* corrupted */ }
   return null;
 }
@@ -73,13 +73,22 @@ function clearDraftStorage() {
   try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch { /* ignore */ }
 }
 
+function hasAreaContent(area: QuoteArea): boolean {
+  return (
+    area.acUnits.length > 0 ||
+    area.materials.length > 0 ||
+    area.brackets.length > 0 ||
+    area.consumables.length > 0
+  );
+}
+
 export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPdfSearch, onAreasChange, onAddProductRef, onDropProductToAreaRef, onDropBundleToAreaRef, onAddAreaRef, onApplyTemplateRef, onClearAllRef, pdfSelection, initialAreas }: Props) {
   const [currentStep, setCurrentStep] = useState(0);
   const [areas, setAreas] = useState<QuoteArea[]>(() => {
     if (initialAreas && initialAreas.length > 0) return initialAreas;
     const draft = loadDraftFromStorage();
     if (draft) return draft.areas;
-    return [createEmptyArea("Additional Items/Services")];
+    return [];
   });
 
   // Hydrate from parent-provided areas exactly once when they arrive
@@ -112,24 +121,24 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
   // External product add: routes product to the first area based on category
   const handleExternalProductAdd = useCallback((product: PaletteProduct) => {
     setAreas((prev) => {
-      if (prev.length === 0) return prev;
-      const targetArea = prev[0];
+      const working = prev.length > 0 ? prev : [createEmptyArea("Additional Items/Services")];
+      const targetArea = working[0];
       const isAC = product.product_category === "Air Conditioning" || (product.category || "").toLowerCase().includes("air conditioning");
       
       if (isAC) {
         const btu = detectBTU(product);
         const newUnit: AreaACUnit = { id: crypto.randomUUID(), product, btu, quantity: 1 };
-        return prev.map((a, i) => i === 0 ? { ...a, acUnits: [newUnit] } : a);
+        return working.map((a, i) => i === 0 ? { ...a, acUnits: [newUnit] } : a);
       } else {
         const existing = targetArea.consumables.find((c) => c.product.id === product.id);
         if (existing) {
-          return prev.map((a, i) => i === 0 ? {
+          return working.map((a, i) => i === 0 ? {
             ...a,
             consumables: a.consumables.map((c) => c.product.id === product.id ? { ...c, quantity: c.quantity + 1 } : c)
           } : a);
         }
         const newConsumable: AreaConsumable = { id: crypto.randomUUID(), product, quantity: 1 };
-        return prev.map((a, i) => i === 0 ? { ...a, consumables: [...a.consumables, newConsumable] } : a);
+        return working.map((a, i) => i === 0 ? { ...a, consumables: [...a.consumables, newConsumable] } : a);
       }
     });
     toast.success(`Added ${product.short_name || product.product_code} to ${areas[0]?.name || "Additional Items/Services"}`);
@@ -311,7 +320,7 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
     onSave(baskets);
     clearDraftStorage();
     setCurrentStep(0);
-    setAreas([createEmptyArea("Additional Items/Services")]);
+    setAreas([]);
     toast.success("Quote areas added successfully");
   }, [areas, onSave]);
 

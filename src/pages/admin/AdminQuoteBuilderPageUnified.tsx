@@ -21,7 +21,7 @@ import { toast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
 
 // Real builder components
-import QuoteBuilderTab from "@/components/catalog/QuoteBuilderTab";
+import QuoteBuilderTab, { computeBasketsQuoteTotals } from "@/components/catalog/QuoteBuilderTab";
 import type { PaletteProduct, Basket } from "@/components/catalog/QuoteBuilderTab";
 import VisualCatalogPanel from "@/components/catalog/quote-builder/VisualCatalogPanel";
 import type { WizardTriggerItem } from "@/components/catalog/quote-builder/QuoteBuilderPopup";
@@ -30,12 +30,12 @@ import QuoteSummaryPanel from "@/components/catalog/quote-builder/QuoteSummaryPa
 import AreaQuoteBuilderInline from "@/components/catalog/quote-builder/AreaQuoteBuilderInline";
 import AreaQuoteSummary from "@/components/catalog/quote-builder/AreaQuoteSummary";
 import FloatingSelectedItems from "@/components/catalog/quote-builder/FloatingSelectedItems";
-import type { QuoteArea } from "@/components/catalog/quote-builder/quoteWizardTypes";
+import type { QuoteArea as WizardQuoteArea } from "@/components/catalog/quote-builder/quoteWizardTypes";
 import { createEmptyArea, computeAreaSubtotal, detectBTU } from "@/components/catalog/quote-builder/quoteWizardTypes";
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
-import { calculateBasketSubtotal } from "@/utils/basketCalc";
 import { useQuoteLiveTotals } from "@/stores/quoteLiveTotalsStore";
 import { areasToBaskets } from "@/components/catalog/quote-builder/QuoteBuilderPopup";
+import { computeQuoteTotals } from "@/utils/quoteTransformers";
 
 
 export type QuoteBuilderMode = "admin" | "agent";
@@ -66,34 +66,13 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
     slice(0, 8);
   }, [clients, clientSearch]);
 
-  // A quote_item is "real" only when it's not a legacy placeholder AND has
-  // meaningful qty/rate. Zero-value non-placeholder rows must not count.
-  const isRealItem = (i: typeof items[number]) =>
-    i.source !== "legacy_placeholder" &&
-    ((i.quantity ?? 0) > 0 || (i.unit_price ?? 0) > 0 || (i.total_price ?? 0) > 0);
-
-  // Exclude non-real rows from user-visible counts.
-  const topLevel = items.filter((i) => !i.parent_item_id && isRealItem(i));
-  const dbItems = topLevel.length;
-  // Total still includes placeholder value so the recorded legacy total remains visible.
-  const dbCost = items
-    .filter((i) => !i.parent_item_id)
-    .reduce((s, i) => s + (i.total_price ?? i.unit_price * i.quantity), 0);
-  // Zone count = declared areas + a synthetic "General" zone when items have no area_id.
-  const zoneIds = new Set<string>();
-  let hasUnassigned = false;
-  for (const it of topLevel) {
-    if (it.area_id) zoneIds.add(it.area_id);
-    else hasUnassigned = true;
-  }
-  for (const a of areas) zoneIds.add(a.id);
-  const dbZones = zoneIds.size + (hasUnassigned ? 1 : 0);
+  const dbTotals = useMemo(() => computeQuoteTotals(items, areas), [items, areas]);
 
   // Prefer live in-progress builder totals so header reflects unsaved edits
   // BEFORE they hit the DB. Falls back to persisted totals when idle.
-  const totalItems = live.hasLiveData ? live.items : dbItems;
-  const zoneCount = live.hasLiveData ? live.zones : dbZones;
-  const totalCost = live.hasLiveData ? live.subtotal : dbCost;
+  const totalItems = live.hasLiveData ? live.items : dbTotals.itemCount;
+  const zoneCount = live.hasLiveData ? live.zones : dbTotals.zoneCount;
+  const totalCost = live.hasLiveData ? live.subtotal : dbTotals.subtotal;
 
 
   return (
@@ -206,7 +185,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
   // Shared baskets state for cross-tab data
   const [baskets, setBaskets] = useState<Basket[]>([]);
-  const [wizardAreas, setWizardAreas] = useState<QuoteArea[]>([]);
+  const [wizardAreas, setWizardAreas] = useState<WizardQuoteArea[]>([]);
 
   // Single canonical source of truth for on-screen totals while the user is
   // editing an unsaved quote: merge Normal-tab baskets with the inline
@@ -217,20 +196,22 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     () => [...baskets, ...wizardBaskets],
     [baskets, wizardBaskets],
   );
+  const displayQuoteTotals = useMemo(
+    () => computeBasketsQuoteTotals(displayBaskets),
+    [displayBaskets],
+  );
 
   // Publish live in-progress totals so the header/summary reflect unsaved
   // wizard/basket edits BEFORE they're persisted. Cleared on unmount.
   const setLive = useQuoteLiveTotals((s) => s.set);
   const resetLive = useQuoteLiveTotals((s) => s.reset);
   useEffect(() => {
-    const nonEmpty = displayBaskets.filter((b) => b.items.length > 0);
-    const items = nonEmpty.reduce(
-      (s, b) => s + b.items.reduce((qs, i) => qs + i.quantity, 0),
-      0,
-    );
-    const subtotal = nonEmpty.reduce((s, b) => s + calculateBasketSubtotal(b.items), 0);
-    setLive({ items, zones: nonEmpty.length, subtotal });
-  }, [displayBaskets, setLive]);
+    setLive({
+      items: displayQuoteTotals.itemCount,
+      zones: displayQuoteTotals.zoneCount,
+      subtotal: displayQuoteTotals.subtotal,
+    });
+  }, [displayQuoteTotals, setLive]);
   useEffect(() => () => resetLive(), [resetLive]);
 
 
@@ -383,7 +364,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
    * placeholder. We classify each item into acUnits / materials / consumables
    * based on category and length.
    */
-  const initialWizardAreas = useMemo<QuoteArea[] | null>(() => {
+  const initialWizardAreas = useMemo<WizardQuoteArea[] | null>(() => {
     if (ctxLoading) return null;
     // Same "real item" rule as reuse/hydration guards.
     const realItems = ctxItems.filter(
@@ -432,7 +413,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       if (!id) return ctxAreas.length === 0 ? "Additional Items/Services" : "General";
       return ctxAreas.find((a) => a.id === id)?.name || "General";
     };
-    const result: QuoteArea[] = [];
+    const result: WizardQuoteArea[] = [];
     for (const [key, list] of buckets) {
       const base = createEmptyArea(areaNameFor(key));
       for (const it of list) {
@@ -668,10 +649,11 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
                 areaDropProductToArea={(areaId, product) => areaDropProductToAreaRef.current?.(areaId, product)}
                 areaDropBundleToArea={(areaId, bundle) => areaDropBundleToAreaRef.current?.(areaId, bundle)}
                 extraBaskets={wizardBaskets}
+                quoteTotals={displayQuoteTotals}
               />
             </div>
             <div className="w-[320px] shrink-0 border-l overflow-y-auto p-3 mx-[5px] my-[4px] bg-transparent">
-              <QuoteSummaryPanel baskets={displayBaskets} />
+              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} />
 
             </div>
           </div>
@@ -693,7 +675,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
             </div>
             <div className="w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
-              <QuoteSummaryPanel baskets={baskets} />
+              <QuoteSummaryPanel baskets={baskets} totals={displayQuoteTotals} />
             </div>
           </div>
         }

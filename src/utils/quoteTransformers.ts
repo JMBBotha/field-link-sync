@@ -74,7 +74,7 @@ export function getBundleChildren(items: QuoteItem[], parentId: string): QuoteIt
  */
 export function computeItemsSubtotal(items: QuoteItem[]): number {
   return items
-    .filter((i) => !i.parent_item_id && i.source !== "legacy_placeholder")
+    .filter((i) => !i.parent_item_id && isRealQuoteItem(i))
     .reduce((sum, item) => {
       const price = item.total_price ?? item.unit_price * item.quantity;
       return sum + price;
@@ -91,6 +91,17 @@ export interface QuoteTotals {
   vatAmount: number;
   total: number;
   avgMarkup: number;
+}
+
+/**
+ * A real quote item must be a non-placeholder row with meaningful quantity or
+ * price data. This keeps zero-value scaffolding rows out of all visible totals.
+ */
+export function isRealQuoteItem(item: QuoteItem): boolean {
+  return (
+    item.source !== "legacy_placeholder" &&
+    ((item.quantity ?? 0) > 0 || (item.unit_price ?? 0) > 0 || (item.total_price ?? 0) > 0)
+  );
 }
 
 /**
@@ -112,7 +123,7 @@ export function computeQuoteTotals(
   vatRate: number = QUOTE_VAT_RATE
 ): QuoteTotals {
   const topLevel = items.filter(
-    (i) => !i.parent_item_id && i.source !== "legacy_placeholder"
+    (i) => !i.parent_item_id && isRealQuoteItem(i)
   );
 
   const subtotal = topLevel.reduce((sum, item) => {
