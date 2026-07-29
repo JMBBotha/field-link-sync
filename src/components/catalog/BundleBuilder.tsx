@@ -14,6 +14,7 @@ import { ArrowLeft, Plus, Trash2, Search, X } from "lucide-react";
 import { FileImage } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import VisualPdfBundlePicker from "./VisualPdfBundlePicker";
+import StickyActionBar, { STICKY_ACTION_BAR_SPACER } from "@/components/shared/StickyActionBar";
 
 const BUNDLE_TYPES = [
   { value: "piping_kit", label: "Piping Kit", desc: "Copper + Lagging" },
