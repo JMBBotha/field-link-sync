@@ -26,13 +26,15 @@ export function calculateBasketItemSell(item: BasketItem): number {
       ? item.bundleUnitPrice * (item.length || 1)
       : item.bundleUnitPrice * item.quantity;
   }
+  const unit = resolvePricingUnit(item.product);
   if (item.product.sold_in_length && item.product.price_per_metre && item.length) {
     const { unitSell } = getEffectiveUnitPrices(item.product, true);
-    return unitSell * item.length;
+    return computeLineTotal(item.length, unitSell, unit);
   }
   const { unitSell } = getEffectiveUnitPrices(item.product);
-  return unitSell * item.quantity;
+  return computeLineTotal(item.quantity, unitSell, unit);
 }
+
 
 function itemMarkupPercent(item: BasketItem): number {
   const explicit = Number(item.product.default_markup_percent ?? item.product.markup_percent ?? 0);
