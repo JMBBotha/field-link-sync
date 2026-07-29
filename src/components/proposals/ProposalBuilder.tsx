@@ -575,7 +575,7 @@ const ProposalBuilder = ({
 
   /* ─── Render ─── */
   return (
-    <div className="min-h-screen bg-muted/40">
+    <div className="min-h-screen bg-muted/40 pb-28 lg:pb-24">
       <UnsavedQuoteDialog
         open={exitGuard.showModal}
         onContinue={exitGuard.confirmContinue}
