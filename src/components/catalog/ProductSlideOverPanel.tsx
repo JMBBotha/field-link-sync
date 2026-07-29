@@ -5,6 +5,9 @@ import { Separator } from "@/components/ui/separator";
 import { X, ChevronLeft, ChevronRight, Plus, Cpu, Wind, Ruler, Upload, ImageIcon, Loader2, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import PricingUnitEditor from "./PricingUnitEditor";
+import { resolvePricingUnit, formatUnitPrice, type PricingUnit } from "@/lib/pricingUnits";
+
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
