@@ -162,7 +162,7 @@ const StickyQuoteSummary = ({ baskets, totals }: { baskets: Basket[]; totals: Qu
   if (totalItems === 0) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 md:absolute md:bottom-0 md:left-0 md:right-0">
+    <div className="fixed bottom-16 lg:bottom-12 left-0 right-0 z-30 md:absolute md:left-0 md:right-0">
       <div className="bg-card border-t shadow-lg rounded-t-lg mx-auto max-w-screen-2xl">
         {/* Toggle bar - always visible */}
         <button
