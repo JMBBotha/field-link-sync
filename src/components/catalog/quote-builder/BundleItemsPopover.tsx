@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { getProductDisplayName } from "./productDisplayUtils";
 import type { PaletteProduct } from "../QuoteBuilderTab";
 import { getEffectiveUnitPrices } from "../QuoteBuilderTab";
+import { computeLineTotal, resolvePricingUnit } from "@/lib/pricingUnits";
+
 
 export interface BundleSubItem {
   product: PaletteProduct;
