@@ -14,6 +14,7 @@ import UnsavedQuoteDialog from "@/components/shared/UnsavedQuoteDialog";
 import BeCoolLogo from "@/components/shared/BeCoolLogo";
 import DocumentHeader from "@/components/shared/DocumentHeader";
 import { generateDocumentPdf } from "@/lib/documentPdf";
+import StickyActionBar from "@/components/shared/StickyActionBar";
 
 /* ────────── Types ────────── */
 
@@ -805,9 +806,7 @@ const ProposalBuilder = ({
       </div>
 
       {/* ── Bottom action bar ── */}
-      <div
-        className="sticky bottom-0 z-40 bg-background border-t px-4 py-3 flex items-center justify-end gap-2"
-      >
+      <StickyActionBar>
         <button
           type="button"
           id="proposal-pdf-btn"

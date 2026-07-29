@@ -742,7 +742,7 @@ const InventoryList = () => {
 
       {/* Floating action bar for bulk selection */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-card border rounded-xl shadow-2xl px-4 py-3 flex items-center gap-3">
+        <div className="fixed bottom-20 lg:bottom-16 left-1/2 -translate-x-1/2 z-40 bg-card border rounded-xl shadow-2xl px-4 py-3 flex items-center gap-3">
           <span className="text-sm font-medium">{selectedIds.size} selected</span>
           <Button size="sm" variant="outline" className="text-xs" onClick={() => handleBulkMode("order_as_needed")}>
             Mark Order-as-Needed
