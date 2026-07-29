@@ -1,4 +1,5 @@
 import type { PaletteProduct } from "../QuoteBuilderTab";
+import { computeLineTotal, resolvePricingUnit } from "@/lib/pricingUnits";
 // pricing is now simplified — cost_price is the source of truth
 
 export interface QuoteArea {
