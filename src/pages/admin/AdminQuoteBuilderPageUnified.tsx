@@ -185,6 +185,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   // Shared baskets state for cross-tab data
   const [baskets, setBaskets] = useState<Basket[]>([]);
   const [wizardAreas, setWizardAreas] = useState<WizardQuoteArea[]>([]);
+  const [popupPreviewBaskets, setPopupPreviewBaskets] = useState<Basket[]>([]);
 
   // Single canonical source of truth for on-screen totals while the user is
   // editing an unsaved quote: merge Normal-tab baskets with the inline
@@ -192,8 +193,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   // sidebar) reads from THIS list — no parallel calculations.
   const wizardBaskets = useMemo(() => areasToBaskets(wizardAreas), [wizardAreas]);
   const displayBaskets = useMemo(
-    () => [...baskets, ...wizardBaskets],
-    [baskets, wizardBaskets],
+    () => [...baskets, ...wizardBaskets, ...popupPreviewBaskets],
+    [baskets, wizardBaskets, popupPreviewBaskets],
   );
   const displayQuoteTotals = useMemo(
     () => computeBasketsQuoteTotals(displayBaskets),
@@ -569,6 +570,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   // Handle wizard save — merge new baskets
   const handleWizardSave = useCallback((newBaskets: Basket[]) => {
     setBaskets((prev) => [...prev, ...newBaskets]);
+    setPopupPreviewBaskets([]);
     toast({ title: `Added ${newBaskets.length} zones from Area Quote Builder` });
     setAreaWizardOpen(false);
   }, []);
@@ -747,12 +749,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         bundles={bundles}
         onSave={handleWizardSave}
         onLivePreview={(preview) => {
-          // Merge popup preview into shared baskets slot so header totals reflect it live.
-          setBaskets((prev) => {
-            const kept = prev.filter((b) => !b.id.startsWith("wizard-popup-"));
-            const tagged = preview.map((b) => ({ ...b, id: `wizard-popup-${b.id}` }));
-            return [...kept, ...tagged];
-          });
+          setPopupPreviewBaskets(preview.map((b) => ({ ...b, id: `wizard-popup-${b.id}` })));
         }}
         triggerItem={null} />
 
