@@ -97,7 +97,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bundle_items")
-        .select("*, supplier_products(description, product_code, cost_price, price_per_metre, sold_in_length, pipe_size, short_name, suppliers(name))")
+        .select("*, supplier_products(description, product_code, cost_price, price_per_metre, sold_in_length, pipe_size, short_name, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, suppliers(name))")
         .eq("bundle_id", bundleId!)
         .order("sort_order");
       if (error) throw error;
