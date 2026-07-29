@@ -166,7 +166,7 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
 
       const { data, error } = await supabase
         .from("supplier_products")
-        .select("id, description, product_code, cost_price, price_per_metre, sold_in_length, pipe_size, short_name, brand, category, suppliers(name)")
+        .select("id, description, product_code, cost_price, price_per_metre, sold_in_length, pipe_size, short_name, brand, category, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, suppliers(name)")
         .or("archived.is.null,archived.eq.false")
         .or(orFilter)
         .limit(300);
