@@ -28,7 +28,6 @@ import type { WizardTriggerItem } from "@/components/catalog/quote-builder/Quote
 import QuoteBuilderPopup from "@/components/catalog/quote-builder/QuoteBuilderPopup";
 import QuoteSummaryPanel from "@/components/catalog/quote-builder/QuoteSummaryPanel";
 import AreaQuoteBuilderInline from "@/components/catalog/quote-builder/AreaQuoteBuilderInline";
-import AreaQuoteSummary from "@/components/catalog/quote-builder/AreaQuoteSummary";
 import FloatingSelectedItems from "@/components/catalog/quote-builder/FloatingSelectedItems";
 import type { QuoteArea as WizardQuoteArea } from "@/components/catalog/quote-builder/quoteWizardTypes";
 import { createEmptyArea, computeAreaSubtotal, detectBTU } from "@/components/catalog/quote-builder/quoteWizardTypes";
@@ -304,6 +303,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     }
 
     const productById = new Map(products.map((p) => [p.id, p]));
+    const metadataMarkup = (it: typeof ctxItems[number]) => {
+      const markup = Number((it.metadata as Record<string, unknown>)?.markup_percent);
+      return Number.isFinite(markup) && markup > 0 ? markup : 0;
+    };
     const stub = (it: typeof ctxItems[number]): PaletteProduct => ({
       id: it.product_id || it.id,
       product_code: it.item_number || "",
@@ -319,8 +322,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       supplier_name: it.supplier || "",
       supplier_type: "both",
       supplier_discount_percent: null,
-      markup_percent: 0,
-      default_markup_percent: 0,
+      markup_percent: metadataMarkup(it),
+      default_markup_percent: metadataMarkup(it),
       is_pinned: false,
       pin_order: null,
       price_per_metre: it.length ? it.unit_price : null,
@@ -375,6 +378,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     );
     if (realItems.length === 0 && ctxAreas.length === 0) return null;
     const productById = new Map(products.map((p) => [p.id, p]));
+    const metadataMarkup = (it: typeof ctxItems[number]) => {
+      const markup = Number((it.metadata as Record<string, unknown>)?.markup_percent);
+      return Number.isFinite(markup) && markup > 0 ? markup : 0;
+    };
     const stubProduct = (it: typeof ctxItems[number]): PaletteProduct => ({
       id: it.product_id || it.id,
       product_code: it.item_number || "",
@@ -390,8 +397,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       supplier_name: it.supplier || "",
       supplier_type: "both",
       supplier_discount_percent: null,
-      markup_percent: 0,
-      default_markup_percent: 0,
+      markup_percent: metadataMarkup(it),
+      default_markup_percent: metadataMarkup(it),
       is_pinned: false,
       pin_order: null,
       price_per_metre: it.length ? it.unit_price : null,
@@ -675,7 +682,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
             </div>
             <div className="w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
-              <QuoteSummaryPanel baskets={baskets} totals={displayQuoteTotals} />
+              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} />
             </div>
           </div>
         }
@@ -718,7 +725,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             </div>
             {/* Summary - right sidebar */}
             <div className="w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
-              <AreaQuoteSummary areas={wizardAreas} />
+              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} />
             </div>
           </div>
         }
