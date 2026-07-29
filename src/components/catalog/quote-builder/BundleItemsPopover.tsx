@@ -47,22 +47,21 @@ export function computeBundlePricing(items: BundleSubItem[]): {
   // Mixed or all per-unit
   const totalSell = nonOptional.reduce((sum, i) => {
     const { unitSell } = getEffectiveUnitPrices(i.product, i.isLengthItem);
-    if (i.isLengthItem) {
-      return sum + unitSell * (i.length || 1);
-    }
-    return sum + unitSell * i.quantity;
+    const unit = resolvePricingUnit(i.product);
+    const qty = i.isLengthItem ? (i.length || 1) : i.quantity;
+    return sum + computeLineTotal(qty, unitSell, unit);
   }, 0);
 
   const totalCost = nonOptional.reduce((sum, i) => {
     const { unitCost } = getEffectiveUnitPrices(i.product, i.isLengthItem);
-    if (i.isLengthItem) {
-      return sum + unitCost * (i.length || 1);
-    }
-    return sum + unitCost * i.quantity;
+    const unit = resolvePricingUnit(i.product);
+    const qty = i.isLengthItem ? (i.length || 1) : i.quantity;
+    return sum + computeLineTotal(qty, unitCost, unit);
   }, 0);
 
   return { pricingType: "p/qty", unitPrice: totalSell, unitCost: totalCost };
 }
+
 
 const fmt = (v: number) => v.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
