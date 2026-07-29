@@ -308,7 +308,22 @@ const ProductSlideOverPanel = ({
                 </div>
               </div>
             )}
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Sold at {formatUnitPrice(product.selling_price, unit)}
+            </p>
           </div>
+
+          <Separator />
+
+          {/* Pricing Unit — how this item is sold */}
+          <div className="space-y-3">
+            <PricingUnitEditor value={unit} onChange={setUnit} unitPrice={product.selling_price} />
+            <Button size="sm" variant="outline" className="w-full" onClick={saveUnit} disabled={savingUnit}>
+              {savingUnit ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+              Save Pricing Unit
+            </Button>
+          </div>
+
 
           {/* Add to quote */}
           {onAddToQuote && !product.is_price_on_request && (
