@@ -169,7 +169,7 @@ const AdminCatalogPage = () => {
   const isConsumablesSupplier = selectedSupplier?.supplier_type === "consumables";
 
   return (
-    <div className="p-4 max-w-7xl mx-auto space-y-4">
+    <div className="p-4 pb-28 lg:pb-24 max-w-7xl mx-auto space-y-4">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <Package className="h-5 w-5 text-primary" />
