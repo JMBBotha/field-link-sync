@@ -34,9 +34,17 @@ export interface QuoteItem {
   notes: string | null;
   source: string;
   supplier: string | null;
+  /** Unit-based pricing (see src/lib/pricingUnits.ts) */
+  unit_type?: UnitType;
+  price_per_unit_qty?: number;
+  price_per_unit_label?: string;
+  allows_decimal_qty?: boolean;
+  qty_step?: number;
+  min_qty?: number;
   created_at: string;
   updated_at: string;
 }
+
 
 export interface QuoteMeta {
   id: string;
