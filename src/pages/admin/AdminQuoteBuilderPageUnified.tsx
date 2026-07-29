@@ -744,7 +744,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       {/* Area wizard popup (works across all tabs) */}
       <QuoteBuilderPopup
         open={areaWizardOpen}
-        onClose={() => setAreaWizardOpen(false)}
+        onClose={() => {
+          setAreaWizardOpen(false);
+          setPopupPreviewBaskets([]);
+        }}
         products={products}
         bundles={bundles}
         onSave={handleWizardSave}
