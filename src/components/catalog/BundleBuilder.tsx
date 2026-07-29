@@ -39,7 +39,14 @@ type BundleItemLocal = {
   supplier_name?: string;
   pipe_size?: string;
   short_name?: string;
+  /** Unit-based pricing */
+  unit: PricingUnit;
+  /** Price that covers unit.price_per_unit_qty of the item */
+  unit_price: number;
+  /** Quantity the user entered, expressed in unit.unit_type */
+  entered_qty: number;
 };
+
 
 type Props = {
   bundleId: string | null;
