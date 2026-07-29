@@ -12,7 +12,19 @@ import type { QuoteArea, AreaACUnit, AreaConsumable, AreaMaterial } from "../quo
 import { detectBTU, getBracketSize } from "../quoteWizardTypes";
 import { findDaikinRemote, forcePerUnitPricing, isWiredRemote } from "../daikinRemoteUtils";
 import { getProductDisplayName } from "../productDisplayUtils";
+import { computeLineTotal, resolvePricingUnit, formatUnitPrice } from "@/lib/pricingUnits";
 import { toast } from "sonner";
+
+/** Single source of truth for a bundle/material/consumable unit price. */
+function unitPriceOf(product: any): number {
+  return product?.selling_price || product?.price_per_metre || product?.cost_incl_vat || product?.cost_price || 0;
+}
+
+/** lineTotal for any area line, honouring the product's pricing unit (per 100, per roll, ...) */
+function lineTotalOf(product: any, qty: number): number {
+  return computeLineTotal(qty, unitPriceOf(product), resolvePricingUnit(product));
+}
+
 
 interface PaletteBundle {
   id: string;
