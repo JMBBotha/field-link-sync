@@ -385,13 +385,14 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
         )}
       </Card>
 
-      {/* Actions */}
-      <div className="flex justify-end gap-2">
+      {/* Actions — sticky above the fixed app footer/bottom nav */}
+      <div className="sticky bottom-16 lg:bottom-12 z-20 -mx-4 px-4 py-3 flex justify-end gap-2 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <Button variant="outline" onClick={onClose}>Cancel</Button>
         <Button onClick={handleSave} disabled={saving}>
           {saving ? "Saving..." : isEditing ? "Update Bundle" : "Save Bundle"}
         </Button>
       </div>
+
 
       {/* Product Picker Dialog */}
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
