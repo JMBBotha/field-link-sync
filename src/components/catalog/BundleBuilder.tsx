@@ -115,24 +115,39 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
 
   useEffect(() => {
     if (existingItems) {
-      setItems(existingItems.map((item: any) => ({
-        id: item.id,
-        supplier_product_id: item.supplier_product_id,
-        quantity: item.quantity,
-        length_metres: item.length_metres,
-        is_length_item: item.is_length_item,
-        is_optional: item.is_optional ?? false,
-        notes: item.notes || "",
-        sort_order: item.sort_order,
-        description: item.supplier_products?.description || "",
-        product_code: item.supplier_products?.product_code || "",
-        cost_price: item.supplier_products?.cost_price || 0,
-        price_per_metre: item.supplier_products?.price_per_metre,
-        sold_in_length: item.supplier_products?.sold_in_length || false,
-        supplier_name: item.supplier_products?.suppliers?.name,
-        pipe_size: item.supplier_products?.pipe_size,
-        short_name: item.supplier_products?.short_name,
-      })));
+      setItems(existingItems.map((item: any) => {
+        const product = item.supplier_products || {};
+        // Prefer unit fields stored on the bundle item, else fall back to the product
+        const unit = resolvePricingUnit(
+          item.unit_type ? item : { ...product, sold_in_length: item.is_length_item || product.sold_in_length }
+        );
+        const isLen = unit.unit_type === "m" || unit.unit_type === "roll";
+        const unitPrice = isLen && product.price_per_metre
+          ? product.price_per_metre * unit.price_per_unit_qty
+          : product.cost_price || 0;
+        return {
+          id: item.id,
+          supplier_product_id: item.supplier_product_id,
+          quantity: item.quantity,
+          length_metres: item.length_metres,
+          is_length_item: item.is_length_item,
+          is_optional: item.is_optional ?? false,
+          notes: item.notes || "",
+          sort_order: item.sort_order,
+          description: product.description || "",
+          product_code: product.product_code || "",
+          cost_price: product.cost_price || 0,
+          price_per_metre: product.price_per_metre,
+          sold_in_length: product.sold_in_length || false,
+          supplier_name: product.suppliers?.name,
+          pipe_size: product.pipe_size,
+          short_name: product.short_name,
+          unit,
+          unit_price: unitPrice,
+          entered_qty: sanitizeQty(isLen ? (item.length_metres ?? item.quantity ?? 1) : (item.quantity ?? 1), unit),
+        } satisfies BundleItemLocal;
+      }));
+
     }
   }, [existingItems]);
 
