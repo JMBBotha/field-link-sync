@@ -10,6 +10,16 @@ import BundleItemsPopover from "@/components/catalog/quote-builder/BundleItemsPo
 import type { BasketItem } from "@/components/catalog/QuoteBuilderTab";
 import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
 import { normalizeMarkupPercent } from "@/lib/pricing";
+import {
+  resolvePricingUnit,
+  computeLineTotal,
+  formatUnitPrice,
+  qtyInputProps,
+  sanitizeQty,
+  formatQty,
+  stepQty,
+} from "@/lib/pricingUnits";
+
 
 interface SharedBasketItemProps {
   item: BasketItem;
