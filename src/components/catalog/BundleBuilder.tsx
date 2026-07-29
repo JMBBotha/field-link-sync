@@ -277,13 +277,20 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
         const itemRows = items.map((item, i) => ({
           bundle_id: bid,
           supplier_product_id: item.supplier_product_id,
-          quantity: item.quantity,
-          length_metres: item.length_metres,
+          quantity: item.entered_qty,
+          length_metres: item.is_length_item ? item.entered_qty : null,
           is_length_item: item.is_length_item,
           is_optional: item.is_optional,
           notes: item.notes || null,
           sort_order: i,
+          unit_type: item.unit.unit_type,
+          price_per_unit_qty: item.unit.price_per_unit_qty,
+          price_per_unit_label: item.unit.price_per_unit_label,
+          allows_decimal_qty: item.unit.allows_decimal_qty,
+          qty_step: item.unit.qty_step,
+          min_qty: item.unit.min_qty,
         }));
+
         const { error: iErr } = await supabase.from("bundle_items").insert(itemRows);
         if (iErr) throw iErr;
       }
