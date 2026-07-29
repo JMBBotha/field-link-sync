@@ -15,6 +15,17 @@ import { FileImage } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import VisualPdfBundlePicker from "./VisualPdfBundlePicker";
 import StickyActionBar, { STICKY_ACTION_BAR_SPACER } from "@/components/shared/StickyActionBar";
+import PricingUnitEditor from "./PricingUnitEditor";
+import {
+  computeLineTotal,
+  formatUnitPrice,
+  qtyInputProps,
+  resolvePricingUnit,
+  sanitizeQty,
+  formatQty,
+  type PricingUnit,
+} from "@/lib/pricingUnits";
+
 
 const BUNDLE_TYPES = [
   { value: "piping_kit", label: "Piping Kit", desc: "Copper + Lagging" },
