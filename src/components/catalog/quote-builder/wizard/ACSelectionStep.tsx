@@ -12,7 +12,19 @@ import type { QuoteArea, AreaACUnit, AreaConsumable, AreaMaterial } from "../quo
 import { detectBTU, getBracketSize } from "../quoteWizardTypes";
 import { findDaikinRemote, forcePerUnitPricing, isWiredRemote } from "../daikinRemoteUtils";
 import { getProductDisplayName } from "../productDisplayUtils";
+import { computeLineTotal, resolvePricingUnit, formatUnitPrice } from "@/lib/pricingUnits";
 import { toast } from "sonner";
+
+/** Single source of truth for a bundle/material/consumable unit price. */
+function unitPriceOf(product: any): number {
+  return product?.selling_price || product?.price_per_metre || product?.cost_incl_vat || product?.cost_price || 0;
+}
+
+/** lineTotal for any area line, honouring the product's pricing unit (per 100, per roll, ...) */
+function lineTotalOf(product: any, qty: number): number {
+  return computeLineTotal(qty, unitPriceOf(product), resolvePricingUnit(product));
+}
+
 
 interface PaletteBundle {
   id: string;
@@ -110,6 +122,19 @@ function SuggestedBundlePanel({
     setItemOverrides((prev) => ({ ...prev, [itemId]: { ...prev[itemId], ...updates } }));
   };
 
+  // Once applied, the area's Materials & Consumables list is the source of truth —
+  // the item editor stays collapsed unless the user opts into adjusting the kit.
+  const [editorOpen, setEditorOpen] = useState(!isApplied);
+  useEffect(() => { if (isApplied) setEditorOpen(false); }, [isApplied]);
+
+  const activeItems = bundle.items.filter((i: any) => !i.is_optional);
+  const kitTotal = activeItems.reduce((sum: number, item: any) => {
+    const product = item.product || item.supplier_product;
+    if (!product) return sum;
+    const override = itemOverrides[item.id] || { qty: item.quantity || 1, mode: item.is_length_item ? "length" : "unit" };
+    return sum + lineTotalOf(product, override.qty);
+  }, 0);
+
   const formatZAR2 = (v: number) => `R${v.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
@@ -117,7 +142,7 @@ function SuggestedBundlePanel({
       <div className="flex items-center gap-2">
         <Package className="h-3.5 w-3.5 text-primary shrink-0" />
         <span className="font-medium text-foreground flex-1">{bundle.name}</span>
-        <Badge variant="secondary" className="text-[10px]">{bundle.items.length} items</Badge>
+        <Badge variant="secondary" className="text-[10px]">{activeItems.length} items</Badge>
         {isApplied ? (
           <Badge variant="default" className="text-[10px] gap-1">
             <Check className="h-2.5 w-2.5" /> Applied
@@ -125,20 +150,28 @@ function SuggestedBundlePanel({
         ) : null}
       </div>
 
+      {isApplied && !editorOpen && (
+        <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+          <span>Kit items are listed under Materials &amp; Consumables.</span>
+          <span className="font-medium text-foreground">{formatZAR2(kitTotal)}</span>
+        </div>
+      )}
+
       {/* Item list with qty/length controls */}
+      {editorOpen && (
       <div className="space-y-1.5 max-h-48 overflow-y-auto">
-        {bundle.items.filter((i: any) => !i.is_optional).map((item: any) => {
+        {activeItems.map((item: any) => {
           const product = item.product || item.supplier_product;
           const override = itemOverrides[item.id] || { qty: item.quantity || 1, mode: item.is_length_item ? "length" : "unit" };
           const name = product ? (getProductDisplayName(product) || product.product_code || "Item") : (item.notes || "Item");
-          const price = product?.selling_price || product?.cost_incl_vat || 0;
+          const unit = resolvePricingUnit(product);
 
           return (
             <div key={item.id} className="flex items-center gap-2 rounded border border-border/50 bg-background/50 px-2 py-1.5">
               <div className="flex-1 min-w-0">
                 <div className="truncate font-medium text-foreground">{name}</div>
                 <div className="text-muted-foreground text-[10px]">
-                  {formatZAR2(price)} {override.mode === "length" ? "/m" : "/ea"}
+                  {formatUnitPrice(unitPriceOf(product), unit)} · {formatZAR2(lineTotalOf(product, override.qty))}
                 </div>
               </div>
 
@@ -167,6 +200,7 @@ function SuggestedBundlePanel({
           );
         })}
       </div>
+      )}
 
       {/* Action buttons */}
       <div className="flex items-center gap-2 pt-1">
@@ -178,14 +212,23 @@ function SuggestedBundlePanel({
           >
             <Plus className="h-3 w-3" /> Apply Kit
           </Button>
+        ) : editorOpen ? (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs gap-1 flex-1"
+            onClick={() => { onApplyBundle(area.id, bundle, itemOverrides); setEditorOpen(false); }}
+          >
+            <Check className="h-3 w-3" /> Update Kit
+          </Button>
         ) : (
           <Button
             size="sm"
             variant="outline"
             className="h-7 text-xs gap-1 flex-1"
-            onClick={() => onApplyBundle(area.id, bundle, itemOverrides)}
+            onClick={() => setEditorOpen(true)}
           >
-            <Check className="h-3 w-3" /> Update Kit
+            <Wrench className="h-3 w-3" /> Adjust Kit
           </Button>
         )}
         <Button
@@ -198,6 +241,7 @@ function SuggestedBundlePanel({
         </Button>
       </div>
     </div>
+
   );
 }
 
@@ -359,11 +403,12 @@ function AreaUnitSelector({
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">{getProductDisplayName(m.product) || m.product.product_code}</div>
                 <div className="text-[10px] text-muted-foreground">
-                  {m.pricingMode === "length" ? `${m.adjustedLength}m @ R${m.costPerMeter.toFixed(2)}/m` : `×${m.unitQuantity}`}
+                  {m.pricingMode === "length" ? `${m.adjustedLength}m @ R${m.costPerMeter.toFixed(2)}/m` : `×${m.unitQuantity} @ ${formatUnitPrice(unitPriceOf(m.product), resolvePricingUnit(m.product))}`}
                 </div>
               </div>
               <span className="text-[10px] font-medium shrink-0">
-                {formatZAR(m.pricingMode === "length" ? m.totalCost : (m.product.selling_price || 0) * m.unitQuantity)}
+                {formatZAR(m.pricingMode === "length" ? m.totalCost : lineTotalOf(m.product, m.unitQuantity))}
+
               </span>
               <button
                 className="h-5 w-5 rounded-full flex items-center justify-center hover:bg-destructive/20 shrink-0"
@@ -379,11 +424,12 @@ function AreaUnitSelector({
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">{getProductDisplayName(c.product) || c.product.product_code}</div>
                 <div className="text-[10px] text-muted-foreground">
-                  ×{c.quantity} {c.isSuggested && <span className="text-primary">(auto)</span>}
+                  ×{c.quantity} @ {formatUnitPrice(unitPriceOf(c.product), resolvePricingUnit(c.product))} {c.isSuggested && <span className="text-primary">(auto)</span>}
                 </div>
               </div>
               <span className="text-[10px] font-medium shrink-0">
-                {formatZAR((c.product.selling_price || c.product.cost_incl_vat || 0) * c.quantity)}
+                {formatZAR(lineTotalOf(c.product, c.quantity))}
+
               </span>
               <button
                 className="h-5 w-5 rounded-full flex items-center justify-center hover:bg-destructive/20 shrink-0"
@@ -590,43 +636,56 @@ export default function ACSelectionStep({ areas, onAreasChange, products, bundle
       areas.map((a) => {
         if (a.id !== areaId) return a;
 
-        // Remove previously applied bundle materials/consumables
-        const cleanMaterials = (a.materials || []).filter((m) => !(m as any).fromBundle);
-        const cleanConsumables = (a.consumables || []).filter((c) => !(c as any).fromBundle);
+        // Idempotent: drop every line previously generated by any bundle before re-adding
+        const cleanMaterials = (a.materials || []).filter((m) => !m.fromBundle);
+        const cleanConsumables = (a.consumables || []).filter((c) => !c.fromBundle);
 
         const newMaterials: AreaMaterial[] = [];
         const newConsumables: AreaConsumable[] = [];
+        const seen = new Set<string>();
 
         for (const item of bundle.items) {
           if (item.is_optional) continue;
           const product = item.product || item.supplier_product;
           if (!product) continue;
 
+          // Guard against the same product appearing twice in one bundle definition
+          const dedupeKey = String(product.id || product.product_code || item.id);
+          if (seen.has(dedupeKey)) continue;
+          seen.add(dedupeKey);
+
           const override = overrides[item.id] || { qty: item.quantity || 1, mode: item.is_length_item ? "length" : "unit" };
+          // Stable id derived from bundle + item so re-applying replaces instead of duplicating
+          const lineId = `bundle-${bundle.id}-${item.id}`;
 
           if (override.mode === "length") {
-            const costPerMeter = product.price_per_metre || product.selling_price || product.cost_incl_vat || 0;
+            const unit = resolvePricingUnit(product);
+            const unitPrice = product.price_per_metre || unitPriceOf(product);
+            const per = unit.price_per_unit_qty > 0 ? unit.price_per_unit_qty : 1;
             newMaterials.push({
-              id: crypto.randomUUID(),
+              id: lineId,
               product,
               defaultLength: override.qty,
               adjustedLength: override.qty,
-              costPerMeter,
-              totalCost: costPerMeter * override.qty,
+              costPerMeter: unitPrice / per,
+              totalCost: computeLineTotal(override.qty, unitPrice, unit),
               pricingMode: "length",
               unitQuantity: 1,
               fromBundle: true,
-            } as AreaMaterial & { fromBundle: boolean });
+              bundleId: bundle.id,
+            });
           } else {
             newConsumables.push({
-              id: crypto.randomUUID(),
+              id: lineId,
               product,
               quantity: override.qty,
               isSuggested: false,
               fromBundle: true,
-            } as AreaConsumable & { fromBundle: boolean });
+              bundleId: bundle.id,
+            });
           }
         }
+
 
         toast.success(`Applied "${bundle.name}" to ${a.name}`);
         return {
