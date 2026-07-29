@@ -192,11 +192,17 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
       toast.info("Item already in bundle");
       return;
     }
+    const unit = resolvePricingUnit(product);
+    const isLen = unit.unit_type === "m" || unit.unit_type === "roll";
+    const unitPrice = isLen && product.price_per_metre
+      ? product.price_per_metre * unit.price_per_unit_qty
+      : product.cost_price || 0;
+    const startQty = sanitizeQty(isLen ? 4 : Math.max(unit.min_qty, unit.qty_step), unit);
     setItems(prev => [...prev, {
       supplier_product_id: product.id,
-      quantity: product.sold_in_length ? 1 : 1,
-      length_metres: product.sold_in_length ? 4 : null,
-      is_length_item: product.sold_in_length || false,
+      quantity: isLen ? 1 : startQty,
+      length_metres: isLen ? startQty : null,
+      is_length_item: isLen,
       is_optional: false,
       notes: "",
       sort_order: prev.length,
@@ -208,6 +214,9 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
       supplier_name: product.suppliers?.name,
       pipe_size: product.pipe_size,
       short_name: product.short_name,
+      unit,
+      unit_price: unitPrice,
+      entered_qty: startQty,
     }]);
     setPickerOpen(false);
     setSearch("");
@@ -221,12 +230,18 @@ const BundleBuilder = ({ bundleId, onClose }: Props) => {
     setItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
   };
 
-  const getLineTotal = (item: BundleItemLocal) => {
-    if (item.is_length_item && item.length_metres) {
-      return item.length_metres * (item.price_per_metre || 0);
-    }
-    return item.quantity * item.cost_price;
+  const setItemUnit = (index: number, unit: PricingUnit) => {
+    setItems(prev => prev.map((item, i) =>
+      i === index
+        ? { ...item, unit, entered_qty: sanitizeQty(item.entered_qty, unit), is_length_item: unit.unit_type === "m" || unit.unit_type === "roll" }
+        : item
+    ));
   };
+
+  /** One formula for every item: (enteredQty / price_per_unit_qty) * unitPrice */
+  const getLineTotal = (item: BundleItemLocal) =>
+    computeLineTotal(item.entered_qty, item.unit_price, item.unit);
+
 
   const bundleTotal = items.reduce((sum, item) => sum + getLineTotal(item), 0);
 
