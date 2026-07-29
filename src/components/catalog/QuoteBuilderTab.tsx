@@ -39,6 +39,8 @@ import { allTermsMatchBlob } from "./searchSynonyms";
 import QuoteBuilderPopup from "./quote-builder/QuoteBuilderPopup";
 import type { WizardTriggerItem } from "./quote-builder/QuoteBuilderPopup";
 import { computeBundlePricing } from "./quote-builder/BundleItemsPopover";
+import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
+import type { QuoteTotals } from "@/utils/quoteTransformers";
 
 type QuoteBuilderBundle = PaletteBundle & {
   min_btu?: number | null;
@@ -152,27 +154,10 @@ class NoDndPointerSensor extends PointerSensor {
 }
 
 /* Sticky collapsible summary wrapper */
-const StickyQuoteSummary = ({ baskets }: {baskets: Basket[];}) => {
+const StickyQuoteSummary = ({ baskets, totals }: { baskets: Basket[]; totals: QuoteTotals }) => {
   const [collapsed, setCollapsed] = useState(true);
-  const totalItems = baskets.reduce((s, b) => s + b.items.length, 0);
-  const totalCost = baskets.reduce(
-    (sum, b) =>
-    sum +
-    b.items.reduce((s, i) => {
-      if (i.isBundle && i.bundleUnitPrice) {
-        return s + (i.bundlePricingType === "p/meter" ?
-        i.bundleUnitPrice * (i.length || 1) :
-        i.bundleUnitPrice * i.quantity);
-      }
-      if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
-        const { unitSell } = getEffectiveUnitPrices(i.product, true);
-        return s + unitSell * i.length;
-      }
-      const { unitSell } = getEffectiveUnitPrices(i.product);
-      return s + unitSell * i.quantity;
-    }, 0),
-    0
-  );
+  const totalItems = totals.itemCount;
+  const totalCost = totals.subtotal;
 
   if (totalItems === 0) return null;
 
@@ -192,7 +177,7 @@ const StickyQuoteSummary = ({ baskets }: {baskets: Basket[];}) => {
         {/* Expandable detail */}
         {!collapsed &&
         <div className="px-4 pb-3 max-h-[40vh] overflow-y-auto">
-            <QuoteSummaryPanel baskets={baskets} />
+            <QuoteSummaryPanel baskets={baskets} totals={totals} />
           </div>
         }
       </div>
@@ -222,9 +207,10 @@ interface QuoteBuilderTabProps {
    *  Quote Total bar so every displayed total (header, bar, sidebar) reads
    *  the same combined set. Not added to `baskets` state. */
   extraBaskets?: Basket[];
+  quoteTotals?: QuoteTotals;
 }
 
-const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, areaBuilderNode, areaAddZone, areaApplyTemplate, areaClearAll, areaCount, areaDropProductToArea, areaDropBundleToArea, initialBaskets, extraBaskets }: QuoteBuilderTabProps = {}) => {
+const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, areaBuilderNode, areaAddZone, areaApplyTemplate, areaClearAll, areaCount, areaDropProductToArea, areaDropBundleToArea, initialBaskets, extraBaskets, quoteTotals: providedQuoteTotals }: QuoteBuilderTabProps = {}) => {
   const [baskets, setBasketsInternal] = useState<Basket[]>(() =>
     initialBaskets != null
       ? initialBaskets
@@ -805,29 +791,8 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
   );
 
 
-  const totalCost = useMemo(() => {
-    return displayBaskets.reduce(
-      (sum, b) =>
-      sum +
-      b.items.reduce((s, i) => {
-        if (i.isBundle && i.bundleUnitPrice) {
-          return s + (i.bundlePricingType === "p/meter" ?
-          i.bundleUnitPrice * (i.length || 1) :
-          i.bundleUnitPrice * i.quantity);
-        }
-        if (i.product.sold_in_length && i.product.price_per_metre && i.length) {
-          return s + i.product.price_per_metre * i.length;
-        }
-        return s + (i.product.selling_price || i.product.cost_incl_vat || 0) * i.quantity;
-      }, 0),
-      0
-    );
-  }, [displayBaskets]);
-
-  const totalItems = useMemo(
-    () => displayBaskets.reduce((s, b) => s + b.items.reduce((qs, i) => qs + i.quantity, 0), 0),
-    [displayBaskets]
-  );
+  const computedQuoteTotals = useMemo(() => computeBasketsQuoteTotals(displayBaskets), [displayBaskets]);
+  const quoteTotals = providedQuoteTotals ?? computedQuoteTotals;
 
   const handleClearAll = useCallback(() => {
     setBaskets([]);
@@ -850,10 +815,10 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
       <div className="border bg-card p-3 z-10 shadow-sm shrink-0 rounded-sm py-[6px] mx-[4px] my-[8px] flex flex-col gap-[6px]">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-muted-foreground">
-            Quote Total ({totalItems} items across {displayBaskets.filter((b) => b.items.length > 0).length} zones)
+            Quote Total ({quoteTotals.itemCount} items across {quoteTotals.zoneCount} zones)
           </span>
           <span className="text-lg font-bold text-foreground">
-            R {totalCost.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            R {quoteTotals.subtotal.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         </div>
       </div>
@@ -938,7 +903,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
       </DndContext>
 
       {/* Sticky collapsible quote summary at bottom */}
-      <StickyQuoteSummary baskets={displayBaskets} />
+      <StickyQuoteSummary baskets={displayBaskets} totals={quoteTotals} />
 
       <ACOptionsModal
         open={acModalOpen}

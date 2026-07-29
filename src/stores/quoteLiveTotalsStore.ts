@@ -21,6 +21,6 @@ export const useQuoteLiveTotals = create<QuoteLiveTotalsState>((set) => ({
   zones: 0,
   subtotal: 0,
   set: ({ items, zones, subtotal }) =>
-    set({ hasLiveData: items > 0 || subtotal > 0, items, zones, subtotal }),
+    set({ hasLiveData: true, items, zones, subtotal }),
   reset: () => set({ hasLiveData: false, items: 0, zones: 0, subtotal: 0 }),
 }));

@@ -95,6 +95,16 @@ describe("computeQuoteTotals", () => {
     expect(totals.subtotal).toBe(100);
   });
 
+  it("excludes zero-value non-placeholder scaffolding rows", () => {
+    const items = [
+      item({ area_id: "a1", source: "manual", quantity: 0, unit_price: 0, total_price: 0 }),
+      item({ area_id: "a1", source: "manual", quantity: 1, unit_price: 100 }),
+    ];
+    const totals = computeQuoteTotals(items, [area("a1")]);
+    expect(totals.itemCount).toBe(1);
+    expect(totals.subtotal).toBe(100);
+  });
+
   it("zoneCount reflects only areas that hold real items", () => {
     const items = [
       item({ area_id: "a1", unit_price: 100, quantity: 1 }),
