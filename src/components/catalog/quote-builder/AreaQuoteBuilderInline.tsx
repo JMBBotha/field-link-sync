@@ -10,6 +10,7 @@ import { ChevronLeft, ChevronRight, Check, Save, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { computeLineTotal, resolvePricingUnit } from "@/lib/pricingUnits";
 import { hapticTap } from "@/lib/haptics";
 import type { PaletteProduct, Basket, BasketItem } from "../QuoteBuilderTab";
 import type { QuoteArea, AreaACUnit, AreaConsumable, AreaMaterial } from "./quoteWizardTypes";
