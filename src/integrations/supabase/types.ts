@@ -1919,6 +1919,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_accounts_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_by_product_detail"
+            referencedColumns: ["invoice_id"]
+          },
+          {
             foreignKeyName: "invoice_items_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
@@ -2490,6 +2504,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "jobs_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_accounts_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "jobs_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_by_product_detail"
+            referencedColumns: ["invoice_id"]
+          },
+          {
             foreignKeyName: "jobs_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
@@ -2915,6 +2943,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "notification_queue_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_accounts_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "notification_queue_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_by_product_detail"
+            referencedColumns: ["invoice_id"]
+          },
+          {
             foreignKeyName: "notification_queue_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
@@ -3197,6 +3239,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "invoices"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_accounts_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_by_product_detail"
+            referencedColumns: ["invoice_id"]
           },
         ]
       }
@@ -5212,6 +5268,107 @@ export type Database = {
           expenses_total: number | null
           overdue_count: number | null
           revenue: number | null
+        }
+        Relationships: []
+      }
+      v_accounts_aging: {
+        Row: {
+          aging_bucket: string | null
+          balance_due: number | null
+          company_id: string | null
+          customer_id: string | null
+          customer_name: string | null
+          effective_due_date: string | null
+          grand_total: number | null
+          invoice_id: string | null
+          invoice_number: string | null
+          issue_date: string | null
+          paid_amount: number | null
+          stored_due_date: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_sales_by_client: {
+        Row: {
+          customer_id: string | null
+          customer_name: string | null
+          invoice_count: number | null
+          total_excl_vat: number | null
+          total_outstanding: number | null
+          total_paid: number | null
+          total_sales: number | null
+          total_vat: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_sales_by_product: {
+        Row: {
+          invoice_count: number | null
+          product_description: string | null
+          total_quantity: number | null
+          total_sales: number | null
+        }
+        Relationships: []
+      }
+      v_sales_by_product_detail: {
+        Row: {
+          customer_id: string | null
+          invoice_id: string | null
+          invoice_number: string | null
+          issue_date: string | null
+          line_amount: number | null
+          product_description: string | null
+          quantity: number | null
+          status: string | null
+          unit_price: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_vat_summary: {
+        Row: {
+          invoice_count: number | null
+          period_month: string | null
+          total_excl_vat: number | null
+          total_incl_vat: number | null
+          total_vat_collected: number | null
         }
         Relationships: []
       }
