@@ -139,12 +139,14 @@ const PricingBlock = ({ section, onChange, themeColor }: Props) => {
                   type="number"
                   className="text-right"
                   value={item.rate}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => patchItem(i, { rate: Number(e.target.value) || 0 })}
                 />
                 <Input
                   type="number"
                   className="text-right"
                   value={item.quantity}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => patchItem(i, { quantity: Number(e.target.value) || 0 })}
                 />
                 <p className="pt-2 text-right text-sm font-semibold">
@@ -207,8 +209,21 @@ const PricingBlock = ({ section, onChange, themeColor }: Props) => {
                 type="number"
                 className="h-8 w-28 text-right"
                 value={section.discount || 0}
+                onFocus={(e) => e.target.select()}
                 onChange={(e) => onChange({ discount: Number(e.target.value) || 0 })}
               />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive"
+                aria-label="Remove discount"
+                onClick={() => {
+                  onChange({ discount: 0 });
+                  setShowDiscount(false);
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
           )}
           <Row label="VAT (15%)" value={formatZAR(vat)} />
