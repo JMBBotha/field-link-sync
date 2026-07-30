@@ -52,6 +52,11 @@ const AdminLayout = () => {
   const pageTitles: Record<string, string> = {
     "/admin": "Home",
     "/admin/map": "Map",
+    "/admin/customers": "Clients",
+    "/admin/jobs": "Jobs",
+    "/admin/jobs/dispatch": "Jobs & Dispatch",
+    "/admin/my-jobs": "My Jobs",
+    "/admin/jobs-map": "Live Tracking",
     "/admin/dispatch": "Dispatch Board",
     "/admin/schedule": "Schedule",
     "/admin/quotes": "Quotes",

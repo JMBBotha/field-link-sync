@@ -319,7 +319,7 @@ const AdminJobsDispatchPage = () => {
   return (
     <div className="space-y-4 p-3 sm:p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Dispatch Board</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Jobs &amp; Dispatch</h1>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 text-sm">
             <Filter className="h-4 w-4 text-muted-foreground" />
@@ -353,7 +353,7 @@ const AdminJobsDispatchPage = () => {
           >
             <Loader2 className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} /> Refresh
           </Button>
-          <Button onClick={() => setShowCreate(true)} className="gap-2" size="sm">
+          <Button variant="brand" onClick={() => setShowCreate(true)} className="gap-2" size="sm">
             <Plus className="h-4 w-4" /> New Job
           </Button>
         </div>

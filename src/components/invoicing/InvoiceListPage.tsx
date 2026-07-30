@@ -153,6 +153,14 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
 
   return (
     <div className="space-y-4 p-4 max-w-lg mx-auto">
+      {/* Page header */}
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Invoices</h1>
+        <Button variant="brand" onClick={onCreateInvoice} className="gap-2">
+          <Plus className="h-4 w-4" /> New Invoice
+        </Button>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3">
         <Card className="border-0 shadow-sm">
@@ -215,8 +223,8 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
       {/* Create Invoice Button */}
       <Button
         onClick={onCreateInvoice}
+        variant="brand"
         className="w-full h-11 rounded-xl font-semibold gap-2"
-        style={{ backgroundColor: '#0077B6' }}
       >
         <Plus className="h-4 w-4" />
         Create New Invoice
