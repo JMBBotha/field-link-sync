@@ -42,6 +42,7 @@ import {
   LayoutTemplate,
   Paintbrush,
 } from "lucide-react";
+import companyLogo from "@/assets/logo.png";
 import StickyActionBar, { STICKY_ACTION_BAR_SPACER } from "@/components/shared/StickyActionBar";
 import CustomerSearchSelector from "@/components/customers/CustomerSearchSelector";
 import ProposalSectionEditor from "@/components/proposals/visual/ProposalSectionEditor";
@@ -234,7 +235,7 @@ const AdminProposalBuilderPage = () => {
     proposalNumber,
     proposalDate,
     companyName: settings?.company_name || settings?.name || undefined,
-    companyLogo: settings?.logo_url || null,
+    companyLogo,
     sections,
     style,
     requireSignature,
