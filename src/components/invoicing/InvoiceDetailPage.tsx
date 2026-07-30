@@ -188,131 +188,39 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
   }
 
   return (
-    <div className="max-w-lg mx-auto p-4 space-y-4 pb-44">
+    <div className="max-w-4xl mx-auto p-4 space-y-4 pb-44">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between print:hidden">
         <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onBack}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-lg font-bold">Invoice</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-bold">Invoice</h1>
+          {getStatusBadge(invoice.status)}
+        </div>
         <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleGenerateAndShare} disabled={generatingPDF}>
           {generatingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
         </Button>
       </div>
 
-      {/* Invoice Header Card */}
-      <Card className="border-0 shadow-sm overflow-hidden">
-        <div className="p-4 text-white" style={{ backgroundColor: '#0077B6' }}>
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-2xl font-bold">{invoice.invoice_number}</p>
-              <p className="text-sm opacity-80">{formatDate(invoice.issue_date || invoice.created_at)}</p>
-            </div>
-            {getStatusBadge(invoice.status)}
-          </div>
-          <p className="text-3xl font-bold mt-3">{formatCurrency(invoice.grand_total)}</p>
-        </div>
-      </Card>
+      {/* FreshBooks-style invoice document (screen + print/PDF) */}
+      <InvoiceDocument
+        invoiceNumber={invoice.invoice_number}
+        issueDate={invoice.issue_date || invoice.created_at}
+        dueDate={invoice.due_date}
+        customerName={invoice.customer_name}
+        customerAddress={invoice.customer_address}
+        customerEmail={invoice.customer_email}
+        customerPhone={invoice.customer_phone}
+        items={displayItems}
+        subtotal={Number(invoice.subtotal) || 0}
+        taxRate={Number(invoice.tax_rate) || 15}
+        taxAmount={Number(invoice.tax_amount) || 0}
+        grandTotal={Number(invoice.grand_total) || 0}
+        amountPaid={amountPaid}
+        notes={invoice.notes}
+      />
 
-      {/* Client Info */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-4 space-y-2">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Client</p>
-          <p className="font-semibold">{invoice.customer_name}</p>
-          {invoice.customer_phone && (
-            <a href={`tel:${invoice.customer_phone}`} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary">
-              <Phone className="h-3.5 w-3.5" /> {invoice.customer_phone}
-            </a>
-          )}
-          {invoice.customer_email && (
-            <a href={`mailto:${invoice.customer_email}`} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary">
-              <Mail className="h-3.5 w-3.5" /> {invoice.customer_email}
-            </a>
-          )}
-          {invoice.customer_address && (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5 shrink-0" /> {invoice.customer_address}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Dates */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-4">
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div>
-              <p className="text-[10px] text-muted-foreground uppercase">Issued</p>
-              <p className="text-xs font-medium">{formatDate(invoice.issue_date || invoice.created_at)}</p>
-            </div>
-            <div>
-              <p className="text-[10px] text-muted-foreground uppercase">Due</p>
-              <p className="text-xs font-medium">{invoice.due_date ? formatDate(invoice.due_date) : "On receipt"}</p>
-            </div>
-            <div>
-              <p className="text-[10px] text-muted-foreground uppercase">Paid</p>
-              <p className="text-xs font-medium">{invoice.paid_date ? formatDate(invoice.paid_date) : "—"}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Line Items */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-4 space-y-2">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Services</p>
-          {displayItems.map((item, idx) => (
-            <div key={idx} className="flex justify-between items-start py-2.5 border-b last:border-0">
-              <div className="flex-1">
-                <p className="text-sm font-medium">{item.description}</p>
-                <p className="text-xs text-muted-foreground">
-                  {item.quantity} × {formatCurrency(item.unit_price)}
-                </p>
-              </div>
-              <span className="font-semibold text-sm">{formatCurrency(item.amount)}</span>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* Totals */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-4 space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Subtotal</span>
-            <span>{formatCurrency(invoice.subtotal)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">VAT ({invoice.tax_rate}%)</span>
-            <span>{formatCurrency(invoice.tax_amount)}</span>
-          </div>
-          <div className="h-px bg-border my-1" />
-          <div className="flex justify-between text-lg font-bold">
-            <span>Total</span>
-            <span className="text-primary">{formatCurrency(invoice.grand_total)}</span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Payment Method */}
-      {invoice.payment_method && (
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <p className="text-[10px] text-muted-foreground uppercase">Payment Method</p>
-            <p className="text-sm font-medium capitalize">{invoice.payment_method}</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Notes */}
-      {invoice.notes && (
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <p className="text-[10px] text-muted-foreground uppercase">Notes</p>
-            <p className="text-sm">{invoice.notes}</p>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Payments — record & history (auto-updates invoice status via DB trigger) */}
       <div className="flex items-center justify-end -mb-2">
