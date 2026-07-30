@@ -1,5 +1,72 @@
 import { supabase } from "@/integrations/supabase/client";
 
+export interface FlatQuoteLineItem {
+  description: string;
+  quantity: number;
+  rate: number;
+  amount: number;
+}
+
+/**
+ * Flatten a quote's areas + items into simple line items.
+ * Prefers the unified quote_items table (single source of truth) and falls back
+ * to the legacy visual_sections JSON blob for older quotes.
+ * Shared by invoice conversion and the read-only estimate document.
+ */
+export async function buildQuoteLineItems(
+  quoteId: string,
+  visualSections?: unknown,
+): Promise<FlatQuoteLineItem[]> {
+  const lineItems: FlatQuoteLineItem[] = [];
+
+  const [{ data: items }, { data: areas }] = await Promise.all([
+    supabase
+      .from("quote_items")
+      .select("item_name, description, quantity, unit_price, total_price, area_id, parent_item_id, sort_order")
+      .eq("quote_id", quoteId)
+      .is("parent_item_id", null)
+      .order("sort_order"),
+    supabase.from("quote_areas").select("id, name").eq("quote_id", quoteId),
+  ]);
+
+  const areaName = new Map<string, string>((areas || []).map((a: any) => [a.id, a.name]));
+
+  if (items && items.length > 0) {
+    items.forEach((i: any) => {
+      const qty = Number(i.quantity) || 1;
+      const rate = Number(i.unit_price) || 0;
+      const amount = i.total_price != null ? Number(i.total_price) : Number((qty * rate).toFixed(2));
+      const prefix = i.area_id && areaName.get(i.area_id) ? `[${areaName.get(i.area_id)}] ` : "";
+      lineItems.push({
+        description: `${prefix}${i.item_name || i.description || "Item"}`,
+        quantity: qty,
+        rate,
+        amount,
+      });
+    });
+  } else {
+    const zones: any[] = Array.isArray(visualSections) ? (visualSections as any[]) : [];
+    zones.forEach((z) => {
+      const zItems: any[] = Array.isArray(z?.items) ? z.items : [];
+      zItems.forEach((i) => {
+        const qty = Number(i.quantity ?? i.length ?? 1) || 1;
+        const rate = Number(i.unitPrice ?? i.pricePerMetre ?? 0) || 0;
+        const amount = Number((qty * rate).toFixed(2));
+        const zonePrefix = z?.name ? `[${z.name}] ` : "";
+        lineItems.push({
+          description: `${zonePrefix}${i.productName || i.productCode || "Item"}`,
+          quantity: qty,
+          rate,
+          amount,
+        });
+      });
+    });
+  }
+
+  return lineItems;
+}
+
+
 /**
  * Convert an accepted quote into a draft invoice using the legacy invoices stack.
  *
