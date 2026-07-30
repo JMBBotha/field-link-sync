@@ -174,7 +174,7 @@ const AdminCustomersPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold">Clients</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Clients</h1>
           <p className="text-sm text-muted-foreground">{customers.length} customers in database</p>
         </div>
         <div className="flex gap-2">
@@ -193,7 +193,7 @@ const AdminCustomersPage = () => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button onClick={() => setShowCreate(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+          <Button variant="brand" onClick={() => setShowCreate(true)}>
             <Plus className="h-4 w-4 mr-1" /> New Customer
           </Button>
         </div>
@@ -504,7 +504,7 @@ const CreateCustomerFBDialog = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={save} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+          <Button variant="brand" onClick={save} disabled={saving}>
             {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Save Customer
           </Button>
