@@ -42,6 +42,7 @@ interface QuotesListProps {
 const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "estimate" | "proposal">("all");
   const [converting, setConverting] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const { toast } = useToast();
