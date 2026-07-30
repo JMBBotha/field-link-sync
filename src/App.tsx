@@ -49,6 +49,10 @@ import AuditLogViewer from "./components/audit/AuditLogViewer";
 import AdminSettingsPage from "./components/AdminSettingsPage";
 import ServiceAgreements from "./components/ServiceAgreements";
 import AdminAdvancedReportsPage from "./pages/admin/AdminAdvancedReportsPage";
+import AccountsAgingReportPage from "./pages/admin/reports/AccountsAgingReportPage";
+import SalesByClientReportPage from "./pages/admin/reports/SalesByClientReportPage";
+import SalesByProductReportPage from "./pages/admin/reports/SalesByProductReportPage";
+import VatSummaryReportPage from "./pages/admin/reports/VatSummaryReportPage";
 import AdminTeamPage from "./pages/admin/AdminTeamPage";
 import AdminBillingPage from "./pages/admin/AdminBillingPage";
 import AdminNetworkAgentsPage from "./pages/admin/AdminNetworkAgentsPage";
@@ -169,6 +173,10 @@ const App = () => (
                     <Route path="flat-rate" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><FlatRateBook /></RequireRole>} />
                     <Route path="reports" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]}><ReportBuilder /></RequireRole>} />
                     <Route path="reports/advanced" element={<RequireRole allowedRoles={["admin"]}><AdminAdvancedReportsPage /></RequireRole>} />
+                    <Route path="reports/aging" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]}><AccountsAgingReportPage /></RequireRole>} />
+                    <Route path="reports/sales-by-client" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]}><SalesByClientReportPage /></RequireRole>} />
+                    <Route path="reports/sales-by-product" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]}><SalesByProductReportPage /></RequireRole>} />
+                    <Route path="reports/vat" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]}><VatSummaryReportPage /></RequireRole>} />
                     <Route path="analytics" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]}><AnalyticsDashboard /></RequireRole>} />
                     <Route path="notifications" element={<RequireRole allowedRoles={["admin"]}><AdminNotificationSettings /></RequireRole>} />
                     <Route path="audit" element={<RequireRole allowedRoles={["admin"]}><AuditLogViewer /></RequireRole>} />
