@@ -13,7 +13,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, FileText, Download, Link2, FileCheck2 } from "lucide-react";
+import { Plus, Search, FileText, Download, Link2, FileCheck2, ChevronDown, FileSignature } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Spinner } from "@/components/ui/spinner";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { convertQuoteToInvoice } from "@/lib/convertQuoteToInvoice";
