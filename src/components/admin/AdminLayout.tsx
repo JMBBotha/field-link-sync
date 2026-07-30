@@ -168,18 +168,18 @@ const AdminLayout = () => {
       />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="shrink-0 h-14 border-b flex items-center justify-between px-2 sm:px-4 gap-2 bg-primary dark:bg-gradient-to-r dark:from-[#070e1a] dark:via-[#183a66] dark:to-[#070e1a] border-[#006699] dark:border-[#153258]">
+        <header className="shrink-0 h-14 border-b border-border flex items-center justify-between px-2 sm:px-4 gap-2 bg-background">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden text-white hover:bg-white/20 shrink-0 h-9 w-9"
+              className="lg:hidden text-foreground hover:bg-muted shrink-0 h-9 w-9"
             >
               <Menu className="h-5 w-5" />
             </Button>
             <img src={logo} alt="Logo" className="h-8 lg:hidden shrink-0" />
-            <h1 className="text-sm sm:text-base font-semibold text-white truncate">{pageTitle}</h1>
+            <h1 className="text-base sm:text-lg font-bold text-foreground truncate">{pageTitle}</h1>
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
@@ -187,11 +187,11 @@ const AdminLayout = () => {
               variant="ghost"
               size="sm"
               onClick={() => setSearchOpen(true)}
-              className="text-white/80 hover:text-white hover:bg-white/20 gap-1.5 hidden sm:flex"
+              className="text-muted-foreground hover:text-foreground gap-1.5 hidden sm:flex"
             >
               <Search className="h-4 w-4" />
               <span className="text-xs">Search</span>
-              <kbd className="ml-1 rounded border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px]">⌘K</kbd>
+              <kbd className="ml-1 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px]">⌘K</kbd>
             </Button>
             <div className="hidden sm:block">
               <SubscriptionBadge />
@@ -201,13 +201,14 @@ const AdminLayout = () => {
               variant="ghost"
               size="icon"
               onClick={toggleTheme}
-              className="text-white hover:bg-white/20 h-9 w-9"
+              className="text-muted-foreground hover:text-foreground h-9 w-9"
               title={resolvedTheme === "light" ? "Switch to dark mode" : "Switch to light mode"}
             >
               {resolvedTheme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
             </Button>
           </div>
         </header>
+
 
         {/* Sticky mobile search bar */}
         <div className="shrink-0 sm:hidden sticky top-0 z-10 border-b bg-background/95 backdrop-blur-sm px-3 py-2">
