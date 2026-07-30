@@ -1,0 +1,1 @@
+update public.company_settings set banking_details = jsonb_set(banking_details::jsonb, '{account_type}', '"Cheque"') where banking_details->>'account_type' ilike 'Cheque%' and banking_details->>'account_type' <> 'Cheque';
