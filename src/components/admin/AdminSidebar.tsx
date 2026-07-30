@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole, type AppRole } from "@/hooks/useRole";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import {
   LayoutDashboard,
   MapPin,
@@ -35,12 +36,14 @@ import {
   ClipboardList,
   Sparkles,
   HelpCircle,
+  CreditCard,
+  Navigation,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import logo from "@/assets/logo.png";
 
 interface NavItem {
   path: string;
@@ -76,6 +79,16 @@ const AdminSidebar = ({
   const navigate = useNavigate();
   const location = useLocation();
   const { isAdmin, isDispatcher, isFieldAgent, roles } = useRole();
+  const { settings } = useCompanySettings();
+
+  const companyName = settings?.company_name?.trim() || "My Company";
+  const roleLabel = isAdmin
+    ? "Owner"
+    : isDispatcher
+      ? "Dispatcher"
+      : isFieldAgent
+        ? "Technician"
+        : "Viewer";
 
   const { data: lowStockCount = 0 } = useQuery({
     queryKey: ["low-stock-count-sidebar"],
@@ -91,93 +104,90 @@ const AdminSidebar = ({
     refetchInterval: 60000,
   });
 
+  // FreshBooks-style ordering. Every existing route is preserved —
+  // items are only regrouped/relabelled for the accounting-app layout.
   const navGroups: NavGroup[] = [
     {
       title: "Main",
       items: [
         { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
-        { path: "/admin/dispatch", label: "Leads", icon: Sparkles },
-        { path: "/admin/customers", label: "Customers", icon: Users },
+        { path: "/admin/customers", label: "Clients", icon: Users },
         {
-          // Parent points at Dispatch Board so a collapsed-sidebar click
-          // lands on the current jobs surface (not the legacy flat list).
+          path: "/admin/quotes",
+          label: "Estimates",
+          icon: FileText,
+          roles: ["admin", "dispatcher", "viewer"],
+          children: [
+            { path: "/admin/quotes", label: "Quotes", icon: FileText },
+            { path: "/admin/templates", label: "Templates", icon: FileSignature },
+            { path: "/admin/agreements", label: "Agreements", icon: FileCheck },
+          ],
+        },
+        {
+          path: "/admin/invoices",
+          label: "Invoices",
+          icon: Receipt,
+          roles: ["admin", "dispatcher", "viewer"],
+        },
+        {
+          path: "/admin/billing",
+          label: "Payments",
+          icon: CreditCard,
+          roles: ["admin"],
+        },
+        {
           path: "/admin/jobs/dispatch",
-          label: "Jobs",
+          label: "Jobs & Dispatch",
           icon: Briefcase,
           children: [
+            { path: "/admin/dispatch", label: "Leads", icon: Sparkles },
             { path: "/admin/jobs/dispatch", label: "Dispatch Board", icon: ClipboardList },
             { path: "/admin/schedule", label: "Schedule", icon: CalendarDays },
             { path: "/admin/my-jobs", label: "My Jobs", icon: Briefcase },
-            { path: "/admin/map", label: "Map", icon: MapPin },
-            { path: "/admin/maintenance", label: "Maintenance", icon: CalendarDays, roles: ["admin", "dispatcher"] },
+            { path: "/admin/maintenance", label: "Maintenance", icon: Wrench, roles: ["admin", "dispatcher"] },
           ],
         },
-        { path: "/admin/help", label: "Help", icon: HelpCircle },
-      ],
-    },
-    {
-      title: "Sales",
-      roles: ["admin", "dispatcher", "viewer"],
-      items: [
-        { path: "/admin/quotes", label: "Quotes", icon: FileText },
-        { path: "/admin/agreements", label: "Agreements", icon: FileCheck },
-        { path: "/admin/invoices", label: "Invoices", icon: Receipt },
-        { path: "/admin/templates", label: "Templates", icon: FileSignature },
-      ],
-    },
-    {
-      title: "Operations",
-      roles: ["admin", "dispatcher"],
-      items: [
+        { path: "/admin/map", label: "Live Tracking", icon: Navigation },
         {
-          path: "/admin/inventory",
-          label: "Inventory",
-          icon: Package,
+          path: "/admin/reports",
+          label: "Reports",
+          icon: BarChart3,
+          roles: ["admin", "dispatcher", "viewer"],
+          children: [
+            { path: "/admin/reports", label: "Reports", icon: BarChart3 },
+            { path: "/admin/analytics", label: "Analytics", icon: LineChart },
+            { path: "/admin/reports/advanced", label: "Advanced", icon: TrendingUp, roles: ["admin"] },
+          ],
+        },
+        {
+          path: "/admin/catalog",
+          label: "Items & Services",
+          icon: ShoppingBag,
+          roles: ["admin", "dispatcher"],
           badge: lowStockCount > 0 ? lowStockCount : undefined,
           children: [
-            { path: "/admin/inventory", label: "Stock", icon: Package },
             { path: "/admin/catalog", label: "Catalog", icon: ShoppingBag },
+            { path: "/admin/inventory", label: "Stock", icon: Package },
             { path: "/admin/consumables", label: "Consumables", icon: Package },
-          ],
-        },
-        { path: "/admin/suppliers", label: "Suppliers", icon: Building2 },
-        { path: "/admin/flat-rate", label: "Pricing", icon: DollarSign },
-        {
-          path: "/admin/pdf-documents",
-          label: "Resources",
-          icon: FileText,
-          children: [
+            { path: "/admin/suppliers", label: "Suppliers", icon: Building2 },
+            { path: "/admin/flat-rate", label: "Pricing", icon: DollarSign },
             { path: "/admin/pdf-documents", label: "PDF Documents", icon: FileText },
             { path: "/admin/brochures", label: "Brochures", icon: FileText },
           ],
         },
-      ],
-    },
-    {
-      title: "Reports",
-      roles: ["admin", "dispatcher", "viewer"],
-      items: [
-        { path: "/admin/reports", label: "Reports", icon: BarChart3 },
-        { path: "/admin/analytics", label: "Analytics", icon: LineChart },
-        { path: "/admin/reports/advanced", label: "Advanced", icon: TrendingUp, roles: ["admin"] },
-      ],
-    },
-    {
-      title: "System",
-      roles: ["admin"],
-      items: [
-        { path: "/admin/team", label: "Team", icon: Users },
-        { path: "/admin/billing", label: "Billing", icon: DollarSign },
-        { path: "/admin/notifications", label: "Notifications", icon: Bell, badge: pendingRequestsCount },
-        { path: "/admin/settings", label: "Settings", icon: Settings },
+        { path: "/admin/team", label: "Team Members", icon: Users, roles: ["admin"] },
         {
-          // Collapsible "Advanced" bucket — rarely-used / legacy screens.
-          // Everything here is still routed and reachable; just tucked away
-          // to reduce nav bloat. Move an item back into System.items to
-          // restore top-level visibility.
+          path: "/admin/notifications",
+          label: "Notifications",
+          icon: Bell,
+          roles: ["admin"],
+          badge: pendingRequestsCount,
+        },
+        {
           path: "/admin/settings#advanced",
           label: "Advanced",
           icon: Sparkles,
+          roles: ["admin"],
           children: [
             { path: "/admin/jobs", label: "Legacy Jobs List", icon: ClipboardList },
             { path: "/admin/audit", label: "Audit Log", icon: History },
@@ -193,7 +203,6 @@ const AdminSidebar = ({
     },
   ];
 
-
   const hasRole = (allowed?: AppRole[]) => {
     if (!allowed || allowed.length === 0) return true;
     return allowed.some((r) => roles.includes(r));
@@ -203,6 +212,7 @@ const AdminSidebar = ({
   const fieldAgentOnlyPaths = new Set([
     "/admin",
     "/admin/jobs",
+    "/admin/jobs/dispatch",
     "/admin/my-jobs",
     "/admin/schedule",
     "/admin/map",
@@ -220,6 +230,10 @@ const AdminSidebar = ({
         return { ...item, children: kids.length ? kids : undefined };
       }
     }
+    if (item.children) {
+      const kids = item.children.filter((c) => hasRole(c.roles));
+      return { ...item, children: kids.length ? kids : undefined };
+    }
     return item;
   };
 
@@ -230,15 +244,15 @@ const AdminSidebar = ({
 
   const isActive = (path: string) => {
     if (path === "/admin") return location.pathname === "/admin";
-    return location.pathname === path || location.pathname.startsWith(path + "/");
+    const base = path.split("#")[0];
+    return location.pathname === base || location.pathname.startsWith(base + "/");
   };
 
   const isGroupActive = (item: NavItem) =>
     isActive(item.path) || (item.children?.some((c) => isActive(c.path)) ?? false);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const isExpanded = (item: NavItem) =>
-    expanded[item.path] ?? isGroupActive(item);
+  const isExpanded = (item: NavItem) => expanded[item.path] ?? isGroupActive(item);
 
   const handleNav = (path: string) => {
     navigate(path);
@@ -251,16 +265,15 @@ const AdminSidebar = ({
       <button
         onClick={() => handleNav(item.path)}
         className={cn(
-          "w-full flex items-center gap-2.5 rounded-lg text-sm font-medium transition-colors relative",
-          collapsed ? "justify-center px-0 py-2.5" : "px-3 py-1.5",
-          depth > 0 && !collapsed && "pl-9 py-1 text-[13px]",
+          "w-full flex items-center gap-3 rounded-md text-[13.5px] font-medium transition-colors relative",
+          collapsed ? "justify-center px-0 py-2.5" : "px-3 py-2",
+          depth > 0 && !collapsed && "pl-10 py-1.5 text-[13px]",
           active
-            ? "bg-primary-foreground/20 text-primary-foreground border-l-[3px] border-primary-foreground pl-[calc(0.75rem-3px)]"
-            : "text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10",
-          depth > 0 && active && !collapsed && "pl-[calc(2.25rem-3px)]",
+            ? "bg-nav-active text-white font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-r before:bg-white/80"
+            : "text-nav-foreground/85 hover:text-white hover:bg-white/[0.07]",
         )}
       >
-        <item.icon className="h-4 w-4 shrink-0" />
+        <item.icon className={cn("h-[17px] w-[17px] shrink-0", active ? "opacity-100" : "opacity-80")} strokeWidth={1.75} />
         {!collapsed && <span className="truncate">{item.label}</span>}
         {!collapsed && item.badge && item.badge > 0 ? (
           <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 text-[10px]">
@@ -268,7 +281,7 @@ const AdminSidebar = ({
           </Badge>
         ) : null}
         {collapsed && item.badge && item.badge > 0 ? (
-          <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive text-[9px] text-primary-foreground font-bold px-1">
+          <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive text-[9px] text-white font-bold px-1">
             {item.badge > 99 ? "99+" : item.badge}
           </span>
         ) : null}
@@ -291,109 +304,141 @@ const AdminSidebar = ({
     if (!item.children || item.children.length === 0) return renderLeaf(item);
     const open = isExpanded(item);
     const active = isGroupActive(item);
-    if (collapsed) {
-      // In collapsed mode, render just the parent as a link with tooltip
-      return renderLeaf(item);
-    }
+    if (collapsed) return renderLeaf(item);
     return (
       <div key={item.path}>
         <button
-          onClick={() =>
-            setExpanded((s) => ({ ...s, [item.path]: !open }))
-          }
+          onClick={() => setExpanded((s) => ({ ...s, [item.path]: !open }))}
           className={cn(
-            "w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+            "w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-colors relative",
             active
-              ? "text-primary-foreground bg-primary-foreground/10"
-              : "text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10",
+              ? "bg-nav-active text-white font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-r before:bg-white/80"
+              : "text-nav-foreground/85 hover:text-white hover:bg-white/[0.07]",
           )}
         >
-          <item.icon className="h-4 w-4 shrink-0" />
+          <item.icon className="h-[17px] w-[17px] shrink-0" strokeWidth={1.75} />
           <span className="truncate">{item.label}</span>
+          {item.badge && item.badge > 0 ? (
+            <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 text-[10px]">
+              {item.badge > 99 ? "99+" : item.badge}
+            </Badge>
+          ) : null}
           <ChevronDown
-            className={cn("h-3.5 w-3.5 ml-auto transition-transform", open && "rotate-180")}
+            className={cn("h-3.5 w-3.5 transition-transform opacity-70", !item.badge && "ml-auto", open && "rotate-180")}
           />
         </button>
-        {open && (
-          <div className="mt-0.5 space-y-px">
-            {item.children.map((c) => renderLeaf(c, 1))}
-          </div>
-        )}
+        {open && <div className="mt-0.5 space-y-px">{item.children.map((c) => renderLeaf(c, 1))}</div>}
       </div>
     );
   };
 
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-primary dark:bg-gradient-to-b dark:from-[#070e1a] dark:via-[#153258] dark:to-[#070e1a]">
-      {/* Logo */}
-      <div className={cn(
-        "flex items-center px-4 py-5 border-b border-primary-foreground/15",
-        collapsed ? "justify-center px-2" : "justify-between"
-      )}>
-        <img src={logo} alt="Logo" className={cn("shrink-0 brightness-0 invert", collapsed ? "h-8" : "h-14")} />
+    <div className="flex flex-col h-full bg-nav">
+      {/* Company switcher */}
+      <div
+        className={cn(
+          "flex items-center gap-2 border-b border-nav-border px-3 py-3.5",
+          collapsed && "justify-center px-2"
+        )}
+      >
+        <button
+          onClick={() => handleNav("/admin/settings")}
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-white/[0.07]",
+            collapsed && "justify-center"
+          )}
+          title={companyName}
+        >
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/10 text-[11px] font-bold uppercase text-white">
+            {companyName.slice(0, 2)}
+          </div>
+          {!collapsed && (
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1">
+                <span className="truncate text-[13px] font-bold uppercase tracking-wide text-white">
+                  {companyName}
+                </span>
+                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-nav-muted" />
+              </div>
+              <span className="text-[11px] font-medium text-nav-muted">{roleLabel}</span>
+            </div>
+          )}
+        </button>
         {mobileOpen && (
           <Button
             variant="ghost"
             size="icon"
             onClick={onMobileClose}
-            className="text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/15 lg:hidden"
+            className="text-nav-foreground/70 hover:text-white hover:bg-white/10 lg:hidden shrink-0"
           >
             <X className="h-5 w-5" />
           </Button>
         )}
       </div>
 
-      {/* New Lead button - prominent */}
-      <div className={cn("px-3 pt-4 pb-3", collapsed && "px-2")}>
+      {/* New Lead button */}
+      <div className={cn("px-3 pt-3 pb-2", collapsed && "px-2")}>
         <Button
-          onClick={() => { onCreateLead(); onMobileClose?.(); }}
-          className={cn(
-            "w-full bg-primary-foreground text-primary font-semibold hover:bg-primary-foreground/90 shadow-md",
-            collapsed && "px-0"
-          )}
+          variant="brand"
+          onClick={() => {
+            onCreateLead();
+            onMobileClose?.();
+          }}
+          className={cn("w-full", collapsed && "px-0")}
           size={collapsed ? "icon" : "default"}
         >
-          <Plus className={cn("h-4 w-4", !collapsed && "mr-2")} />
+          <Plus className="h-4 w-4" />
           {!collapsed && "New Lead"}
         </Button>
       </div>
 
-      {/* Navigation groups */}
-      <nav className="flex-1 overflow-y-auto px-2 pb-2 space-y-3">
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-2 pb-2 space-y-0.5">
         {visibleGroups.map((group) => (
-          <div key={group.title}>
-            {!collapsed && (
-              <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-primary-foreground/50">
-                {group.title}
-              </p>
-            )}
-            <div className="space-y-0.5">
-              {group.items.map((item) => renderItem(item))}
-            </div>
+          <div key={group.title} className="space-y-0.5">
+            {group.items.map((item) => renderItem(item))}
           </div>
         ))}
       </nav>
 
-      {/* Bottom actions */}
-      <div className={cn("border-t border-primary-foreground/15 p-3 space-y-1", collapsed && "p-2")}>
+      {/* Secondary links */}
+      <div className={cn("border-t border-nav-border px-2 py-2 space-y-px", collapsed && "px-1")}>
+        {[
+          { path: "/admin/settings", label: "Settings", icon: Settings },
+          { path: "/admin/help", label: "Help", icon: HelpCircle },
+        ].map((item) => (
+          <button
+            key={item.path}
+            onClick={() => handleNav(item.path)}
+            className={cn(
+              "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
+              collapsed && "justify-center px-0"
+            )}
+          >
+            <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+            {!collapsed && <span>{item.label}</span>}
+          </button>
+        ))}
         <button
-          onClick={() => { onSignOut(); onMobileClose?.(); }}
-
+          onClick={() => {
+            onSignOut();
+            onMobileClose?.();
+          }}
           className={cn(
-            "w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-[13px] text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 transition-colors",
+            "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
             collapsed && "justify-center px-0"
           )}
         >
-          <LogOut className="h-4 w-4 shrink-0" />
+          <LogOut className="h-4 w-4 shrink-0" strokeWidth={1.75} />
           {!collapsed && <span>Sign Out</span>}
         </button>
       </div>
 
       {/* Collapse toggle - desktop only */}
-      <div className="hidden lg:block border-t border-primary-foreground/15 p-2">
+      <div className="hidden lg:block border-t border-nav-border p-1.5">
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="w-full flex items-center justify-center py-2 text-primary-foreground/60 hover:text-primary-foreground transition-colors"
+          className="w-full flex items-center justify-center py-1.5 text-nav-muted hover:text-nav-foreground transition-colors"
         >
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </button>
@@ -404,17 +449,14 @@ const AdminSidebar = ({
   return (
     <>
       {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={onMobileClose}
-        />
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={onMobileClose} />
       )}
 
       <aside
         className={cn(
-          "flex flex-col shrink-0 transition-all duration-300 z-50 border-r border-primary-foreground/10 shadow-xl",
-          "hidden lg:flex h-full rounded-r-2xl bg-primary dark:bg-gradient-to-b dark:from-[#070e1a] dark:via-[#153258] dark:to-[#070e1a]",
-          collapsed ? "w-[60px]" : "w-[220px]",
+          "flex flex-col shrink-0 transition-all duration-300 z-50 bg-nav",
+          "hidden lg:flex h-full",
+          collapsed ? "w-[64px]" : "w-[232px]",
         )}
       >
         {sidebarContent}
@@ -422,7 +464,7 @@ const AdminSidebar = ({
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-[260px] transform transition-transform duration-300 lg:hidden rounded-r-2xl shadow-2xl border-r border-primary-foreground/10 bg-primary dark:bg-gradient-to-b dark:from-[#070e1a] dark:via-[#153258] dark:to-[#070e1a]",
+          "fixed inset-y-0 left-0 z-50 w-[264px] transform transition-transform duration-300 lg:hidden shadow-2xl bg-nav",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
