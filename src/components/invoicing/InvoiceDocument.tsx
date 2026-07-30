@@ -162,7 +162,7 @@ const InvoiceDocument = ({
             </div>
             <div className="flex justify-between text-slate-600">
               <span>Amount Paid</span>
-              <span>-{formatCurrency(amountPaid)}</span>
+              <span>{(Number(amountPaid) || 0) > 0 ? `-${formatCurrency(amountPaid)}` : formatCurrency(0)}</span>
             </div>
             <div className="flex items-center justify-between border-t-2 border-[#1B3A5C] pt-2 text-[15px] font-bold text-[#1B3A5C]">
               <span>Amount Due (ZAR)</span>
