@@ -202,7 +202,6 @@ const AdminLayout = () => {
               <span className="text-xs">Search</span>
               <kbd className="ml-1 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px]">⌘K</kbd>
             </Button>
-            <div className="hidden sm:block">
 
             <NotificationBell />
             <Button
