@@ -5305,10 +5305,15 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          proposal_date: string
+          proposal_number: string | null
           public_token: string | null
+          reference: string | null
+          require_signature: boolean
           sections: Json
           sent_at: string | null
           status: string
+          style: Json
           title: string
           total: number
           updated_at: string
@@ -5322,10 +5327,15 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          proposal_date?: string
+          proposal_number?: string | null
           public_token?: string | null
+          reference?: string | null
+          require_signature?: boolean
           sections?: Json
           sent_at?: string | null
           status?: string
+          style?: Json
           title?: string
           total?: number
           updated_at?: string
@@ -5339,10 +5349,15 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          proposal_date?: string
+          proposal_number?: string | null
           public_token?: string | null
+          reference?: string | null
+          require_signature?: boolean
           sections?: Json
           sent_at?: string | null
           status?: string
+          style?: Json
           title?: string
           total?: number
           updated_at?: string
