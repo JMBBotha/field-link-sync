@@ -338,27 +338,30 @@ const AdminSidebar = ({
       {/* Company switcher */}
       <div
         className={cn(
-          "flex items-center gap-2 border-b border-nav-border px-3 py-3.5",
-          collapsed && "justify-center px-2"
+          "relative border-b border-nav-border px-4 py-4",
+          collapsed && "px-2 py-3"
         )}
       >
         <button
           onClick={() => handleNav("/admin/settings")}
           className={cn(
-            "flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-white/[0.07]",
-            collapsed && "justify-center"
+            "flex w-full flex-col items-center gap-2 rounded-md p-2 transition-colors hover:bg-white/[0.07]",
+            collapsed && "gap-0 p-1"
           )}
           title={companyName}
         >
           <img
             src={logo}
             alt={`${companyName} logo`}
-            className="h-8 w-8 shrink-0 rounded-md object-contain"
+            className={cn(
+              "w-full object-contain",
+              collapsed ? "h-8 w-8" : "max-h-20 px-2"
+            )}
           />
 
           {!collapsed && (
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1">
+            <div className="flex w-full min-w-0 flex-col items-center">
+              <div className="flex max-w-full items-center gap-1">
                 <span className="truncate text-[13px] font-bold uppercase tracking-wide text-white">
                   {companyName}
                 </span>
@@ -373,12 +376,13 @@ const AdminSidebar = ({
             variant="ghost"
             size="icon"
             onClick={onMobileClose}
-            className="text-nav-foreground/70 hover:text-white hover:bg-white/10 lg:hidden shrink-0"
+            className="absolute right-2 top-2 text-nav-foreground/70 hover:text-white hover:bg-white/10 lg:hidden"
           >
             <X className="h-5 w-5" />
           </Button>
         )}
       </div>
+
 
       {/* New Lead button */}
       <div className={cn("px-3 pt-3 pb-2", collapsed && "px-2")}>
