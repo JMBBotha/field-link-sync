@@ -23,7 +23,7 @@ import ClientProposalView from "./components/client/ClientProposalView";
 
 // Admin layout + pages
 import AdminLayout from "./components/admin/AdminLayout";
-import { AdminHomePage, AdminMapPage, AdminQuotesPage, AdminProposalsPage, AdminInvoicesPage, AdminImportPage, AdminHelpPage } from "./pages/admin";
+import { AdminHomePage, AdminMapPage, AdminQuotesPage, AdminEstimateDetailPage, AdminProposalsPage, AdminInvoicesPage, AdminImportPage, AdminHelpPage } from "./pages/admin";
 import AdminQuoteBuilderPage from "./pages/admin/AdminQuoteBuilderPage";
 import AdminQuoteBuilderPageUnified from "./pages/admin/AdminQuoteBuilderPageUnified";
 import AdminProposalBuilderPage from "./pages/admin/AdminProposalBuilderPage";
