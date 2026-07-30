@@ -8,7 +8,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Menu, Sun, Moon, Search } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import NotificationBell from "@/components/notifications/NotificationBell";
-import SubscriptionBadge from "@/components/subscription/SubscriptionBadge";
 import CreateLeadDialog from "@/components/CreateLeadDialog";
 import Footer from "@/components/Footer";
 
