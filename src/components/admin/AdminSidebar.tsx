@@ -361,11 +361,11 @@ const AdminSidebar = ({
 
           {!collapsed && (
             <div className="flex w-full min-w-0 flex-col items-center">
-              <div className="flex max-w-full items-center gap-1">
-                <span className="truncate text-[13px] font-bold uppercase tracking-wide text-white">
+              <div className="flex w-full max-w-full items-start justify-center gap-1">
+                <span className="text-center text-[12px] font-bold uppercase leading-tight tracking-wide text-white break-words">
                   {companyName}
                 </span>
-                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-nav-muted" />
+                <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-nav-muted" />
               </div>
               <span className="text-[11px] font-medium text-nav-muted">{roleLabel}</span>
             </div>
