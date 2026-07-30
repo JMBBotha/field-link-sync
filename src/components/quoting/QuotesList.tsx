@@ -232,11 +232,24 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search quotes..."
+              placeholder="Search estimates and proposals..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
             />
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {(["all", "estimate", "proposal"] as const).map((t) => (
+              <Button
+                key={t}
+                variant={typeFilter === t ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTypeFilter(t)}
+                className="text-xs capitalize"
+              >
+                {t === "all" ? "All types" : `${t}s`}
+              </Button>
+            ))}
           </div>
           <div className="flex flex-wrap gap-1">
             {statuses.map((s) => (
@@ -256,11 +269,11 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
         {/* Table */}
         {isLoading ? (
           <ListSkeleton rows={5} />
-        ) : quotes.length === 0 ? (
+        ) : docs.length === 0 ? (
           <Card className="shadow-sm">
             <CardContent className="py-12 text-center text-muted-foreground">
               <FileText className="mx-auto mb-2 h-10 w-10 opacity-50" />
-              <p>No quotes yet. Create your first quote!</p>
+              <p>Nothing here yet. Create your first estimate or proposal!</p>
             </CardContent>
           </Card>
         ) : (
@@ -273,10 +286,11 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                       <Checkbox
                         checked={allSelected}
                         onCheckedChange={toggleAll}
-                        aria-label="Select all quotes"
+                        aria-label="Select all documents"
                       />
                     </TableHead>
-                    <TableHead>Quote #</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Reference</TableHead>
                     <TableHead>Client</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Date</TableHead>
@@ -285,101 +299,119 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(quotes as any[]).map((quote) => (
-                    <TableRow
-                      key={quote.id}
-                      className="cursor-pointer"
-                      onClick={() => onEditQuote(quote.id)}
-                    >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={selected.includes(quote.id)}
-                          onCheckedChange={() => toggleOne(quote.id)}
-                          aria-label={`Select quote ${quote.quote_number || ""}`}
-                        />
-                      </TableCell>
-                      <TableCell className="font-mono text-sm font-bold text-primary">
-                        {quote.quote_number || (
-                          <span className="text-xs text-warning">No number – draft</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="max-w-[220px]">
-                        <p className="truncate text-sm text-foreground">
-                          {quote.customers?.name || "No customer"}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {quote.customers?.phone || ""}
-                        </p>
-                      </TableCell>
-                      <TableCell>
-                        <StatusPill status={quote.status} />
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                        {new Date(quote.created_at).toLocaleDateString("en-ZA")}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-right font-bold text-foreground">
-                        {formatZAR(Number(quote.total))}
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => {
-                              onEditQuote(quote.id);
-                              toast({ title: "Open the quote to download PDF" });
-                            }}
-                            title="Download PDF"
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                          </Button>
-                          {quote.status === "accepted" && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-brand-green hover:text-brand-green"
-                              onClick={() => handleConvertToInvoice(quote.id)}
-                              disabled={converting === quote.id}
-                              title="Convert to Invoice"
-                            >
-                              {converting === quote.id ? (
-                                <Spinner size="xs" />
-                              ) : (
-                                <FileCheck2 className="h-3.5 w-3.5" />
-                              )}
-                            </Button>
-                          )}
-                          {quote.public_token && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(
-                                    `${window.location.origin}/quote/${quote.public_token}`,
-                                  );
-                                  toast({ title: "Link copied! 🔗" });
-                                }}
-                                title="Copy client link"
-                              >
-                                <Link2 className="h-3.5 w-3.5" />
-                              </Button>
-                              <WhatsAppShareButton
-                                phone={quote.customers?.phone}
-                                message={`Hi ${quote.customers?.name || "there"}, your quote ${quote.quote_number} for ${formatZAR(Number(quote.total))} is ready. View it here: ${window.location.origin}/quote/${quote.public_token}`}
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                              />
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {docs.map((doc) => {
+                    const quote = doc.raw;
+                    return (
+                      <TableRow key={`${doc.kind}-${doc.id}`} className="cursor-pointer" onClick={() => openDoc(doc)}>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selected.includes(doc.id)}
+                            onCheckedChange={() => toggleOne(doc.id)}
+                            aria-label={`Select ${doc.ref || ""}`}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold capitalize text-muted-foreground">
+                            {doc.kind === "proposal" ? (
+                              <FileSignature className="h-3 w-3" />
+                            ) : (
+                              <FileText className="h-3 w-3" />
+                            )}
+                            {doc.kind}
+                          </span>
+                        </TableCell>
+                        <TableCell
+                          className={
+                            doc.kind === "estimate"
+                              ? "font-mono text-sm font-bold text-primary"
+                              : "max-w-[220px] truncate text-sm font-semibold text-primary"
+                          }
+                        >
+                          {doc.ref || <span className="text-xs text-warning">No number – draft</span>}
+                        </TableCell>
+                        <TableCell className="max-w-[220px]">
+                          <p className="truncate text-sm text-foreground">
+                            {doc.clientName || "No customer"}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {doc.clientPhone || ""}
+                          </p>
+                        </TableCell>
+                        <TableCell>
+                          <StatusPill status={doc.status} />
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                          {new Date(doc.created_at).toLocaleDateString("en-ZA")}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-right font-bold text-foreground">
+                          {formatZAR(doc.total)}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <div className="flex justify-end gap-1">
+                            {doc.kind === "estimate" && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => {
+                                    onEditQuote(quote.id);
+                                    toast({ title: "Open the quote to download PDF" });
+                                  }}
+                                  title="Download PDF"
+                                >
+                                  <Download className="h-3.5 w-3.5" />
+                                </Button>
+                                {quote.status === "accepted" && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-brand-green hover:text-brand-green"
+                                    onClick={() => handleConvertToInvoice(quote.id)}
+                                    disabled={converting === quote.id}
+                                    title="Convert to Invoice"
+                                  >
+                                    {converting === quote.id ? (
+                                      <Spinner size="xs" />
+                                    ) : (
+                                      <FileCheck2 className="h-3.5 w-3.5" />
+                                    )}
+                                  </Button>
+                                )}
+                              </>
+                            )}
+                            {quote.public_token && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(
+                                      `${window.location.origin}/${doc.kind === "proposal" ? "proposal" : "quote"}/${quote.public_token}`,
+                                    );
+                                    toast({ title: "Link copied! 🔗" });
+                                  }}
+                                  title="Copy client link"
+                                >
+                                  <Link2 className="h-3.5 w-3.5" />
+                                </Button>
+                                <WhatsAppShareButton
+                                  phone={doc.clientPhone}
+                                  message={`Hi ${doc.clientName || "there"}, your ${doc.kind} ${doc.ref} for ${formatZAR(doc.total)} is ready. View it here: ${window.location.origin}/${doc.kind === "proposal" ? "proposal" : "quote"}/${quote.public_token}`}
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                />
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
+
               </Table>
             </div>
           </Card>
