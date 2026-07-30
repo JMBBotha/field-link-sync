@@ -203,8 +203,7 @@ const AdminLayout = () => {
               <kbd className="ml-1 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px]">⌘K</kbd>
             </Button>
             <div className="hidden sm:block">
-              <SubscriptionBadge />
-            </div>
+
             <NotificationBell />
             <Button
               variant="ghost"
