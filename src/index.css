@@ -558,6 +558,15 @@ All colors MUST be HSL.
   @page {
     margin: 1.5cm;
   }
+
+  /* Invoice document prints edge-to-edge, always light */
+  .invoice-document {
+    max-width: none !important;
+    width: 100% !important;
+    background: #ffffff !important;
+    color: #1e293b !important;
+    box-shadow: none !important;
+  }
 }
 
 /* ── PDF capture mode: hide interactive controls during screenshot ── */
