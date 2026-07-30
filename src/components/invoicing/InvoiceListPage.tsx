@@ -152,17 +152,22 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
   };
 
   return (
-    <div className="space-y-4 p-4 max-w-lg mx-auto">
+    <div className="w-full space-y-4 p-4 sm:p-6">
       {/* Page header */}
-      <div className="flex items-start justify-between gap-3">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Invoices</h1>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Invoices</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {invoices.length} invoice{invoices.length !== 1 ? "s" : ""}
+          </p>
+        </div>
         <Button variant="brand" onClick={onCreateInvoice} className="gap-2">
           <Plus className="h-4 w-4" /> New Invoice
         </Button>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:max-w-md">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-3">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Outstanding</p>
@@ -176,6 +181,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
           </CardContent>
         </Card>
       </div>
+
 
       {/* Export Buttons */}
       <div className="flex gap-2 justify-end">
