@@ -104,7 +104,50 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
     },
   });
 
+  const { data: proposals = [] } = useQuery({
+    queryKey: ["visual-proposals", search, statusFilter],
+    queryFn: async () => {
+      let query = (supabase as any)
+        .from("visual_proposals")
+        .select("*, customers:client_id(name, phone)")
+        .order("created_at", { ascending: false });
+      if (statusFilter !== "all") query = query.eq("status", statusFilter);
+      if (search) query = query.ilike("title", `%${search}%`);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const statuses = ["all", "draft", "sent", "viewed", "accepted", "declined"];
+
+  // Combined document feed — estimates + proposals in one list.
+  const docs = [
+    ...(quotes as any[]).map((q) => ({
+      kind: "estimate" as const,
+      id: q.id,
+      ref: q.quote_number,
+      clientName: q.customers?.name,
+      clientPhone: q.customers?.phone,
+      status: q.status,
+      created_at: q.created_at,
+      total: Number(q.total || 0),
+      raw: q,
+    })),
+    ...(proposals as any[]).map((p) => ({
+      kind: "proposal" as const,
+      id: p.id,
+      ref: p.title,
+      clientName: p.customers?.name,
+      clientPhone: p.customers?.phone,
+      status: p.status,
+      created_at: p.created_at,
+      total: Number(p.total || 0),
+      raw: p,
+    })),
+  ]
+    .filter((d) => (typeFilter === "all" ? true : d.kind === typeFilter))
+    .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
 
   const statCards = [
     { key: "draft", label: "Draft" },
@@ -112,19 +155,23 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
     { key: "accepted", label: "Accepted" },
     { key: "declined", label: "Declined" },
   ].map((s) => {
-    const rows = (quotes as any[]).filter((q) => q.status === s.key);
+    const rows = docs.filter((d) => d.status === s.key);
     return {
       ...s,
       count: rows.length,
-      total: rows.reduce((sum, q) => sum + Number(q.total || 0), 0),
+      total: rows.reduce((sum, d) => sum + d.total, 0),
     };
   });
 
-  const allSelected = quotes.length > 0 && selected.length === quotes.length;
-  const toggleAll = () =>
-    setSelected(allSelected ? [] : (quotes as any[]).map((q) => q.id));
+  const allSelected = docs.length > 0 && selected.length === docs.length;
+  const toggleAll = () => setSelected(allSelected ? [] : docs.map((d) => d.id));
   const toggleOne = (id: string) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const openDoc = (doc: (typeof docs)[number]) => {
+    if (doc.kind === "proposal") navigate(`/admin/proposal-builder?proposalId=${doc.id}`);
+    else onEditQuote(doc.id);
+  };
 
   return (
     <div className="min-h-full bg-background">
@@ -132,20 +179,36 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-4 sm:px-6">
         <div className="min-w-0">
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Estimates
-            <HelpTip title="Quotes" side="bottom">
-              Once a quote is <strong>Accepted</strong>, use the green <em>Convert to Invoice</em>
-              icon on the row to generate a draft invoice with the same customer, location and line items.
+            Estimates and Proposals
+            <HelpTip title="Estimates and Proposals" side="bottom">
+              An <strong>Estimate</strong> is a simple list of services and costs. A{" "}
+              <strong>Proposal</strong> is a visual, section-based document with images and an
+              acceptance signature. Once an estimate is <strong>Accepted</strong>, use the green{" "}
+              <em>Convert to Invoice</em> icon on the row.
             </HelpTip>
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {quotes.length} quote{quotes.length !== 1 ? "s" : ""}
+            {docs.length} document{docs.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <Button variant="brand" onClick={onCreateNew}>
-          <Plus className="mr-2 h-4 w-4" /> New Quote
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="brand">
+              <Plus className="mr-2 h-4 w-4" /> Create New
+              <ChevronDown className="ml-2 h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56 bg-popover">
+            <DropdownMenuItem onClick={onCreateNew}>
+              <FileText className="mr-2 h-4 w-4" /> Estimate
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/admin/proposal-builder")}>
+              <FileSignature className="mr-2 h-4 w-4" /> Proposal
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
+
 
       <div className="space-y-5 p-4 sm:p-6">
         {/* Summary stat cards */}
