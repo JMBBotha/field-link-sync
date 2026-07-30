@@ -25,8 +25,18 @@ export interface InvoiceDocumentProps {
   notes?: string | null;
 }
 
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(Number(amount) || 0);
+const formatCurrency = (amount: number) => {
+  const n = Number(amount) || 0;
+  const safe = Object.is(n, -0) || n === 0 ? 0 : n;
+  return new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(safe);
+};
+
+/** Normalises a tax rate that may be stored as 0.15 or 15 into a display percentage. */
+const toPercent = (rate?: number | null) => {
+  const n = Number(rate);
+  if (!Number.isFinite(n) || n <= 0) return 15;
+  return n <= 1 ? Math.round(n * 10000) / 100 : n;
+};
 
 const formatDate = (dateStr?: string | null) =>
   dateStr
@@ -55,6 +65,8 @@ const InvoiceDocument = ({
 }: InvoiceDocumentProps) => {
   const { settings } = useCompanySettings();
   const bank = settings.banking_details || {};
+  const vatPercent = toPercent(taxRate);
+  const accountType = String(bank.account_type || "").match(/^[A-Za-z ]+/)?.[0].trim() || bank.account_type || "";
   const amountDue = Math.max(0, (Number(grandTotal) || 0) - (Number(amountPaid) || 0));
 
   return (
@@ -65,7 +77,7 @@ const InvoiceDocument = ({
       <div className="p-8 sm:p-10">
         {/* ── Top: logo left, business info right ── */}
         <div className="flex items-start justify-between gap-6">
-          <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-[#1B3A5C] p-3 shadow-sm">
             <img src={logo} alt="Company logo" className="h-16 w-auto object-contain" />
           </div>
           <div className="text-right text-[12px] leading-relaxed text-slate-600">
@@ -141,7 +153,7 @@ const InvoiceDocument = ({
               <span>{formatCurrency(subtotal)}</span>
             </div>
             <div className="flex justify-between text-slate-600">
-              <span>VAT ({taxRate ?? 15}%)</span>
+              <span>VAT ({vatPercent}%)</span>
               <span>{formatCurrency(taxAmount)}</span>
             </div>
             <div className="flex justify-between border-t border-slate-200 pt-2 font-semibold text-slate-900">
@@ -165,7 +177,7 @@ const InvoiceDocument = ({
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Terms</p>
             <p className="mt-1">
               Payment due within {settings.default_payment_terms_days || 30} days of invoice date. All prices
-              include VAT at {taxRate ?? 15}%. Please use the invoice number as your payment reference.
+              include VAT at {vatPercent}%. Please use the invoice number as your payment reference.
             </p>
           </div>
 
@@ -175,7 +187,7 @@ const InvoiceDocument = ({
               <p><span className="text-slate-400">Bank: </span>{bank.bank_name || "—"}</p>
               <p><span className="text-slate-400">Account: </span>{bank.account_number || "—"}</p>
               <p><span className="text-slate-400">Branch Code: </span>{bank.branch_code || "—"}</p>
-              <p><span className="text-slate-400">Type: </span>{bank.account_type || "—"}</p>
+              <p><span className="text-slate-400">Type: </span>{accountType || "—"}</p>
             </div>
           </div>
 
