@@ -160,6 +160,8 @@ const App = () => (
                     <Route path="my-jobs" element={<AdminMyJobsPage />} />
                     <Route path="schedule" element={<ScheduleCalendar />} />
                     <Route path="quotes" element={<AdminQuotesPage />} />
+                    <Route path="estimates/:id" element={<AdminEstimateDetailPage />} />
+
                     <Route path="templates" element={<AdminProposalsPage />} />
                     <Route path="invoices" element={<AdminInvoicesPage />} />
                     <Route path="help" element={<AdminHelpPage />} />
