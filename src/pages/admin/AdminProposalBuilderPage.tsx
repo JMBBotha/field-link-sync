@@ -4,10 +4,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
@@ -30,28 +32,43 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, Plus, Save, Send, Eye, BookmarkPlus, LayoutTemplate } from "lucide-react";
+import {
+  ArrowLeft,
+  Plus,
+  Save,
+  Send,
+  Eye,
+  BookmarkPlus,
+  LayoutTemplate,
+  Paintbrush,
+} from "lucide-react";
 import StickyActionBar, { STICKY_ACTION_BAR_SPACER } from "@/components/shared/StickyActionBar";
 import CustomerSearchSelector from "@/components/customers/CustomerSearchSelector";
 import ProposalSectionEditor from "@/components/proposals/visual/ProposalSectionEditor";
 import VisualProposalPreview from "@/components/proposals/visual/VisualProposalPreview";
 import {
   ProposalSection,
-  ProposalSectionType,
+  ProposalStyle,
+  ProposalTemplateStyle,
+  RichTextPreset,
+  RICH_PRESET_OPTIONS,
   PROPOSAL_STATUSES,
-  blankSection,
+  DEFAULT_STYLE,
+  THEME_COLORS,
+  FONT_OPTIONS,
+  richTextSection,
+  pricingSection,
+  attachmentsSection,
   proposalTotal,
 } from "@/types/visualProposal";
 
-const SECTION_OPTIONS: { type: ProposalSectionType; label: string }[] = [
-  { type: "cover", label: "Cover / Title block" },
-  { type: "text", label: "Text block" },
-  { type: "image", label: "Image block" },
-  { type: "pricing", label: "Pricing / line items" },
-  { type: "signature", label: "Signature block" },
-];
-
 const db = supabase as any;
+
+const TEMPLATE_STYLES: { value: ProposalTemplateStyle; label: string; hint: string }[] = [
+  { value: "simple", label: "Simple", hint: "Clean header with your logo" },
+  { value: "modern", label: "Modern", hint: "Full-width hero image" },
+  { value: "classic", label: "Classic", hint: "Centred, formal layout" },
+];
 
 const AdminProposalBuilderPage = () => {
   const [params] = useSearchParams();
@@ -60,15 +77,21 @@ const AdminProposalBuilderPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { companyId } = useUserCompanyId();
+  const { settings } = useCompanySettings() as any;
   const { toast } = useToast();
   const qc = useQueryClient();
 
   const [id, setId] = useState<string | null>(proposalId);
   const [title, setTitle] = useState("Untitled Proposal");
+  const [reference, setReference] = useState("");
+  const [proposalDate, setProposalDate] = useState(new Date().toISOString().slice(0, 10));
   const [status, setStatus] = useState<string>("draft");
   const [clientId, setClientId] = useState<string | null>(null);
   const [clientName, setClientName] = useState("");
   const [sections, setSections] = useState<ProposalSection[]>([]);
+  const [style, setStyle] = useState<ProposalStyle>(DEFAULT_STYLE);
+  const [requireSignature, setRequireSignature] = useState(true);
+  const [proposalNumber, setProposalNumber] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [templateDialog, setTemplateDialog] = useState(false);
   const [pickTemplate, setPickTemplate] = useState(!proposalId && !templateIdParam);
@@ -102,6 +125,11 @@ const AdminProposalBuilderPage = () => {
       setClientId(data.client_id);
       setClientName(data.customers?.name || "");
       setSections(Array.isArray(data.sections) ? data.sections : []);
+      setStyle({ ...DEFAULT_STYLE, ...(data.style || {}) });
+      setRequireSignature(data.require_signature ?? true);
+      setProposalNumber(data.proposal_number || "");
+      setReference(data.reference || "");
+      if (data.proposal_date) setProposalDate(String(data.proposal_date).slice(0, 10));
     })();
   }, [proposalId]);
 
@@ -109,13 +137,15 @@ const AdminProposalBuilderPage = () => {
   useEffect(() => {
     if (!templateIdParam || proposalId || templates.length === 0) return;
     const t = (templates as any[]).find((x) => x.id === templateIdParam);
-    if (t) setSections(Array.isArray(t.sections) ? t.sections : []);
+    if (t) {
+      setSections(Array.isArray(t.sections) ? t.sections : []);
+      if (t.style) setStyle({ ...DEFAULT_STYLE, ...t.style });
+    }
   }, [templateIdParam, templates, proposalId]);
 
   const total = useMemo(() => proposalTotal(sections), [sections]);
 
-  const addSection = (type: ProposalSectionType) =>
-    setSections((prev) => [...prev, blankSection(type)]);
+  const addSection = (section: ProposalSection) => setSections((prev) => [...prev, section]);
 
   const patchSection = (sid: string, patch: Partial<ProposalSection>) =>
     setSections((prev) => prev.map((s) => (s.id === sid ? { ...s, ...patch } : s)));
@@ -141,6 +171,10 @@ const AdminProposalBuilderPage = () => {
       title,
       status: nextStatus || status,
       sections,
+      style,
+      require_signature: requireSignature,
+      proposal_date: proposalDate,
+      reference: reference || null,
       total,
       created_by: user?.id ?? null,
     };
@@ -154,10 +188,11 @@ const AdminProposalBuilderPage = () => {
         const { data, error } = await db
           .from("visual_proposals")
           .insert(payload)
-          .select("id")
+          .select("id, proposal_number")
           .single();
         if (error) throw error;
         setId(data.id);
+        if (data.proposal_number) setProposalNumber(data.proposal_number);
       }
       if (nextStatus) setStatus(nextStatus);
       qc.invalidateQueries({ queryKey: ["visual-proposals"] });
@@ -180,6 +215,7 @@ const AdminProposalBuilderPage = () => {
       name: templateName.trim(),
       description: templateDesc.trim() || null,
       sections,
+      style,
     });
     if (error) {
       toast({ title: "Could not save template", description: error.message, variant: "destructive" });
@@ -190,6 +226,18 @@ const AdminProposalBuilderPage = () => {
     setTemplateDesc("");
     qc.invalidateQueries({ queryKey: ["visual-proposal-templates"] });
     toast({ title: "Template saved", description: "Reuse it when creating a new proposal." });
+  };
+
+  const previewProps = {
+    title,
+    clientName,
+    proposalNumber,
+    proposalDate,
+    companyName: settings?.company_name || settings?.name || undefined,
+    companyLogo: settings?.logo_url || null,
+    sections,
+    style,
+    requireSignature,
   };
 
   return (
@@ -203,7 +251,8 @@ const AdminProposalBuilderPage = () => {
             {id ? "Edit Proposal" : "New Proposal"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Build a flexible, visual document with sections, images and an acceptance signature.
+            Build a flexible, visual document with rich text, pricing, attachments and an
+            acceptance signature.
           </p>
         </div>
         <Button variant="outline" onClick={() => setTemplateDialog(true)}>
@@ -214,8 +263,8 @@ const AdminProposalBuilderPage = () => {
       <div className="space-y-5 p-4 sm:p-6">
         {/* Document meta */}
         <Card className="shadow-sm">
-          <CardContent className="grid gap-4 p-4 sm:grid-cols-3">
-            <div className="space-y-1">
+          <CardContent className="grid gap-4 p-4 sm:grid-cols-3 lg:grid-cols-5">
+            <div className="space-y-1 lg:col-span-2">
               <Label>Proposal title</Label>
               <Input value={title} onChange={(e) => setTitle(e.target.value)} />
             </div>
@@ -228,6 +277,14 @@ const AdminProposalBuilderPage = () => {
                   setClientId(c.id);
                   setClientName(c.name);
                 }}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Date</Label>
+              <Input
+                type="date"
+                value={proposalDate}
+                onChange={(e) => setProposalDate(e.target.value)}
               />
             </div>
             <div className="space-y-1">
@@ -245,12 +302,23 @@ const AdminProposalBuilderPage = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label>Reference (optional)</Label>
+              <Input
+                placeholder="PO number or client reference"
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+              />
+            </div>
           </CardContent>
         </Card>
 
         <Tabs defaultValue="build">
           <TabsList>
             <TabsTrigger value="build">Build</TabsTrigger>
+            <TabsTrigger value="style">
+              <Paintbrush className="mr-1 h-3.5 w-3.5" /> Style
+            </TabsTrigger>
             <TabsTrigger value="preview">
               <Eye className="mr-1 h-3.5 w-3.5" /> Client preview
             </TabsTrigger>
@@ -265,6 +333,7 @@ const AdminProposalBuilderPage = () => {
                     section={s}
                     index={i}
                     total={sections.length}
+                    themeColor={style.themeColor}
                     onChange={(patch) => patchSection(s.id, patch)}
                     onMove={(dir) => moveSection(i, dir)}
                     onDelete={() => setSections((prev) => prev.filter((x) => x.id !== s.id))}
@@ -278,11 +347,20 @@ const AdminProposalBuilderPage = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-56 bg-popover">
-                    {SECTION_OPTIONS.map((o) => (
-                      <DropdownMenuItem key={o.type} onClick={() => addSection(o.type)}>
+                    {RICH_PRESET_OPTIONS.map((o) => (
+                      <DropdownMenuItem
+                        key={o.preset}
+                        onClick={() => addSection(richTextSection(o.preset as RichTextPreset))}
+                      >
                         {o.label}
                       </DropdownMenuItem>
                     ))}
+                    <DropdownMenuItem onClick={() => addSection(pricingSection())}>
+                      Pricing / line items
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => addSection(attachmentsSection())}>
+                      Attachments
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -290,19 +368,125 @@ const AdminProposalBuilderPage = () => {
               {/* Live preview */}
               <div className="hidden lg:block">
                 <div className="sticky top-4 max-h-[calc(100vh-8rem)] overflow-y-auto rounded-lg border bg-muted/30 p-3">
-                  <VisualProposalPreview
-                    title={title}
-                    clientName={clientName}
-                    sections={sections}
-                  />
+                  <VisualProposalPreview {...previewProps} />
                 </div>
               </div>
             </div>
           </TabsContent>
 
+          <TabsContent value="style" className="mt-4">
+            <Card className="shadow-sm">
+              <CardContent className="space-y-5 p-4">
+                <div className="space-y-2">
+                  <Label>Template</Label>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {TEMPLATE_STYLES.map((t) => (
+                      <button
+                        key={t.value}
+                        type="button"
+                        className={`rounded-lg border p-3 text-left text-sm transition ${
+                          style.template === t.value
+                            ? "border-2 shadow-sm"
+                            : "hover:bg-muted/50"
+                        }`}
+                        style={
+                          style.template === t.value ? { borderColor: style.themeColor } : undefined
+                        }
+                        onClick={() => setStyle({ ...style, template: t.value })}
+                      >
+                        <p className="font-semibold">{t.label}</p>
+                        <p className="text-xs text-muted-foreground">{t.hint}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Theme colour</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {THEME_COLORS.map((c) => (
+                      <button
+                        key={c.value}
+                        type="button"
+                        aria-label={c.name}
+                        title={c.name}
+                        className={`h-8 w-8 rounded-full border-2 ${
+                          style.themeColor === c.value ? "ring-2 ring-offset-2" : "border-transparent"
+                        }`}
+                        style={{ backgroundColor: c.value }}
+                        onClick={() => setStyle({ ...style, themeColor: c.value })}
+                      />
+                    ))}
+                    <Input
+                      type="color"
+                      className="h-8 w-12 p-1"
+                      value={style.themeColor}
+                      onChange={(e) => setStyle({ ...style, themeColor: e.target.value })}
+                      aria-label="Custom theme colour"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1 sm:max-w-xs">
+                  <Label>Font</Label>
+                  <Select
+                    value={style.font}
+                    onValueChange={(v) => setStyle({ ...style, font: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FONT_OPTIONS.map((f) => (
+                        <SelectItem key={f.value} value={f.value}>
+                          {f.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {style.template === "modern" && (
+                  <div className="space-y-1">
+                    <Label>Hero image</Label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Input
+                        className="min-w-[200px] flex-1"
+                        placeholder="Image URL"
+                        value={style.heroImage?.startsWith("data:") ? "" : style.heroImage || ""}
+                        onChange={(e) => setStyle({ ...style, heroImage: e.target.value })}
+                      />
+                      <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border px-3 py-2 text-sm hover:bg-muted">
+                        Upload
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (!f) return;
+                            const reader = new FileReader();
+                            reader.onload = () =>
+                              setStyle({ ...style, heroImage: String(reader.result) });
+                            reader.readAsDataURL(f);
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                <label className="flex items-center gap-3 text-sm">
+                  <Switch checked={requireSignature} onCheckedChange={setRequireSignature} />
+                  Require client signature to accept
+                </label>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="preview" className="mt-4">
             <div className="rounded-lg border bg-muted/30 p-3">
-              <VisualProposalPreview title={title} clientName={clientName} sections={sections} />
+              <VisualProposalPreview {...previewProps} />
             </div>
           </TabsContent>
         </Tabs>
@@ -337,6 +521,23 @@ const AdminProposalBuilderPage = () => {
               <p className="font-semibold">Blank proposal</p>
               <p className="text-xs text-muted-foreground">Start from an empty document.</p>
             </button>
+            <button
+              type="button"
+              className="w-full rounded-md border p-3 text-left text-sm hover:bg-muted"
+              onClick={() => {
+                setSections([
+                  richTextSection("overview"),
+                  richTextSection("scope"),
+                  pricingSection(),
+                ]);
+                setPickTemplate(false);
+              }}
+            >
+              <p className="font-semibold">Standard proposal</p>
+              <p className="text-xs text-muted-foreground">
+                Overview, scope of work and pricing.
+              </p>
+            </button>
             {(templates as any[]).map((t) => (
               <button
                 key={t.id}
@@ -344,6 +545,7 @@ const AdminProposalBuilderPage = () => {
                 className="flex w-full items-start gap-2 rounded-md border p-3 text-left text-sm hover:bg-muted"
                 onClick={() => {
                   setSections(Array.isArray(t.sections) ? t.sections : []);
+                  if (t.style) setStyle({ ...DEFAULT_STYLE, ...t.style });
                   setPickTemplate(false);
                 }}
               >
