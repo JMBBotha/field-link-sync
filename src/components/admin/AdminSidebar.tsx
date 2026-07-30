@@ -44,6 +44,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import logo from "@/assets/logo.png";
 
 interface NavItem {
   path: string;
@@ -349,9 +350,12 @@ const AdminSidebar = ({
           )}
           title={companyName}
         >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/10 text-[11px] font-bold uppercase text-white">
-            {companyName.slice(0, 2)}
-          </div>
+          <img
+            src={logo}
+            alt={`${companyName} logo`}
+            className="h-8 w-8 shrink-0 rounded-md object-contain"
+          />
+
           {!collapsed && (
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1">
