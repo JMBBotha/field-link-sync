@@ -171,7 +171,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
 
   const openDoc = (doc: (typeof docs)[number]) => {
     if (doc.kind === "proposal") navigate(`/admin/proposal-builder?proposalId=${doc.id}`);
-    else onEditQuote(doc.id);
+    else navigate(`/admin/estimates/${doc.id}`);
   };
 
   return (
