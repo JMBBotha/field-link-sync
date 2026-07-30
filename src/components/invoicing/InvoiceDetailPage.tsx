@@ -57,6 +57,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const [invoice, setInvoice] = useState<any>(null);
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
+  const [amountPaid, setAmountPaid] = useState(0);
 
   useEffect(() => {
     fetchInvoice();
@@ -64,9 +65,10 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
 
   const fetchInvoice = async () => {
     setLoading(true);
-    const [invoiceResult, itemsResult] = await Promise.all([
+    const [invoiceResult, itemsResult, paymentsResult] = await Promise.all([
       supabase.from("invoices").select("*").eq("id", invoiceId).single(),
       supabase.from("invoice_items").select("*").eq("invoice_id", invoiceId).order("created_at", { ascending: true }),
+      supabase.from("payments").select("amount").eq("invoice_id", invoiceId),
     ]);
 
     if (invoiceResult.error) {
@@ -76,8 +78,10 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
       setInvoice(invoiceResult.data);
     }
     setInvoiceItems((itemsResult.data as unknown as InvoiceItem[]) || []);
+    setAmountPaid(((paymentsResult.data as any[]) || []).reduce((s, p) => s + (Number(p.amount) || 0), 0));
     setLoading(false);
   };
+
 
   // Use invoice_items if available, otherwise fall back to JSONB line_items
   const displayItems: LineItem[] = invoiceItems.length > 0
