@@ -1,0 +1,10 @@
+ALTER VIEW public.v_accounts_aging SET (security_invoker = true);
+ALTER VIEW public.v_sales_by_client SET (security_invoker = true);
+ALTER VIEW public.v_sales_by_product SET (security_invoker = true);
+ALTER VIEW public.v_sales_by_product_detail SET (security_invoker = true);
+ALTER VIEW public.v_vat_summary SET (security_invoker = true);
+GRANT SELECT ON public.v_accounts_aging TO authenticated;
+GRANT SELECT ON public.v_sales_by_client TO authenticated;
+GRANT SELECT ON public.v_sales_by_product TO authenticated;
+GRANT SELECT ON public.v_sales_by_product_detail TO authenticated;
+GRANT SELECT ON public.v_vat_summary TO authenticated;
