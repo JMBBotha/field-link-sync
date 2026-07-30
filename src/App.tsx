@@ -26,6 +26,7 @@ import AdminLayout from "./components/admin/AdminLayout";
 import { AdminHomePage, AdminMapPage, AdminQuotesPage, AdminProposalsPage, AdminInvoicesPage, AdminImportPage, AdminHelpPage } from "./pages/admin";
 import AdminQuoteBuilderPage from "./pages/admin/AdminQuoteBuilderPage";
 import AdminQuoteBuilderPageUnified from "./pages/admin/AdminQuoteBuilderPageUnified";
+import AdminProposalBuilderPage from "./pages/admin/AdminProposalBuilderPage";
 import AdminCatalogPage from "./pages/admin/AdminCatalogPage";
 import AdminDispatchPage from "./pages/admin/AdminDispatchPage";
 import AdminJobsMapPage from "./pages/admin/AdminJobsMapPage";
@@ -196,6 +197,7 @@ const App = () => (
 
 
                   {/* Unified Quote Builder — single source of truth (quote_items + quote_areas). */}
+                  <Route path="/admin/proposal-builder" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminProposalBuilderPage /></RequireRole>} />
                   <Route path="/admin/quote-builder" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminQuoteBuilderPageUnified mode="admin" /></RequireRole>} />
 
                   {/* Agent Quote Builder — same component, agent mode */}

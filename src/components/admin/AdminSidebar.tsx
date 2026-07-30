@@ -115,7 +115,7 @@ const AdminSidebar = ({
         { path: "/admin/customers", label: "Clients", icon: Users },
         {
           path: "/admin/quotes",
-          label: "Estimates",
+          label: "Estimates & Proposals",
           icon: FileText,
           roles: ["admin", "dispatcher", "viewer"],
           children: [
