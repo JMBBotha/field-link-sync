@@ -38,6 +38,50 @@ function normalizePhone(phone: string): string {
   return "+" + digits;
 }
 
+function looksLikeCallerPhone(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const digits = value.replace(/\D/g, "");
+  return digits.length === 9 || digits.length === 10 ||
+    (digits.startsWith("27") && digits.length === 11);
+}
+
+function extractCallerNumber(body: any): string {
+  const message = body?.message || {};
+  const call = message?.call || body?.call || {};
+  const explicitCandidates = [
+    call?.customer?.number,
+    call?.customer?.phoneNumber,
+    call?.customer?.phone,
+    message?.customer?.number,
+    message?.customer?.phoneNumber,
+    body?.customer?.number,
+    call?.from,
+    message?.from,
+    body?.from,
+  ];
+
+  const explicit = explicitCandidates.find(looksLikeCallerPhone);
+  if (explicit) return normalizePhone(explicit);
+
+  // Vapi payload shapes can vary between assistant/tool versions. Search only
+  // caller-oriented keys as a final fallback, avoiding `phoneNumber.number`,
+  // which is normally the business/Vapi line rather than the caller.
+  const callerKeys = new Set(["customer", "caller", "from"]);
+  const visit = (value: unknown, path: string[] = []): string => {
+    if (looksLikeCallerPhone(value) && path.some((part) => callerKeys.has(part.toLowerCase()))) {
+      return normalizePhone(value);
+    }
+    if (!value || typeof value !== "object") return "";
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      const found = visit(child, [...path, key]);
+      if (found) return found;
+    }
+    return "";
+  };
+
+  return visit(body);
+}
+
 function mapPriority(urgency?: string): string {
   switch (urgency?.toLowerCase()) {
     case "emergency": return "high";
@@ -206,13 +250,7 @@ serve(async (req) => {
       const toolCallList = body.message.toolCallList || body.message.toolWithToolCallList || [];
 
       // Caller ID from the call payload — used when Vapi sends no phone_number argument
-      const callPayload = body.message.call || {};
-      const callerNumber =
-        callPayload?.customer?.number ||
-        callPayload?.from ||
-        body.message?.customer?.number ||
-        body.call?.customer?.number ||
-        "";
+      const callerNumber = extractCallerNumber(body);
 
       const results: any[] = [];
 
@@ -294,13 +332,7 @@ serve(async (req) => {
       const recordingUrl = artifact.recording?.url || artifact.recordingUrl || "";
 
       // Get caller phone (fall back to other payload shapes Vapi uses)
-      const customerPhone =
-        call.customer?.number ||
-        body.message.customer?.number ||
-        call.from ||
-        body.message.phoneNumber?.number ||
-        "";
-      const callerPhone = normalizePhone(customerPhone);
+      const callerPhone = extractCallerNumber(body);
 
       if (!callerPhone) {
         console.log("[vapi-server-event] No caller phone — skipping");
