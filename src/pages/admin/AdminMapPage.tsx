@@ -204,6 +204,8 @@ const AdminMapPage = () => {
               ref={mapRef}
               showAllAgents={true}
               hideChromeControls={true}
+              hideStatusFilters={true}
+              onStatusStateChange={handleStatusStateChange}
               onStatusFiltersChange={(filters) => {
                 const hasCompleted = filters.has("completed");
                 setShowCompletedFilter(hasCompleted);
