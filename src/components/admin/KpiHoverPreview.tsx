@@ -132,7 +132,9 @@ interface Props {
  */
 const KpiHoverPreview = ({ kpiKey, label, viewAllHref, children }: Props) => {
   const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const today = new Date().toISOString().split("T")[0];
 
   const { data, isLoading } = useQuery({
@@ -141,6 +143,94 @@ const KpiHoverPreview = ({ kpiKey, label, viewAllHref, children }: Props) => {
     enabled: open,
     staleTime: 30000,
   });
+
+  const convertToJob = async (q: QuoteQuickAction) => {
+    setBusy(`job-${q.id}`);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const user = auth?.user;
+      if (!user) throw new Error("You must be signed in");
+
+      // Don't duplicate an existing job for this quote
+      const { data: existing } = await supabase
+        .from("jobs")
+        .select("id")
+        .eq("quote_id", q.id)
+        .maybeSingle();
+      if (existing?.id) {
+        toast.info("A job already exists for this quote");
+        setOpen(false);
+        navigate(`/admin/jobs`);
+        return;
+      }
+
+      let companyId = q.companyId;
+      if (!companyId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("company_id")
+          .eq("id", user.id)
+          .maybeSingle();
+        companyId = (profile as any)?.company_id ?? null;
+      }
+      if (!companyId) throw new Error("No company found for this quote");
+
+      const { error } = await supabase.from("jobs").insert({
+        company_id: companyId,
+        title: `Job for ${q.quoteNumber || "quote"}${q.clientName ? ` — ${q.clientName}` : ""}`,
+        description: `Created from quote ${q.quoteNumber || q.id}`,
+        customer_id: q.customerId,
+        quote_id: q.id,
+        address: q.address,
+        status: "scheduled",
+        priority: "normal",
+        created_by: user.id,
+      } as any);
+      if (error) throw error;
+
+      toast.success("Job created from quote");
+      queryClient.invalidateQueries({ queryKey: ["kpi-preview"] });
+      setOpen(false);
+      navigate("/admin/jobs");
+    } catch (err: any) {
+      toast.error(err?.message || "Could not convert quote to job");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const sendQuote = async (q: QuoteQuickAction) => {
+    if (!q.email) {
+      toast.error("This customer has no email address on file");
+      return;
+    }
+    setBusy(`send-${q.id}`);
+    try {
+      const { error } = await supabase.functions.invoke("send-quote-email", {
+        body: {
+          to: q.email,
+          subject: `Your 0800BeCool Quote ${q.quoteNumber || ""}`.trim(),
+          quoteNumber: q.quoteNumber,
+          clientName: q.clientName,
+          totalAmount: q.total,
+          unsubscribeToken: crypto.randomUUID(),
+        },
+      });
+      if (error) throw error;
+
+      await supabase
+        .from("quotes")
+        .update({ status: "sent", sent_at: new Date().toISOString() })
+        .eq("id", q.id);
+
+      toast.success(`Quote sent to ${q.email}`);
+      queryClient.invalidateQueries({ queryKey: ["kpi-preview"] });
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to send quote");
+    } finally {
+      setBusy(null);
+    }
+  };
 
   return (
     <HoverCard open={open} onOpenChange={setOpen} openDelay={150} closeDelay={120}>
@@ -162,30 +252,71 @@ const KpiHoverPreview = ({ kpiKey, label, viewAllHref, children }: Props) => {
             <p className="p-4 text-xs text-muted-foreground text-center">Nothing to show right now</p>
           ) : (
             data.map((row) => (
-              <button
-                key={row.id}
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  navigate(row.href);
-                }}
-                className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-muted/60 transition-colors"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium truncate">{row.primary}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">{row.secondary}</p>
-                </div>
-                {row.value && <span className="text-[11px] font-mono tabular-nums shrink-0">{row.value}</span>}
-                {row.badge && (
-                  <Badge variant="secondary" className="shrink-0 text-[10px] capitalize">
-                    {row.badge}
-                  </Badge>
+              <div key={row.id} className="hover:bg-muted/60 transition-colors">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    navigate(row.href);
+                  }}
+                  className="w-full text-left px-3 py-2 flex items-center gap-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium truncate">{row.primary}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{row.secondary}</p>
+                  </div>
+                  {row.value && <span className="text-[11px] font-mono tabular-nums shrink-0">{row.value}</span>}
+                  {row.badge && (
+                    <Badge variant="secondary" className="shrink-0 text-[10px] capitalize">
+                      {row.badge}
+                    </Badge>
+                  )}
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                </button>
+
+                {row.quote && (
+                  <div className="flex gap-1.5 px-3 pb-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 px-2 text-[11px] flex-1"
+                      disabled={busy === `job-${row.quote.id}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        convertToJob(row.quote!);
+                      }}
+                    >
+                      {busy === `job-${row.quote.id}` ? (
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      ) : (
+                        <Briefcase className="h-3 w-3 mr-1" />
+                      )}
+                      Convert to job
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 px-2 text-[11px] flex-1"
+                      disabled={busy === `send-${row.quote.id}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        sendQuote(row.quote!);
+                      }}
+                    >
+                      {busy === `send-${row.quote.id}` ? (
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      ) : (
+                        <Send className="h-3 w-3 mr-1" />
+                      )}
+                      Send
+                    </Button>
+                  </div>
                 )}
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              </button>
+              </div>
             ))
           )}
         </div>
+
 
         <button
           type="button"
