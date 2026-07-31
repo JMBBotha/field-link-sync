@@ -191,7 +191,7 @@ const EstimateDocument = ({
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Terms</p>
             <p className="mt-1 whitespace-pre-line">
-              {termsText ||
+              {cleanTerms ||
                 `This estimate is valid for 30 days from the date of issue. All prices exclude VAT, which is shown separately at ${vatPercent}%. A ${settings.default_deposit_percentage || 50}% deposit is payable on acceptance; the balance is due within ${settings.default_payment_terms_days || 30} days of completion.`}
             </p>
           </div>
