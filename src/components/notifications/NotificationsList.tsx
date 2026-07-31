@@ -132,6 +132,17 @@ const NotificationsList = ({
           </div>
         )}
       </ScrollArea>
+
+      <button
+        type="button"
+        onClick={() => {
+          onClose();
+          navigate("/admin/dispatch");
+        }}
+        className="shrink-0 w-full px-4 py-2 text-xs font-medium text-primary hover:bg-accent/50 border-t text-left"
+      >
+        View all →
+      </button>
     </div>
   );
 };
