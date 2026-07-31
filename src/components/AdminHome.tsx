@@ -28,8 +28,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
 
-interface AdminHomeProps {
-
 const kpiViewAllHref: Record<string, string> = {
   new_leads: "/admin/dispatch",
   active_jobs: "/admin/jobs",
@@ -38,6 +36,7 @@ const kpiViewAllHref: Record<string, string> = {
   active_techs: "/admin/team",
 };
 
+interface AdminHomeProps {
   onNavigate: (tab: string) => void;
   onCreateLead: () => void;
 }
