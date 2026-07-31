@@ -13,6 +13,7 @@ import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
 import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
 import AdminMapPage from "@/pages/admin/AdminMapPage";
 import KpiDetailDialog from "@/components/admin/KpiDetailDialog";
+import KpiHoverPreview from "@/components/admin/KpiHoverPreview";
 import QuotePerformanceWidget from "@/components/analytics/QuotePerformanceWidget";
 import PipelineMetrics from "@/components/analytics/PipelineMetrics";
 import QuickTemplateDialog from "@/components/quoting/QuickTemplateDialog";
