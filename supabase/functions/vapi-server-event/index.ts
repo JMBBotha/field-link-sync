@@ -292,10 +292,36 @@ serve(async (req) => {
             );
 
             const lookupResult = await lookupResponse.json();
+            let toolResult = lookupResult.result || "No customer found. Treat as new caller and ask for their name.";
+
+            // lookup-caller returns structured context as a JSON string. Convert
+            // the identity into an explicit instruction so the assistant does
+            // not merely repeat/confirm the phone number and overlook the name.
+            if (name === "lookup_caller" && typeof toolResult === "string") {
+              try {
+                const context = JSON.parse(toolResult);
+                if (context?.is_existing_customer && context?.customer?.name) {
+                  const firstName = context.customer.first_name || context.customer.name.split(" ")[0];
+                  toolResult = [
+                    `IDENTITY MATCH CONFIRMED: The caller is ${context.customer.name}.`,
+                    `Immediately address the caller as ${firstName}; do not ask for their name again.`,
+                    context.greeting_hint || "",
+                    `Customer context: ${JSON.stringify(context)}`,
+                  ].filter(Boolean).join(" ");
+                } else {
+                  toolResult = "NO IDENTITY MATCH: This number is not linked to a customer. Ask for the caller's name.";
+                }
+              } catch {
+                // Preserve a plain-text tool response if the downstream
+                // function intentionally did not return structured JSON.
+              }
+            }
+
+            console.log(`[vapi-server-event] ${name} response: ${toolResult.slice(0, 240)}`);
 
             results.push({
               toolCallId: toolCall.id || toolCall.toolCallId,
-              result: lookupResult.result || "No customer found. Treat as new caller and ask for their name.",
+              result: toolResult,
             });
           } catch (lookupErr: any) {
             console.error(`[vapi-server-event] ${name} error:`, lookupErr);
