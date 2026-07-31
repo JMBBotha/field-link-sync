@@ -165,6 +165,7 @@ const App = () => (
 
                     <Route path="templates" element={<AdminProposalsPage />} />
                     <Route path="invoices" element={<AdminInvoicesPage />} />
+                    <Route path="invoices/:id" element={<AdminInvoicesPage />} />
                     <Route path="help" element={<AdminHelpPage />} />
 
                     
