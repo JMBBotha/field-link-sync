@@ -72,7 +72,7 @@ async function fetchPreview(kpiKey: string, today: string): Promise<PreviewRow[]
         secondary: `${inv.invoice_number} • Due ${inv.due_date ? format(new Date(inv.due_date), "dd MMM") : "N/A"}`,
         value: `R ${Number(inv.grand_total || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`,
         badge: "overdue",
-        href: inv.customer_id ? `/admin/customers/${inv.customer_id}` : "/admin/invoices",
+        href: `/admin/invoices/${inv.id}`,
       }));
     }
     case "active_techs": {
