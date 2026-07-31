@@ -1,12 +1,25 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ChevronRight, Briefcase, Send, Loader2 } from "lucide-react";
 import { format } from "date-fns";
+import { toast } from "sonner";
+
+export interface QuoteQuickAction {
+  id: string;
+  quoteNumber: string | null;
+  total: number;
+  customerId: string | null;
+  companyId: string | null;
+  clientName: string;
+  email: string | null;
+  address: string | null;
+}
 
 export interface PreviewRow {
   id: string;
@@ -15,7 +28,9 @@ export interface PreviewRow {
   badge?: string;
   value?: string;
   href: string;
+  quote?: QuoteQuickAction;
 }
+
 
 async function fetchPreview(kpiKey: string, today: string): Promise<PreviewRow[]> {
   const leadHref = (l: { id: string; customer_id?: string | null }) =>
