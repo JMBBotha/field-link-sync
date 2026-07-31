@@ -14,9 +14,10 @@ interface Props {
   getToken: () => string | null;
   onSelect: (lat: number, lng: number, name: string, address: string) => void;
   proximity?: { lat: number; lng: number } | null;
+  className?: string;
 }
 
-export default function BusinessSearch({ getToken, onSelect, proximity }: Props) {
+export default function BusinessSearch({ getToken, onSelect, proximity, className }: Props) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Feature[]>([]);
   const [loading, setLoading] = useState(false);

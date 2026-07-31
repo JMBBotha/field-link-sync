@@ -59,9 +59,11 @@ interface Lead {
 interface LeadsListProps {
   onLeadClick?: (lat: number, lng: number, leadId: string) => void;
   onPanelClose?: () => void;
+  /** Optional content rendered above the "Recent Leads" heading (e.g. business search). */
+  headerSlot?: React.ReactNode;
 }
 
-const LeadsList = ({ onLeadClick, onPanelClose }: LeadsListProps) => {
+const LeadsList = ({ onLeadClick, onPanelClose, headerSlot }: LeadsListProps) => {
   const navigate = useNavigate();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -627,6 +629,7 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
     <div className="h-full flex flex-col overflow-hidden max-h-[calc(100vh-120px)] md:max-h-[calc(100vh-80px)] lg:max-h-none">
       {/* Fixed header */}
       <div className="p-4 border-b border-white/10 flex-shrink-0 sticky top-0 z-10 bg-transparent">
+        {headerSlot && <div className="mb-4">{headerSlot}</div>}
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-foreground">Recent Leads</h2>
