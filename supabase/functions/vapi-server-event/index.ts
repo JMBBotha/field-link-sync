@@ -310,9 +310,6 @@ serve(async (req) => {
             is_existing_customer: !!known,
             caller_context: contextBlock,
           },
-          model: {
-            messages: [{ role: "system", content: contextBlock }],
-          },
         },
       }), {
         status: 200,
@@ -320,7 +317,7 @@ serve(async (req) => {
       });
     }
 
-
+    // ─── Handle tool-calls (lookup_caller / check_job_status) ───
     if (messageType === "tool-calls") {
       const toolCallList = body.message.toolCallList || body.message.toolWithToolCallList || [];
 
