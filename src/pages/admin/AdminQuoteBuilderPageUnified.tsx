@@ -210,7 +210,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
           .map((b) => ({
             ...b,
             items: b.items.filter((i) => {
-              const sourceId = i.instanceId.replace(/^wizard-[^-]*(?:-[0-9a-f-]{36})?-(?:ac|mat|con)-/i, "");
+              const m = i.instanceId.match(/-(?:ac|mat|con)-(.+)$/);
+              const sourceId = m ? m[1] : i.instanceId;
               return !hydratedIds.has(sourceId) && !hydratedIds.has(i.instanceId);
             }),
           }))
