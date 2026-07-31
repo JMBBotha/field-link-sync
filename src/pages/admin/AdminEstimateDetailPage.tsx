@@ -59,6 +59,9 @@ const AdminEstimateDetailPage = () => {
   const taxAmount = Number(quote?.vat_amount) || 0;
   const total = Number(quote?.total) || 0;
 
+  /** Standard workflow: only an accepted estimate may become a billable invoice. */
+  const canConvert = String(quote?.status || "").toLowerCase() === "accepted";
+
   const handleSend = async () => {
     setBusy("send");
     const { error } = await supabase.from("quotes").update({ status: "sent" }).eq("id", id);
