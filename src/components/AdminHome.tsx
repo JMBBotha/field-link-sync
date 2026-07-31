@@ -29,6 +29,15 @@ import { useToast } from "@/hooks/use-toast";
 
 
 interface AdminHomeProps {
+
+const kpiViewAllHref: Record<string, string> = {
+  new_leads: "/admin/dispatch",
+  active_jobs: "/admin/jobs",
+  pending_quotes: "/admin/quotes",
+  overdue_invoices: "/admin/invoices",
+  active_techs: "/admin/team",
+};
+
   onNavigate: (tab: string) => void;
   onCreateLead: () => void;
 }
