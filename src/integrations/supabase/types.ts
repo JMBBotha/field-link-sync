@@ -2621,12 +2621,16 @@ export type Database = {
           longitude: number
           notes: string | null
           offer_count: number | null
+          order_status: string | null
+          parts_status: string | null
           priority: string
           scheduled_date: string | null
           scheduled_time: string | null
           service_type: string
           started_at: string | null
           status: string
+          technician_eta: string | null
+          technician_name: string | null
           unit_id: string | null
         }
         Insert: {
@@ -2653,12 +2657,16 @@ export type Database = {
           longitude: number
           notes?: string | null
           offer_count?: number | null
+          order_status?: string | null
+          parts_status?: string | null
           priority?: string
           scheduled_date?: string | null
           scheduled_time?: string | null
           service_type: string
           started_at?: string | null
           status?: string
+          technician_eta?: string | null
+          technician_name?: string | null
           unit_id?: string | null
         }
         Update: {
@@ -2685,12 +2693,16 @@ export type Database = {
           longitude?: number
           notes?: string | null
           offer_count?: number | null
+          order_status?: string | null
+          parts_status?: string | null
           priority?: string
           scheduled_date?: string | null
           scheduled_time?: string | null
           service_type?: string
           started_at?: string | null
           status?: string
+          technician_eta?: string | null
+          technician_name?: string | null
           unit_id?: string | null
         }
         Relationships: [
@@ -5608,12 +5620,16 @@ export type Database = {
           longitude: number
           notes: string | null
           offer_count: number | null
+          order_status: string | null
+          parts_status: string | null
           priority: string
           scheduled_date: string | null
           scheduled_time: string | null
           service_type: string
           started_at: string | null
           status: string
+          technician_eta: string | null
+          technician_name: string | null
           unit_id: string | null
         }[]
         SetofOptions: {
