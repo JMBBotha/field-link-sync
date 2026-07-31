@@ -84,7 +84,7 @@ export default function BusinessSearch({ getToken, onSelect, proximity, classNam
   };
 
   return (
-    <div ref={wrapRef} className="relative w-72">
+    <div ref={wrapRef} className={className ?? "relative w-72"}>
       <div className="relative">
         <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
         <Input
