@@ -376,13 +376,34 @@ serve(async (req) => {
         ? (context.customer.first_name || context.customer.name.split(" ")[0])
         : "";
 
-      let firstMessage = "Hi, you've reached 0800BeCool. How can I help you today?";
+      // Read the caller ID back in a speakable way: +27824455332 → "0 8 2 4 4 5 5 3 3 2"
+      const spokenNumber = (() => {
+        if (!callerNumber) return "";
+        let digits = callerNumber.replace(/\D/g, "");
+        if (digits.startsWith("27") && digits.length === 11) digits = "0" + digits.slice(2);
+        return digits.split("").join(" ");
+      })();
+
+      let firstMessage = "Hi, you've reached 0800BeCool. May I start with your name please?";
       if (known) {
         const lastCall = context.last_call;
         firstMessage = lastCall
           ? `Hi ${firstName}, welcome back to 0800BeCool. I see you contacted us ${lastCall.when.replace(/^.*\(/, "").replace(/\)$/, "")} about your ${String(lastCall.service_type || "job").toLowerCase()}. Are you calling about that?`
           : `Hi ${firstName}, welcome back to 0800BeCool. How can I help you today?`;
+      } else if (callerNumber) {
+        firstMessage = "Hi, you've reached 0800BeCool. I don't have your number on file yet — may I start with your name please?";
       }
+
+      const unknownScript = [
+        `CALLER IDENTITY: NOT RECOGNISED (${callerNumber ? `caller ID ${callerNumber}` : "number withheld"}). Treat as a NEW caller.`,
+        `FALLBACK FLOW — complete these steps BEFORE discussing the job, one question at a time:`,
+        `1. Ask for their full name and wait for the answer. Repeat it back to confirm if it is unusual.`,
+        callerNumber
+          ? `2. Confirm the contact number: say "I have your number as ${spokenNumber} — is that the best number to reach you on?" If they say no, ask for the correct number, read it back digit by digit and get a yes before continuing.`
+          : `2. Their number is withheld, so ask for the best contact number, read it back digit by digit and get a yes before continuing.`,
+        `3. Only once you have a confirmed name AND a confirmed phone number, continue: ask what they need help with and their address.`,
+        `Never guess or invent a name. If they refuse to give a name, use "Unknown Caller" but still confirm a callback number.`,
+      ].filter(Boolean).join("\n");
 
       const contextBlock = known
         ? [
@@ -395,7 +416,7 @@ serve(async (req) => {
             context.recent_jobs?.length ? `Job history:\n${context.recent_jobs.join("\n")}` : "",
             context.equipment?.length ? `Equipment on file:\n${context.equipment.join("\n")}` : "",
           ].filter(Boolean).join("\n")
-        : `CALLER IDENTITY: unknown number ${callerNumber || "(withheld)"}. Treat as a new caller and ask for their name.`;
+        : unknownScript;
 
       console.log(`[vapi-server-event] assistant-request for ${callerNumber || "(no number)"} — known=${!!known}`);
 
@@ -485,7 +506,22 @@ serve(async (req) => {
                   ].filter(Boolean).join(" ");
 
                 } else {
-                  toolResult = "NO IDENTITY MATCH: This number is not linked to a customer. Ask for the caller's name.";
+                  const spoken = (() => {
+                    if (!phoneNumber) return "";
+                    let d = String(phoneNumber).replace(/\D/g, "");
+                    if (d.startsWith("27") && d.length === 11) d = "0" + d.slice(2);
+                    return d.split("").join(" ");
+                  })();
+                  toolResult = [
+                    "NO IDENTITY MATCH: this number is not linked to any customer. Treat as a NEW caller.",
+                    "FALLBACK FLOW, one question at a time, before discussing the job:",
+                    "1. Ask for their full name and wait for the answer.",
+                    spoken
+                      ? `2. Confirm the number: "I have your number as ${spoken} — is that the best number to reach you on?" If not, take the correct number and read it back digit by digit for a yes.`
+                      : "2. The number is withheld — ask for the best contact number and read it back digit by digit for a yes.",
+                    "3. Only after a confirmed name AND phone number, continue with the service request and address.",
+                    "Never invent a name.",
+                  ].join(" ");
                 }
               } catch {
                 // Preserve a plain-text tool response if the downstream
