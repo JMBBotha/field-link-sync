@@ -110,6 +110,7 @@ const NotificationBell = () => {
           variant="ghost"
           size="icon"
           className="relative text-white hover:bg-white/20"
+          onMouseEnter={() => setOpen(true)}
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
@@ -122,7 +123,12 @@ const NotificationBell = () => {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0 overflow-hidden" align="end">
+      <PopoverContent
+        className="w-80 p-0 overflow-hidden"
+        align="end"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onMouseLeave={() => setOpen(false)}
+      >
         <NotificationsList
           notifications={notifications}
           onMarkAsRead={markAsRead}
