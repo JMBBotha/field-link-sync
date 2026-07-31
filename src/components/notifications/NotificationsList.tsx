@@ -1,5 +1,6 @@
 import { formatDistanceToNow } from "date-fns";
-import { Bell, CheckCheck, FileText, Briefcase, CreditCard, MessageSquare } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Bell, CheckCheck, FileText, Briefcase, CreditCard, MessageSquare, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -22,17 +23,37 @@ interface NotificationsListProps {
 
 const typeIcons: Record<string, typeof Bell> = {
   lead_assigned: Briefcase,
+  new_lead: Briefcase,
   job_status_change: Briefcase,
+  assignment_created: Briefcase,
+  assignment_accepted: Briefcase,
+  assignment_started: Briefcase,
   invoice_paid: CreditCard,
   quote_status_change: FileText,
+};
+
+export const notificationHref = (type: string): string => {
+  if (type.startsWith("invoice")) return "/admin/invoices";
+  if (type.startsWith("quote")) return "/admin/quotes";
+  if (type.startsWith("job")) return "/admin/jobs";
+  return "/admin/dispatch";
 };
 
 const NotificationsList = ({
   notifications,
   onMarkAsRead,
   onMarkAllRead,
+  onClose,
 }: NotificationsListProps) => {
   const unreadCount = notifications.filter((n) => !n.read).length;
+  const navigate = useNavigate();
+
+  const openNotification = (n: Notification) => {
+    if (!n.read) onMarkAsRead(n.id);
+    onClose();
+    navigate(notificationHref(n.type));
+  };
+
 
   return (
     <div className="flex flex-col h-[28rem] max-h-[80vh]">
