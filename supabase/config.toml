@@ -66,6 +66,5 @@ verify_jwt = false
 [functions.check-job-status]
 verify_jwt = false
 
-[functions.tmp-check-job-status-test]
-verify_jwt = false
+
 
