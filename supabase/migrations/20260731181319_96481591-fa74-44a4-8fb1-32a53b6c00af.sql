@@ -1,0 +1,1 @@
+UPDATE public.leads SET order_status = 'ordered', parts_status = 'backordered', technician_name = 'Pieter Nel', technician_eta = '2026-08-03 09:30:00+02' WHERE id = 'b4ebf2eb-8545-41d5-b1fc-c4c9c5ec5ac9';
