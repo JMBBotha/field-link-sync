@@ -54,6 +54,14 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
     return clients.find((c) => c.id === meta.customer_id || c.customer_id === meta.customer_id) || null;
   }, [clients, meta?.customer_id]);
 
+  /**
+   * Single source of truth for the client name: the customers record. Any
+   * name snapshotted onto the quote row (`quotes.customer_name`) is only a
+   * fallback for quotes with no linked customer, so stale/misspelt snapshots
+   * can never diverge from the document view.
+   */
+  const clientLabel = selectedClient?.name || meta?.customer_name || null;
+
   const filteredClients = useMemo(() => {
     if (!clientSearch.trim()) return clients.slice(0, 8);
     const q = clientSearch.toLowerCase();
