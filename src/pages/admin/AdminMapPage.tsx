@@ -183,16 +183,8 @@ const AdminMapPage = () => {
             onToggle={handleStatusToggle}
           />
         </div>
-
-        <div className="w-full sm:w-auto sm:ml-auto lg:ml-auto">
-          <BusinessSearch
-            getToken={() => mapRef.current?.getMapboxToken() ?? null}
-            onSelect={(lat, lng, name, address) => {
-              mapRef.current?.showSearchResult(lat, lng, name, address);
-            }}
-          />
-        </div>
       </div>
+
 
 
 
@@ -270,6 +262,15 @@ const AdminMapPage = () => {
           >
             {!leadsCollapsed && (
               <LeadsList
+                headerSlot={
+                  <BusinessSearch
+                    className="relative w-full"
+                    getToken={() => mapRef.current?.getMapboxToken() ?? null}
+                    onSelect={(lat, lng, name, address) => {
+                      mapRef.current?.showSearchResult(lat, lng, name, address);
+                    }}
+                  />
+                }
                 onLeadClick={(lat, lng, leadId) => {
                   if (mapRef.current) mapRef.current.panToLocationAndOpenPopup(lat, lng, leadId);
                 }}
