@@ -5272,6 +5272,113 @@ export type Database = {
         }
         Relationships: []
       }
+      vapi_calls: {
+        Row: {
+          business_phone: string | null
+          caller_name: string | null
+          caller_phone: string | null
+          company_id: string | null
+          created_at: string
+          customer_id: string | null
+          direction: string
+          duration_seconds: number
+          ended_at: string | null
+          ended_reason: string | null
+          id: string
+          lead_id: string | null
+          metadata: Json
+          outcome: string | null
+          provider: string
+          provider_call_id: string | null
+          recording_url: string | null
+          service_type: string | null
+          started_at: string | null
+          summary: string | null
+          transcript: string | null
+          updated_at: string
+          urgency: string | null
+        }
+        Insert: {
+          business_phone?: string | null
+          caller_name?: string | null
+          caller_phone?: string | null
+          company_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          direction?: string
+          duration_seconds?: number
+          ended_at?: string | null
+          ended_reason?: string | null
+          id?: string
+          lead_id?: string | null
+          metadata?: Json
+          outcome?: string | null
+          provider?: string
+          provider_call_id?: string | null
+          recording_url?: string | null
+          service_type?: string | null
+          started_at?: string | null
+          summary?: string | null
+          transcript?: string | null
+          updated_at?: string
+          urgency?: string | null
+        }
+        Update: {
+          business_phone?: string | null
+          caller_name?: string | null
+          caller_phone?: string | null
+          company_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          direction?: string
+          duration_seconds?: number
+          ended_at?: string | null
+          ended_reason?: string | null
+          id?: string
+          lead_id?: string | null
+          metadata?: Json
+          outcome?: string | null
+          provider?: string
+          provider_call_id?: string | null
+          recording_url?: string | null
+          service_type?: string | null
+          started_at?: string | null
+          summary?: string | null
+          transcript?: string | null
+          updated_at?: string
+          urgency?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vapi_calls_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vapi_calls_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "vapi_calls_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vapi_calls_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       visual_proposal_templates: {
         Row: {
           company_id: string
