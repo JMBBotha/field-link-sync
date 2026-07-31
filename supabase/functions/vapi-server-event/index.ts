@@ -740,6 +740,27 @@ serve(async (req) => {
         leadResult = { success: false, error: leadErr.message };
       }
 
+      await recordCall({
+        providerCallId: call.id || "",
+        callerPhone,
+        callerName,
+        businessPhone: call?.phoneNumber?.number || null,
+        leadId: leadResult?.lead_id || null,
+        customerId: leadResult?.customer_id || null,
+        startedAt: startedAtRaw ? new Date(startedAtRaw).toISOString() : null,
+        endedAt: endedAtRaw ? new Date(endedAtRaw).toISOString() : null,
+        durationSeconds,
+        endedReason,
+        serviceType,
+        urgency,
+        summary: summary || null,
+        transcript: transcript || null,
+        recordingUrl: recordingUrl || null,
+        outcome: leadResult?.lead_id ? "lead_created" : "lead_failed",
+      });
+
+
+
       // ─── Send WhatsApp confirmation DIRECTLY (no queue) ───
       let whatsappResult: { success: boolean; error?: string } = { success: false, error: "skipped" };
 
