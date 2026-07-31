@@ -111,16 +111,36 @@ const NotificationsList = ({
         )}
       </div>
 
+      {/* Filters */}
+      <div className="shrink-0 flex gap-1 overflow-x-auto px-3 py-2 border-b">
+        {FILTERS.map((f) => (
+          <button
+            key={f.key}
+            type="button"
+            onClick={() => setFilter(f.key)}
+            className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
+              filter === f.key
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-accent"
+            }`}
+          >
+            {f.label}
+            {counts[f.key] > 0 && <span className="ml-1 opacity-70">{counts[f.key]}</span>}
+          </button>
+        ))}
+      </div>
+
       {/* List */}
       <ScrollArea className="flex-1 min-h-0 h-full">
-        {notifications.length === 0 ? (
+        {visible.length === 0 ? (
           <div className="py-8 text-center text-muted-foreground text-sm">
             <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
-            <p>No notifications yet</p>
+            <p>{filter === "all" ? "No notifications yet" : `No ${filter} notifications`}</p>
           </div>
         ) : (
           <div className="divide-y">
-            {notifications.map((notification) => {
+            {visible.map((notification) => {
+
               const Icon = typeIcons[notification.type] || MessageSquare;
               return (
                 <button
