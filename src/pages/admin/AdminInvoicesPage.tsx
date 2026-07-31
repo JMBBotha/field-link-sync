@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import InvoiceListPage from "@/components/invoicing/InvoiceListPage";
@@ -13,10 +13,20 @@ const AdminInvoicesPage = () => {
   const currentUserId = session?.user.id ?? "";
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<InvoiceView>("list");
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const { id: routeInvoiceId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [view, setView] = useState<InvoiceView>(routeInvoiceId ? "detail" : "list");
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(routeInvoiceId ?? null);
   const location = useLocation();
   const prefillLead = (location.state as any)?.prefillLead || null;
+
+  useEffect(() => {
+    if (routeInvoiceId) {
+      setSelectedInvoiceId(routeInvoiceId);
+      setView("detail");
+    }
+  }, [routeInvoiceId]);
+
 
   useEffect(() => {
     if (authLoading) return;
@@ -60,7 +70,10 @@ const AdminInvoicesPage = () => {
       {view === "detail" && selectedInvoiceId && (
         <InvoiceDetailPage
           invoiceId={selectedInvoiceId}
-          onBack={() => setView("list")}
+          onBack={() => {
+            if (routeInvoiceId) navigate("/admin/invoices");
+            else setView("list");
+          }}
           onUpdate={() => {}}
         />
       )}
