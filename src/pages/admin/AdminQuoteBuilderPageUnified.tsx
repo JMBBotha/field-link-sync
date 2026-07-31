@@ -193,10 +193,32 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   // wizard's areas-as-baskets. Every display (header pill, "Quote Total" bar,
   // sidebar) reads from THIS list — no parallel calculations.
   const wizardBaskets = useMemo(() => areasToBaskets(wizardAreas), [wizardAreas]);
-  const displayBaskets = useMemo(
-    () => [...baskets, ...wizardBaskets, ...popupPreviewBaskets],
-    [baskets, wizardBaskets, popupPreviewBaskets],
-  );
+  /**
+   * Both the Normal-tab baskets and the inline Area builder hydrate from the
+   * SAME persisted quote_items when an existing quote is opened, so naively
+   * concatenating them double-counts every stored line (the "2 items · 2 zones"
+   * stale-total bug). Wizard instanceIds embed the source quote_item id
+   * (`wizard-<areaId>-<kind>-<itemId>`), so drop wizard lines that are already
+   * represented in `baskets` and recompute fresh from what remains.
+   */
+  const displayBaskets = useMemo(() => {
+    const hydratedIds = new Set<string>();
+    baskets.forEach((b) => b.items.forEach((i) => hydratedIds.add(i.instanceId)));
+
+    const dedupedWizard = hydratedIds.size
+      ? wizardBaskets
+          .map((b) => ({
+            ...b,
+            items: b.items.filter((i) => {
+              const sourceId = i.instanceId.replace(/^wizard-[^-]*(?:-[0-9a-f-]{36})?-(?:ac|mat|con)-/i, "");
+              return !hydratedIds.has(sourceId) && !hydratedIds.has(i.instanceId);
+            }),
+          }))
+          .filter((b) => b.items.length > 0)
+      : wizardBaskets;
+
+    return [...baskets, ...dedupedWizard, ...popupPreviewBaskets];
+  }, [baskets, wizardBaskets, popupPreviewBaskets]);
   const displayQuoteTotals = useMemo(
     () => computeBasketsQuoteTotals(displayBaskets),
     [displayBaskets],
