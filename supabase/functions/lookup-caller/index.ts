@@ -174,13 +174,30 @@ serve(async (req) => {
 
     console.log(`[lookup-caller] Found customer: ${customer.name} (${customer.id})`);
 
-    // --- Get recent jobs (last 5 leads for this customer) ---
-    const { data: recentLeads } = await supabase
+    // --- Get recent jobs/calls (match by customer_id OR raw phone, since
+    //     Vapi-created leads are not always linked to the customer record) ---
+    const leadSelect =
+      "id, service_type, status, notes, created_at, completed_at, scheduled_date, scheduled_time, assigned_agent_id, technician_name, technician_eta, order_status, parts_status, customer_phone, customer_address";
+
+    const { data: leadsById } = await supabase
       .from("leads")
-      .select("id, service_type, status, notes, created_at, completed_at, scheduled_date, assigned_agent_id")
+      .select(leadSelect)
       .eq("customer_id", customer.id)
       .order("created_at", { ascending: false })
       .limit(5);
+
+    const { data: leadsByPhone } = await supabase
+      .from("leads")
+      .select(leadSelect)
+      .in("customer_phone", phoneVariants)
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    const seen = new Set<string>();
+    const recentLeads = [...(leadsById || []), ...(leadsByPhone || [])]
+      .filter((l) => (seen.has(l.id) ? false : (seen.add(l.id), true)))
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 5);
 
     // --- Get equipment ---
     const { data: equipment } = await supabase
@@ -190,25 +207,54 @@ serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(5);
 
-    // --- Get any active/pending leads (today's jobs) ---
-    const today = new Date().toISOString().split("T")[0];
-    const { data: todayJobs } = await supabase
-      .from("leads")
-      .select("id, service_type, status, scheduled_date, scheduled_time, assigned_agent_id")
-      .eq("customer_id", customer.id)
-      .in("status", ["pending", "accepted", "in_progress"])
-      .order("scheduled_date", { ascending: true })
-      .limit(3);
+    // --- Active/open jobs (from the merged set) ---
+    const todayJobs = recentLeads.filter((l) =>
+      ["pending", "accepted", "claimed", "scheduled", "in_progress"].includes((l.status || "").toLowerCase())
+    );
 
     // --- Build context for Mandy ---
     const customerName = customer.first_name || customer.name?.split(" ")[0] || "there";
     const fullName = customer.name || `${customer.first_name || ""} ${customer.last_name || ""}`.trim();
     const address = customer.primary_address_line1 || customer.address || "not on file";
 
+    // Pull the human-readable gist out of a lead's notes (Vapi stores the call
+    // summary first, followed by the raw transcript / metadata blocks).
+    const summarizeNotes = (notes: string | null): string => {
+      if (!notes) return "";
+      const cleaned = notes
+        .split("\n")
+        .filter((line) =>
+          line.trim() &&
+          !/^(Transcript:|Recording:|Ended reason:|Vapi call:|---)/i.test(line.trim())
+        )
+        .join(" ");
+      return cleaned.slice(0, 400).trim();
+    };
+
+    const describeAppointment = (lead: any): string => {
+      const parts: string[] = [];
+      if (lead.scheduled_date) {
+        parts.push(
+          `scheduled for ${formatDate(lead.scheduled_date)}${lead.scheduled_time ? ` at ${String(lead.scheduled_time).slice(0, 5)}` : ""}`
+        );
+      }
+      if (lead.technician_name) parts.push(`technician ${lead.technician_name}`);
+      if (lead.technician_eta) {
+        parts.push(
+          `ETA ${new Date(lead.technician_eta).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}`
+        );
+      }
+      if (lead.order_status && lead.order_status !== "not_ordered") parts.push(`order ${lead.order_status.replace(/_/g, " ")}`);
+      if (lead.parts_status && lead.parts_status !== "pending") parts.push(`parts ${lead.parts_status.replace(/_/g, " ")}`);
+      return parts.join(", ");
+    };
+
     // Format job history as natural language
-    const jobSummaries = (recentLeads || []).map(lead => {
+    const jobSummaries = recentLeads.map((lead) => {
       const dateStr = lead.completed_at || lead.created_at;
-      return `- ${lead.service_type} (${lead.status}) — ${formatDate(dateStr)} (${timeAgo(dateStr)})`;
+      const appt = describeAppointment(lead);
+      const gist = summarizeNotes(lead.notes);
+      return `- ${lead.service_type} (${lead.status}) — ${formatDate(dateStr)} (${timeAgo(dateStr)})${appt ? `; ${appt}` : ""}${gist ? `; what was discussed: ${gist}` : ""}`;
     });
 
     // Format equipment as natural language
@@ -220,18 +266,33 @@ serve(async (req) => {
     });
 
     // Active jobs
-    const activeJobSummaries = (todayJobs || []).map(job => {
-      return `- ${job.service_type} (${job.status}) — scheduled ${job.scheduled_date || "unscheduled"}${job.scheduled_time ? ` at ${job.scheduled_time}` : ""}`;
+    const activeJobSummaries = todayJobs.map((job) => {
+      const appt = describeAppointment(job);
+      return `- ${job.service_type} (${job.status})${appt ? ` — ${appt}` : " — not yet scheduled"}`;
     });
+
+    // Last call recap — this is what makes Mandy sound like she remembers
+    const lastLead = recentLeads[0] || null;
+    const lastCall = lastLead
+      ? {
+          when: `${formatDate(lastLead.created_at)} (${timeAgo(lastLead.created_at)})`,
+          service_type: lastLead.service_type,
+          status: lastLead.status,
+          summary: summarizeNotes(lastLead.notes) || "No summary captured.",
+          appointment: describeAppointment(lastLead) || "No appointment booked yet.",
+          address: lastLead.customer_address || null,
+        }
+      : null;
 
     // Build greeting hint
     let greetingHint = `This is ${fullName}, a returning customer. Greet them warmly by their first name "${customerName}".`;
-    
+
+    if (lastCall) {
+      greetingHint += ` They last contacted us ${timeAgo(lastLead!.created_at)} about a ${lastCall.service_type} (currently ${lastCall.status}). What was discussed: ${lastCall.summary}. Appointment: ${lastCall.appointment}. Reference this naturally instead of asking them to repeat themselves.`;
+    }
+
     if (activeJobSummaries.length > 0) {
-      greetingHint += ` They have active jobs — ask if they're calling about one of those.`;
-    } else if (jobSummaries.length > 0) {
-      const lastJob = recentLeads![0];
-      greetingHint += ` Their last job was a ${lastJob.service_type} (${timeAgo(lastJob.completed_at || lastJob.created_at)}).`;
+      greetingHint += ` They have an open job — assume the call is about it unless they say otherwise.`;
     }
 
     if (equipmentSummaries.length > 0) {
@@ -252,10 +313,11 @@ serve(async (req) => {
         city: customer.city || null,
         status: customer.status,
       },
+      last_call: lastCall,
       active_jobs: activeJobSummaries,
       recent_jobs: jobSummaries,
       equipment: equipmentSummaries,
-      total_jobs: recentLeads?.length || 0,
+      total_jobs: recentLeads.length,
       total_equipment: equipment?.length || 0,
     };
 
@@ -267,6 +329,7 @@ serve(async (req) => {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
 
   } catch (error: any) {
     console.error("[lookup-caller] Error:", error);
