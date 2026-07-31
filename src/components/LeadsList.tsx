@@ -430,6 +430,16 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot }: LeadsListProps) =>
           estimatedEndTime={lead.estimated_end_time}
         />
       )}
+      {/* Job pipeline tracking (order/parts/technician) */}
+      <JobPipelinePanel
+        leadId={lead.id}
+        initial={{
+          order_status: lead.order_status,
+          parts_status: lead.parts_status,
+          technician_name: lead.technician_name,
+          technician_eta: lead.technician_eta,
+        }}
+      />
       {/* Expandable Job History */}
       <div onClick={(e) => e.stopPropagation()}>
         <CustomerJobHistory
