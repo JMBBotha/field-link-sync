@@ -136,6 +136,8 @@ interface Props {
 const KpiHoverPreview = ({ kpiKey, label, viewAllHref, children }: Props) => {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const today = new Date().toISOString().split("T")[0];
