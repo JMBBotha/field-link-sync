@@ -190,6 +190,7 @@ const App = () => (
                     <Route path="suppliers" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminSuppliersPage /></RequireRole>} />
                     <Route path="consumables" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminConsumablesPage /></RequireRole>} />
                     <Route path="whatsapp" element={<RequireRole allowedRoles={["admin"]}><AdminWhatsAppPage /></RequireRole>} />
+                    <Route path="calls" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminCallsPage /></RequireRole>} />
                     <Route path="pdf-documents" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminPDFDocumentsPage /></RequireRole>} />
                     <Route path="brochures" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminBrochuresPage /></RequireRole>} />
                     <Route path="overlay-debug" element={<RequireRole allowedRoles={["admin"]}><AdminOverlayDebugPage /></RequireRole>} />
