@@ -155,11 +155,14 @@ function extractCallerInfo(messages: any[], analysis?: any): {
   return { name, address, phone_spoken };
 }
 
-function isValidLead(durationSeconds: number, messages: any[]): boolean {
+function isValidLead(durationSeconds: number, messages: any[], transcript: string): boolean {
   const userMessages = messages.filter((m: any) => m.role === "user");
   // A real conversation is the strongest signal — accept it even when Vapi
   // reports no/unknown duration (startedAt is sometimes missing on the report).
   if (userMessages.length >= 1) return true;
+  // Some Vapi end-of-call payloads contain the full transcript but omit the
+  // artifact.messages array. A non-empty transcript is still a real call.
+  if (transcript.trim().length > 0) return true;
   return durationSeconds >= 15;
 }
 
@@ -379,7 +382,7 @@ serve(async (req) => {
         (startedAt ? Math.round((endedAt - startedAt) / 1000) : 0);
 
       // Skip short calls
-      if (!isValidLead(durationSeconds, messages)) {
+      if (!isValidLead(durationSeconds, messages, transcript)) {
         console.log(`[vapi-server-event] Short call (${durationSeconds}s, ${messages.length} msgs) — skipping`);
         return new Response(JSON.stringify({
           ok: true,

@@ -170,6 +170,48 @@ serve(async (req) => {
       if (firstCompany) resolvedCompanyId = firstCompany.id;
     }
 
+    async function notifyCompanyOfLead(leadId: string, leadName: string, leadService: string) {
+      if (!resolvedCompanyId) return;
+
+      const { data: recipients, error: recipientError } = await supabase
+        .from("company_members")
+        .select("user_id")
+        .eq("company_id", resolvedCompanyId)
+        .in("role", ["admin", "dispatcher"]);
+
+      if (recipientError) {
+        console.error("[receive-vapi-lead] Notification recipients error:", recipientError);
+        return;
+      }
+
+      const userIds = [...new Set((recipients || []).map((member) => member.user_id).filter(Boolean))];
+      for (const userId of userIds) {
+        const { data: existingNotification } = await supabase
+          .from("notifications")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("type", "new_lead")
+          .eq("related_id", leadId)
+          .limit(1)
+          .maybeSingle();
+
+        if (existingNotification) continue;
+
+        const { error: notificationError } = await supabase.from("notifications").insert({
+          user_id: userId,
+          type: "new_lead",
+          title: "New Lead",
+          body: `${leadName} — ${leadService}`,
+          read: false,
+          related_id: leadId,
+          metadata: { lead_id: leadId, source: "vapi" },
+        });
+        if (notificationError) {
+          console.error("[receive-vapi-lead] In-app notification error:", notificationError);
+        }
+      }
+    }
+
     // If no match, create a new customer
     if (!customerId) {
       const firstName = caller_name?.split(" ")[0] || "Unknown";
@@ -293,6 +335,7 @@ serve(async (req) => {
     // by the create-branch below, so an enriched lead still gets the
     // confirmation message and returns the same JSON shape.
     async function finalizeEnriched(leadId: string, custId: string | null) {
+      await notifyCompanyOfLead(leadId, customerName, mergedServiceType);
       let whatsappQueued = false;
       const shouldSendWhatsapp = whatsapp_consent !== false &&
         (call_duration_seconds === undefined || call_duration_seconds > 15);
@@ -383,6 +426,8 @@ serve(async (req) => {
     }
 
     console.log(`[receive-vapi-lead] Lead created: ${newLead.id}`);
+
+    await notifyCompanyOfLead(newLead.id, newLead.customer_name, mapServiceType(service_type));
 
     // --- Step 3: Queue WhatsApp confirmation ---
     let whatsappQueued = false;
