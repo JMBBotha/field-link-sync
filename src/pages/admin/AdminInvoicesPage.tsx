@@ -70,7 +70,10 @@ const AdminInvoicesPage = () => {
       {view === "detail" && selectedInvoiceId && (
         <InvoiceDetailPage
           invoiceId={selectedInvoiceId}
-          onBack={() => setView("list")}
+          onBack={() => {
+            if (routeInvoiceId) navigate("/admin/invoices");
+            else setView("list");
+          }}
           onUpdate={() => {}}
         />
       )}
