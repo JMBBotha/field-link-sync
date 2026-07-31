@@ -62,7 +62,7 @@ const StatusFilterButtons = ({
             key={status}
             onClick={() => onToggle(status)}
             className={cn(
-              "relative flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold",
+              "relative flex shrink-0 items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap",
               "transition-all duration-300 ease-out transform",
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
               isActive
@@ -74,7 +74,7 @@ const StatusFilterButtons = ({
             {/* Indicator dot with pulse animation when active */}
             <span
               className={cn(
-                "w-2 h-2 rounded-full transition-all duration-300",
+                "w-2 h-2 shrink-0 rounded-full transition-all duration-300",
                 isActive
                   ? "bg-current opacity-80 scale-100"
                   : "bg-current opacity-40 scale-75"
@@ -84,7 +84,7 @@ const StatusFilterButtons = ({
             {/* Label with slide effect */}
             <span
               className={cn(
-                "transition-all duration-300 ease-out",
+                "whitespace-nowrap transition-all duration-300 ease-out",
                 isActive ? "translate-x-0" : "-translate-x-0.5",
                 compact ? "hidden sm:inline" : ""
               )}
