@@ -341,9 +341,44 @@ const KpiHoverPreview = ({ kpiKey, label, viewAllHref, children }: Props) => {
         >
           View all →
         </button>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <div
+            onClickCapture={(e) => {
+              // Tap toggles the preview instead of triggering the card's own click
+              e.preventDefault();
+              e.stopPropagation();
+              setOpen((o) => !o);
+            }}
+          >
+            {children}
+          </div>
+        </PopoverTrigger>
+        <PopoverContent
+          align="center"
+          sideOffset={8}
+          className="w-[calc(100vw-2rem)] max-w-sm p-0 overflow-hidden"
+        >
+          {panel}
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
+  return (
+    <HoverCard open={open} onOpenChange={setOpen} openDelay={150} closeDelay={120}>
+      <HoverCardTrigger asChild>{children}</HoverCardTrigger>
+      <HoverCardContent align="start" className="w-80 p-0 overflow-hidden">
+        {panel}
       </HoverCardContent>
     </HoverCard>
   );
+
 };
 
 export default KpiHoverPreview;
