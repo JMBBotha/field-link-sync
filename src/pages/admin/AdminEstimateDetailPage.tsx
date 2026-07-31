@@ -11,6 +11,7 @@ import { convertQuoteToInvoice, buildQuoteLineItems } from "@/lib/convertQuoteTo
 import { generateDocumentPdf } from "@/lib/documentPdf";
 import EstimateDocument from "@/components/quoting/EstimateDocument";
 import StatusPill from "@/components/shared/StatusPill";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 /**
  * Read-only, client-facing estimate document view.
@@ -57,6 +58,9 @@ const AdminEstimateDetailPage = () => {
   const subtotal = Number(quote?.subtotal) || 0;
   const taxAmount = Number(quote?.vat_amount) || 0;
   const total = Number(quote?.total) || 0;
+
+  /** Standard workflow: only an accepted estimate may become a billable invoice. */
+  const canConvert = String(quote?.status || "").toLowerCase() === "accepted";
 
   const handleSend = async () => {
     setBusy("send");
@@ -186,14 +190,31 @@ const AdminEstimateDetailPage = () => {
         <Button variant="outline" onClick={() => window.print()}>
           <Printer className="mr-2 h-4 w-4" /> Print
         </Button>
-        <Button variant="brand" onClick={handleConvert} disabled={busy === "convert"}>
-          {busy === "convert" ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <FileCheck2 className="mr-2 h-4 w-4" />
-          )}
-          Convert to Invoice
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Button
+                  variant="brand"
+                  onClick={handleConvert}
+                  disabled={busy === "convert" || !canConvert}
+                >
+                  {busy === "convert" ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileCheck2 className="mr-2 h-4 w-4" />
+                  )}
+                  Convert to Invoice
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!canConvert && (
+              <TooltipContent>
+                Estimate must be Accepted before converting to an invoice
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </div>
   );

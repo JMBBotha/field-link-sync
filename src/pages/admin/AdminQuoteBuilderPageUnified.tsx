@@ -54,6 +54,14 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
     return clients.find((c) => c.id === meta.customer_id || c.customer_id === meta.customer_id) || null;
   }, [clients, meta?.customer_id]);
 
+  /**
+   * Single source of truth for the client name: the customers record. Any
+   * name snapshotted onto the quote row (`quotes.customer_name`) is only a
+   * fallback for quotes with no linked customer, so stale/misspelt snapshots
+   * can never diverge from the document view.
+   */
+  const clientLabel = selectedClient?.name || meta?.customer_name || null;
+
   const filteredClients = useMemo(() => {
     if (!clientSearch.trim()) return clients.slice(0, 8);
     const q = clientSearch.toLowerCase();
@@ -96,10 +104,10 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
       {/* Client selector in header */}
       <div className="flex items-center gap-3">
         <div className="relative">
-          {selectedClient ?
+          {clientLabel ?
           <div className="flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5 text-xs text-white">
               <Users className="h-3.5 w-3.5 shrink-0" />
-              <span className="font-medium truncate max-w-[150px]">{selectedClient.name}</span>
+              <span className="font-medium truncate max-w-[150px]">{clientLabel}</span>
               <button
               onClick={() => {
                 updateQuote({ customer_id: null, customer_name: null });
@@ -193,10 +201,33 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   // wizard's areas-as-baskets. Every display (header pill, "Quote Total" bar,
   // sidebar) reads from THIS list — no parallel calculations.
   const wizardBaskets = useMemo(() => areasToBaskets(wizardAreas), [wizardAreas]);
-  const displayBaskets = useMemo(
-    () => [...baskets, ...wizardBaskets, ...popupPreviewBaskets],
-    [baskets, wizardBaskets, popupPreviewBaskets],
-  );
+  /**
+   * Both the Normal-tab baskets and the inline Area builder hydrate from the
+   * SAME persisted quote_items when an existing quote is opened, so naively
+   * concatenating them double-counts every stored line (the "2 items · 2 zones"
+   * stale-total bug). Wizard instanceIds embed the source quote_item id
+   * (`wizard-<areaId>-<kind>-<itemId>`), so drop wizard lines that are already
+   * represented in `baskets` and recompute fresh from what remains.
+   */
+  const displayBaskets = useMemo(() => {
+    const hydratedIds = new Set<string>();
+    baskets.forEach((b) => b.items.forEach((i) => hydratedIds.add(i.instanceId)));
+
+    const dedupedWizard = hydratedIds.size
+      ? wizardBaskets
+          .map((b) => ({
+            ...b,
+            items: b.items.filter((i) => {
+              const m = i.instanceId.match(/-(?:ac|mat|con)-(.+)$/);
+              const sourceId = m ? m[1] : i.instanceId;
+              return !hydratedIds.has(sourceId) && !hydratedIds.has(i.instanceId);
+            }),
+          }))
+          .filter((b) => b.items.length > 0)
+      : wizardBaskets;
+
+    return [...baskets, ...dedupedWizard, ...popupPreviewBaskets];
+  }, [baskets, wizardBaskets, popupPreviewBaskets]);
   const displayQuoteTotals = useMemo(
     () => computeBasketsQuoteTotals(displayBaskets),
     [displayBaskets],

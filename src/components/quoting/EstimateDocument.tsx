@@ -39,6 +39,20 @@ const toPercent = (rate?: number | null) => {
   return n <= 1 ? Math.round(n * 10000) / 100 : n;
 };
 
+/**
+ * Older quotes stored a hard-coded banking-details block inside terms_text.
+ * Banking details now come from company settings (single source of truth), so
+ * strip any legacy banking block out of the terms copy to avoid showing two
+ * conflicting account numbers.
+ */
+const stripLegacyBanking = (terms?: string | null) => {
+  if (!terms) return terms ?? null;
+  const cleaned = terms
+    .replace(/\n?\s*banking\s*details\s*:?[\s\S]*$/i, "")
+    .trimEnd();
+  return cleaned.length > 0 ? cleaned : null;
+};
+
 const formatDate = (dateStr?: string | null) =>
   dateStr
     ? new Date(dateStr).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" })
@@ -70,6 +84,7 @@ const EstimateDocument = ({
   const vatPercent = toPercent(taxRate);
   const accountType =
     String(bank.account_type || "").match(/^[A-Za-z ]+/)?.[0].trim() || bank.account_type || "";
+  const cleanTerms = stripLegacyBanking(termsText);
 
   return (
     <div
@@ -176,7 +191,7 @@ const EstimateDocument = ({
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Terms</p>
             <p className="mt-1 whitespace-pre-line">
-              {termsText ||
+              {cleanTerms ||
                 `This estimate is valid for 30 days from the date of issue. All prices exclude VAT, which is shown separately at ${vatPercent}%. A ${settings.default_deposit_percentage || 50}% deposit is payable on acceptance; the balance is due within ${settings.default_payment_terms_days || 30} days of completion.`}
             </p>
           </div>
