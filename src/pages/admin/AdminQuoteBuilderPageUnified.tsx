@@ -104,10 +104,10 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
       {/* Client selector in header */}
       <div className="flex items-center gap-3">
         <div className="relative">
-          {selectedClient ?
+          {clientLabel ?
           <div className="flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5 text-xs text-white">
               <Users className="h-3.5 w-3.5 shrink-0" />
-              <span className="font-medium truncate max-w-[150px]">{selectedClient.name}</span>
+              <span className="font-medium truncate max-w-[150px]">{clientLabel}</span>
               <button
               onClick={() => {
                 updateQuote({ customer_id: null, customer_name: null });
