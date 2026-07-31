@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Map, LocateFixed, Maximize2, Minimize2, ExternalLink, Layers } from "lucide-react";
 
-import MapView, { MapViewHandle } from "@/components/MapView";
+import MapView, { MapViewHandle, MapStatusState } from "@/components/MapView";
+import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilterButtons";
 import BusinessSearch from "@/components/map/BusinessSearch";
 import LeadsList from "@/components/LeadsList";
 import CompletedLeadsPanel from "@/components/CompletedLeadsPanel";
@@ -45,6 +46,16 @@ const AdminMapPage = () => {
   const pageRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [trafficEnabled, setTrafficEnabledState] = useState(false);
+  const [statusState, setStatusState] = useState<MapStatusState>({
+    filters: new Set<LeadStatusFilter>(["pending", "accepted", "in_progress"]),
+    counts: { pending: 0, accepted: 0, in_progress: 0, completed: 0 },
+  });
+
+  const handleStatusStateChange = useCallback((s: MapStatusState) => setStatusState(s), []);
+  const handleStatusToggle = useCallback(
+    (status: LeadStatusFilter) => mapRef.current?.toggleStatusFilter(status),
+    []
+  );
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -163,7 +174,17 @@ const AdminMapPage = () => {
             <Switch checked={trafficEnabled} onCheckedChange={handleTrafficToggle} className="scale-75" />
           </div>
         </div>
-        <div className="w-full sm:w-auto sm:ml-auto">
+        {/* Status pills — inline on desktop, second scrollable row on small screens */}
+        <div className="order-last w-full min-w-0 overflow-x-auto scrollbar-hide lg:order-none lg:w-auto lg:overflow-visible">
+          <StatusFilterButtons
+            className="w-max flex-nowrap gap-1.5 sm:gap-2 px-1.5 py-1"
+            activeFilters={statusState.filters}
+            counts={statusState.counts}
+            onToggle={handleStatusToggle}
+          />
+        </div>
+
+        <div className="w-full sm:w-auto sm:ml-auto lg:ml-auto">
           <BusinessSearch
             getToken={() => mapRef.current?.getMapboxToken() ?? null}
             onSelect={(lat, lng, name, address) => {
@@ -174,6 +195,7 @@ const AdminMapPage = () => {
       </div>
 
 
+
       {/* Content */}
       <div className="flex-1 relative">
         <>
@@ -182,6 +204,8 @@ const AdminMapPage = () => {
               ref={mapRef}
               showAllAgents={true}
               hideChromeControls={true}
+              hideStatusFilters={true}
+              onStatusStateChange={handleStatusStateChange}
               onStatusFiltersChange={(filters) => {
                 const hasCompleted = filters.has("completed");
                 setShowCompletedFilter(hasCompleted);

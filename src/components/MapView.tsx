@@ -41,6 +41,12 @@ export interface MapViewHandle {
   getMapboxToken: () => string | null;
   setTrafficEnabled: (enabled: boolean) => void;
   getTrafficEnabled: () => boolean;
+  toggleStatusFilter: (status: LeadStatusFilter) => void;
+}
+
+export interface MapStatusState {
+  filters: Set<LeadStatusFilter>;
+  counts: Record<LeadStatusFilter, number>;
 }
 
 interface MapViewProps {
@@ -48,6 +54,10 @@ interface MapViewProps {
   onLeadClick?: (lead: Lead) => void;
   showAllAgents?: boolean;
   hideChromeControls?: boolean;
+  /** Hide the floating in-canvas status filter bar (when rendered in the page header instead). */
+  hideStatusFilters?: boolean;
+  /** Emits current filter selection + per-status counts so a parent can render the pills. */
+  onStatusStateChange?: (state: MapStatusState) => void;
 }
 
 
@@ -74,7 +84,7 @@ const escapeHtml = (text: string | null | undefined): string => {
   return div.innerHTML;
 };
 
-const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange, onLeadClick, showAllAgents = false, hideChromeControls = false }, ref) => {
+const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange, onLeadClick, showAllAgents = false, hideChromeControls = false, hideStatusFilters = false, onStatusStateChange }, ref) => {
   const MAP_CHROME_BOTTOM_OFFSET_PX = 64;
   const { user } = useAuth();
   const [agents, setAgents] = useState<AgentLocation[]>([]);
@@ -107,6 +117,19 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
   const statusFiltersRef = useRef<Set<LeadStatusFilter>>(new Set(["pending", "accepted", "in_progress"]));
   useEffect(() => { leadsRef.current = leads; }, [leads]);
   useEffect(() => { statusFiltersRef.current = statusFilters; }, [statusFilters]);
+
+  // Publish filter selection + counts so a parent (page header) can render the pills.
+  useEffect(() => {
+    onStatusStateChange?.({
+      filters: new Set(statusFilters),
+      counts: {
+        pending: leads.filter((l) => l.status === "pending").length,
+        accepted: leads.filter((l) => l.status === "accepted" || l.status === "claimed").length,
+        in_progress: leads.filter((l) => l.status === "in_progress").length,
+        completed: leads.filter((l) => l.status === "completed").length,
+      },
+    });
+  }, [statusFilters, leads, onStatusStateChange]);
   const initialBoundsFitRef = useRef(false);
   const missingAgentCountsRef = useRef<Map<string, number>>(new Map());
   const missingLeadCountsRef = useRef<Map<string, number>>(new Map());
@@ -326,7 +349,16 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     },
     setTrafficEnabled: (enabled: boolean) => setTrafficEnabled(enabled),
     getTrafficEnabled: () => trafficEnabled,
-  }), [mapLoaded, trafficEnabled]);
+    toggleStatusFilter: (status: LeadStatusFilter) => {
+      setStatusFilters((prev) => {
+        const next = new Set(prev);
+        if (next.has(status)) next.delete(status);
+        else next.add(status);
+        onStatusFiltersChange?.(next);
+        return next;
+      });
+    },
+  }), [mapLoaded, trafficEnabled, onStatusFiltersChange]);
 
 
   useEffect(() => {
@@ -1395,7 +1427,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
 
 
           {/* Status Filter Buttons — merged into bottom bar as a notched tab */}
-          {mapLoaded && (
+          {mapLoaded && !hideStatusFilters && (
             <div
               className="absolute bottom-[calc(1rem+4px)] sm:bottom-[calc(1.5rem+4px)] left-1/2 -translate-x-1/2 z-30 max-w-[calc(100%-1rem)] border border-[#0077B6]/60 shadow-xl pt-3 pb-1 px-4 sm:px-6 pointer-events-auto rounded-t-2xl rounded-b-md overflow-hidden"
               style={{
