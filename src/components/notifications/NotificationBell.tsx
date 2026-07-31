@@ -93,14 +93,19 @@ const NotificationBell = () => {
     );
   };
 
-  const markAllRead = async () => {
+  const markAllRead = async (ids?: string[]) => {
     if (!userId) return;
-    await supabase
+    if (ids && ids.length === 0) return;
+    let query = supabase
       .from("notifications")
       .update({ read: true })
       .eq("user_id", userId)
       .eq("read", false);
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    if (ids) query = query.in("id", ids);
+    await query;
+    setNotifications((prev) =>
+      prev.map((n) => (!ids || ids.includes(n.id) ? { ...n, read: true } : n))
+    );
   };
 
   return (
