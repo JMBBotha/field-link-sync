@@ -174,7 +174,17 @@ const AdminMapPage = () => {
             <Switch checked={trafficEnabled} onCheckedChange={handleTrafficToggle} className="scale-75" />
           </div>
         </div>
-        <div className="w-full sm:w-auto sm:ml-auto">
+        {/* Status pills — inline on desktop, second scrollable row on small screens */}
+        <div className="order-last w-full min-w-0 overflow-x-auto scrollbar-hide lg:order-none lg:w-auto lg:overflow-visible">
+          <StatusFilterButtons
+            className="w-max flex-nowrap gap-1.5 sm:gap-2 px-1.5 py-1"
+            activeFilters={statusState.filters}
+            counts={statusState.counts}
+            onToggle={handleStatusToggle}
+          />
+        </div>
+
+        <div className="w-full sm:w-auto sm:ml-auto lg:ml-auto">
           <BusinessSearch
             getToken={() => mapRef.current?.getMapboxToken() ?? null}
             onSelect={(lat, lng, name, address) => {
@@ -183,6 +193,7 @@ const AdminMapPage = () => {
           />
         </div>
       </div>
+
 
 
       {/* Content */}
