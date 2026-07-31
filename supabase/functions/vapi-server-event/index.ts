@@ -554,9 +554,27 @@ serve(async (req) => {
         (Number(body.message.durationMs) ? Math.round(Number(body.message.durationMs) / 1000) : 0) ||
         (startedAt ? Math.round((endedAt - startedAt) / 1000) : 0);
 
-      // Skip short calls
+      // Skip short calls (still logged so the admin call history is complete)
       if (!isValidLead(durationSeconds, messages, transcript)) {
         console.log(`[vapi-server-event] Short call (${durationSeconds}s, ${messages.length} msgs) — skipping`);
+        await recordCall({
+          providerCallId: call.id || "",
+          callerPhone,
+          callerName: null,
+          businessPhone: call?.phoneNumber?.number || null,
+          leadId: null,
+          customerId: null,
+          startedAt: startedAtRaw ? new Date(startedAtRaw).toISOString() : null,
+          endedAt: endedAtRaw ? new Date(endedAtRaw).toISOString() : null,
+          durationSeconds,
+          endedReason,
+          serviceType: null,
+          urgency: null,
+          summary: summary || null,
+          transcript: transcript || null,
+          recordingUrl: recordingUrl || null,
+          outcome: "no_lead",
+        });
         return new Response(JSON.stringify({
           ok: true,
           skipped: "too short",
