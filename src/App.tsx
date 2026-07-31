@@ -61,6 +61,7 @@ import AdminNetworkAgentsPage from "./pages/admin/AdminNetworkAgentsPage";
 import AdminSuppliersPage from "./pages/admin/AdminSuppliersPage";
 import AdminConsumablesPage from "./pages/admin/AdminConsumablesPage";
 import AdminWhatsAppPage from "./pages/admin/AdminWhatsAppPage";
+import AdminCallsPage from "./pages/admin/AdminCallsPage";
 import AdminPDFDocumentsPage from "./pages/admin/AdminPDFDocumentsPage";
 import AdminBrochuresPage from "./pages/admin/AdminBrochuresPage";
 import AdminOverlayDebugPage from "./pages/admin/AdminOverlayDebugPage";
