@@ -41,6 +41,12 @@ export interface MapViewHandle {
   getMapboxToken: () => string | null;
   setTrafficEnabled: (enabled: boolean) => void;
   getTrafficEnabled: () => boolean;
+  toggleStatusFilter: (status: LeadStatusFilter) => void;
+}
+
+export interface MapStatusState {
+  filters: Set<LeadStatusFilter>;
+  counts: Record<LeadStatusFilter, number>;
 }
 
 interface MapViewProps {
@@ -48,6 +54,10 @@ interface MapViewProps {
   onLeadClick?: (lead: Lead) => void;
   showAllAgents?: boolean;
   hideChromeControls?: boolean;
+  /** Hide the floating in-canvas status filter bar (when rendered in the page header instead). */
+  hideStatusFilters?: boolean;
+  /** Emits current filter selection + per-status counts so a parent can render the pills. */
+  onStatusStateChange?: (state: MapStatusState) => void;
 }
 
 
