@@ -506,7 +506,22 @@ serve(async (req) => {
                   ].filter(Boolean).join(" ");
 
                 } else {
-                  toolResult = "NO IDENTITY MATCH: This number is not linked to a customer. Ask for the caller's name.";
+                  const spoken = (() => {
+                    if (!phoneNumber) return "";
+                    let d = String(phoneNumber).replace(/\D/g, "");
+                    if (d.startsWith("27") && d.length === 11) d = "0" + d.slice(2);
+                    return d.split("").join(" ");
+                  })();
+                  toolResult = [
+                    "NO IDENTITY MATCH: this number is not linked to any customer. Treat as a NEW caller.",
+                    "FALLBACK FLOW, one question at a time, before discussing the job:",
+                    "1. Ask for their full name and wait for the answer.",
+                    spoken
+                      ? `2. Confirm the number: "I have your number as ${spoken} — is that the best number to reach you on?" If not, take the correct number and read it back digit by digit for a yes.`
+                      : "2. The number is withheld — ask for the best contact number and read it back digit by digit for a yes.",
+                    "3. Only after a confirmed name AND phone number, continue with the service request and address.",
+                    "Never invent a name.",
+                  ].join(" ");
                 }
               } catch {
                 // Preserve a plain-text tool response if the downstream
