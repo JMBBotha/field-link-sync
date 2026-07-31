@@ -90,7 +90,7 @@ const NotificationsList = ({
                   className={`w-full text-left px-4 py-3 hover:bg-accent/50 transition-colors flex gap-3 ${
                     !notification.read ? "bg-primary/5" : ""
                   }`}
-                  onClick={() => onMarkAsRead(notification.id)}
+                  onClick={() => openNotification(notification)}
                 >
                   <div
                     className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${
