@@ -31,6 +31,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSingleLeadPhotoCount } from "@/hooks/useLeadPhotoCount";
 import CommunicationTimeline from "./communication/CommunicationTimeline";
+import CallHistoryPanel from "./calls/CallHistoryPanel";
 import UsedPartsSection from "./UsedPartsSection";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, DollarSign } from "lucide-react";
@@ -926,8 +927,12 @@ const LeadDetailSheet = ({
                 <JobTimeline leadId={lead.id} lead={lead} />
               </TabsContent>
 
-              <TabsContent value="comms" className="mt-0 px-4 pb-4">
+              <TabsContent value="comms" className="mt-0 px-4 pb-4 space-y-4">
                 <CommunicationTimeline leadId={lead.id} customerId={lead.customer_id || undefined} />
+                <CallHistoryPanel leadId={lead.id} title="Voice assistant calls" />
+                {lead.customer_id && (
+                  <CallHistoryPanel customerId={lead.customer_id} title="All calls from this client" />
+                )}
               </TabsContent>
             </Tabs>
           </ScrollArea>

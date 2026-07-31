@@ -228,7 +228,106 @@ async function sendWhatsAppConfirmation(
   }
 }
 
+// ─── Call log ──────────────────────────────────────────────
+// Persists every Vapi call and links it to the matched customer + lead so the
+// admin panel can show call history and appointment outcomes per client.
+async function recordCall(input: {
+  providerCallId: string;
+  callerPhone: string;
+  callerName: string | null;
+  businessPhone: string | null;
+  leadId: string | null;
+  customerId: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  durationSeconds: number;
+  endedReason: string | null;
+  serviceType: string | null;
+  urgency: string | null;
+  summary: string | null;
+  transcript: string | null;
+  recordingUrl: string | null;
+  outcome: string;
+}) {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const admin = createClient(supabaseUrl, serviceKey);
+
+    let customerId = input.customerId;
+    let companyId: string | null = null;
+
+    if (input.leadId) {
+      const { data: lead } = await admin
+        .from("leads")
+        .select("customer_id, company_id")
+        .eq("id", input.leadId)
+        .maybeSingle();
+      if (lead) {
+        customerId = customerId || lead.customer_id;
+        companyId = lead.company_id ?? null;
+      }
+    }
+
+    if (!customerId && input.callerPhone) {
+      const tail = input.callerPhone.replace(/\D/g, "").slice(-9);
+      const { data: cust } = await admin
+        .from("customers")
+        .select("id, company_id")
+        .ilike("phone", `%${tail}%`)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cust) {
+        customerId = cust.id;
+        companyId = companyId || cust.company_id;
+      }
+    }
+
+    if (!companyId && customerId) {
+      const { data: cust } = await admin
+        .from("customers")
+        .select("company_id")
+        .eq("id", customerId)
+        .maybeSingle();
+      companyId = cust?.company_id ?? null;
+    }
+
+    const row = {
+      provider: "vapi",
+      provider_call_id: input.providerCallId || null,
+      direction: "inbound",
+      company_id: companyId,
+      customer_id: customerId,
+      lead_id: input.leadId,
+      caller_phone: input.callerPhone || null,
+      caller_name: input.callerName,
+      business_phone: input.businessPhone,
+      started_at: input.startedAt,
+      ended_at: input.endedAt,
+      duration_seconds: input.durationSeconds || 0,
+      ended_reason: input.endedReason,
+      service_type: input.serviceType,
+      urgency: input.urgency,
+      summary: input.summary,
+      transcript: input.transcript,
+      recording_url: input.recordingUrl,
+      outcome: input.outcome,
+    };
+
+    const { error } = input.providerCallId
+      ? await admin.from("vapi_calls").upsert(row, { onConflict: "provider_call_id" })
+      : await admin.from("vapi_calls").insert(row);
+
+    if (error) console.error("[vapi-server-event] vapi_calls write error:", error);
+    else console.log(`[vapi-server-event] Call logged (lead=${input.leadId}, customer=${customerId})`);
+  } catch (err) {
+    console.error("[vapi-server-event] recordCall exception:", err);
+  }
+}
+
 // ─── Main Handler ──────────────────────────────────────────
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -455,9 +554,27 @@ serve(async (req) => {
         (Number(body.message.durationMs) ? Math.round(Number(body.message.durationMs) / 1000) : 0) ||
         (startedAt ? Math.round((endedAt - startedAt) / 1000) : 0);
 
-      // Skip short calls
+      // Skip short calls (still logged so the admin call history is complete)
       if (!isValidLead(durationSeconds, messages, transcript)) {
         console.log(`[vapi-server-event] Short call (${durationSeconds}s, ${messages.length} msgs) — skipping`);
+        await recordCall({
+          providerCallId: call.id || "",
+          callerPhone,
+          callerName: null,
+          businessPhone: call?.phoneNumber?.number || null,
+          leadId: null,
+          customerId: null,
+          startedAt: startedAtRaw ? new Date(startedAtRaw).toISOString() : null,
+          endedAt: endedAtRaw ? new Date(endedAtRaw).toISOString() : null,
+          durationSeconds,
+          endedReason,
+          serviceType: null,
+          urgency: null,
+          summary: summary || null,
+          transcript: transcript || null,
+          recordingUrl: recordingUrl || null,
+          outcome: "no_lead",
+        });
         return new Response(JSON.stringify({
           ok: true,
           skipped: "too short",
@@ -549,6 +666,25 @@ serve(async (req) => {
 
           await supabaseAdmin.from("leads").update(patch).eq("id", existing.id);
 
+          await recordCall({
+            providerCallId: callSid,
+            callerPhone,
+            callerName,
+            businessPhone: call?.phoneNumber?.number || null,
+            leadId: existing.id,
+            customerId: existing.customer_id,
+            startedAt: startedAtRaw ? new Date(startedAtRaw).toISOString() : null,
+            endedAt: endedAtRaw ? new Date(endedAtRaw).toISOString() : null,
+            durationSeconds,
+            endedReason,
+            serviceType,
+            urgency,
+            summary,
+            transcript,
+            recordingUrl,
+            outcome: "lead_enriched",
+          });
+
           return new Response(JSON.stringify({
             ok: true,
             event: "end-of-call-report",
@@ -603,6 +739,27 @@ serve(async (req) => {
         console.error("[vapi-server-event] Lead creation error:", leadErr);
         leadResult = { success: false, error: leadErr.message };
       }
+
+      await recordCall({
+        providerCallId: call.id || "",
+        callerPhone,
+        callerName,
+        businessPhone: call?.phoneNumber?.number || null,
+        leadId: leadResult?.lead_id || null,
+        customerId: leadResult?.customer_id || null,
+        startedAt: startedAtRaw ? new Date(startedAtRaw).toISOString() : null,
+        endedAt: endedAtRaw ? new Date(endedAtRaw).toISOString() : null,
+        durationSeconds,
+        endedReason,
+        serviceType,
+        urgency,
+        summary: summary || null,
+        transcript: transcript || null,
+        recordingUrl: recordingUrl || null,
+        outcome: leadResult?.lead_id ? "lead_created" : "lead_failed",
+      });
+
+
 
       // ─── Send WhatsApp confirmation DIRECTLY (no queue) ───
       let whatsappResult: { success: boolean; error?: string } = { success: false, error: "skipped" };
