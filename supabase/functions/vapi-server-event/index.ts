@@ -199,36 +199,55 @@ serve(async (req) => {
 
     console.log(`[vapi-server-event] Event: ${messageType}`);
 
-    // ─── Handle tool-calls (lookup_caller) ───
+    // ─── Handle tool-calls (lookup_caller / check_job_status) ───
     if (messageType === "tool-calls") {
       const toolCallList = body.message.toolCallList || body.message.toolWithToolCallList || [];
 
+      // Caller ID from the call payload — used when Vapi sends no phone_number argument
+      const callPayload = body.message.call || {};
+      const callerNumber =
+        callPayload?.customer?.number ||
+        callPayload?.from ||
+        body.message?.customer?.number ||
+        body.call?.customer?.number ||
+        "";
+
       const results: any[] = [];
+
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const apiKey = Deno.env.get("VAPI_WEBHOOK_SECRET")!;
 
       for (const toolCall of toolCallList) {
         const fn = toolCall.function || toolCall;
         const name = fn.name || "";
 
-        if (name === "lookup_caller") {
-          const params = fn.parameters || {};
-          const phoneNumber = params.phone_number || "";
+        // Vapi sends either `parameters` (object) or `arguments` (object or JSON string)
+        let params: any = fn.parameters ?? fn.arguments ?? {};
+        if (typeof params === "string") {
+          try { params = JSON.parse(params); } catch { params = {}; }
+        }
 
-          console.log(`[vapi-server-event] lookup_caller for: ${phoneNumber}`);
+        if (name === "lookup_caller" || name === "check_job_status") {
+          const phoneNumber = params.phone_number || callerNumber || "";
+          const target = name === "lookup_caller" ? "lookup-caller" : "check-job-status";
 
-          // Forward to lookup-caller function
-          const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-          const apiKey = Deno.env.get("VAPI_WEBHOOK_SECRET")!;
+          console.log(
+            `[vapi-server-event] ${name} for: ${phoneNumber || "(no number)"} (arg=${params.phone_number || "none"}, callerId=${callerNumber || "none"})`
+          );
 
           try {
             const lookupResponse = await fetch(
-              `${supabaseUrl}/functions/v1/lookup-caller`,
+              `${supabaseUrl}/functions/v1/${target}`,
               {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
                   "x-api-key": apiKey,
                 },
-                body: JSON.stringify({ phone_number: phoneNumber }),
+                body: JSON.stringify({
+                  phone_number: phoneNumber,
+                  ...(params.lead_id ? { lead_id: params.lead_id } : {}),
+                }),
               }
             );
 
@@ -239,7 +258,7 @@ serve(async (req) => {
               result: lookupResult.result || "No customer found. Treat as new caller and ask for their name.",
             });
           } catch (lookupErr: any) {
-            console.error("[vapi-server-event] lookup_caller error:", lookupErr);
+            console.error(`[vapi-server-event] ${name} error:`, lookupErr);
             results.push({
               toolCallId: toolCall.id || toolCall.toolCallId,
               result: "Error looking up caller. Treat as new caller and ask for their name.",
@@ -253,6 +272,7 @@ serve(async (req) => {
           });
         }
       }
+
 
       return new Response(JSON.stringify({ results }), {
         status: 200,
