@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import EditLeadDialog from "./EditLeadDialog";
 import LeadTimeEditDialog from "./LeadTimeEditDialog";
+import JobPipelinePanel from "./leads/JobPipelinePanel";
 
 interface Lead {
   id: string;
@@ -54,6 +55,10 @@ interface Lead {
   started_at?: string | null;
   estimated_duration_minutes?: number | null;
   estimated_end_time?: string | null;
+  order_status?: string | null;
+  parts_status?: string | null;
+  technician_name?: string | null;
+  technician_eta?: string | null;
 }
 
 interface LeadsListProps {
