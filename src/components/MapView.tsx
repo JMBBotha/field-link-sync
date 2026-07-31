@@ -336,7 +336,16 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     },
     setTrafficEnabled: (enabled: boolean) => setTrafficEnabled(enabled),
     getTrafficEnabled: () => trafficEnabled,
-  }), [mapLoaded, trafficEnabled]);
+    toggleStatusFilter: (status: LeadStatusFilter) => {
+      setStatusFilters((prev) => {
+        const next = new Set(prev);
+        if (next.has(status)) next.delete(status);
+        else next.add(status);
+        onStatusFiltersChange?.(next);
+        return next;
+      });
+    },
+  }), [mapLoaded, trafficEnabled, onStatusFiltersChange]);
 
 
   useEffect(() => {
