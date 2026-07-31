@@ -378,8 +378,13 @@ serve(async (req) => {
                     `IDENTITY MATCH CONFIRMED: The caller is ${context.customer.name}.`,
                     `Immediately address the caller as ${firstName}; do not ask for their name again.`,
                     context.greeting_hint || "",
+                    context.last_call
+                      ? `LAST CONTACT: ${context.last_call.when} — ${context.last_call.service_type} (${context.last_call.status}). Discussed: ${context.last_call.summary} Appointment: ${context.last_call.appointment}`
+                      : "",
+                    context.active_jobs?.length ? `OPEN JOBS: ${context.active_jobs.join(" | ")}` : "",
                     `Customer context: ${JSON.stringify(context)}`,
                   ].filter(Boolean).join(" ");
+
                 } else {
                   toolResult = "NO IDENTITY MATCH: This number is not linked to a customer. Ask for the caller's name.";
                 }
