@@ -1427,7 +1427,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
 
 
           {/* Status Filter Buttons — merged into bottom bar as a notched tab */}
-          {mapLoaded && (
+          {mapLoaded && !hideStatusFilters && (
             <div
               className="absolute bottom-[calc(1rem+4px)] sm:bottom-[calc(1.5rem+4px)] left-1/2 -translate-x-1/2 z-30 max-w-[calc(100%-1rem)] border border-[#0077B6]/60 shadow-xl pt-3 pb-1 px-4 sm:px-6 pointer-events-auto rounded-t-2xl rounded-b-md overflow-hidden"
               style={{
