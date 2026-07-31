@@ -56,7 +56,7 @@ async function fetchPreview(kpiKey: string, today: string): Promise<PreviewRow[]
         primary: q.customers?.name || q.quote_number,
         secondary: `${q.quote_number} • ${q.created_at ? format(new Date(q.created_at), "dd MMM HH:mm") : ""}`,
         value: `R ${Number(q.total || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`,
-        href: q.customer_id ? `/admin/customers/${q.customer_id}` : "/admin/quotes",
+        href: `/admin/estimates/${q.id}`,
       }));
     }
     case "overdue_invoices": {
