@@ -112,9 +112,11 @@ function extractCallerInfo(messages: any[], analysis?: any): {
 }
 
 function isValidLead(durationSeconds: number, messages: any[]): boolean {
-  if (durationSeconds < 15) return false;
   const userMessages = messages.filter((m: any) => m.role === "user");
-  return userMessages.length >= 1;
+  // A real conversation is the strongest signal — accept it even when Vapi
+  // reports no/unknown duration (startedAt is sometimes missing on the report).
+  if (userMessages.length >= 1) return true;
+  return durationSeconds >= 15;
 }
 
 // ─── WhatsApp via Twilio ───────────────────────────────────
