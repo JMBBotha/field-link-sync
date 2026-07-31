@@ -648,6 +648,25 @@ serve(async (req) => {
 
           await supabaseAdmin.from("leads").update(patch).eq("id", existing.id);
 
+          await recordCall({
+            providerCallId: callSid,
+            callerPhone,
+            callerName,
+            businessPhone: call?.phoneNumber?.number || null,
+            leadId: existing.id,
+            customerId: existing.customer_id,
+            startedAt: startedAtRaw ? new Date(startedAtRaw).toISOString() : null,
+            endedAt: endedAtRaw ? new Date(endedAtRaw).toISOString() : null,
+            durationSeconds,
+            endedReason,
+            serviceType,
+            urgency,
+            summary,
+            transcript,
+            recordingUrl,
+            outcome: "lead_enriched",
+          });
+
           return new Response(JSON.stringify({
             ok: true,
             event: "end-of-call-report",
