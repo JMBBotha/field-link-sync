@@ -47,18 +47,29 @@ async function fetchPreview(kpiKey: string, today: string): Promise<PreviewRow[]
     case "pending_quotes": {
       const { data } = await supabase
         .from("quotes")
-        .select("id, quote_number, total, created_at, customer_id, customers(name)")
+        .select("id, quote_number, total, created_at, customer_id, company_id, customer_name, customers(name, email, address)")
         .eq("status", "draft")
         .order("created_at", { ascending: false })
         .limit(5);
       return (data || []).map((q: any) => ({
         id: q.id,
-        primary: q.customers?.name || q.quote_number,
+        primary: q.customers?.name || q.customer_name || q.quote_number,
         secondary: `${q.quote_number} • ${q.created_at ? format(new Date(q.created_at), "dd MMM HH:mm") : ""}`,
         value: `R ${Number(q.total || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`,
         href: `/admin/estimates/${q.id}`,
+        quote: {
+          id: q.id,
+          quoteNumber: q.quote_number,
+          total: Number(q.total || 0),
+          customerId: q.customer_id,
+          companyId: q.company_id,
+          clientName: q.customers?.name || q.customer_name || "",
+          email: q.customers?.email || null,
+          address: q.customers?.address || null,
+        },
       }));
     }
+
     case "overdue_invoices": {
       const { data } = await supabase
         .from("invoices")
