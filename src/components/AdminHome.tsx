@@ -286,8 +286,13 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
             ))
 
           : kpiCards.map((kpi) => (
-              <Card
+              <KpiHoverPreview
                 key={kpi.key}
+                kpiKey={kpi.key}
+                label={kpi.label}
+                viewAllHref={kpiViewAllHref[kpi.key] || "/admin"}
+              >
+              <Card
                 className="cursor-pointer rounded-xl border border-primary/50 !bg-[linear-gradient(135deg,#0077B6_0%,#5E9BBE_48%,#CBD5E1_100%)] text-slate-950 shadow-sm transition-all duration-200 hover:border-primary hover:shadow-md [--muted-foreground:210_25%_22%]"
                 onClick={() => setSelectedKpi(kpi.key)}
               >
@@ -322,6 +327,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                   )}
                 </CardContent>
               </Card>
+              </KpiHoverPreview>
             ))}
       </div>
 
