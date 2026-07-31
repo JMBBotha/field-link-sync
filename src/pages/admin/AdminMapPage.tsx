@@ -46,6 +46,16 @@ const AdminMapPage = () => {
   const pageRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [trafficEnabled, setTrafficEnabledState] = useState(false);
+  const [statusState, setStatusState] = useState<MapStatusState>({
+    filters: new Set<LeadStatusFilter>(["pending", "accepted", "in_progress"]),
+    counts: { pending: 0, accepted: 0, in_progress: 0, completed: 0 },
+  });
+
+  const handleStatusStateChange = useCallback((s: MapStatusState) => setStatusState(s), []);
+  const handleStatusToggle = useCallback(
+    (status: LeadStatusFilter) => mapRef.current?.toggleStatusFilter(status),
+    []
+  );
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement);
