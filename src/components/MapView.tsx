@@ -84,7 +84,7 @@ const escapeHtml = (text: string | null | undefined): string => {
   return div.innerHTML;
 };
 
-const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange, onLeadClick, showAllAgents = false, hideChromeControls = false }, ref) => {
+const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange, onLeadClick, showAllAgents = false, hideChromeControls = false, hideStatusFilters = false, onStatusStateChange }, ref) => {
   const MAP_CHROME_BOTTOM_OFFSET_PX = 64;
   const { user } = useAuth();
   const [agents, setAgents] = useState<AgentLocation[]>([]);
