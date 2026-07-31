@@ -248,6 +248,75 @@ serve(async (req) => {
 
     console.log(`[vapi-server-event] Event: ${messageType}`);
 
+    // ─── Handle assistant-request (fires BEFORE Mandy speaks) ───
+    // Doing the caller lookup here means the identity is already known when
+    // the call is answered — no mid-greeting "please hold" pause, and the
+    // first sentence can use the customer's name and last-call context.
+    if (messageType === "assistant-request") {
+      const callerNumber = extractCallerNumber(body);
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const apiKey = Deno.env.get("VAPI_WEBHOOK_SECRET")!;
+
+      let context: any = null;
+      if (callerNumber) {
+        try {
+          const res = await fetch(`${supabaseUrl}/functions/v1/lookup-caller`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-api-key": apiKey },
+            body: JSON.stringify({ phone_number: callerNumber }),
+          });
+          const json = await res.json();
+          context = typeof json.result === "string" ? JSON.parse(json.result) : json.result;
+        } catch (err) {
+          console.error("[vapi-server-event] assistant-request lookup failed:", err);
+        }
+      }
+
+      const known = context?.is_existing_customer && context?.customer?.name;
+      const firstName = known
+        ? (context.customer.first_name || context.customer.name.split(" ")[0])
+        : "";
+
+      let firstMessage = "Hi, you've reached 0800BeCool. How can I help you today?";
+      if (known) {
+        const lastCall = context.last_call;
+        firstMessage = lastCall
+          ? `Hi ${firstName}, welcome back to 0800BeCool. I see you contacted us ${lastCall.when.replace(/^.*\(/, "").replace(/\)$/, "")} about your ${String(lastCall.service_type || "job").toLowerCase()}. Are you calling about that?`
+          : `Hi ${firstName}, welcome back to 0800BeCool. How can I help you today?`;
+      }
+
+      const contextBlock = known
+        ? [
+            `CALLER IDENTITY (already verified from caller ID ${callerNumber}) — do NOT ask who is calling and do NOT ask them to hold while you check.`,
+            context.greeting_hint,
+            context.last_call
+              ? `Last contact: ${context.last_call.when} — ${context.last_call.service_type} (${context.last_call.status}). Discussed: ${context.last_call.summary} Appointment: ${context.last_call.appointment}`
+              : "",
+            context.active_jobs?.length ? `Open jobs:\n${context.active_jobs.join("\n")}` : "",
+            context.recent_jobs?.length ? `Job history:\n${context.recent_jobs.join("\n")}` : "",
+            context.equipment?.length ? `Equipment on file:\n${context.equipment.join("\n")}` : "",
+          ].filter(Boolean).join("\n")
+        : `CALLER IDENTITY: unknown number ${callerNumber || "(withheld)"}. Treat as a new caller and ask for their name.`;
+
+      console.log(`[vapi-server-event] assistant-request for ${callerNumber || "(no number)"} — known=${!!known}`);
+
+      return new Response(JSON.stringify({
+        assistantOverrides: {
+          firstMessage,
+          variableValues: {
+            caller_phone: callerNumber || "",
+            caller_name: known ? context.customer.name : "",
+            caller_first_name: firstName,
+            is_existing_customer: !!known,
+            caller_context: contextBlock,
+          },
+        },
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // ─── Handle tool-calls (lookup_caller / check_job_status) ───
     if (messageType === "tool-calls") {
       const toolCallList = body.message.toolCallList || body.message.toolWithToolCallList || [];
@@ -309,8 +378,13 @@ serve(async (req) => {
                     `IDENTITY MATCH CONFIRMED: The caller is ${context.customer.name}.`,
                     `Immediately address the caller as ${firstName}; do not ask for their name again.`,
                     context.greeting_hint || "",
+                    context.last_call
+                      ? `LAST CONTACT: ${context.last_call.when} — ${context.last_call.service_type} (${context.last_call.status}). Discussed: ${context.last_call.summary} Appointment: ${context.last_call.appointment}`
+                      : "",
+                    context.active_jobs?.length ? `OPEN JOBS: ${context.active_jobs.join(" | ")}` : "",
                     `Customer context: ${JSON.stringify(context)}`,
                   ].filter(Boolean).join(" ");
+
                 } else {
                   toolResult = "NO IDENTITY MATCH: This number is not linked to a customer. Ask for the caller's name.";
                 }
