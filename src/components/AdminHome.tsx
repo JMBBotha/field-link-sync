@@ -13,6 +13,7 @@ import CompletedLeadsList from "@/components/admin/CompletedLeadsList";
 import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
 import AdminMapPage from "@/pages/admin/AdminMapPage";
 import KpiDetailDialog from "@/components/admin/KpiDetailDialog";
+import KpiHoverPreview from "@/components/admin/KpiHoverPreview";
 import QuotePerformanceWidget from "@/components/analytics/QuotePerformanceWidget";
 import PipelineMetrics from "@/components/analytics/PipelineMetrics";
 import QuickTemplateDialog from "@/components/quoting/QuickTemplateDialog";
@@ -26,6 +27,14 @@ import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
+
+const kpiViewAllHref: Record<string, string> = {
+  new_leads: "/admin/dispatch",
+  active_jobs: "/admin/jobs",
+  pending_quotes: "/admin/quotes",
+  overdue_invoices: "/admin/invoices",
+  active_techs: "/admin/team",
+};
 
 interface AdminHomeProps {
   onNavigate: (tab: string) => void;
@@ -286,8 +295,13 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
             ))
 
           : kpiCards.map((kpi) => (
-              <Card
+              <KpiHoverPreview
                 key={kpi.key}
+                kpiKey={kpi.key}
+                label={kpi.label}
+                viewAllHref={kpiViewAllHref[kpi.key] || "/admin"}
+              >
+              <Card
                 className="cursor-pointer rounded-xl border border-primary/50 !bg-[linear-gradient(135deg,#0077B6_0%,#5E9BBE_48%,#CBD5E1_100%)] text-slate-950 shadow-sm transition-all duration-200 hover:border-primary hover:shadow-md [--muted-foreground:210_25%_22%]"
                 onClick={() => setSelectedKpi(kpi.key)}
               >
@@ -322,6 +336,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                   )}
                 </CardContent>
               </Card>
+              </KpiHoverPreview>
             ))}
       </div>
 
