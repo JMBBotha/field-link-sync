@@ -125,6 +125,7 @@ const NotificationsList = ({
                       })}
                     </p>
                   </div>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 self-center" />
                 </button>
               );
             })}
