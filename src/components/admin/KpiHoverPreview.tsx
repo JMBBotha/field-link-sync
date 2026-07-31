@@ -4,11 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Briefcase, Send, Loader2 } from "lucide-react";
+import { ChevronRight, Briefcase, Send, Loader2, X } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
 import { toast } from "sonner";
+
 
 export interface QuoteQuickAction {
   id: string;
