@@ -293,8 +293,13 @@ serve(async (req) => {
       const messages = artifact.messages || [];
       const recordingUrl = artifact.recording?.url || artifact.recordingUrl || "";
 
-      // Get caller phone
-      const customerPhone = call.customer?.number || "";
+      // Get caller phone (fall back to other payload shapes Vapi uses)
+      const customerPhone =
+        call.customer?.number ||
+        body.message.customer?.number ||
+        call.from ||
+        body.message.phoneNumber?.number ||
+        "";
       const callerPhone = normalizePhone(customerPhone);
 
       if (!callerPhone) {
@@ -305,14 +310,19 @@ serve(async (req) => {
         });
       }
 
-      // Calculate duration
-      const startedAt = call.startedAt ? new Date(call.startedAt).getTime() : 0;
-      const endedAt = call.endedAt ? new Date(call.endedAt).getTime() : Date.now();
-      const durationSeconds = startedAt ? Math.round((endedAt - startedAt) / 1000) : 0;
+      // Calculate duration — Vapi may send it directly, or only timestamps
+      const startedAtRaw = call.startedAt || body.message.startedAt;
+      const endedAtRaw = call.endedAt || body.message.endedAt;
+      const startedAt = startedAtRaw ? new Date(startedAtRaw).getTime() : 0;
+      const endedAt = endedAtRaw ? new Date(endedAtRaw).getTime() : Date.now();
+      const durationSeconds =
+        Number(body.message.durationSeconds) ||
+        (Number(body.message.durationMs) ? Math.round(Number(body.message.durationMs) / 1000) : 0) ||
+        (startedAt ? Math.round((endedAt - startedAt) / 1000) : 0);
 
       // Skip short calls
       if (!isValidLead(durationSeconds, messages)) {
-        console.log(`[vapi-server-event] Short call (${durationSeconds}s) — skipping`);
+        console.log(`[vapi-server-event] Short call (${durationSeconds}s, ${messages.length} msgs) — skipping`);
         return new Response(JSON.stringify({
           ok: true,
           skipped: "too short",
