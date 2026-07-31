@@ -117,6 +117,19 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
   const statusFiltersRef = useRef<Set<LeadStatusFilter>>(new Set(["pending", "accepted", "in_progress"]));
   useEffect(() => { leadsRef.current = leads; }, [leads]);
   useEffect(() => { statusFiltersRef.current = statusFilters; }, [statusFilters]);
+
+  // Publish filter selection + counts so a parent (page header) can render the pills.
+  useEffect(() => {
+    onStatusStateChange?.({
+      filters: new Set(statusFilters),
+      counts: {
+        pending: leads.filter((l) => l.status === "pending").length,
+        accepted: leads.filter((l) => l.status === "accepted" || l.status === "claimed").length,
+        in_progress: leads.filter((l) => l.status === "in_progress").length,
+        completed: leads.filter((l) => l.status === "completed").length,
+      },
+    });
+  }, [statusFilters, leads, onStatusStateChange]);
   const initialBoundsFitRef = useRef(false);
   const missingAgentCountsRef = useRef<Map<string, number>>(new Map());
   const missingLeadCountsRef = useRef<Map<string, number>>(new Map());
