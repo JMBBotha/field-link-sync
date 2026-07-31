@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   MapPin,
   MessageSquare,
+  Phone,
   CalendarDays,
   LayoutGrid,
   FileText,
