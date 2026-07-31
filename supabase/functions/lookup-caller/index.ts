@@ -231,9 +231,12 @@ serve(async (req) => {
         // Strip inline metadata prefixes like "Source: vapi_direct | CallSid: … | Caller: +27… "
         .replace(/^.*?\|\s*Caller:\s*\+?\d[\d\s]*/i, "")
         .replace(/\b(CallSid|Source|Recovered after)\b[^|]*\|?/gi, "")
+        // Cut off where the raw transcript starts ("AI: …", "User: …")
+        .split(/\b(?:AI|User|Assistant|Bot):\s/)[0]
         .trim();
       return cleaned.slice(0, 400).trim();
     };
+
 
 
     const describeAppointment = (lead: any): string => {
