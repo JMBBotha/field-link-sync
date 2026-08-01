@@ -221,7 +221,9 @@ serve(async (req) => {
     const leadSelect =
       "id, service_type, status, notes, created_at, completed_at, scheduled_date, scheduled_time, assigned_agent_id, technician_name, technician_eta, order_status, parts_status, customer_phone, customer_address";
 
-    const [{ data: leadsById }, { data: leadsByPhone }, { data: equipment }, { data: locations }, { data: jobs }] = await Promise.all([
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const [{ data: leadsById }, { data: leadsByPhone }, { data: equipment }, { data: locations }, { data: jobs }, { data: pastCalls }] = await Promise.all([
       supabase
         .from("leads")
         .select(leadSelect)
