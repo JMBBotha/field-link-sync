@@ -392,6 +392,75 @@ serve(async (req) => {
         }
       : null;
 
+    // --- Cross-call memory: merge logged calls with call-created leads so the
+    //     history is complete even when a call row was never written. ---
+    const clockSast = (iso: string) =>
+      new Date(iso).toLocaleString("en-ZA", {
+        timeZone: SAST, weekday: "short", day: "numeric", month: "short",
+        hour: "2-digit", minute: "2-digit", hour12: false,
+      });
+
+    type CallEntry = { at: string; topic: string; summary: string; outcome: string | null; source: string };
+
+    const callEntries: CallEntry[] = [
+      ...(pastCalls || []).map((c: any) => ({
+        at: c.started_at || c.created_at,
+        topic: c.service_type || "general enquiry",
+        summary: (c.summary || "").trim(),
+        outcome: c.outcome || null,
+        source: "call",
+      })),
+      ...allLeads
+        .filter((l: any) => new Date(l.created_at).getTime() >= Date.now() - 7 * 24 * 60 * 60 * 1000)
+        .map((l: any) => ({
+          at: l.created_at,
+          topic: l.service_type || "general enquiry",
+          summary: summarizeNotes(l.notes),
+          outcome: l.status || null,
+          source: "lead",
+        })),
+    ]
+      .filter((e) => !!e.at)
+      .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+      // Drop near-duplicates: a call row and its lead row within 5 minutes.
+      .filter((e, i, rows) =>
+        rows.findIndex(
+          (o) =>
+            o.topic === e.topic &&
+            Math.abs(new Date(o.at).getTime() - new Date(e.at).getTime()) < 5 * 60 * 1000,
+        ) === i,
+      )
+      .slice(0, 5);
+
+    const startOfTodaySast = new Date(
+      new Date().toLocaleString("en-US", { timeZone: SAST }),
+    ).setHours(0, 0, 0, 0);
+    const callsToday = callEntries.filter(
+      (e) => new Date(new Date(e.at).toLocaleString("en-US", { timeZone: SAST })).getTime() >= startOfTodaySast,
+    );
+
+    const callHistoryLines = callEntries.map(
+      (e) =>
+        `- ${clockSast(e.at)} (${timeAgo(e.at)}) — ${e.topic}${e.outcome ? ` [${e.outcome}]` : ""}${e.summary ? `: ${e.summary.slice(0, 220)}` : ""}`,
+    );
+
+    // Infer the most likely reason for THIS call from the recent pattern.
+    let likelyIntent = "";
+    if (hasConfirmedAppointmentPlaceholder) { /* replaced below */ }
+    const topTopic = callEntries[0]?.topic;
+    if (callsToday.length >= 2) {
+      likelyIntent = `They have already called ${callsToday.length} times today, most recently about ${topTopic}. They are almost certainly following up on that — open by acknowledging it (e.g. "Hi ${customerName}, good to hear from you again — is this about the ${topTopic} we spoke about earlier?") instead of starting from scratch.`;
+    } else if (callEntries.length >= 2) {
+      likelyIntent = `They have contacted us ${callEntries.length} times in the past week, most recently about ${topTopic}. Treat this as a continuation of that thread and ask if they are following up on it.`;
+    } else if (callEntries.length === 1) {
+      likelyIntent = `Their only recent contact was about ${topTopic} (${timeAgo(callEntries[0].at)}). Likely a follow-up on that.`;
+    }
+
+    const callHistorySummary = callHistoryLines.length
+      ? `Recent calls/contacts (most recent first, South African time):\n${callHistoryLines.join("\n")}\n${likelyIntent}`
+      : "No calls logged in the past 7 days.";
+
+
     // --- Real scheduled work: jobs table (source of truth) + scheduled leads ---
     // Only UPCOMING work counts as a confirmed appointment — a job dated in the
     // past must never be read back as a booking.
