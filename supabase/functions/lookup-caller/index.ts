@@ -426,7 +426,7 @@ serve(async (req) => {
       is_existing_customer: true,
       current_time_sast: nowInSast(),
       timezone: "Africa/Johannesburg (SAST, UTC+2)",
-      has_confirmed_appointment: bookedJobs.length > 0,
+      has_confirmed_appointment: hasConfirmedAppointment,
       greeting_hint: greetingHint,
 
       customer: {
@@ -439,13 +439,21 @@ serve(async (req) => {
         city: customer.city || null,
         status: customer.status,
       },
+      customer_address: hasAddress ? address : null,
+      customer_locations: (locations || []).map((l: any) => ({
+        label: l.label,
+        address: cleanAddress(l.address),
+        is_primary: !!l.is_primary,
+      })),
       last_call: lastCall,
+      confirmed_appointments: jobAppointmentSummaries,
       active_jobs: activeJobSummaries,
       recent_jobs: jobSummaries,
       equipment: equipmentSummaries,
       total_jobs: recentLeads.length,
       total_equipment: equipment?.length || 0,
     };
+
 
     console.log("[lookup-caller] Returning context for:", fullName);
 
