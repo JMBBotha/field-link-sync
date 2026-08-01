@@ -499,6 +499,11 @@ serve(async (req) => {
       greetingHint += ` They last contacted us ${timeAgo(lastLead!.created_at)} about a ${lastCall.service_type} (currently ${lastCall.status}). What was discussed: ${lastCall.summary}. Appointment: ${lastCall.appointment}. Reference this naturally instead of asking them to repeat themselves.`;
     }
 
+    if (callHistoryLines.length > 0) {
+      greetingHint += ` CALL HISTORY (last 7 days):\n${callHistoryLines.join("\n")}\n${likelyIntent} Never make them repeat what they already told us on an earlier call.`;
+    }
+
+
     if (activeJobSummaries.length > 0) {
       greetingHint += ` They have an open job — assume the call is about it unless they say otherwise.`;
     }
