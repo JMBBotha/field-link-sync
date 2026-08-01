@@ -748,3 +748,71 @@ All colors MUST be HSL.
   color: hsl(var(--foreground));
   box-shadow: 0 1px 3px hsl(214 40% 20% / 0.18);
 }
+
+/* ── Make the glass actually readable as glass ───────────────────── */
+/* 1. A richer, higher-contrast ambient backdrop so blur has something
+      to blur and translucent panels visibly pick up colour underneath. */
+:root {
+  --surface-glass-alpha: 0.42;
+  --surface-glass-hover-alpha: 0.58;
+  --surface-solid-alpha: 0.66;
+  --surface-shell-alpha: 0.45;
+  --surface-blur: 26px;
+  --surface-shadow:
+    0 18px 40px -22px hsl(214 45% 18% / 0.65),
+    inset 0 1px 0 0 hsl(0 0% 100% / 0.75);
+  --app-ambient:
+    radial-gradient(760px 520px at 8% -10%, hsl(206 78% 46% / 0.42), transparent 62%),
+    radial-gradient(680px 460px at 98% 4%, hsl(148 62% 45% / 0.32), transparent 62%),
+    radial-gradient(820px 620px at 42% 108%, hsl(214 52% 34% / 0.34), transparent 66%),
+    radial-gradient(520px 380px at 72% 46%, hsl(268 60% 55% / 0.16), transparent 66%);
+}
+.dark {
+  --surface-glass-alpha: 0.34;
+  --surface-glass-hover-alpha: 0.5;
+  --surface-solid-alpha: 0.62;
+  --surface-shell-alpha: 0.38;
+  --surface-shadow:
+    0 18px 40px -22px hsl(0 0% 0% / 0.85),
+    inset 0 1px 0 0 hsl(205 60% 85% / 0.16);
+  --app-ambient:
+    radial-gradient(760px 520px at 8% -10%, hsl(206 78% 46% / 0.32), transparent 62%),
+    radial-gradient(680px 460px at 98% 4%, hsl(180 60% 40% / 0.20), transparent 62%),
+    radial-gradient(820px 620px at 42% 108%, hsl(224 70% 42% / 0.26), transparent 66%);
+}
+
+/* Nested .app-surface (layout + main) must not repaint the base colour,
+   otherwise the ambient gradient is flattened out. */
+.app-surface .app-surface {
+  background-color: transparent;
+}
+
+/* 2. Glassify every default shadcn card/panel so the effect is app-wide,
+      not just on components that opted into .surface-card. */
+.app-surface .bg-card:not(.surface-card-solid):not([data-solid]),
+.app-surface .bg-background\/60,
+.app-surface .bg-white:not(.pdf-page):not([data-solid]) {
+  background-color: hsl(var(--surface-glass) / var(--surface-glass-alpha)) !important;
+  backdrop-filter: blur(var(--surface-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(150%);
+  border-color: hsl(var(--surface-border) / var(--surface-border-alpha));
+  box-shadow: var(--surface-shadow);
+}
+
+/* 3. Bright glass edge on the main surface primitives. */
+.surface-card,
+.surface-card-solid,
+.surface-shell {
+  box-shadow: var(--surface-shadow);
+  border-color: hsl(var(--surface-border) / var(--surface-border-alpha));
+}
+
+/* Overlays that must stay legible keep their solid look. */
+[role="dialog"] .bg-card,
+[data-radix-popper-content-wrapper] .bg-card {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background-color: hsl(var(--card)) !important;
+  box-shadow: none;
+}
+
