@@ -607,6 +607,19 @@ const SummaryChips = ({ items }: { items: { label: string; value: string; tone: 
 );
 
 
+const ContactRow = ({
+  icon: Icon, value, label, breakAll,
+}: { icon: any; value?: string | null; label: string; breakAll?: boolean }) => (
+  <div className="flex items-start gap-2">
+    <Icon className={cn("h-4 w-4 mt-0.5 shrink-0", value ? "text-primary" : "text-muted-foreground/50")} />
+    {value ? (
+      <span className={cn(breakAll && "break-all")}>{value}</span>
+    ) : (
+      <span className="text-muted-foreground italic">{label}</span>
+    )}
+  </div>
+);
+
 const Stat = ({ label, value }: { label: string; value: string }) => (
   <div>
     <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
