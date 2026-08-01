@@ -10,6 +10,7 @@ import { createTeardropMarkerElement } from "@/utils/MarkerUtils";
 import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilterButtons";
 import { Switch } from "@/components/ui/switch";
 import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
+import { hasValidCoords, resolveLeadCoords } from "@/lib/leadCoords";
 
 interface AgentLocation {
   agent_id: string;
@@ -213,6 +214,10 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
   // Expose panToLocation and panToLocationAndOpenPopup methods via ref
   useImperativeHandle(ref, () => ({
     panToLocation: (lat: number, lng: number) => {
+      if (!hasValidCoords(lat, lng)) {
+        console.warn('[MapView] panToLocation: invalid coordinates ignored', { lat, lng });
+        return;
+      }
       console.log('[MapView] panToLocation called:', { lat, lng, mapLoaded, hasMap: !!mapInstanceRef.current });
       
       if (!mapInstanceRef.current) {
@@ -238,6 +243,10 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       }
     },
     panToLocationAndOpenPopup: (lat: number, lng: number, leadId: string) => {
+      if (!hasValidCoords(lat, lng)) {
+        console.warn('[MapView] panToLocationAndOpenPopup: location not confirmed for lead', leadId);
+        return;
+      }
       console.log('[MapView] panToLocationAndOpenPopup called:', { lat, lng, leadId, mapLoaded, hasMap: !!mapInstanceRef.current });
       
       if (!mapInstanceRef.current) {
@@ -495,7 +504,11 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
 
       setAgents(freshAgents as any);
     }
-    if (leadData) setLeads(leadData);
+    if (leadData) {
+      // Prefer linked customer primary location coords; geocode + persist otherwise.
+      const withCoords = await resolveLeadCoords(leadData as any[]);
+      setLeads(withCoords as any);
+    }
 
     // Fetch customer locations for company (multi-site pins)
     if (companyId) {
@@ -1144,6 +1157,15 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
 
     // Upsert lead markers (show/hide based on filter)
     leads.forEach((lead) => {
+      // Never plot a marker without real coordinates (avoids 0,0 "ocean" pins).
+      if (!hasValidCoords(lead.latitude, lead.longitude)) {
+        const stale = leadMarkersRef.current.get(lead.id);
+        if (stale) {
+          try { stale.remove(); } catch { /* ignore */ }
+          leadMarkersRef.current.delete(lead.id);
+        }
+        return;
+      }
       const isVisible = shouldShowLead(lead);
       const popupHTML = buildLeadPopupHTML(lead);
 
@@ -1319,6 +1341,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       });
 
       leads.forEach((lead) => {
+        if (!hasValidCoords(lead.latitude, lead.longitude)) return;
         bounds.extend([lead.longitude, lead.latitude]);
       });
 

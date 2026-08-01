@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
+import { hasValidCoords } from "@/lib/leadCoords";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -372,6 +373,13 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot }: LeadsListProps) =>
         <span className="text-xs text-primary underline group-hover:no-underline flex-1 min-w-0 break-words">{lead.customer_address}</span>
         <Navigation className="h-3 w-3 text-primary flex-shrink-0 mt-0.5" />
       </button>
+      {!hasValidCoords(lead.latitude, lead.longitude) && (
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <MapPin className="h-3 w-3" />
+          Location not confirmed
+        </div>
+      )}
+
       <div className="flex items-center gap-2 min-w-0">
         <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
         <a href={`tel:${lead.customer_phone}`} className="text-xs text-primary hover:underline truncate min-w-0" onClick={(e) => e.stopPropagation()}>{lead.customer_phone}</a>
