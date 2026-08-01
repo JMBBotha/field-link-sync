@@ -425,9 +425,7 @@ const CreateCustomerFBDialog = ({
     try {
       const { getUserCompanyId } = await import("@/lib/tenantUtils");
       const company_id = await getUserCompanyId(userId);
-      const { data, error } = await supabase
-        .from("customers")
-        .insert({
+      const payload = {
           first_name: form.first_name,
           last_name: form.last_name,
           name: `${form.first_name} ${form.last_name}`.trim(),
@@ -442,11 +440,20 @@ const CreateCustomerFBDialog = ({
           vat_number: form.vat_number || null,
           notes: form.notes || null,
           status: form.status,
-          lead_source: toLeadSourceValue(form.lead_source),
-          company_id,
-        })
-        .select("id")
-        .single();
+        lead_source: toLeadSourceValue(form.lead_source),
+        company_id,
+      };
+
+      let { data, error } = await supabase.from("customers").insert(payload).select("id").single();
+
+      // Never hard-fail the whole save because of an unexpected lead source value.
+      if (error && /lead_source/i.test(error.message || "")) {
+        ({ data, error } = await supabase
+          .from("customers")
+          .insert({ ...payload, lead_source: "other" })
+          .select("id")
+          .single());
+      }
       if (error) throw error;
       toast({ title: "Customer created ✅" });
       reset();

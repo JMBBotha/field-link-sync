@@ -653,7 +653,7 @@ const EditCustomerDialog = ({
   const save = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase.from("customers").update({
+      const payload = {
         first_name: form.first_name,
         last_name: form.last_name,
         name: `${form.first_name} ${form.last_name}`.trim(),
@@ -669,7 +669,15 @@ const EditCustomerDialog = ({
         notes: form.notes || null,
         status: form.status,
         lead_source: toLeadSourceValue(form.lead_source),
-      }).eq("id", customer.id);
+      };
+
+      let { error } = await supabase.from("customers").update(payload).eq("id", customer.id);
+      if (error && /lead_source/i.test(error.message || "")) {
+        ({ error } = await supabase
+          .from("customers")
+          .update({ ...payload, lead_source: "other" })
+          .eq("id", customer.id));
+      }
       if (error) throw error;
       toast({ title: "Customer updated ✅" });
       onOpenChange(false);
