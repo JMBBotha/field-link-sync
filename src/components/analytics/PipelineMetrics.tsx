@@ -146,7 +146,7 @@ const PipelineMetrics = () => {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
         {cards.map((c) => (
-          <Card key={c.key} className="rounded-xl border border-border/60 bg-card">
+          <Card key={c.key} className="surface-card surface-card-interactive">
             <CardContent className="p-3 md:p-4">
               <div className="flex items-center gap-2 mb-1">
                 <c.icon className={`h-4 w-4 ${c.accent}`} />
