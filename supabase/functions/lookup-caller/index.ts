@@ -176,22 +176,22 @@ serve(async (req) => {
     const phoneVariants = normalizeForLookup(phoneNumber);
     console.log(`[lookup-caller] Phone variants:`, phoneVariants);
 
-    let customer = null;
+    // One combined query across every variant — the old per-variant loop ran
+    // up to 4 sequential round-trips and made Mandy stall mid-call.
+    const orFilter = [
+      ...phoneVariants.map((v) => `phone.eq.${v}`),
+      ...phoneVariants.map((v) => `secondary_phone.eq.${v}`),
+      ...phoneVariants.map((v) => `normalized_phone.eq.${v.replace(/\D/g, "").replace(/^27/, "0")}`),
+    ].join(",");
 
-    // Try each phone variant against the customers table
-    for (const variant of phoneVariants) {
-      const { data } = await supabase
-        .from("customers")
-        .select("id, name, first_name, last_name, phone, email, address, primary_address_line1, city, status, secondary_phone")
-        .or(`phone.eq.${variant},secondary_phone.eq.${variant},normalized_phone.eq.${variant.replace(/\D/g, "").replace(/^27/, "0")}`)
-        .limit(1)
-        .single();
+    const { data: matches } = await supabase
+      .from("customers")
+      .select("id, name, first_name, last_name, phone, email, address, primary_address_line1, city, status, secondary_phone")
+      .or(orFilter)
+      .limit(1);
 
-      if (data) {
-        customer = data;
-        break;
-      }
-    }
+    const customer = matches?.[0] || null;
+
 
     // --- No match: new caller ---
     if (!customer) {
