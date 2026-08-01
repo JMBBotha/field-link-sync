@@ -76,24 +76,45 @@ export default function BusinessSearch({ getToken, onSelect, onSelectLead, proxi
           .limit(8),
       ]);
 
-      // 2) Mapbox POI search (secondary).
+      // 2) Mapbox business/POI search (secondary) — country-wide, not limited to
+      //    the current map viewport. Runs a proximity-biased pass plus a broad
+      //    national pass, then merges the two.
       const token = getToken();
       const mapboxPromise = (async () => {
         if (!token) return [] as Feature[];
-        const params = new URLSearchParams({
-          access_token: token,
-          types: "poi",
-          limit: "6",
-          autocomplete: "true",
-          language: "en",
+        const runSearch = async (useProximity: boolean) => {
+          const params = new URLSearchParams({
+            access_token: token,
+            types: "poi,address,place,locality,neighborhood",
+            limit: "10",
+            autocomplete: "true",
+            language: "en",
+            country: "za",
+          });
+          if (useProximity && proximity) params.set("proximity", `${proximity.lng},${proximity.lat}`);
+          const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(term)}.json?${params}`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          return (data.features || []) as Feature[];
+        };
+
+        const [near, wide] = await Promise.all([
+          proximity ? runSearch(true).catch(() => [] as Feature[]) : Promise.resolve([] as Feature[]),
+          runSearch(false).catch(() => [] as Feature[]),
+        ]);
+
+        const seen = new Set<string>();
+        const merged: Feature[] = [];
+        [...near, ...wide].forEach((f) => {
+          const key = f.id || `${f.place_name}`;
+          if (seen.has(key)) return;
+          seen.add(key);
+          merged.push(f);
         });
-        if (proximity) params.set("proximity", `${proximity.lng},${proximity.lat}`);
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(term)}.json?${params}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        return (data.features || []) as Feature[];
+        return merged.slice(0, 12);
       })();
+
 
       try {
         const [[leadsRes, customersRes], features] = await Promise.all([
