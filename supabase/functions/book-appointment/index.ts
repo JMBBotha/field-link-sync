@@ -29,6 +29,30 @@ const corsHeaders = {
 
 const SAST_OFFSET = "+02:00";
 
+/**
+ * Classify what the caller actually wants into a canonical service label +
+ * a `jobs.job_type` value. Prevents everything defaulting to "new installation".
+ */
+function classifyService(rawService: string, notes: string): { label: string; jobType: string } {
+  const text = `${rawService} ${notes}`.toLowerCase();
+  const has = (...words: string[]) => words.some((w) => text.includes(w));
+
+  if (has("quote", "quotation", "estimate", "price for", "how much", "site visit", "assessment", "survey")) {
+    return { label: "Quote / Site Visit", jobType: "survey" };
+  }
+  if (has("install", "new unit", "new aircon", "new air con", "fit a", "replacement unit", "replace the unit")) {
+    return { label: "New Installation", jobType: "installation" };
+  }
+  if (has("repair", "not cooling", "not working", "broken", "leak", "noise", "noisy", "fault", "error code", "won't switch", "wont switch", "blowing warm", "gas refill", "regas", "re-gas")) {
+    return { label: "Repair", jobType: "repair" };
+  }
+  if (has("service", "maintenance", "clean", "filter", "annual", "check-up", "check up")) {
+    return { label: "Service / Maintenance", jobType: "service" };
+  }
+  return { label: rawService || "Service / Maintenance", jobType: "service" };
+}
+
+
 function phoneVariants(phone: string): string[] {
   const digits = String(phone || "").replace(/\D/g, "");
   const out: string[] = [];
@@ -168,8 +192,10 @@ serve(async (req) => {
       customer.address ||
       "Address to be confirmed";
 
-    const serviceType = String(p.service_type || "Service / Maintenance").trim();
+    const rawService = String(p.service_type || "").trim();
     const notes = String(p.notes || "").trim();
+    const { label: serviceType, jobType } = classifyService(rawService, notes);
+
 
     // --- Reuse the caller's open lead (unscheduled OR already scheduled = reschedule) ---
     const { data: openLeads } = await supabase
@@ -248,6 +274,8 @@ serve(async (req) => {
           .update({
             lead_id: leadId,
             title: `${serviceType} — ${customer.name}`,
+            job_type: jobType,
+
             address,
             scheduled_for: when.iso,
             status: "scheduled",
@@ -265,7 +293,7 @@ serve(async (req) => {
           address,
           scheduled_for: when.iso,
           status: "scheduled",
-          job_type: "service",
+          job_type: jobType,
           priority: "normal",
         });
         if (jobErr) console.error("[book-appointment] job insert failed:", jobErr);
