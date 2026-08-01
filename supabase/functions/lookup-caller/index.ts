@@ -199,11 +199,15 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         result: JSON.stringify({
           is_existing_customer: false,
-          greeting_hint: "This is a new caller. Ask for their name and how you can help them.",
+          current_time_sast: nowInSast(),
+          timezone: "Africa/Johannesburg (SAST, UTC+2)",
+          has_confirmed_appointment: false,
+          greeting_hint: `Current date and time in South Africa (SAST, UTC+2) is ${nowInSast()}. This is a new caller with no history and NO appointment on file — never confirm or imply an existing booking. Ask for their name and how you can help them.`,
           customer: null,
           recent_jobs: [],
           equipment: [],
         }),
+
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
