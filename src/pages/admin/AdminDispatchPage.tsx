@@ -1177,7 +1177,39 @@ const WeekTimeline = ({
           </tr>
         </thead>
         <tbody>
+          <tr>
+            <td className="border-b border-r p-2 bg-warning/10 sticky left-0 z-10">
+              <div className="flex items-center gap-1.5">
+                <AlertTriangle className="h-3 w-3 text-warning shrink-0" />
+                <span className="text-xs font-medium truncate">Unassigned</span>
+              </div>
+            </td>
+            {dates.map(d => {
+              const dateStr = format(d, "yyyy-MM-dd");
+              const dayLeads = allLeads.filter(l => !l.assigned_agent_id && l.scheduled_date === dateStr);
+              return (
+                <td key={dateStr} className={`border-b p-1 align-top min-w-[100px] ${isToday(d) ? "bg-warning/10" : "bg-warning/5"}`}>
+                  <div className="space-y-0.5">
+                    {dayLeads.map(lead => (
+                      <div
+                        key={lead.id}
+                        className="rounded border border-dashed border-warning bg-warning/20 px-1.5 py-0.5 text-[10px] cursor-pointer break-words"
+                        title={`${lead.customer_name} • Unassigned`}
+                        onClick={() => onJobInfoClick(lead, null as any)}
+                      >
+                        <span className="font-medium">{(lead.scheduled_time || "").slice(0, 5)}</span> {lead.customer_name}
+                      </div>
+                    ))}
+                    {dayLeads.length === 0 && (
+                      <div className="text-[10px] text-muted-foreground/40 text-center py-2">—</div>
+                    )}
+                  </div>
+                </td>
+              );
+            })}
+          </tr>
           {agents.map(agent => (
+
             <tr key={agent.id}>
               <td className="border-b border-r p-2 bg-card sticky left-0 z-10">
                 <div className="flex items-center gap-1.5">
