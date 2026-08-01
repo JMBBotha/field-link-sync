@@ -24,6 +24,9 @@ const AdminInvoicesPage = () => {
     if (routeInvoiceId) {
       setSelectedInvoiceId(routeInvoiceId);
       setView("detail");
+    } else if (view === "detail") {
+      setSelectedInvoiceId(null);
+      setView("list");
     }
   }, [routeInvoiceId]);
 
