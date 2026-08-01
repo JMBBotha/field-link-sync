@@ -338,7 +338,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="installation">Installation</SelectItem>
-                <SelectItem value="service">Service</SelectItem>
+                <SelectItem value="service">Technical Service Call</SelectItem>
                 <SelectItem value="repair">Repair</SelectItem>
                 <SelectItem value="survey">Survey</SelectItem>
                 <SelectItem value="maintenance">Maintenance</SelectItem>

@@ -12,7 +12,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  *   phone_number: "+27696838624",
  *   date: "2026-08-05",            // ISO date, SAST
  *   time: "10:00",                 // 24h HH:MM, SAST
- *   service_type: "Service / Maintenance",
+ *   service_type: "Technical Service Call",
  *   address?: "2 Thompson Street, Strand",
  *   notes?: "Aircon not cooling",
  *   customer_name?: "Johan Botha"  // for new callers
@@ -47,9 +47,9 @@ function classifyService(rawService: string, notes: string): { label: string; jo
     return { label: "Repair", jobType: "repair" };
   }
   if (has("service", "maintenance", "clean", "filter", "annual", "check-up", "check up")) {
-    return { label: "Service / Maintenance", jobType: "service" };
+    return { label: "Technical Service Call", jobType: "service" };
   }
-  return { label: rawService || "Service / Maintenance", jobType: "service" };
+  return { label: rawService || "Technical Service Call", jobType: "service" };
 }
 
 

@@ -42,7 +42,7 @@ function mapServiceType(raw?: string): string {
   const lower = raw.toLowerCase();
   if (lower.includes("install") || lower.includes("new")) return "New Installation";
   if (lower.includes("repair") || lower.includes("fix") || lower.includes("broken")) return "Repair";
-  if (lower.includes("service") || lower.includes("maintain")) return "Service / Maintenance";
+  if (lower.includes("service") || lower.includes("maintain")) return "Technical Service Call";
   if (lower.includes("quote") || lower.includes("price")) return "Quote Request";
   return raw;
 }

@@ -94,7 +94,7 @@ function detectServiceType(transcript: string): string {
   const lower = transcript.toLowerCase();
   if (lower.includes("install") || lower.includes("new aircon") || lower.includes("new air con") || lower.includes("new unit")) return "New Installation";
   if (lower.includes("repair") || lower.includes("fix") || lower.includes("broken") || lower.includes("not working") || lower.includes("not cooling")) return "Repair";
-  if (lower.includes("service") || lower.includes("maintain") || lower.includes("clean")) return "Service / Maintenance";
+  if (lower.includes("service") || lower.includes("maintain") || lower.includes("clean")) return "Technical Service Call";
   if (lower.includes("quote") || lower.includes("price") || lower.includes("how much")) return "Quote Request";
   return "General Inquiry";
 }
