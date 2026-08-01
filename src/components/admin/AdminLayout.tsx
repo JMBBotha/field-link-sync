@@ -176,18 +176,18 @@ const AdminLayout = () => {
       />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="surface-shell shrink-0 h-14 border-b flex items-center justify-between px-2 sm:px-4 gap-2 z-20">
+        <header className="shrink-0 h-14 border-b flex items-center justify-between px-2 sm:px-4 gap-2 z-20 bg-primary dark:bg-gradient-to-r dark:from-[#070e1a] dark:via-[#153258]/90 dark:to-[#070e1a] border-[#006699] dark:border-[#153258]">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden text-foreground hover:bg-muted shrink-0 h-9 w-9"
+              className="lg:hidden text-primary-foreground hover:bg-white/10 hover:text-primary-foreground shrink-0 h-9 w-9"
             >
               <Menu className="h-5 w-5" />
             </Button>
             <img src={logo} alt="Logo" className="h-8 lg:hidden shrink-0" />
-            <h1 className="text-base sm:text-lg font-bold text-foreground truncate">{pageTitle}</h1>
+            <h1 className="text-base sm:text-lg font-bold text-primary-foreground truncate">{pageTitle}</h1>
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
@@ -195,11 +195,11 @@ const AdminLayout = () => {
               variant="ghost"
               size="sm"
               onClick={() => setSearchOpen(true)}
-              className="text-muted-foreground hover:text-foreground gap-1.5 hidden sm:flex"
+              className="text-blue-100 hover:bg-white/10 hover:text-primary-foreground gap-1.5 hidden sm:flex"
             >
               <Search className="h-4 w-4" />
               <span className="text-xs">Search</span>
-              <kbd className="ml-1 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px]">⌘K</kbd>
+              <kbd className="ml-1 rounded border border-white/30 bg-white/10 px-1.5 py-0.5 text-[10px]">⌘K</kbd>
             </Button>
 
             <NotificationBell />
@@ -207,7 +207,7 @@ const AdminLayout = () => {
               variant="ghost"
               size="icon"
               onClick={toggleTheme}
-              className="text-muted-foreground hover:text-foreground h-9 w-9"
+              className="text-blue-100 hover:bg-white/10 hover:text-primary-foreground h-9 w-9"
               title={resolvedTheme === "light" ? "Switch to dark mode" : "Switch to light mode"}
             >
               {resolvedTheme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
@@ -217,16 +217,18 @@ const AdminLayout = () => {
 
 
         {/* Sticky mobile search bar */}
-        <div className="surface-shell shrink-0 sm:hidden sticky top-0 z-10 border-b px-3 py-2">
+        <div className="shrink-0 sm:hidden sticky top-0 z-10 border-b px-3 py-2 bg-primary dark:bg-gradient-to-r dark:from-[#070e1a] dark:via-[#153258]/90 dark:to-[#070e1a] border-[#006699] dark:border-[#153258]">
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
-            className="surface-row flex w-full items-center gap-2 px-3 py-2 text-sm text-muted-foreground transition-colors"
+            className="flex w-full items-center gap-2 rounded-md bg-white/10 px-3 py-2 text-sm text-blue-100 transition-colors hover:bg-white/20"
           >
             <Search className="h-4 w-4 shrink-0" />
             <span>Search agents, leads, customers…</span>
           </button>
         </div>
+
+
 
         <main className="app-surface flex-1 overflow-auto pb-28 lg:pb-0">
 
