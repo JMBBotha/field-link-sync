@@ -163,7 +163,7 @@ const AdminJobDetailPage = () => {
                   )}
                   {j.job_type && (
                     <Badge variant="outline" className="text-[10px]">
-                      {j.job_type}
+                      {jobTypeLabel(j.job_type)}
                     </Badge>
                   )}
                 </div>
