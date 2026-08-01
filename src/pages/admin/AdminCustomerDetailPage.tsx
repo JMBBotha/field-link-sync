@@ -350,19 +350,20 @@ const AdminCustomerDetailPage = () => {
                     )}
                   </div>
                 </div>
+                {/* Always render every core field so it is immediately clear
+                    what is on file and what is still missing. */}
                 <div className="space-y-2 text-sm">
-                  {customer.email && (
-                    <div className="flex items-start gap-2"><Mail className="h-4 w-4 text-primary mt-0.5 shrink-0" /><span className="break-all">{customer.email}</span></div>
+                  <ContactRow icon={Mail} value={customer.email} label="No email on file" breakAll />
+                  <ContactRow icon={Phone} value={customer.phone} label="No phone on file" />
+                  {customer.secondary_phone && (
+                    <ContactRow icon={Phone} value={`${customer.secondary_phone} (alt)`} label="" />
                   )}
-                  {customer.phone && (
-                    <div className="flex items-start gap-2"><Phone className="h-4 w-4 text-primary mt-0.5 shrink-0" /><span>{customer.phone}</span></div>
-                  )}
-                  {fullAddress && (
-                    <div className="flex items-start gap-2"><MapPin className="h-4 w-4 text-primary mt-0.5 shrink-0" /><span>{fullAddress}</span></div>
-                  )}
-                  {customer.vat_number && (
-                    <div className="flex items-start gap-2"><FileText className="h-4 w-4 text-primary mt-0.5 shrink-0" /><span>VAT: {customer.vat_number}</span></div>
-                  )}
+                  <ContactRow icon={MapPin} value={fullAddress} label="No address on file" />
+                  <ContactRow
+                    icon={FileText}
+                    value={customer.vat_number ? `VAT: ${customer.vat_number}` : ""}
+                    label="No VAT number on file"
+                  />
                 </div>
               </CardContent>
             </Card>
