@@ -168,8 +168,10 @@ serve(async (req) => {
       customer.address ||
       "Address to be confirmed";
 
-    const serviceType = String(p.service_type || "Service / Maintenance").trim();
+    const rawService = String(p.service_type || "").trim();
     const notes = String(p.notes || "").trim();
+    const { label: serviceType, jobType } = classifyService(rawService, notes);
+
 
     // --- Reuse the caller's open lead (unscheduled OR already scheduled = reschedule) ---
     const { data: openLeads } = await supabase
