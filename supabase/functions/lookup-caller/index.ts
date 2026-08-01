@@ -396,7 +396,9 @@ serve(async (req) => {
     });
 
     // Any confirmed appointment? Jobs first, then leads that carry a date.
-    const bookedLeads = todayJobs.filter((j) => j.scheduled_date);
+    const bookedLeads = todayJobs.filter(
+      (j) => j.scheduled_date && new Date(`${j.scheduled_date}T23:59:59+02:00`).getTime() >= nowMs,
+    );
     const hasConfirmedAppointment = scheduledJobs.length > 0 || bookedLeads.length > 0;
 
     // Build greeting hint
