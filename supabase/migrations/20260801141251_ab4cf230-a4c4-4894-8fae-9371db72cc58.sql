@@ -1,0 +1,2 @@
+ALTER TABLE public.jobs DROP CONSTRAINT IF EXISTS jobs_job_type_check;
+ALTER TABLE public.jobs ADD CONSTRAINT jobs_job_type_check CHECK (job_type IN ('quote','service','installation','repair','maintenance','survey','other'));
