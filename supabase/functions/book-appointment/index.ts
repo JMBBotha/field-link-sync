@@ -30,26 +30,33 @@ const corsHeaders = {
 const SAST_OFFSET = "+02:00";
 
 /**
- * Classify what the caller actually wants into a canonical service label +
- * a `jobs.job_type` value. Prevents everything defaulting to "new installation".
+ * Classify what the caller actually wants into exactly three categories:
+ *  - "New Quote"              (quote / pricing request, including quotes for new installations)
+ *  - "Technical Service Call" (repairs + service / maintenance)
+ *  - "New Installation"       (only when a quote is already accepted and the install is being scheduled)
  */
 function classifyService(rawService: string, notes: string): { label: string; jobType: string } {
   const text = `${rawService} ${notes}`.toLowerCase();
   const has = (...words: string[]) => words.some((w) => text.includes(w));
 
-  if (has("quote", "quotation", "estimate", "price for", "how much", "site visit", "assessment", "survey")) {
-    return { label: "Quote / Site Visit", jobType: "survey" };
+  // Quote intent wins — even when it's a quote for a new installation.
+  if (has("quote", "quotation", "estimate", "price", "pricing", "how much", "cost", "site visit", "assessment", "survey")) {
+    return { label: "New Quote", jobType: "quote" };
   }
-  if (has("install", "new unit", "new aircon", "new air con", "fit a", "replacement unit", "replace the unit")) {
+  // Confirmed installation only when the quote stage is clearly behind us.
+  if (
+    has("accepted the quote", "quote accepted", "approved the quote", "quote approved", "go ahead with the install", "book the installation", "schedule the installation", "confirmed installation")
+  ) {
     return { label: "New Installation", jobType: "installation" };
   }
-  if (has("repair", "not cooling", "not working", "broken", "leak", "noise", "noisy", "fault", "error code", "won't switch", "wont switch", "blowing warm", "gas refill", "regas", "re-gas")) {
-    return { label: "Repair", jobType: "repair" };
-  }
-  if (has("service", "maintenance", "clean", "filter", "annual", "check-up", "check up")) {
+  if (has("repair", "not cooling", "not working", "broken", "leak", "noise", "noisy", "fault", "error code", "won't switch", "wont switch", "blowing warm", "gas refill", "regas", "re-gas", "service", "maintenance", "clean", "filter", "annual", "check-up", "check up")) {
     return { label: "Technical Service Call", jobType: "service" };
   }
-  return { label: rawService || "Technical Service Call", jobType: "service" };
+  // Enquiries about a new unit without an accepted quote are still quote-stage.
+  if (has("install", "new unit", "new aircon", "new air con", "fit a", "replacement unit", "replace the unit")) {
+    return { label: "New Quote", jobType: "quote" };
+  }
+  return { label: "Technical Service Call", jobType: "service" };
 }
 
 
