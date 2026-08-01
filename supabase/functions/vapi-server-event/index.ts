@@ -439,17 +439,26 @@ serve(async (req) => {
         known
           ? [
               `CALLER IDENTITY (already verified from caller ID ${callerNumber}) — do NOT ask who is calling and do NOT ask them to hold while you check.`,
+              context.customer_address
+                ? `SERVICE ADDRESS ON FILE: ${context.customer_address}. Read it back and ask them to confirm it — NEVER say you have no address on file.`
+                : `NO address on file — ask for the service address and read it back.`,
               context.greeting_hint,
               context.last_call
                 ? `Last contact: ${context.last_call.when} — ${context.last_call.service_type} (${context.last_call.status}). Discussed: ${context.last_call.summary} Appointment: ${context.last_call.appointment}`
                 : "",
-              context.active_jobs?.length ? `Open jobs:\n${context.active_jobs.join("\n")}` : "",
+              context.confirmed_appointments?.length
+                ? `Confirmed appointments:\n${context.confirmed_appointments.join("\n")}`
+                : "",
+              context.active_jobs?.length ? `Open enquiries/jobs:\n${context.active_jobs.join("\n")}` : "",
               context.recent_jobs?.length ? `Job history:\n${context.recent_jobs.join("\n")}` : "",
               context.equipment?.length ? `Equipment on file:\n${context.equipment.join("\n")}` : "",
-              hasAppointment ? "" : `NO CONFIRMED APPOINTMENT is on file for this customer.`,
+              hasAppointment
+                ? ""
+                : `NO CONFIRMED APPOINTMENT is on file. If the caller believes one was made, apologise, explain it was logged as an enquiry only, and book it now with the book_appointment tool.`,
             ].filter(Boolean).join("\n")
           : unknownScript,
       ].join("\n");
+
 
 
       console.log(`[vapi-server-event] assistant-request for ${callerNumber || "(no number)"} — known=${!!known}`);
