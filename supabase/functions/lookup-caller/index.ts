@@ -70,12 +70,49 @@ function normalizeForLookup(phone: string): string[] {
   return [...new Set(variants)];
 }
 
-// Format date nicely
+const SAST = "Africa/Johannesburg";
+
+// Format date nicely, always in South African local time
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "unknown date";
-  const d = new Date(dateStr);
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  // Bare date columns ("2026-08-05") must not be shifted by a timezone.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `${d} ${months[m - 1]} ${y}`;
+  }
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) return "unknown date";
+  return parsed.toLocaleDateString("en-ZA", {
+    timeZone: SAST,
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+// Current date/time in SAST, spoken-friendly
+function nowInSast(): string {
+  return new Date().toLocaleString("en-ZA", {
+    timeZone: SAST,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+// "14:30:00" → "2:30 PM"
+function formatTime(timeStr: string | null): string {
+  if (!timeStr) return "";
+  const [h, m] = String(timeStr).split(":").map(Number);
+  if (Number.isNaN(h)) return "";
+  const suffix = h < 12 ? "AM" : "PM";
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m || 0).padStart(2, "0")} ${suffix}`;
 }
 
 // Calculate time ago
@@ -90,6 +127,7 @@ function timeAgo(dateStr: string): string {
   if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
   return `${Math.floor(diffDays / 365)} years ago`;
 }
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
