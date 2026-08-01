@@ -394,6 +394,17 @@ serve(async (req) => {
         firstMessage = "Hi, you've reached 0800BeCool. I don't have your number on file yet — may I start with your name please?";
       }
 
+      // Everything Mandy says about dates must be anchored to SA local time.
+      const nowSast = new Date().toLocaleString("en-ZA", {
+        timeZone: "Africa/Johannesburg",
+        weekday: "long", day: "numeric", month: "long", year: "numeric",
+        hour: "2-digit", minute: "2-digit", hour12: false,
+      });
+      const timeBlock = [
+        `TIME CONTEXT: right now it is ${nowSast} in South Africa (SAST, UTC+2). Every date and time you hear or say is South African time — never convert time zones.`,
+        `APPOINTMENT RULES: only ever state an appointment date or time that appears verbatim in the data below. If no appointment is listed, say plainly that nothing is booked yet and offer to book one. Never infer a day of the week from the customer saying a word like "Monday" — ask them to confirm the full date and time, repeat it back, and tell them the office will confirm.`,
+      ].join("\n");
+
       const unknownScript = [
         `CALLER IDENTITY: NOT RECOGNISED (${callerNumber ? `caller ID ${callerNumber}` : "number withheld"}). Treat as a NEW caller.`,
         `FALLBACK FLOW — complete these steps BEFORE discussing the job, one question at a time:`,
@@ -403,20 +414,29 @@ serve(async (req) => {
           : `2. Their number is withheld, so ask for the best contact number, read it back digit by digit and get a yes before continuing.`,
         `3. Only once you have a confirmed name AND a confirmed phone number, continue: ask what they need help with and their address.`,
         `Never guess or invent a name. If they refuse to give a name, use "Unknown Caller" but still confirm a callback number.`,
+        `There is NO appointment on file for this caller — never confirm or imply an existing booking.`,
       ].filter(Boolean).join("\n");
 
-      const contextBlock = known
-        ? [
-            `CALLER IDENTITY (already verified from caller ID ${callerNumber}) — do NOT ask who is calling and do NOT ask them to hold while you check.`,
-            context.greeting_hint,
-            context.last_call
-              ? `Last contact: ${context.last_call.when} — ${context.last_call.service_type} (${context.last_call.status}). Discussed: ${context.last_call.summary} Appointment: ${context.last_call.appointment}`
-              : "",
-            context.active_jobs?.length ? `Open jobs:\n${context.active_jobs.join("\n")}` : "",
-            context.recent_jobs?.length ? `Job history:\n${context.recent_jobs.join("\n")}` : "",
-            context.equipment?.length ? `Equipment on file:\n${context.equipment.join("\n")}` : "",
-          ].filter(Boolean).join("\n")
-        : unknownScript;
+      const hasAppointment = !!known && (context.has_confirmed_appointment ||
+        (context.active_jobs || []).some((j: string) => /scheduled for/i.test(j)));
+
+      const contextBlock = [
+        timeBlock,
+        known
+          ? [
+              `CALLER IDENTITY (already verified from caller ID ${callerNumber}) — do NOT ask who is calling and do NOT ask them to hold while you check.`,
+              context.greeting_hint,
+              context.last_call
+                ? `Last contact: ${context.last_call.when} — ${context.last_call.service_type} (${context.last_call.status}). Discussed: ${context.last_call.summary} Appointment: ${context.last_call.appointment}`
+                : "",
+              context.active_jobs?.length ? `Open jobs:\n${context.active_jobs.join("\n")}` : "",
+              context.recent_jobs?.length ? `Job history:\n${context.recent_jobs.join("\n")}` : "",
+              context.equipment?.length ? `Equipment on file:\n${context.equipment.join("\n")}` : "",
+              hasAppointment ? "" : `NO CONFIRMED APPOINTMENT is on file for this customer.`,
+            ].filter(Boolean).join("\n")
+          : unknownScript,
+      ].join("\n");
+
 
       console.log(`[vapi-server-event] assistant-request for ${callerNumber || "(no number)"} — known=${!!known}`);
 
