@@ -36,18 +36,19 @@ import { formatRand } from "@/utils/formatRand";
 import CustomerLocationsManager from "@/components/customers/CustomerLocationsManager";
 import QuickTemplateDialog from "@/components/quoting/QuickTemplateDialog";
 
-const LEAD_SOURCES = [
-  "Manual", "Facebook Lead", "Website Form", "WhatsApp", "Phone Call", "Walk-in", "Referral",
-] as const;
+import { LEAD_SOURCE_OPTIONS, DEFAULT_LEAD_SOURCE, toLeadSourceValue, leadSourceLabel } from "@/lib/leadSources";
 
 const LEAD_SOURCE_STYLES: Record<string, string> = {
-  "Manual":        "bg-slate-100 text-slate-700 border-slate-200",
-  "Facebook Lead": "bg-blue-100 text-blue-700 border-blue-200",
-  "Website Form":  "bg-green-100 text-green-700 border-green-200",
-  "WhatsApp":      "bg-emerald-100 text-emerald-700 border-emerald-200",
-  "Phone Call":    "bg-orange-100 text-orange-700 border-orange-200",
-  "Walk-in":       "bg-purple-100 text-purple-700 border-purple-200",
-  "Referral":      "bg-pink-100 text-pink-700 border-pink-200",
+  manual:        "bg-slate-100 text-slate-700 border-slate-200",
+  facebook_lead: "bg-blue-100 text-blue-700 border-blue-200",
+  website_form:  "bg-green-100 text-green-700 border-green-200",
+  website:       "bg-green-100 text-green-700 border-green-200",
+  whatsapp:      "bg-emerald-100 text-emerald-700 border-emerald-200",
+  phone_call:    "bg-orange-100 text-orange-700 border-orange-200",
+  vapi:          "bg-orange-100 text-orange-700 border-orange-200",
+  walk_in:       "bg-purple-100 text-purple-700 border-purple-200",
+  referral:      "bg-pink-100 text-pink-700 border-pink-200",
+  other:         "bg-slate-100 text-slate-700 border-slate-200",
 };
 
 const statusBadge = (status?: string | null) => {
@@ -281,8 +282,8 @@ const AdminCustomerDetailPage = () => {
           >
             <Settings2 className="h-4 w-4" />
           </Button>
-          <Badge variant="outline" className={cn("text-[10px]", LEAD_SOURCE_STYLES[customer.lead_source || "Manual"])}>
-            {customer.lead_source || "Manual"}
+          <Badge variant="outline" className={cn("text-[10px]", LEAD_SOURCE_STYLES[toLeadSourceValue(customer.lead_source)])}>
+            {leadSourceLabel(customer.lead_source)}
           </Badge>
         </div>
         <div className="flex gap-2">
@@ -645,14 +646,14 @@ const EditCustomerDialog = ({
     vat_number: customer.vat_number || "",
     notes: customer.notes || "",
     status: customer.status || "lead",
-    lead_source: customer.lead_source || "Manual",
+    lead_source: toLeadSourceValue(customer.lead_source, DEFAULT_LEAD_SOURCE),
   });
   const set = (k: keyof typeof form, v: string) => setForm(p => ({ ...p, [k]: v }));
 
   const save = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase.from("customers").update({
+      const payload = {
         first_name: form.first_name,
         last_name: form.last_name,
         name: `${form.first_name} ${form.last_name}`.trim(),
@@ -667,8 +668,16 @@ const EditCustomerDialog = ({
         vat_number: form.vat_number || null,
         notes: form.notes || null,
         status: form.status,
-        lead_source: form.lead_source,
-      }).eq("id", customer.id);
+        lead_source: toLeadSourceValue(form.lead_source),
+      };
+
+      let { error } = await supabase.from("customers").update(payload).eq("id", customer.id);
+      if (error && /lead_source/i.test(error.message || "")) {
+        ({ error } = await supabase
+          .from("customers")
+          .update({ ...payload, lead_source: "other" })
+          .eq("id", customer.id));
+      }
       if (error) throw error;
       toast({ title: "Customer updated ✅" });
       onOpenChange(false);
@@ -711,7 +720,7 @@ const EditCustomerDialog = ({
             <Select value={form.lead_source} onValueChange={(v) => set("lead_source", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {LEAD_SOURCES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                {LEAD_SOURCE_OPTIONS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </DField>

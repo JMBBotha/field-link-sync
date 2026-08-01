@@ -31,19 +31,19 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatRand } from "@/utils/formatRand";
-
-const LEAD_SOURCES = [
-  "Manual", "Facebook Lead", "Website Form", "WhatsApp", "Phone Call", "Walk-in", "Referral",
-] as const;
+import { LEAD_SOURCE_OPTIONS, DEFAULT_LEAD_SOURCE, toLeadSourceValue, leadSourceLabel } from "@/lib/leadSources";
 
 const LEAD_SOURCE_STYLES: Record<string, { badge: string; border: string }> = {
-  "Manual":        { badge: "bg-slate-100 text-slate-700 border-slate-200",       border: "border-t-slate-400" },
-  "Facebook Lead": { badge: "bg-blue-100 text-blue-700 border-blue-200",          border: "border-t-blue-500" },
-  "Website Form":  { badge: "bg-green-100 text-green-700 border-green-200",       border: "border-t-green-500" },
-  "WhatsApp":      { badge: "bg-emerald-100 text-emerald-700 border-emerald-200", border: "border-t-emerald-500" },
-  "Phone Call":    { badge: "bg-orange-100 text-orange-700 border-orange-200",    border: "border-t-orange-500" },
-  "Walk-in":       { badge: "bg-purple-100 text-purple-700 border-purple-200",    border: "border-t-purple-500" },
-  "Referral":      { badge: "bg-pink-100 text-pink-700 border-pink-200",          border: "border-t-pink-500" },
+  manual:        { badge: "bg-slate-100 text-slate-700 border-slate-200",       border: "border-t-slate-400" },
+  facebook_lead: { badge: "bg-blue-100 text-blue-700 border-blue-200",          border: "border-t-blue-500" },
+  website_form:  { badge: "bg-green-100 text-green-700 border-green-200",       border: "border-t-green-500" },
+  website:       { badge: "bg-green-100 text-green-700 border-green-200",       border: "border-t-green-500" },
+  whatsapp:      { badge: "bg-emerald-100 text-emerald-700 border-emerald-200", border: "border-t-emerald-500" },
+  phone_call:    { badge: "bg-orange-100 text-orange-700 border-orange-200",    border: "border-t-orange-500" },
+  vapi:          { badge: "bg-orange-100 text-orange-700 border-orange-200",    border: "border-t-orange-500" },
+  walk_in:       { badge: "bg-purple-100 text-purple-700 border-purple-200",    border: "border-t-purple-500" },
+  referral:      { badge: "bg-pink-100 text-pink-700 border-pink-200",          border: "border-t-pink-500" },
+  other:         { badge: "bg-slate-100 text-slate-700 border-slate-200",       border: "border-t-slate-400" },
 };
 
 const getInitials = (first?: string | null, last?: string | null, company?: string | null) => {
@@ -57,10 +57,10 @@ const displayName = (c: any) =>
     : `${c.first_name || ""} ${c.last_name || ""}`.trim() || c.name || "Unnamed";
 
 const LeadSourceBadge = ({ source }: { source?: string | null }) => {
-  const key = source || "Manual";
-  const style = LEAD_SOURCE_STYLES[key] || LEAD_SOURCE_STYLES["Manual"];
+  const key = toLeadSourceValue(source);
+  const style = LEAD_SOURCE_STYLES[key] || LEAD_SOURCE_STYLES.manual;
   return (
-    <Badge variant="outline" className={cn("text-[10px] font-medium", style.badge)}>{key}</Badge>
+    <Badge variant="outline" className={cn("text-[10px] font-medium", style.badge)}>{leadSourceLabel(source)}</Badge>
   );
 };
 
@@ -158,7 +158,7 @@ const AdminCustomersPage = () => {
       ["Name", "Company", "Email", "Phone", "City", "Status", "Lead Source", "Outstanding"],
       ...filtered.map(c => [
         displayName(c), c.company_name || "", c.email || "", c.phone || "",
-        c.city || "", c.status || "", c.lead_source || "Manual",
+        c.city || "", c.status || "", leadSourceLabel(c.lead_source),
         String(outstandingByCustomer.get(c.id) || 0),
       ]),
     ];
@@ -216,7 +216,7 @@ const AdminCustomersPage = () => {
         ) : (
           <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
             {recent.map(c => {
-              const style = LEAD_SOURCE_STYLES[c.lead_source || "Manual"] || LEAD_SOURCE_STYLES["Manual"];
+              const style = LEAD_SOURCE_STYLES[toLeadSourceValue(c.lead_source)] || LEAD_SOURCE_STYLES.manual;
               return (
                 <Card
                   key={c.id}
@@ -405,7 +405,7 @@ const CreateCustomerFBDialog = ({
     email: "", phone: "", address: "", city: "", postal_code: "",
     vat_number: "", notes: "",
     status: "lead",
-    lead_source: "Manual",
+    lead_source: DEFAULT_LEAD_SOURCE as string,
   });
 
   const set = (k: keyof typeof form, v: string) => setForm(p => ({ ...p, [k]: v }));
@@ -413,7 +413,7 @@ const CreateCustomerFBDialog = ({
   const reset = () => setForm({
     first_name: "", last_name: "", company_name: "", email: "", phone: "",
     address: "", city: "", postal_code: "", vat_number: "", notes: "",
-    status: "lead", lead_source: "Manual",
+    status: "lead", lead_source: DEFAULT_LEAD_SOURCE as string,
   });
 
   const save = async () => {
@@ -425,9 +425,7 @@ const CreateCustomerFBDialog = ({
     try {
       const { getUserCompanyId } = await import("@/lib/tenantUtils");
       const company_id = await getUserCompanyId(userId);
-      const { data, error } = await supabase
-        .from("customers")
-        .insert({
+      const payload = {
           first_name: form.first_name,
           last_name: form.last_name,
           name: `${form.first_name} ${form.last_name}`.trim(),
@@ -442,11 +440,20 @@ const CreateCustomerFBDialog = ({
           vat_number: form.vat_number || null,
           notes: form.notes || null,
           status: form.status,
-          lead_source: form.lead_source,
-          company_id,
-        })
-        .select("id")
-        .single();
+        lead_source: toLeadSourceValue(form.lead_source),
+        company_id,
+      };
+
+      let { data, error } = await supabase.from("customers").insert(payload).select("id").single();
+
+      // Never hard-fail the whole save because of an unexpected lead source value.
+      if (error && /lead_source/i.test(error.message || "")) {
+        ({ data, error } = await supabase
+          .from("customers")
+          .insert({ ...payload, lead_source: "other" })
+          .select("id")
+          .single());
+      }
       if (error) throw error;
       toast({ title: "Customer created ✅" });
       reset();
@@ -492,7 +499,7 @@ const CreateCustomerFBDialog = ({
             <Select value={form.lead_source} onValueChange={(v) => set("lead_source", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {LEAD_SOURCES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                {LEAD_SOURCE_OPTIONS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </Field>
