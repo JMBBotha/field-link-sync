@@ -86,8 +86,15 @@ const PRIORITY_COLORS: Record<string, string> = {
 const HOURS = Array.from({ length: 15 }, (_, i) => i + 6); // 6AM–20PM
 
 // ─── Helpers ───
+/** Placeholder strings written by intake bots when no address was captured yet. */
+const isPlaceholderAddress = (address?: string | null) =>
+  !address || /^address (pending|to be confirmed)/i.test(address.trim());
+
+const displayAddress = (address?: string | null) =>
+  isPlaceholderAddress(address) ? "Address pending" : String(address);
+
 const getSuburb = (address: string) => {
-  if (!address) return "";
+  if (isPlaceholderAddress(address)) return "Address pending";
   const parts = address.split(",").map(s => s.trim());
   return parts.length >= 2 ? parts[parts.length - 2] : parts[0];
 };
@@ -858,7 +865,7 @@ const AdminDispatchPage = () => {
                   <p className="text-muted-foreground text-xs">Address</p>
                   <p className="font-medium flex items-center gap-1">
                     <MapPin className="h-3 w-3 shrink-0" />
-                    {jobInfoLead.customer_address}
+                    {displayAddress(jobInfoLead.customer_address)}
                   </p>
                 </div>
               </div>
