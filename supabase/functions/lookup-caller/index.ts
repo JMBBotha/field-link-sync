@@ -221,7 +221,7 @@ serve(async (req) => {
     const leadSelect =
       "id, service_type, status, notes, created_at, completed_at, scheduled_date, scheduled_time, assigned_agent_id, technician_name, technician_eta, order_status, parts_status, customer_phone, customer_address";
 
-    const [{ data: leadsById }, { data: leadsByPhone }, { data: equipment }] = await Promise.all([
+    const [{ data: leadsById }, { data: leadsByPhone }, { data: equipment }, { data: locations }, { data: jobs }] = await Promise.all([
       supabase
         .from("leads")
         .select(leadSelect)
@@ -240,7 +240,21 @@ serve(async (req) => {
         .eq("customer_id", customer.id)
         .order("created_at", { ascending: false })
         .limit(5),
+      supabase
+        .from("customer_locations")
+        .select("id, label, address, is_primary, updated_at")
+        .eq("customer_id", customer.id)
+        .order("is_primary", { ascending: false })
+        .order("updated_at", { ascending: false })
+        .limit(5),
+      supabase
+        .from("jobs")
+        .select("id, title, status, scheduled_for, address, job_type, lead_id")
+        .eq("customer_id", customer.id)
+        .order("scheduled_for", { ascending: false, nullsFirst: false })
+        .limit(10),
     ]);
+
 
     const seen = new Set<string>();
     const allLeads = [...(leadsById || []), ...(leadsByPhone || [])]
@@ -270,7 +284,17 @@ serve(async (req) => {
     // --- Build context for Mandy ---
     const customerName = customer.first_name || customer.name?.split(" ")[0] || "there";
     const fullName = customer.name || `${customer.first_name || ""} ${customer.last_name || ""}`.trim();
-    const address = customer.primary_address_line1 || customer.address || "not on file";
+    // Address priority: Primary saved Location → any saved Location → flat fields.
+    const primaryLocation = (locations || []).find((l: any) => l.is_primary) || (locations || [])[0] || null;
+    const cleanAddress = (a?: string | null) =>
+      (a || "").replace(/,\s*South Africa\s*$/i, "").trim();
+    const address =
+      cleanAddress(primaryLocation?.address) ||
+      cleanAddress(customer.primary_address_line1) ||
+      cleanAddress(customer.address) ||
+      "not on file";
+    const hasAddress = address !== "not on file";
+
 
     // Pull the human-readable gist out of a lead's notes (Vapi stores the call
     // summary first, followed by the raw transcript / metadata blocks).
@@ -352,12 +376,40 @@ serve(async (req) => {
         }
       : null;
 
-    // Any confirmed appointment across the open jobs?
-    const bookedJobs = todayJobs.filter((j) => j.scheduled_date);
+    // --- Real scheduled work: jobs table (source of truth) + scheduled leads ---
+    // Only UPCOMING work counts as a confirmed appointment — a job dated in the
+    // past must never be read back as a booking.
+    const nowMs = Date.now();
+    const scheduledJobs = (jobs || []).filter(
+      (j: any) =>
+        j.scheduled_for &&
+        new Date(j.scheduled_for).getTime() >= nowMs - 2 * 60 * 60 * 1000 &&
+        !["cancelled", "completed"].includes((j.status || "").toLowerCase()),
+    );
+
+    const jobAppointmentSummaries = scheduledJobs.map((j: any) => {
+      const when = new Date(j.scheduled_for).toLocaleString("en-ZA", {
+        timeZone: SAST, weekday: "long", day: "numeric", month: "long", year: "numeric",
+        hour: "2-digit", minute: "2-digit", hour12: false,
+      });
+      return `- ${j.title || j.job_type || "Job"} (${j.status}) — confirmed appointment ${when} South African time${j.address ? ` at ${cleanAddress(j.address)}` : ""}`;
+    });
+
+    // Any confirmed appointment? Jobs first, then leads that carry a date.
+    const bookedLeads = todayJobs.filter(
+      (j) => j.scheduled_date && new Date(`${j.scheduled_date}T23:59:59+02:00`).getTime() >= nowMs,
+    );
+    const hasConfirmedAppointment = scheduledJobs.length > 0 || bookedLeads.length > 0;
 
     // Build greeting hint
     let greetingHint = `Current date and time in South Africa (SAST, UTC+2) is ${nowInSast()}. All dates and times below are South African time — never convert them and never guess a date. `;
     greetingHint += `This is ${fullName}, a returning customer. Greet them warmly by their first name "${customerName}".`;
+
+    if (hasAddress) {
+      greetingHint += ` Their address on file is: ${address}. When an address is needed, read this back and ask them to confirm it — never say you have no address on file.`;
+    } else {
+      greetingHint += ` There is NO address on file — ask them for the service address and read it back to confirm.`;
+    }
 
     if (lastCall) {
       greetingHint += ` They last contacted us ${timeAgo(lastLead!.created_at)} about a ${lastCall.service_type} (currently ${lastCall.status}). What was discussed: ${lastCall.summary}. Appointment: ${lastCall.appointment}. Reference this naturally instead of asking them to repeat themselves.`;
@@ -367,8 +419,10 @@ serve(async (req) => {
       greetingHint += ` They have an open job — assume the call is about it unless they say otherwise.`;
     }
 
-    if (bookedJobs.length === 0) {
-      greetingHint += ` IMPORTANT: there is NO confirmed appointment date or time on file for this customer. Do not state, confirm or imply any appointment day (such as "Monday") — if they mention a day, treat it as a new request and offer to book it, then say the office will confirm.`;
+    if (hasConfirmedAppointment) {
+      greetingHint += ` CONFIRMED APPOINTMENTS on file:\n${jobAppointmentSummaries.join("\n")}`;
+    } else {
+      greetingHint += ` IMPORTANT: there is NO confirmed appointment on file — previous calls only created enquiries, never a booking. If they believe a booking exists, apologise, explain it was logged as an enquiry, and book it now using the book_appointment tool. Do not promise a call back before you have tried to book.`;
     }
 
     if (equipmentSummaries.length > 0) {
@@ -376,11 +430,12 @@ serve(async (req) => {
       greetingHint += ` They have a ${eq.brand || ""} ${eq.model || ""} system on file.`;
     }
 
+
     const result = {
       is_existing_customer: true,
       current_time_sast: nowInSast(),
       timezone: "Africa/Johannesburg (SAST, UTC+2)",
-      has_confirmed_appointment: bookedJobs.length > 0,
+      has_confirmed_appointment: hasConfirmedAppointment,
       greeting_hint: greetingHint,
 
       customer: {
@@ -393,13 +448,21 @@ serve(async (req) => {
         city: customer.city || null,
         status: customer.status,
       },
+      customer_address: hasAddress ? address : null,
+      customer_locations: (locations || []).map((l: any) => ({
+        label: l.label,
+        address: cleanAddress(l.address),
+        is_primary: !!l.is_primary,
+      })),
       last_call: lastCall,
+      confirmed_appointments: jobAppointmentSummaries,
       active_jobs: activeJobSummaries,
       recent_jobs: jobSummaries,
       equipment: equipmentSummaries,
       total_jobs: recentLeads.length,
       total_equipment: equipment?.length || 0,
     };
+
 
     console.log("[lookup-caller] Returning context for:", fullName);
 

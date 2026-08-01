@@ -1,0 +1,2 @@
+delete from public.jobs where lead_id='ca1f3609-2730-42cd-ae94-d6743375bc7b' and description ilike '%test booking%';
+update public.leads set status='pending', scheduled_date=null, scheduled_time=null where id='ca1f3609-2730-42cd-ae94-d6743375bc7b';

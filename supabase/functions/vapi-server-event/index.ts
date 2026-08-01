@@ -414,8 +414,10 @@ serve(async (req) => {
       });
       const timeBlock = [
         `TIME CONTEXT: right now it is ${nowSast} in South Africa (SAST, UTC+2). Every date and time you hear or say is South African time — never convert time zones.`,
-        `APPOINTMENT RULES: only ever state an appointment date or time that appears verbatim in the data below. If no appointment is listed, say plainly that nothing is booked yet and offer to book one. Never infer a day of the week from the customer saying a word like "Monday" — ask them to confirm the full date and time, repeat it back, and tell them the office will confirm.`,
+        `APPOINTMENT RULES: only ever state an existing appointment that appears verbatim in the data below. If nothing is booked, say so plainly and OFFER TO BOOK IT NOW.`,
+        `BOOKING RULES: you can book appointments yourself. Propose a specific day and time, get a clear yes, confirm the service address, then call the book_appointment tool with phone_number, date (YYYY-MM-DD), time (HH:MM 24-hour), service_type and address. Read back the confirmed date, time and address afterwards. Only say "someone will call you back" if the tool reports a failure.`,
       ].join("\n");
+
 
       const unknownScript = [
         `CALLER IDENTITY: NOT RECOGNISED (${callerNumber ? `caller ID ${callerNumber}` : "number withheld"}). Treat as a NEW caller.`,
@@ -437,17 +439,26 @@ serve(async (req) => {
         known
           ? [
               `CALLER IDENTITY (already verified from caller ID ${callerNumber}) — do NOT ask who is calling and do NOT ask them to hold while you check.`,
+              context.customer_address
+                ? `SERVICE ADDRESS ON FILE: ${context.customer_address}. Read it back and ask them to confirm it — NEVER say you have no address on file.`
+                : `NO address on file — ask for the service address and read it back.`,
               context.greeting_hint,
               context.last_call
                 ? `Last contact: ${context.last_call.when} — ${context.last_call.service_type} (${context.last_call.status}). Discussed: ${context.last_call.summary} Appointment: ${context.last_call.appointment}`
                 : "",
-              context.active_jobs?.length ? `Open jobs:\n${context.active_jobs.join("\n")}` : "",
+              context.confirmed_appointments?.length
+                ? `Confirmed appointments:\n${context.confirmed_appointments.join("\n")}`
+                : "",
+              context.active_jobs?.length ? `Open enquiries/jobs:\n${context.active_jobs.join("\n")}` : "",
               context.recent_jobs?.length ? `Job history:\n${context.recent_jobs.join("\n")}` : "",
               context.equipment?.length ? `Equipment on file:\n${context.equipment.join("\n")}` : "",
-              hasAppointment ? "" : `NO CONFIRMED APPOINTMENT is on file for this customer.`,
+              hasAppointment
+                ? ""
+                : `NO CONFIRMED APPOINTMENT is on file. If the caller believes one was made, apologise, explain it was logged as an enquiry only, and book it now with the book_appointment tool.`,
             ].filter(Boolean).join("\n")
           : unknownScript,
       ].join("\n");
+
 
 
       console.log(`[vapi-server-event] assistant-request for ${callerNumber || "(no number)"} — known=${!!known}`);
@@ -479,6 +490,7 @@ serve(async (req) => {
             caller_name: known ? context.customer.name : "",
             caller_first_name: firstName,
             is_existing_customer: !!known,
+            customer_address: known ? (context.customer_address || "") : "",
             caller_context: contextBlock,
           },
         },
@@ -510,9 +522,31 @@ serve(async (req) => {
           try { params = JSON.parse(params); } catch { params = {}; }
         }
 
-        if (name === "lookup_caller" || name === "check_job_status") {
+        if (name === "book_appointment") {
+          const phoneNumber = params.phone_number || callerNumber || "";
+          console.log(`[vapi-server-event] book_appointment for ${phoneNumber}:`, JSON.stringify(params));
+          try {
+            const res = await fetch(`${supabaseUrl}/functions/v1/book-appointment`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "x-api-key": apiKey },
+              body: JSON.stringify({ ...params, phone_number: phoneNumber }),
+            });
+            const json = await res.json();
+            results.push({
+              toolCallId: toolCall.id || toolCall.toolCallId,
+              result: json.result || "Booking failed. Apologise and say the office will phone back to confirm.",
+            });
+          } catch (bookErr: any) {
+            console.error("[vapi-server-event] book_appointment error:", bookErr);
+            results.push({
+              toolCallId: toolCall.id || toolCall.toolCallId,
+              result: "Booking failed. Apologise and say the office will phone back to confirm the appointment.",
+            });
+          }
+        } else if (name === "lookup_caller" || name === "check_job_status") {
           const phoneNumber = params.phone_number || callerNumber || "";
           const target = name === "lookup_caller" ? "lookup-caller" : "check-job-status";
+
 
           console.log(
             `[vapi-server-event] ${name} for: ${phoneNumber || "(no number)"} (arg=${params.phone_number || "none"}, callerId=${callerNumber || "none"})`
