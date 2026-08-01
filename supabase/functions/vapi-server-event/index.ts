@@ -797,6 +797,35 @@ serve(async (req) => {
           existing = data ?? null;
         }
 
+        // (3) A lead that the book_appointment tool created/rescheduled DURING
+        // this very call, or any still-open lead for this caller. Without this
+        // every call ends up creating a brand-new duplicate "New Quote" lead
+        // even though the booking already updated the existing one.
+        if (!existing) {
+          const digits = callerPhone.replace(/\D/g, "");
+          const tail = digits.slice(-9);
+          const variants = [...new Set([
+            callerPhone,
+            digits,
+            "+" + digits,
+            "0" + tail,
+            "+27" + tail,
+            "27" + tail,
+          ])];
+          const orFilter = variants.map((v) => `customer_phone.eq.${v}`).join(",");
+          const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+          const { data } = await supabaseAdmin
+            .from("leads")
+            .select("id, customer_id, notes, service_type, priority, customer_address, updated_at")
+            .or(orFilter)
+            .in("status", ["pending", "new", "accepted", "claimed", "scheduled", "converted"])
+            .gte("created_at", since)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          existing = (data as any) ?? null;
+        }
+
         if (existing) {
           console.log(`[vapi-server-event] Enriching existing lead ${existing.id} for CallSid ${callSid || "n/a"}`);
           const enrichedNotes = [
