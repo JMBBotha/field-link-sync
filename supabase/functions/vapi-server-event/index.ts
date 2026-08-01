@@ -356,6 +356,12 @@ serve(async (req) => {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const apiKey = Deno.env.get("VAPI_WEBHOOK_SECRET")!;
 
+      // Vapi keeps the caller on ringback until we respond, so the lookup runs
+      // "while the phone rings". Cap it: after ~3.5s (about two rings) we answer
+      // with the generic greeting rather than leaving the caller ringing.
+      const LOOKUP_BUDGET_MS = 3500;
+      const startedAt = Date.now();
+
       let context: any = null;
       if (callerNumber) {
         try {
@@ -363,13 +369,19 @@ serve(async (req) => {
             method: "POST",
             headers: { "Content-Type": "application/json", "x-api-key": apiKey },
             body: JSON.stringify({ phone_number: callerNumber }),
+            signal: AbortSignal.timeout(LOOKUP_BUDGET_MS),
           });
           const json = await res.json();
           context = typeof json.result === "string" ? JSON.parse(json.result) : json.result;
         } catch (err) {
-          console.error("[vapi-server-event] assistant-request lookup failed:", err);
+          console.error(
+            `[vapi-server-event] assistant-request lookup failed after ${Date.now() - startedAt}ms:`,
+            err,
+          );
         }
       }
+      console.log(`[vapi-server-event] pre-answer lookup took ${Date.now() - startedAt}ms`);
+
 
       const known = context?.is_existing_customer && context?.customer?.name;
       const firstName = known
