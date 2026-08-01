@@ -293,7 +293,7 @@ serve(async (req) => {
           address,
           scheduled_for: when.iso,
           status: "scheduled",
-          job_type: "service",
+          job_type: jobType,
           priority: "normal",
         });
         if (jobErr) console.error("[book-appointment] job insert failed:", jobErr);
