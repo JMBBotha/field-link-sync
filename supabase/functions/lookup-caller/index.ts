@@ -376,12 +376,31 @@ serve(async (req) => {
         }
       : null;
 
-    // Any confirmed appointment across the open jobs?
-    const bookedJobs = todayJobs.filter((j) => j.scheduled_date);
+    // --- Real scheduled work: jobs table (source of truth) + scheduled leads ---
+    const scheduledJobs = (jobs || []).filter(
+      (j: any) => j.scheduled_for && !["cancelled", "completed"].includes((j.status || "").toLowerCase()),
+    );
+    const jobAppointmentSummaries = scheduledJobs.map((j: any) => {
+      const when = new Date(j.scheduled_for).toLocaleString("en-ZA", {
+        timeZone: SAST, weekday: "long", day: "numeric", month: "long", year: "numeric",
+        hour: "2-digit", minute: "2-digit", hour12: false,
+      });
+      return `- ${j.title || j.job_type || "Job"} (${j.status}) — confirmed appointment ${when} South African time${j.address ? ` at ${cleanAddress(j.address)}` : ""}`;
+    });
+
+    // Any confirmed appointment? Jobs first, then leads that carry a date.
+    const bookedLeads = todayJobs.filter((j) => j.scheduled_date);
+    const hasConfirmedAppointment = scheduledJobs.length > 0 || bookedLeads.length > 0;
 
     // Build greeting hint
     let greetingHint = `Current date and time in South Africa (SAST, UTC+2) is ${nowInSast()}. All dates and times below are South African time — never convert them and never guess a date. `;
     greetingHint += `This is ${fullName}, a returning customer. Greet them warmly by their first name "${customerName}".`;
+
+    if (hasAddress) {
+      greetingHint += ` Their address on file is: ${address}. When an address is needed, read this back and ask them to confirm it — never say you have no address on file.`;
+    } else {
+      greetingHint += ` There is NO address on file — ask them for the service address and read it back to confirm.`;
+    }
 
     if (lastCall) {
       greetingHint += ` They last contacted us ${timeAgo(lastLead!.created_at)} about a ${lastCall.service_type} (currently ${lastCall.status}). What was discussed: ${lastCall.summary}. Appointment: ${lastCall.appointment}. Reference this naturally instead of asking them to repeat themselves.`;
@@ -391,14 +410,17 @@ serve(async (req) => {
       greetingHint += ` They have an open job — assume the call is about it unless they say otherwise.`;
     }
 
-    if (bookedJobs.length === 0) {
-      greetingHint += ` IMPORTANT: there is NO confirmed appointment date or time on file for this customer. Do not state, confirm or imply any appointment day (such as "Monday") — if they mention a day, treat it as a new request and offer to book it, then say the office will confirm.`;
+    if (hasConfirmedAppointment) {
+      greetingHint += ` CONFIRMED APPOINTMENTS on file:\n${jobAppointmentSummaries.join("\n")}`;
+    } else {
+      greetingHint += ` IMPORTANT: there is NO confirmed appointment on file — previous calls only created enquiries, never a booking. If they believe a booking exists, apologise, explain it was logged as an enquiry, and book it now using the book_appointment tool. Do not promise a call back before you have tried to book.`;
     }
 
     if (equipmentSummaries.length > 0) {
       const eq = equipment![0];
       greetingHint += ` They have a ${eq.brand || ""} ${eq.model || ""} system on file.`;
     }
+
 
     const result = {
       is_existing_customer: true,
