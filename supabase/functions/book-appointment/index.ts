@@ -185,12 +185,33 @@ serve(async (req) => {
       .eq("customer_id", customer.id)
       .order("is_primary", { ascending: false })
       .limit(1);
-    const address =
+    const isPlaceholder = (a?: string | null) =>
+      !a || /^address (pending|to be confirmed)/i.test(String(a).trim());
+    const resolvedAddress =
       String(p.address || "").trim() ||
       locs?.[0]?.address ||
       customer.primary_address_line1 ||
-      customer.address ||
-      "Address to be confirmed";
+      (isPlaceholder(customer.address) ? "" : customer.address) ||
+      "";
+    const address = resolvedAddress || "Address to be confirmed";
+
+    // Backfill any stale placeholder addresses so the dispatch board never shows "Address pending"
+    // once the caller has confirmed a real address.
+    if (resolvedAddress) {
+      await supabase
+        .from("leads")
+        .update({ customer_address: resolvedAddress })
+        .eq("customer_id", customer.id)
+        .or("customer_address.is.null,customer_address.ilike.Address pending%,customer_address.ilike.Address to be confirmed%");
+      await supabase
+        .from("jobs")
+        .update({ address: resolvedAddress })
+        .eq("customer_id", customer.id)
+        .or("address.is.null,address.eq.,address.ilike.Address pending%,address.ilike.Address to be confirmed%");
+      if (isPlaceholder(customer.address)) {
+        await supabase.from("customers").update({ address: resolvedAddress }).eq("id", customer.id);
+      }
+    }
 
     const rawService = String(p.service_type || "").trim();
     const notes = String(p.notes || "").trim();
