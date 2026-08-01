@@ -221,7 +221,7 @@ serve(async (req) => {
     const leadSelect =
       "id, service_type, status, notes, created_at, completed_at, scheduled_date, scheduled_time, assigned_agent_id, technician_name, technician_eta, order_status, parts_status, customer_phone, customer_address";
 
-    const [{ data: leadsById }, { data: leadsByPhone }, { data: equipment }] = await Promise.all([
+    const [{ data: leadsById }, { data: leadsByPhone }, { data: equipment }, { data: locations }, { data: jobs }] = await Promise.all([
       supabase
         .from("leads")
         .select(leadSelect)
@@ -240,7 +240,21 @@ serve(async (req) => {
         .eq("customer_id", customer.id)
         .order("created_at", { ascending: false })
         .limit(5),
+      supabase
+        .from("customer_locations")
+        .select("id, label, address, is_primary, updated_at")
+        .eq("customer_id", customer.id)
+        .order("is_primary", { ascending: false })
+        .order("updated_at", { ascending: false })
+        .limit(5),
+      supabase
+        .from("jobs")
+        .select("id, title, status, scheduled_for, address, job_type, lead_id")
+        .eq("customer_id", customer.id)
+        .order("scheduled_for", { ascending: false, nullsFirst: false })
+        .limit(10),
     ]);
+
 
     const seen = new Set<string>();
     const allLeads = [...(leadsById || []), ...(leadsByPhone || [])]
