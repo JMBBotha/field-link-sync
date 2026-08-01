@@ -288,22 +288,35 @@ serve(async (req) => {
     if (companyId) {
       const { data: existingJobs } = await supabase
         .from("jobs")
-        .select("id")
+        .select("id, description, scheduled_for")
         .eq("customer_id", customer.id)
         .in("status", ["scheduled", "pending", "assigned", "dispatched"])
         .order("created_at", { ascending: false })
         .limit(1);
 
-      const existingJobId = existingJobs?.[0]?.id || null;
+      const existingJob = existingJobs?.[0] || null;
+      const existingJobId = existingJob?.id || null;
 
       if (existingJobId) {
+        const previous = existingJob?.scheduled_for
+          ? new Date(existingJob.scheduled_for).toLocaleString("en-ZA", {
+              timeZone: "Africa/Johannesburg",
+              weekday: "long", day: "numeric", month: "long",
+              hour: "2-digit", minute: "2-digit", hour12: false,
+            })
+          : "unscheduled";
+        const historyNote = [
+          existingJob?.description || "",
+          `--- Rescheduled by phone (${new Date().toISOString()}): ${previous} → ${when.spoken}${notes ? ` — ${notes}` : ""}`,
+        ].filter(Boolean).join("\n");
+
         const { error: jobErr } = await supabase
           .from("jobs")
           .update({
             lead_id: leadId,
             title: `${serviceType} — ${customer.name}`,
             job_type: jobType,
-
+            description: historyNote,
             address,
             scheduled_for: when.iso,
             status: "scheduled",

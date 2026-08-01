@@ -306,7 +306,9 @@ async function recordCall(input: {
       business_phone: input.businessPhone,
       started_at: input.startedAt,
       ended_at: input.endedAt,
-      duration_seconds: input.durationSeconds || 0,
+      // Vapi sends fractional seconds (e.g. 87.439) — the column is an integer,
+      // and a float here fails the whole insert (22P02) and loses the call log.
+      duration_seconds: Math.max(0, Math.round(Number(input.durationSeconds) || 0)),
       ended_reason: input.endedReason,
       service_type: input.serviceType,
       urgency: input.urgency,
@@ -320,8 +322,33 @@ async function recordCall(input: {
       ? await admin.from("vapi_calls").upsert(row, { onConflict: "provider_call_id" })
       : await admin.from("vapi_calls").insert(row);
 
-    if (error) console.error("[vapi-server-event] vapi_calls write error:", error);
-    else console.log(`[vapi-server-event] Call logged (lead=${input.leadId}, customer=${customerId})`);
+    if (error) {
+      console.error("[vapi-server-event] vapi_calls write error:", error);
+      // Never lose a call: retry with a minimal, always-valid row so the
+      // customer's call history is complete even if one column is rejected.
+      const minimal = {
+        provider: "vapi",
+        provider_call_id: row.provider_call_id,
+        direction: "inbound",
+        company_id: companyId,
+        customer_id: customerId,
+        lead_id: input.leadId,
+        caller_phone: row.caller_phone,
+        caller_name: row.caller_name,
+        started_at: row.started_at,
+        ended_at: row.ended_at,
+        duration_seconds: row.duration_seconds,
+        summary: row.summary,
+        outcome: input.outcome,
+      };
+      const { error: retryError } = row.provider_call_id
+        ? await admin.from("vapi_calls").upsert(minimal, { onConflict: "provider_call_id" })
+        : await admin.from("vapi_calls").insert(minimal);
+      if (retryError) console.error("[vapi-server-event] vapi_calls fallback write failed:", retryError);
+      else console.log("[vapi-server-event] Call logged via fallback row");
+    } else {
+      console.log(`[vapi-server-event] Call logged (lead=${input.leadId}, customer=${customerId})`);
+    }
   } catch (err) {
     console.error("[vapi-server-event] recordCall exception:", err);
   }
@@ -768,6 +795,35 @@ serve(async (req) => {
             .limit(1)
             .maybeSingle();
           existing = data ?? null;
+        }
+
+        // (3) A lead that the book_appointment tool created/rescheduled DURING
+        // this very call, or any still-open lead for this caller. Without this
+        // every call ends up creating a brand-new duplicate "New Quote" lead
+        // even though the booking already updated the existing one.
+        if (!existing) {
+          const digits = callerPhone.replace(/\D/g, "");
+          const tail = digits.slice(-9);
+          const variants = [...new Set([
+            callerPhone,
+            digits,
+            "+" + digits,
+            "0" + tail,
+            "+27" + tail,
+            "27" + tail,
+          ])];
+          const orFilter = variants.map((v) => `customer_phone.eq.${v}`).join(",");
+          const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+          const { data } = await supabaseAdmin
+            .from("leads")
+            .select("id, customer_id, notes, service_type, priority, customer_address, updated_at")
+            .or(orFilter)
+            .in("status", ["pending", "new", "accepted", "claimed", "scheduled", "converted"])
+            .gte("created_at", since)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          existing = (data as any) ?? null;
         }
 
         if (existing) {

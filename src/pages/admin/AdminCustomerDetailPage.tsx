@@ -256,8 +256,11 @@ const AdminCustomerDetailPage = () => {
       ? customer.company_name
       : fullName || customer.name || "Unnamed";
   const contactName = customer.is_company ? fullName : headerName;
-  const fullAddress = [customer.primary_address_line1, customer.primary_address_line2, customer.city, customer.postal_code]
+  const structuredAddress = [customer.primary_address_line1, customer.primary_address_line2, customer.city, customer.postal_code]
     .filter(Boolean).join(", ");
+  // Fall back to the free-text address (what phone/WhatsApp intake writes) so the
+  // profile card is never blank when an address is actually on file.
+  const fullAddress = structuredAddress || (customer.address || "").trim();
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
@@ -347,19 +350,20 @@ const AdminCustomerDetailPage = () => {
                     )}
                   </div>
                 </div>
+                {/* Always render every core field so it is immediately clear
+                    what is on file and what is still missing. */}
                 <div className="space-y-2 text-sm">
-                  {customer.email && (
-                    <div className="flex items-start gap-2"><Mail className="h-4 w-4 text-primary mt-0.5 shrink-0" /><span className="break-all">{customer.email}</span></div>
+                  <ContactRow icon={Mail} value={customer.email} label="No email on file" breakAll />
+                  <ContactRow icon={Phone} value={customer.phone} label="No phone on file" />
+                  {customer.secondary_phone && (
+                    <ContactRow icon={Phone} value={`${customer.secondary_phone} (alt)`} label="" />
                   )}
-                  {customer.phone && (
-                    <div className="flex items-start gap-2"><Phone className="h-4 w-4 text-primary mt-0.5 shrink-0" /><span>{customer.phone}</span></div>
-                  )}
-                  {fullAddress && (
-                    <div className="flex items-start gap-2"><MapPin className="h-4 w-4 text-primary mt-0.5 shrink-0" /><span>{fullAddress}</span></div>
-                  )}
-                  {customer.vat_number && (
-                    <div className="flex items-start gap-2"><FileText className="h-4 w-4 text-primary mt-0.5 shrink-0" /><span>VAT: {customer.vat_number}</span></div>
-                  )}
+                  <ContactRow icon={MapPin} value={fullAddress} label="No address on file" />
+                  <ContactRow
+                    icon={FileText}
+                    value={customer.vat_number ? `VAT: ${customer.vat_number}` : ""}
+                    label="No VAT number on file"
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -602,6 +606,19 @@ const SummaryChips = ({ items }: { items: { label: string; value: string; tone: 
   </div>
 );
 
+
+const ContactRow = ({
+  icon: Icon, value, label, breakAll,
+}: { icon: any; value?: string | null; label: string; breakAll?: boolean }) => (
+  <div className="flex items-start gap-2">
+    <Icon className={cn("h-4 w-4 mt-0.5 shrink-0", value ? "text-primary" : "text-muted-foreground/50")} />
+    {value ? (
+      <span className={cn(breakAll && "break-all")}>{value}</span>
+    ) : (
+      <span className="text-muted-foreground italic">{label}</span>
+    )}
+  </div>
+);
 
 const Stat = ({ label, value }: { label: string; value: string }) => (
   <div>
