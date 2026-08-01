@@ -227,13 +227,13 @@ serve(async (req) => {
         .select(leadSelect)
         .eq("customer_id", customer.id)
         .order("created_at", { ascending: false })
-        .limit(5),
+        .limit(20),
       supabase
         .from("leads")
         .select(leadSelect)
         .in("customer_phone", phoneVariants)
         .order("created_at", { ascending: false })
-        .limit(5),
+        .limit(20),
       supabase
         .from("equipment")
         .select("id, type, brand, model, serial_number, install_date, warranty_expiry, location, last_service_date")
@@ -243,10 +243,23 @@ serve(async (req) => {
     ]);
 
     const seen = new Set<string>();
-    const recentLeads = [...(leadsById || []), ...(leadsByPhone || [])]
+    const allLeads = [...(leadsById || []), ...(leadsByPhone || [])]
       .filter((l) => (seen.has(l.id) ? false : (seen.add(l.id), true)))
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 5);
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    // Repeated inbound-call placeholders can otherwise crowd real scheduled,
+    // parts and installation jobs out of the five-record voice context.
+    const hasOperationalContext = (lead: any) =>
+      !!lead.scheduled_date || !!lead.scheduled_time || !!lead.technician_name ||
+      !!lead.technician_eta ||
+      (!!lead.order_status && lead.order_status !== "not_ordered") ||
+      (!!lead.parts_status && lead.parts_status !== "pending") ||
+      ["accepted", "claimed", "scheduled", "in_progress"].includes((lead.status || "").toLowerCase());
+    const operationalLeads = allLeads.filter(hasOperationalContext);
+    const recentLeads = [
+      ...operationalLeads,
+      ...allLeads.filter((lead) => !hasOperationalContext(lead)),
+    ].filter((lead, index, rows) => rows.findIndex((item) => item.id === lead.id) === index).slice(0, 8);
 
 
     // --- Active/open jobs (from the merged set) ---

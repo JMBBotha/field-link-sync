@@ -452,7 +452,26 @@ serve(async (req) => {
 
       console.log(`[vapi-server-event] assistant-request for ${callerNumber || "(no number)"} — known=${!!known}`);
 
+      const assistantId = Deno.env.get("VAPI_ASSISTANT_ID") ||
+        body?.message?.phoneNumber?.assistantId ||
+        body?.message?.call?.assistantId ||
+        body?.call?.assistantId || "";
+
+      // assistant-request is an assistant-selection webhook. Vapi ignores a
+      // response containing only `assistantOverrides`; it must also identify
+      // the saved assistant (or provide a complete transient assistant).
+      // Returning the ID here keeps the caller ringing while lookup-caller
+      // runs, then starts Mandy with the resolved identity and job context.
+      if (!assistantId) {
+        console.error("[vapi-server-event] assistant-request has no VAPI_ASSISTANT_ID; cannot select Mandy");
+        return new Response(JSON.stringify({ error: "Assistant is not configured" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       return new Response(JSON.stringify({
+        assistantId,
         assistantOverrides: {
           firstMessage,
           variableValues: {
