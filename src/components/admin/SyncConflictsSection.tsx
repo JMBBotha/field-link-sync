@@ -37,7 +37,7 @@ const SyncConflictsSection = () => {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="surface-card-solid">
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="h-4 w-4" />Sync Conflicts</CardTitle></CardHeader>
         <CardContent>
           {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full mb-2" />)}
@@ -48,7 +48,7 @@ const SyncConflictsSection = () => {
 
   if (!conflicts || conflicts.length === 0) {
     return (
-      <Card>
+      <Card className="surface-card-solid">
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" />Sync Conflicts</CardTitle></CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground text-center py-4">No sync conflicts recorded</p>
@@ -58,7 +58,7 @@ const SyncConflictsSection = () => {
   }
 
   return (
-    <Card>
+    <Card className="surface-card-solid">
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-amber-500" />

@@ -68,7 +68,7 @@ export default function AdminAlertsPanel() {
   if (loading) return null;
 
   return (
-    <Card>
+    <Card className="surface-card">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

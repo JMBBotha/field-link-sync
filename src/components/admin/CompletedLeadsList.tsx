@@ -181,7 +181,7 @@ const CompletedLeadsList = () => {
 
   return (
     <>
-      <Card>
+      <Card className="surface-card-solid">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Completed Leads</CardTitle>

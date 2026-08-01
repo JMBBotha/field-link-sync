@@ -340,7 +340,7 @@ const AdminSidebar = ({
   };
 
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-nav">
+    <div className="flex flex-col h-full bg-nav/90 backdrop-blur-xl supports-[backdrop-filter]:bg-nav/85">
       {/* Company switcher */}
       <div
         className={cn(
@@ -468,7 +468,7 @@ const AdminSidebar = ({
 
       <aside
         className={cn(
-          "flex flex-col shrink-0 transition-all duration-300 z-50 bg-nav",
+          "flex flex-col shrink-0 transition-all duration-300 z-50 bg-nav/90 border-r border-nav-border/60",
           "hidden lg:flex h-full",
           collapsed ? "w-[64px]" : "w-[232px]",
         )}
@@ -478,7 +478,7 @@ const AdminSidebar = ({
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-[264px] transform transition-transform duration-300 lg:hidden shadow-2xl bg-nav",
+          "fixed inset-y-0 left-0 z-50 w-[264px] transform transition-transform duration-300 lg:hidden shadow-2xl bg-nav/95",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
