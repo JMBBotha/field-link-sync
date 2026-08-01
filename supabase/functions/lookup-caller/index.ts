@@ -544,6 +544,18 @@ serve(async (req) => {
         is_primary: !!l.is_primary,
       })),
       last_call: lastCall,
+      call_history_summary: callHistorySummary,
+      call_history: callEntries.map((e) => ({
+        when: clockSast(e.at),
+        time_ago: timeAgo(e.at),
+        topic: e.topic,
+        summary: e.summary || null,
+        outcome: e.outcome,
+      })),
+      calls_today: callsToday.length,
+      calls_last_7_days: callEntries.length,
+      likely_intent: likelyIntent || null,
+
       confirmed_appointments: jobAppointmentSummaries,
       active_jobs: activeJobSummaries,
       recent_jobs: jobSummaries,
