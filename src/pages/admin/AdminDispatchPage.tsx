@@ -865,7 +865,7 @@ const AdminDispatchPage = () => {
                   <p className="text-muted-foreground text-xs">Address</p>
                   <p className="font-medium flex items-center gap-1">
                     <MapPin className="h-3 w-3 shrink-0" />
-                    {jobInfoLead.customer_address}
+                    {displayAddress(jobInfoLead.customer_address)}
                   </p>
                 </div>
               </div>
