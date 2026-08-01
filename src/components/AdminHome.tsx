@@ -282,7 +282,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
 
         {isLoading
           ? Array.from({ length: 5 }).map((_, i) => (
-              <Card key={i}>
+              <Card key={i} className="surface-card">
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <Skeleton className="h-4 w-4 rounded" />
@@ -302,7 +302,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                 viewAllHref={kpiViewAllHref[kpi.key] || "/admin"}
               >
               <Card
-                className="cursor-pointer rounded-xl border border-primary/50 !bg-[linear-gradient(135deg,#0077B6_0%,#5E9BBE_48%,#CBD5E1_100%)] text-slate-950 shadow-sm transition-all duration-200 hover:border-primary hover:shadow-md [--muted-foreground:210_25%_22%]"
+                className="surface-card surface-card-interactive cursor-pointer"
                 onClick={() => setSelectedKpi(kpi.key)}
               >
                 <CardContent className="p-3 md:p-4">
@@ -357,7 +357,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
 
       {/* Primary widgets — Recent Open Leads + Today's Dispatch */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 min-w-0">
-        <Card className="min-w-0 overflow-hidden border-primary/50 !bg-[linear-gradient(135deg,#0077B6_0%,#5E9BBE_48%,#CBD5E1_100%)] [--card-foreground:210_30%_8%] [--muted-foreground:210_25%_22%] [--border:204_70%_35%] [--secondary:204_40%_86%] [--secondary-foreground:210_30%_8%] [--accent:204_55%_82%] [--accent-foreground:210_30%_8%]">
+        <Card className="surface-card min-w-0 overflow-hidden">
 
           <CardHeader className="min-w-0 space-y-2 pb-2 p-3 md:p-6">
             <div className="flex items-center justify-between gap-2 min-w-0">
@@ -368,13 +368,14 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                 <Link to="/admin">View all</Link>
               </Button>
             </div>
-            <div className="grid w-full grid-cols-3 rounded-md border border-border p-0.5 bg-muted/30 md:inline-flex md:w-auto md:self-start">
+            <div className="surface-segment grid w-full grid-cols-3 p-0.5 md:inline-flex md:w-auto md:self-start">
               {(["day", "week", "month"] as const).map((r) => (
                 <button
                   key={r}
                   type="button"
                   onClick={() => setLeadsRange(r)}
-                  className={`min-w-0 text-[11px] px-1.5 py-0.5 rounded ${leadsRange === r ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+                  data-active={leadsRange === r}
+                  className="surface-segment-item min-w-0 text-[11px] px-1.5 py-0.5"
                 >
                   {r === "day" ? "Today" : r === "week" ? "Week" : "Month"}
                 </button>
@@ -388,7 +389,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
               <p className="text-sm text-muted-foreground text-center py-6">No open leads {leadsRange === "day" ? "today" : leadsRange === "week" ? "this week" : "this month"}</p>
             ) : (
               stats.openLeads.map((lead: any) => (
-                <div key={lead.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 p-2 rounded-md border border-border/50 hover:bg-muted/50">
+                <div key={lead.id} className="surface-row grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 p-2">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{lead.customer_name}</p>
                     <p className="text-xs text-muted-foreground truncate">
@@ -436,7 +437,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           </CardContent>
         </Card>
 
-        <Card className="min-w-0 overflow-hidden border-primary/50 !bg-[linear-gradient(135deg,#0077B6_0%,#5E9BBE_48%,#CBD5E1_100%)] [--card-foreground:210_30%_8%] [--muted-foreground:210_25%_22%] [--border:204_70%_35%] [--secondary:204_40%_86%] [--secondary-foreground:210_30%_8%] [--accent:204_55%_82%] [--accent-foreground:210_30%_8%]">
+        <Card className="surface-card min-w-0 overflow-hidden">
           <CardHeader className="min-w-0 space-y-2 pb-2 p-3 md:p-6">
             <div className="flex items-center justify-between gap-2 min-w-0">
               <CardTitle className="text-sm md:text-base flex items-center gap-2 min-w-0 truncate">
@@ -446,13 +447,14 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                 <Link to="/admin/jobs/dispatch">Dispatch</Link>
               </Button>
             </div>
-            <div className="grid w-full grid-cols-3 rounded-md border border-border p-0.5 bg-muted/30 md:inline-flex md:w-auto md:self-start">
+            <div className="surface-segment grid w-full grid-cols-3 p-0.5 md:inline-flex md:w-auto md:self-start">
               {(["day", "week", "month"] as const).map((r) => (
                 <button
                   key={r}
                   type="button"
                   onClick={() => setJobsRange(r)}
-                  className={`min-w-0 text-[11px] px-1.5 py-0.5 rounded ${jobsRange === r ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+                  data-active={jobsRange === r}
+                  className="surface-segment-item min-w-0 text-[11px] px-1.5 py-0.5"
                 >
                   {r === "day" ? "Today" : r === "week" ? "Week" : "Month"}
                 </button>
@@ -471,7 +473,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                 <Link
                   key={job.id}
                   to={`/admin/jobs/${job.id}`}
-                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 p-2 rounded-md border border-border/50 hover:bg-muted/50"
+                  className="surface-row grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 p-2"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{job.title}</p>
@@ -508,7 +510,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           {/* Secondary KPIs */}
           {stats && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Card className="rounded-xl border border-border">
+              <Card className="surface-card">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-1">
                     <DollarSign className="h-4 w-4 text-primary" />
@@ -517,7 +519,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                   <p className="text-2xl font-bold">R {(stats.revenueToday ?? 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</p>
                 </CardContent>
               </Card>
-              <Card className="rounded-xl border border-border">
+              <Card className="surface-card">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-1">
                     <Wrench className="h-4 w-4 text-destructive" />
@@ -545,7 +547,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                   { label: "Avg Completion", value: `${jobStats.avgCompletionDays}d`, icon: Timer, to: "/admin/analytics" },
                 ].map((card) => (
                   <Link key={card.label} to={card.to} className="block focus:outline-none focus:ring-2 focus:ring-primary rounded-xl">
-                    <Card className="rounded-xl border border-border cursor-pointer hover:border-primary/30 hover:bg-muted/40 transition-colors">
+                    <Card className="surface-card surface-card-interactive cursor-pointer">
                       <CardContent className="p-3">
                         <div className="flex items-center gap-2 mb-1">
                           <card.icon className="h-4 w-4 text-primary" />
@@ -561,7 +563,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
           )}
 
           {/* Live Map — same view as the sidebar "Map" page */}
-          <Card className="rounded-xl border border-border overflow-hidden">
+          <Card className="surface-card-solid overflow-hidden">
             <div className="relative w-full h-[70vh] min-h-[480px]">
               <AdminMapPage />
             </div>
