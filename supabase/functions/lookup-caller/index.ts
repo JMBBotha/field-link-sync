@@ -217,19 +217,26 @@ serve(async (req) => {
     const leadSelect =
       "id, service_type, status, notes, created_at, completed_at, scheduled_date, scheduled_time, assigned_agent_id, technician_name, technician_eta, order_status, parts_status, customer_phone, customer_address";
 
-    const { data: leadsById } = await supabase
-      .from("leads")
-      .select(leadSelect)
-      .eq("customer_id", customer.id)
-      .order("created_at", { ascending: false })
-      .limit(5);
-
-    const { data: leadsByPhone } = await supabase
-      .from("leads")
-      .select(leadSelect)
-      .in("customer_phone", phoneVariants)
-      .order("created_at", { ascending: false })
-      .limit(5);
+    const [{ data: leadsById }, { data: leadsByPhone }, { data: equipment }] = await Promise.all([
+      supabase
+        .from("leads")
+        .select(leadSelect)
+        .eq("customer_id", customer.id)
+        .order("created_at", { ascending: false })
+        .limit(5),
+      supabase
+        .from("leads")
+        .select(leadSelect)
+        .in("customer_phone", phoneVariants)
+        .order("created_at", { ascending: false })
+        .limit(5),
+      supabase
+        .from("equipment")
+        .select("id, type, brand, model, serial_number, install_date, warranty_expiry, location, last_service_date")
+        .eq("customer_id", customer.id)
+        .order("created_at", { ascending: false })
+        .limit(5),
+    ]);
 
     const seen = new Set<string>();
     const recentLeads = [...(leadsById || []), ...(leadsByPhone || [])]
@@ -237,13 +244,6 @@ serve(async (req) => {
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 5);
 
-    // --- Get equipment ---
-    const { data: equipment } = await supabase
-      .from("equipment")
-      .select("id, type, brand, model, serial_number, install_date, warranty_expiry, location, last_service_date")
-      .eq("customer_id", customer.id)
-      .order("created_at", { ascending: false })
-      .limit(5);
 
     // --- Active/open jobs (from the merged set) ---
     const todayJobs = recentLeads.filter((l) =>
