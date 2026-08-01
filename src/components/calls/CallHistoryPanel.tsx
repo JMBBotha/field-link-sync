@@ -147,13 +147,15 @@ export default function CallHistoryPanel({
                 </div>
               </div>
 
+              {call.summary && (
+                <div className="mt-2 rounded-md border border-primary/20 bg-primary/5 p-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">AI summary</p>
+                  <p className="mt-0.5 text-sm whitespace-pre-wrap">{call.summary}</p>
+                </div>
+              )}
+
               <CollapsibleContent className="mt-3 space-y-3">
-                {call.summary && (
-                  <div>
-                    <p className="text-xs font-semibold uppercase text-muted-foreground">Summary</p>
-                    <p className="text-sm whitespace-pre-wrap">{call.summary}</p>
-                  </div>
-                )}
+
                 {call.recording_url && (
                   <div>
                     <p className="text-xs font-semibold uppercase text-muted-foreground">Recording</p>
