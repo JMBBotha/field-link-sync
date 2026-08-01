@@ -284,7 +284,17 @@ serve(async (req) => {
     // --- Build context for Mandy ---
     const customerName = customer.first_name || customer.name?.split(" ")[0] || "there";
     const fullName = customer.name || `${customer.first_name || ""} ${customer.last_name || ""}`.trim();
-    const address = customer.primary_address_line1 || customer.address || "not on file";
+    // Address priority: Primary saved Location → any saved Location → flat fields.
+    const primaryLocation = (locations || []).find((l: any) => l.is_primary) || (locations || [])[0] || null;
+    const cleanAddress = (a?: string | null) =>
+      (a || "").replace(/,\s*South Africa\s*$/i, "").trim();
+    const address =
+      cleanAddress(primaryLocation?.address) ||
+      cleanAddress(customer.primary_address_line1) ||
+      cleanAddress(customer.address) ||
+      "not on file";
+    const hasAddress = address !== "not on file";
+
 
     // Pull the human-readable gist out of a lead's notes (Vapi stores the call
     // summary first, followed by the raw transcript / metadata blocks).
