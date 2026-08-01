@@ -77,44 +77,37 @@ export default function BusinessSearch({ getToken, onSelect, onSelectLead, proxi
           .limit(8),
       ]);
 
-      // 2) Mapbox business/POI search (secondary) — country-wide, not limited to
-      //    the current map viewport. Runs a proximity-biased pass plus a broad
-      //    national pass, then merges the two.
+      // 2) Mapbox Search Box API (business/POI name search) — country-wide.
+      //    The classic geocoding endpoint only text-matches addresses/places,
+      //    so brand names like "ORMS Photography" returned street lookalikes.
       const token = getToken();
       const mapboxPromise = (async () => {
         if (!token) return [] as Feature[];
-        const runSearch = async (useProximity: boolean) => {
-          const params = new URLSearchParams({
-            access_token: token,
-            types: "poi,address,place,locality,neighborhood",
-            limit: "10",
-            autocomplete: "true",
-            language: "en",
-            country: "za",
-          });
-          if (useProximity && proximity) params.set("proximity", `${proximity.lng},${proximity.lat}`);
-          const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(term)}.json?${params}`;
-          const res = await fetch(url);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const data = await res.json();
-          return (data.features || []) as Feature[];
-        };
-
-        const [near, wide] = await Promise.all([
-          proximity ? runSearch(true).catch(() => [] as Feature[]) : Promise.resolve([] as Feature[]),
-          runSearch(false).catch(() => [] as Feature[]),
-        ]);
-
-        const seen = new Set<string>();
-        const merged: Feature[] = [];
-        [...near, ...wide].forEach((f) => {
-          const key = f.id || `${f.place_name}`;
-          if (seen.has(key)) return;
-          seen.add(key);
-          merged.push(f);
+        const params = new URLSearchParams({
+          q: term,
+          access_token: token,
+          session_token: sessionTokenRef.current,
+          language: "en",
+          country: "za",
+          limit: "10",
+          types: "poi,address,street,place,locality,neighborhood",
         });
-        return merged.slice(0, 12);
+        if (proximity) params.set("proximity", `${proximity.lng},${proximity.lat}`);
+        const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/suggest?${params}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const suggestions = (data.suggestions || []) as any[];
+        // Businesses (POIs) first, then addresses/places.
+        suggestions.sort((a, b) => (a.feature_type === "poi" ? 0 : 1) - (b.feature_type === "poi" ? 0 : 1));
+        return suggestions.map((s: any, i: number) => ({
+          id: s.mapbox_id || `sug-${i}`,
+          mapboxId: s.mapbox_id,
+          text: s.name,
+          place_name: s.full_address || s.place_formatted || s.address || "",
+          center: null,
+        })) as Feature[];
       })();
+
 
 
       try {
