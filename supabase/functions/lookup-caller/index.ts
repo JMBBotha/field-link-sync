@@ -255,7 +255,21 @@ serve(async (req) => {
         .eq("customer_id", customer.id)
         .order("scheduled_for", { ascending: false, nullsFirst: false })
         .limit(10),
+      // Cross-call memory: every logged call for this caller in the last 7 days.
+      supabase
+        .from("vapi_calls")
+        .select("id, started_at, created_at, duration_seconds, service_type, urgency, summary, outcome, ended_reason, lead_id")
+        .or(
+          [
+            `customer_id.eq.${customer.id}`,
+            ...phoneVariants.map((v) => `caller_phone.eq.${v}`),
+          ].join(","),
+        )
+        .gte("created_at", sevenDaysAgo)
+        .order("created_at", { ascending: false })
+        .limit(10),
     ]);
+
 
 
     const seen = new Set<string>();
