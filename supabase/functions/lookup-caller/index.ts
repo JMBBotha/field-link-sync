@@ -446,7 +446,6 @@ serve(async (req) => {
 
     // Infer the most likely reason for THIS call from the recent pattern.
     let likelyIntent = "";
-    if (hasConfirmedAppointmentPlaceholder) { /* replaced below */ }
     const topTopic = callEntries[0]?.topic;
     if (callsToday.length >= 2) {
       likelyIntent = `They have already called ${callsToday.length} times today, most recently about ${topTopic}. They are almost certainly following up on that — open by acknowledging it (e.g. "Hi ${customerName}, good to hear from you again — is this about the ${topTopic} we spoke about earlier?") instead of starting from scratch.`;
