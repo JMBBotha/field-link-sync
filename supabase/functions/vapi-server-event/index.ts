@@ -306,7 +306,9 @@ async function recordCall(input: {
       business_phone: input.businessPhone,
       started_at: input.startedAt,
       ended_at: input.endedAt,
-      duration_seconds: input.durationSeconds || 0,
+      // Vapi sends fractional seconds (e.g. 87.439) — the column is an integer,
+      // and a float here fails the whole insert (22P02) and loses the call log.
+      duration_seconds: Math.max(0, Math.round(Number(input.durationSeconds) || 0)),
       ended_reason: input.endedReason,
       service_type: input.serviceType,
       urgency: input.urgency,
