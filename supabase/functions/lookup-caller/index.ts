@@ -204,6 +204,11 @@ serve(async (req) => {
           has_confirmed_appointment: false,
           greeting_hint: `Current date and time in South Africa (SAST, UTC+2) is ${nowInSast()}. This is a new caller with no history and NO appointment on file — never confirm or imply an existing booking. Ask for their name and how you can help them.`,
           customer: null,
+          call_history_summary: "No previous calls on record for this number.",
+          call_history: [],
+          calls_today: 0,
+          calls_last_7_days: 0,
+          likely_intent: null,
           recent_jobs: [],
           equipment: [],
         }),
@@ -221,7 +226,9 @@ serve(async (req) => {
     const leadSelect =
       "id, service_type, status, notes, created_at, completed_at, scheduled_date, scheduled_time, assigned_agent_id, technician_name, technician_eta, order_status, parts_status, customer_phone, customer_address";
 
-    const [{ data: leadsById }, { data: leadsByPhone }, { data: equipment }, { data: locations }, { data: jobs }] = await Promise.all([
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const [{ data: leadsById }, { data: leadsByPhone }, { data: equipment }, { data: locations }, { data: jobs }, { data: pastCalls }] = await Promise.all([
       supabase
         .from("leads")
         .select(leadSelect)
@@ -253,7 +260,21 @@ serve(async (req) => {
         .eq("customer_id", customer.id)
         .order("scheduled_for", { ascending: false, nullsFirst: false })
         .limit(10),
+      // Cross-call memory: every logged call for this caller in the last 7 days.
+      supabase
+        .from("vapi_calls")
+        .select("id, started_at, created_at, duration_seconds, service_type, urgency, summary, outcome, ended_reason, lead_id")
+        .or(
+          [
+            `customer_id.eq.${customer.id}`,
+            ...phoneVariants.map((v) => `caller_phone.eq.${v}`),
+          ].join(","),
+        )
+        .gte("created_at", sevenDaysAgo)
+        .order("created_at", { ascending: false })
+        .limit(10),
     ]);
+
 
 
     const seen = new Set<string>();
@@ -376,6 +397,74 @@ serve(async (req) => {
         }
       : null;
 
+    // --- Cross-call memory: merge logged calls with call-created leads so the
+    //     history is complete even when a call row was never written. ---
+    const clockSast = (iso: string) =>
+      new Date(iso).toLocaleString("en-ZA", {
+        timeZone: SAST, weekday: "short", day: "numeric", month: "short",
+        hour: "2-digit", minute: "2-digit", hour12: false,
+      });
+
+    type CallEntry = { at: string; topic: string; summary: string; outcome: string | null; source: string };
+
+    const callEntries: CallEntry[] = [
+      ...(pastCalls || []).map((c: any) => ({
+        at: c.started_at || c.created_at,
+        topic: c.service_type || "general enquiry",
+        summary: (c.summary || "").trim(),
+        outcome: c.outcome || null,
+        source: "call",
+      })),
+      ...allLeads
+        .filter((l: any) => new Date(l.created_at).getTime() >= Date.now() - 7 * 24 * 60 * 60 * 1000)
+        .map((l: any) => ({
+          at: l.created_at,
+          topic: l.service_type || "general enquiry",
+          summary: summarizeNotes(l.notes),
+          outcome: l.status || null,
+          source: "lead",
+        })),
+    ]
+      .filter((e) => !!e.at)
+      .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+      // Drop near-duplicates: a call row and its lead row within 5 minutes.
+      .filter((e, i, rows) =>
+        rows.findIndex(
+          (o) =>
+            o.topic === e.topic &&
+            Math.abs(new Date(o.at).getTime() - new Date(e.at).getTime()) < 5 * 60 * 1000,
+        ) === i,
+      )
+      .slice(0, 5);
+
+    const startOfTodaySast = new Date(
+      new Date().toLocaleString("en-US", { timeZone: SAST }),
+    ).setHours(0, 0, 0, 0);
+    const callsToday = callEntries.filter(
+      (e) => new Date(new Date(e.at).toLocaleString("en-US", { timeZone: SAST })).getTime() >= startOfTodaySast,
+    );
+
+    const callHistoryLines = callEntries.map(
+      (e) =>
+        `- ${clockSast(e.at)} (${timeAgo(e.at)}) — ${e.topic}${e.outcome ? ` [${e.outcome}]` : ""}${e.summary ? `: ${e.summary.slice(0, 220)}` : ""}`,
+    );
+
+    // Infer the most likely reason for THIS call from the recent pattern.
+    let likelyIntent = "";
+    const topTopic = callEntries[0]?.topic;
+    if (callsToday.length >= 2) {
+      likelyIntent = `They have already called ${callsToday.length} times today, most recently about ${topTopic}. They are almost certainly following up on that — open by acknowledging it (e.g. "Hi ${customerName}, good to hear from you again — is this about the ${topTopic} we spoke about earlier?") instead of starting from scratch.`;
+    } else if (callEntries.length >= 2) {
+      likelyIntent = `They have contacted us ${callEntries.length} times in the past week, most recently about ${topTopic}. Treat this as a continuation of that thread and ask if they are following up on it.`;
+    } else if (callEntries.length === 1) {
+      likelyIntent = `Their only recent contact was about ${topTopic} (${timeAgo(callEntries[0].at)}). Likely a follow-up on that.`;
+    }
+
+    const callHistorySummary = callHistoryLines.length
+      ? `Recent calls/contacts (most recent first, South African time):\n${callHistoryLines.join("\n")}\n${likelyIntent}`
+      : "No calls logged in the past 7 days.";
+
+
     // --- Real scheduled work: jobs table (source of truth) + scheduled leads ---
     // Only UPCOMING work counts as a confirmed appointment — a job dated in the
     // past must never be read back as a booking.
@@ -414,6 +503,11 @@ serve(async (req) => {
     if (lastCall) {
       greetingHint += ` They last contacted us ${timeAgo(lastLead!.created_at)} about a ${lastCall.service_type} (currently ${lastCall.status}). What was discussed: ${lastCall.summary}. Appointment: ${lastCall.appointment}. Reference this naturally instead of asking them to repeat themselves.`;
     }
+
+    if (callHistoryLines.length > 0) {
+      greetingHint += ` CALL HISTORY (last 7 days):\n${callHistoryLines.join("\n")}\n${likelyIntent} Never make them repeat what they already told us on an earlier call.`;
+    }
+
 
     if (activeJobSummaries.length > 0) {
       greetingHint += ` They have an open job — assume the call is about it unless they say otherwise.`;
@@ -455,6 +549,18 @@ serve(async (req) => {
         is_primary: !!l.is_primary,
       })),
       last_call: lastCall,
+      call_history_summary: callHistorySummary,
+      call_history: callEntries.map((e) => ({
+        when: clockSast(e.at),
+        time_ago: timeAgo(e.at),
+        topic: e.topic,
+        summary: e.summary || null,
+        outcome: e.outcome,
+      })),
+      calls_today: callsToday.length,
+      calls_last_7_days: callEntries.length,
+      likely_intent: likelyIntent || null,
+
       confirmed_appointments: jobAppointmentSummaries,
       active_jobs: activeJobSummaries,
       recent_jobs: jobSummaries,
