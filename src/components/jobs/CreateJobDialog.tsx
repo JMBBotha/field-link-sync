@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { JOB_TYPE_OPTIONS } from "@/lib/jobTypes";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -337,11 +338,9 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
             <Select value={jobType} onValueChange={setJobType}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="installation">Installation</SelectItem>
-                <SelectItem value="service">Technical Service Call</SelectItem>
-                <SelectItem value="repair">Repair</SelectItem>
-                <SelectItem value="survey">Survey</SelectItem>
-                <SelectItem value="maintenance">Maintenance</SelectItem>
+                {JOB_TYPE_OPTIONS.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
