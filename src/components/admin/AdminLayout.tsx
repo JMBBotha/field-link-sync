@@ -166,7 +166,7 @@ const AdminLayout = () => {
 
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="app-surface flex h-screen overflow-hidden">
       <AdminSidebar
         onCreateLead={() => setShowCreateLead(true)}
         onSignOut={handleSignOut}
@@ -176,7 +176,7 @@ const AdminLayout = () => {
       />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="shrink-0 h-14 border-b border-border flex items-center justify-between px-2 sm:px-4 gap-2 bg-background">
+        <header className="surface-shell shrink-0 h-14 border-b flex items-center justify-between px-2 sm:px-4 gap-2 z-20">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <Button
               variant="ghost"
@@ -217,18 +217,18 @@ const AdminLayout = () => {
 
 
         {/* Sticky mobile search bar */}
-        <div className="shrink-0 sm:hidden sticky top-0 z-10 border-b bg-background/95 backdrop-blur-sm px-3 py-2">
+        <div className="surface-shell shrink-0 sm:hidden sticky top-0 z-10 border-b px-3 py-2">
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
-            className="flex w-full items-center gap-2 rounded-md border border-input bg-white px-3 py-2 text-sm text-muted-foreground hover:bg-white/90 transition-colors shadow-sm"
+            className="surface-row flex w-full items-center gap-2 px-3 py-2 text-sm text-muted-foreground transition-colors"
           >
             <Search className="h-4 w-4 shrink-0" />
             <span>Search agents, leads, customers…</span>
           </button>
         </div>
 
-        <main className="flex-1 overflow-auto bg-background dark:bg-gradient-to-br dark:from-[#070e1a] dark:via-[#132f52]/40 dark:to-[#0b1a2e] pb-28 lg:pb-0">
+        <main className="app-surface flex-1 overflow-auto pb-28 lg:pb-0">
 
           <AnimatePresence mode="wait">
             <motion.div
