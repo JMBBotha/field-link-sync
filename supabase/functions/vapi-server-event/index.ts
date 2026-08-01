@@ -490,6 +490,7 @@ serve(async (req) => {
             caller_name: known ? context.customer.name : "",
             caller_first_name: firstName,
             is_existing_customer: !!known,
+            customer_address: known ? (context.customer_address || "") : "",
             caller_context: contextBlock,
           },
         },
