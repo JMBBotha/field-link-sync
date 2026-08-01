@@ -414,8 +414,10 @@ serve(async (req) => {
       });
       const timeBlock = [
         `TIME CONTEXT: right now it is ${nowSast} in South Africa (SAST, UTC+2). Every date and time you hear or say is South African time — never convert time zones.`,
-        `APPOINTMENT RULES: only ever state an appointment date or time that appears verbatim in the data below. If no appointment is listed, say plainly that nothing is booked yet and offer to book one. Never infer a day of the week from the customer saying a word like "Monday" — ask them to confirm the full date and time, repeat it back, and tell them the office will confirm.`,
+        `APPOINTMENT RULES: only ever state an existing appointment that appears verbatim in the data below. If nothing is booked, say so plainly and OFFER TO BOOK IT NOW.`,
+        `BOOKING RULES: you can book appointments yourself. Propose a specific day and time, get a clear yes, confirm the service address, then call the book_appointment tool with phone_number, date (YYYY-MM-DD), time (HH:MM 24-hour), service_type and address. Read back the confirmed date, time and address afterwards. Only say "someone will call you back" if the tool reports a failure.`,
       ].join("\n");
+
 
       const unknownScript = [
         `CALLER IDENTITY: NOT RECOGNISED (${callerNumber ? `caller ID ${callerNumber}` : "number withheld"}). Treat as a NEW caller.`,
