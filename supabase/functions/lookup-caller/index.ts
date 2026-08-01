@@ -335,8 +335,12 @@ serve(async (req) => {
         }
       : null;
 
+    // Any confirmed appointment across the open jobs?
+    const bookedJobs = todayJobs.filter((j) => j.scheduled_date);
+
     // Build greeting hint
-    let greetingHint = `This is ${fullName}, a returning customer. Greet them warmly by their first name "${customerName}".`;
+    let greetingHint = `Current date and time in South Africa (SAST, UTC+2) is ${nowInSast()}. All dates and times below are South African time — never convert them and never guess a date. `;
+    greetingHint += `This is ${fullName}, a returning customer. Greet them warmly by their first name "${customerName}".`;
 
     if (lastCall) {
       greetingHint += ` They last contacted us ${timeAgo(lastLead!.created_at)} about a ${lastCall.service_type} (currently ${lastCall.status}). What was discussed: ${lastCall.summary}. Appointment: ${lastCall.appointment}. Reference this naturally instead of asking them to repeat themselves.`;
@@ -346,6 +350,10 @@ serve(async (req) => {
       greetingHint += ` They have an open job — assume the call is about it unless they say otherwise.`;
     }
 
+    if (bookedJobs.length === 0) {
+      greetingHint += ` IMPORTANT: there is NO confirmed appointment date or time on file for this customer. Do not state, confirm or imply any appointment day (such as "Monday") — if they mention a day, treat it as a new request and offer to book it, then say the office will confirm.`;
+    }
+
     if (equipmentSummaries.length > 0) {
       const eq = equipment![0];
       greetingHint += ` They have a ${eq.brand || ""} ${eq.model || ""} system on file.`;
@@ -353,7 +361,11 @@ serve(async (req) => {
 
     const result = {
       is_existing_customer: true,
+      current_time_sast: nowInSast(),
+      timezone: "Africa/Johannesburg (SAST, UTC+2)",
+      has_confirmed_appointment: bookedJobs.length > 0,
       greeting_hint: greetingHint,
+
       customer: {
         id: customer.id,
         name: fullName,
