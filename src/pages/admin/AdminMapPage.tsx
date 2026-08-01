@@ -174,6 +174,18 @@ const AdminMapPage = () => {
             <Switch checked={trafficEnabled} onCheckedChange={handleTrafficToggle} className="scale-75" />
           </div>
         </div>
+        {/* Search stays reachable when the leads panel is collapsed */}
+        {leadsCollapsed && (
+          <div className="min-w-[12rem] flex-1 max-w-sm">
+            <BusinessSearch
+              className="relative w-full"
+              getToken={() => mapRef.current?.getMapboxToken() ?? null}
+              onSelect={(lat, lng, name, address) => {
+                mapRef.current?.showSearchResult(lat, lng, name, address);
+              }}
+            />
+          </div>
+        )}
         {/* Status pills — inline on desktop, second scrollable row on small screens */}
         <div className="order-last w-full min-w-0 overflow-x-auto scrollbar-hide lg:order-none lg:w-auto lg:overflow-visible">
           <StatusFilterButtons
