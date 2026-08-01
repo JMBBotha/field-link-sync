@@ -238,12 +238,11 @@ const AdminMapPage = () => {
           )}
 
           <div
-            className={`absolute top-0 left-0 h-full z-10 overflow-y-auto backdrop-blur-md border-r shadow-xl transition-all duration-300 ease-out ${
+            className={`absolute top-0 left-0 h-full z-10 overflow-y-auto glass-panel border-r shadow-xl transition-all duration-300 ease-out ${
               completedPanelCollapsed || !showCompletedFilter
                 ? 'w-0 opacity-0 pointer-events-none translate-x-[-100%]'
                 : 'w-[72vw] max-w-[22rem] sm:w-80 md:w-96 opacity-100 translate-x-0'
             }`}
-            style={{ background: 'linear-gradient(135deg, hsl(var(--card) / 0.75) 0%, hsl(var(--card) / 0.92) 100%)' }}
           >
             {!completedPanelCollapsed && showCompletedFilter && (
               <CompletedLeadsPanel
@@ -268,12 +267,11 @@ const AdminMapPage = () => {
           </Button>
 
           <div
-            className={`absolute top-0 right-0 h-full z-10 overflow-y-auto backdrop-blur-md border-l shadow-xl transition-all duration-300 ease-out ${
+            className={`absolute top-0 right-0 h-full z-10 overflow-y-auto glass-panel border-l shadow-xl transition-all duration-300 ease-out ${
               leadsCollapsed
                 ? 'w-0 opacity-0 pointer-events-none translate-x-[100%]'
                 : 'w-[72vw] max-w-[22rem] sm:w-80 md:w-96 opacity-100 translate-x-0'
             }`}
-            style={{ background: 'linear-gradient(135deg, hsl(var(--card) / 0.75) 0%, hsl(var(--card) / 0.92) 100%)' }}
           >
             {!leadsCollapsed && (
               <LeadsList
