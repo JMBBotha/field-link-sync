@@ -70,12 +70,49 @@ function normalizeForLookup(phone: string): string[] {
   return [...new Set(variants)];
 }
 
-// Format date nicely
+const SAST = "Africa/Johannesburg";
+
+// Format date nicely, always in South African local time
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "unknown date";
-  const d = new Date(dateStr);
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  // Bare date columns ("2026-08-05") must not be shifted by a timezone.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `${d} ${months[m - 1]} ${y}`;
+  }
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) return "unknown date";
+  return parsed.toLocaleDateString("en-ZA", {
+    timeZone: SAST,
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+// Current date/time in SAST, spoken-friendly
+function nowInSast(): string {
+  return new Date().toLocaleString("en-ZA", {
+    timeZone: SAST,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+// "14:30:00" → "2:30 PM"
+function formatTime(timeStr: string | null): string {
+  if (!timeStr) return "";
+  const [h, m] = String(timeStr).split(":").map(Number);
+  if (Number.isNaN(h)) return "";
+  const suffix = h < 12 ? "AM" : "PM";
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m || 0).padStart(2, "0")} ${suffix}`;
 }
 
 // Calculate time ago
@@ -90,6 +127,7 @@ function timeAgo(dateStr: string): string {
   if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
   return `${Math.floor(diffDays / 365)} years ago`;
 }
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -138,22 +176,22 @@ serve(async (req) => {
     const phoneVariants = normalizeForLookup(phoneNumber);
     console.log(`[lookup-caller] Phone variants:`, phoneVariants);
 
-    let customer = null;
+    // One combined query across every variant — the old per-variant loop ran
+    // up to 4 sequential round-trips and made Mandy stall mid-call.
+    const orFilter = [
+      ...phoneVariants.map((v) => `phone.eq.${v}`),
+      ...phoneVariants.map((v) => `secondary_phone.eq.${v}`),
+      ...phoneVariants.map((v) => `normalized_phone.eq.${v.replace(/\D/g, "").replace(/^27/, "0")}`),
+    ].join(",");
 
-    // Try each phone variant against the customers table
-    for (const variant of phoneVariants) {
-      const { data } = await supabase
-        .from("customers")
-        .select("id, name, first_name, last_name, phone, email, address, primary_address_line1, city, status, secondary_phone")
-        .or(`phone.eq.${variant},secondary_phone.eq.${variant},normalized_phone.eq.${variant.replace(/\D/g, "").replace(/^27/, "0")}`)
-        .limit(1)
-        .single();
+    const { data: matches } = await supabase
+      .from("customers")
+      .select("id, name, first_name, last_name, phone, email, address, primary_address_line1, city, status, secondary_phone")
+      .or(orFilter)
+      .limit(1);
 
-      if (data) {
-        customer = data;
-        break;
-      }
-    }
+    const customer = matches?.[0] || null;
+
 
     // --- No match: new caller ---
     if (!customer) {
@@ -161,11 +199,15 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         result: JSON.stringify({
           is_existing_customer: false,
-          greeting_hint: "This is a new caller. Ask for their name and how you can help them.",
+          current_time_sast: nowInSast(),
+          timezone: "Africa/Johannesburg (SAST, UTC+2)",
+          has_confirmed_appointment: false,
+          greeting_hint: `Current date and time in South Africa (SAST, UTC+2) is ${nowInSast()}. This is a new caller with no history and NO appointment on file — never confirm or imply an existing booking. Ask for their name and how you can help them.`,
           customer: null,
           recent_jobs: [],
           equipment: [],
         }),
+
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -179,19 +221,26 @@ serve(async (req) => {
     const leadSelect =
       "id, service_type, status, notes, created_at, completed_at, scheduled_date, scheduled_time, assigned_agent_id, technician_name, technician_eta, order_status, parts_status, customer_phone, customer_address";
 
-    const { data: leadsById } = await supabase
-      .from("leads")
-      .select(leadSelect)
-      .eq("customer_id", customer.id)
-      .order("created_at", { ascending: false })
-      .limit(5);
-
-    const { data: leadsByPhone } = await supabase
-      .from("leads")
-      .select(leadSelect)
-      .in("customer_phone", phoneVariants)
-      .order("created_at", { ascending: false })
-      .limit(5);
+    const [{ data: leadsById }, { data: leadsByPhone }, { data: equipment }] = await Promise.all([
+      supabase
+        .from("leads")
+        .select(leadSelect)
+        .eq("customer_id", customer.id)
+        .order("created_at", { ascending: false })
+        .limit(5),
+      supabase
+        .from("leads")
+        .select(leadSelect)
+        .in("customer_phone", phoneVariants)
+        .order("created_at", { ascending: false })
+        .limit(5),
+      supabase
+        .from("equipment")
+        .select("id, type, brand, model, serial_number, install_date, warranty_expiry, location, last_service_date")
+        .eq("customer_id", customer.id)
+        .order("created_at", { ascending: false })
+        .limit(5),
+    ]);
 
     const seen = new Set<string>();
     const recentLeads = [...(leadsById || []), ...(leadsByPhone || [])]
@@ -199,13 +248,6 @@ serve(async (req) => {
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 5);
 
-    // --- Get equipment ---
-    const { data: equipment } = await supabase
-      .from("equipment")
-      .select("id, type, brand, model, serial_number, install_date, warranty_expiry, location, last_service_date")
-      .eq("customer_id", customer.id)
-      .order("created_at", { ascending: false })
-      .limit(5);
 
     // --- Active/open jobs (from the merged set) ---
     const todayJobs = recentLeads.filter((l) =>
@@ -242,10 +284,15 @@ serve(async (req) => {
     const describeAppointment = (lead: any): string => {
       const parts: string[] = [];
       if (lead.scheduled_date) {
+        const dayName = (() => {
+          const [y, m, d] = String(lead.scheduled_date).split("-").map(Number);
+          return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-ZA", { timeZone: "UTC", weekday: "long" });
+        })();
         parts.push(
-          `scheduled for ${formatDate(lead.scheduled_date)}${lead.scheduled_time ? ` at ${String(lead.scheduled_time).slice(0, 5)}` : ""}`
+          `scheduled for ${dayName} ${formatDate(lead.scheduled_date)}${lead.scheduled_time ? ` at ${formatTime(lead.scheduled_time)} South African time` : " (no time confirmed yet)"}`
         );
       }
+
       if (lead.technician_name) parts.push(`technician ${lead.technician_name}`);
       if (lead.technician_eta) {
         parts.push(
@@ -292,8 +339,12 @@ serve(async (req) => {
         }
       : null;
 
+    // Any confirmed appointment across the open jobs?
+    const bookedJobs = todayJobs.filter((j) => j.scheduled_date);
+
     // Build greeting hint
-    let greetingHint = `This is ${fullName}, a returning customer. Greet them warmly by their first name "${customerName}".`;
+    let greetingHint = `Current date and time in South Africa (SAST, UTC+2) is ${nowInSast()}. All dates and times below are South African time — never convert them and never guess a date. `;
+    greetingHint += `This is ${fullName}, a returning customer. Greet them warmly by their first name "${customerName}".`;
 
     if (lastCall) {
       greetingHint += ` They last contacted us ${timeAgo(lastLead!.created_at)} about a ${lastCall.service_type} (currently ${lastCall.status}). What was discussed: ${lastCall.summary}. Appointment: ${lastCall.appointment}. Reference this naturally instead of asking them to repeat themselves.`;
@@ -303,6 +354,10 @@ serve(async (req) => {
       greetingHint += ` They have an open job — assume the call is about it unless they say otherwise.`;
     }
 
+    if (bookedJobs.length === 0) {
+      greetingHint += ` IMPORTANT: there is NO confirmed appointment date or time on file for this customer. Do not state, confirm or imply any appointment day (such as "Monday") — if they mention a day, treat it as a new request and offer to book it, then say the office will confirm.`;
+    }
+
     if (equipmentSummaries.length > 0) {
       const eq = equipment![0];
       greetingHint += ` They have a ${eq.brand || ""} ${eq.model || ""} system on file.`;
@@ -310,7 +365,11 @@ serve(async (req) => {
 
     const result = {
       is_existing_customer: true,
+      current_time_sast: nowInSast(),
+      timezone: "Africa/Johannesburg (SAST, UTC+2)",
+      has_confirmed_appointment: bookedJobs.length > 0,
       greeting_hint: greetingHint,
+
       customer: {
         id: customer.id,
         name: fullName,
