@@ -446,6 +446,12 @@ serve(async (req) => {
               context.last_call
                 ? `Last contact: ${context.last_call.when} — ${context.last_call.service_type} (${context.last_call.status}). Discussed: ${context.last_call.summary} Appointment: ${context.last_call.appointment}`
                 : "",
+              context.call_history_summary && context.calls_last_7_days
+                ? `CALL HISTORY — ${context.calls_last_7_days} contact(s) in the last 7 days, ${context.calls_today || 0} today:\n${context.call_history_summary}`
+                : "",
+              context.likely_intent
+                ? `LIKELY REASON FOR THIS CALL: ${context.likely_intent} Acknowledge the repeat contact naturally in your first or second sentence.`
+                : "",
               context.confirmed_appointments?.length
                 ? `Confirmed appointments:\n${context.confirmed_appointments.join("\n")}`
                 : "",
@@ -492,6 +498,9 @@ serve(async (req) => {
             is_existing_customer: !!known,
             customer_address: known ? (context.customer_address || "") : "",
             caller_context: contextBlock,
+            call_history_summary: known ? (context.call_history_summary || "") : "",
+            likely_intent: known ? (context.likely_intent || "") : "",
+            calls_today: known ? (context.calls_today || 0) : 0,
           },
         },
       }), {
