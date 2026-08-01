@@ -377,9 +377,16 @@ serve(async (req) => {
       : null;
 
     // --- Real scheduled work: jobs table (source of truth) + scheduled leads ---
+    // Only UPCOMING work counts as a confirmed appointment — a job dated in the
+    // past must never be read back as a booking.
+    const nowMs = Date.now();
     const scheduledJobs = (jobs || []).filter(
-      (j: any) => j.scheduled_for && !["cancelled", "completed"].includes((j.status || "").toLowerCase()),
+      (j: any) =>
+        j.scheduled_for &&
+        new Date(j.scheduled_for).getTime() >= nowMs - 2 * 60 * 60 * 1000 &&
+        !["cancelled", "completed"].includes((j.status || "").toLowerCase()),
     );
+
     const jobAppointmentSummaries = scheduledJobs.map((j: any) => {
       const when = new Date(j.scheduled_for).toLocaleString("en-ZA", {
         timeZone: SAST, weekday: "long", day: "numeric", month: "long", year: "numeric",
