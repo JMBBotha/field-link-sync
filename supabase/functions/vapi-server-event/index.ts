@@ -510,9 +510,31 @@ serve(async (req) => {
           try { params = JSON.parse(params); } catch { params = {}; }
         }
 
-        if (name === "lookup_caller" || name === "check_job_status") {
+        if (name === "book_appointment") {
+          const phoneNumber = params.phone_number || callerNumber || "";
+          console.log(`[vapi-server-event] book_appointment for ${phoneNumber}:`, JSON.stringify(params));
+          try {
+            const res = await fetch(`${supabaseUrl}/functions/v1/book-appointment`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "x-api-key": apiKey },
+              body: JSON.stringify({ ...params, phone_number: phoneNumber }),
+            });
+            const json = await res.json();
+            results.push({
+              toolCallId: toolCall.id || toolCall.toolCallId,
+              result: json.result || "Booking failed. Apologise and say the office will phone back to confirm.",
+            });
+          } catch (bookErr: any) {
+            console.error("[vapi-server-event] book_appointment error:", bookErr);
+            results.push({
+              toolCallId: toolCall.id || toolCall.toolCallId,
+              result: "Booking failed. Apologise and say the office will phone back to confirm the appointment.",
+            });
+          }
+        } else if (name === "lookup_caller" || name === "check_job_status") {
           const phoneNumber = params.phone_number || callerNumber || "";
           const target = name === "lookup_caller" ? "lookup-caller" : "check-job-status";
+
 
           console.log(
             `[vapi-server-event] ${name} for: ${phoneNumber || "(no number)"} (arg=${params.phone_number || "none"}, callerId=${callerNumber || "none"})`
