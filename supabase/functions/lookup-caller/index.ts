@@ -280,10 +280,15 @@ serve(async (req) => {
     const describeAppointment = (lead: any): string => {
       const parts: string[] = [];
       if (lead.scheduled_date) {
+        const dayName = (() => {
+          const [y, m, d] = String(lead.scheduled_date).split("-").map(Number);
+          return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-ZA", { timeZone: "UTC", weekday: "long" });
+        })();
         parts.push(
-          `scheduled for ${formatDate(lead.scheduled_date)}${lead.scheduled_time ? ` at ${String(lead.scheduled_time).slice(0, 5)}` : ""}`
+          `scheduled for ${dayName} ${formatDate(lead.scheduled_date)}${lead.scheduled_time ? ` at ${formatTime(lead.scheduled_time)} South African time` : " (no time confirmed yet)"}`
         );
       }
+
       if (lead.technician_name) parts.push(`technician ${lead.technician_name}`);
       if (lead.technician_eta) {
         parts.push(
