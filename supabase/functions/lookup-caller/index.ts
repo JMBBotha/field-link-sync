@@ -72,14 +72,27 @@ function normalizeForLookup(phone: string): string[] {
 
 const SAST = "Africa/Johannesburg";
 
-// Format date nicely, always in South African local time
+/** Address as it should be SPOKEN: street + suburb only — no province, no postal code. */
+function spokenAddress(a?: string | null): string {
+  const parts = String(a || "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .filter((p) => !/^\d{4}$/.test(p))
+    .filter((p) => !/^(western cape|eastern cape|northern cape|gauteng|kwazulu[- ]natal|free state|limpopo|mpumalanga|north ?west|south africa)\b/i.test(p))
+    .map((p) => p.replace(/\s+\d{4}$/, "").trim())
+    .filter(Boolean);
+  return parts.slice(0, 2).join(", ") || String(a || "").trim();
+}
+
+// Format date nicely, always in South African local time (spoken: no year)
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "unknown date";
   // Bare date columns ("2026-08-05") must not be shifted by a timezone.
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-    const [y, m, d] = dateStr.split("-").map(Number);
+    const [, m, d] = dateStr.split("-").map(Number);
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    return `${d} ${months[m - 1]} ${y}`;
+    return `${d} ${months[m - 1]}`;
   }
   const parsed = new Date(dateStr);
   if (Number.isNaN(parsed.getTime())) return "unknown date";
@@ -87,9 +100,9 @@ function formatDate(dateStr: string | null): string {
     timeZone: SAST,
     day: "numeric",
     month: "short",
-    year: "numeric",
   });
 }
+
 
 // Current date/time in SAST, spoken-friendly
 function nowInSast(): string {
@@ -478,10 +491,10 @@ serve(async (req) => {
 
     const jobAppointmentSummaries = scheduledJobs.map((j: any) => {
       const when = new Date(j.scheduled_for).toLocaleString("en-ZA", {
-        timeZone: SAST, weekday: "long", day: "numeric", month: "long", year: "numeric",
+        timeZone: SAST, weekday: "long", day: "numeric", month: "long",
         hour: "2-digit", minute: "2-digit", hour12: false,
       });
-      return `- ${j.title || j.job_type || "Job"} (${j.status}) — confirmed appointment ${when} South African time${j.address ? ` at ${cleanAddress(j.address)}` : ""}`;
+      return `- ${j.title || j.job_type || "Job"} (${j.status}) — confirmed appointment ${when} South African time${j.address ? ` at ${spokenAddress(j.address)}` : ""}`;
     });
 
     // Any confirmed appointment? Jobs first, then leads that carry a date.
@@ -495,7 +508,7 @@ serve(async (req) => {
     greetingHint += `This is ${fullName}, a returning customer. Greet them warmly by their first name "${customerName}".`;
 
     if (hasAddress) {
-      greetingHint += ` Their address on file is: ${address}. When an address is needed, read this back and ask them to confirm it — never say you have no address on file.`;
+      greetingHint += ` Their address on file is: ${spokenAddress(address)}. Speak it EXACTLY like that — street and suburb only, never the province or postal code. When an address is needed, read this back and ask them to confirm it — never say you have no address on file.`;
     } else {
       greetingHint += ` There is NO address on file — ask them for the service address and read it back to confirm.`;
     }
@@ -542,7 +555,9 @@ serve(async (req) => {
         city: customer.city || null,
         status: customer.status,
       },
-      customer_address: hasAddress ? address : null,
+      customer_address: hasAddress ? spokenAddress(address) : null,
+      customer_address_full: hasAddress ? address : null,
+
       customer_locations: (locations || []).map((l: any) => ({
         label: l.label,
         address: cleanAddress(l.address),

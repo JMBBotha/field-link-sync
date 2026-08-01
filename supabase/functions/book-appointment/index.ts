@@ -49,19 +49,36 @@ function normalized(phone: string): string {
   return d.startsWith("27") ? "0" + d.slice(2) : d;
 }
 
+/** Address as it should be SPOKEN: street + suburb only, no province / postal code. */
+function spokenAddress(addr: string): string {
+  const parts = String(addr || "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean)
+    // drop pure postal codes and province names
+    .filter((p) => !/^\d{4}$/.test(p))
+    .filter((p) => !/^(western cape|eastern cape|northern cape|gauteng|kwazulu[- ]natal|free state|limpopo|mpumalanga|north ?west|south africa)\b/i.test(p))
+    // strip a trailing postal code glued onto a part ("Strand 7140")
+    .map((p) => p.replace(/\s+\d{4}$/, "").trim())
+    .filter(Boolean);
+  return parts.slice(0, 2).join(", ") || String(addr || "").trim();
+}
+
 function parseWhen(date: string, time: string): { iso: string; spoken: string } | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "")) return null;
   const t = /^\d{1,2}:\d{2}$/.test(time || "") ? time.padStart(5, "0") : "09:00";
   const iso = `${date}T${t}:00${SAST_OFFSET}`;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
+  // Spoken form: day of week + day + month, NO year.
   const spoken = d.toLocaleString("en-ZA", {
     timeZone: "Africa/Johannesburg",
-    weekday: "long", day: "numeric", month: "long", year: "numeric",
+    weekday: "long", day: "numeric", month: "long",
     hour: "2-digit", minute: "2-digit", hour12: false,
   });
   return { iso, spoken };
 }
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -154,17 +171,17 @@ serve(async (req) => {
     const serviceType = String(p.service_type || "Service / Maintenance").trim();
     const notes = String(p.notes || "").trim();
 
-    // --- Reuse the caller's most recent unscheduled lead, else create one ---
+    // --- Reuse the caller's open lead (unscheduled OR already scheduled = reschedule) ---
     const { data: openLeads } = await supabase
       .from("leads")
-      .select("id, notes, company_id")
+      .select("id, notes, company_id, scheduled_date")
       .eq("customer_id", customer.id)
-      .is("scheduled_date", null)
-      .in("status", ["pending", "new", "converted"])
+      .in("status", ["pending", "new", "converted", "accepted", "claimed", "scheduled"])
       .order("created_at", { ascending: false })
       .limit(1);
 
     let leadId = openLeads?.[0]?.id || null;
+    const isReschedule = !!openLeads?.[0]?.scheduled_date;
     let companyId = openLeads?.[0]?.company_id || customer.company_id || null;
 
     if (leadId) {
@@ -176,7 +193,7 @@ serve(async (req) => {
           scheduled_time: `${String(p.time || "09:00").padStart(5, "0")}:00`,
           service_type: serviceType,
           customer_address: address,
-          notes: [openLeads![0].notes, notes && `Booked by phone: ${notes}`].filter(Boolean).join("\n"),
+          notes: [openLeads![0].notes, notes && `${isReschedule ? "Rescheduled" : "Booked"} by phone: ${notes}`].filter(Boolean).join("\n"),
         })
         .eq("id", leadId);
       if (error) {
@@ -211,30 +228,57 @@ serve(async (req) => {
       companyId = newLead.company_id || companyId;
     }
 
-    // --- Create the actual job (the appointment record) ---
+    // --- Create or MOVE the job (the appointment record) — never duplicate ---
     let jobCreated = false;
+    let jobMoved = false;
     if (companyId) {
-      const { error: jobErr } = await supabase.from("jobs").insert({
-        company_id: companyId,
-        customer_id: customer.id,
-        lead_id: leadId,
-        title: `${serviceType} — ${customer.name}`,
-        description: notes || `Booked by phone on ${new Date().toISOString()}`,
-        address,
-        scheduled_for: when.iso,
-        status: "scheduled",
-        job_type: "service",
-        priority: "normal",
-      });
-      if (jobErr) console.error("[book-appointment] job insert failed:", jobErr);
-      else jobCreated = true;
+      const { data: existingJobs } = await supabase
+        .from("jobs")
+        .select("id")
+        .eq("customer_id", customer.id)
+        .in("status", ["scheduled", "pending", "assigned", "dispatched"])
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const existingJobId = existingJobs?.[0]?.id || null;
+
+      if (existingJobId) {
+        const { error: jobErr } = await supabase
+          .from("jobs")
+          .update({
+            lead_id: leadId,
+            title: `${serviceType} — ${customer.name}`,
+            address,
+            scheduled_for: when.iso,
+            status: "scheduled",
+          })
+          .eq("id", existingJobId);
+        if (jobErr) console.error("[book-appointment] job reschedule failed:", jobErr);
+        else { jobCreated = true; jobMoved = true; }
+      } else {
+        const { error: jobErr } = await supabase.from("jobs").insert({
+          company_id: companyId,
+          customer_id: customer.id,
+          lead_id: leadId,
+          title: `${serviceType} — ${customer.name}`,
+          description: notes || `Booked by phone on ${new Date().toISOString()}`,
+          address,
+          scheduled_for: when.iso,
+          status: "scheduled",
+          job_type: "service",
+          priority: "normal",
+        });
+        if (jobErr) console.error("[book-appointment] job insert failed:", jobErr);
+        else jobCreated = true;
+      }
     } else {
       console.warn("[book-appointment] no company_id — job record skipped, lead is scheduled");
     }
 
     const confirmation =
-      `BOOKING CONFIRMED. Read this back to the caller exactly: their ${serviceType.toLowerCase()} is booked for ${when.spoken} South African time at ${address}. ` +
+      `BOOKING ${jobMoved ? "MOVED" : "CONFIRMED"}. Read this back to the caller exactly, and speak it exactly as written — no year, no province, no postal code: their ${serviceType.toLowerCase()} is ${jobMoved ? "now moved to" : "booked for"} ${when.spoken} at ${spokenAddress(address)}. ` +
       `Tell them it is confirmed in the system and they will get a reminder. Do not say anyone needs to call them back.`;
+
 
     console.log(`[book-appointment] booked lead=${leadId} job=${jobCreated} at ${when.iso}`);
 
