@@ -993,11 +993,52 @@ const DayTimeline = ({
 
       {/* Agent columns */}
       <div className="flex flex-1 min-w-0 overflow-x-auto">
+        {/* Unassigned lane — scheduled jobs with no technician yet */}
+        {(() => {
+          const unassignedToday = allLeads.filter(
+            l => !l.assigned_agent_id && l.scheduled_date === dateStr && !!l.scheduled_time
+          );
+          return (
+            <div className="flex-1 min-w-[160px] border-r bg-warning/5">
+              <div className="h-10 border-b px-2 flex items-center gap-1.5 bg-warning/10 sticky top-0 z-10">
+                <AlertTriangle className="h-3 w-3 text-warning shrink-0" />
+                <span className="text-xs font-medium truncate">Unassigned</span>
+                {unassignedToday.length > 0 && (
+                  <Badge variant="secondary" className="ml-auto h-4 text-[9px] px-1">{unassignedToday.length}</Badge>
+                )}
+              </div>
+              <div className="relative">
+                {HOURS.map(h => (
+                  <div key={h} className="border-b" style={{ height: pxPerHour }} />
+                ))}
+                {unassignedToday.map(lead => {
+                  const startMins = timeToMinutes(lead.scheduled_time as string) - 6 * 60;
+                  const top = minutesToPx(startMins, pxPerHour);
+                  const height = minutesToPx(120, pxPerHour);
+                  return (
+                    <div
+                      key={lead.id}
+                      className="absolute left-1 right-1 rounded-md border border-dashed border-warning bg-warning/15 px-1.5 py-1 text-[10px] cursor-pointer overflow-y-auto"
+                      style={{ top, height }}
+                      title={`${lead.customer_name} • ${lead.scheduled_time} • Unassigned`}
+                      onClick={() => onJobInfoClick(lead, null as any)}
+                    >
+                      <p className="font-semibold leading-tight break-words">{lead.customer_name}</p>
+                      <p className="break-words opacity-80">{lead.service_type}</p>
+                      <span className="mt-0.5 inline-block rounded bg-warning/30 px-1 text-[9px] font-medium">Unassigned</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
         {agents.length === 0 && (
           <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm py-20">
             No technicians found. Add field agents in Settings.
           </div>
         )}
+
         {agents.map(agent => {
           const agentSchedules = schedules.filter(s => s.agent_id === agent.id);
           const online = isAgentOnline(agent.id);
