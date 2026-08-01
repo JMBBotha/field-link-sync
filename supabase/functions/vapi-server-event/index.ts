@@ -322,8 +322,33 @@ async function recordCall(input: {
       ? await admin.from("vapi_calls").upsert(row, { onConflict: "provider_call_id" })
       : await admin.from("vapi_calls").insert(row);
 
-    if (error) console.error("[vapi-server-event] vapi_calls write error:", error);
-    else console.log(`[vapi-server-event] Call logged (lead=${input.leadId}, customer=${customerId})`);
+    if (error) {
+      console.error("[vapi-server-event] vapi_calls write error:", error);
+      // Never lose a call: retry with a minimal, always-valid row so the
+      // customer's call history is complete even if one column is rejected.
+      const minimal = {
+        provider: "vapi",
+        provider_call_id: row.provider_call_id,
+        direction: "inbound",
+        company_id: companyId,
+        customer_id: customerId,
+        lead_id: input.leadId,
+        caller_phone: row.caller_phone,
+        caller_name: row.caller_name,
+        started_at: row.started_at,
+        ended_at: row.ended_at,
+        duration_seconds: row.duration_seconds,
+        summary: row.summary,
+        outcome: input.outcome,
+      };
+      const { error: retryError } = row.provider_call_id
+        ? await admin.from("vapi_calls").upsert(minimal, { onConflict: "provider_call_id" })
+        : await admin.from("vapi_calls").insert(minimal);
+      if (retryError) console.error("[vapi-server-event] vapi_calls fallback write failed:", retryError);
+      else console.log("[vapi-server-event] Call logged via fallback row");
+    } else {
+      console.log(`[vapi-server-event] Call logged (lead=${input.leadId}, customer=${customerId})`);
+    }
   } catch (err) {
     console.error("[vapi-server-event] recordCall exception:", err);
   }
