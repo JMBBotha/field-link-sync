@@ -807,12 +807,58 @@ All colors MUST be HSL.
   border-color: hsl(var(--surface-border) / var(--surface-border-alpha));
 }
 
+/* 4. Tables: header + rows read as glass, not opaque slabs. */
+.app-surface table thead,
+.app-surface table thead tr,
+.app-surface thead.bg-muted,
+.app-surface thead .bg-muted,
+.app-surface [data-slot="table-header"] {
+  background-color: hsl(var(--surface-glass) / calc(var(--surface-glass-alpha) * 0.7)) !important;
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+}
+.app-surface table tbody tr {
+  background-color: transparent;
+  border-color: hsl(var(--surface-border) / calc(var(--surface-border-alpha) * 0.5));
+}
+.app-surface table tbody tr:hover {
+  background-color: hsl(var(--surface-glass) / calc(var(--surface-glass-alpha) * 0.75)) !important;
+}
+
+/* 5. Inner panels, list rows and muted/secondary blocks inside surfaces. */
+.app-surface .bg-muted:not(button):not([role="tab"]):not(.no-glass),
+.app-surface .bg-muted\/50:not(button):not([role="tab"]):not(.no-glass),
+.app-surface .bg-muted\/30:not(button):not([role="tab"]):not(.no-glass),
+.app-surface .bg-secondary:not(button):not([role="tab"]):not(.no-glass),
+.app-surface .bg-accent\/50:not(button):not([role="tab"]):not(.no-glass) {
+  background-color: hsl(var(--surface-glass) / calc(var(--surface-glass-alpha) * 0.6)) !important;
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border-color: hsl(var(--surface-border) / calc(var(--surface-border-alpha) * 0.7));
+}
+
+/* 6. Sticky bars, sub-headers, toolbars and side panels. */
+.app-surface .sticky:not(.no-glass):not(thead):not(th),
+.app-surface header:not(.no-glass),
+.app-surface aside:not(.no-glass) {
+  backdrop-filter: blur(var(--surface-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(150%);
+}
+
 /* Overlays that must stay legible keep their solid look. */
 [role="dialog"] .bg-card,
-[data-radix-popper-content-wrapper] .bg-card {
+[role="dialog"] .bg-muted,
+[role="menu"] .bg-muted,
+[data-radix-popper-content-wrapper] .bg-card,
+[data-radix-popper-content-wrapper] .bg-muted {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   background-color: hsl(var(--card)) !important;
   box-shadow: none;
 }
+[data-radix-popper-content-wrapper] [role="option"]:hover,
+[role="menu"] [role="menuitem"]:hover {
+  background-color: hsl(var(--accent) / 0.15) !important;
+}
+
 
