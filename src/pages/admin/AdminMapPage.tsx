@@ -183,6 +183,9 @@ const AdminMapPage = () => {
               onSelect={(lat, lng, name, address) => {
                 mapRef.current?.showSearchResult(lat, lng, name, address);
               }}
+              onSelectLead={(leadId, lat, lng) => {
+                mapRef.current?.panToLocationAndOpenPopup(lat, lng, leadId);
+              }}
             />
           </div>
         )}
@@ -226,7 +229,7 @@ const AdminMapPage = () => {
               variant="ghost"
               size="icon"
               onClick={() => setCompletedPanelCollapsed(!completedPanelCollapsed)}
-              className={`flex absolute top-4 z-20 bg-white/80 backdrop-blur-md shadow-md hover:bg-white/90 rounded-md border transition-all duration-300 ${
+              className={`flex absolute top-4 z-20 bg-background/95 text-foreground backdrop-blur-md shadow-md hover:bg-accent hover:text-accent-foreground rounded-md border border-border transition-all duration-300 ${
                 completedPanelCollapsed ? 'left-2' : 'left-[calc(min(72vw,22rem)+0.5rem)] sm:left-[calc(20rem+0.5rem)] md:left-[calc(24rem+0.5rem)]'
               }`}
             >
@@ -240,7 +243,7 @@ const AdminMapPage = () => {
                 ? 'w-0 opacity-0 pointer-events-none translate-x-[-100%]'
                 : 'w-[72vw] max-w-[22rem] sm:w-80 md:w-96 opacity-100 translate-x-0'
             }`}
-            style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(34, 197, 94, 0.10) 100%)' }}
+            style={{ background: 'linear-gradient(135deg, hsl(var(--card) / 0.75) 0%, hsl(var(--card) / 0.92) 100%)' }}
           >
             {!completedPanelCollapsed && showCompletedFilter && (
               <CompletedLeadsPanel
@@ -257,7 +260,7 @@ const AdminMapPage = () => {
             variant="ghost"
             size="icon"
             onClick={() => setLeadsCollapsed(!leadsCollapsed)}
-            className={`flex absolute top-4 z-20 bg-white/80 backdrop-blur-md shadow-md hover:bg-white/90 rounded-md border transition-all duration-300 ${
+            className={`flex absolute top-4 z-20 bg-background/95 text-foreground backdrop-blur-md shadow-md hover:bg-accent hover:text-accent-foreground rounded-md border border-border transition-all duration-300 ${
               leadsCollapsed ? 'right-2' : 'right-[calc(min(72vw,22rem)+0.5rem)] sm:right-[calc(20rem+0.5rem)] md:right-[calc(24rem+0.5rem)]'
             }`}
           >
@@ -270,7 +273,7 @@ const AdminMapPage = () => {
                 ? 'w-0 opacity-0 pointer-events-none translate-x-[100%]'
                 : 'w-[72vw] max-w-[22rem] sm:w-80 md:w-96 opacity-100 translate-x-0'
             }`}
-            style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(34, 197, 94, 0.10) 100%)' }}
+            style={{ background: 'linear-gradient(135deg, hsl(var(--card) / 0.75) 0%, hsl(var(--card) / 0.92) 100%)' }}
           >
             {!leadsCollapsed && (
               <LeadsList
@@ -280,6 +283,9 @@ const AdminMapPage = () => {
                     getToken={() => mapRef.current?.getMapboxToken() ?? null}
                     onSelect={(lat, lng, name, address) => {
                       mapRef.current?.showSearchResult(lat, lng, name, address);
+                    }}
+                    onSelectLead={(leadId, lat, lng) => {
+                      mapRef.current?.panToLocationAndOpenPopup(lat, lng, leadId);
                     }}
                   />
                 }
