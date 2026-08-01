@@ -92,10 +92,11 @@ function mapPriority(urgency?: string): string {
 
 function detectServiceType(transcript: string): string {
   const lower = transcript.toLowerCase();
-  if (lower.includes("install") || lower.includes("new aircon") || lower.includes("new air con") || lower.includes("new unit")) return "New Installation";
-  if (lower.includes("repair") || lower.includes("fix") || lower.includes("broken") || lower.includes("not working") || lower.includes("not cooling")) return "Repair";
-  if (lower.includes("service") || lower.includes("maintain") || lower.includes("clean")) return "Technical Service Call";
-  if (lower.includes("quote") || lower.includes("price") || lower.includes("how much")) return "Quote Request";
+  // Three canonical categories: New Quote / Technical Service Call / New Installation
+  if (lower.includes("quote") || lower.includes("price") || lower.includes("pricing") || lower.includes("how much") || lower.includes("cost") || lower.includes("estimate")) return "New Quote";
+  if (lower.includes("quote accepted") || lower.includes("accepted the quote") || lower.includes("book the installation") || lower.includes("schedule the installation")) return "New Installation";
+  if (lower.includes("repair") || lower.includes("fix") || lower.includes("broken") || lower.includes("not working") || lower.includes("not cooling") || lower.includes("service") || lower.includes("maintain") || lower.includes("clean")) return "Technical Service Call";
+  if (lower.includes("install") || lower.includes("new aircon") || lower.includes("new air con") || lower.includes("new unit")) return "New Quote";
   return "General Inquiry";
 }
 
