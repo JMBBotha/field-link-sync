@@ -40,11 +40,10 @@ function mapPriority(urgency?: string): string {
 function mapServiceType(raw?: string): string {
   if (!raw) return "General Inquiry";
   const lower = raw.toLowerCase();
-  if (lower.includes("install") || lower.includes("new")) return "New Installation";
-  if (lower.includes("repair") || lower.includes("fix") || lower.includes("broken")) return "Repair";
-  if (lower.includes("heat pump") || lower.includes("water heat")) return "Heat Pump Water Heating";
-  if (lower.includes("super service") || lower.includes("maintain") || lower.includes("service plan")) return "Technical Service Call";
-  if (lower.includes("quote") || lower.includes("price") || lower.includes("selection")) return "Quote Request";
+  if (lower.includes("quote") || lower.includes("price") || lower.includes("estimate") || lower.includes("selection") || lower.includes("how much")) return "New Quote";
+  if (lower.includes("quote accepted") || lower.includes("book the installation")) return "New Installation";
+  if (lower.includes("repair") || lower.includes("fix") || lower.includes("broken") || lower.includes("super service") || lower.includes("maintain") || lower.includes("service plan") || lower.includes("service")) return "Technical Service Call";
+  if (lower.includes("install") || lower.includes("new")) return "New Quote";
   return raw;
 }
 
