@@ -50,6 +50,7 @@ export default function BusinessSearch({ getToken, onSelect, onSelectLead, proxi
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const debounceRef = useRef<number | null>(null);
+  const skipNextSearchRef = useRef(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const sessionTokenRef = useRef<string>(
     typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`
@@ -64,6 +65,10 @@ export default function BusinessSearch({ getToken, onSelect, onSelectLead, proxi
   }, []);
 
   useEffect(() => {
+    if (skipNextSearchRef.current) {
+      skipNextSearchRef.current = false;
+      return;
+    }
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     const term = q.trim();
     if (term.length < 2) {
@@ -128,18 +133,24 @@ export default function BusinessSearch({ getToken, onSelect, onSelectLead, proxi
       // Use OpenStreetMap's POI index as a broad fallback, while retaining only
       // results whose names actually contain a search word.
       const openStreetMapPromise = (async () => {
-        const params = new URLSearchParams({
-          q: term,
-          format: "jsonv2",
-          addressdetails: "1",
-          countrycodes: "za",
-          limit: "8",
-        });
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-          headers: { "Accept-Language": "en" },
-        });
-        if (!res.ok) return [] as Feature[];
-        const places = (await res.json()) as any[];
+        const brandTerm = words(term)[0] || term;
+        const queries = brandTerm.toLocaleLowerCase() === term.toLocaleLowerCase()
+          ? [term]
+          : [term, brandTerm];
+        const responses = await Promise.all(queries.map(async (query) => {
+          const params = new URLSearchParams({
+            q: query,
+            format: "jsonv2",
+            addressdetails: "1",
+            countrycodes: "za",
+            limit: "8",
+          });
+          const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+            headers: { "Accept-Language": "en" },
+          });
+          return res.ok ? (await res.json()) as any[] : [];
+        }));
+        const places = responses.flat();
         return places
           .filter((place) => isRelevantExternalResult(term, place.name || ""))
           .map((place) => ({
@@ -240,6 +251,7 @@ export default function BusinessSearch({ getToken, onSelect, onSelectLead, proxi
     const [lng, lat] = center;
     onSelect(lat, lng, f.text, f.place_name);
     setOpen(false);
+    skipNextSearchRef.current = true;
     setQ(f.text);
   };
 
@@ -268,6 +280,7 @@ export default function BusinessSearch({ getToken, onSelect, onSelectLead, proxi
     }
 
     setOpen(false);
+    skipNextSearchRef.current = true;
     setQ(r.name);
     if (r.kind === "lead" && onSelectLead) onSelectLead(r.id, lat as number, lng as number);
     else onSelect(lat as number, lng as number, r.name, r.address);
