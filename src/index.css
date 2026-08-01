@@ -645,3 +645,105 @@ All colors MUST be HSL.
 .dark .glass-header {
   background-color: rgba(10, 16, 28, 0.35);
 }
+
+/* ── Shared surface system (Map page visual language) ───────────── */
+/* Tokens: alpha-driven surfaces so Dashboard + Map share one theme. */
+:root {
+  --surface-glass: 0 0% 100%;
+  --surface-glass-alpha: 0.55;
+  --surface-glass-hover-alpha: 0.72;
+  --surface-solid-alpha: 0.85;
+  --surface-shell-alpha: 0.65;
+  --surface-border: 214 24% 62%;
+  --surface-border-alpha: 0.35;
+  --surface-blur: 14px;
+  --surface-shadow: 0 6px 22px -14px hsl(214 40% 20% / 0.45);
+  --app-ambient:
+    radial-gradient(900px 500px at 12% -8%, hsl(206 72% 42% / 0.10), transparent 60%),
+    radial-gradient(700px 450px at 95% 0%, hsl(148 57% 43% / 0.07), transparent 60%);
+}
+.dark {
+  --surface-glass: 214 45% 8%;
+  --surface-glass-alpha: 0.5;
+  --surface-glass-hover-alpha: 0.68;
+  --surface-solid-alpha: 0.8;
+  --surface-shell-alpha: 0.6;
+  --surface-border: 205 45% 70%;
+  --surface-border-alpha: 0.22;
+  --surface-shadow: 0 8px 26px -16px hsl(0 0% 0% / 0.8);
+  --app-ambient:
+    radial-gradient(900px 500px at 12% -8%, hsl(206 72% 42% / 0.18), transparent 60%),
+    radial-gradient(700px 450px at 95% 0%, hsl(206 60% 30% / 0.14), transparent 60%);
+}
+
+/* Ambient app background so translucent surfaces have depth to sit on */
+.app-surface {
+  background-color: hsl(var(--background));
+  background-image: var(--app-ambient);
+  background-attachment: fixed;
+}
+
+/* Shell chrome: top bar, sticky sub-bars */
+.surface-shell {
+  background-color: hsl(var(--surface-glass) / var(--surface-shell-alpha));
+  backdrop-filter: blur(var(--surface-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(140%);
+  border-color: hsl(var(--surface-border) / var(--surface-border-alpha));
+}
+
+/* Primary cards: KPI + summary panels */
+.surface-card {
+  background-color: hsl(var(--surface-glass) / var(--surface-glass-alpha)) !important;
+  background-image: none !important;
+  backdrop-filter: blur(var(--surface-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(140%);
+  border: 1px solid hsl(var(--surface-border) / var(--surface-border-alpha));
+  border-radius: var(--radius);
+  box-shadow: var(--surface-shadow);
+  transition: background-color .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.surface-card-interactive:hover {
+  background-color: hsl(var(--surface-glass) / var(--surface-glass-hover-alpha)) !important;
+  border-color: hsl(var(--primary) / 0.45);
+  box-shadow: 0 10px 26px -16px hsl(var(--primary) / 0.55);
+}
+
+/* Data-dense surfaces: charts, tables, detailed widgets — more opaque */
+.surface-card-solid {
+  background-color: hsl(var(--surface-glass) / var(--surface-solid-alpha)) !important;
+  background-image: none !important;
+  backdrop-filter: blur(8px) saturate(125%);
+  -webkit-backdrop-filter: blur(8px) saturate(125%);
+  border: 1px solid hsl(var(--surface-border) / var(--surface-border-alpha));
+  border-radius: var(--radius);
+  box-shadow: var(--surface-shadow);
+}
+
+/* Inset rows inside surfaces (list items) */
+.surface-row {
+  background-color: hsl(var(--surface-glass) / 0.35);
+  border: 1px solid hsl(var(--surface-border) / calc(var(--surface-border-alpha) * 0.8));
+  border-radius: calc(var(--radius) - 0.35rem);
+  transition: background-color .18s ease, border-color .18s ease;
+}
+.surface-row:hover {
+  background-color: hsl(var(--surface-glass) / 0.6);
+  border-color: hsl(var(--primary) / 0.35);
+}
+
+/* Segmented filters / tabs */
+.surface-segment {
+  background-color: hsl(var(--surface-glass) / 0.35);
+  border: 1px solid hsl(var(--surface-border) / var(--surface-border-alpha));
+  border-radius: calc(var(--radius) - 0.35rem);
+}
+.surface-segment-item {
+  border-radius: calc(var(--radius) - 0.45rem);
+  color: hsl(var(--muted-foreground));
+  transition: background-color .18s ease, color .18s ease;
+}
+.surface-segment-item[data-active="true"] {
+  background-color: hsl(var(--surface-glass) / 0.95);
+  color: hsl(var(--foreground));
+  box-shadow: 0 1px 3px hsl(214 40% 20% / 0.18);
+}
