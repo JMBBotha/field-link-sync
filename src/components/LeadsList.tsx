@@ -607,7 +607,7 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-white z-50">
+                <DropdownMenuContent align="end" className="bg-popover text-popover-foreground z-50">
                   <DropdownMenuItem onClick={() => setEditingLead(lead)}>
                     <Pencil className="h-4 w-4 mr-2" />
                     Edit Lead
@@ -651,7 +651,7 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
   return (
     <div className="h-full flex flex-col overflow-hidden max-h-[calc(100vh-120px)] md:max-h-[calc(100vh-80px)] lg:max-h-none">
       {/* Fixed header */}
-      <div className="p-4 border-b border-white/10 flex-shrink-0 sticky top-0 z-10 bg-transparent">
+      <div className="p-4 border-b border-border/60 flex-shrink-0 sticky top-0 z-10 bg-card/80 backdrop-blur-md">
         {headerSlot && <div className="mb-4">{headerSlot}</div>}
         <div className="flex items-center justify-between">
           <div>
