@@ -171,7 +171,7 @@ serve(async (req) => {
       const { error } = await supabase
         .from("leads")
         .update({
-          status: "scheduled",
+          status: "accepted",
           scheduled_date: p.date,
           scheduled_time: `${String(p.time || "09:00").padStart(5, "0")}:00`,
           service_type: serviceType,
@@ -192,7 +192,7 @@ serve(async (req) => {
           customer_phone: phone || customer.phone,
           customer_address: address,
           service_type: serviceType,
-          status: "scheduled",
+          status: "accepted",
           priority: "normal",
           scheduled_date: p.date,
           scheduled_time: `${String(p.time || "09:00").padStart(5, "0")}:00`,
