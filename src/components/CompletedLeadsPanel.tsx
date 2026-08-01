@@ -328,7 +328,7 @@ const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: Completed
   const renderDesktopCard = (lead: Lead) => (
     <Card 
       key={lead.id} 
-      className="bg-gradient-to-r from-blue-100 to-slate-50 backdrop-blur-sm border-border/50 hover:from-blue-50 hover:to-white transition-all shadow-md cursor-pointer"
+      className="glass-card transition-all cursor-pointer"
       onClick={() => onLeadClick?.(lead.latitude, lead.longitude, lead.id)}
     >
       <CardHeader className="pb-3">
@@ -358,7 +358,7 @@ const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: Completed
       open={expandedCards.has(lead.id)}
       onOpenChange={() => toggleCardExpansion(lead.id)}
     >
-      <Card className="bg-gradient-to-r from-blue-100 to-slate-50 backdrop-blur-sm border-border/50 hover:from-blue-50 hover:to-white transition-all shadow-md overflow-hidden w-full max-w-full cursor-pointer">
+      <Card className="glass-card transition-all overflow-hidden w-full max-w-full cursor-pointer">
         <CollapsibleTrigger asChild>
           <div className="cursor-pointer w-full" onClick={() => onLeadClick?.(lead.latitude, lead.longitude, lead.id)}>
             {renderCompactHeader(lead)}
@@ -380,7 +380,7 @@ const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: Completed
       "max-h-[calc(100vh-120px)] md:max-h-[calc(100vh-80px)] lg:max-h-none"
     )}>
       {/* Fixed header */}
-      <div className="p-4 border-b border-white/10 flex-shrink-0 sticky top-0 z-10 bg-transparent">
+      <div className="p-4 border-b border-white/10 flex-shrink-0 sticky top-0 z-10 glass-header">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-foreground" />
@@ -456,7 +456,7 @@ const CompletedLeadsPanel = ({ onLeadClick, onPanelClose, isVisible }: Completed
         
         <div className="p-3 space-y-2 w-full max-w-full">
           {leads.length === 0 ? (
-            <Card className="bg-gradient-to-r from-blue-100 to-slate-50 border-border/50 shadow-md">
+            <Card className="glass-card">
               <CardContent className="py-8 text-center text-muted-foreground">
                 <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
                 No completed jobs yet

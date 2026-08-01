@@ -463,7 +463,7 @@ const LeadsList = ({ onLeadClick, onPanelClose, headerSlot }: LeadsListProps) =>
   const renderDesktopCard = (lead: Lead) => (
     <Card 
       key={lead.id} 
-      className={`bg-gradient-to-r from-blue-100 to-slate-50 dark:from-[#0a1628]/60 dark:via-[#1a3a6a]/50 dark:to-[#0a1628]/60 dark:backdrop-blur-md dark:border-blue-400/20 border-border/50 hover:from-blue-50 hover:to-white dark:hover:from-[#0f2240]/65 dark:hover:via-[#1e4d8a]/55 dark:hover:to-[#0f2240]/65 transition-all duration-200 shadow-md cursor-pointer hover:scale-[1.02] hover:shadow-lg ${
+      className={`glass-card transition-all duration-200 shadow-md cursor-pointer hover:scale-[1.02] hover:shadow-lg ${
 clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
       }`}
       onClick={() => {
@@ -584,7 +584,7 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
       onOpenChange={() => toggleCardExpansion(lead.id)}
     >
       <Card 
-        className={`bg-gradient-to-r from-blue-100/60 to-slate-50/50 dark:from-[#0a1628]/40 dark:via-[#1a3a6a]/35 dark:to-[#0a1628]/40 backdrop-blur-sm dark:border-blue-400/20 border-border/40 hover:from-blue-50/70 hover:to-white/60 dark:hover:from-[#0f2240]/50 dark:hover:via-[#1e4d8a]/45 dark:hover:to-[#0f2240]/50 transition-all duration-200 shadow-sm overflow-hidden w-full max-w-full cursor-pointer hover:scale-[1.01] hover:shadow-md ${
+        className={`glass-card transition-all duration-200 shadow-sm overflow-hidden w-full max-w-full cursor-pointer hover:scale-[1.01] hover:shadow-md ${
           clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
         }`}
         onClick={() => {
@@ -651,7 +651,7 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
   return (
     <div className="h-full flex flex-col overflow-hidden max-h-[calc(100vh-120px)] md:max-h-[calc(100vh-80px)] lg:max-h-none">
       {/* Fixed header */}
-      <div className="p-4 border-b border-border/60 flex-shrink-0 sticky top-0 z-10 bg-card/80 backdrop-blur-md">
+      <div className="p-4 border-b border-border/40 flex-shrink-0 sticky top-0 z-10 glass-header">
         {headerSlot && <div className="mb-4">{headerSlot}</div>}
         <div className="flex items-center justify-between">
           <div>
@@ -715,7 +715,7 @@ clickedCardId === lead.id ? 'ring-2 ring-primary ring-offset-2' : ''
         
         <div className="p-3 space-y-2 w-full max-w-full">
           {leads.length === 0 ? (
-            <Card className="bg-gradient-to-r from-blue-100 to-slate-50 dark:from-[#0a1628]/60 dark:via-[#1a3a6a]/50 dark:to-[#0a1628]/60 dark:backdrop-blur-md dark:border-blue-400/20 border-border/50 shadow-md">
+            <Card className="glass-card">
               <CardContent className="py-8 text-center text-muted-foreground">
                 No leads yet
               </CardContent>
