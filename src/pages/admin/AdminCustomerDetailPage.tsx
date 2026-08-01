@@ -256,8 +256,11 @@ const AdminCustomerDetailPage = () => {
       ? customer.company_name
       : fullName || customer.name || "Unnamed";
   const contactName = customer.is_company ? fullName : headerName;
-  const fullAddress = [customer.primary_address_line1, customer.primary_address_line2, customer.city, customer.postal_code]
+  const structuredAddress = [customer.primary_address_line1, customer.primary_address_line2, customer.city, customer.postal_code]
     .filter(Boolean).join(", ");
+  // Fall back to the free-text address (what phone/WhatsApp intake writes) so the
+  // profile card is never blank when an address is actually on file.
+  const fullAddress = structuredAddress || (customer.address || "").trim();
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
