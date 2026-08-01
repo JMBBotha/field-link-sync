@@ -1,0 +1,1 @@
+delete from public.vapi_calls where customer_id='c786e758-8372-472c-ad19-5925dc274bdc';
