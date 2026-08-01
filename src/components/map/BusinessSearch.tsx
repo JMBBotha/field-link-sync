@@ -41,6 +41,9 @@ export default function BusinessSearch({ getToken, onSelect, onSelectLead, proxi
   const [error, setError] = useState<string | null>(null);
   const debounceRef = useRef<number | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const sessionTokenRef = useRef<string>(
+    typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`
+  );
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
