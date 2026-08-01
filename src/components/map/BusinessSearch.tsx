@@ -13,6 +13,16 @@ interface Feature {
   mapboxId?: string; // Search Box API id, retrieved on select
 }
 
+const words = (value: string) =>
+  value.toLocaleLowerCase().match(/[a-z0-9]+/g) ?? [];
+
+const isRelevantExternalResult = (term: string, name: string, featureType?: string) => {
+  if (featureType === "poi") return true;
+  const queryWords = words(term).filter((word) => word.length > 2);
+  const nameWords = new Set(words(name));
+  return queryWords.some((word) => nameWords.has(word));
+};
+
 interface InternalResult {
   key: string;
   kind: "lead" | "customer";
@@ -99,7 +109,9 @@ export default function BusinessSearch({ getToken, onSelect, onSelectLead, proxi
         const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/suggest?${params}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        const suggestions = (data.suggestions || []) as any[];
+        const suggestions = ((data.suggestions || []) as any[]).filter((suggestion) =>
+          isRelevantExternalResult(term, suggestion.name || "", suggestion.feature_type)
+        );
         // Businesses (POIs) first, then addresses/places.
         suggestions.sort((a, b) => (a.feature_type === "poi" ? 0 : 1) - (b.feature_type === "poi" ? 0 : 1));
         return suggestions.map((s: any, i: number) => ({
@@ -111,13 +123,48 @@ export default function BusinessSearch({ getToken, onSelect, onSelectLead, proxi
         })) as Feature[];
       })();
 
+      // Mapbox's South African POI index can omit real businesses and return a
+      // similarly-spelled street instead (for example ORMS → Roms Street).
+      // Use OpenStreetMap's POI index as a broad fallback, while retaining only
+      // results whose names actually contain a search word.
+      const openStreetMapPromise = (async () => {
+        const params = new URLSearchParams({
+          q: term,
+          format: "jsonv2",
+          addressdetails: "1",
+          countrycodes: "za",
+          limit: "8",
+        });
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+          headers: { "Accept-Language": "en" },
+        });
+        if (!res.ok) return [] as Feature[];
+        const places = (await res.json()) as any[];
+        return places
+          .filter((place) => isRelevantExternalResult(term, place.name || ""))
+          .map((place) => ({
+            id: `osm-${place.osm_type}-${place.osm_id}`,
+            text: place.name || term,
+            place_name: place.display_name || "South Africa",
+            center: [Number(place.lon), Number(place.lat)] as [number, number],
+          }))
+          .filter((place) => Number.isFinite(place.center[0]) && Number.isFinite(place.center[1]));
+      })();
+
 
 
       try {
-        const [[leadsRes, customersRes], features] = await Promise.all([
+        const [[leadsRes, customersRes], mapboxFeatures, openStreetMapFeatures] = await Promise.all([
           internalPromise,
           mapboxPromise.catch(() => [] as Feature[]),
+          openStreetMapPromise.catch(() => [] as Feature[]),
         ]);
+
+        const externalByName = new Map<string, Feature>();
+        [...mapboxFeatures, ...openStreetMapFeatures].forEach((feature) => {
+          const key = `${feature.text.toLocaleLowerCase()}|${feature.place_name.toLocaleLowerCase()}`;
+          if (!externalByName.has(key)) externalByName.set(key, feature);
+        });
 
         const rows: InternalResult[] = [];
         leadsRes.data?.forEach((l: any) =>
@@ -144,7 +191,7 @@ export default function BusinessSearch({ getToken, onSelect, onSelectLead, proxi
         );
 
         setInternal(rows);
-        setResults(features);
+        setResults(Array.from(externalByName.values()));
         setOpen(true);
       } catch (e: any) {
         setError(e?.message || "Search failed");
