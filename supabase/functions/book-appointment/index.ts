@@ -274,6 +274,8 @@ serve(async (req) => {
           .update({
             lead_id: leadId,
             title: `${serviceType} — ${customer.name}`,
+            job_type: jobType,
+
             address,
             scheduled_for: when.iso,
             status: "scheduled",
