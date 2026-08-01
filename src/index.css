@@ -650,17 +650,18 @@ All colors MUST be HSL.
 /* Tokens: alpha-driven surfaces so Dashboard + Map share one theme. */
 :root {
   --surface-glass: 0 0% 100%;
-  --surface-glass-alpha: 0.86;
-  --surface-glass-hover-alpha: 0.95;
-  --surface-solid-alpha: 0.97;
-  --surface-shell-alpha: 0.88;
-  --surface-border: 214 26% 55%;
-  --surface-border-alpha: 0.45;
-  --surface-blur: 14px;
-  --surface-shadow: 0 10px 28px -16px hsl(214 45% 22% / 0.55);
+  --surface-glass-alpha: 0.62;
+  --surface-glass-hover-alpha: 0.76;
+  --surface-solid-alpha: 0.82;
+  --surface-shell-alpha: 0.6;
+  --surface-border: 0 0% 100%;
+  --surface-border-alpha: 0.6;
+  --surface-blur: 22px;
+  --surface-shadow: 0 14px 34px -18px hsl(214 45% 18% / 0.6);
   --app-ambient:
-    radial-gradient(900px 500px at 12% -8%, hsl(206 72% 42% / 0.16), transparent 60%),
-    radial-gradient(700px 450px at 95% 0%, hsl(148 57% 43% / 0.12), transparent 60%);
+    radial-gradient(900px 500px at 12% -8%, hsl(206 72% 42% / 0.22), transparent 60%),
+    radial-gradient(700px 450px at 95% 0%, hsl(148 57% 43% / 0.16), transparent 60%),
+    radial-gradient(800px 600px at 50% 110%, hsl(214 40% 30% / 0.16), transparent 65%);
 }
 .dark {
   --surface-glass: 214 45% 8%;
