@@ -43,7 +43,7 @@ function mapServiceType(raw?: string): string {
   if (lower.includes("install") || lower.includes("new")) return "New Installation";
   if (lower.includes("repair") || lower.includes("fix") || lower.includes("broken")) return "Repair";
   if (lower.includes("heat pump") || lower.includes("water heat")) return "Heat Pump Water Heating";
-  if (lower.includes("super service") || lower.includes("maintain") || lower.includes("service plan")) return "Service / Maintenance";
+  if (lower.includes("super service") || lower.includes("maintain") || lower.includes("service plan")) return "Technical Service Call";
   if (lower.includes("quote") || lower.includes("price") || lower.includes("selection")) return "Quote Request";
   return raw;
 }

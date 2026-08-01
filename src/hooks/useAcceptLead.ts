@@ -124,7 +124,7 @@ export function useAcceptLead() {
             customer_id: lead.customer_id || null,
             lead_id: lead.id,
             created_by: user.id,
-            job_type: lead.service_type || "service_call",
+            job_type: lead.service_type || "service",
           } as any)
           .select("id")
           .single();

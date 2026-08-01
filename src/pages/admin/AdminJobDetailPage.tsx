@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { jobTypeLabel } from "@/lib/jobTypes";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -163,7 +164,7 @@ const AdminJobDetailPage = () => {
                   )}
                   {j.job_type && (
                     <Badge variant="outline" className="text-[10px]">
-                      {j.job_type}
+                      {jobTypeLabel(j.job_type)}
                     </Badge>
                   )}
                 </div>
