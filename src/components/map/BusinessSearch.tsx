@@ -158,12 +158,44 @@ export default function BusinessSearch({ getToken, onSelect, onSelectLead, proxi
     };
   }, [q, getToken, proximity]);
 
-  const handlePick = (f: Feature) => {
-    const [lng, lat] = f.center;
+  const handlePick = async (f: Feature) => {
+    let center = f.center;
+    // Search Box suggestions carry no coords — retrieve them on select.
+    if (!center && f.mapboxId) {
+      const token = getToken();
+      if (!token) {
+        setError("Map search unavailable");
+        return;
+      }
+      try {
+        setLoading(true);
+        const params = new URLSearchParams({
+          access_token: token,
+          session_token: sessionTokenRef.current,
+        });
+        const res = await fetch(
+          `https://api.mapbox.com/search/searchbox/v1/retrieve/${encodeURIComponent(f.mapboxId)}?${params}`
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const coords = data?.features?.[0]?.geometry?.coordinates;
+        if (Array.isArray(coords) && coords.length === 2) center = [coords[0], coords[1]];
+      } catch (e: any) {
+        setError(e?.message || "Could not load that location");
+      } finally {
+        setLoading(false);
+      }
+    }
+    if (!center) {
+      setError("Location not available for this result");
+      return;
+    }
+    const [lng, lat] = center;
     onSelect(lat, lng, f.text, f.place_name);
     setOpen(false);
     setQ(f.text);
   };
+
 
   const handlePickInternal = async (r: InternalResult) => {
     let { lat, lng } = r;
