@@ -9,7 +9,8 @@ interface Feature {
   id: string;
   text: string;
   place_name: string;
-  center: [number, number]; // [lng, lat]
+  center?: [number, number] | null; // [lng, lat] — may be resolved on select
+  mapboxId?: string; // Search Box API id, retrieved on select
 }
 
 interface InternalResult {
