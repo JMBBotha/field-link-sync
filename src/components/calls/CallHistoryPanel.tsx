@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Phone, ChevronDown, ExternalLink, Loader2 } from "lucide-react";
+import { Phone, ChevronDown, ExternalLink, Loader2, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
+import CallRecordingPlayer from "./CallRecordingPlayer";
 
 export interface CallRecord {
   id: string;
@@ -24,6 +25,13 @@ export interface CallRecord {
   recording_url: string | null;
   outcome: string | null;
   created_at: string;
+  call_category: string | null;
+  is_existing_client: boolean | null;
+  quote_id: string | null;
+  error_reason: string | null;
+  // Joined records — present only when the linked row really exists.
+  leads?: { id: string } | null;
+  quotes?: { id: string; quote_number: string | null } | null;
 }
 
 interface Props {
@@ -46,6 +54,7 @@ const outcomeLabel: Record<string, string> = {
   lead_failed: "No lead saved",
   no_lead: "No lead",
 };
+
 
 export default function CallHistoryPanel({
   customerId,
