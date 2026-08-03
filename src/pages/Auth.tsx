@@ -9,6 +9,30 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Building2, Wrench } from "lucide-react";
 import logo from "@/assets/logo.png";
 
+const BG_VIDEO =
+  "https://id-preview--a0033055-dead-4c27-b52b-8118cb332010.lovable.app/videos/how-it-works-bg.mp4";
+
+const BackgroundVideo = () => (
+  <>
+    <video
+      className="absolute inset-0 h-full w-full object-cover"
+      src={BG_VIDEO}
+      autoPlay
+      muted
+      loop
+      playsInline
+      preload="auto"
+      aria-hidden="true"
+    />
+    <div
+      className="absolute inset-0 bg-gradient-to-br from-[hsl(204,100%,20%)]/80 via-[hsl(204,100%,16%)]/80 to-[hsl(216,58%,8%)]/90"
+      aria-hidden="true"
+    />
+  </>
+);
+
+
+
 const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
@@ -113,9 +137,10 @@ const Auth = () => {
   // Signup choice screen
   if (showSignupChoice) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
-        <img src={logo} alt="0800BeCool" className="h-24 w-auto mb-8 drop-shadow-lg" />
-        <div className="w-full max-w-sm space-y-6">
+      <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
+        <BackgroundVideo />
+        <img src={logo} alt="0800BeCool" className="relative z-10 h-24 w-auto mb-8 drop-shadow-lg" />
+        <div className="relative z-10 w-full max-w-sm space-y-6">
           <div className="text-center space-y-1">
             <h1 className="text-2xl font-bold text-white">How do you want to join?</h1>
             <p className="text-white/70 text-sm">Choose the option that fits you best</p>
@@ -176,10 +201,11 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
-      <img src={logo} alt="0800BeCool" className="h-24 w-auto mb-8 drop-shadow-lg" />
+    <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
+      <BackgroundVideo />
+      <img src={logo} alt="0800BeCool" className="relative z-10 h-24 w-auto mb-8 drop-shadow-lg" />
 
-      <div className="w-full max-w-sm space-y-6">
+      <div className="relative z-10 w-full max-w-sm space-y-6">
         <div className="text-center space-y-1">
           <h1 className="text-2xl font-bold text-white">
             {isLogin ? "Welcome Back" : "Create Company Account"}
