@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
-  /** vapi_calls.id — used to lazily fetch the recording URL when not provided. */
+  /** vapi_calls.id — recordings are streamed through the get-call-recording function. */
   callId?: string | null;
-  /** Pass the URL directly when it is already loaded. */
+  /** Kept for API compatibility; playback always goes through the proxy. */
   recordingUrl?: string | null;
   className?: string;
   size?: "sm" | "default";
@@ -14,47 +14,69 @@ interface Props {
 
 /**
  * "Play Recording" control shown on every call record.
- * Renders an inline audio player once the recording is loaded, and a clear
- * "No recording" state when the provider did not return one.
+ * The audio is fetched through an edge function which verifies the recording is
+ * actually retrievable — so we never render a broken 0:00 / 0:00 player.
  */
 export default function CallRecordingPlayer({ callId, recordingUrl, className, size = "sm" }: Props) {
-  const [url, setUrl] = useState<string | null>(recordingUrl ?? null);
-  const [open, setOpen] = useState(Boolean(recordingUrl));
+  const [src, setSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [missing, setMissing] = useState(false);
+  const [unavailable, setUnavailable] = useState<string | null>(
+    callId ? null : recordingUrl ? null : "No recording available",
+  );
 
   const load = async () => {
-    if (url) {
-      setOpen(true);
-      return;
-    }
+    if (src) return;
     if (!callId) {
-      setMissing(true);
+      setUnavailable("No recording available");
       return;
     }
     setLoading(true);
-    const { data } = await supabase
-      .from("vapi_calls")
-      .select("recording_url")
-      .eq("id", callId)
-      .maybeSingle();
-    setLoading(false);
-    if (data?.recording_url) {
-      setUrl(data.recording_url);
-      setOpen(true);
-    } else {
-      setMissing(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      const base = (supabase as unknown as { functionsUrl?: string }).functionsUrl;
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-call-recording?id=${encodeURIComponent(callId)}`;
+      const res = await fetch(base ? url : url, {
+        headers: {
+          Authorization: `Bearer ${token ?? ""}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
+        },
+      });
+
+      if (!res.ok) {
+        let reason = "No recording available";
+        try {
+          const body = await res.json();
+          if (body?.reason) reason = body.reason;
+        } catch {
+          /* keep default */
+        }
+        setUnavailable(reason);
+        return;
+      }
+
+      const blob = await res.blob();
+      if (!blob.size) {
+        setUnavailable("No recording available");
+        return;
+      }
+      setSrc(URL.createObjectURL(blob));
+    } catch (e) {
+      console.error("Recording load failed:", e);
+      setUnavailable("Recording could not be loaded");
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (open && url) {
-    return <audio controls src={url} className={`w-full ${className || ""}`} />;
+  if (src) {
+    return <audio controls src={src} className={`w-full ${className || ""}`} />;
   }
 
-  if (missing) {
+  if (unavailable) {
     return (
       <span className={`inline-flex items-center gap-1 text-xs text-muted-foreground ${className || ""}`}>
-        <MicOff className="h-3 w-3" /> No recording available
+        <MicOff className="h-3 w-3" /> {unavailable}
       </span>
     );
   }
