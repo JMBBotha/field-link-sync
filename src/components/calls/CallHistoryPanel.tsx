@@ -77,9 +77,10 @@ export default function CallHistoryPanel({
       setLoading(true);
       let query = supabase
         .from("vapi_calls")
-        .select("*")
+        .select("*, leads(id), quotes(id, quote_number)")
         .order("created_at", { ascending: false })
         .limit(limit);
+
 
       if (leadId) query = query.eq("lead_id", leadId);
       else if (customerId) query = query.eq("customer_id", customerId);
