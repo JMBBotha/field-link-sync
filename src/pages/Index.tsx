@@ -6,6 +6,11 @@ import { Button } from "@/components/ui/button";
 import { MapPin, Users, Navigation, Loader2 } from "lucide-react";
 import logo from "@/assets/logo.png";
 
+const BG_VIDEO =
+  "https://id-preview--a0033055-dead-4c27-b52b-8118cb332010.lovable.app/videos/how-it-works-bg.mp4";
+
+
+
 const Index = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -62,7 +67,7 @@ const Index = () => {
       <img src={logo} alt="0800BeCool" className="relative z-10 h-24 w-auto mb-6 drop-shadow-lg" />
 
       {/* Tagline */}
-      <div className="text-center mb-10 max-w-md">
+      <div className="relative z-10 text-center mb-10 max-w-md">
         <h1 className="text-3xl font-bold text-white mb-2">
           Field Service Management
         </h1>
@@ -72,7 +77,7 @@ const Index = () => {
       </div>
 
       {/* Feature cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl w-full mb-10">
+      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl w-full mb-10">
         <div className="p-4 rounded-xl border border-white/25 bg-[linear-gradient(135deg,hsl(204,100%,36%)_0%,hsl(204,45%,58%)_52%,hsl(210,28%,84%)_100%)] shadow-lg text-center">
           <div className="mx-auto mb-3 p-2 rounded-lg bg-[hsl(25,95%,53%)]/20 text-[hsl(25,95%,53%)] w-fit">
             <MapPin className="h-5 w-5" />
@@ -101,14 +106,14 @@ const Index = () => {
       {/* CTA */}
       <Button
         onClick={() => navigate("/login")}
-        className="bg-[hsl(25,95%,53%)] hover:bg-[hsl(25,95%,45%)] text-white font-semibold text-base h-11 px-10"
+        className="relative z-10 bg-[hsl(25,95%,53%)] hover:bg-[hsl(25,95%,45%)] text-white font-semibold text-base h-11 px-10"
       >
         Get Started
       </Button>
 
       <Button
         variant="link"
-        className="mt-3 text-white/60 hover:text-white"
+        className="relative z-10 mt-3 text-white/60 hover:text-white"
         onClick={() => navigate("/login")}
       >
         Already have an account? Sign in
