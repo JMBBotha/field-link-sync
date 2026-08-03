@@ -929,7 +929,14 @@ serve(async (req) => {
       const summary = body.message.summary || analysis.summary || "";
       const transcript = artifact.transcript || "";
       const messages = artifact.messages || [];
-      const recordingUrl = artifact.recording?.url || artifact.recordingUrl || "";
+      const recordingUrl =
+        artifact.recording?.url ||
+        artifact.recordingUrl ||
+        artifact.recording?.mono?.combinedUrl ||
+        artifact.stereoRecordingUrl ||
+        artifact.recording?.stereoUrl ||
+        "";
+
 
       // Get caller phone (fall back to other payload shapes Vapi uses)
       const callerPhone = extractCallerNumber(body);

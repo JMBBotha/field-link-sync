@@ -11,6 +11,8 @@ import CompletedLeadsPanel from "@/components/CompletedLeadsPanel";
 import LeadDetailSheet from "@/components/LeadDetailSheet";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+
 
 interface Lead {
   id: string;
@@ -89,6 +91,24 @@ const AdminMapPage = () => {
     setSelectedLead(lead);
     setDetailSheetOpen(true);
   };
+
+  // Deep link support: /admin/map?lead=<id> opens that lead's detail sheet.
+  useEffect(() => {
+    const leadId = new URLSearchParams(window.location.search).get("lead");
+    if (!leadId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from("leads").select("*").eq("id", leadId).maybeSingle();
+      if (cancelled || !data) return;
+      setSelectedLead(data as unknown as Lead);
+      setDetailSheetOpen(true);
+      if (data.latitude && data.longitude) {
+        setTimeout(() => mapRef.current?.panToLocationAndOpenPopup(data.latitude as number, data.longitude as number, data.id), 800);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
 
   const infoAction = async () => { toast({ title: "Info", description: "Use field agent view for this action" }); };
 

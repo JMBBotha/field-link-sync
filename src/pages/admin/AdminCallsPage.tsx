@@ -123,7 +123,7 @@ export default function AdminCallsPage() {
                     )}
                     {call.leads?.id && (
                       <Button asChild variant="ghost" size="sm">
-                        <Link to={`/admin/leads?lead=${call.leads.id}`}>
+                        <Link to={`/admin/map?lead=${call.leads.id}`}>
                           Job <ExternalLink className="ml-1 h-3 w-3" />
                         </Link>
                       </Button>
