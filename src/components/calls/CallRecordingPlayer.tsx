@@ -34,9 +34,8 @@ export default function CallRecordingPlayer({ callId, recordingUrl, className, s
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
-      const base = (supabase as unknown as { functionsUrl?: string }).functionsUrl;
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-call-recording?id=${encodeURIComponent(callId)}`;
-      const res = await fetch(base ? url : url, {
+      const res = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token ?? ""}`,
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
