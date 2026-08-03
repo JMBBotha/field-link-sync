@@ -935,12 +935,31 @@ serve(async (req) => {
       const callerPhone = extractCallerNumber(body);
 
       if (!callerPhone) {
-        console.log("[vapi-server-event] No caller phone — skipping");
-        return new Response(JSON.stringify({ ok: true, skipped: "no phone" }), {
+        console.log("[vapi-server-event] No caller phone — logging call only");
+        await recordCall({
+          providerCallId: call.id || "",
+          callerPhone: "",
+          callerName: null,
+          businessPhone: call?.phoneNumber?.number || null,
+          leadId: null,
+          customerId: null,
+          startedAt: call.startedAt ? new Date(call.startedAt).toISOString() : null,
+          endedAt: call.endedAt ? new Date(call.endedAt).toISOString() : null,
+          durationSeconds: Number(body.message.durationSeconds) || 0,
+          endedReason,
+          serviceType: null,
+          urgency: null,
+          summary: summary || null,
+          transcript: transcript || null,
+          recordingUrl: recordingUrl || null,
+          outcome: "no_lead",
+        });
+        return new Response(JSON.stringify({ ok: true, skipped: "no phone", logged: true }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+
 
       // Calculate duration — Vapi may send it directly, or only timestamps
       const startedAtRaw = call.startedAt || body.message.startedAt;
