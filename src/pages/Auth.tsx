@@ -137,9 +137,10 @@ const Auth = () => {
   // Signup choice screen
   if (showSignupChoice) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
-        <img src={logo} alt="0800BeCool" className="h-24 w-auto mb-8 drop-shadow-lg" />
-        <div className="w-full max-w-sm space-y-6">
+      <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
+        <BackgroundVideo />
+        <img src={logo} alt="0800BeCool" className="relative z-10 h-24 w-auto mb-8 drop-shadow-lg" />
+        <div className="relative z-10 w-full max-w-sm space-y-6">
           <div className="text-center space-y-1">
             <h1 className="text-2xl font-bold text-white">How do you want to join?</h1>
             <p className="text-white/70 text-sm">Choose the option that fits you best</p>
@@ -200,10 +201,11 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
-      <img src={logo} alt="0800BeCool" className="h-24 w-auto mb-8 drop-shadow-lg" />
+    <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
+      <BackgroundVideo />
+      <img src={logo} alt="0800BeCool" className="relative z-10 h-24 w-auto mb-8 drop-shadow-lg" />
 
-      <div className="w-full max-w-sm space-y-6">
+      <div className="relative z-10 w-full max-w-sm space-y-6">
         <div className="text-center space-y-1">
           <h1 className="text-2xl font-bold text-white">
             {isLogin ? "Welcome Back" : "Create Company Account"}
