@@ -229,9 +229,164 @@ async function sendWhatsAppConfirmation(
   }
 }
 
+// ─── Call categorisation ───────────────────────────────────
+export function categoriseCall(summary: string | null, transcript: string | null): string {
+  const text = `${summary || ""} ${transcript || ""}`.toLowerCase();
+  if (/(quote|quotation|estimate|pricing|price for|new unit|new install|installation|replace the unit)/.test(text))
+    return "Quote Request";
+  if (/(repair|service call|not cooling|leaking|leak|maintenance|fault|broken|breakdown|servicing)/.test(text))
+    return "Service Request";
+  if (/(order|delivery|spare part|parts|stock|invoice|payment|account balance)/.test(text))
+    return "Order Update";
+  return "General Inquiry";
+}
+
+const ESTIMATE_TRIGGER = /(quote|quotation|estimate|pricing|price for|new unit|new install|installation|new service|replace the unit)/i;
+
+// Notify every admin/dispatcher of the company that a call was logged.
+async function notifyCallLogged(admin: any, params: {
+  companyId: string | null;
+  callId: string | null;
+  callerName: string | null;
+  callerPhone: string | null;
+  isExistingClient: boolean;
+  category: string;
+  summary: string | null;
+  durationSeconds: number;
+}) {
+  try {
+    let userIds: string[] = [];
+    if (params.companyId) {
+      const { data: staff } = await admin
+        .from("profiles")
+        .select("id")
+        .eq("company_id", params.companyId);
+      const ids = (staff || []).map((s: any) => s.id);
+      if (ids.length) {
+        const { data: roles } = await admin
+          .from("user_roles")
+          .select("user_id, role")
+          .in("user_id", ids);
+        userIds = (roles || [])
+          .filter((r: any) => ["admin", "dispatcher"].includes(r.role))
+          .map((r: any) => r.user_id);
+        if (!userIds.length) userIds = ids.slice(0, 5);
+      }
+    }
+    if (!userIds.length) {
+      const { data: roles } = await admin
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin")
+        .limit(10);
+      userIds = (roles || []).map((r: any) => r.user_id);
+    }
+    if (!userIds.length) {
+      console.warn("[vapi-server-event] No recipients for call notification");
+      return;
+    }
+
+    const who = params.callerName || params.callerPhone || "Unknown caller";
+    const tag = params.isExistingClient ? "Existing client" : "New lead";
+    const rows = [...new Set(userIds)].map((uid) => ({
+      user_id: uid,
+      type: "call_logged",
+      title: `Call Logged — ${params.category}`,
+      body: `${who} (${params.callerPhone || "no number"}) · ${tag} · ${Math.round(params.durationSeconds)}s${params.summary ? ` — ${params.summary.slice(0, 180)}` : ""}`,
+      read: false,
+      related_id: params.callId,
+      metadata: {
+        call_id: params.callId,
+        caller_name: params.callerName,
+        caller_phone: params.callerPhone,
+        category: params.category,
+        is_existing_client: params.isExistingClient,
+      },
+    }));
+    const { error } = await admin.from("notifications").insert(rows);
+    if (error) console.error("[vapi-server-event] call_logged notification error:", error);
+  } catch (err) {
+    console.error("[vapi-server-event] notifyCallLogged exception:", err);
+  }
+}
+
+// Auto-create a basic draft estimate when the call asked for a quote/new work.
+async function createDraftEstimate(admin: any, params: {
+  companyId: string | null;
+  customerId: string | null;
+  customerName: string | null;
+  leadId: string | null;
+  summary: string | null;
+  serviceType: string | null;
+}): Promise<{ quoteId: string | null; reason: string | null }> {
+  try {
+    if (!params.customerId) {
+      return { quoteId: null, reason: "No customer record could be matched or created for this caller" };
+    }
+    let salesEngineerId: string | null = null;
+    if (params.companyId) {
+      const { data: staff } = await admin
+        .from("profiles")
+        .select("id")
+        .eq("company_id", params.companyId)
+        .limit(20);
+      const ids = (staff || []).map((s: any) => s.id);
+      if (ids.length) {
+        const { data: roles } = await admin
+          .from("user_roles")
+          .select("user_id, role")
+          .in("user_id", ids);
+        salesEngineerId =
+          (roles || []).find((r: any) => r.role === "admin")?.user_id ||
+          (roles || [])[0]?.user_id ||
+          ids[0];
+      }
+    }
+    if (!salesEngineerId) {
+      const { data: roles } = await admin
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin")
+        .limit(1);
+      salesEngineerId = roles?.[0]?.user_id ?? null;
+    }
+    if (!salesEngineerId) {
+      return { quoteId: null, reason: "No admin user available to own the draft estimate" };
+    }
+
+    const { data, error } = await admin
+      .from("quotes")
+      .insert({
+        company_id: params.companyId,
+        customer_id: params.customerId,
+        customer_name: params.customerName,
+        lead_id: params.leadId,
+        sales_engineer_id: salesEngineerId,
+        status: "draft",
+        subtotal: 0,
+        vat_amount: 0,
+        total: 0,
+        reference_text: params.serviceType ? `Phone enquiry — ${params.serviceType}` : "Phone enquiry",
+        notes: [
+          "Draft created automatically from an inbound call.",
+          params.summary || "",
+        ].filter(Boolean).join("\n"),
+      })
+      .select("id")
+      .single();
+
+    if (error) return { quoteId: null, reason: `Estimate insert failed: ${error.message}` };
+    return { quoteId: data.id, reason: null };
+  } catch (err: any) {
+    return { quoteId: null, reason: `Estimate creation exception: ${err?.message || String(err)}` };
+  }
+}
+
 // ─── Call log ──────────────────────────────────────────────
 // Persists every Vapi call and links it to the matched customer + lead so the
 // admin panel can show call history and appointment outcomes per client.
+// Also: verifies the linked lead really exists (no false badges), auto-creates
+// a draft estimate for quote-type calls, and notifies staff for EVERY call.
 async function recordCall(input: {
   providerCallId: string;
   callerPhone: string;
@@ -257,16 +412,25 @@ async function recordCall(input: {
 
     let customerId = input.customerId;
     let companyId: string | null = null;
+    let leadId = input.leadId;
+    let outcome = input.outcome;
+    let errorReason: string | null = null;
 
-    if (input.leadId) {
-      const { data: lead } = await admin
+    // Verify the lead actually exists — a missing record must never produce a badge.
+    if (leadId) {
+      const { data: leadRow } = await admin
         .from("leads")
-        .select("customer_id, company_id")
-        .eq("id", input.leadId)
+        .select("id, customer_id, company_id")
+        .eq("id", leadId)
         .maybeSingle();
-      if (lead) {
-        customerId = customerId || lead.customer_id;
-        companyId = lead.company_id ?? null;
+      if (!leadRow) {
+        console.warn(`[vapi-server-event] Lead ${leadId} not found — dropping link`);
+        errorReason = `Lead ${leadId} was not found in the database`;
+        leadId = null;
+        if (outcome === "lead_created" || outcome === "lead_enriched") outcome = "lead_failed";
+      } else {
+        customerId = customerId || leadRow.customer_id;
+        companyId = leadRow.company_id ?? null;
       }
     }
 
@@ -285,13 +449,63 @@ async function recordCall(input: {
       }
     }
 
-    if (!companyId && customerId) {
+    let customerName: string | null = input.callerName;
+    let isExistingClient = false;
+    if (customerId) {
       const { data: cust } = await admin
         .from("customers")
-        .select("company_id")
+        .select("id, name, company_id, created_at")
         .eq("id", customerId)
         .maybeSingle();
-      companyId = cust?.company_id ?? null;
+      if (!cust) {
+        // Stale reference — do not link it.
+        customerId = null;
+      } else {
+        companyId = companyId || cust.company_id;
+        customerName = cust.name || customerName;
+        // Treat as existing client when the record predates this call.
+        const createdMs = cust.created_at ? new Date(cust.created_at).getTime() : Date.now();
+        isExistingClient = Date.now() - createdMs > 5 * 60 * 1000;
+      }
+    }
+
+    const category = categoriseCall(input.summary, input.transcript);
+
+    // Auto-create a draft estimate for quote / new-work calls.
+    let quoteId: string | null = null;
+    const wantsEstimate =
+      category === "Quote Request" ||
+      ESTIMATE_TRIGGER.test(`${input.summary || ""} ${input.transcript || ""} ${input.serviceType || ""}`);
+
+    if (wantsEstimate) {
+      // Don't duplicate a draft for the same call on webhook retries.
+      const { data: existingCall } = input.providerCallId
+        ? await admin
+            .from("vapi_calls")
+            .select("quote_id")
+            .eq("provider_call_id", input.providerCallId)
+            .maybeSingle()
+        : { data: null as any };
+
+      if (existingCall?.quote_id) {
+        quoteId = existingCall.quote_id;
+      } else {
+        const res = await createDraftEstimate(admin, {
+          companyId,
+          customerId,
+          customerName,
+          leadId,
+          summary: input.summary,
+          serviceType: input.serviceType,
+        });
+        quoteId = res.quoteId;
+        if (res.reason) {
+          errorReason = [errorReason, res.reason].filter(Boolean).join(" | ");
+          console.error("[vapi-server-event] Draft estimate not created:", res.reason);
+        } else {
+          console.log(`[vapi-server-event] Draft estimate ${quoteId} created from call`);
+        }
+      }
     }
 
     const row = {
@@ -300,7 +514,7 @@ async function recordCall(input: {
       direction: "inbound",
       company_id: companyId,
       customer_id: customerId,
-      lead_id: input.leadId,
+      lead_id: leadId,
       caller_phone: input.callerPhone || null,
       caller_name: input.callerName,
       business_phone: input.businessPhone,
@@ -315,12 +529,17 @@ async function recordCall(input: {
       summary: input.summary,
       transcript: input.transcript,
       recording_url: input.recordingUrl,
-      outcome: input.outcome,
+      outcome,
+      call_category: category,
+      is_existing_client: isExistingClient,
+      quote_id: quoteId,
+      error_reason: errorReason,
     };
 
-    const { error } = input.providerCallId
-      ? await admin.from("vapi_calls").upsert(row, { onConflict: "provider_call_id" })
-      : await admin.from("vapi_calls").insert(row);
+    let savedId: string | null = null;
+    const { data: saved, error } = input.providerCallId
+      ? await admin.from("vapi_calls").upsert(row, { onConflict: "provider_call_id" }).select("id").maybeSingle()
+      : await admin.from("vapi_calls").insert(row).select("id").maybeSingle();
 
     if (error) {
       console.error("[vapi-server-event] vapi_calls write error:", error);
@@ -332,27 +551,45 @@ async function recordCall(input: {
         direction: "inbound",
         company_id: companyId,
         customer_id: customerId,
-        lead_id: input.leadId,
+        lead_id: leadId,
         caller_phone: row.caller_phone,
         caller_name: row.caller_name,
-        started_at: row.started_at,
-        ended_at: row.ended_at,
         duration_seconds: row.duration_seconds,
         summary: row.summary,
-        outcome: input.outcome,
+        recording_url: row.recording_url,
+        outcome,
+        call_category: category,
+        is_existing_client: isExistingClient,
       };
-      const { error: retryError } = row.provider_call_id
-        ? await admin.from("vapi_calls").upsert(minimal, { onConflict: "provider_call_id" })
-        : await admin.from("vapi_calls").insert(minimal);
+      const { data: retrySaved, error: retryError } = row.provider_call_id
+        ? await admin.from("vapi_calls").upsert(minimal, { onConflict: "provider_call_id" }).select("id").maybeSingle()
+        : await admin.from("vapi_calls").insert(minimal).select("id").maybeSingle();
       if (retryError) console.error("[vapi-server-event] vapi_calls fallback write failed:", retryError);
-      else console.log("[vapi-server-event] Call logged via fallback row");
+      else {
+        savedId = retrySaved?.id ?? null;
+        console.log("[vapi-server-event] Call logged via fallback row");
+      }
     } else {
-      console.log(`[vapi-server-event] Call logged (lead=${input.leadId}, customer=${customerId})`);
+      savedId = saved?.id ?? null;
+      console.log(`[vapi-server-event] Call logged (lead=${leadId}, customer=${customerId}, category=${category})`);
     }
+
+    // EVERY call produces a notification, whatever the outcome.
+    await notifyCallLogged(admin, {
+      companyId,
+      callId: savedId,
+      callerName: customerName || input.callerName,
+      callerPhone: input.callerPhone,
+      isExistingClient,
+      category,
+      summary: input.summary,
+      durationSeconds: row.duration_seconds,
+    });
   } catch (err) {
     console.error("[vapi-server-event] recordCall exception:", err);
   }
 }
+
 
 // ─── Main Handler ──────────────────────────────────────────
 
@@ -698,12 +935,31 @@ serve(async (req) => {
       const callerPhone = extractCallerNumber(body);
 
       if (!callerPhone) {
-        console.log("[vapi-server-event] No caller phone — skipping");
-        return new Response(JSON.stringify({ ok: true, skipped: "no phone" }), {
+        console.log("[vapi-server-event] No caller phone — logging call only");
+        await recordCall({
+          providerCallId: call.id || "",
+          callerPhone: "",
+          callerName: null,
+          businessPhone: call?.phoneNumber?.number || null,
+          leadId: null,
+          customerId: null,
+          startedAt: call.startedAt ? new Date(call.startedAt).toISOString() : null,
+          endedAt: call.endedAt ? new Date(call.endedAt).toISOString() : null,
+          durationSeconds: Number(body.message.durationSeconds) || 0,
+          endedReason,
+          serviceType: null,
+          urgency: null,
+          summary: summary || null,
+          transcript: transcript || null,
+          recordingUrl: recordingUrl || null,
+          outcome: "no_lead",
+        });
+        return new Response(JSON.stringify({ ok: true, skipped: "no phone", logged: true }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+
 
       // Calculate duration — Vapi may send it directly, or only timestamps
       const startedAtRaw = call.startedAt || body.message.startedAt;

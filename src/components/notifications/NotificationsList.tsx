@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
-import { Bell, CheckCheck, FileText, Briefcase, CreditCard, MessageSquare, ChevronRight, Check, Lock } from "lucide-react";
+import { Bell, CheckCheck, FileText, Briefcase, CreditCard, MessageSquare, ChevronRight, Check, Lock, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import CallRecordingPlayer from "@/components/calls/CallRecordingPlayer";
 import { canMarkRead, getFollowUpIds, markFollowUpDone, requiresFollowUp } from "./notificationFollowUp";
 
 interface Notification {
@@ -33,9 +34,10 @@ const typeIcons: Record<string, typeof Bell> = {
   assignment_started: Briefcase,
   invoice_paid: CreditCard,
   quote_status_change: FileText,
+  call_logged: Phone,
 };
 
-type FilterKey = "all" | "quotes" | "invoices" | "jobs" | "leads";
+type FilterKey = "all" | "quotes" | "invoices" | "jobs" | "leads" | "calls";
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "all", label: "All" },
@@ -43,10 +45,12 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "invoices", label: "Invoices" },
   { key: "jobs", label: "Jobs" },
   { key: "leads", label: "Leads" },
+  { key: "calls", label: "Calls" },
 ];
 
 const categoryOf = (type: string): FilterKey => {
   const t = (type || "").toLowerCase();
+  if (t.includes("call")) return "calls";
   if (t.includes("quote") || t.includes("estimate") || t.includes("proposal")) return "quotes";
   if (t.includes("invoice") || t.includes("payment")) return "invoices";
   if (t.includes("job") || t.includes("assignment") || t.includes("dispatch")) return "jobs";
@@ -56,6 +60,7 @@ const categoryOf = (type: string): FilterKey => {
 
 export const notificationHref = (type: string, relatedId?: string | null): string => {
   const category = categoryOf(type);
+  if (category === "calls") return "/admin/calls";
   if (category === "quotes") return relatedId ? `/admin/estimates/${relatedId}` : "/admin/quotes";
   if (category === "invoices") return relatedId ? `/admin/invoices/${relatedId}` : "/admin/invoices";
   if (category === "jobs") return relatedId ? `/admin/jobs/${relatedId}` : "/admin/jobs";
@@ -76,7 +81,7 @@ const NotificationsList = ({
   const touchStart = useRef<{ x: number; y: number } | null>(null);
 
   const counts = useMemo(() => {
-    const map: Record<FilterKey, number> = { all: notifications.length, quotes: 0, invoices: 0, jobs: 0, leads: 0 };
+    const map: Record<FilterKey, number> = { all: notifications.length, quotes: 0, invoices: 0, jobs: 0, leads: 0, calls: 0 };
     notifications.forEach((n) => {
       const c = categoryOf(n.type);
       if (c !== "all") map[c] += 1;
@@ -252,6 +257,11 @@ const NotificationsList = ({
                               <span className="ml-2 text-amber-600 dark:text-amber-500">Needs follow-up</span>
                             )}
                           </p>
+                          {notification.type === "call_logged" && (
+                            <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                              <CallRecordingPlayer callId={notification.related_id} />
+                            </div>
+                          )}
                         </div>
 
                         {/* Quick actions */}

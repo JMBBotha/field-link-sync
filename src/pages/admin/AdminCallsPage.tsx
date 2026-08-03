@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, Phone, ExternalLink } from "lucide-react";
 import { formatCallDuration } from "@/components/calls/CallHistoryPanel";
+import CallRecordingPlayer from "@/components/calls/CallRecordingPlayer";
 
 interface CallRow {
   id: string;
@@ -21,6 +22,11 @@ interface CallRow {
   recording_url: string | null;
   customer_id: string | null;
   lead_id: string | null;
+  call_category: string | null;
+  is_existing_client: boolean | null;
+  quote_id: string | null;
+  error_reason: string | null;
+  quotes: { id: string; quote_number: string | null } | null;
   customers: { id: string; name: string | null } | null;
   leads: { id: string; service_type: string | null; status: string | null; scheduled_date: string | null; technician_name: string | null } | null;
 }
@@ -35,7 +41,7 @@ export default function AdminCallsPage() {
       const { data } = await supabase
         .from("vapi_calls")
         .select(
-          "id, caller_name, caller_phone, service_type, outcome, duration_seconds, started_at, created_at, summary, recording_url, customer_id, lead_id, customers(id, name), leads(id, service_type, status, scheduled_date, technician_name)"
+          "id, caller_name, caller_phone, service_type, outcome, duration_seconds, started_at, created_at, summary, recording_url, customer_id, lead_id, call_category, is_existing_client, quote_id, error_reason, customers(id, name), leads(id, service_type, status, scheduled_date, technician_name), quotes(id, quote_number)"
         )
         .order("created_at", { ascending: false })
         .limit(200);
@@ -90,14 +96,19 @@ export default function AdminCallsPage() {
                       <span>{call.customers?.name || call.caller_name || "Unknown caller"}</span>
                       <span className="text-muted-foreground">{call.caller_phone}</span>
                       <Badge variant="outline">{formatCallDuration(call.duration_seconds)}</Badge>
-                      {call.service_type && <Badge variant="secondary">{call.service_type}</Badge>}
+                      {call.call_category && <Badge variant="secondary">{call.call_category}</Badge>}
+                      <Badge variant="outline">{call.is_existing_client ? "Existing client" : "New lead"}</Badge>
                       {call.leads?.status && <Badge>{call.leads.status}</Badge>}
+                      {call.quotes?.id && <Badge>Draft estimate {call.quotes.quote_number || ""}</Badge>}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {new Date(call.started_at || call.created_at).toLocaleString("en-ZA")}
                       {call.leads?.scheduled_date ? ` · booked ${call.leads.scheduled_date}` : ""}
                       {call.leads?.technician_name ? ` · ${call.leads.technician_name}` : ""}
                     </p>
+                    {call.error_reason && (
+                      <p className="text-xs text-amber-600 dark:text-amber-500">{call.error_reason}</p>
+                    )}
                     {call.summary && (
                       <p className="line-clamp-2 max-w-3xl text-sm text-muted-foreground">{call.summary}</p>
                     )}
@@ -110,18 +121,25 @@ export default function AdminCallsPage() {
                         </Link>
                       </Button>
                     )}
-                    {call.lead_id && (
+                    {call.leads?.id && (
                       <Button asChild variant="ghost" size="sm">
-                        <Link to={`/admin/leads?lead=${call.lead_id}`}>
+                        <Link to={`/admin/leads?lead=${call.leads.id}`}>
                           Job <ExternalLink className="ml-1 h-3 w-3" />
+                        </Link>
+                      </Button>
+                    )}
+                    {call.quotes?.id && (
+                      <Button asChild variant="ghost" size="sm">
+                        <Link to={`/admin/estimates/${call.quotes.id}`}>
+                          Estimate <ExternalLink className="ml-1 h-3 w-3" />
                         </Link>
                       </Button>
                     )}
                   </div>
                 </div>
-                {call.recording_url && (
-                  <audio controls src={call.recording_url} className="mt-2 w-full" />
-                )}
+                <div className="mt-2">
+                  <CallRecordingPlayer callId={call.id} recordingUrl={call.recording_url} />
+                </div>
               </div>
             ))
           )}

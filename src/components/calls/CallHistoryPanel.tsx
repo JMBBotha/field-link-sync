@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Phone, ChevronDown, ExternalLink, Loader2 } from "lucide-react";
+import { Phone, ChevronDown, ExternalLink, Loader2, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
+import CallRecordingPlayer from "./CallRecordingPlayer";
 
 export interface CallRecord {
   id: string;
@@ -24,6 +25,13 @@ export interface CallRecord {
   recording_url: string | null;
   outcome: string | null;
   created_at: string;
+  call_category: string | null;
+  is_existing_client: boolean | null;
+  quote_id: string | null;
+  error_reason: string | null;
+  // Joined records — present only when the linked row really exists.
+  leads?: { id: string } | null;
+  quotes?: { id: string; quote_number: string | null } | null;
 }
 
 interface Props {
@@ -47,6 +55,7 @@ const outcomeLabel: Record<string, string> = {
   no_lead: "No lead",
 };
 
+
 export default function CallHistoryPanel({
   customerId,
   leadId,
@@ -68,9 +77,10 @@ export default function CallHistoryPanel({
       setLoading(true);
       let query = supabase
         .from("vapi_calls")
-        .select("*")
+        .select("*, leads(id), quotes(id, quote_number)")
         .order("created_at", { ascending: false })
         .limit(limit);
+
 
       if (leadId) query = query.eq("lead_id", leadId);
       else if (customerId) query = query.eq("customer_id", customerId);
@@ -119,10 +129,17 @@ export default function CallHistoryPanel({
                       })}
                     </span>
                     <Badge variant="outline">{formatCallDuration(call.duration_seconds)}</Badge>
-                    {call.service_type && <Badge variant="secondary">{call.service_type}</Badge>}
-                    {call.outcome && (
-                      <Badge variant={call.outcome === "no_lead" ? "outline" : "default"}>
+                    {call.call_category && <Badge variant="secondary">{call.call_category}</Badge>}
+                    <Badge variant="outline">{call.is_existing_client ? "Existing client" : "New lead"}</Badge>
+                    {/* Outcome badge only renders when the linked lead really exists */}
+                    {call.outcome && (call.leads?.id || !["lead_created", "lead_enriched"].includes(call.outcome)) && (
+                      <Badge variant={call.leads?.id ? "default" : "outline"}>
                         {outcomeLabel[call.outcome] || call.outcome}
+                      </Badge>
+                    )}
+                    {call.quotes?.id && (
+                      <Badge variant="default">
+                        Draft estimate {call.quotes.quote_number || ""}
                       </Badge>
                     )}
                   </div>
@@ -130,12 +147,24 @@ export default function CallHistoryPanel({
                     {call.caller_name || "Unknown caller"} · {call.caller_phone || "no number"}
                     {call.ended_reason ? ` · ended: ${call.ended_reason}` : ""}
                   </p>
+                  {call.error_reason && (
+                    <p className="mt-1 flex items-start gap-1 text-xs text-amber-600 dark:text-amber-500">
+                      <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" /> {call.error_reason}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-1">
-                  {call.lead_id && !leadId && (
+                  {call.leads?.id && !leadId && (
                     <Button asChild variant="ghost" size="sm">
-                      <Link to={`/admin/leads?lead=${call.lead_id}`}>
+                      <Link to={`/admin/leads?lead=${call.leads.id}`}>
                         Lead <ExternalLink className="ml-1 h-3 w-3" />
+                      </Link>
+                    </Button>
+                  )}
+                  {call.quotes?.id && (
+                    <Button asChild variant="ghost" size="sm">
+                      <Link to={`/admin/estimates/${call.quotes.id}`}>
+                        Estimate <ExternalLink className="ml-1 h-3 w-3" />
                       </Link>
                     </Button>
                   )}
@@ -154,14 +183,13 @@ export default function CallHistoryPanel({
                 </div>
               )}
 
+              <div className="mt-2">
+                <CallRecordingPlayer callId={call.id} recordingUrl={call.recording_url} />
+              </div>
+
               <CollapsibleContent className="mt-3 space-y-3">
 
-                {call.recording_url && (
-                  <div>
-                    <p className="text-xs font-semibold uppercase text-muted-foreground">Recording</p>
-                    <audio controls src={call.recording_url} className="mt-1 w-full" />
-                  </div>
-                )}
+
                 {call.transcript && (
                   <div>
                     <p className="text-xs font-semibold uppercase text-muted-foreground">Transcript</p>

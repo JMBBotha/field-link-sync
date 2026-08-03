@@ -5275,6 +5275,7 @@ export type Database = {
       vapi_calls: {
         Row: {
           business_phone: string | null
+          call_category: string | null
           caller_name: string | null
           caller_phone: string | null
           company_id: string | null
@@ -5284,12 +5285,15 @@ export type Database = {
           duration_seconds: number
           ended_at: string | null
           ended_reason: string | null
+          error_reason: string | null
           id: string
+          is_existing_client: boolean
           lead_id: string | null
           metadata: Json
           outcome: string | null
           provider: string
           provider_call_id: string | null
+          quote_id: string | null
           recording_url: string | null
           service_type: string | null
           started_at: string | null
@@ -5300,6 +5304,7 @@ export type Database = {
         }
         Insert: {
           business_phone?: string | null
+          call_category?: string | null
           caller_name?: string | null
           caller_phone?: string | null
           company_id?: string | null
@@ -5309,12 +5314,15 @@ export type Database = {
           duration_seconds?: number
           ended_at?: string | null
           ended_reason?: string | null
+          error_reason?: string | null
           id?: string
+          is_existing_client?: boolean
           lead_id?: string | null
           metadata?: Json
           outcome?: string | null
           provider?: string
           provider_call_id?: string | null
+          quote_id?: string | null
           recording_url?: string | null
           service_type?: string | null
           started_at?: string | null
@@ -5325,6 +5333,7 @@ export type Database = {
         }
         Update: {
           business_phone?: string | null
+          call_category?: string | null
           caller_name?: string | null
           caller_phone?: string | null
           company_id?: string | null
@@ -5334,12 +5343,15 @@ export type Database = {
           duration_seconds?: number
           ended_at?: string | null
           ended_reason?: string | null
+          error_reason?: string | null
           id?: string
+          is_existing_client?: boolean
           lead_id?: string | null
           metadata?: Json
           outcome?: string | null
           provider?: string
           provider_call_id?: string | null
+          quote_id?: string | null
           recording_url?: string | null
           service_type?: string | null
           started_at?: string | null
@@ -5375,6 +5387,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vapi_calls_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
             referencedColumns: ["id"]
           },
         ]
