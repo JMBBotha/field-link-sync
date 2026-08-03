@@ -156,7 +156,7 @@ export default function CallHistoryPanel({
                 <div className="flex items-center gap-1">
                   {call.leads?.id && !leadId && (
                     <Button asChild variant="ghost" size="sm">
-                      <Link to={`/admin/leads?lead=${call.leads.id}`}>
+                      <Link to={`/admin/map?lead=${call.leads.id}`}>
                         Lead <ExternalLink className="ml-1 h-3 w-3" />
                       </Link>
                     </Button>
