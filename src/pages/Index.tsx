@@ -51,17 +51,8 @@ const Index = () => {
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[hsl(204,100%,36%)] via-[hsl(204,100%,28%)] to-[hsl(216,58%,12%)] p-4">
       {/* Background video */}
-      <video
-        className="absolute inset-0 h-full w-full object-cover"
-        src={BG_VIDEO}
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="auto"
-        aria-hidden="true"
-      />
-      <div className="absolute inset-0 bg-gradient-to-br from-[hsl(204,100%,20%)]/80 via-[hsl(204,100%,16%)]/80 to-[hsl(216,58%,8%)]/90" aria-hidden="true" />
+      <BackgroundVideo />
+
 
       {/* Logo */}
       <img src={logo} alt="0800BeCool" className="relative z-10 h-24 w-auto mb-6 drop-shadow-lg" />

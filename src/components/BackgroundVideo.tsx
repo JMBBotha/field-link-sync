@@ -61,10 +61,9 @@ const BackgroundVideo = ({ src = BG_VIDEO }: { src?: string }) => {
         muted
         loop
         playsInline
-        // @ts-expect-error legacy iOS/WebView attribute
-        webkit-playsinline="true"
-        x5-playsinline="true"
+        {...({ "webkit-playsinline": "true", "x5-playsinline": "true" } as Record<string, string>)}
         disablePictureInPicture
+
         disableRemotePlayback
         controls={false}
         tabIndex={-1}
