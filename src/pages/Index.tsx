@@ -5,9 +5,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { MapPin, Users, Navigation, Loader2 } from "lucide-react";
 import logo from "@/assets/logo.png";
+import BackgroundVideo from "@/components/BackgroundVideo";
 
-const BG_VIDEO =
-  "https://id-preview--a0033055-dead-4c27-b52b-8118cb332010.lovable.app/videos/how-it-works-bg.mp4";
+
 
 
 
