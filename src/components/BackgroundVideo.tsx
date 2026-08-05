@@ -11,6 +11,7 @@ const BG_VIDEO = "/videos/how-it-works-bg.mp4";
  */
 const BackgroundVideo = ({ src = BG_VIDEO }: { src?: string }) => {
   const ref = useRef<HTMLVideoElement>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     const video = ref.current;
