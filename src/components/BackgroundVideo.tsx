@@ -53,23 +53,25 @@ const BackgroundVideo = ({ src = BG_VIDEO }: { src?: string }) => {
 
   return (
     <>
-      <video
-        ref={ref}
-        className="absolute inset-0 h-full w-full object-cover"
-        src={src}
-        autoPlay
-        muted
-        loop
-        playsInline
-        {...({ "webkit-playsinline": "true", "x5-playsinline": "true" } as Record<string, string>)}
-        disablePictureInPicture
-
-        disableRemotePlayback
-        controls={false}
-        tabIndex={-1}
-        preload="auto"
-        aria-hidden="true"
-      />
+      {!failed && (
+        <video
+          ref={ref}
+          className="absolute inset-0 h-full w-full object-cover"
+          src={src}
+          autoPlay
+          muted
+          loop
+          playsInline
+          {...({ "webkit-playsinline": "true", "x5-playsinline": "true" } as Record<string, string>)}
+          disablePictureInPicture
+          disableRemotePlayback
+          controls={false}
+          tabIndex={-1}
+          preload="auto"
+          aria-hidden="true"
+          onError={() => setFailed(true)}
+        />
+      )}
       <div
         className="absolute inset-0 bg-gradient-to-br from-[hsl(204,100%,20%)]/80 via-[hsl(204,100%,16%)]/80 to-[hsl(216,58%,8%)]/90"
         aria-hidden="true"
