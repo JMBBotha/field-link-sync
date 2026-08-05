@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import bgVideoAsset from "@/assets/how-it-works-bg.mp4.asset.json";
 
-const BG_VIDEO = "/videos/how-it-works-bg.mp4";
+const BG_VIDEO = bgVideoAsset.url;
 
 /**
  * Full-viewport looping background video.
