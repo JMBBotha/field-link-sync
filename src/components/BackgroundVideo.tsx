@@ -1,7 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
-const BG_VIDEO =
-  "https://id-preview--a0033055-dead-4c27-b52b-8118cb332010.lovable.app/videos/how-it-works-bg.mp4";
+const BG_VIDEO = "/videos/how-it-works-bg.mp4";
 
 /**
  * Full-viewport looping background video.
