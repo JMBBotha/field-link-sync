@@ -74,9 +74,12 @@ export const TOOL_KIND: Record<ToolName, ToolKind> = {
   search_customer: "read",
   get_staff_availability: "read",
   get_unassigned_queue: "read",
+  get_quote: "read",
+  get_invoice: "read",
   create_quote_draft: "write",
   assign_job: "write",
 };
+
 
 /** PII allow-list: only these fields ever reach Claude or the browser. */
 const PII_ALLOW: Record<ToolName, string[]> = {
@@ -105,9 +108,20 @@ const PII_ALLOW: Record<ToolName, string[]> = {
     "id", "lead_id", "reason", "priority", "escalate_at", "escalated",
     "resolved", "created_at",
   ],
+  get_quote: [
+    "id", "quote_number", "customer_name", "status", "total", "subtotal",
+    "vat_amount", "valid_until", "created_at", "sent_at", "accepted_at",
+    "lead_id", "customer_id",
+  ],
+  get_invoice: [
+    "id", "invoice_number", "customer_name", "status", "grand_total", "subtotal",
+    "tax_amount", "due_date", "issue_date", "paid_date", "created_at",
+    "quote_id", "customer_id",
+  ],
   create_quote_draft: ["id", "quote_number", "status", "customer_id", "lead_id", "total"],
   assign_job: ["id", "status", "title", "assigned_staff_id", "scheduled_for"],
 };
+
 
 function scrub(tool: ToolName, rows: Record<string, unknown>[]) {
   const allow = new Set(PII_ALLOW[tool]);
