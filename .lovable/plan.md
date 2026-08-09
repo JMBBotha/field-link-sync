@@ -1,58 +1,24 @@
-# Unified Quote System — Single Source of Truth
+# Fix unreadable text on light/white buttons in the Quote Builder
 
-Consolidate on `quote_items` + `quote_areas` (the richer model). Legacy `quote_line_items` becomes read-only, then retired. Every surface reads and writes through one path.
+## Problem
 
-## 1. Database migration (one migration, transactional)
+When opening the Quote Builder (and switching between Build / Visual PDF / Build Area Quote), some buttons render with a white or very light background while their label stays white or near-white, so the text disappears. The builder header and its toolbars still contain hardcoded `text-white` / `bg-white/10` classes that were written for the blue header bar, and those same classes get reused on light surfaces.
 
-- **Sequence + RPC for quote numbers** — Add `quote_number_seq` and a security-definer function `generate_quote_number()` returning `Q-YYYY-XXXX`. Wire an `auto_assign_quote_number` BEFORE INSERT trigger so every new `quotes` row gets a number immediately (no more nulls like Cape Estates).
-- **Backfill quote numbers** on existing rows where `quote_number IS NULL`.
-- **Migrate `quote_line_items` → `quote_items`** for every quote that has zero `quote_items` rows. Each legacy row becomes a top-level item (no `area_id`, no `parent_item_id`, `item_type='line'`, `source='legacy'`).
-- **Orphan quotes (like Cape Estates)** — quotes with totals but zero items in either table get a synthetic "Legacy quote — please re-enter items" placeholder `quote_items` row plus a metadata flag, so the user sees the old total and knows to rebuild. Totals stay untouched.
-- **Recompute totals** trigger on `quote_items` (insert/update/delete) so `quotes.subtotal / vat_amount / total` always reflect actual items — no more phantom totals.
-- **Lock legacy table** — revoke INSERT/UPDATE/DELETE on `quote_line_items` from `authenticated`. Keep SELECT for a short read-only grace period, then drop in a follow-up migration once no code references it.
+Verified so far: the three builder tabs themselves compute readable colours in both themes at 1280px, so the issue is in the surrounding buttons, not the tab strip. The fix is a targeted sweep rather than a single-line change.
 
-## 2. Shared fetch hook — one query, everywhere
+## What will change
 
-Create `src/hooks/useQuote.ts` exposing a single query keyed by `["quote", id]`:
+1. Sweep the Quote Builder surfaces for hardcoded light-on-light button styling and replace them with theme tokens:
+   - `src/pages/admin/AdminQuoteBuilderPageUnified.tsx` — header back button, client chip, totals chip, search input, and the entry buttons for Visual PDF / Build Area Quote.
+   - `src/components/catalog/quote-builder/ProductPalette.tsx` — "Visual" toggle and filter chips.
+   - Visual PDF toolbar controls (All Suppliers, Close PDF, zoom/page controls).
+   - The "Quote Builder" / "New Quote" launch buttons on the Quotes and Estimates lists.
+2. Rules applied consistently:
+   - Buttons on the blue header keep white text but always sit on a translucent/solid dark chip, never on a white surface.
+   - Buttons on white/card surfaces use `text-foreground` (or `text-primary` for links) and `bg-card` / `bg-muted`, never `text-white`.
+   - Primary/accent buttons keep their existing accent colours with `*-foreground` pairing.
+3. No layout, spacing, or accent-colour changes — only foreground/background pairing.
 
-```
-quotes + quote_areas + quote_items + customers + leads
-```
+## Verification
 
-`.eq("id", quoteId).maybeSingle()` — used by Quotes list detail, Quote Builder, Lead detail, Customer detail, Job view, PDF, and the client-facing proposal view. All writes call `queryClient.invalidateQueries({ queryKey: ["quote", id] })` so every surface refreshes instantly.
-
-## 3. One Quote Builder
-
-- **Promote `AdminQuoteBuilderPageUnified` + `QuoteContext`** to be the canonical builder.
-- **Route `/admin/quotes/:id` and every "Open quote" / "Edit quote" link** (Quotes list, Lead detail, Customer detail, Job detail, Proposal builder, Global search) through the unified builder with the real `quote.id`.
-- **Retire `src/components/quoting/QuoteBuilder.tsx`** — replace its body with a thin redirect to the unified builder. This kills the destructive `DELETE FROM quote_line_items` save path that was wiping data.
-- **Empty-quote safeguard** — when the builder mounts with a `leadId` or `customerId` but no `quoteId`, look up the latest existing draft for that lead/customer first; only create a new row if none exists.
-
-## 4. Read-side rewire
-
-- **QuotesList, Lead detail, Customer detail, Job detail, PDF, ProposalBuilder, ClientProposalView** all read line data from `quote_items` (grouped by `quote_areas`). Legacy fallback removed.
-- **PDF renderer** groups items by area, honours `parent_item_id` for bundle nesting, and hides Cost/Markup on non-draft quotes (existing behaviour preserved).
-- **Convert-to-invoice** (`convertQuoteToInvoice.ts`) reads from `quote_items` instead of `quote_line_items`.
-
-## 5. Verification checklist (run after deploy)
-
-- Open Cape Estates from Quotes list, Lead, and Customer surfaces → all three show identical data (placeholder row + preserved total, with rebuild prompt).
-- Open Brendon Behnke Q-2026-0019 from all surfaces → identical, migrated line item, total unchanged.
-- Create a new quote → receives next `Q-2026-XXXX`, appears in list, lead, customer views immediately.
-- Edit an item in the builder → change reflects on Lead detail and Customer detail without manual refresh.
-- Attempt an insert into `quote_line_items` as `authenticated` → rejected.
-
-## Technical details
-
-- Migration is a single transactional file. RPC uses `SECURITY DEFINER SET search_path = public`.
-- Grants on new sequence + function: `usage` to `authenticated`, `all` to `service_role`.
-- No RLS changes needed on `quote_items` / `quote_areas` (existing policies scope by company via join to `quotes`).
-- React Query key contract: `["quote", id]` for a single quote, `["quotes", filters]` for the list. Writes invalidate both.
-- Realtime subscription in `QuoteContext` already covers `quote_items` + `quote_areas`; no change.
-- `QuoteBuilder.tsx` stub keeps its exported props so no callers break; it renders `<Navigate to={"/admin/quote-builder?quoteId=..."} replace />` (or equivalent).
-
-## Out of scope for this change
-
-- Redesigning the builder UI, area/bundle editing UX, or PDF layout.
-- Touching `pdfTextExtractor.ts` (locked).
-- Migrating `quote_line_items` schema deletion — done in a follow-up once monitoring shows zero reads for a week.
+Screenshots of the Quote Builder in light and dark mode at both desktop (1280px) and the reported tablet width (937px), captured on each of the three builder tabs, confirming every button label is legible.
