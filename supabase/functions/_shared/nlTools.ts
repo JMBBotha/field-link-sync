@@ -500,17 +500,60 @@ export async function executeTool(
 
       // Primary gate is RLS via the caller's JWT client when we have one.
       const client = ctx.rlsDb ?? db;
+      const tokens = nameTokens(raw);
+
+      // Resolve matching customers first: names are stored split across
+      // first_name/last_name, and denormalised customer_name can contain
+      // stray whitespace, so plain ilike on the whole phrase misses rows.
+      let customerIds: string[] = [];
+      if (!isUuid && tokens.length) {
+        let cq = db.from("customers")
+          .select("id, first_name, last_name, company_name")
+          .or(tokens.flatMap((t) => [
+            `first_name.ilike.%${t}%`,
+            `last_name.ilike.%${t}%`,
+            `company_name.ilike.%${t}%`,
+          ]).join(","))
+          .limit(50);
+        cq = scopeCompany(cq, companyId);
+        const { data: custs } = await cq;
+        const matched = ((custs ?? []) as Record<string, any>[]).filter((c) =>
+          tokens.length === 1 || matchesAllTokens(
+            `${c.first_name ?? ""} ${c.last_name ?? ""} ${c.company_name ?? ""}`,
+            tokens,
+          )
+        );
+        customerIds = matched.map((c) => String(c.id));
+      }
+
+      const orParts = isUuid ? [] : [
+        ...tokens.map((t) => `${numberCol}.ilike.%${t}%`),
+        ...tokens.map((t) => `customer_name.ilike.%${t}%`),
+        ...customerIds.map((id) => `customer_id.eq.${id}`),
+      ];
+      if (!isUuid && orParts.length === 0) orParts.push(`${numberCol}.ilike.%${safe}%`);
+
       let q = client.from(table).select(cols)
         .order("created_at", { ascending: false })
-        .limit(Math.min(Number(args.limit ?? 5), 10));
+        .limit(50);
       q = scopeCompany(q, companyId);
-      q = isUuid
-        ? (q as any).eq("id", raw)
-        : (q as any).or(`${numberCol}.ilike.%${safe}%,customer_name.ilike.%${safe}%`);
+      q = isUuid ? (q as any).eq("id", raw) : (q as any).or(orParts.join(","));
 
       const { data, error } = await q;
       if (error) throw error;
       let found = (data ?? []) as Record<string, any>[];
+
+      // Narrow to rows that satisfy the whole phrase where possible.
+      if (!isUuid && tokens.length) {
+        const strict = found.filter((r) =>
+          (r.customer_id && customerIds.includes(String(r.customer_id))) ||
+          matchesAllTokens(String(r.customer_name ?? ""), tokens) ||
+          matchesAllTokens(String(r[numberCol] ?? ""), tokens)
+        );
+        if (strict.length) found = strict;
+      }
+      found = found.slice(0, Math.min(Number(args.limit ?? 5), 10));
+
 
       // Voice path has no JWT: mirror the RLS rules in code.
       if (!ctx.rlsDb && found.length) {
