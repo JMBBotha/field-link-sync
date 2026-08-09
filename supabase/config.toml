@@ -1,5 +1,8 @@
 project_id = "rvzapfbifggovccebrjp"
 
+[functions.peach-webhook]
+verify_jwt = false
+
 [functions.payfast-itn]
 verify_jwt = false
 
