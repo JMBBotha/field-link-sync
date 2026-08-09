@@ -29,6 +29,7 @@ import AdminQuoteBuilderPageUnified from "./pages/admin/AdminQuoteBuilderPageUni
 import AdminProposalBuilderPage from "./pages/admin/AdminProposalBuilderPage";
 import AdminCatalogPage from "./pages/admin/AdminCatalogPage";
 import AdminDispatchPage from "./pages/admin/AdminDispatchPage";
+import AdminUnassignedQueuePage from "./pages/admin/AdminUnassignedQueuePage";
 import AdminJobsMapPage from "./pages/admin/AdminJobsMapPage";
 import AdminMaintenancePage from "./pages/admin/AdminMaintenancePage";
 import AdminCustomersPage from "./pages/admin/AdminCustomersPage";
