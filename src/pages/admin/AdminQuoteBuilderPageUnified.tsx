@@ -892,6 +892,26 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         }}
         triggerItem={null} />
 
+      {/* Send the finalised quote to the client (email / WhatsApp) */}
+      <SendQuoteDialog
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        quoteId={quoteId}
+        quoteNumber={meta?.quote_number || "Draft"}
+        customerId={meta?.customer_id ?? null}
+        customerName={meta?.customer_name || ""}
+        pdfData={pdfData}
+      />
+
+      {generating && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
+          <div className="flex items-center gap-2 rounded-lg bg-card px-4 py-3 text-sm text-foreground shadow-xl">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Saving quote…
+          </div>
+        </div>
+      )}
+
     </div>);
 
 }
