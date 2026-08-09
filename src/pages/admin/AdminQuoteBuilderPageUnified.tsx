@@ -36,6 +36,7 @@ import { useQuoteLiveTotals } from "@/stores/quoteLiveTotalsStore";
 import { areasToBaskets } from "@/components/catalog/quote-builder/QuoteBuilderPopup";
 import { computeQuoteTotals, QUOTE_VAT_RATE } from "@/utils/quoteTransformers";
 import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
+import { pdfItemToPaletteProduct } from "@/utils/pdfItemToProduct";
 import { persistQuoteFromBaskets } from "@/utils/persistQuoteFromBaskets";
 import { calculateBasketItemSell } from "@/utils/quoteBasketTotals";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
