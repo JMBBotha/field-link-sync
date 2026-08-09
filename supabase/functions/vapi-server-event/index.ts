@@ -241,7 +241,61 @@ export function categoriseCall(summary: string | null, transcript: string | null
   return "General Inquiry";
 }
 
+/**
+ * Distinguishes a genuine inbound customer call from an internal/test session
+ * with the platform's own AI agent (the ops assistant in the admin header, the
+ * voice quote builder, or any Vapi dashboard "talk to assistant" test).
+ *
+ * Only real telephony calls should produce leads and "Call Logged" notifications.
+ * Vapi marks browser SDK sessions as `type: "webCall"` and they carry no
+ * `customer.number` / `phoneNumber` — internal testing always lands in that shape.
+ */
+export function classifyCallOrigin(body: any): {
+  internal: boolean;
+  reason: string;
+  callType: string | null;
+} {
+  const call = body?.message?.call || body?.call || {};
+  const callType: string | null = call.type || call.callType || null;
+  const assistantId: string =
+    call.assistantId || body?.message?.assistant?.id || body?.message?.assistantId || "";
+  const opsAssistantId = Deno.env.get("VAPI_OPS_ASSISTANT_ID")?.trim();
+
+  // Explicit opt-out flag we set when starting internal sessions.
+  const meta = call.metadata || body?.message?.metadata || {};
+  if (meta?.internal === true || meta?.source === "internal" || meta?.test === true) {
+    return { internal: true, reason: "metadata marks the session as internal", callType };
+  }
+
+  // The operations assistant is staff-facing by definition.
+  if (opsAssistantId && assistantId && assistantId === opsAssistantId) {
+    return { internal: true, reason: "ops assistant session", callType };
+  }
+
+  // Browser/SDK sessions are never a customer dialling in.
+  if (typeof callType === "string" && /web/i.test(callType)) {
+    return { internal: true, reason: `call type "${callType}" is not telephony`, callType };
+  }
+
+  // Outbound calls we place are handled elsewhere; they are not inbound intake.
+  if (typeof callType === "string" && /outbound/i.test(callType)) {
+    return { internal: true, reason: `call type "${callType}" is outbound`, callType };
+  }
+
+  // Fallback: a real inbound call always has a caller number on some field.
+  const hasCallerNumber = Boolean(
+    call?.customer?.number || call?.from || body?.message?.customer?.number,
+  );
+  const hasBusinessNumber = Boolean(call?.phoneNumber?.number || call?.phoneNumberId);
+  if (!hasCallerNumber && !hasBusinessNumber) {
+    return { internal: true, reason: "no telephony numbers present on the call", callType };
+  }
+
+  return { internal: false, reason: "inbound telephony call", callType };
+}
+
 const ESTIMATE_TRIGGER = /(quote|quotation|estimate|pricing|price for|new unit|new install|installation|new service|replace the unit)/i;
+
 
 // Notify every admin/dispatcher of the company that a call was logged.
 async function notifyCallLogged(admin: any, params: {
