@@ -64,6 +64,7 @@ Deno.serve(async (req) => {
       args: unknown,
       result: Record<string, unknown> | null,
       status: string,
+      resource?: { resource_type?: string; resource_id?: string | null; access_granted?: boolean },
     ) => {
       await db.from("nl_audit_log").insert({
         user_id: userId,
@@ -72,6 +73,9 @@ Deno.serve(async (req) => {
         args: args ?? {},
         result: { ...(result ?? {}), session_id: sessionId, channel: "voice" },
         status,
+        resource_type: resource?.resource_type ?? null,
+        resource_id: resource?.resource_id ?? null,
+        access_granted: resource?.access_granted ?? null,
       });
     };
 

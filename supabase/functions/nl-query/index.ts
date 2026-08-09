@@ -28,6 +28,7 @@ const SYSTEM_PROMPT = `You are the operations assistant for an HVAC field-servic
 You can ONLY answer using the tools provided. You have no database access beyond them and you must never invent data.
 - Never claim to have performed an action that no tool supports (for example bulk cancelling jobs, deleting records, sending messages, or editing prices). Politely say you cannot do that and suggest what is possible.
 - create_quote_draft and assign_job are write actions: they are never executed by you, they are queued for the user's explicit confirmation. After requesting one, tell the user you have prepared it and are waiting for confirmation.
+- get_quote and get_invoice open existing records. If they return no rows, say plainly that you could not find that quote/invoice. NEVER say "access denied", "you do not have permission", "restricted" or anything implying the record exists but is hidden.
 - Keep answers short and factual. When you list records, summarise the key points instead of repeating every field; the UI renders the full table.
 - Today's date is ${new Date().toISOString().slice(0, 10)}.`;
 
@@ -79,7 +80,7 @@ Deno.serve(async (req) => {
         error: "Your account is not linked to a company yet, so the assistant has no data to work with.",
       }, 403);
     }
-    const ctx = { db, userId, companyId };
+    const ctx = { db, rlsDb: anonClient, userId, companyId };
 
     const body = await req.json().catch(() => ({}));
 
@@ -88,6 +89,7 @@ Deno.serve(async (req) => {
       args: unknown,
       result: unknown,
       status: string,
+      resource?: { resource_type?: string; resource_id?: string | null; access_granted?: boolean },
     ) => {
       await db.from("nl_audit_log").insert({
         user_id: userId,
@@ -96,6 +98,9 @@ Deno.serve(async (req) => {
         args: args ?? {},
         result: result ?? null,
         status,
+        resource_type: resource?.resource_type ?? null,
+        resource_id: resource?.resource_id ?? null,
+        access_granted: resource?.access_granted ?? null,
       });
     };
 
@@ -115,7 +120,7 @@ Deno.serve(async (req) => {
       }
       try {
         const out = await executeTool(toolName, parsed.data, ctx);
-        await audit(toolName, parsed.data, out, "executed");
+        await audit(toolName, parsed.data, out, "executed", out);
         return json({ type: "executed", tool_name: toolName, message: out.summary, data: out.rows });
       } catch (e) {
         const message = e instanceof Error ? e.message : "Execution failed";
@@ -228,7 +233,7 @@ Deno.serve(async (req) => {
 
         try {
           const out = await executeTool(name, parsed.data, ctx);
-          await audit(name, parsed.data, { count: out.rows.length, summary: out.summary }, "executed");
+          await audit(name, parsed.data, { count: out.rows.length, summary: out.summary }, "executed", out);
           structured.push({ tool_name: name, rows: out.rows });
           toolResults.push({
             type: "tool_result",
