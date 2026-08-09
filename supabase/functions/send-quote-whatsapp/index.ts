@@ -48,10 +48,7 @@ serve(async (req) => {
     const { quoteId, quoteNumber, to, clientName, totalAmount, pdfBase64 } = await req.json();
     if (!to) return json({ ok: false, error: "Recipient number is required" }, 400);
 
-    const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
-    const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-    const fromNumber = Deno.env.get("TWILIO_WHATSAPP_NUMBER");
-    if (!accountSid || !authToken || !fromNumber) {
+    if (!isWhatsAppConfigured()) {
       return json({ ok: false, error: "WhatsApp is not configured (missing Twilio credentials)" }, 400);
     }
 
@@ -85,32 +82,31 @@ serve(async (req) => {
       (mediaUrl ? "\nThe full quote is attached as a PDF." : "") +
       `\n\n0800-BE-COOL — AC Super Service`;
 
-    const params = new URLSearchParams({
-      To: `whatsapp:+${formatPhoneNumber(String(to))}`,
-      From: fromNumber.startsWith("whatsapp:") ? fromNumber : `whatsapp:${fromNumber}`,
-      Body: body,
+    const result = await sendWhatsApp({
+      to: String(to),
+      body,
+      mediaUrls: mediaUrl ? [mediaUrl] : [],
     });
-    if (mediaUrl) params.append("MediaUrl", mediaUrl);
 
-    const twilioRes = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${btoa(`${accountSid}:${authToken}`)}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: params,
-      },
-    );
+    await admin.from("whatsapp_messages").insert({
+      direction: "outbound",
+      environment: result.environment,
+      provider_sid: result.sid ?? null,
+      from_number: "system",
+      to_number: toE164(String(to)),
+      body,
+      media_urls: mediaUrl ? [mediaUrl] : [],
+      status: result.ok ? result.status ?? "queued" : "failed",
+      error_message: result.error ?? null,
+      raw: { quote_id: quoteId, quote_number: quoteNumber },
+    });
 
-    const result = await twilioRes.json();
-    if (!twilioRes.ok) {
-      console.error("Twilio send failed", twilioRes.status, result);
-      return json({ ok: false, error: result?.message || "Twilio send failed" }, twilioRes.status);
+    if (!result.ok) {
+      return json({ ok: false, error: result.error || "WhatsApp send failed" }, result.httpStatus || 502);
     }
 
     return json({ ok: true, sid: result.sid, mediaUrl });
+
   } catch (err) {
     console.error("send-quote-whatsapp error", err);
     return json({ ok: false, error: err instanceof Error ? err.message : "Unexpected error" }, 500);
