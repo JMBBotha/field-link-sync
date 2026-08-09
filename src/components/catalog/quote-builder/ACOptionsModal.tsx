@@ -264,7 +264,7 @@ const ACOptionsModal = ({ open, onClose, products, initialProduct, onConfirm, in
 
           {/* Selected product preview */}
           {selectedProduct && (
-            <div className="rounded-md bg-white p-2.5 text-xs space-y-1">
+            <div className="rounded-md bg-card text-foreground p-2.5 text-xs space-y-1">
               <p className="font-semibold text-foreground">{getProductDisplayName(selectedProduct)}</p>
               <p className="text-muted-foreground line-clamp-2">{selectedProduct.description}</p>
               <div className="flex gap-2 mt-1">

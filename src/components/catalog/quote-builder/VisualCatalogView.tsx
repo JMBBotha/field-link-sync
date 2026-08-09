@@ -254,7 +254,7 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
                         className="rounded-lg border bg-card shadow-sm overflow-hidden"
                       >
                         {/* Page header */}
-                        <div className="flex items-center justify-between px-2 py-1.5 border-b bg-white">
+                        <div className="flex items-center justify-between px-2 py-1.5 border-b bg-card text-foreground">
                           <Badge variant="secondary" className="text-[10px]">
                             Page {page.page_number}
                           </Badge>
@@ -283,7 +283,7 @@ const VisualCatalogView = ({ baskets, onAddProductToBasket }: VisualCatalogViewP
 
                         {/* Page image */}
                         <div
-                          className="overflow-auto max-h-[400px] bg-white"
+                          className="overflow-auto max-h-[400px] bg-card text-foreground"
                           style={{ cursor: zoom > 1 ? "grab" : "default" }}
                         >
                           <img
