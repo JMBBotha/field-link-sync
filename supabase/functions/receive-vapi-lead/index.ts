@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { trustedCompanyId } from "../_shared/leadIntake.ts";
 
 /**
  * receive-vapi-lead
@@ -109,7 +110,7 @@ serve(async (req) => {
 
     // --- Resolve company_id ---
     // Priority: body.company_id > matched customer's company > first company in DB
-    let resolvedCompanyId: string | null = bodyCompanyId || null;
+    let resolvedCompanyId: string | null = trustedCompanyId(req, bodyCompanyId);
 
     // --- Step 1: Check for existing customer by phone ---
     let customerId: string | null = null;

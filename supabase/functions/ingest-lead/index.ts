@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { trustedCompanyId } from "../_shared/leadIntake.ts";
 
 /**
  * ingest-lead — unified lead intake for Vapi calls, website forms,
@@ -343,7 +344,7 @@ Deno.serve(async (req) => {
     }
 
     // ---- resolve company ------------------------------------------------
-    let companyId: string | null = body.company_id ?? null;
+    let companyId: string | null = trustedCompanyId(req, body.company_id);
     if (!companyId) {
       const { data: firstCompany } = await supabase
         .from("companies").select("id").order("created_at", { ascending: true }).limit(1).maybeSingle();
