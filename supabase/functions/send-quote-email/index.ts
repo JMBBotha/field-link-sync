@@ -154,7 +154,8 @@ serve(async (req) => {
   if (!auth.ok) return auth.response;
 
   try {
-    const { to, subject, quoteNumber, clientName, pdfBase64, totalAmount, unsubscribeToken } = await req.json();
+    const { to, subject, quoteNumber, clientName, pdfBase64, totalAmount, unsubscribeToken, quoteId, customerId, region } =
+      await req.json();
 
     if (!to) {
       return new Response(JSON.stringify({ error: "Missing 'to' email address" }), {
