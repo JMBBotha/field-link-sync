@@ -719,11 +719,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col"
-      style={{
-        background: "linear-gradient(135deg, #1e6bb8 0%, #d0d0d0 100%)",
-        backgroundAttachment: "fixed"
-      }}>
+      className="fixed inset-0 z-50 flex flex-col bg-background">
 
       <QuoteSharedHeader onBack={() => navigate(mode === "agent" ? "/field" : "/admin/quotes")} />
 
@@ -1039,7 +1035,7 @@ function NewQuoteClientPicker({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "linear-gradient(135deg, #1e6bb8 0%, #d0d0d0 100%)" }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md rounded-2xl bg-background shadow-2xl overflow-hidden">
         <div className="px-5 py-4 border-b flex items-center justify-between">
           <div>
@@ -1477,7 +1473,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
 
   if (creating || !quoteId) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "linear-gradient(135deg, #1e6bb8 0%, #d0d0d0 100%)" }}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-white" />
           <p className="text-sm text-white/80">Preparing quote...</p>
