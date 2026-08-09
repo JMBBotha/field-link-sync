@@ -2903,6 +2903,57 @@ export type Database = {
           },
         ]
       }
+      nl_audit_log: {
+        Row: {
+          args: Json
+          company_id: string | null
+          created_at: string
+          id: string
+          result: Json | null
+          status: string
+          tool_name: string
+          user_id: string
+        }
+        Insert: {
+          args?: Json
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          result?: Json | null
+          status?: string
+          tool_name: string
+          user_id: string
+        }
+        Update: {
+          args?: Json
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          result?: Json | null
+          status?: string
+          tool_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      nl_request_log: {
+        Row: {
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_logs: {
         Row: {
           channel: string
