@@ -73,6 +73,12 @@ Deno.serve(async (req) => {
     const { data: profile } = await db.from("profiles")
       .select("company_id").eq("id", userId).maybeSingle();
     const companyId: string | null = profile?.company_id ?? null;
+    // No company means no access — never fall back to unscoped, cross-tenant queries.
+    if (!companyId) {
+      return json({
+        error: "Your account is not linked to a company yet, so the assistant has no data to work with.",
+      }, 403);
+    }
     const ctx = { db, userId, companyId };
 
     const body = await req.json().catch(() => ({}));

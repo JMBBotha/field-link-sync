@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireDispatcher } from "../_shared/dispatch.ts";
 
 /**
  * dispatch-job — Tiered assignment cascade
@@ -29,6 +30,11 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Only authenticated dispatchers/admins (or trusted server-to-server callers)
+  // may trigger job assignment.
+  const auth = await requireDispatcher(req);
+  if (!auth.ok) return auth.response;
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

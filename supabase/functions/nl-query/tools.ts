@@ -227,8 +227,9 @@ export interface ExecContext {
 }
 
 function scopeCompany<T>(q: T, companyId: string | null): T {
+  // A missing company must mean "no rows", never "every tenant's rows".
   // deno-lint-ignore no-explicit-any
-  return companyId ? (q as any).eq("company_id", companyId) : q;
+  return (q as any).eq("company_id", companyId ?? "00000000-0000-0000-0000-000000000000");
 }
 
 /** Executes a whitelisted tool. Throws on any Supabase error. */
@@ -356,7 +357,7 @@ export async function executeTool(
         .eq("id", args.lead_id).maybeSingle();
       if (leadErr) throw leadErr;
       if (!lead) throw new Error("Lead not found");
-      if (companyId && lead.company_id && lead.company_id !== companyId) {
+      if (!companyId || lead.company_id !== companyId) {
         throw new Error("Lead belongs to another company");
       }
       const { data, error } = await db.from("quotes").insert({
@@ -379,7 +380,7 @@ export async function executeTool(
         .select("id, company_id").eq("id", args.job_id).maybeSingle();
       if (jobErr) throw jobErr;
       if (!job) throw new Error("Job not found");
-      if (companyId && job.company_id && job.company_id !== companyId) {
+      if (!companyId || job.company_id !== companyId) {
         throw new Error("Job belongs to another company");
       }
       const { data: staff, error: staffErr } = await db.from("profiles")

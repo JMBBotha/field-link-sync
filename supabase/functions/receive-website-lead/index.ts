@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { trustedCompanyId } from "../_shared/leadIntake.ts";
 
 /**
  * receive-website-lead
@@ -117,7 +118,7 @@ serve(async (req) => {
     const mapboxToken = Deno.env.get("MAPBOX_ACCESS_TOKEN");
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    let resolvedCompanyId: string | null = bodyCompanyId || null;
+    let resolvedCompanyId: string | null = trustedCompanyId(req, bodyCompanyId);
 
     let customerId: string | null = null;
     let isExistingCustomer = false;

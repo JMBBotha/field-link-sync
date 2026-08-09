@@ -3,6 +3,7 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { sanitizeHtml } from "@/lib/sanitizeHtml";
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -117,7 +118,7 @@ const ProposalPreview = ({ open, onOpenChange, sections, quote }: ProposalPrevie
               <div key={index} className={`p-6 sm:p-8 ${bgClass}`}>
                 <h2 className="text-xl font-bold mb-4">{section.title}</h2>
                 {section.content && (
-                  <div className="text-sm mb-4" dangerouslySetInnerHTML={{ __html: renderMarkdown(section.content) }} />
+                  <div className="text-sm mb-4" dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(section.content)) }} />
                 )}
                 {lineItems.length > 0 && (
                   <div className="grid gap-3 sm:grid-cols-2 mb-6">
@@ -166,7 +167,7 @@ const ProposalPreview = ({ open, onOpenChange, sections, quote }: ProposalPrevie
               {section.content && (
                 <div
                   className="prose prose-sm max-w-none text-sm leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(section.content) }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(section.content)) }}
                 />
               )}
             </div>

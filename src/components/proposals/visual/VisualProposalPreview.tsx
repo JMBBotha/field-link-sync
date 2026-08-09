@@ -11,6 +11,7 @@ import {
 } from "@/types/visualProposal";
 import { Button } from "@/components/ui/button";
 import { PenLine, CheckCircle2, FileText } from "lucide-react";
+import { sanitizeHtml } from "@/lib/sanitizeHtml";
 
 interface Props {
   title: string;
@@ -137,7 +138,7 @@ const VisualProposalPreview = ({
               )}
               <div
                 className="proposal-rte text-sm leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: s.html || "" }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(s.html || "") }}
               />
             </div>
           );
