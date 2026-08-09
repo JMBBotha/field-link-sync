@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { admin, corsHeaders, createNextOffer, escalate, json, requireDispatcher, DEFAULT_RADIUS_KM } from "../_shared/dispatch.ts";
+import { admin, corsHeaders, createNextOffer, escalate, json, leadHasLocation, requireDispatcher, DEFAULT_RADIUS_KM } from "../_shared/dispatch.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -11,6 +11,19 @@ serve(async (req) => {
     if (!lead_id) return json({ error: "lead_id is required" }, 400);
 
     const db = admin();
+
+    // Leads without a geo point can never be matched — queue instead of failing.
+    if (!(await leadHasLocation(db, lead_id))) {
+      const { data: lead } = await db
+        .from("leads")
+        .select("id, company_id, customer_name, priority")
+        .eq("id", lead_id)
+        .maybeSingle();
+      if (!lead) return json({ error: "Lead not found" }, 404);
+      await escalate(db, lead, "Lead has no location — manual assignment required");
+      return json({ success: false, escalated: true, message: "Lead has no location; queued for manual assignment" });
+    }
+
     const result: any = await createNextOffer(db, {
       leadId: lead_id,
       offerType: "sales_estimate",

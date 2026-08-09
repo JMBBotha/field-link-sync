@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { admin, corsHeaders, escalate, json, loadCandidates, requireDispatcher, DEFAULT_RADIUS_KM } from "../_shared/dispatch.ts";
+import { admin, corsHeaders, escalate, json, leadHasLocation, loadCandidates, requireDispatcher, DEFAULT_RADIUS_KM } from "../_shared/dispatch.ts";
 
 /**
  * dispatch-service-job — direct-assigns the nearest available technician
@@ -12,7 +12,7 @@ serve(async (req) => {
     const auth = await requireDispatcher(req);
     if (!auth.ok) return auth.response;
 
-    const { lead_id, radius_km, skill } = await req.json();
+    const { lead_id, radius_km, skill, skills } = await req.json();
     if (!lead_id) return json({ error: "lead_id is required" }, 400);
 
     const db = admin();
@@ -27,12 +27,25 @@ serve(async (req) => {
       return json({ error: "Lead is not classified as a service request" }, 400);
     }
 
+    // Leads without a geo point can never be matched — queue instead of failing.
+    if (!(await leadHasLocation(db, lead_id))) {
+      await escalate(db, lead, "Lead has no location — manual assignment required");
+      return json({ success: false, escalated: true, message: "Lead has no location; queued for manual assignment" });
+    }
+
     // Emergency jobs search a wider net.
     const radius = Number(radius_km) ||
       (lead.priority === "emergency" ? DEFAULT_RADIUS_KM * 2 : DEFAULT_RADIUS_KM);
 
-    const candidates = await loadCandidates(db, lead_id, "technician", radius, skill ?? null);
+    const requiredSkills: string[] = Array.isArray(skills)
+      ? skills.filter(Boolean)
+      : skill
+      ? [skill]
+      : [];
+
+    const candidates = await loadCandidates(db, lead_id, "technician", radius, requiredSkills.length ? requiredSkills : null);
     const tech = candidates[0] ?? null;
+
 
     // Draft job (assigned or queued)
     const { data: existingJob } = await db

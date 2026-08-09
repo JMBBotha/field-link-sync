@@ -27,25 +27,87 @@ export interface Candidate {
   distance_km: number | null;
 }
 
-/** Ordered candidate list for a lead. */
+/** Ordered candidate list for a lead. Accepts one skill or a list of required skills. */
 export async function loadCandidates(
   db: ReturnType<typeof admin>,
   leadId: string,
   role: "sales_engineer" | "technician",
   radiusKm: number,
-  skill: string | null,
+  skill: string | string[] | null,
 ): Promise<Candidate[]> {
-  const { data, error } = await db.rpc("find_dispatch_candidates", {
-    p_lead_id: leadId,
-    p_role: role,
-    p_radius_km: radiusKm,
-    p_skill: skill,
-  });
+  const skills = Array.isArray(skill) ? skill.filter(Boolean) : skill ? [skill] : [];
+
+  const { data, error } = skills.length > 1
+    ? await db.rpc("find_dispatch_candidates_multi", {
+      p_lead_id: leadId,
+      p_role: role,
+      p_radius_km: radiusKm,
+      p_skills: skills,
+    })
+    : await db.rpc("find_dispatch_candidates", {
+      p_lead_id: leadId,
+      p_role: role,
+      p_radius_km: radiusKm,
+      p_skill: skills[0] ?? null,
+    });
   if (error) {
     console.error("[dispatch] candidate lookup failed:", error);
     return [];
   }
   return (data ?? []) as Candidate[];
+}
+
+/** Escalation delay (minutes) driven by lead priority. */
+export function escalationMinutes(priority?: string | null): number {
+  switch (priority) {
+    case "emergency":
+      return 5;
+    case "same_day":
+      return 30;
+    default:
+      return 120;
+  }
+}
+
+/** True when the lead has no usable geo point — dispatch must not proceed. */
+export async function leadHasLocation(
+  db: ReturnType<typeof admin>,
+  leadId: string,
+): Promise<boolean> {
+  const { data } = await db
+    .from("leads")
+    .select("latitude, longitude")
+    .eq("id", leadId)
+    .maybeSingle();
+  return Boolean(data?.latitude != null && data?.longitude != null);
+}
+
+/** Upserts an open unassigned-queue row for a lead. */
+export async function enqueueUnassigned(
+  db: ReturnType<typeof admin>,
+  lead: { id: string; company_id?: string | null; priority?: string | null },
+  reason: string,
+) {
+  const { data: open } = await db
+    .from("unassigned_queue")
+    .select("id")
+    .eq("lead_id", lead.id)
+    .eq("resolved", false)
+    .maybeSingle();
+
+  const payload = {
+    lead_id: lead.id,
+    company_id: lead.company_id ?? null,
+    reason,
+    priority: lead.priority ?? "standard",
+    escalate_at: new Date(Date.now() + escalationMinutes(lead.priority) * 60_000).toISOString(),
+  };
+
+  if (open?.id) {
+    await db.from("unassigned_queue").update(payload).eq("id", open.id);
+  } else {
+    await db.from("unassigned_queue").insert(payload);
+  }
 }
 
 /** Creates an offer for the next candidate not yet offered this lead. */
@@ -56,7 +118,7 @@ export async function createNextOffer(
     offerType: "sales_estimate" | "service_call";
     role: "sales_engineer" | "technician";
     radiusKm?: number;
-    skill?: string | null;
+    skill?: string | string[] | null;
     priority?: string | null;
   },
 ) {
@@ -126,16 +188,19 @@ export async function createNextOffer(
   return { offer, candidate: next, lead };
 }
 
-/** Flags a lead for manual assignment and notifies admins/dispatchers. */
+/** Flags a lead for manual assignment, queues it for ops and notifies admins/dispatchers. */
 export async function escalate(
   db: ReturnType<typeof admin>,
-  lead: { id: string; company_id: string | null; customer_name?: string | null },
+  lead: { id: string; company_id: string | null; customer_name?: string | null; priority?: string | null },
   reason: string,
 ) {
   await db
     .from("leads")
     .update({ needs_manual_assignment: true, last_activity_at: new Date().toISOString() })
     .eq("id", lead.id);
+
+  await enqueueUnassigned(db, lead, reason);
+
 
   const { data: admins } = await db
     .from("user_roles")
