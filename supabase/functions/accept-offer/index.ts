@@ -147,6 +147,13 @@ serve(async (req) => {
       })
       .eq("id", leadId);
 
+    // Lead is now handled — close any open unassigned-queue entry.
+    await db
+      .from("unassigned_queue")
+      .update({ resolved: true, resolved_at: new Date().toISOString() })
+      .eq("lead_id", leadId)
+      .eq("resolved", false);
+
     await db.from("job_activity_log").insert({
       job_id: jobId,
       user_id: callerId,
