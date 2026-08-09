@@ -79,3 +79,6 @@ verify_jwt = false
 [functions.ingest-lead]
 verify_jwt = false
 
+
+[functions.twilio-whatsapp-webhook]
+verify_jwt = false
