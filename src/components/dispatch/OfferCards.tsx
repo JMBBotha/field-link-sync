@@ -102,13 +102,24 @@ const OfferCards = () => {
 
   const decline = async (offer: OfferRow) => {
     setBusyId(offer.id);
-    await supabase
-      .from("offers")
-      .update({ status: "declined", responded_at: new Date().toISOString() })
-      .eq("id", offer.id);
-    toast({ title: "Offer declined" });
-    await load();
-    setBusyId(null);
+    try {
+      // Goes through the edge function so the lead cascades to the next
+      // candidate immediately instead of waiting for the expiry cron.
+      const { data, error } = await supabase.functions.invoke("decline-offer", {
+        body: { offer_id: offer.id },
+      });
+      if (error || data?.error) throw new Error(data?.error || error?.message);
+      toast({ title: "Offer declined", description: "Passed on to the next available team member." });
+    } catch (err: any) {
+      toast({
+        title: "Couldn't decline offer",
+        description: err?.message ?? "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      await load();
+      setBusyId(null);
+    }
   };
 
   if (!offers.length) return null;
