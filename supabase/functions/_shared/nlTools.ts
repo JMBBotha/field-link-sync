@@ -321,11 +321,30 @@ async function hasRecordAccess(
 }
 
 
+/** Splits a free-text name into searchable tokens (drops noise words). */
+function nameTokens(input: string): string[] {
+  const STOP = new Set([
+    "the", "quote", "quotes", "invoice", "invoices", "for", "of", "client",
+    "customer", "estimate", "estimates", "open", "please", "mr", "mrs", "ms",
+  ]);
+  return input
+    .replace(/[%,()]/g, " ")
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2 && !STOP.has(t.toLowerCase()));
+}
+
+function matchesAllTokens(haystack: string, tokens: string[]): boolean {
+  const h = haystack.replace(/\s+/g, " ").toLowerCase();
+  return tokens.every((t) => h.includes(t.toLowerCase()));
+}
+
 function scopeCompany<T>(q: T, companyId: string | null): T {
   // A missing company must mean "no rows", never "every tenant's rows".
   // deno-lint-ignore no-explicit-any
   return (q as any).eq("company_id", companyId ?? "00000000-0000-0000-0000-000000000000");
 }
+
 
 /** Executes a whitelisted tool. Throws on any Supabase error. */
 export async function executeTool(
