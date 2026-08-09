@@ -17,6 +17,7 @@ import {
 } from "recharts";
 import KPICard from "./KPICard";
 import { exportToCSV } from "@/lib/csvExport";
+import { fetchOverdueMaintenanceCount } from "@/lib/maintenanceMetrics";
 import jsPDF from "jspdf";
 
 type DatePreset = "this_week" | "this_month" | "last_30" | "custom";
