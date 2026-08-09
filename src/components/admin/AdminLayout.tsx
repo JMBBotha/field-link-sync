@@ -206,7 +206,19 @@ const AdminLayout = () => {
               <kbd className="ml-1 rounded border border-white/30 bg-white/10 px-1.5 py-0.5 text-[10px]">⌘K</kbd>
             </Button>
 
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setAssistantOpen(true)}
+              className="text-blue-100 hover:bg-white/10 hover:text-primary-foreground gap-1.5"
+              title="Ask the operations assistant"
+            >
+              <Sparkle className="h-4 w-4" />
+              <span className="text-xs hidden sm:inline">Ask AI</span>
+            </Button>
+
             <NotificationBell />
+
             <Button
               variant="ghost"
               size="icon"
