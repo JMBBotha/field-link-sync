@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
         }
         try {
           const out = await executeTool(toolName, parsed.data, ctx);
-          await audit(toolName, parsed.data, { summary: out.summary, rows: out.rows.slice(0, 25) }, "executed");
+          await audit(toolName, parsed.data, { summary: out.summary, rows: out.rows.slice(0, 25) }, "executed", out);
           results.push({ toolCallId, result: out.summary });
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Execution failed";
@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
 
       try {
         const out = await executeTool(toolName, parsed.data, ctx);
-        await audit(toolName, parsed.data, { summary: out.summary, rows: out.rows.slice(0, 25) }, "executed");
+        await audit(toolName, parsed.data, { summary: out.summary, rows: out.rows.slice(0, 25) }, "executed", out);
         results.push({
           toolCallId,
           result: JSON.stringify({ summary: out.summary, rows: out.rows.slice(0, 10) }),
