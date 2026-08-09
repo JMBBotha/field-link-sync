@@ -332,7 +332,14 @@ export async function executeTool(
   tool: ToolName,
   rawArgs: unknown,
   ctx: ExecContext,
-): Promise<{ rows: Record<string, unknown>[]; summary: string }> {
+): Promise<{
+  rows: Record<string, unknown>[];
+  summary: string;
+  resource_type?: string;
+  resource_id?: string | null;
+  access_granted?: boolean;
+}> {
+
   const args = toolSchemas[tool].parse(rawArgs ?? {}) as Record<string, any>;
   const limit = Math.min(Number(args.limit ?? 20), 50);
   const { db, companyId } = ctx;
@@ -446,7 +453,59 @@ export async function executeTool(
       return { rows, summary: `${rows.length} queued lead(s)` };
     }
 
+    case "get_quote":
+    case "get_invoice": {
+      const isQuote = tool === "get_quote";
+      const table = isQuote ? "quotes" : "invoices";
+      const numberCol = isQuote ? "quote_number" : "invoice_number";
+      const cols = isQuote
+        ? "id, quote_number, customer_name, status, total, subtotal, vat_amount, valid_until, created_at, sent_at, accepted_at, lead_id, customer_id, sales_engineer_id"
+        : "id, invoice_number, customer_name, status, grand_total, subtotal, tax_amount, due_date, issue_date, paid_date, created_at, quote_id, customer_id, agent_id";
+      const raw = String(args.identifier).trim();
+      const safe = raw.replace(/[%,()]/g, "");
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw);
+
+      // Primary gate is RLS via the caller's JWT client when we have one.
+      const client = ctx.rlsDb ?? db;
+      let q = client.from(table).select(cols)
+        .order("created_at", { ascending: false })
+        .limit(Math.min(Number(args.limit ?? 5), 10));
+      q = scopeCompany(q, companyId);
+      q = isUuid
+        ? (q as any).eq("id", raw)
+        : (q as any).or(`${numberCol}.ilike.%${safe}%,customer_name.ilike.%${safe}%`);
+
+      const { data, error } = await q;
+      if (error) throw error;
+      let found = (data ?? []) as Record<string, any>[];
+
+      // Voice path has no JWT: mirror the RLS rules in code.
+      if (!ctx.rlsDb && found.length) {
+        const checked: Record<string, any>[] = [];
+        for (const row of found) {
+          if (await hasRecordAccess(db, ctx.userId, isQuote ? "quote" : "invoice", row)) {
+            checked.push(row);
+          }
+        }
+        found = checked;
+      }
+
+      const rows = scrub(tool, found);
+      const label = isQuote ? "quote" : "invoice";
+      return {
+        rows,
+        // Never disclose that a hidden record exists.
+        summary: rows.length
+          ? `${rows.length} ${label}(s) found`
+          : `No ${label} found matching "${raw}"`,
+        resource_type: label,
+        resource_id: (found[0]?.id as string) ?? null,
+        access_granted: rows.length > 0,
+      };
+    }
+
     case "create_quote_draft": {
+
       const { data: lead, error: leadErr } = await db.from("leads")
         .select("id, customer_id, customer_name, company_id")
         .eq("id", args.lead_id).maybeSingle();
