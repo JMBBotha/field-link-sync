@@ -357,7 +357,7 @@ export async function executeTool(
         .eq("id", args.lead_id).maybeSingle();
       if (leadErr) throw leadErr;
       if (!lead) throw new Error("Lead not found");
-      if (companyId && lead.company_id && lead.company_id !== companyId) {
+      if (!companyId || lead.company_id !== companyId) {
         throw new Error("Lead belongs to another company");
       }
       const { data, error } = await db.from("quotes").insert({
