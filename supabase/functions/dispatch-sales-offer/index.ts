@@ -1,9 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { admin, corsHeaders, createNextOffer, escalate, json, DEFAULT_RADIUS_KM } from "../_shared/dispatch.ts";
+import { admin, corsHeaders, createNextOffer, escalate, json, requireDispatcher, DEFAULT_RADIUS_KM } from "../_shared/dispatch.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
+    const auth = await requireDispatcher(req);
+    if (!auth.ok) return auth.response;
+
     const { lead_id, radius_km } = await req.json();
     if (!lead_id) return json({ error: "lead_id is required" }, 400);
 
