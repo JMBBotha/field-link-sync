@@ -77,7 +77,7 @@ function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, t
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
         <tr>
           <td align="center">
-            <a href="mailto:info@0800becool.co.za?subject=Accept%20Quote%20${encodeURIComponent(quoteNumber || "")}" style="display:inline-block;background-color:#2563eb;color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;padding:14px 40px;border-radius:8px;letter-spacing:0.3px;">
+            <a href="mailto:wcquotes@0800becool.co.za?subject=Accept%20Quote%20${encodeURIComponent(quoteNumber || "")}" style="display:inline-block;background-color:#2563eb;color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;padding:14px 40px;border-radius:8px;letter-spacing:0.3px;">
               View &amp; Accept Quote
             </a>
           </td>
