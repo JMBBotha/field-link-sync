@@ -66,7 +66,12 @@ serve(async (req) => {
       if (upErr) {
         console.error("PDF upload failed", upErr);
       } else {
-        mediaUrl = admin.storage.from("quote-pdfs").getPublicUrl(path).data.publicUrl;
+        // Private bucket: hand Twilio a time-limited signed URL (7 days).
+        const { data: signed, error: signErr } = await admin.storage
+          .from("quote-pdfs")
+          .createSignedUrl(path, 60 * 60 * 24 * 7);
+        if (signErr) console.error("Signed URL failed", signErr);
+        mediaUrl = signed?.signedUrl ?? null;
       }
     }
 
