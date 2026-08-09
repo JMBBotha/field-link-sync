@@ -31,9 +31,11 @@ const getMarkupAmount = (costPrice: number | undefined, markupPercent: number | 
 interface FloatingSelectedItemsProps {
   pdfSelection: PdfSelectionHandlers;
   onClose: () => void;
+  /** Push all selected PDF products into the shared quote baskets */
+  onAddSelectedToQuote?: () => void;
 }
 
-const FloatingSelectedItems = ({ pdfSelection, onClose }: FloatingSelectedItemsProps) => {
+const FloatingSelectedItems = ({ pdfSelection, onClose, onAddSelectedToQuote }: FloatingSelectedItemsProps) => {
   const [pos, setPos] = useState({ x: window.innerWidth - 340, y: 80 });
   const [minimized, setMinimized] = useState(false);
   const dragging = useRef(false);

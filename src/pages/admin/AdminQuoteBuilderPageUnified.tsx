@@ -873,6 +873,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         <FloatingSelectedItems
           pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
           onClose={() => setFloatingOpen(false)}
+          onAddSelectedToQuote={addSelectedPdfToQuote}
         />
       )}
 
