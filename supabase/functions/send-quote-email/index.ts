@@ -206,7 +206,7 @@ serve(async (req) => {
       );
     }
 
-    const emailSubject = subject || `Your 0800BeCool Quote ${quoteNumber || ""}`.trim();
+    
     // Sender mailbox: Western Cape quotes mailbox on the verified 0800becool.co.za domain.
     const QUOTES_MAILBOX = Deno.env.get("QUOTES_FROM_EMAIL") || "wcquotes@0800becool.co.za";
     const FROM_ADDRESS = `0800-BE-COOL! Quotes <${QUOTES_MAILBOX}>`;
