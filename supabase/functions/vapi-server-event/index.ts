@@ -458,6 +458,9 @@ async function recordCall(input: {
   transcript: string | null;
   recordingUrl: string | null;
   outcome: string;
+  /** Internal/test agent session — log it, but never notify staff. */
+  internal?: boolean;
+
 }) {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
