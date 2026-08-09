@@ -26,6 +26,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { fetchOverdueMaintenanceCount } from "@/lib/maintenanceMetrics";
 
 
 const kpiViewAllHref: Record<string, string> = {
