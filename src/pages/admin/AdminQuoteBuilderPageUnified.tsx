@@ -806,9 +806,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             <div className="flex-1 min-w-0 overflow-hidden">
               <VisualCatalogPanel
               open={true}
-              onClose={() => {}}
+              onClose={() => setActiveTab("normal")}
               baskets={baskets}
               onAddProductToBasket={addProductToBasket}
+              onAddSelectedToQuote={addSelectedPdfToQuote}
               products={products}
               isDragging={false}
               onOpenWizard={handleOpenWizardFromVisual}
