@@ -988,6 +988,21 @@ serve(async (req) => {
     // ─── Handle end-of-call-report ───
     if (messageType === "end-of-call-report") {
       const call = body.message.call || {};
+
+      // Internal/test conversations with our own AI agent (ops assistant in the
+      // admin header, voice quote builder, Vapi dashboard tests) are NOT customer
+      // intake: no lead, no draft estimate, no WhatsApp, no "Call Logged" alert.
+      const origin = classifyCallOrigin(body);
+      if (origin.internal) {
+        console.log(
+          `[vapi-server-event] Internal agent session (${origin.reason}) — skipping lead intake and notifications`,
+        );
+        return new Response(
+          JSON.stringify({ ok: true, skipped: "internal_agent_session", reason: origin.reason }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
       const artifact = body.message.artifact || {};
       const analysis = body.message.analysis || call.analysis || {};
       const endedReason = body.message.endedReason || "unknown";
