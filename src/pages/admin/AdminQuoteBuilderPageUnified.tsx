@@ -795,7 +795,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
                 quoteTotals={displayQuoteTotals}
               />
             </div>
-            <div className="w-[320px] shrink-0 border-l overflow-y-auto p-3 mx-[5px] my-[4px] bg-transparent">
+            <div className="w-[320px] shrink-0 border-l overflow-y-auto p-3 bg-card">
               <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
 
             </div>
