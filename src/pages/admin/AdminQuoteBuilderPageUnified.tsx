@@ -725,11 +725,11 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
       {/* Builder mode tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="shrink-0">
-        <div className="flex items-center justify-center py-1.5 bg-black/10">
-          <TabsList className="h-8 bg-white/10">
-            <TabsTrigger value="normal" className="text-xs text-white data-[state=active]:bg-white data-[state=active]:text-foreground px-4">Build</TabsTrigger>
-            <TabsTrigger value="visual" className="text-xs text-white data-[state=active]:bg-white data-[state=active]:text-foreground px-4">Visual PDF</TabsTrigger>
-            <TabsTrigger value="area" className="text-xs text-white data-[state=active]:bg-white data-[state=active]:text-foreground px-4">Build Area Quote</TabsTrigger>
+        <div className="flex items-center justify-center py-1.5 bg-muted/40">
+          <TabsList className="h-8 bg-muted">
+            <TabsTrigger value="normal" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Build</TabsTrigger>
+            <TabsTrigger value="visual" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Visual PDF</TabsTrigger>
+            <TabsTrigger value="area" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Build Area Quote</TabsTrigger>
           </TabsList>
         </div>
       </Tabs>
