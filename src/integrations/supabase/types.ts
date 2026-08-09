@@ -2172,6 +2172,81 @@ export type Database = {
           },
         ]
       }
+      job_completions: {
+        Row: {
+          company_id: string | null
+          completed_at: string
+          created_at: string
+          customer_email: string | null
+          customer_name: string | null
+          id: string
+          job_id: string | null
+          labour_minutes: number
+          lead_id: string | null
+          parts_total: number
+          photo_count: number
+          signature_data_url: string | null
+          signed_at: string | null
+          status: string
+          technician_id: string
+          updated_at: string
+          work_summary: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          completed_at?: string
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          id?: string
+          job_id?: string | null
+          labour_minutes?: number
+          lead_id?: string | null
+          parts_total?: number
+          photo_count?: number
+          signature_data_url?: string | null
+          signed_at?: string | null
+          status?: string
+          technician_id: string
+          updated_at?: string
+          work_summary?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          completed_at?: string
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          id?: string
+          job_id?: string | null
+          labour_minutes?: number
+          lead_id?: string | null
+          parts_total?: number
+          photo_count?: number
+          signature_data_url?: string | null
+          signed_at?: string | null
+          status?: string
+          technician_id?: string
+          updated_at?: string
+          work_summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_completions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_completions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_expenses: {
         Row: {
           amount: number
