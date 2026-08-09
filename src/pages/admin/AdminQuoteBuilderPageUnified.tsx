@@ -6,7 +6,8 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Users, X, Loader2 } from "lucide-react";
+import { ArrowLeft, Users, X, Loader2, Mic } from "lucide-react";
+import VoiceQuoteDialog from "@/components/quoting/VoiceQuoteDialog";
 import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
 import { useProductUsageStats } from "@/hooks/useProductUsageStats";
 import ProductPalette from "@/components/catalog/quote-builder/ProductPalette";
@@ -642,6 +643,31 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     setSelectedFromPdf([]);
   }, [selectedFromPdf]);
 
+  // ---- Build with voice -------------------------------------------------
+  // Voice items are merged into the SAME shared baskets every tab uses, so
+  // they persist through persistQuoteFromBaskets like any other line item.
+  const [voiceOpen, setVoiceOpen] = useState(false);
+
+  const addVoiceItems = useCallback((entries: Array<{ product: PaletteProduct; quantity: number }>) => {
+    if (!entries.length) return;
+    setBaskets((prev) => {
+      const list = prev.length > 0 ? [...prev] : [{ id: "basket-1", name: "Zone 1", items: [] as Basket["items"] }];
+      const targetId = list[0].id;
+      return list.map((basket) => {
+        if (basket.id !== targetId) return basket;
+        const items = [...basket.items];
+        entries.forEach(({ product, quantity }, idx) => {
+          items.push({
+            instanceId: `${product.id}-${Date.now()}-${idx}`,
+            product,
+            quantity: quantity || 1,
+          });
+        });
+        return { ...basket, items };
+      });
+    });
+  }, []);
+
   // Handle wizard save — merge new baskets
   const handleWizardSave = useCallback((newBaskets: Basket[]) => {
     setBaskets((prev) => [...prev, ...newBaskets]);
@@ -723,6 +749,14 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
       <QuoteSharedHeader onBack={() => navigate(mode === "agent" ? "/field" : "/admin/quotes")} />
 
+      <VoiceQuoteDialog
+        open={voiceOpen}
+        onOpenChange={setVoiceOpen}
+        products={products}
+        quoteId={quoteId}
+        onConfirm={addVoiceItems}
+      />
+
       {/* Builder mode tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="shrink-0">
         <div className="flex items-center justify-center py-1.5 bg-muted/40">
@@ -731,6 +765,15 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             <TabsTrigger value="visual" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Visual PDF</TabsTrigger>
             <TabsTrigger value="area" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Build Area Quote</TabsTrigger>
           </TabsList>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setVoiceOpen(true)}
+            className="ml-2 h-8 gap-1.5 text-xs"
+            title="Speak your line items"
+          >
+            <Mic className="h-3.5 w-3.5" /> Build with voice
+          </Button>
         </div>
       </Tabs>
 
