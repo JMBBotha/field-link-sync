@@ -187,7 +187,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         pendingQuotes: quotesRes.count || 0,
         activeJobs: activeJobsRes.count || 0,
         overdueInvoices: overdueRes.count || 0,
-        overdueMaintenance: (overdueMaintenanceRes.data as number) || 0,
+        overdueMaintenance: overdueMaintenanceRes,
         revenueToday,
         agents: agentsRes.data || [],
         recentActivity: recentRes.data || [],
