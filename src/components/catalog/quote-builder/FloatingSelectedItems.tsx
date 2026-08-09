@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { calcSellingPrice } from "@/utils/pricing";
-import { X, GripVertical, Minus, Maximize2, ChevronUp, ChevronDown, CheckCircle2 } from "lucide-react";
+import { X, GripVertical, Minus, Maximize2, ChevronUp, ChevronDown, CheckCircle2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -233,6 +233,12 @@ const FloatingSelectedItems = ({ pdfSelection, onClose, onAddSelectedToQuote }: 
             <span className="text-[10px] text-muted-foreground">Total (incl VAT)</span>
             <span className="text-xs font-semibold text-muted-foreground">R{(total * 1.15).toFixed(2)}</span>
           </div>
+          {onAddSelectedToQuote && (
+            <Button className="w-full h-8 mt-1.5 gap-1.5 text-xs" onClick={onAddSelectedToQuote}>
+              <Plus className="h-3.5 w-3.5" />
+              Add {items.length} to quote
+            </Button>
+          )}
         </div>
       )}
 
