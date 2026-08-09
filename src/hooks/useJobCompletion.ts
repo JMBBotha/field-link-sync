@@ -75,10 +75,7 @@ export function useJobCompletion() {
       if (leadErr) throw leadErr;
 
       if (input.jobId) {
-        await supabase
-          .from("jobs")
-          .update({ status: "completed", completed_at: completedAt })
-          .eq("id", input.jobId);
+        await supabase.from("jobs").update({ status: "completed" }).eq("id", input.jobId);
       }
 
       return { queued: false };
