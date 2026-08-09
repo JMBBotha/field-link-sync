@@ -226,11 +226,17 @@ const LeadDetailSheet = ({
   const addressSearchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.customer_address)}`;
 
   const handleCompleteClick = () => {
-    // If customer has equipment, show equipment flow first
+    // On-site sign-off first: photos/parts/time recap + customer signature
+    setShowSignOff(true);
+  };
+
+  const handleSignedOff = () => {
+    setShowSignOff(false);
+    onLeadUpdated?.();
+    // If customer has equipment, show equipment flow next
     if (lead.customer_id) {
       setShowCompletionFlow(true);
     } else {
-      // No customer linked, go straight to invoice
       setShowInvoiceForm(true);
     }
   };
