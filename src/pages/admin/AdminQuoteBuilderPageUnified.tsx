@@ -629,6 +629,65 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     }
   }, []);
 
+  /* ── Generate Quote: persist the merged basket state (Build + Visual PDF +
+     Area tabs) into the ONE unified quote, then open the send-to-client flow ── */
+  const [sendOpen, setSendOpen] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  const pdfData: QuotePDFData = useMemo(() => {
+    const items = displayBaskets.flatMap((b) =>
+      b.items.map((i) => ({
+        areaName: b.name,
+        unitName: i.product.short_name || i.product.product_code || "Item",
+        btu: 0,
+        quantity: i.quantity,
+        unitPrice: i.quantity ? calculateBasketItemSell(i) / i.quantity : 0,
+        markupPercent: 0,
+        lineTotal: calculateBasketItemSell(i),
+      })),
+    );
+    const today = new Date();
+    const validUntil = new Date(today);
+    validUntil.setDate(validUntil.getDate() + 30);
+    return {
+      quoteNumber: meta?.quote_number || "Draft",
+      date: today.toLocaleDateString("en-ZA"),
+      validUntil: meta?.valid_until
+        ? new Date(meta.valid_until).toLocaleDateString("en-ZA")
+        : validUntil.toLocaleDateString("en-ZA"),
+      clientName: meta?.customer_name || "Client",
+      clientEmail: "",
+      items,
+      subtotal: displayQuoteTotals.subtotal,
+      vatRate: QUOTE_VAT_RATE,
+      vatAmount: displayQuoteTotals.vatAmount,
+      total: displayQuoteTotals.total,
+    };
+  }, [displayBaskets, displayQuoteTotals, meta]);
+
+  const handleGenerateQuote = useCallback(async () => {
+    if (!quoteId) return;
+    if (displayQuoteTotals.itemCount === 0) {
+      toast({ title: "Nothing to quote", description: "Add at least one line item first.", variant: "destructive" });
+      return;
+    }
+    setGenerating(true);
+    try {
+      const validIds = new Set(products.map((p) => p.id));
+      await persistQuoteFromBaskets(quoteId, displayBaskets, validIds);
+      toast({ title: "Quote saved", description: "All builder tabs merged into one quote." });
+      setSendOpen(true);
+    } catch (err) {
+      toast({
+        title: "Couldn't save quote",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setGenerating(false);
+    }
+  }, [quoteId, displayBaskets, displayQuoteTotals.itemCount, products]);
+
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col"
