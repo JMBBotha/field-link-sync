@@ -3490,36 +3490,122 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_events: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          environment: string
+          error_message: string | null
+          event_id: string | null
+          event_type: string | null
+          gateway: string
+          id: string
+          invoice_id: string | null
+          payload: Json | null
+          payment_id: string | null
+          processed: boolean
+          result_code: string | null
+          signature_valid: boolean
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          environment?: string
+          error_message?: string | null
+          event_id?: string | null
+          event_type?: string | null
+          gateway: string
+          id?: string
+          invoice_id?: string | null
+          payload?: Json | null
+          payment_id?: string | null
+          processed?: boolean
+          result_code?: string | null
+          signature_valid?: boolean
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          environment?: string
+          error_message?: string | null
+          event_id?: string | null
+          event_type?: string | null
+          gateway?: string
+          id?: string
+          invoice_id?: string | null
+          payload?: Json | null
+          payment_id?: string | null
+          processed?: boolean
+          result_code?: string | null
+          signature_valid?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_events_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
+          checkout_id: string | null
+          company_id: string | null
           created_at: string
           created_by: string | null
+          currency: string
+          environment: string
+          gateway: string
+          gateway_reference: string | null
           id: string
           invoice_id: string
           method: string
           payment_date: string
+          raw_payload: Json | null
           reference: string | null
+          status: string
+          updated_at: string
         }
         Insert: {
           amount: number
+          checkout_id?: string | null
+          company_id?: string | null
           created_at?: string
           created_by?: string | null
+          currency?: string
+          environment?: string
+          gateway?: string
+          gateway_reference?: string | null
           id?: string
           invoice_id: string
           method: string
           payment_date?: string
+          raw_payload?: Json | null
           reference?: string | null
+          status?: string
+          updated_at?: string
         }
         Update: {
           amount?: number
+          checkout_id?: string | null
+          company_id?: string | null
           created_at?: string
           created_by?: string | null
+          currency?: string
+          environment?: string
+          gateway?: string
+          gateway_reference?: string | null
           id?: string
           invoice_id?: string
           method?: string
           payment_date?: string
+          raw_payload?: Json | null
           reference?: string | null
+          status?: string
+          updated_at?: string
         }
         Relationships: [
           {
