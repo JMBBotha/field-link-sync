@@ -84,7 +84,12 @@ serve(async (req) => {
       body ||
       "✅ Test message from 0800-BE-COOL. If you can read this, the WhatsApp integration is working.";
 
-    const result = await sendWhatsApp({ to: String(to), body: message });
+    const result = await sendWhatsApp({
+      to: String(to),
+      body: message,
+      // Lets Twilio push sent/delivered/failed updates back into whatsapp_messages
+      statusCallbackUrl: `${supabaseUrl}/functions/v1/twilio-whatsapp-webhook`,
+    });
 
     await admin.from("whatsapp_messages").insert({
       direction: "outbound",
