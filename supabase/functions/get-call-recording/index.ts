@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (error) return json({ available: false, reason: error.message }, 403);
-    if (!call) return json({ available: false, reason: "Call not found" }, 404);
+    if (!call) return json({ available: false, reason: "Call not found" });
 
     const apiKey = Deno.env.get("VAPI_PRIVATE_API_KEY");
 
@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
     let recordingUrl: string | null = call.recording_url ?? (await fetchFreshUrl());
 
     if (!recordingUrl) {
-      return json({ available: false, reason: "No recording was returned for this call" }, 404);
+      return json({ available: false, reason: "No recording was returned for this call" });
     }
 
     // Stream the audio through, forwarding Range so seeking works.
@@ -91,16 +91,14 @@ Deno.serve(async (req) => {
     if (!upstream.ok || !upstream.body) {
       const detail = await upstream.text().catch(() => "");
       console.error(`Recording fetch failed [${upstream.status}]: ${detail.slice(0, 300)}`);
-      return json(
-        {
-          available: false,
-          reason:
-            upstream.status === 400 || upstream.status === 403
-              ? "Recording link expired and could not be refreshed from the provider"
-              : `Recording could not be loaded (${upstream.status})`,
-        },
-        404,
-      );
+      const privateBucket =
+        upstream.status === 400 || upstream.status === 401 || upstream.status === 403;
+      return json({
+        available: false,
+        reason: privateBucket
+          ? "Recording is stored in your provider's private (HIPAA) bucket — enable public recording URLs in the voice provider to play it here"
+          : `Recording could not be loaded (${upstream.status})`,
+      });
     }
 
     const headers = new Headers(corsHeaders);
