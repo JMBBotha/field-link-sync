@@ -157,7 +157,14 @@ Deno.serve(async (req) => {
       if (!res.ok) {
         const detail = await res.text();
         console.error("[nl-query] anthropic error", res.status, detail);
-        return json({ error: "The assistant is unavailable right now." }, 502);
+        let upstream = "";
+        try {
+          upstream = JSON.parse(detail)?.error?.message ?? "";
+        } catch { /* ignore */ }
+        return json({
+          error: upstream ? `Anthropic: ${upstream}` : "The assistant is unavailable right now.",
+        }, 502);
+
       }
 
       const payload = await res.json();
