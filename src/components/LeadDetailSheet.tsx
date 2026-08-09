@@ -534,7 +534,11 @@ const LeadDetailSheet = ({
               </div>
             </a>
 
+            {/* Classification (rule/AI) with human override */}
+            <LeadClassificationPanel leadId={lead.id} />
+
             {/* Lead Information — full summary of everything captured at intake */}
+
             <div className="rounded-xl border border-border/60 bg-background/60 p-3 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Lead Information</h3>
