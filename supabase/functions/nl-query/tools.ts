@@ -289,12 +289,21 @@ export async function executeTool(
     }
 
     case "query_jobs": {
+      let jobIds: string[] | null = null;
+      if (args.staff_id) {
+        const { data: asg, error: asgErr } = await db.from("assignments")
+          .select("job_id").eq("profile_id", args.staff_id).limit(200);
+        if (asgErr) throw asgErr;
+        jobIds = (asg ?? []).map((a: { job_id: string }) => a.job_id).filter(Boolean);
+        if (jobIds.length === 0) return { rows: [], summary: "0 job(s)" };
+      }
       let q = db.from("jobs").select(
         "id, title, status, priority, job_type, address, scheduled_for, created_at, customer_id, lead_id",
       ).order("scheduled_for", { ascending: true, nullsFirst: false }).limit(limit);
       q = scopeCompany(q, companyId);
       if (args.status) q = q.eq("status", args.status);
-      if (args.staff_id) q = q.eq("created_by", args.staff_id);
+      if (jobIds) q = q.in("id", jobIds);
+
       if (args.date_from) q = q.gte("scheduled_for", `${args.date_from}T00:00:00Z`);
       if (args.date_to) q = q.lte("scheduled_for", `${args.date_to}T23:59:59Z`);
       const { data, error } = await q;
