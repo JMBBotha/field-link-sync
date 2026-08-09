@@ -5,7 +5,7 @@ import {
   TOOL_KIND,
   toolSchemas,
   type ToolName,
-} from "./tools.ts";
+} from "../_shared/nlTools.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
