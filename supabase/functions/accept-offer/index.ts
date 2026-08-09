@@ -47,6 +47,8 @@ serve(async (req) => {
       .from("jobs")
       .select("id")
       .eq("lead_id", leadId)
+      .order("created_at", { ascending: true })
+      .limit(1)
       .maybeSingle();
 
     const scheduledAt = lead.scheduled_date
@@ -107,6 +109,8 @@ serve(async (req) => {
         .from("quotes")
         .select("id")
         .eq("lead_id", leadId)
+        .order("created_at", { ascending: true })
+        .limit(1)
         .maybeSingle();
       if (existingQuote) {
         quoteId = existingQuote.id;

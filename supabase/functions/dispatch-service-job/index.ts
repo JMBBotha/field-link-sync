@@ -39,6 +39,8 @@ serve(async (req) => {
       .from("jobs")
       .select("id")
       .eq("lead_id", lead_id)
+      .order("created_at", { ascending: true })
+      .limit(1)
       .maybeSingle();
 
     const jobPayload: Record<string, unknown> = {
@@ -73,6 +75,8 @@ serve(async (req) => {
       .from("invoices")
       .select("id")
       .eq("lead_id", lead_id)
+      .order("created_at", { ascending: true })
+      .limit(1)
       .maybeSingle();
 
     let invoiceId = existingInvoice?.id as string | undefined;
