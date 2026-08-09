@@ -20,6 +20,10 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Price data feeds customer quoting — restrict imports to admins.
+  const auth = await requireUser(req, ["admin", "platform_super_admin", "platform_ops"]);
+  if (!auth.ok) return auth.response;
+
   try {
     const { csv_text, supplier_id, supplier_name } = await req.json();
 
