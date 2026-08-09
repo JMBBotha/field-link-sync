@@ -6580,6 +6580,19 @@ export type Database = {
           revenue: number
         }[]
       }
+      log_entity_resolution: {
+        Args: {
+          p_candidates?: Json
+          p_channel?: string
+          p_chosen_id?: string
+          p_chosen_label?: string
+          p_decision: string
+          p_entity_type: string
+          p_query: string
+          p_score?: number
+        }
+        Returns: string
+      }
       longtransactionsenabled: { Args: never; Returns: boolean }
       mark_overdue_maintenance: { Args: never; Returns: number }
       normalize_phone: { Args: { phone: string }; Returns: string }
