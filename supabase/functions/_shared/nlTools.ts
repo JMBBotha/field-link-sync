@@ -1,5 +1,6 @@
 import { z } from "npm:zod@3.23.8";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { hasRecordAccess } from "./recordAccess.ts";
 
 /** ---------------------------------------------------------------
  *  Whitelisted tool registry for the natural-language interface.
@@ -285,40 +286,6 @@ export interface ExecContext {
 }
 
 /** Mirrors the quotes/invoices SELECT RLS policies for the voice path. */
-async function hasRecordAccess(
-  db: SupabaseClient,
-  userId: string,
-  kind: "quote" | "invoice",
-  row: Record<string, any>,
-): Promise<boolean> {
-  const { data: roles } = await db.from("user_roles").select("role").eq("user_id", userId);
-  const ops = new Set(["admin", "dispatcher", "platform_super_admin", "platform_ops"]);
-  if ((roles ?? []).some((r: { role: string }) => ops.has(r.role))) return true;
-
-  if (kind === "quote" && row.sales_engineer_id === userId) return true;
-  if (kind === "invoice" && row.agent_id === userId) return true;
-
-  const jobFilter = kind === "quote"
-    ? `quote_id.eq.${row.id}`
-    : `invoice_id.eq.${row.id}${row.quote_id ? `,quote_id.eq.${row.quote_id}` : ""}`;
-  const { data: jobs } = await db.from("jobs").select("id, created_by").or(jobFilter);
-  const jobIds = (jobs ?? []).map((j: { id: string }) => j.id);
-  if (kind === "quote" && (jobs ?? []).some((j: { created_by: string }) => j.created_by === userId)) {
-    return true;
-  }
-  if (jobIds.length) {
-    const { data: asg } = await db.from("assignments")
-      .select("id").in("job_id", jobIds).eq("profile_id", userId).limit(1);
-    if ((asg ?? []).length) return true;
-  }
-
-  if (kind === "quote" && row.lead_id) {
-    const { data: off } = await db.from("offers")
-      .select("id").eq("lead_id", row.lead_id).eq("staff_id", userId).eq("status", "accepted").limit(1);
-    if ((off ?? []).length) return true;
-  }
-  return false;
-}
 
 
 /** Splits a free-text name into searchable tokens (drops noise words). */
