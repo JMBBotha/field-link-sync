@@ -82,13 +82,15 @@ const JobCompletionSheet = ({
     queryKey: ["job-labour-minutes", leadId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("job_time_entries" as never)
-        .select("duration_minutes")
+        .from("job_time_entries")
+        .select("hours_onsite, travel_hours")
         .eq("lead_id", leadId);
       if (error) throw error;
-      return (data || []).reduce(
-        (sum: number, r: { duration_minutes?: number | null }) => sum + (r.duration_minutes || 0),
-        0
+      return Math.round(
+        (data || []).reduce(
+          (sum, r) => sum + Number(r.hours_onsite || 0) + Number(r.travel_hours || 0),
+          0
+        ) * 60
       );
     },
     enabled: open && !!leadId && isOnline,
