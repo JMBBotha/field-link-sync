@@ -310,7 +310,9 @@ Deno.serve(async (req) => {
   try {
     const expected = Deno.env.get("LEAD_INGEST_SECRET");
     const provided = req.headers.get("x-api-key");
-    if (expected && provided && provided !== expected) {
+    // When a shared secret is configured it is mandatory — a missing header
+    // must NOT skip the check (previously it did, allowing anonymous ingest).
+    if (expected && provided !== expected) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
