@@ -939,6 +939,7 @@ export type Database = {
           preferred_contact_method: string | null
           primary_address_line1: string | null
           primary_address_line2: string | null
+          search_aliases: string[] | null
           secondary_phone: string | null
           status: string | null
           updated_at: string
@@ -974,6 +975,7 @@ export type Database = {
           preferred_contact_method?: string | null
           primary_address_line1?: string | null
           primary_address_line2?: string | null
+          search_aliases?: string[] | null
           secondary_phone?: string | null
           status?: string | null
           updated_at?: string
@@ -1009,6 +1011,7 @@ export type Database = {
           preferred_contact_method?: string | null
           primary_address_line1?: string | null
           primary_address_line2?: string | null
+          search_aliases?: string[] | null
           secondary_phone?: string | null
           status?: string | null
           updated_at?: string
@@ -3753,6 +3756,7 @@ export type Database = {
           onboarding_completed: boolean
           participant_type: string
           phone: string | null
+          search_aliases: string[] | null
           skills: string[] | null
           stripe_customer_id: string | null
           subscription_plan: string
@@ -3787,6 +3791,7 @@ export type Database = {
           onboarding_completed?: boolean
           participant_type?: string
           phone?: string | null
+          search_aliases?: string[] | null
           skills?: string[] | null
           stripe_customer_id?: string | null
           subscription_plan?: string
@@ -3821,6 +3826,7 @@ export type Database = {
           onboarding_completed?: boolean
           participant_type?: string
           phone?: string | null
+          search_aliases?: string[] | null
           skills?: string[] | null
           stripe_customer_id?: string | null
           subscription_plan?: string
@@ -5133,6 +5139,7 @@ export type Database = {
           quote_usage_count: number
           refrigerant_type: string | null
           row_bbox: Json | null
+          search_aliases: string[] | null
           sell_price_incl_vat: number | null
           selling_price: number | null
           short_name: string | null
@@ -5205,6 +5212,7 @@ export type Database = {
           quote_usage_count?: number
           refrigerant_type?: string | null
           row_bbox?: Json | null
+          search_aliases?: string[] | null
           sell_price_incl_vat?: number | null
           selling_price?: number | null
           short_name?: string | null
@@ -5277,6 +5285,7 @@ export type Database = {
           quote_usage_count?: number
           refrigerant_type?: string | null
           row_bbox?: Json | null
+          search_aliases?: string[] | null
           sell_price_incl_vat?: number | null
           selling_price?: number | null
           short_name?: string | null
@@ -6278,6 +6287,12 @@ export type Database = {
           staff_id: string
         }[]
       }
+      fuzzy_digits: { Args: { p_text: string }; Returns: string }
+      fuzzy_normalize: { Args: { p_text: string }; Returns: string }
+      fuzzy_score: {
+        Args: { p_haystacks: string[]; p_query: string }
+        Returns: number
+      }
       generate_invoice_number: { Args: never; Returns: string }
       generate_maintenance_schedules: {
         Args: { months_ahead?: number }
@@ -6565,6 +6580,19 @@ export type Database = {
           revenue: number
         }[]
       }
+      log_entity_resolution: {
+        Args: {
+          p_candidates?: Json
+          p_channel?: string
+          p_chosen_id?: string
+          p_chosen_label?: string
+          p_decision: string
+          p_entity_type: string
+          p_query: string
+          p_score?: number
+        }
+        Returns: string
+      }
       longtransactionsenabled: { Args: never; Returns: boolean }
       mark_overdue_maintenance: { Args: never; Returns: number }
       normalize_phone: { Args: { phone: string }; Returns: string }
@@ -6659,6 +6687,23 @@ export type Database = {
           primary_address_line1: string
           relevance: number
           status: string
+        }[]
+      }
+      search_entities_fuzzy: {
+        Args: {
+          p_company_id?: string
+          p_entity_type: string
+          p_limit?: number
+          p_min_score?: number
+          p_query: string
+        }
+        Returns: {
+          entity_type: string
+          id: string
+          label: string
+          reference: string
+          score: number
+          sublabel: string
         }[]
       }
       search_supplier_products:
