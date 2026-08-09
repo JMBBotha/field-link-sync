@@ -8,6 +8,9 @@ export const TOOL_LABELS: Record<string, string> = {
   search_customer: "Customers",
   get_staff_availability: "Staff availability",
   get_unassigned_queue: "Unassigned queue",
+  get_quote: "Quote",
+  get_invoice: "Invoice",
+
   create_quote_draft: "Create draft quote",
   assign_job: "Assign job",
 };
