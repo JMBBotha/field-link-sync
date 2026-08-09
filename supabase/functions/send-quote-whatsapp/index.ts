@@ -14,13 +14,8 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-/** Normalise a South African number to WhatsApp E.164 (no plus). */
-function formatPhoneNumber(phone: string): string {
-  let cleaned = phone.replace(/\D/g, "");
-  if (cleaned.startsWith("0")) cleaned = "27" + cleaned.slice(1);
-  else if (!cleaned.startsWith("27") && cleaned.length <= 10) cleaned = "27" + cleaned;
-  return cleaned;
-}
+
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
