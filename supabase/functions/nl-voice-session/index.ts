@@ -168,26 +168,52 @@ Deno.serve(async (req) => {
     const { token, sessionId } = await signSession(userId, companyId);
     const serverUrl = `${supabaseUrl}/functions/v1/nl-voice-tool?s=${encodeURIComponent(token)}`;
 
+    // The assistant config. When a saved Vapi assistant exists we send this as
+    // assistantOverrides so the session-scoped tool webhook URL (and the ops
+    // system prompt) always win over whatever is stored in the dashboard.
+    const assistantConfig = {
+      name: "Operations Assistant",
+      firstMessage: "Operations assistant here. What do you need?",
+      firstMessageMode: "assistant-speaks-first",
+      maxDurationSeconds: 900,
+      silenceTimeoutSeconds: 45,
+      transcriber: { provider: "deepgram", model: "nova-2", language: "en" },
+      voice: { provider: "vapi", voiceId: "Elliot" },
+      model: {
+        provider: "openai",
+        model: "gpt-4o",
+        temperature: 0.2,
+        messages: [{ role: "system", content: SYSTEM_PROMPT }],
+        tools: vapiTools(serverUrl),
+      },
+    };
+
+    // Prefer the saved assistant (VAPI_ASSISTANT_ID) when it is reachable.
+    const assistantId = Deno.env.get("VAPI_ASSISTANT_ID")?.trim();
+    const privateKey = Deno.env.get("VAPI_PRIVATE_API_KEY");
+    let useSavedAssistant = false;
+    if (assistantId && privateKey) {
+      try {
+        const res = await fetch(`https://api.vapi.ai/assistant/${assistantId}`, {
+          headers: { Authorization: `Bearer ${privateKey}` },
+        });
+        useSavedAssistant = res.ok;
+        if (!res.ok) {
+          console.warn("[nl-voice-session] assistant lookup failed", res.status, await res.text());
+        }
+      } catch (e) {
+        console.warn("[nl-voice-session] assistant lookup error", e);
+      }
+    }
+
     return json({
       publicKey,
       sessionId,
-      assistant: {
-        name: "Operations Assistant",
-        firstMessage: "Operations assistant here. What do you need?",
-        firstMessageMode: "assistant-speaks-first",
-        maxDurationSeconds: 900,
-        silenceTimeoutSeconds: 45,
-        transcriber: { provider: "deepgram", model: "nova-2", language: "en" },
-        voice: { provider: "vapi", voiceId: "Elliot" },
-        model: {
-          provider: "openai",
-          model: "gpt-4o",
-          temperature: 0.2,
-          messages: [{ role: "system", content: SYSTEM_PROMPT }],
-          tools: vapiTools(serverUrl),
-        },
-      },
+      ...(useSavedAssistant
+        ? { assistantId, assistantOverrides: assistantConfig }
+        : { assistant: assistantConfig }),
     });
+
   } catch (e) {
     console.error("[nl-voice-session] fatal", e);
     return json({ error: e instanceof Error ? e.message : "Unexpected error" }, 500);
