@@ -140,7 +140,7 @@ const AnalyticsDashboard = () => {
       const completed = completedRes.count || 0;
       const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
       const recurringRevenue = revenueRes.data?.reduce((s, a) => s + Number(a.price), 0) || 0;
-      return { completionRate, overdue: (overdueCount.data as number) || 0, recurringRevenue };
+      return { completionRate, overdue: overdueCount, recurringRevenue };
     },
   });
 
