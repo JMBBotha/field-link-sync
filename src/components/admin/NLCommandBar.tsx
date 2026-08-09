@@ -12,10 +12,10 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, Sparkle, X } from "lucide-react";
-
-type Row = Record<string, unknown>;
-type Structured = { tool_name: string; rows: Row[] };
+import { Loader2, MessageSquare, Mic, Send, Sparkle, X } from "lucide-react";
+import ResultTable, { TOOL_LABELS, type Row, type Structured } from "@/components/admin/nl/ResultTable";
+import VoiceAssistantPanel from "@/components/admin/nl/VoiceAssistantPanel";
+import { useVoiceAssistant } from "@/hooks/useVoiceAssistant";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -28,17 +28,6 @@ interface PendingConfirmation {
   args: Record<string, unknown>;
 }
 
-const TOOL_LABELS: Record<string, string> = {
-  query_leads: "Leads",
-  get_overdue_invoices: "Overdue invoices",
-  query_jobs: "Jobs",
-  search_customer: "Customers",
-  get_staff_availability: "Staff availability",
-  get_unassigned_queue: "Unassigned queue",
-  create_quote_draft: "Create draft quote",
-  assign_job: "Assign job",
-};
-
 const SUGGESTIONS = [
   "Show me emergency leads from this week",
   "Which invoices are more than 30 days overdue?",
@@ -46,76 +35,49 @@ const SUGGESTIONS = [
   "What's sitting in the unassigned queue?",
 ];
 
-function formatCell(value: unknown): string {
-  if (value === null || value === undefined || value === "") return "—";
-  if (Array.isArray(value)) return value.join(", ");
-  if (typeof value === "object") return JSON.stringify(value);
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  const str = String(value);
-  if (/^\d{4}-\d{2}-\d{2}T/.test(str)) return new Date(str).toLocaleString("en-ZA");
-  return str;
-}
-
-const ResultTable = ({ block }: { block: Structured }) => {
-  if (!block.rows.length) {
-    return (
-      <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-        {TOOL_LABELS[block.tool_name] ?? block.tool_name}: no matching records.
-      </div>
-    );
-  }
-  const columns = Object.keys(block.rows[0]);
-  return (
-    <div className="rounded-md border border-border overflow-hidden">
-      <div className="bg-muted/60 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground">
-        {TOOL_LABELS[block.tool_name] ?? block.tool_name} · {block.rows.length}
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b border-border bg-card">
-              {columns.map((c) => (
-                <th key={c} className="px-2 py-1.5 text-left font-medium text-muted-foreground whitespace-nowrap">
-                  {c.replace(/_/g, " ")}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {block.rows.map((row, i) => (
-              <tr key={i} className="border-b border-border/60 last:border-0">
-                {columns.map((c) => (
-                  <td key={c} className="px-2 py-1.5 text-foreground whitespace-nowrap max-w-[220px] truncate">
-                    {formatCell(row[c])}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
+type AssistantMode = "text" | "voice";
 
 interface NLCommandBarProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The header star icon opens straight into voice mode. */
+  initialMode?: AssistantMode;
 }
 
-const NLCommandBar = ({ open, onOpenChange }: NLCommandBarProps) => {
+const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBarProps) => {
   const { toast } = useToast();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [pending, setPending] = useState<PendingConfirmation | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [mode, setMode] = useState<AssistantMode>(initialMode);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const voice = useVoiceAssistant();
 
   useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 50);
-  }, [open]);
+    if (!open) return;
+    setMode(initialMode);
+    if (initialMode === "text") setTimeout(() => inputRef.current?.focus(), 50);
+  }, [open, initialMode]);
+
+  // Star icon / Voice tab: start the call as soon as voice mode is shown.
+  useEffect(() => {
+    if (open && mode === "voice" && voice.status === "idle") void voice.start();
+  }, [open, mode, voice.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // End the call whenever the panel closes or the user switches back to text.
+  useEffect(() => {
+    if (!open || mode !== "voice") {
+      if (voice.status === "live" || voice.status === "connecting") voice.stop();
+    }
+  }, [open, mode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A write tool queued during the voice call falls back to the same modal.
+  useEffect(() => {
+    if (voice.pending && !pending) setPending(voice.pending);
+  }, [voice.pending]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -171,6 +133,7 @@ const NLCommandBar = ({ open, onOpenChange }: NLCommandBarProps) => {
       ]);
       toast({ title: "Action completed", description: res.message });
       setPending(null);
+      if (mode === "voice") voice.clearPending(res.message);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Action failed";
       toast({ title: "Action failed", description: message, variant: "destructive" });
@@ -181,6 +144,7 @@ const NLCommandBar = ({ open, onOpenChange }: NLCommandBarProps) => {
 
   const cancelAction = () => {
     setPending(null);
+    if (mode === "voice") voice.clearPending("Cancelled — nothing was changed.");
     setMessages((prev) => [...prev, { role: "assistant", content: "Cancelled — nothing was changed." }]);
   };
 
@@ -196,7 +160,39 @@ const NLCommandBar = ({ open, onOpenChange }: NLCommandBarProps) => {
             <DialogDescription className="text-xs">
               Ask about leads, jobs, invoices, staff and the unassigned queue. Changes always need your confirmation.
             </DialogDescription>
+            <div className="flex w-fit items-center gap-1 rounded-lg border border-border bg-muted/50 p-0.5">
+              {(["text", "voice"] as AssistantMode[]).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  className={`flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                    mode === m
+                      ? "bg-card text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {m === "text" ? <MessageSquare className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                  {m === "text" ? "Text" : "Voice"}
+                </button>
+              ))}
+            </div>
           </DialogHeader>
+
+          {mode === "voice" ? (
+            <VoiceAssistantPanel
+              status={voice.status}
+              error={voice.error}
+              transcript={voice.transcript}
+              results={voice.results}
+              assistantSpeaking={voice.assistantSpeaking}
+              muted={voice.muted}
+              onStart={() => void voice.start()}
+              onStop={voice.stop}
+              onToggleMute={voice.toggleMute}
+            />
+          ) : (
+          <>
 
           <div ref={scrollRef} className="max-h-[55vh] min-h-[220px] overflow-y-auto px-4 py-3 space-y-4">
             {messages.length === 0 && (
@@ -258,6 +254,8 @@ const NLCommandBar = ({ open, onOpenChange }: NLCommandBarProps) => {
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </form>
+          </>
+          )}
         </DialogContent>
       </Dialog>
 
