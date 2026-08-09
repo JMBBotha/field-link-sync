@@ -118,7 +118,7 @@ export async function createNextOffer(
     offerType: "sales_estimate" | "service_call";
     role: "sales_engineer" | "technician";
     radiusKm?: number;
-    skill?: string | null;
+    skill?: string | string[] | null;
     priority?: string | null;
   },
 ) {
