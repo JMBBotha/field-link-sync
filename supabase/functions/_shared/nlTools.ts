@@ -1,6 +1,7 @@
 import { z } from "npm:zod@3.23.8";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { hasRecordAccess } from "./recordAccess.ts";
+import { resolveCandidates, type EntityCandidate } from "./entityResolution.ts";
 
 /** ---------------------------------------------------------------
  *  Whitelisted tool registry for the natural-language interface.
@@ -63,6 +64,12 @@ export const toolSchemas = {
     job_id: uuid,
     staff_id: uuid,
   }),
+  resolve_entity: z.object({
+    entity_type: z.enum(["customer", "lead", "job", "quote", "product", "staff", "all"]),
+    query: z.string().min(2).max(160),
+    for_action: z.enum(["read", "write"]).nullable().optional(),
+    limit: z.number().int().min(1).max(5).nullable().optional(),
+  }),
 } as const;
 
 
@@ -79,6 +86,7 @@ export const TOOL_KIND: Record<ToolName, ToolKind> = {
   get_invoice: "read",
   create_quote_draft: "write",
   assign_job: "write",
+  resolve_entity: "read",
 };
 
 
@@ -121,6 +129,7 @@ const PII_ALLOW: Record<ToolName, string[]> = {
   ],
   create_quote_draft: ["id", "quote_number", "status", "customer_id", "lead_id", "total"],
   assign_job: ["id", "status", "title", "assigned_staff_id", "scheduled_for"],
+  resolve_entity: ["entity_type", "id", "label", "sublabel", "reference", "score"],
 };
 
 
@@ -267,6 +276,36 @@ export const anthropicTools = [
         limit: { type: "integer" },
       },
       required: ["identifier"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "resolve_entity",
+    description:
+      "Fuzzy-resolve a misheard, misspelled or partial name/number to real records " +
+      "(customers, leads, jobs, quotes, products, staff). Use this FIRST whenever the " +
+      "user refers to something by name and you are not certain of the exact record. " +
+      "Returns up to 5 scored candidates plus a decision: 'auto' (safe to use the top " +
+      "match), 'clarify' (read the options back and ask which one) or 'retry' (ask the " +
+      "user to repeat or spell it). Never perform a write action on a 'clarify' or " +
+      "'retry' result without explicit user confirmation.",
+    input_schema: {
+      type: "object",
+      properties: {
+        entity_type: {
+          type: "string",
+          enum: ["customer", "lead", "job", "quote", "product", "staff", "all"],
+          description: "Which kind of record to resolve",
+        },
+        query: { type: "string", description: "What the user said or typed, verbatim" },
+        for_action: {
+          type: "string",
+          enum: ["read", "write"],
+          description: "Use 'write' when the resolved record will be modified; this forces confirmation",
+        },
+        limit: { type: "integer", description: "Max candidates, default 5" },
+      },
+      required: ["entity_type", "query"],
       additionalProperties: false,
     },
   },
@@ -544,6 +583,31 @@ export async function executeTool(
         resource_type: label,
         resource_id: (found[0]?.id as string) ?? null,
         access_granted: rows.length > 0,
+      };
+    }
+
+    case "resolve_entity": {
+      const { data, error } = await db.rpc("search_entities_fuzzy", {
+        p_entity_type: args.entity_type,
+        p_query: args.query,
+        p_company_id: companyId,
+        p_limit: Math.min(Number(args.limit ?? 5), 5),
+      });
+      if (error) throw error;
+
+      const resolution = resolveCandidates(
+        args.query,
+        args.entity_type,
+        (data ?? []) as EntityCandidate[],
+        { riskyAction: args.for_action === "write" },
+      );
+
+      return {
+        rows: scrub(tool, resolution.candidates as unknown as Record<string, unknown>[]),
+        summary: resolution.prompt,
+        resource_type: `resolution:${resolution.decision}`,
+        resource_id: resolution.chosen?.id ?? null,
+        access_granted: resolution.decision === "auto",
       };
     }
 
