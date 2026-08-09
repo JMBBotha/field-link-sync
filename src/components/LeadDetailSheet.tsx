@@ -33,6 +33,7 @@ import { useSingleLeadPhotoCount } from "@/hooks/useLeadPhotoCount";
 import CommunicationTimeline from "./communication/CommunicationTimeline";
 import CallHistoryPanel from "./calls/CallHistoryPanel";
 import UsedPartsSection from "./UsedPartsSection";
+import JobCompletionSheet from "./jobs/JobCompletionSheet";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, DollarSign } from "lucide-react";
 import QuickTemplateDialog from "./quoting/QuickTemplateDialog";
@@ -158,6 +159,7 @@ const LeadDetailSheet = ({
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [showCompletionFlow, setShowCompletionFlow] = useState(false);
+  const [showSignOff, setShowSignOff] = useState(false);
   const [showCustomerProfile, setShowCustomerProfile] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
@@ -226,11 +228,17 @@ const LeadDetailSheet = ({
   const addressSearchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.customer_address)}`;
 
   const handleCompleteClick = () => {
-    // If customer has equipment, show equipment flow first
+    // On-site sign-off first: photos/parts/time recap + customer signature
+    setShowSignOff(true);
+  };
+
+  const handleSignedOff = () => {
+    setShowSignOff(false);
+    onLeadUpdated?.();
+    // If customer has equipment, show equipment flow next
     if (lead.customer_id) {
       setShowCompletionFlow(true);
     } else {
-      // No customer linked, go straight to invoice
       setShowInvoiceForm(true);
     }
   };
@@ -1036,6 +1044,15 @@ const LeadDetailSheet = ({
           agentId={currentUserId}
         />
       )}
+
+      {/* On-site sign-off: photos, parts, time, customer signature */}
+      <JobCompletionSheet
+        open={showSignOff}
+        onOpenChange={setShowSignOff}
+        leadId={lead.id}
+        customerName={lead.customer_name}
+        onCompleted={handleSignedOff}
+      />
 
       {/* Job Completion Flow with Equipment Selection */}
       {lead.customer_id && (

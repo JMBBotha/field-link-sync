@@ -31,6 +31,7 @@ export function useSyncQueue(isOnline: boolean) {
       upload_photo: 0,
       delete_photo: 0,
       update_timer_log: 0,
+      job_completion: 0,
     },
   });
   
@@ -461,6 +462,31 @@ export function useSyncQueue(isOnline: boolean) {
           break;
         }
         
+        case 'job_completion': {
+          const record = operation.data as Record<string, unknown>;
+          const { error: compErr } = await supabase
+            .from('job_completions' as never)
+            .upsert(record as never, { onConflict: 'lead_id' });
+          if (compErr) throw compErr;
+
+          const { error: leadErr } = await supabase
+            .from('leads')
+            .update({
+              status: 'completed',
+              completed_at: (record.completed_at as string) || new Date().toISOString(),
+            })
+            .eq('id', operation.recordId);
+          if (leadErr) throw leadErr;
+
+          if (record.job_id) {
+            await supabase
+              .from('jobs')
+              .update({ status: 'completed' })
+              .eq('id', record.job_id as string);
+          }
+          break;
+        }
+
         default:
           console.warn('[SyncQueue] Unknown operation type:', operation.operationType);
           return false;

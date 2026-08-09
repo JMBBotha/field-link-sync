@@ -57,6 +57,7 @@ const operationIcons: Record<OperationType, React.ReactNode> = {
   upload_photo: <Camera className="h-4 w-4" />,
   delete_photo: <Trash2 className="h-4 w-4" />,
   update_timer_log: <Timer className="h-4 w-4" />,
+  job_completion: <FileText className="h-4 w-4" />,
 };
 
 const operationLabels: Record<OperationType, string> = {
@@ -69,6 +70,7 @@ const operationLabels: Record<OperationType, string> = {
   upload_photo: "Photo Upload",
   delete_photo: "Photo Delete",
   update_timer_log: "Timer Log",
+  job_completion: "Job Sign-off",
 };
 
 export function SyncQueuePanel({
