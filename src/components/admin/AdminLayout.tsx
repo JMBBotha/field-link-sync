@@ -16,6 +16,8 @@ import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminBottomNav from "@/components/admin/AdminBottomNav";
 import IdleWarningModal from "@/components/IdleWarningModal";
 import GlobalSearchDialog from "@/components/GlobalSearchDialog";
+import NLCommandBar from "@/components/admin/NLCommandBar";
+
 import { useIdleLogout } from "@/hooks/useIdleLogout";
 import { WelcomeTourDialog } from "@/components/admin/WelcomeTourDialog";
 import logo from "@/assets/logo.png";
