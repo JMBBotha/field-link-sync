@@ -42,29 +42,32 @@ Deno.serve(async (req) => {
     if (error) return json({ available: false, reason: error.message }, 403);
     if (!call) return json({ available: false, reason: "Call not found" }, 404);
 
-    let recordingUrl: string | null = call.recording_url;
-
-    // Refresh from the provider when we never stored one (older records / late artifacts).
     const apiKey = Deno.env.get("VAPI_PRIVATE_API_KEY");
-    if (!recordingUrl && call.provider_call_id && apiKey) {
+
+    // Always able to mint a fresh signed URL from the provider — stored ones expire.
+    const fetchFreshUrl = async (): Promise<string | null> => {
+      if (!call.provider_call_id || !apiKey) return null;
       const res = await fetch(`https://api.vapi.ai/call/${call.provider_call_id}`, {
         headers: { Authorization: `Bearer ${apiKey}` },
       });
-      if (res.ok) {
-        const c = await res.json();
-        recordingUrl =
-          c?.artifact?.recordingUrl ??
-          c?.recordingUrl ??
-          c?.artifact?.recording?.mono?.combinedUrl ??
-          c?.artifact?.stereoRecordingUrl ??
-          null;
-        if (recordingUrl) {
-          await supabase.from("vapi_calls").update({ recording_url: recordingUrl }).eq("id", callId);
-        }
-      } else {
+      if (!res.ok) {
         console.error(`VAPI call fetch failed [${res.status}]: ${await res.text()}`);
+        return null;
       }
-    }
+      const c = await res.json();
+      const fresh =
+        c?.artifact?.recordingUrl ??
+        c?.recordingUrl ??
+        c?.artifact?.recording?.mono?.combinedUrl ??
+        c?.artifact?.stereoRecordingUrl ??
+        null;
+      if (fresh) {
+        await supabase.from("vapi_calls").update({ recording_url: fresh }).eq("id", callId);
+      }
+      return fresh;
+    };
+
+    let recordingUrl: string | null = call.recording_url ?? (await fetchFreshUrl());
 
     if (!recordingUrl) {
       return json({ available: false, reason: "No recording was returned for this call" }, 404);
@@ -72,7 +75,18 @@ Deno.serve(async (req) => {
 
     // Stream the audio through, forwarding Range so seeking works.
     const range = req.headers.get("range");
-    const upstream = await fetch(recordingUrl, range ? { headers: { Range: range } } : undefined);
+    const get = (u: string) => fetch(u, range ? { headers: { Range: range } } : undefined);
+
+    let upstream = await get(recordingUrl);
+
+    // Expired/unauthorized signed URL → mint a new one and retry once.
+    if (!upstream.ok && (upstream.status === 400 || upstream.status === 401 || upstream.status === 403)) {
+      const fresh = await fetchFreshUrl();
+      if (fresh && fresh !== recordingUrl) {
+        recordingUrl = fresh;
+        upstream = await get(fresh);
+      }
+    }
 
     if (!upstream.ok || !upstream.body) {
       const detail = await upstream.text().catch(() => "");
@@ -82,7 +96,7 @@ Deno.serve(async (req) => {
           available: false,
           reason:
             upstream.status === 400 || upstream.status === 403
-              ? "Recording is stored in a private provider bucket and cannot be played back"
+              ? "Recording link expired and could not be refreshed from the provider"
               : `Recording could not be loaded (${upstream.status})`,
         },
         404,
