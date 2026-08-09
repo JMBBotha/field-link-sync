@@ -148,6 +148,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Prevent this branded sender from being used as an open relay.
+  const auth = await requireUser(req);
+  if (!auth.ok) return auth.response;
+
   try {
     const { to, subject, quoteNumber, clientName, pdfBase64, totalAmount, unsubscribeToken } = await req.json();
 
