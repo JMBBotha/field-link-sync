@@ -30,6 +30,53 @@ Deno.serve(async (req) => {
       merchantId,
     });
 
+    // ── 1. Merchant must match our configured account ──
+    const expectedMerchantId = Deno.env.get("PAYFAST_MERCHANT_ID");
+    if (!expectedMerchantId || merchantId !== expectedMerchantId) {
+      console.error("PayFast ITN rejected: merchant_id mismatch");
+      return new Response("Invalid merchant", { status: 403, headers: corsHeaders });
+    }
+
+    // ── 2. Signature must match the posted data (+ optional passphrase) ──
+    const receivedSignature = params.get("signature") ?? "";
+    const passphrase = Deno.env.get("PAYFAST_PASSPHRASE") ?? "";
+    const pairs: string[] = [];
+    for (const [key, value] of params.entries()) {
+      if (key === "signature") continue;
+      pairs.push(`${key}=${encodeURIComponent(value.trim()).replace(/%20/g, "+")}`);
+    }
+    let signatureBase = pairs.join("&");
+    if (passphrase) {
+      signatureBase += `&passphrase=${encodeURIComponent(passphrase.trim()).replace(/%20/g, "+")}`;
+    }
+    const digest = await crypto.subtle.digest(
+      "MD5",
+      new TextEncoder().encode(signatureBase),
+    ).catch(() => null);
+    const computedSignature = digest
+      ? Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("")
+      : null;
+
+    if (!computedSignature || computedSignature !== receivedSignature) {
+      console.error("PayFast ITN rejected: signature mismatch");
+      return new Response("Invalid signature", { status: 403, headers: corsHeaders });
+    }
+
+    // ── 3. Server-to-server validation with PayFast ──
+    const validateHost = Deno.env.get("PAYFAST_SANDBOX") === "true"
+      ? "https://sandbox.payfast.co.za/eng/query/validate"
+      : "https://www.payfast.co.za/eng/query/validate";
+    const validateRes = await fetch(validateHost, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+    const validateText = (await validateRes.text()).trim();
+    if (!validateRes.ok || !validateText.startsWith("VALID")) {
+      console.error("PayFast ITN rejected: server validation failed");
+      return new Response("Invalid notification", { status: 403, headers: corsHeaders });
+    }
+
     // Validate required fields
     if (!mPaymentId || !paymentStatus) {
       console.error("Missing required ITN fields");
