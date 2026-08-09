@@ -1,15 +1,16 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
-  decryptPeachWebhook,
-  getPeachConfig,
-  mapResultCode,
-  peachEnvironment,
-} from "../_shared/peach.ts";
+  fromCents,
+  getYocoConfig,
+  mapYocoStatus,
+  verifyYocoWebhook,
+  yocoEnvironment,
+} from "../_shared/yoco.ts";
 import { applyPaymentStatus, reconcileInvoice } from "../_shared/paymentState.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "content-type, x-initialization-vector, x-authentication-tag",
+  "Access-Control-Allow-Headers": "content-type, webhook-id, webhook-timestamp, webhook-signature",
 };
 
 const json = (body: unknown, status = 200) =>
@@ -28,58 +29,57 @@ Deno.serve(async (req) => {
     { auth: { persistSession: false } },
   );
 
-  const environment = peachEnvironment();
+  const environment = yocoEnvironment();
   const raw = await req.text();
 
   // --- Signature verification -------------------------------------------
-  const iv = req.headers.get("x-initialization-vector");
-  const tag = req.headers.get("x-authentication-tag");
-  let payload: Record<string, any> | null = null;
-  let signatureValid = false;
-
-  let webhookKey: string | null = null;
+  let webhookSecret: string | null = null;
   try {
-    webhookKey = getPeachConfig().webhookKeyHex;
+    webhookSecret = getYocoConfig().webhookSecret;
   } catch {
-    webhookKey = Deno.env.get("PEACH_WEBHOOK_KEY")?.trim() || null;
+    webhookSecret = (environment === "live"
+      ? Deno.env.get("YOCO_LIVE_WEBHOOK_SECRET")
+      : Deno.env.get("YOCO_TEST_WEBHOOK_SECRET"))?.trim() || null;
   }
 
-  if (webhookKey && iv && tag) {
-    payload = await decryptPeachWebhook(raw, iv, tag, webhookKey);
-    signatureValid = payload !== null;
-  }
+  const signatureValid = webhookSecret
+    ? await verifyYocoWebhook(raw, req.headers, webhookSecret)
+    : false;
 
   if (!signatureValid) {
-    // Log the rejected attempt for auditing, then refuse.
     await db.from("payment_events").insert({
-      gateway: "peach",
+      gateway: "yoco",
       environment,
       event_type: "rejected",
       signature_valid: false,
       processed: false,
-      error_message: webhookKey
+      error_message: webhookSecret
         ? "Webhook signature could not be verified"
-        : "PEACH_WEBHOOK_KEY not configured",
-      payload: { headers_present: Boolean(iv && tag) },
+        : "Yoco webhook secret not configured",
+      payload: { headers_present: Boolean(req.headers.get("webhook-signature")) },
     });
     return json({ error: "Invalid signature" }, 401);
   }
 
   try {
-    const p = (payload.payload ?? payload) as Record<string, any>;
-    const eventId: string | null = p.id ?? payload.id ?? null;
-    const resultCode: string | undefined = p.result?.code;
-    const checkoutId: string | undefined = p.checkoutId ?? p.ndc ?? undefined;
-    const invoiceIdParam: string | undefined = p.customParameters?.invoice_id;
-    const merchantTxn: string | undefined = p.merchantTransactionId;
+    const event = JSON.parse(raw) as Record<string, any>;
+    const p = (event.payload ?? event) as Record<string, any>;
+    const eventType: string = event.type ?? "payment";
+    const eventId: string | null = event.id ?? req.headers.get("webhook-id");
+
+    const checkoutId: string | undefined = p.metadata?.checkoutId ?? p.checkoutId ??
+      p.checkout_id ?? undefined;
+    const invoiceIdParam: string | undefined = p.metadata?.invoice_id;
+    const invoiceNumber: string | undefined = p.metadata?.invoice_number;
+    const gatewayStatus: string | undefined = p.status;
 
     // Idempotency: unique index on (gateway, event_id) rejects replays.
     const { error: dupError } = await db.from("payment_events").insert({
-      gateway: "peach",
+      gateway: "yoco",
       environment,
-      event_type: payload.type ?? "payment",
+      event_type: eventType,
       event_id: eventId,
-      result_code: resultCode ?? null,
+      result_code: gatewayStatus ?? null,
       signature_valid: true,
       processed: false,
       payload: p,
@@ -91,13 +91,14 @@ Deno.serve(async (req) => {
     }
 
     // --- Locate the payment row ------------------------------------------
-    let query = db.from("payments").select("id, invoice_id, company_id, environment, status");
+    let query = db.from("payments").select("id, invoice_id, company_id, environment, status, amount");
     if (checkoutId) query = query.eq("checkout_id", checkoutId);
-    else if (merchantTxn) query = query.eq("reference", merchantTxn);
     else if (invoiceIdParam) query = query.eq("invoice_id", invoiceIdParam);
+    else if (invoiceNumber) query = query.eq("reference", invoiceNumber);
 
     const { data: payment } = await query
-      .eq("environment", environment) // sandbox events can never touch live rows
+      .eq("gateway", "yoco")
+      .eq("environment", environment) // test events can never touch live rows
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -106,15 +107,16 @@ Deno.serve(async (req) => {
       await db
         .from("payment_events")
         .update({ processed: false, error_message: "No matching payment row" })
-        .eq("gateway", "peach")
+        .eq("gateway", "yoco")
         .eq("event_id", eventId);
       return json({ ok: true, matched: false });
     }
 
-    const nextStatus = mapResultCode(resultCode);
+    const nextStatus = mapYocoStatus(gatewayStatus, eventType);
     const applied = await applyPaymentStatus(db, payment.id, nextStatus, {
-      gateway_reference: eventId,
+      gateway_reference: p.id ?? eventId,
       raw_payload: p,
+      ...(typeof p.amount === "number" ? { amount: fromCents(p.amount) } : {}),
     });
 
     let reconciliation = null;
@@ -130,7 +132,7 @@ Deno.serve(async (req) => {
         invoice_id: payment.invoice_id,
         company_id: payment.company_id,
       })
-      .eq("gateway", "peach")
+      .eq("gateway", "yoco")
       .eq("event_id", eventId);
 
     return json({
@@ -141,7 +143,7 @@ Deno.serve(async (req) => {
       invoiceStatus: reconciliation?.invoiceStatus ?? null,
     });
   } catch (e) {
-    console.error("peach-webhook error", e);
+    console.error("yoco-webhook error", e);
     return json({ error: "Webhook processing failed" }, 500);
   }
 });

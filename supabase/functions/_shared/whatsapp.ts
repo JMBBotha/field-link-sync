@@ -1,7 +1,7 @@
 /**
  * WhatsApp (Twilio) sender abstraction.
  *
- * Environment separation rule (same pattern as _shared/peach.ts):
+ * Environment separation rule (same pattern as the payment gateway config):
  *  - The environment ALWAYS comes from the TWILIO_ENVIRONMENT secret.
  *    Anything other than the literal string "live" is treated as sandbox.
  *  - In sandbox the sender defaults to the Twilio WhatsApp sandbox number

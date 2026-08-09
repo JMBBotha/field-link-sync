@@ -1,6 +1,6 @@
 project_id = "rvzapfbifggovccebrjp"
 
-[functions.peach-webhook]
+[functions.yoco-webhook]
 verify_jwt = false
 
 [functions.payfast-itn]

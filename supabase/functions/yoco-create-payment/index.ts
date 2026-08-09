@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { authCorsHeaders, requireUser } from "../_shared/auth.ts";
-import { getPeachConfig } from "../_shared/peach.ts";
+import { getYocoConfig, toCents } from "../_shared/yoco.ts";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
   if (!auth.ok) return auth.response;
 
   try {
-    const { invoiceId, returnUrl } = await req.json();
+    const { invoiceId, successUrl, cancelUrl, failureUrl } = await req.json();
     if (!invoiceId) return json({ error: "invoiceId is required" }, 400);
 
     const db = createClient(
@@ -50,32 +50,33 @@ Deno.serve(async (req) => {
     const amount = Number(invoice.grand_total || 0);
     if (amount <= 0) return json({ error: "Invoice total must be greater than zero" }, 400);
 
-    const cfg = getPeachConfig();
+    const cfg = getYocoConfig();
 
-    const body = new URLSearchParams({
-      entityId: cfg.entityId,
-      amount: amount.toFixed(2),
-      currency: "ZAR",
-      paymentType: "DB",
-      merchantTransactionId: invoice.invoice_number ?? invoice.id,
-      "customer.email": invoice.customer_email ?? "",
-      "customParameters[invoice_id]": invoice.id,
-      "customParameters[environment]": cfg.environment,
-    });
-    if (returnUrl) body.set("shopperResultUrl", String(returnUrl));
-
-    const res = await fetch(`${cfg.baseUrl}/v1/checkouts`, {
+    const res = await fetch(`${cfg.baseUrl}/checkouts`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${cfg.accessToken}`,
-        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Bearer ${cfg.secretKey}`,
+        "Content-Type": "application/json",
+        // Idempotency so a retried click cannot create a second checkout.
+        "Idempotency-Key": `invoice-${invoice.id}-${amount.toFixed(2)}`,
       },
-      body,
+      body: JSON.stringify({
+        amount: toCents(amount),
+        currency: "ZAR",
+        ...(successUrl ? { successUrl: String(successUrl) } : {}),
+        ...(cancelUrl ? { cancelUrl: String(cancelUrl) } : {}),
+        ...(failureUrl ? { failureUrl: String(failureUrl) } : {}),
+        metadata: {
+          invoice_id: invoice.id,
+          invoice_number: invoice.invoice_number ?? "",
+          environment: cfg.environment,
+        },
+      }),
     });
 
     const result = await res.json().catch(() => ({}));
     if (!res.ok || !result?.id) {
-      console.error("Peach checkout failed", res.status, JSON.stringify(result));
+      console.error("Yoco checkout failed", res.status, JSON.stringify(result));
       return json(
         { error: "Payment provider request failed", status: res.status, details: result },
         res.status === 200 ? 502 : res.status,
@@ -89,8 +90,8 @@ Deno.serve(async (req) => {
         company_id: invoice.company_id,
         amount,
         currency: "ZAR",
-        method: "peach",
-        gateway: "peach",
+        method: "yoco",
+        gateway: "yoco",
         checkout_id: result.id,
         status: "pending",
         environment: cfg.environment,
@@ -111,12 +112,12 @@ Deno.serve(async (req) => {
       paymentId: payment.id,
       checkoutId: result.id,
       environment: cfg.environment,
-      // Hosted checkout widget script for this checkout id
-      checkoutScriptUrl: `${cfg.baseUrl}/v1/paymentWidgets.js?checkoutId=${result.id}`,
+      // Hosted Yoco checkout page the customer is redirected to.
+      redirectUrl: result.redirectUrl,
       amount,
     });
   } catch (e) {
-    console.error("peach-create-payment error", e);
+    console.error("yoco-create-payment error", e);
     return json({ error: e instanceof Error ? e.message : "Unexpected error" }, 500);
   }
 });
