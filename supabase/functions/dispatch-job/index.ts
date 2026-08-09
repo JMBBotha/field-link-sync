@@ -30,6 +30,11 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Only authenticated dispatchers/admins (or trusted server-to-server callers)
+  // may trigger job assignment.
+  const auth = await requireDispatcher(req);
+  if (!auth.ok) return auth.response;
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
