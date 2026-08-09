@@ -633,17 +633,23 @@ async function recordCall(input: {
       console.log(`[vapi-server-event] Call logged (lead=${leadId}, customer=${customerId}, category=${category})`);
     }
 
-    // EVERY call produces a notification, whatever the outcome.
-    await notifyCallLogged(admin, {
-      companyId,
-      callId: savedId,
-      callerName: customerName || input.callerName,
-      callerPhone: input.callerPhone,
-      isExistingClient,
-      category,
-      summary: input.summary,
-      durationSeconds: row.duration_seconds,
-    });
+    // Every GENUINE customer call produces a notification, whatever the outcome.
+    // Internal/test sessions with our own AI agent are logged but never notified.
+    if (input.internal) {
+      console.log("[vapi-server-event] Internal agent session — notification suppressed");
+    } else {
+      await notifyCallLogged(admin, {
+        companyId,
+        callId: savedId,
+        callerName: customerName || input.callerName,
+        callerPhone: input.callerPhone,
+        isExistingClient,
+        category,
+        summary: input.summary,
+        durationSeconds: row.duration_seconds,
+      });
+    }
+
   } catch (err) {
     console.error("[vapi-server-event] recordCall exception:", err);
   }
