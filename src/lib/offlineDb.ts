@@ -130,7 +130,8 @@ export type OperationType =
   | 'update_agent_location'
   | 'upload_photo'
   | 'delete_photo'
-  | 'update_timer_log';
+  | 'update_timer_log'
+  | 'job_completion';
 
 export interface PendingOperation {
   id?: number; // Auto-increment
@@ -354,6 +355,7 @@ class OfflineDatabase extends Dexie {
       upload_photo: 0,
       delete_photo: 0,
       update_timer_log: 0,
+      job_completion: 0,
     };
     
     pending.forEach(op => {
