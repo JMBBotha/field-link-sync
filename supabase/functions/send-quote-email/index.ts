@@ -77,7 +77,7 @@ function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, t
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
         <tr>
           <td align="center">
-            <a href="mailto:info@0800becool.co.za?subject=Accept%20Quote%20${encodeURIComponent(quoteNumber || "")}" style="display:inline-block;background-color:#2563eb;color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;padding:14px 40px;border-radius:8px;letter-spacing:0.3px;">
+            <a href="mailto:wcquotes@0800becool.co.za?subject=Accept%20Quote%20${encodeURIComponent(quoteNumber || "")}" style="display:inline-block;background-color:#2563eb;color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;padding:14px 40px;border-radius:8px;letter-spacing:0.3px;">
               View &amp; Accept Quote
             </a>
           </td>
@@ -154,7 +154,8 @@ serve(async (req) => {
   if (!auth.ok) return auth.response;
 
   try {
-    const { to, subject, quoteNumber, clientName, pdfBase64, totalAmount, unsubscribeToken } = await req.json();
+    const { to, subject, quoteNumber, clientName, pdfBase64, totalAmount, unsubscribeToken, quoteId, customerId, region } =
+      await req.json();
 
     if (!to) {
       return new Response(JSON.stringify({ error: "Missing 'to' email address" }), {
@@ -205,22 +206,50 @@ serve(async (req) => {
       );
     }
 
-    const emailSubject = subject || `Your 0800BeCool Quote ${quoteNumber || ""}`.trim();
+    
+    // Sender mailbox: Western Cape quotes mailbox on the verified 0800becool.co.za domain.
+    const QUOTES_MAILBOX = Deno.env.get("QUOTES_FROM_EMAIL") || "wcquotes@0800becool.co.za";
+    const FROM_ADDRESS = `0800-BE-COOL! Quotes <${QUOTES_MAILBOX}>`;
+
+    // Stable quote reference used in the subject, headers and metadata so that
+    // client replies can be linked back to the correct quote / customer.
+    const quoteRef = quoteNumber || (quoteId ? `Q-${String(quoteId).slice(0, 8)}` : "");
+    const baseSubject = subject || `Your 0800BeCool Quote`;
+    const emailSubject = quoteRef && !baseSubject.includes(quoteRef)
+      ? `${baseSubject} [Ref: ${quoteRef}]`.trim()
+      : baseSubject.trim();
+
     const date = new Date().toLocaleDateString("en-ZA");
     const htmlBody = buildHtmlEmail(clientName, quoteNumber, date, totalAmount || 0, unsubscribeUrl);
-    const textFallback = `Dear ${clientName || "Valued Customer"},\n\nYour quote ${quoteNumber ? `(${quoteNumber}) ` : ""}totalling ${formatZAR(totalAmount || 0)} is attached.\n\nThis quote is valid for 30 days. To accept, reply to this email or call 0800 232 665.\n\nKind regards,\n0800-BE-COOL! Team`;
+    const textFallback = `Dear ${clientName || "Valued Customer"},\n\nYour quote ${quoteRef ? `(${quoteRef}) ` : ""}totalling ${formatZAR(totalAmount || 0)} is attached.\n\nThis quote is valid for 30 days. To accept, reply to this email (keep the reference ${quoteRef || ""} in the subject) or call 0800 232 665.\n\nKind regards,\n0800-BE-COOL! Team`;
 
     const attachments: Array<{ filename: string; content: string }> = [];
     if (pdfBase64) {
-      attachments.push({ filename: `Quote-${quoteNumber || "draft"}.pdf`, content: pdfBase64 });
+      attachments.push({ filename: `Quote-${quoteRef || "draft"}.pdf`, content: pdfBase64 });
     }
 
+    // Custom headers travel with the message and come back on replies (In-Reply-To /
+    // References threading), which is what the future inbound processor will use to
+    // resolve the quote/customer without guessing from free text.
+    const headers: Record<string, string> = {
+      "X-BeCool-Quote-Ref": quoteRef || "unknown",
+      "X-BeCool-Region": region || "western-cape",
+    };
+    if (quoteId) headers["X-BeCool-Quote-Id"] = String(quoteId);
+    if (customerId) headers["X-BeCool-Customer-Id"] = String(customerId);
+
     const resendPayload: Record<string, unknown> = {
-      from: "quotes@0800becool.co.za",
+      from: FROM_ADDRESS,
+      reply_to: QUOTES_MAILBOX,
       to: [to],
       subject: emailSubject,
       html: htmlBody,
       text: textFallback,
+      headers,
+      tags: [
+        { name: "type", value: "quote" },
+        { name: "region", value: (region || "western-cape").replace(/[^a-zA-Z0-9_-]/g, "-") },
+      ],
     };
     if (attachments.length > 0) resendPayload.attachments = attachments;
 
