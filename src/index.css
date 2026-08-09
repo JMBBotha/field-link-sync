@@ -869,12 +869,15 @@ All colors MUST be HSL.
    inside intentionally-white "paper" surfaces (PDF/invoice/estimate
    documents) are excluded so they keep their print look.
    ──────────────────────────────────────────────────────────────── */
+/* Guard: elements that carry their own LIGHT background utility must keep
+   their dark text in dark mode, otherwise the remap below turns the label
+   white-on-white (e.g. the amber "Generate Quote" button). */
 .dark :is(
   .text-slate-900, .text-slate-800, .text-slate-700,
   .text-gray-900,  .text-gray-800,  .text-gray-700,
   .text-zinc-900,  .text-zinc-800,  .text-zinc-700,
   .text-neutral-900, .text-neutral-800, .text-neutral-700
-):not(.bg-white *):not(.bg-white):not([data-paper] *) {
+):not(.bg-white *):not(.bg-white):not([data-paper] *):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-orange"]):not([class*="bg-lime"]):not([class*="bg-white"]):not([class*="bg-amber"] *):not([class*="bg-yellow"] *):not([class*="bg-orange"] *):not([class*="bg-lime"] *) {
   color: hsl(var(--foreground));
 }
 
@@ -883,9 +886,11 @@ All colors MUST be HSL.
   .text-gray-600,  .text-gray-500,  .text-gray-400, .text-gray-300,
   .text-zinc-600,  .text-zinc-500,  .text-zinc-400,
   .text-neutral-600, .text-neutral-500, .text-neutral-400
-):not(.bg-white *):not(.bg-white):not([data-paper] *) {
+):not(.bg-white *):not(.bg-white):not([data-paper] *):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-orange"]):not([class*="bg-lime"]):not([class*="bg-white"]):not([class*="bg-amber"] *):not([class*="bg-yellow"] *):not([class*="bg-orange"] *):not([class*="bg-lime"] *) {
   color: hsl(var(--muted-foreground));
 }
+
+
 
 /* Floor low-opacity muted text so hints/captions stay legible. */
 .dark :is(
