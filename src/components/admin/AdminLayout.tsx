@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Menu, Sun, Moon, Search } from "lucide-react";
+import { Menu, Sun, Moon, Search, Sparkle } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import CreateLeadDialog from "@/components/CreateLeadDialog";
@@ -16,6 +16,8 @@ import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminBottomNav from "@/components/admin/AdminBottomNav";
 import IdleWarningModal from "@/components/IdleWarningModal";
 import GlobalSearchDialog from "@/components/GlobalSearchDialog";
+import NLCommandBar from "@/components/admin/NLCommandBar";
+
 import { useIdleLogout } from "@/hooks/useIdleLogout";
 import { WelcomeTourDialog } from "@/components/admin/WelcomeTourDialog";
 import logo from "@/assets/logo.png";
@@ -26,6 +28,8 @@ const AdminLayout = () => {
   const [showCreateLead, setShowCreateLead] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+
 
   const { session, user, loading: authLoading } = useAuth();
   const currentUserId = user?.id ?? "";
@@ -202,7 +206,19 @@ const AdminLayout = () => {
               <kbd className="ml-1 rounded border border-white/30 bg-white/10 px-1.5 py-0.5 text-[10px]">⌘K</kbd>
             </Button>
 
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setAssistantOpen(true)}
+              className="text-blue-100 hover:bg-white/10 hover:text-primary-foreground gap-1.5"
+              title="Ask the operations assistant"
+            >
+              <Sparkle className="h-4 w-4" />
+              <span className="text-xs hidden sm:inline">Ask AI</span>
+            </Button>
+
             <NotificationBell />
+
             <Button
               variant="ghost"
               size="icon"
@@ -253,6 +269,8 @@ const AdminLayout = () => {
 
       <CreateLeadDialog open={showCreateLead} onOpenChange={setShowCreateLead} />
       <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
+      <NLCommandBar open={assistantOpen} onOpenChange={setAssistantOpen} />
+
       <IdleWarningModal open={showWarning} secondsLeft={secondsLeft} onStayActive={stayActive} />
       {currentUserId && <WelcomeTourDialog userId={currentUserId} />}
 
