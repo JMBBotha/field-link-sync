@@ -37,6 +37,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, DollarSign } from "lucide-react";
 import QuickTemplateDialog from "./quoting/QuickTemplateDialog";
 import AcceptLeadDialog from "./leads/AcceptLeadDialog";
+import LeadClassificationPanel from "./leads/LeadClassificationPanel";
+
 
 interface Lead {
   id: string;
@@ -534,7 +536,11 @@ const LeadDetailSheet = ({
               </div>
             </a>
 
+            {/* Classification (rule/AI) with human override */}
+            <LeadClassificationPanel leadId={lead.id} />
+
             {/* Lead Information — full summary of everything captured at intake */}
+
             <div className="rounded-xl border border-border/60 bg-background/60 p-3 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Lead Information</h3>

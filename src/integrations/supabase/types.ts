@@ -2605,28 +2605,50 @@ export type Database = {
           assignment_method: string | null
           assignment_score: number | null
           broadcast_radius_km: number | null
+          cancellation_reason: string | null
+          classified_by: Database["public"]["Enums"]["lead_classifier"] | null
           company_id: string | null
+          company_name: string | null
           completed_at: string | null
+          confidence: number | null
           converted_at: string | null
           created_at: string | null
           customer_address: string
           customer_id: string | null
           customer_name: string
           customer_phone: string
+          deleted_at: string | null
+          email: string | null
           equipment_id: string | null
           estimated_duration_minutes: number | null
           estimated_end_time: string | null
+          external_id: string | null
           id: string
+          idempotency_key: string | null
+          intents: string[]
+          interaction_history: Json
+          last_activity_at: string
           latitude: number
+          lead_priority: Database["public"]["Enums"]["lead_priority_level"]
+          lead_score: number | null
+          lead_status: Database["public"]["Enums"]["lead_lifecycle_status"]
           longitude: number
+          merge_history: Json
+          merged_into_id: string | null
+          normalized_address: string | null
           notes: string | null
           offer_count: number | null
           order_status: string | null
           parts_status: string | null
+          phone: string | null
+          primary_intent: Database["public"]["Enums"]["lead_intent"] | null
           priority: string
+          raw_payload: Json | null
           scheduled_date: string | null
           scheduled_time: string | null
           service_type: string
+          sla_breached_at: string | null
+          source: Database["public"]["Enums"]["lead_source"]
           started_at: string | null
           status: string
           technician_eta: string | null
@@ -2641,28 +2663,50 @@ export type Database = {
           assignment_method?: string | null
           assignment_score?: number | null
           broadcast_radius_km?: number | null
+          cancellation_reason?: string | null
+          classified_by?: Database["public"]["Enums"]["lead_classifier"] | null
           company_id?: string | null
+          company_name?: string | null
           completed_at?: string | null
+          confidence?: number | null
           converted_at?: string | null
           created_at?: string | null
           customer_address: string
           customer_id?: string | null
           customer_name: string
           customer_phone: string
+          deleted_at?: string | null
+          email?: string | null
           equipment_id?: string | null
           estimated_duration_minutes?: number | null
           estimated_end_time?: string | null
+          external_id?: string | null
           id?: string
+          idempotency_key?: string | null
+          intents?: string[]
+          interaction_history?: Json
+          last_activity_at?: string
           latitude: number
+          lead_priority?: Database["public"]["Enums"]["lead_priority_level"]
+          lead_score?: number | null
+          lead_status?: Database["public"]["Enums"]["lead_lifecycle_status"]
           longitude: number
+          merge_history?: Json
+          merged_into_id?: string | null
+          normalized_address?: string | null
           notes?: string | null
           offer_count?: number | null
           order_status?: string | null
           parts_status?: string | null
+          phone?: string | null
+          primary_intent?: Database["public"]["Enums"]["lead_intent"] | null
           priority?: string
+          raw_payload?: Json | null
           scheduled_date?: string | null
           scheduled_time?: string | null
           service_type: string
+          sla_breached_at?: string | null
+          source?: Database["public"]["Enums"]["lead_source"]
           started_at?: string | null
           status?: string
           technician_eta?: string | null
@@ -2677,28 +2721,50 @@ export type Database = {
           assignment_method?: string | null
           assignment_score?: number | null
           broadcast_radius_km?: number | null
+          cancellation_reason?: string | null
+          classified_by?: Database["public"]["Enums"]["lead_classifier"] | null
           company_id?: string | null
+          company_name?: string | null
           completed_at?: string | null
+          confidence?: number | null
           converted_at?: string | null
           created_at?: string | null
           customer_address?: string
           customer_id?: string | null
           customer_name?: string
           customer_phone?: string
+          deleted_at?: string | null
+          email?: string | null
           equipment_id?: string | null
           estimated_duration_minutes?: number | null
           estimated_end_time?: string | null
+          external_id?: string | null
           id?: string
+          idempotency_key?: string | null
+          intents?: string[]
+          interaction_history?: Json
+          last_activity_at?: string
           latitude?: number
+          lead_priority?: Database["public"]["Enums"]["lead_priority_level"]
+          lead_score?: number | null
+          lead_status?: Database["public"]["Enums"]["lead_lifecycle_status"]
           longitude?: number
+          merge_history?: Json
+          merged_into_id?: string | null
+          normalized_address?: string | null
           notes?: string | null
           offer_count?: number | null
           order_status?: string | null
           parts_status?: string | null
+          phone?: string | null
+          primary_intent?: Database["public"]["Enums"]["lead_intent"] | null
           priority?: string
+          raw_payload?: Json | null
           scheduled_date?: string | null
           scheduled_time?: string | null
           service_type?: string
+          sla_breached_at?: string | null
+          source?: Database["public"]["Enums"]["lead_source"]
           started_at?: string | null
           status?: string
           technician_eta?: string | null
@@ -2739,6 +2805,13 @@ export type Database = {
             columns: ["equipment_id"]
             isOneToOne: false
             referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_merged_into_id_fkey"
+            columns: ["merged_into_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
           {
@@ -4535,6 +4608,42 @@ export type Database = {
         }
         Relationships: []
       }
+      status_change_log: {
+        Row: {
+          changed_by: string | null
+          company_id: string | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          field_name: string
+          id: string
+          new_status: string | null
+          old_status: string | null
+        }
+        Insert: {
+          changed_by?: string | null
+          company_id?: string | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          field_name?: string
+          id?: string
+          new_status?: string | null
+          old_status?: string | null
+        }
+        Update: {
+          changed_by?: string | null
+          company_id?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          field_name?: string
+          id?: string
+          new_status?: string | null
+          old_status?: string | null
+        }
+        Relationships: []
+      }
       stock_documents: {
         Row: {
           file_name: string
@@ -5511,6 +5620,54 @@ export type Database = {
           },
         ]
       }
+      webhook_dead_letters: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          error_detail: Json | null
+          error_message: string | null
+          external_id: string | null
+          id: string
+          idempotency_key: string | null
+          payload: Json | null
+          resolved_at: string | null
+          retry_count: number
+          source: string
+          stage: string
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          error_detail?: Json | null
+          error_message?: string | null
+          external_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          payload?: Json | null
+          resolved_at?: string | null
+          retry_count?: number
+          source: string
+          stage?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          error_detail?: Json | null
+          error_message?: string | null
+          external_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          payload?: Json | null
+          resolved_at?: string | null
+          retry_count?: number
+          source?: string
+          stage?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       company_stats: {
@@ -5730,28 +5887,50 @@ export type Database = {
           assignment_method: string | null
           assignment_score: number | null
           broadcast_radius_km: number | null
+          cancellation_reason: string | null
+          classified_by: Database["public"]["Enums"]["lead_classifier"] | null
           company_id: string | null
+          company_name: string | null
           completed_at: string | null
+          confidence: number | null
           converted_at: string | null
           created_at: string | null
           customer_address: string
           customer_id: string | null
           customer_name: string
           customer_phone: string
+          deleted_at: string | null
+          email: string | null
           equipment_id: string | null
           estimated_duration_minutes: number | null
           estimated_end_time: string | null
+          external_id: string | null
           id: string
+          idempotency_key: string | null
+          intents: string[]
+          interaction_history: Json
+          last_activity_at: string
           latitude: number
+          lead_priority: Database["public"]["Enums"]["lead_priority_level"]
+          lead_score: number | null
+          lead_status: Database["public"]["Enums"]["lead_lifecycle_status"]
           longitude: number
+          merge_history: Json
+          merged_into_id: string | null
+          normalized_address: string | null
           notes: string | null
           offer_count: number | null
           order_status: string | null
           parts_status: string | null
+          phone: string | null
+          primary_intent: Database["public"]["Enums"]["lead_intent"] | null
           priority: string
+          raw_payload: Json | null
           scheduled_date: string | null
           scheduled_time: string | null
           service_type: string
+          sla_breached_at: string | null
+          source: Database["public"]["Enums"]["lead_source"]
           started_at: string | null
           status: string
           technician_eta: string | null
@@ -6024,6 +6203,24 @@ export type Database = {
         | "heat_pump"
         | "furnace"
         | "other"
+      lead_classifier: "rule" | "ai" | "human"
+      lead_intent: "sales" | "service"
+      lead_lifecycle_status:
+        | "new"
+        | "classified"
+        | "routed"
+        | "in_progress"
+        | "completed"
+        | "lost"
+        | "cancelled"
+      lead_priority_level: "emergency" | "same_day" | "standard"
+      lead_source:
+        | "vapi_call"
+        | "website_form"
+        | "facebook_lead_ads"
+        | "google_lsa"
+        | "manual"
+        | "other"
       pricing_unit_type:
         | "each"
         | "m"
@@ -6172,6 +6369,26 @@ export const Constants = {
       ],
       availability_status: ["available", "busy", "offline"],
       equipment_type: ["ac", "heater", "vent", "heat_pump", "furnace", "other"],
+      lead_classifier: ["rule", "ai", "human"],
+      lead_intent: ["sales", "service"],
+      lead_lifecycle_status: [
+        "new",
+        "classified",
+        "routed",
+        "in_progress",
+        "completed",
+        "lost",
+        "cancelled",
+      ],
+      lead_priority_level: ["emergency", "same_day", "standard"],
+      lead_source: [
+        "vapi_call",
+        "website_form",
+        "facebook_lead_ads",
+        "google_lsa",
+        "manual",
+        "other",
+      ],
       pricing_unit_type: [
         "each",
         "m",
