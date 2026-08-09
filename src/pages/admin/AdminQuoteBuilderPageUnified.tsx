@@ -181,9 +181,7 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
         {meta?.quote_number ?
         <span className="hidden lg:block text-[10px] text-white/50 font-mono">{meta.quote_number}</span> :
         clientLabel ?
-        <span className="hidden lg:block text-[10px] text-white/50 font-mono">Draft – not saved yet</span> :
-
-        <span className="hidden lg:block text-[10px] text-amber-300 font-mono">Pending – assign a client</span>
+        <span className="hidden lg:block text-[10px] text-white/50 font-mono">Draft – creating…</span> : null
         }
       </div>
     </header>);
