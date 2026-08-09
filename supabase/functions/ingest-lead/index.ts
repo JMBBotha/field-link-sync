@@ -485,13 +485,16 @@ Deno.serve(async (req) => {
 
     const { data: inserted, error: insertErr } = await supabase
       .from("leads")
-      .upsert(insertRow, { onConflict: "idempotency_key", ignoreDuplicates: true })
+      .insert(insertRow)
       .select("id")
       .maybeSingle();
 
-    if (insertErr) throw insertErr;
+    // 23505 = unique violation on the partial idempotency/contact indexes:
+    // a concurrent delivery won the race, so return that row instead.
+    if (insertErr && (insertErr as any).code !== "23505") throw insertErr;
 
     if (!inserted) {
+
       // Lost a race with a concurrent delivery — return the winner's row.
       const { data: winner } = await supabase
         .from("leads").select("id").eq("idempotency_key", idempotencyKey).maybeSingle();
