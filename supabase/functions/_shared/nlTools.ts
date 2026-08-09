@@ -321,11 +321,30 @@ async function hasRecordAccess(
 }
 
 
+/** Splits a free-text name into searchable tokens (drops noise words). */
+function nameTokens(input: string): string[] {
+  const STOP = new Set([
+    "the", "quote", "quotes", "invoice", "invoices", "for", "of", "client",
+    "customer", "estimate", "estimates", "open", "please", "mr", "mrs", "ms",
+  ]);
+  return input
+    .replace(/[%,()]/g, " ")
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2 && !STOP.has(t.toLowerCase()));
+}
+
+function matchesAllTokens(haystack: string, tokens: string[]): boolean {
+  const h = haystack.replace(/\s+/g, " ").toLowerCase();
+  return tokens.every((t) => h.includes(t.toLowerCase()));
+}
+
 function scopeCompany<T>(q: T, companyId: string | null): T {
   // A missing company must mean "no rows", never "every tenant's rows".
   // deno-lint-ignore no-explicit-any
   return (q as any).eq("company_id", companyId ?? "00000000-0000-0000-0000-000000000000");
 }
+
 
 /** Executes a whitelisted tool. Throws on any Supabase error. */
 export async function executeTool(
@@ -416,18 +435,32 @@ export async function executeTool(
     }
 
     case "search_customer": {
-      const pat = `%${String(args.query).replace(/[%,()]/g, "")}%`;
+      const raw = String(args.query).trim();
+      const tokens = nameTokens(raw);
+      const fields = ["first_name", "last_name", "company_name", "phone", "email"];
+      const patterns = tokens.length ? tokens : [raw.replace(/[%,()]/g, "")];
+      const orFilter = patterns
+        .flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`))
+        .join(",");
       let q = db.from("customers").select(
         "id, first_name, last_name, company_name, phone, email, primary_address_line1, city, status",
-      ).or(
-        `first_name.ilike.${pat},last_name.ilike.${pat},company_name.ilike.${pat},phone.ilike.${pat},email.ilike.${pat}`,
-      ).limit(Math.min(limit, 25));
+      ).or(orFilter).limit(50);
       q = scopeCompany(q, companyId);
       const { data, error } = await q;
       if (error) throw error;
-      const rows = scrub(tool, data ?? []);
+      // Prefer rows matching every token of the query (handles "Andre Blom"
+      // split across first_name/last_name, and stray double spaces).
+      const all = (data ?? []) as Record<string, any>[];
+      const strict = tokens.length > 1
+        ? all.filter((r) => matchesAllTokens(
+          `${r.first_name ?? ""} ${r.last_name ?? ""} ${r.company_name ?? ""} ${r.email ?? ""} ${r.phone ?? ""}`,
+          tokens,
+        ))
+        : all;
+      const rows = scrub(tool, (strict.length ? strict : all).slice(0, Math.min(limit, 25)));
       return { rows, summary: `${rows.length} customer(s)` };
     }
+
 
     case "get_staff_availability": {
       let q = db.from("profiles").select(
@@ -467,17 +500,60 @@ export async function executeTool(
 
       // Primary gate is RLS via the caller's JWT client when we have one.
       const client = ctx.rlsDb ?? db;
+      const tokens = nameTokens(raw);
+
+      // Resolve matching customers first: names are stored split across
+      // first_name/last_name, and denormalised customer_name can contain
+      // stray whitespace, so plain ilike on the whole phrase misses rows.
+      let customerIds: string[] = [];
+      if (!isUuid && tokens.length) {
+        let cq = db.from("customers")
+          .select("id, first_name, last_name, company_name")
+          .or(tokens.flatMap((t) => [
+            `first_name.ilike.%${t}%`,
+            `last_name.ilike.%${t}%`,
+            `company_name.ilike.%${t}%`,
+          ]).join(","))
+          .limit(50);
+        cq = scopeCompany(cq, companyId);
+        const { data: custs } = await cq;
+        const matched = ((custs ?? []) as Record<string, any>[]).filter((c) =>
+          tokens.length === 1 || matchesAllTokens(
+            `${c.first_name ?? ""} ${c.last_name ?? ""} ${c.company_name ?? ""}`,
+            tokens,
+          )
+        );
+        customerIds = matched.map((c) => String(c.id));
+      }
+
+      const orParts = isUuid ? [] : [
+        ...tokens.map((t) => `${numberCol}.ilike.%${t}%`),
+        ...tokens.map((t) => `customer_name.ilike.%${t}%`),
+        ...customerIds.map((id) => `customer_id.eq.${id}`),
+      ];
+      if (!isUuid && orParts.length === 0) orParts.push(`${numberCol}.ilike.%${safe}%`);
+
       let q = client.from(table).select(cols)
         .order("created_at", { ascending: false })
-        .limit(Math.min(Number(args.limit ?? 5), 10));
+        .limit(50);
       q = scopeCompany(q, companyId);
-      q = isUuid
-        ? (q as any).eq("id", raw)
-        : (q as any).or(`${numberCol}.ilike.%${safe}%,customer_name.ilike.%${safe}%`);
+      q = isUuid ? (q as any).eq("id", raw) : (q as any).or(orParts.join(","));
 
       const { data, error } = await q;
       if (error) throw error;
       let found = (data ?? []) as Record<string, any>[];
+
+      // Narrow to rows that satisfy the whole phrase where possible.
+      if (!isUuid && tokens.length) {
+        const strict = found.filter((r) =>
+          (r.customer_id && customerIds.includes(String(r.customer_id))) ||
+          matchesAllTokens(String(r.customer_name ?? ""), tokens) ||
+          matchesAllTokens(String(r[numberCol] ?? ""), tokens)
+        );
+        if (strict.length) found = strict;
+      }
+      found = found.slice(0, Math.min(Number(args.limit ?? 5), 10));
+
 
       // Voice path has no JWT: mirror the RLS rules in code.
       if (!ctx.rlsDb && found.length) {
