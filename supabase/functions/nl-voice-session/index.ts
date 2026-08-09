@@ -206,13 +206,22 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Tag the session as internal so the shared Vapi webhook never treats a
+    // staff conversation with the ops assistant as an inbound customer call.
+    const internalMetadata = { internal: true, source: "internal", surface: "ops_assistant" };
+
     return json({
       publicKey,
       sessionId,
+      metadata: internalMetadata,
       ...(useSavedAssistant
-        ? { assistantId, assistantOverrides: assistantConfig }
-        : { assistant: assistantConfig }),
+        ? {
+            assistantId,
+            assistantOverrides: { ...assistantConfig, metadata: internalMetadata },
+          }
+        : { assistant: { ...assistantConfig, metadata: internalMetadata } }),
     });
+
 
   } catch (e) {
     console.error("[nl-voice-session] fatal", e);

@@ -241,7 +241,61 @@ export function categoriseCall(summary: string | null, transcript: string | null
   return "General Inquiry";
 }
 
+/**
+ * Distinguishes a genuine inbound customer call from an internal/test session
+ * with the platform's own AI agent (the ops assistant in the admin header, the
+ * voice quote builder, or any Vapi dashboard "talk to assistant" test).
+ *
+ * Only real telephony calls should produce leads and "Call Logged" notifications.
+ * Vapi marks browser SDK sessions as `type: "webCall"` and they carry no
+ * `customer.number` / `phoneNumber` — internal testing always lands in that shape.
+ */
+export function classifyCallOrigin(body: any): {
+  internal: boolean;
+  reason: string;
+  callType: string | null;
+} {
+  const call = body?.message?.call || body?.call || {};
+  const callType: string | null = call.type || call.callType || null;
+  const assistantId: string =
+    call.assistantId || body?.message?.assistant?.id || body?.message?.assistantId || "";
+  const opsAssistantId = Deno.env.get("VAPI_OPS_ASSISTANT_ID")?.trim();
+
+  // Explicit opt-out flag we set when starting internal sessions.
+  const meta = call.metadata || body?.message?.metadata || {};
+  if (meta?.internal === true || meta?.source === "internal" || meta?.test === true) {
+    return { internal: true, reason: "metadata marks the session as internal", callType };
+  }
+
+  // The operations assistant is staff-facing by definition.
+  if (opsAssistantId && assistantId && assistantId === opsAssistantId) {
+    return { internal: true, reason: "ops assistant session", callType };
+  }
+
+  // Browser/SDK sessions are never a customer dialling in.
+  if (typeof callType === "string" && /web/i.test(callType)) {
+    return { internal: true, reason: `call type "${callType}" is not telephony`, callType };
+  }
+
+  // Outbound calls we place are handled elsewhere; they are not inbound intake.
+  if (typeof callType === "string" && /outbound/i.test(callType)) {
+    return { internal: true, reason: `call type "${callType}" is outbound`, callType };
+  }
+
+  // Fallback: a real inbound call always has a caller number on some field.
+  const hasCallerNumber = Boolean(
+    call?.customer?.number || call?.from || body?.message?.customer?.number,
+  );
+  const hasBusinessNumber = Boolean(call?.phoneNumber?.number || call?.phoneNumberId);
+  if (!hasCallerNumber && !hasBusinessNumber) {
+    return { internal: true, reason: "no telephony numbers present on the call", callType };
+  }
+
+  return { internal: false, reason: "inbound telephony call", callType };
+}
+
 const ESTIMATE_TRIGGER = /(quote|quotation|estimate|pricing|price for|new unit|new install|installation|new service|replace the unit)/i;
+
 
 // Notify every admin/dispatcher of the company that a call was logged.
 async function notifyCallLogged(admin: any, params: {
@@ -404,6 +458,9 @@ async function recordCall(input: {
   transcript: string | null;
   recordingUrl: string | null;
   outcome: string;
+  /** Internal/test agent session — log it, but never notify staff. */
+  internal?: boolean;
+
 }) {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -576,17 +633,23 @@ async function recordCall(input: {
       console.log(`[vapi-server-event] Call logged (lead=${leadId}, customer=${customerId}, category=${category})`);
     }
 
-    // EVERY call produces a notification, whatever the outcome.
-    await notifyCallLogged(admin, {
-      companyId,
-      callId: savedId,
-      callerName: customerName || input.callerName,
-      callerPhone: input.callerPhone,
-      isExistingClient,
-      category,
-      summary: input.summary,
-      durationSeconds: row.duration_seconds,
-    });
+    // Every GENUINE customer call produces a notification, whatever the outcome.
+    // Internal/test sessions with our own AI agent are logged but never notified.
+    if (input.internal) {
+      console.log("[vapi-server-event] Internal agent session — notification suppressed");
+    } else {
+      await notifyCallLogged(admin, {
+        companyId,
+        callId: savedId,
+        callerName: customerName || input.callerName,
+        callerPhone: input.callerPhone,
+        isExistingClient,
+        category,
+        summary: input.summary,
+        durationSeconds: row.duration_seconds,
+      });
+    }
+
   } catch (err) {
     console.error("[vapi-server-event] recordCall exception:", err);
   }
@@ -925,6 +988,21 @@ serve(async (req) => {
     // ─── Handle end-of-call-report ───
     if (messageType === "end-of-call-report") {
       const call = body.message.call || {};
+
+      // Internal/test conversations with our own AI agent (ops assistant in the
+      // admin header, voice quote builder, Vapi dashboard tests) are NOT customer
+      // intake: no lead, no draft estimate, no WhatsApp, no "Call Logged" alert.
+      const origin = classifyCallOrigin(body);
+      if (origin.internal) {
+        console.log(
+          `[vapi-server-event] Internal agent session (${origin.reason}) — skipping lead intake and notifications`,
+        );
+        return new Response(
+          JSON.stringify({ ok: true, skipped: "internal_agent_session", reason: origin.reason }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
       const artifact = body.message.artifact || {};
       const analysis = body.message.analysis || call.analysis || {};
       const endedReason = body.message.endedReason || "unknown";
