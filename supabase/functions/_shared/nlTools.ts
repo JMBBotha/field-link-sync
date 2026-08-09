@@ -46,6 +46,14 @@ export const toolSchemas = {
     only_unresolved: z.boolean().nullable().optional(),
     limit: z.number().int().min(1).max(50).nullable().optional(),
   }),
+  get_quote: z.object({
+    identifier: z.string().min(2).max(120),
+    limit: z.number().int().min(1).max(10).nullable().optional(),
+  }),
+  get_invoice: z.object({
+    identifier: z.string().min(2).max(120),
+    limit: z.number().int().min(1).max(10).nullable().optional(),
+  }),
   create_quote_draft: z.object({
     lead_id: uuid,
     notes: z.string().max(500).nullable().optional(),
@@ -56,6 +64,7 @@ export const toolSchemas = {
   }),
 } as const;
 
+
 export type ToolName = keyof typeof toolSchemas;
 
 export const TOOL_KIND: Record<ToolName, ToolKind> = {
@@ -65,9 +74,12 @@ export const TOOL_KIND: Record<ToolName, ToolKind> = {
   search_customer: "read",
   get_staff_availability: "read",
   get_unassigned_queue: "read",
+  get_quote: "read",
+  get_invoice: "read",
   create_quote_draft: "write",
   assign_job: "write",
 };
+
 
 /** PII allow-list: only these fields ever reach Claude or the browser. */
 const PII_ALLOW: Record<ToolName, string[]> = {
@@ -96,9 +108,20 @@ const PII_ALLOW: Record<ToolName, string[]> = {
     "id", "lead_id", "reason", "priority", "escalate_at", "escalated",
     "resolved", "created_at",
   ],
+  get_quote: [
+    "id", "quote_number", "customer_name", "status", "total", "subtotal",
+    "vat_amount", "valid_until", "created_at", "sent_at", "accepted_at",
+    "lead_id", "customer_id",
+  ],
+  get_invoice: [
+    "id", "invoice_number", "customer_name", "status", "grand_total", "subtotal",
+    "tax_amount", "due_date", "issue_date", "paid_date", "created_at",
+    "quote_id", "customer_id",
+  ],
   create_quote_draft: ["id", "quote_number", "status", "customer_id", "lead_id", "total"],
   assign_job: ["id", "status", "title", "assigned_staff_id", "scheduled_for"],
 };
+
 
 function scrub(tool: ToolName, rows: Record<string, unknown>[]) {
   const allow = new Set(PII_ALLOW[tool]);
@@ -218,13 +241,85 @@ export const anthropicTools = [
       additionalProperties: false,
     },
   },
+  {
+    name: "get_quote",
+    description:
+      "Open / retrieve an existing quote (estimate) by quote number, client name or UUID. Returns only quotes the caller is permitted to see. If it returns no rows, tell the user you could not find that quote — never mention permissions or access.",
+    input_schema: {
+      type: "object",
+      properties: {
+        identifier: { type: "string", description: "Quote number (e.g. Q-2026-0020), client name, or quote UUID" },
+        limit: { type: "integer" },
+      },
+      required: ["identifier"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "get_invoice",
+    description:
+      "Open / retrieve an existing invoice by invoice number, client name or UUID. Returns only invoices the caller is permitted to see. If it returns no rows, tell the user you could not find that invoice — never mention permissions or access.",
+    input_schema: {
+      type: "object",
+      properties: {
+        identifier: { type: "string", description: "Invoice number, client name, or invoice UUID" },
+        limit: { type: "integer" },
+      },
+      required: ["identifier"],
+      additionalProperties: false,
+    },
+  },
 ];
+
 
 export interface ExecContext {
   db: SupabaseClient;
+  /**
+   * Client initialised with the caller's JWT. When present it is used for
+   * record-retrieval tools so Postgres RLS is the primary gate. Voice calls
+   * have no JWT, so those fall back to the mirrored TS access check below.
+   */
+  rlsDb?: SupabaseClient;
   userId: string;
   companyId: string | null;
 }
+
+/** Mirrors the quotes/invoices SELECT RLS policies for the voice path. */
+async function hasRecordAccess(
+  db: SupabaseClient,
+  userId: string,
+  kind: "quote" | "invoice",
+  row: Record<string, any>,
+): Promise<boolean> {
+  const { data: roles } = await db.from("user_roles").select("role").eq("user_id", userId);
+  const ops = new Set(["admin", "dispatcher", "platform_super_admin", "platform_ops"]);
+  if ((roles ?? []).some((r: { role: string }) => ops.has(r.role))) return true;
+
+  if (kind === "quote" && row.sales_engineer_id === userId) return true;
+  if (kind === "invoice" && row.agent_id === userId) return true;
+
+  const jobFilter = kind === "quote"
+    ? `quote_id.eq.${row.id}`
+    : `invoice_id.eq.${row.id}${row.quote_id ? `,quote_id.eq.${row.quote_id}` : ""}`;
+  const { data: jobs } = await db.from("jobs").select("id, created_by").or(jobFilter);
+  const jobIds = (jobs ?? []).map((j: { id: string }) => j.id);
+  if (kind === "quote" && (jobs ?? []).some((j: { created_by: string }) => j.created_by === userId)) {
+    return true;
+  }
+  if (jobIds.length) {
+    const { data: asg } = await db.from("assignments")
+      .select("id").in("job_id", jobIds).eq("profile_id", userId).limit(1);
+    if ((asg ?? []).length) return true;
+  }
+
+  if (kind === "quote" && row.lead_id) {
+    const { data: off } = await db.from("offers")
+      .select("id").eq("lead_id", row.lead_id).eq("staff_id", userId).eq("status", "accepted").limit(1);
+    if ((off ?? []).length) return true;
+  }
+  return false;
+}
+
 
 function scopeCompany<T>(q: T, companyId: string | null): T {
   // A missing company must mean "no rows", never "every tenant's rows".
@@ -237,7 +332,14 @@ export async function executeTool(
   tool: ToolName,
   rawArgs: unknown,
   ctx: ExecContext,
-): Promise<{ rows: Record<string, unknown>[]; summary: string }> {
+): Promise<{
+  rows: Record<string, unknown>[];
+  summary: string;
+  resource_type?: string;
+  resource_id?: string | null;
+  access_granted?: boolean;
+}> {
+
   const args = toolSchemas[tool].parse(rawArgs ?? {}) as Record<string, any>;
   const limit = Math.min(Number(args.limit ?? 20), 50);
   const { db, companyId } = ctx;
@@ -351,7 +453,59 @@ export async function executeTool(
       return { rows, summary: `${rows.length} queued lead(s)` };
     }
 
+    case "get_quote":
+    case "get_invoice": {
+      const isQuote = tool === "get_quote";
+      const table = isQuote ? "quotes" : "invoices";
+      const numberCol = isQuote ? "quote_number" : "invoice_number";
+      const cols = isQuote
+        ? "id, quote_number, customer_name, status, total, subtotal, vat_amount, valid_until, created_at, sent_at, accepted_at, lead_id, customer_id, sales_engineer_id"
+        : "id, invoice_number, customer_name, status, grand_total, subtotal, tax_amount, due_date, issue_date, paid_date, created_at, quote_id, customer_id, agent_id";
+      const raw = String(args.identifier).trim();
+      const safe = raw.replace(/[%,()]/g, "");
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw);
+
+      // Primary gate is RLS via the caller's JWT client when we have one.
+      const client = ctx.rlsDb ?? db;
+      let q = client.from(table).select(cols)
+        .order("created_at", { ascending: false })
+        .limit(Math.min(Number(args.limit ?? 5), 10));
+      q = scopeCompany(q, companyId);
+      q = isUuid
+        ? (q as any).eq("id", raw)
+        : (q as any).or(`${numberCol}.ilike.%${safe}%,customer_name.ilike.%${safe}%`);
+
+      const { data, error } = await q;
+      if (error) throw error;
+      let found = (data ?? []) as Record<string, any>[];
+
+      // Voice path has no JWT: mirror the RLS rules in code.
+      if (!ctx.rlsDb && found.length) {
+        const checked: Record<string, any>[] = [];
+        for (const row of found) {
+          if (await hasRecordAccess(db, ctx.userId, isQuote ? "quote" : "invoice", row)) {
+            checked.push(row);
+          }
+        }
+        found = checked;
+      }
+
+      const rows = scrub(tool, found);
+      const label = isQuote ? "quote" : "invoice";
+      return {
+        rows,
+        // Never disclose that a hidden record exists.
+        summary: rows.length
+          ? `${rows.length} ${label}(s) found`
+          : `No ${label} found matching "${raw}"`,
+        resource_type: label,
+        resource_id: (found[0]?.id as string) ?? null,
+        access_granted: rows.length > 0,
+      };
+    }
+
     case "create_quote_draft": {
+
       const { data: lead, error: leadErr } = await db.from("leads")
         .select("id, customer_id, customer_name, company_id")
         .eq("id", args.lead_id).maybeSingle();

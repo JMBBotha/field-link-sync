@@ -2905,30 +2905,39 @@ export type Database = {
       }
       nl_audit_log: {
         Row: {
+          access_granted: boolean | null
           args: Json
           company_id: string | null
           created_at: string
           id: string
+          resource_id: string | null
+          resource_type: string | null
           result: Json | null
           status: string
           tool_name: string
           user_id: string
         }
         Insert: {
+          access_granted?: boolean | null
           args?: Json
           company_id?: string | null
           created_at?: string
           id?: string
+          resource_id?: string | null
+          resource_type?: string | null
           result?: Json | null
           status?: string
           tool_name: string
           user_id: string
         }
         Update: {
+          access_granted?: boolean | null
           args?: Json
           company_id?: string | null
           created_at?: string
           id?: string
+          resource_id?: string | null
+          resource_type?: string | null
           result?: Json | null
           status?: string
           tool_name?: string
@@ -6547,6 +6556,7 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      is_ops_user: { Args: { _user_id: string }; Returns: boolean }
       job_profit_loss: {
         Args: { p_lead_id: string }
         Returns: {
