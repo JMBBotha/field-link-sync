@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
     };
 
     // Prefer the saved assistant (VAPI_ASSISTANT_ID) when it is reachable.
-    const assistantId = Deno.env.get("VAPI_ASSISTANT_ID")?.trim();
+    const assistantId = (Deno.env.get("VAPI_OPS_ASSISTANT_ID") || Deno.env.get("VAPI_ASSISTANT_ID"))?.trim();
     const privateKey = Deno.env.get("VAPI_PRIVATE_API_KEY");
     let useSavedAssistant = false;
     if (assistantId && privateKey) {
