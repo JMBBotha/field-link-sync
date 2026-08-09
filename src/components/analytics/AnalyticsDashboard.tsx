@@ -132,7 +132,7 @@ const AnalyticsDashboard = () => {
       const [totalRes, completedRes, overdueCount, revenueRes] = await Promise.all([
         supabase.from("maintenance_schedules").select("id", { count: "exact", head: true }),
         supabase.from("maintenance_schedules").select("id", { count: "exact", head: true }).eq("status", "completed"),
-        supabase.rpc("get_overdue_maintenance_count"),
+        fetchOverdueMaintenanceCount(),
         supabase.from("service_agreements").select("price").eq("status", "active"),
       ]);
       const total = totalRes.count || 0;
