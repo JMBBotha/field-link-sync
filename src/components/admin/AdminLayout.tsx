@@ -28,6 +28,8 @@ const AdminLayout = () => {
   const [showCreateLead, setShowCreateLead] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+
 
   const { session, user, loading: authLoading } = useAuth();
   const currentUserId = user?.id ?? "";
