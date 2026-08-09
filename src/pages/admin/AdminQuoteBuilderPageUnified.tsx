@@ -613,6 +613,34 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     });
   }, []);
 
+  /** Push every PDF-selected product into the shared baskets (one quote). */
+  const addSelectedPdfToQuote = useCallback(() => {
+    if (selectedFromPdf.length === 0) return;
+    const converted = selectedFromPdf.map((item) => ({
+      product: pdfItemToPaletteProduct(item),
+      quantity: item.quantity || 1,
+    }));
+    setBaskets((prev) => {
+      const list = prev.length > 0 ? [...prev] : [{ id: "basket-1", name: "Zone 1", items: [] as Basket["items"] }];
+      const targetId = list[0].id;
+      return list.map((basket) => {
+        if (basket.id !== targetId) return basket;
+        let items = [...basket.items];
+        converted.forEach(({ product, quantity }) => {
+          const existing = items.find((i) => i.product.id === product.id);
+          if (existing) {
+            items = items.map((i) => (i.product.id === product.id ? { ...i, quantity: i.quantity + quantity } : i));
+          } else {
+            items.push({ instanceId: `${product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, product, quantity });
+          }
+        });
+        return { ...basket, items };
+      });
+    });
+    toast({ title: `Added ${selectedFromPdf.length} item(s) to the quote` });
+    setSelectedFromPdf([]);
+  }, [selectedFromPdf]);
+
   // Handle wizard save — merge new baskets
   const handleWizardSave = useCallback((newBaskets: Basket[]) => {
     setBaskets((prev) => [...prev, ...newBaskets]);
