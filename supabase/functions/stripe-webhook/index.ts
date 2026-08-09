@@ -6,13 +6,57 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-customer-token, content-type",
 };
 
+/** Constant-shape HMAC-SHA256 hex digest. */
+async function hmacSha256Hex(secret: string, payload: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
+  return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const body = await req.json();
+    // ── Verify the event really came from Stripe ──
+    const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
+    if (!webhookSecret) {
+      console.error("[Stripe Webhook] STRIPE_WEBHOOK_SECRET not configured");
+      return new Response(JSON.stringify({ error: "Webhook not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const rawBody = await req.text();
+    const sigHeader = req.headers.get("stripe-signature") ?? "";
+    const parts = Object.fromEntries(
+      sigHeader.split(",").map((p) => p.split("=").map((s) => s.trim()) as [string, string]),
+    );
+    const timestamp = parts["t"];
+    const provided = parts["v1"];
+    const expected = timestamp && provided
+      ? await hmacSha256Hex(webhookSecret, `${timestamp}.${rawBody}`)
+      : null;
+
+    // Reject bad signatures and replays older than 5 minutes.
+    const ageOk = timestamp && Math.abs(Date.now() / 1000 - Number(timestamp)) < 300;
+    if (!expected || expected !== provided || !ageOk) {
+      console.error("[Stripe Webhook] Signature verification failed");
+      return new Response(JSON.stringify({ error: "Invalid signature" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const body = JSON.parse(rawBody);
     const { type, data } = body;
 
     console.log("[Stripe Webhook] Event type:", type);
