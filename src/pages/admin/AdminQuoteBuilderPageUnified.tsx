@@ -34,8 +34,12 @@ import { createEmptyArea, computeAreaSubtotal, detectBTU } from "@/components/ca
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
 import { useQuoteLiveTotals } from "@/stores/quoteLiveTotalsStore";
 import { areasToBaskets } from "@/components/catalog/quote-builder/QuoteBuilderPopup";
-import { computeQuoteTotals } from "@/utils/quoteTransformers";
+import { computeQuoteTotals, QUOTE_VAT_RATE } from "@/utils/quoteTransformers";
 import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
+import { persistQuoteFromBaskets } from "@/utils/persistQuoteFromBaskets";
+import { calculateBasketItemSell } from "@/utils/quoteBasketTotals";
+import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
+import type { QuotePDFData } from "@/components/QuotePDFDocument";
 
 
 export type QuoteBuilderMode = "admin" | "agent";
