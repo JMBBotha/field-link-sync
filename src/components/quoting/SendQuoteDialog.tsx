@@ -49,13 +49,13 @@ const SendQuoteDialog = ({
     let cancelled = false;
     (async () => {
       const [{ data: cust }, { data: lead }] = await Promise.all([
-        supabase.from("customers").select("email, phone, whatsapp_number").eq("id", customerId).maybeSingle(),
+        supabase.from("customers").select("email, phone").eq("id", customerId).maybeSingle(),
         supabase.from("leads").select("id").eq("customer_id", customerId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       ]);
       if (cancelled) return;
-      const c = cust as { email?: string | null; phone?: string | null; whatsapp_number?: string | null } | null;
+      const c = cust as { email?: string | null; phone?: string | null } | null;
       setEmail(c?.email || "");
-      setPhone(c?.whatsapp_number || c?.phone || "");
+      setPhone(c?.phone || "");
       setLeadId((lead as { id?: string } | null)?.id ?? null);
     })();
     return () => { cancelled = true; };
