@@ -3,7 +3,9 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import AdminHome from "@/components/AdminHome";
 import CreateLeadDialog from "@/components/CreateLeadDialog";
 import MapView from "@/components/MapView";
+import OfferCards from "@/components/dispatch/OfferCards";
 import { Button } from "@/components/ui/button";
+
 import { Map, ExternalLink, Maximize2, Minimize2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
@@ -83,12 +85,14 @@ const AdminHomePage = () => {
           <div className="absolute inset-0 bg-background/40 pointer-events-none" aria-hidden="true" />
 
           {/* Dashboard content floating over the map */}
-          <div className="relative h-full overflow-y-auto p-3 md:p-4">
+          <div className="relative h-full overflow-y-auto p-3 md:p-4 space-y-3">
+            <OfferCards />
             <AdminHome
               onNavigate={(tab) => navigate(tabToRoute[tab] || "/admin")}
               onCreateLead={() => setShowCreateLead(true)}
             />
           </div>
+
         </div>
       </div>
       <CreateLeadDialog open={showCreateLead} onOpenChange={setShowCreateLead} />
