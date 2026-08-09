@@ -38,6 +38,7 @@ const VoiceAssistantPanel = ({
 }: VoiceAssistantPanelProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const live = status === "live";
+  const connecting = status === "connecting";
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -67,16 +68,14 @@ const VoiceAssistantPanel = ({
               <span className="text-xs">{muted ? "Unmute" : "Mute"}</span>
             </Button>
           )}
-          {live || status === "connecting" ? (
+          {live || connecting ? (
             <Button variant="destructive" size="sm" onClick={onStop} className="gap-1.5">
-              <PhoneOff className="h-3.5 w-3.5" />
-              <span className="text-xs">End call</span>
+              {connecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PhoneOff className="h-3.5 w-3.5" />}
+              <span className="text-xs">{connecting ? "Cancel" : "End call"}</span>
             </Button>
           ) : (
-            <Button size="sm" onClick={onStart} className="gap-1.5" disabled={status === "connecting"}>
-              {status === "connecting"
-                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                : <Mic className="h-3.5 w-3.5" />}
+            <Button size="sm" onClick={onStart} className="gap-1.5">
+              <Mic className="h-3.5 w-3.5" />
               <span className="text-xs">{status === "idle" ? "Start voice call" : "Call again"}</span>
             </Button>
           )}
