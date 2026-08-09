@@ -767,7 +767,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
               />
             </div>
             <div className="w-[320px] shrink-0 border-l overflow-y-auto p-3 mx-[5px] my-[4px] bg-transparent">
-              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} />
+              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
 
             </div>
           </div>
@@ -789,7 +789,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
             </div>
             <div className="w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
-              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} />
+              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
             </div>
           </div>
         }
@@ -832,7 +832,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             </div>
             {/* Summary - right sidebar */}
             <div className="w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
-              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} />
+              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
             </div>
           </div>
         }
