@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { crypto as stdCrypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -49,7 +50,7 @@ Deno.serve(async (req) => {
     if (passphrase) {
       signatureBase += `&passphrase=${encodeURIComponent(passphrase.trim()).replace(/%20/g, "+")}`;
     }
-    const digest = await crypto.subtle.digest(
+    const digest = await stdCrypto.subtle.digest(
       "MD5",
       new TextEncoder().encode(signatureBase),
     ).catch(() => null);
