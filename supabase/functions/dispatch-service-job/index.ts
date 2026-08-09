@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { admin, corsHeaders, escalate, json, loadCandidates, DEFAULT_RADIUS_KM } from "../_shared/dispatch.ts";
+import { admin, corsHeaders, escalate, json, loadCandidates, requireDispatcher, DEFAULT_RADIUS_KM } from "../_shared/dispatch.ts";
 
 /**
  * dispatch-service-job — direct-assigns the nearest available technician
@@ -9,6 +9,9 @@ import { admin, corsHeaders, escalate, json, loadCandidates, DEFAULT_RADIUS_KM }
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
+    const auth = await requireDispatcher(req);
+    if (!auth.ok) return auth.response;
+
     const { lead_id, radius_km, skill } = await req.json();
     if (!lead_id) return json({ error: "lead_id is required" }, 400);
 
@@ -36,6 +39,8 @@ serve(async (req) => {
       .from("jobs")
       .select("id")
       .eq("lead_id", lead_id)
+      .order("created_at", { ascending: true })
+      .limit(1)
       .maybeSingle();
 
     const jobPayload: Record<string, unknown> = {
@@ -70,6 +75,8 @@ serve(async (req) => {
       .from("invoices")
       .select("id")
       .eq("lead_id", lead_id)
+      .order("created_at", { ascending: true })
+      .limit(1)
       .maybeSingle();
 
     let invoiceId = existingInvoice?.id as string | undefined;

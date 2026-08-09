@@ -153,3 +153,42 @@ export async function escalate(
     });
   }
 }
+
+/**
+ * Dispatch endpoints mutate leads/jobs with the service role, so they must not
+ * be callable anonymously. Accepts either a caller JWT belonging to an
+ * admin/dispatcher, or a server-to-server call carrying the service role key.
+ */
+export async function requireDispatcher(
+  req: Request,
+): Promise<{ ok: true; userId: string | null } | { ok: false; response: Response }> {
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+
+  if (token && token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) {
+    return { ok: true, userId: null };
+  }
+  if (!token) {
+    return { ok: false, response: json({ error: "Not authenticated" }, 401) };
+  }
+
+  const db = admin();
+  const { data: userData, error } = await db.auth.getUser(token);
+  const userId = userData?.user?.id;
+  if (error || !userId) {
+    return { ok: false, response: json({ error: "Not authenticated" }, 401) };
+  }
+
+  const { data: roles } = await db
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId);
+
+  const allowed = (roles ?? []).some((r: { role: string }) =>
+    ["admin", "dispatcher", "platform_super_admin", "platform_ops"].includes(r.role)
+  );
+  if (!allowed) {
+    return { ok: false, response: json({ error: "Dispatcher or admin role required" }, 403) };
+  }
+  return { ok: true, userId };
+}
