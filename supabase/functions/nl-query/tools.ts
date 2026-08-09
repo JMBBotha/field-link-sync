@@ -380,7 +380,7 @@ export async function executeTool(
         .select("id, company_id").eq("id", args.job_id).maybeSingle();
       if (jobErr) throw jobErr;
       if (!job) throw new Error("Job not found");
-      if (companyId && job.company_id && job.company_id !== companyId) {
+      if (!companyId || job.company_id !== companyId) {
         throw new Error("Job belongs to another company");
       }
       const { data: staff, error: staffErr } = await db.from("profiles")
