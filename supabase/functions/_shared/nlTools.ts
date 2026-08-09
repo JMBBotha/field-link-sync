@@ -416,18 +416,32 @@ export async function executeTool(
     }
 
     case "search_customer": {
-      const pat = `%${String(args.query).replace(/[%,()]/g, "")}%`;
+      const raw = String(args.query).trim();
+      const tokens = nameTokens(raw);
+      const fields = ["first_name", "last_name", "company_name", "phone", "email"];
+      const patterns = tokens.length ? tokens : [raw.replace(/[%,()]/g, "")];
+      const orFilter = patterns
+        .flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`))
+        .join(",");
       let q = db.from("customers").select(
         "id, first_name, last_name, company_name, phone, email, primary_address_line1, city, status",
-      ).or(
-        `first_name.ilike.${pat},last_name.ilike.${pat},company_name.ilike.${pat},phone.ilike.${pat},email.ilike.${pat}`,
-      ).limit(Math.min(limit, 25));
+      ).or(orFilter).limit(50);
       q = scopeCompany(q, companyId);
       const { data, error } = await q;
       if (error) throw error;
-      const rows = scrub(tool, data ?? []);
+      // Prefer rows matching every token of the query (handles "Andre Blom"
+      // split across first_name/last_name, and stray double spaces).
+      const all = (data ?? []) as Record<string, any>[];
+      const strict = tokens.length > 1
+        ? all.filter((r) => matchesAllTokens(
+          `${r.first_name ?? ""} ${r.last_name ?? ""} ${r.company_name ?? ""} ${r.email ?? ""} ${r.phone ?? ""}`,
+          tokens,
+        ))
+        : all;
+      const rows = scrub(tool, (strict.length ? strict : all).slice(0, Math.min(limit, 25)));
       return { rows, summary: `${rows.length} customer(s)` };
     }
+
 
     case "get_staff_availability": {
       let q = db.from("profiles").select(
