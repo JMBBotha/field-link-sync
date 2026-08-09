@@ -43,6 +43,8 @@ interface VisualCatalogPanelProps {
   onClose: () => void;
   baskets: Basket[];
   onAddProductToBasket: (basketId: string, product: PaletteProduct) => void;
+  /** Push all PDF-selected products into the shared quote baskets */
+  onAddSelectedToQuote?: () => void;
   onAddBasket?: () => void;
   onRemoveBasket?: (id: string) => void;
   products: PaletteProduct[];
@@ -66,7 +68,7 @@ interface PdfPage {
   price_column_bbox?: { x_frac: number; w_frac: number } | null;
 }
 
-const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAddBasket, onRemoveBasket, products, isDragging: isDraggingExternal, onOpenWizard, pdfSearchRef, wizardOpen, pdfSelection }: VisualCatalogPanelProps) => {
+const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAddSelectedToQuote, onAddBasket, onRemoveBasket, products, isDragging: isDraggingExternal, onOpenWizard, pdfSearchRef, wizardOpen, pdfSelection }: VisualCatalogPanelProps) => {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
@@ -591,7 +593,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
         {/* RIGHT: PDF Viewer */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
-          <div className="flex items-center gap-2 px-3 py-2 border-b bg-white shrink-0">
+          <div className="flex items-center gap-2 px-3 py-2 border-b bg-card text-foreground shrink-0">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <FileImage className="h-4 w-4 text-primary shrink-0" />
               <div className="min-w-0 flex-1">
@@ -719,7 +721,28 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
               </Button>
             )}
 
-            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}><X className="h-4 w-4" /></Button>
+            {onAddSelectedToQuote && pdfSelection && pdfSelection.selectedFromPdf.length > 0 && (
+              <Button
+                size="sm"
+                className="h-7 shrink-0 gap-1 text-[11px]"
+                onClick={onAddSelectedToQuote}
+                title="Add the selected PDF products to this quote"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add {pdfSelection.selectedFromPdf.length} to quote
+              </Button>
+            )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 shrink-0 gap-1 text-[11px]"
+              onClick={onClose}
+              title="Close the PDF viewer and return to the quote builder"
+            >
+              <X className="h-3.5 w-3.5" />
+              Close PDF
+            </Button>
           </div>
 
           {/* Content: Continuous scroll */}
@@ -827,7 +850,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
 
           {/* Status bar */}
           {pages.length > 0 && (
-            <div className="border-t bg-white px-3 py-1 shrink-0 flex items-center gap-2">
+            <div className="border-t bg-card text-foreground px-3 py-1 shrink-0 flex items-center gap-2">
               <ScanSearch className="h-3 w-3 text-muted-foreground" />
               {!anyPageHasPdfSource ? (
                 <span className="text-[10px] text-muted-foreground flex items-center gap-2">
@@ -1392,7 +1415,7 @@ const LazyPdfPage = ({
           )}
         </>
       ) : (
-        <div className="flex items-center justify-center h-[600px] bg-white">
+        <div className="flex items-center justify-center h-[600px] bg-card">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/40" />
         </div>
       )}

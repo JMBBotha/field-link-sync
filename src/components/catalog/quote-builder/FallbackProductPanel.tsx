@@ -148,7 +148,7 @@ const FallbackProductPanel = ({
 
   return (
     <div className="flex flex-col h-full border-l bg-background w-[240px] shrink-0">
-      <div className="px-2 py-1.5 border-b bg-white">
+      <div className="px-2 py-1.5 border-b bg-card text-foreground">
         {supplierName && (
           <Badge variant="outline" className="text-[9px] mb-1 w-full justify-center truncate">
             {supplierProducts.length} products for {supplierName}
@@ -191,7 +191,7 @@ const FallbackProductPanel = ({
           )}
         </div>
       </ScrollArea>
-      <div className="px-2 py-1 border-t bg-white">
+      <div className="px-2 py-1 border-t bg-card text-foreground">
         <p className="text-[9px] text-muted-foreground text-center">
           {filtered.length} products · Drag to zone or click +
         </p>

@@ -34,8 +34,13 @@ import { createEmptyArea, computeAreaSubtotal, detectBTU } from "@/components/ca
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
 import { useQuoteLiveTotals } from "@/stores/quoteLiveTotalsStore";
 import { areasToBaskets } from "@/components/catalog/quote-builder/QuoteBuilderPopup";
-import { computeQuoteTotals } from "@/utils/quoteTransformers";
+import { computeQuoteTotals, QUOTE_VAT_RATE } from "@/utils/quoteTransformers";
 import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
+import { pdfItemToPaletteProduct } from "@/utils/pdfItemToProduct";
+import { persistQuoteFromBaskets } from "@/utils/persistQuoteFromBaskets";
+import { calculateBasketItemSell } from "@/utils/quoteBasketTotals";
+import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
+import type { QuotePDFData } from "@/components/QuotePDFDocument";
 
 
 export type QuoteBuilderMode = "admin" | "agent";
@@ -186,7 +191,7 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
 /* ─── Inner content (needs context) ─── */
 function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode }) {
   const navigate = useNavigate();
-  const { items: ctxItems, areas: ctxAreas, loading: ctxLoading } = useQuoteContext();
+  const { items: ctxItems, areas: ctxAreas, loading: ctxLoading, quoteId, meta } = useQuoteContext();
   const [activeTab, setActiveTab] = useState("normal");
   const [areaWizardOpen, setAreaWizardOpen] = useState(false);
   const pdfSearchRef = useRef<((term: string) => void) | null>(null);
@@ -609,6 +614,34 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     });
   }, []);
 
+  /** Push every PDF-selected product into the shared baskets (one quote). */
+  const addSelectedPdfToQuote = useCallback(() => {
+    if (selectedFromPdf.length === 0) return;
+    const converted = selectedFromPdf.map((item) => ({
+      product: pdfItemToPaletteProduct(item),
+      quantity: item.quantity || 1,
+    }));
+    setBaskets((prev) => {
+      const list = prev.length > 0 ? [...prev] : [{ id: "basket-1", name: "Zone 1", items: [] as Basket["items"] }];
+      const targetId = list[0].id;
+      return list.map((basket) => {
+        if (basket.id !== targetId) return basket;
+        let items = [...basket.items];
+        converted.forEach(({ product, quantity }) => {
+          const existing = items.find((i) => i.product.id === product.id);
+          if (existing) {
+            items = items.map((i) => (i.product.id === product.id ? { ...i, quantity: i.quantity + quantity } : i));
+          } else {
+            items.push({ instanceId: `${product.id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, product, quantity });
+          }
+        });
+        return { ...basket, items };
+      });
+    });
+    toast({ title: `Added ${selectedFromPdf.length} item(s) to the quote` });
+    setSelectedFromPdf([]);
+  }, [selectedFromPdf]);
+
   // Handle wizard save — merge new baskets
   const handleWizardSave = useCallback((newBaskets: Basket[]) => {
     setBaskets((prev) => [...prev, ...newBaskets]);
@@ -624,6 +657,65 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
       setAreaWizardOpen(true);
     }
   }, []);
+
+  /* ── Generate Quote: persist the merged basket state (Build + Visual PDF +
+     Area tabs) into the ONE unified quote, then open the send-to-client flow ── */
+  const [sendOpen, setSendOpen] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  const pdfData: QuotePDFData = useMemo(() => {
+    const items = displayBaskets.flatMap((b) =>
+      b.items.map((i) => ({
+        areaName: b.name,
+        unitName: i.product.short_name || i.product.product_code || "Item",
+        btu: 0,
+        quantity: i.quantity,
+        unitPrice: i.quantity ? calculateBasketItemSell(i) / i.quantity : 0,
+        markupPercent: 0,
+        lineTotal: calculateBasketItemSell(i),
+      })),
+    );
+    const today = new Date();
+    const validUntil = new Date(today);
+    validUntil.setDate(validUntil.getDate() + 30);
+    return {
+      quoteNumber: meta?.quote_number || "Draft",
+      date: today.toLocaleDateString("en-ZA"),
+      validUntil: meta?.valid_until
+        ? new Date(meta.valid_until).toLocaleDateString("en-ZA")
+        : validUntil.toLocaleDateString("en-ZA"),
+      clientName: meta?.customer_name || "Client",
+      clientEmail: "",
+      items,
+      subtotal: displayQuoteTotals.subtotal,
+      vatRate: QUOTE_VAT_RATE,
+      vatAmount: displayQuoteTotals.vatAmount,
+      total: displayQuoteTotals.total,
+    };
+  }, [displayBaskets, displayQuoteTotals, meta]);
+
+  const handleGenerateQuote = useCallback(async () => {
+    if (!quoteId) return;
+    if (displayQuoteTotals.itemCount === 0) {
+      toast({ title: "Nothing to quote", description: "Add at least one line item first.", variant: "destructive" });
+      return;
+    }
+    setGenerating(true);
+    try {
+      const validIds = new Set(products.map((p) => p.id));
+      await persistQuoteFromBaskets(quoteId, displayBaskets, validIds);
+      toast({ title: "Quote saved", description: "All builder tabs merged into one quote." });
+      setSendOpen(true);
+    } catch (err) {
+      toast({
+        title: "Couldn't save quote",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setGenerating(false);
+    }
+  }, [quoteId, displayBaskets, displayQuoteTotals.itemCount, products]);
 
   return (
     <div
@@ -704,7 +796,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
               />
             </div>
             <div className="w-[320px] shrink-0 border-l overflow-y-auto p-3 mx-[5px] my-[4px] bg-transparent">
-              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} />
+              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
 
             </div>
           </div>
@@ -714,9 +806,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             <div className="flex-1 min-w-0 overflow-hidden">
               <VisualCatalogPanel
               open={true}
-              onClose={() => {}}
+              onClose={() => setActiveTab("normal")}
               baskets={baskets}
               onAddProductToBasket={addProductToBasket}
+              onAddSelectedToQuote={addSelectedPdfToQuote}
               products={products}
               isDragging={false}
               onOpenWizard={handleOpenWizardFromVisual}
@@ -726,7 +819,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
             </div>
             <div className="w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
-              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} />
+              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
             </div>
           </div>
         }
@@ -769,7 +862,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             </div>
             {/* Summary - right sidebar */}
             <div className="w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
-              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} />
+              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
             </div>
           </div>
         }
@@ -780,6 +873,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         <FloatingSelectedItems
           pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
           onClose={() => setFloatingOpen(false)}
+          onAddSelectedToQuote={addSelectedPdfToQuote}
         />
       )}
 
@@ -797,6 +891,26 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
           setPopupPreviewBaskets(preview.map((b) => ({ ...b, id: `wizard-popup-${b.id}` })));
         }}
         triggerItem={null} />
+
+      {/* Send the finalised quote to the client (email / WhatsApp) */}
+      <SendQuoteDialog
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        quoteId={quoteId}
+        quoteNumber={meta?.quote_number || "Draft"}
+        customerId={meta?.customer_id ?? null}
+        customerName={meta?.customer_name || ""}
+        pdfData={pdfData}
+      />
+
+      {generating && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
+          <div className="flex items-center gap-2 rounded-lg bg-card px-4 py-3 text-sm text-foreground shadow-xl">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Saving quote…
+          </div>
+        </div>
+      )}
 
     </div>);
 
