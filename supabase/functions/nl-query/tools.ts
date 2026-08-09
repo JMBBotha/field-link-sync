@@ -227,8 +227,9 @@ export interface ExecContext {
 }
 
 function scopeCompany<T>(q: T, companyId: string | null): T {
+  // A missing company must mean "no rows", never "every tenant's rows".
   // deno-lint-ignore no-explicit-any
-  return companyId ? (q as any).eq("company_id", companyId) : q;
+  return (q as any).eq("company_id", companyId ?? "00000000-0000-0000-0000-000000000000");
 }
 
 /** Executes a whitelisted tool. Throws on any Supabase error. */
