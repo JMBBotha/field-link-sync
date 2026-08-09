@@ -5394,6 +5394,59 @@ export type Database = {
         }
         Relationships: []
       }
+      unassigned_queue: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          escalate_at: string
+          escalated: boolean
+          escalated_at: string | null
+          id: string
+          lead_id: string
+          priority: string
+          reason: string
+          resolved: boolean
+          resolved_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          escalate_at?: string
+          escalated?: boolean
+          escalated_at?: string | null
+          id?: string
+          lead_id: string
+          priority?: string
+          reason: string
+          resolved?: boolean
+          resolved_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          escalate_at?: string
+          escalated?: boolean
+          escalated_at?: string | null
+          id?: string
+          lead_id?: string
+          priority?: string
+          reason?: string
+          resolved?: boolean
+          resolved_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unassigned_queue_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       upgrade_paths: {
         Row: {
           from_participant_type: string | null
@@ -6145,6 +6198,19 @@ export type Database = {
           p_radius_km?: number
           p_role: string
           p_skill?: string
+        }
+        Returns: {
+          distance_km: number
+          full_name: string
+          staff_id: string
+        }[]
+      }
+      find_dispatch_candidates_multi: {
+        Args: {
+          p_lead_id: string
+          p_radius_km: number
+          p_role: string
+          p_skills?: string[]
         }
         Returns: {
           distance_km: number
