@@ -188,16 +188,19 @@ export async function createNextOffer(
   return { offer, candidate: next, lead };
 }
 
-/** Flags a lead for manual assignment and notifies admins/dispatchers. */
+/** Flags a lead for manual assignment, queues it for ops and notifies admins/dispatchers. */
 export async function escalate(
   db: ReturnType<typeof admin>,
-  lead: { id: string; company_id: string | null; customer_name?: string | null },
+  lead: { id: string; company_id: string | null; customer_name?: string | null; priority?: string | null },
   reason: string,
 ) {
   await db
     .from("leads")
     .update({ needs_manual_assignment: true, last_activity_at: new Date().toISOString() })
     .eq("id", lead.id);
+
+  await enqueueUnassigned(db, lead, reason);
+
 
   const { data: admins } = await db
     .from("user_roles")
