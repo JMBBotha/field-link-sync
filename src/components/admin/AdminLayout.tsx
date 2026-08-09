@@ -29,6 +29,7 @@ const AdminLayout = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantMode, setAssistantMode] = useState<"text" | "voice">("voice");
 
 
   const { session, user, loading: authLoading } = useAuth();
@@ -209,9 +210,12 @@ const AdminLayout = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setAssistantOpen(true)}
+              onClick={() => {
+                setAssistantMode("voice");
+                setAssistantOpen(true);
+              }}
               className="text-blue-100 hover:bg-white/10 hover:text-primary-foreground gap-1.5"
-              title="Ask the operations assistant"
+              title="Talk to the operations assistant"
             >
               <Sparkle className="h-4 w-4" />
               <span className="text-xs hidden sm:inline">Ask AI</span>
@@ -269,7 +273,7 @@ const AdminLayout = () => {
 
       <CreateLeadDialog open={showCreateLead} onOpenChange={setShowCreateLead} />
       <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
-      <NLCommandBar open={assistantOpen} onOpenChange={setAssistantOpen} />
+      <NLCommandBar open={assistantOpen} onOpenChange={setAssistantOpen} initialMode={assistantMode} />
 
       <IdleWarningModal open={showWarning} secondsLeft={secondsLeft} onStayActive={stayActive} />
       {currentUserId && <WelcomeTourDialog userId={currentUserId} />}
