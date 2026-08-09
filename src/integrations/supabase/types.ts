@@ -6050,6 +6050,57 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_messages: {
+        Row: {
+          body: string | null
+          created_at: string
+          customer_id: string | null
+          direction: string
+          environment: string
+          error_message: string | null
+          from_number: string
+          id: string
+          lead_id: string | null
+          media_urls: Json
+          provider_sid: string | null
+          raw: Json
+          status: string | null
+          to_number: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          customer_id?: string | null
+          direction: string
+          environment?: string
+          error_message?: string | null
+          from_number: string
+          id?: string
+          lead_id?: string | null
+          media_urls?: Json
+          provider_sid?: string | null
+          raw?: Json
+          status?: string | null
+          to_number: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          customer_id?: string | null
+          direction?: string
+          environment?: string
+          error_message?: string | null
+          from_number?: string
+          id?: string
+          lead_id?: string | null
+          media_urls?: Json
+          provider_sid?: string | null
+          raw?: Json
+          status?: string | null
+          to_number?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       company_stats: {
