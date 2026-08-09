@@ -17,6 +17,7 @@ import {
 } from "recharts";
 import KPICard from "./KPICard";
 import { exportToCSV } from "@/lib/csvExport";
+import { fetchOverdueMaintenanceCount } from "@/lib/maintenanceMetrics";
 import jsPDF from "jspdf";
 
 type DatePreset = "this_week" | "this_month" | "last_30" | "custom";
@@ -132,14 +133,14 @@ const AnalyticsDashboard = () => {
       const [totalRes, completedRes, overdueCount, revenueRes] = await Promise.all([
         supabase.from("maintenance_schedules").select("id", { count: "exact", head: true }),
         supabase.from("maintenance_schedules").select("id", { count: "exact", head: true }).eq("status", "completed"),
-        supabase.rpc("get_overdue_maintenance_count"),
+        fetchOverdueMaintenanceCount(),
         supabase.from("service_agreements").select("price").eq("status", "active"),
       ]);
       const total = totalRes.count || 0;
       const completed = completedRes.count || 0;
       const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
       const recurringRevenue = revenueRes.data?.reduce((s, a) => s + Number(a.price), 0) || 0;
-      return { completionRate, overdue: (overdueCount.data as number) || 0, recurringRevenue };
+      return { completionRate, overdue: overdueCount, recurringRevenue };
     },
   });
 
