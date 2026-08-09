@@ -61,43 +61,30 @@ const ClientProposalView = () => {
 
   const loadQuote = async () => {
     try {
-      // Validate token and mark as viewed
-      const { data: quoteId, error: rpcErr } = await supabase.rpc("get_quote_by_public_token", { p_token: token });
-      if (rpcErr || !quoteId) {
+      // Token-scoped fetch: the database only returns data when the exact
+      // public token is supplied (no anonymous table access).
+      const { data: payload, error: rpcErr } = await supabase.rpc("get_public_quote", { p_token: token });
+      if (rpcErr || !payload) {
         setError("Invalid or expired quote link.");
         return;
       }
 
-      // Fetch quote data
-      const { data: q } = await supabase
-        .from("quotes")
-        .select("id, quote_number, status, subtotal, vat_rate, vat_amount, total, notes, valid_until, created_at, accepted_by")
-        .eq("id", quoteId)
-        .single();
+      // Mark as viewed (also token-scoped).
+      await supabase.rpc("get_quote_by_public_token", { p_token: token });
 
+      const bundle = payload as any;
+      const q = bundle.quote;
       if (!q) { setError("Quote not found."); return; }
       setQuote(q);
 
-      // Fetch line items (unified quote_items) and proposal sections in parallel.
-      const [itemsRes, sectionsRes] = await Promise.all([
-        supabase
-          .from("quote_items")
-          .select("id, item_name, description, quantity, unit_price, total_price, parent_item_id, area_id, sort_order")
-          .eq("quote_id", quoteId)
-          .is("parent_item_id", null)
-          .order("sort_order"),
-        supabase.from("proposal_sections").select("id, section_type, title, content, sort_order").eq("quote_id", quoteId).order("sort_order"),
-      ]);
-
-      // Normalize to the shape the rest of this view expects.
-      const items = (itemsRes.data || []).map((it: any) => ({
+      const items = (bundle.items || []).map((it: any) => ({
         id: it.id,
         description: it.item_name || it.description || "Item",
         quantity: Number(it.quantity) || 0,
         unit_price: Number(it.unit_price) || 0,
       }));
       setLineItems(items);
-      setSections(sectionsRes.data || []);
+      setSections(bundle.sections || []);
     } catch {
       setError("Something went wrong.");
     } finally {
