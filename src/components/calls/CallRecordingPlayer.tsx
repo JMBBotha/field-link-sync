@@ -42,7 +42,10 @@ export default function CallRecordingPlayer({ callId, recordingUrl, className, s
         },
       });
 
-      if (!res.ok) {
+      const contentType = res.headers.get("content-type") || "";
+
+      // The function answers with JSON (never an error status) when playback isn't possible.
+      if (!res.ok || contentType.includes("application/json")) {
         let reason = "No recording available";
         try {
           const body = await res.json();
@@ -59,6 +62,7 @@ export default function CallRecordingPlayer({ callId, recordingUrl, className, s
         setUnavailable("No recording available");
         return;
       }
+
       setSrc(URL.createObjectURL(blob));
     } catch (e) {
       console.error("Recording load failed:", e);
