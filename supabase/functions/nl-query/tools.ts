@@ -387,14 +387,24 @@ export async function executeTool(
       if (staffErr) throw staffErr;
       if (!staff) throw new Error("Staff member not found");
 
+      const { error: asgErr } = await db.from("assignments").insert({
+        job_id: args.job_id,
+        profile_id: args.staff_id,
+        assigned_by: ctx.userId,
+        assignment_type: "manual",
+        status: "assigned",
+      });
+      if (asgErr) throw asgErr;
+
       const { data, error } = await db.from("jobs")
-        .update({ created_by: args.staff_id, status: "assigned" })
+        .update({ status: "assigned" })
         .eq("id", args.job_id)
         .select("id, status, title, scheduled_for")
         .single();
       if (error) throw error;
       const row = { ...data, assigned_staff_id: args.staff_id };
       return { rows: scrub(tool, [row]), summary: `Job assigned to ${staff.full_name ?? "staff member"}` };
+
     }
   }
 }
