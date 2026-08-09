@@ -862,3 +862,62 @@ All colors MUST be HSL.
 }
 
 
+
+/* ────────────────────────────────────────────────────────────────
+   Dark-mode text readability system (WCAG AA)
+   One consistent layer instead of one-off fixes. Elements that live
+   inside intentionally-white "paper" surfaces (PDF/invoice/estimate
+   documents) are excluded so they keep their print look.
+   ──────────────────────────────────────────────────────────────── */
+.dark :is(
+  .text-slate-900, .text-slate-800, .text-slate-700,
+  .text-gray-900,  .text-gray-800,  .text-gray-700,
+  .text-zinc-900,  .text-zinc-800,  .text-zinc-700,
+  .text-neutral-900, .text-neutral-800, .text-neutral-700
+):not(.bg-white *):not(.bg-white):not([data-paper] *) {
+  color: hsl(var(--foreground));
+}
+
+.dark :is(
+  .text-slate-600, .text-slate-500, .text-slate-400,
+  .text-gray-600,  .text-gray-500,  .text-gray-400, .text-gray-300,
+  .text-zinc-600,  .text-zinc-500,  .text-zinc-400,
+  .text-neutral-600, .text-neutral-500, .text-neutral-400
+):not(.bg-white *):not(.bg-white):not([data-paper] *) {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Floor low-opacity muted text so hints/captions stay legible. */
+.dark :is(
+  .text-muted-foreground\/30, .text-muted-foreground\/40,
+  .text-muted-foreground\/50, .text-muted-foreground\/60,
+  .text-muted-foreground\/70
+) {
+  color: hsl(var(--muted-foreground) / 0.85);
+}
+.dark :is(.text-foreground\/50, .text-foreground\/60, .text-foreground\/70) {
+  color: hsl(var(--foreground) / 0.85);
+}
+
+/* Placeholders: readable, still clearly distinct from typed text. */
+.dark ::placeholder { color: hsl(var(--muted-foreground) / 0.8); opacity: 1; }
+.dark ::-webkit-input-placeholder { color: hsl(var(--muted-foreground) / 0.8); }
+
+/* Enabled controls must not read as disabled. */
+.dark button:not(:disabled),
+.dark [role="button"]:not([aria-disabled="true"]),
+.dark [role="tab"] { opacity: 1; }
+.dark button:disabled,
+.dark [aria-disabled="true"] { opacity: 0.55; }
+
+/* Dark-on-dark guard inside popovers/tooltips/hover cards. */
+.dark :is([data-radix-popper-content-wrapper], [role="tooltip"]) :is(
+  .text-slate-900, .text-slate-800, .text-slate-700,
+  .text-gray-900, .text-gray-800, .text-gray-700, .text-black
+) {
+  color: hsl(var(--popover-foreground));
+}
+
+/* Badges / pills keep AA contrast against dark surfaces. */
+.dark .badge-soft,
+.dark [data-slot="badge"] { color: hsl(var(--foreground)); }
