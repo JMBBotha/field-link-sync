@@ -94,9 +94,11 @@ export function useVoiceAssistant() {
         publicKey?: string;
         sessionId?: string;
         assistant?: Record<string, unknown>;
+        assistantId?: string;
+        assistantOverrides?: Record<string, unknown>;
       };
       if (payload?.error) throw new Error(payload.error);
-      if (!payload.publicKey || !payload.assistant || !payload.sessionId) {
+      if (!payload.publicKey || !payload.sessionId || (!payload.assistant && !payload.assistantId)) {
         throw new Error("Voice mode is not configured yet.");
       }
 
@@ -143,7 +145,12 @@ export function useVoiceAssistant() {
         if (role === "assistant" && final) void poll();
       });
 
-      await vapi.start(payload.assistant as never);
+      if (payload.assistantId) {
+        // Saved Vapi assistant (VAPI_ASSISTANT_ID) + session-scoped overrides.
+        await vapi.start(payload.assistantId as never, payload.assistantOverrides as never);
+      } else {
+        await vapi.start(payload.assistant as never);
+      }
       pollRef.current = window.setInterval(() => void poll(), 3000);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not start voice mode");
