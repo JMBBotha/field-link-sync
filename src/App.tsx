@@ -155,6 +155,8 @@ const App = () => (
                     <Route path="map" element={<AdminMapPage />} />
                     <Route path="jobs-map" element={<AdminJobsMapPage />} />
                     <Route path="dispatch" element={<AdminDispatchPage />} />
+                    <Route path="unassigned-queue" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminUnassignedQueuePage /></RequireRole>} />
+
                     <Route path="jobs" element={<AdminJobsPage />} />
                     <Route path="jobs/dispatch" element={<AdminJobsDispatchPage />} />
                     <Route path="jobs/:id" element={<AdminJobDetailPage />} />
