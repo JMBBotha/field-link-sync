@@ -528,7 +528,9 @@ async function recordCall(input: {
       urgency: input.urgency,
       summary: input.summary,
       transcript: input.transcript,
-      recording_url: input.recordingUrl,
+      // HIPAA recordings stay private at Vapi. Playback uses provider_call_id
+      // with the authenticated artifact endpoint; never persist the private URL.
+      recording_url: null,
       outcome,
       call_category: category,
       is_existing_client: isExistingClient,

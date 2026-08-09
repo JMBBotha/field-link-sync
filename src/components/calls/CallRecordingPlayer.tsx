@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Play, Loader2, MicOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,9 +20,20 @@ interface Props {
 export default function CallRecordingPlayer({ callId, recordingUrl, className, size = "sm" }: Props) {
   const [src, setSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [unavailable, setUnavailable] = useState<string | null>(
     callId ? null : recordingUrl ? null : "No recording available",
   );
+
+  useEffect(() => {
+    return () => {
+      if (src) URL.revokeObjectURL(src);
+    };
+  }, [src]);
+
+  useEffect(() => {
+    if (src) void audioRef.current?.play().catch(() => undefined);
+  }, [src]);
 
   const load = async () => {
     if (src) return;
@@ -34,10 +45,14 @@ export default function CallRecordingPlayer({ callId, recordingUrl, className, s
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-call-recording?id=${encodeURIComponent(callId)}`;
+      if (!token) {
+        setUnavailable("Please sign in to play this recording");
+        return;
+      }
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-call-recording?callId=${encodeURIComponent(callId)}&type=stereo`;
       const res = await fetch(url, {
         headers: {
-          Authorization: `Bearer ${token ?? ""}`,
+          Authorization: `Bearer ${token}`,
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
         },
       });
@@ -73,7 +88,7 @@ export default function CallRecordingPlayer({ callId, recordingUrl, className, s
   };
 
   if (src) {
-    return <audio controls src={src} className={`w-full ${className || ""}`} />;
+    return <audio ref={audioRef} controls src={src} className={`w-full ${className || ""}`} />;
   }
 
   if (unavailable) {
