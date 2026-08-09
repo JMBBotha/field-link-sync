@@ -6511,6 +6511,7 @@ export type Database = {
         Returns: string
       }
       get_overdue_maintenance_count: { Args: never; Returns: number }
+      get_public_quote: { Args: { p_token: string }; Returns: Json }
       get_quote_by_public_token: { Args: { p_token: string }; Returns: string }
       get_recently_active_customers: {
         Args: { p_company_id: string; p_limit?: number }
