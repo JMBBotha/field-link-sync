@@ -47,6 +47,7 @@ import FlatRateBook from "./components/flatrate/FlatRateBook";
 import ReportBuilder from "./components/reports/ReportBuilder";
 import AnalyticsDashboard from "./components/analytics/AnalyticsDashboard";
 import AdminNotificationSettings from "./components/AdminNotificationSettings";
+import AdminChangeRequestsPage from "./pages/admin/AdminChangeRequestsPage";
 import AuditLogViewer from "./components/audit/AuditLogViewer";
 import AdminSettingsPage from "./components/AdminSettingsPage";
 import ServiceAgreements from "./components/ServiceAgreements";
