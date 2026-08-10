@@ -22,11 +22,13 @@ import {
 interface ChangeRequest {
   id: string;
   lead_id: string;
-  requested_by: string;
+  requested_by: string | null;
   request_type: string;
   current_value: string | null;
   requested_value: string;
   reason: string | null;
+  source?: string | null;
+  customer_message?: string | null;
   status: string;
   review_notes: string | null;
   created_at: string;
@@ -39,6 +41,14 @@ interface ChangeRequest {
     full_name: string;
   };
 }
+
+/** Customer-raised reschedule/cancellation requests are resolved server-side
+ *  so the booking is updated and the customer gets a WhatsApp reply. */
+const isCustomerRequest = (r: ChangeRequest) =>
+  r.source === "customer_whatsapp" ||
+  r.request_type === "reschedule" ||
+  r.request_type === "cancellation";
+
 
 const REQUEST_TYPE_CONFIG: Record<string, { icon: React.ReactNode; label: string }> = {
   adjust_start_time: { icon: <Clock className="h-4 w-4" />, label: "Start Time" },
