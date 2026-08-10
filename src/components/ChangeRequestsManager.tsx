@@ -120,9 +120,54 @@ const ChangeRequestsManager = ({ leadId, showAll = false }: ChangeRequestsManage
     fetchRequests();
   }, [fetchRequests]);
 
+  const resolveViaFunction = async (
+    request: ChangeRequest,
+    action: "approve" | "reject",
+  ) => {
+    const { data, error } = await supabase.functions.invoke("resolve-change-request", {
+      body: {
+        requestId: request.id,
+        action,
+        reviewNotes: reviewNotes[request.id] || null,
+      },
+    });
+    if (error) {
+      const details =
+        typeof (error as { context?: { text?: () => Promise<string> } }).context?.text ===
+        "function"
+          ? await (error as { context: { text: () => Promise<string> } }).context.text()
+          : error.message;
+      throw new Error(details || error.message);
+    }
+    if (data?.error) throw new Error(data.error);
+    return data as {
+      kind: string;
+      applied: { lead: boolean; jobs: number };
+      whatsapp?: { sent?: boolean };
+    };
+  };
+
   const handleApprove = async (request: ChangeRequest) => {
     setProcessing(request.id);
     try {
+      if (isCustomerRequest(request)) {
+        const result = await resolveViaFunction(request, "approve");
+        toast({
+          title: result.kind === "cancellation" ? "Cancelled ✓" : "Rescheduled ✓",
+          description: `${
+            result.kind === "cancellation"
+              ? "Booking cancelled"
+              : "New time applied to the booking"
+          }${result.applied?.jobs ? ` and ${result.applied.jobs} job(s)` : ""}. ${
+            result.whatsapp?.sent
+              ? "Customer notified on WhatsApp."
+              : "Customer WhatsApp notification could not be sent."
+          }`,
+        });
+        fetchRequests();
+        return;
+      }
+
       // First, apply the change to the lead
       const updates = getLeadUpdates(request);
 
@@ -168,6 +213,20 @@ const ChangeRequestsManager = ({ leadId, showAll = false }: ChangeRequestsManage
   const handleReject = async (request: ChangeRequest) => {
     setProcessing(request.id);
     try {
+      if (isCustomerRequest(request)) {
+        const result = await resolveViaFunction(request, "reject");
+        toast({
+          title: "Rejected",
+          description: `Original booking kept. ${
+            result.whatsapp?.sent
+              ? "Customer notified on WhatsApp."
+              : "Customer WhatsApp notification could not be sent."
+          }`,
+        });
+        fetchRequests();
+        return;
+      }
+
       const { error } = await supabase
         .from("lead_change_requests")
         .update({
@@ -196,6 +255,7 @@ const ChangeRequestsManager = ({ leadId, showAll = false }: ChangeRequestsManage
       setProcessing(null);
     }
   };
+
 
   const getLeadUpdates = (request: ChangeRequest): Record<string, unknown> => {
     const updates: Record<string, unknown> = {};
