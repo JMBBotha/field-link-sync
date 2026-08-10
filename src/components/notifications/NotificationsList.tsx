@@ -35,7 +35,16 @@ const typeIcons: Record<string, typeof Bell> = {
   invoice_paid: CreditCard,
   quote_status_change: FileText,
   call_logged: Phone,
+  appointment_reschedule_request: MessageSquare,
+  appointment_cancellation_request: MessageSquare,
+  whatsapp_customer_message: MessageSquare,
 };
+
+const CHANGE_REQUEST_TYPES = new Set([
+  "appointment_reschedule_request",
+  "appointment_cancellation_request",
+]);
+
 
 type FilterKey = "all" | "quotes" | "invoices" | "jobs" | "leads" | "calls";
 
@@ -50,6 +59,7 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 
 const categoryOf = (type: string): FilterKey => {
   const t = (type || "").toLowerCase();
+  if (CHANGE_REQUEST_TYPES.has(t) || t === "whatsapp_customer_message") return "leads";
   if (t.includes("call")) return "calls";
   if (t.includes("quote") || t.includes("estimate") || t.includes("proposal")) return "quotes";
   if (t.includes("invoice") || t.includes("payment")) return "invoices";
@@ -59,8 +69,10 @@ const categoryOf = (type: string): FilterKey => {
 };
 
 export const notificationHref = (type: string, relatedId?: string | null): string => {
+  if (CHANGE_REQUEST_TYPES.has((type || "").toLowerCase())) return "/admin/change-requests";
   const category = categoryOf(type);
   if (category === "calls") return "/admin/calls";
+
   if (category === "quotes") return relatedId ? `/admin/estimates/${relatedId}` : "/admin/quotes";
   if (category === "invoices") return relatedId ? `/admin/invoices/${relatedId}` : "/admin/invoices";
   if (category === "jobs") return relatedId ? `/admin/jobs/${relatedId}` : "/admin/jobs";
