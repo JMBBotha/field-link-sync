@@ -15,6 +15,8 @@ export interface JobCompletionInput {
   partsTotal: number;
   labourMinutes: number;
   photoCount: number;
+  /** False when totals could not be read (offline) — they are recomputed on sync. */
+  metricsKnown?: boolean;
 }
 
 /**
@@ -50,11 +52,22 @@ export function useJobCompletion() {
       };
 
       if (!isOnline) {
+        const metricsUnknown = input.metricsKnown === false;
+        const queued = metricsUnknown
+          ? {
+            ...record,
+            // Don't ship zeros the sync would write over real server totals.
+            parts_total: null,
+            labour_minutes: null,
+            photo_count: null,
+            __metricsUnknown: true,
+          }
+          : record;
         await queueOperation?.(
           "job_completion" as never,
           "job_completions",
           input.leadId,
-          record as never
+          queued as never
         );
         toast({
           title: "Saved offline",
