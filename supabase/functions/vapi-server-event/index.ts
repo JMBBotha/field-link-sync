@@ -259,7 +259,14 @@ export function classifyCallOrigin(body: any): {
   const callType: string | null = call.type || call.callType || null;
   const assistantId: string =
     call.assistantId || body?.message?.assistant?.id || body?.message?.assistantId || "";
-  const opsAssistantId = Deno.env.get("VAPI_OPS_ASSISTANT_ID")?.trim();
+  // The ops assistant may be configured under either env name (nl-voice-session
+  // falls back the same way), so treat both as staff-facing.
+  const opsAssistantIds = [
+    Deno.env.get("VAPI_OPS_ASSISTANT_ID"),
+    Deno.env.get("VAPI_ASSISTANT_ID"),
+  ]
+    .map((v) => v?.trim())
+    .filter(Boolean) as string[];
 
   // Explicit opt-out flag we set when starting internal sessions.
   const meta = call.metadata || body?.message?.metadata || {};
