@@ -144,7 +144,13 @@ export async function sendAppointmentConfirmation(
       .eq("id", customerId)
       .maybeSingle();
     if (cust) {
-      customerName = customerName || cust.first_name || cust.name || "";
+      // The saved customer record is authoritative — prefer it over any
+      // generic placeholder name passed in by the caller.
+      const recordName = cust.first_name || cust.name || "";
+      if (recordName && (!customerName || /^(website visitor|phone caller|there)$/i.test(customerName))) {
+        customerName = recordName;
+      }
+      customerName = customerName || recordName;
       email = email || cust.email || "";
       if (isPlaceholderAddress(address)) {
         address = cust.primary_address_line1 || cust.address || address;
