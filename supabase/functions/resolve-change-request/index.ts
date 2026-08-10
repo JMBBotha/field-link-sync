@@ -13,13 +13,26 @@ const json = (body: unknown, status = 200) =>
     headers: { ...authCorsHeaders, "Content-Type": "application/json" },
   });
 
-/** "2026-08-13 14:00" | "2026-08-13" | "14:00" -> { date, time } */
+/** Did the customer's own words mention a different day at all? */
+const DAY_WORDS =
+  /\b(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|next week|january|february|march|april|may|june|july|august|september|october|november|december|\d{1,2}[\/\-]\d{1,2})\b/i;
+
+/**
+ * "2026-08-13 14:00" | "2026-08-13" | "14:00" -> { date, time }
+ *
+ * A time-only request must NEVER move the appointment to a different day:
+ * when no date is stored (or the customer never mentioned one) we always fall
+ * back to the booking's current date.
+ */
 function parseRequestedValue(
   value: string,
   fallbackDate?: string | null,
+  customerMessage?: string | null,
 ): { date: string | null; time: string | null } {
   const v = String(value || "").trim();
-  const date = v.match(/(\d{4}-\d{2}-\d{2})/)?.[1] ?? fallbackDate ?? null;
+  const explicitDate = v.match(/(\d{4}-\d{2}-\d{2})/)?.[1] ?? null;
+  const askedForDay = DAY_WORDS.test(String(customerMessage || ""));
+  const date = (explicitDate && (askedForDay || !fallbackDate)) ? explicitDate : (fallbackDate ?? explicitDate);
   const time = v.match(/\b(\d{1,2}:\d{2})\b/)?.[1] ?? null;
   return { date, time: time ? time.padStart(5, "0") : null };
 }
@@ -72,6 +85,7 @@ Deno.serve(async (req) => {
         const { date, time } = parseRequestedValue(
           request.requested_value,
           lead?.scheduled_date ?? null,
+          request.customer_message,
         );
         if (!date || !time) {
           return json(
