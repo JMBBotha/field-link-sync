@@ -35,7 +35,16 @@ const typeIcons: Record<string, typeof Bell> = {
   invoice_paid: CreditCard,
   quote_status_change: FileText,
   call_logged: Phone,
+  appointment_reschedule_request: MessageSquare,
+  appointment_cancellation_request: MessageSquare,
+  whatsapp_customer_message: MessageSquare,
 };
+
+const CHANGE_REQUEST_TYPES = new Set([
+  "appointment_reschedule_request",
+  "appointment_cancellation_request",
+]);
+
 
 type FilterKey = "all" | "quotes" | "invoices" | "jobs" | "leads" | "calls";
 
