@@ -85,6 +85,8 @@ serve(async (req) => {
 
     const {
       full_name,
+      customer_name: customerNameAlias,
+      name: nameAlias,
       phone,
       email,
       service_type,
