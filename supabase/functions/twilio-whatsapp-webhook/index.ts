@@ -2,6 +2,12 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { extractEmail } from "../_shared/appointmentConfirmation.ts";
 import {
+  classifyInbound,
+  describeWhen,
+  notifyDispatchTeam,
+  parseRequestedWhen,
+} from "../_shared/inboundIntent.ts";
+import {
   toE164,
   twilioEnvironment,
   twiml,
