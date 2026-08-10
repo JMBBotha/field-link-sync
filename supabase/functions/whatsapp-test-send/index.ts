@@ -57,11 +57,39 @@ serve(async (req) => {
       } catch (e) {
         configError = e instanceof Error ? e.message : "not configured";
       }
+
+      // Identify WHICH Twilio account the saved credentials belong to,
+      // without ever revealing the secret values.
+      const sid = Deno.env.get("TWILIO_ACCOUNT_SID")?.trim() ?? "";
+      const token = Deno.env.get("TWILIO_AUTH_TOKEN")?.trim() ?? "";
+      let account: Record<string, unknown> | null = null;
+      if (sid && token) {
+        try {
+          const res = await fetch(
+            `https://api.twilio.com/2010-04-01/Accounts/${sid}.json`,
+            { headers: { Authorization: `Basic ${btoa(`${sid}:${token}`)}` } },
+          );
+          const payload = await res.json().catch(() => ({}));
+          account = res.ok
+            ? {
+              friendly_name: payload?.friendly_name ?? null,
+              status: payload?.status ?? null,
+              type: payload?.type ?? null,
+            }
+            : { error: payload?.message || `Twilio error ${res.status}` };
+        } catch (e) {
+          account = { error: e instanceof Error ? e.message : "lookup failed" };
+        }
+      }
+
       return json({
         ok: configured,
         environment: twilioEnvironment(),
         configured,
         from,
+        // Masked so it can be compared against the Twilio Console safely.
+        account_sid_masked: sid ? `${sid.slice(0, 6)}…${sid.slice(-4)}` : null,
+        account,
         missing: [
           !Deno.env.get("TWILIO_ACCOUNT_SID")?.trim() && "TWILIO_ACCOUNT_SID",
           !Deno.env.get("TWILIO_AUTH_TOKEN")?.trim() && "TWILIO_AUTH_TOKEN",
@@ -69,6 +97,7 @@ serve(async (req) => {
         error: configError,
       });
     }
+
 
     if (!configured) {
       return json(
