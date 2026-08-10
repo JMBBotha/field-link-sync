@@ -4,7 +4,7 @@
 // the customer their requested slot isn't available.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { authCorsHeaders, requireUser } from "../_shared/auth.ts";
-import { sendWhatsApp, toE164 } from "../_shared/whatsapp.ts";
+import { sendWhatsApp, toE164, twilioEnvironment } from "../_shared/whatsapp.ts";
 import { formatWhen, tidyAddress } from "../_shared/appointmentConfirmation.ts";
 
 const json = (body: unknown, status = 200) =>
