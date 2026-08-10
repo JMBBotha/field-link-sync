@@ -25,12 +25,21 @@ const RESCHEDULE_PATTERNS: RegExp[] = [
   /\bre-?book/i,
   /\bpostpone/i,
   /\bmove\b.*\b(appointment|booking|time|date|slot|it)\b/i,
-  /\bchang\w*\b.*\b(time|date|day|appointment|booking|slot)\b/i,
-  /\b(time|date|day|appointment|booking|slot)\b.*\bchang\w*/i,
+  // "change" and the common typos customers actually send (cahange, chnage...)
+  /\b(chang|cahang|chnag|chagn)\w*\b.*\b(time|date|day|appointment|booking|slot)\b/i,
+  /\b(time|date|day|appointment|booking|slot)\b.*\b(chang|cahang|chnag|chagn)\w*/i,
+  // "...the time to 10:30" / "...appointment to Thursday"
+  /\b(time|date|day|appointment|booking|slot)\b.*\bto\b\s*(\d{1,2}\s*[:h.]?\s*\d{0,2}\s*(am|pm)?|monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today)/i,
   /\b(different|another|new|earlier|later)\b.*\b(time|date|day|slot)\b/i,
   /\bcan (we|you|i)\b.*\b(come|make it|do it)\b.*\b(later|earlier|tomorrow|instead)\b/i,
   /\bnot? (available|home|there)\b/i,
   /\bshift\b.*\b(time|appointment|booking)\b/i,
+];
+
+/** Status questions ("was the time changed?") are queries, not requests. */
+const STATUS_QUESTION_PATTERNS: RegExp[] = [
+  /^\s*(was|were|is|are|has|have|had|did|does|do|any update|status|when)\b/i,
+  /\b(chang|mov|reschedul)\w*\s*\?\s*$/i,
 ];
 
 const CANCEL_PATTERNS: RegExp[] = [
@@ -51,9 +60,13 @@ export function classifyInbound(body: string, hasEmail: boolean): InboundIntent 
   const isOptOut = OPT_OUT.includes(upper);
   const isOptIn = OPT_IN.includes(upper);
 
-  const wantsCancel = !isOptOut && CANCEL_PATTERNS.some((r) => r.test(text));
-  const wantsReschedule = !wantsCancel && !isOptOut &&
+  const isStatusQuestion = STATUS_QUESTION_PATTERNS.some((r) => r.test(text));
+
+  const wantsCancel = !isOptOut && !isStatusQuestion &&
+    CANCEL_PATTERNS.some((r) => r.test(text));
+  const wantsReschedule = !wantsCancel && !isOptOut && !isStatusQuestion &&
     RESCHEDULE_PATTERNS.some((r) => r.test(text));
+
 
   // Everything that is left over once the email address is stripped out.
   const remainder = text.replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, "").trim();
