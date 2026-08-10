@@ -225,15 +225,18 @@ Deno.serve(async (req) => {
 
       await supabase.from("whatsapp_messages").insert({
         direction: "outbound",
-        from_number: null,
+        environment: twilioEnvironment(),
+        from_number: "system",
         to_number: toE164(phone),
         body,
-        message_sid: result.sid ?? null,
+        provider_sid: result.sid ?? null,
         status: result.ok ? (result.status ?? "queued") : "failed",
+        error_message: result.ok ? null : (result.error ?? null),
         lead_id: lead?.id ?? null,
         customer_id: lead?.customer_id ?? null,
-        metadata: { kind: `change_request_${action}`, change_request_id: requestId },
+        raw: { kind: `change_request_${action}`, change_request_id: requestId },
       });
+
 
       if (request.source === "customer_whatsapp") {
         await supabase
