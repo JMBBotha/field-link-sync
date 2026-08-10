@@ -275,7 +275,7 @@ export function classifyCallOrigin(body: any): {
   }
 
   // The operations assistant is staff-facing by definition.
-  if (opsAssistantId && assistantId && assistantId === opsAssistantId) {
+  if (assistantId && opsAssistantIds.includes(assistantId)) {
     return { internal: true, reason: "ops assistant session", callType };
   }
 
