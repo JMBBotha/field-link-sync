@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, Clock, Images, Package, Loader2, WifiOff } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -46,6 +47,7 @@ const JobCompletionSheet = ({
   const [signerName, setSignerName] = useState(customerName || "");
   const [signerEmail, setSignerEmail] = useState(customerEmail || "");
   const [saving, setSaving] = useState(false);
+  const [noSignature, setNoSignature] = useState(false);
 
   const { data: parts = [] } = useQuery({
     queryKey: ["job-used-parts", leadId],
@@ -101,7 +103,9 @@ const JobCompletionSheet = ({
     [parts]
   );
 
-  const canSubmit = !!signature && summary.trim().length >= 3 && !saving;
+  // Signature is required on site, but an office close-out (customer not
+  // present) must still be able to complete the job.
+  const canSubmit = (!!signature || noSignature) && summary.trim().length >= 3 && !saving;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -117,6 +121,9 @@ const JobCompletionSheet = ({
         partsTotal,
         labourMinutes,
         photoCount,
+        // Offline we cannot read parts/photos/time from the server, so flag the
+        // totals as unknown instead of persisting misleading zeros.
+        metricsKnown: isOnline,
       });
       if (!queued) {
         toast({ title: "Job completed", description: "Signed off and ready for invoicing." });
@@ -148,7 +155,8 @@ const JobCompletionSheet = ({
         {!isOnline && (
           <div className="mb-3 flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
             <WifiOff className="h-4 w-4" />
-            Offline — completion will be queued and synced automatically.
+            Offline — completion will be queued, and parts, photos and labour totals are
+            recalculated automatically when it syncs.
           </div>
         )}
 
@@ -156,18 +164,20 @@ const JobCompletionSheet = ({
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-lg border border-border p-2 text-center">
               <Package className="mx-auto h-4 w-4 text-muted-foreground" />
-              <p className="mt-1 text-xs font-medium">{parts.length} parts</p>
-              <p className="text-[10px] text-muted-foreground">{currency(partsTotal)}</p>
+              <p className="mt-1 text-xs font-medium">{isOnline ? `${parts.length} parts` : "Parts"}</p>
+              <p className="text-[10px] text-muted-foreground">
+                {isOnline ? currency(partsTotal) : "synced later"}
+              </p>
             </div>
             <div className="rounded-lg border border-border p-2 text-center">
               <Clock className="mx-auto h-4 w-4 text-muted-foreground" />
-              <p className="mt-1 text-xs font-medium">{labourMinutes} min</p>
-              <p className="text-[10px] text-muted-foreground">labour</p>
+              <p className="mt-1 text-xs font-medium">{isOnline ? `${labourMinutes} min` : "Labour"}</p>
+              <p className="text-[10px] text-muted-foreground">{isOnline ? "labour" : "synced later"}</p>
             </div>
             <div className="rounded-lg border border-border p-2 text-center">
               <Images className="mx-auto h-4 w-4 text-muted-foreground" />
-              <p className="mt-1 text-xs font-medium">{photoCount} photos</p>
-              <p className="text-[10px] text-muted-foreground">attached</p>
+              <p className="mt-1 text-xs font-medium">{isOnline ? `${photoCount} photos` : "Photos"}</p>
+              <p className="text-[10px] text-muted-foreground">{isOnline ? "attached" : "synced later"}</p>
             </div>
           </div>
 
@@ -222,6 +232,16 @@ const JobCompletionSheet = ({
           <div className="space-y-1.5">
             <Label>Customer signature</Label>
             <SignaturePad value={signature} onChange={setSignature} />
+            <div className="flex items-center gap-2 pt-1">
+              <Checkbox
+                id="no-signature"
+                checked={noSignature}
+                onCheckedChange={(v) => setNoSignature(v === true)}
+              />
+              <Label htmlFor="no-signature" className="text-xs font-normal text-muted-foreground">
+                Customer not available to sign (office close-out)
+              </Label>
+            </div>
           </div>
 
           <Button className="w-full" size="lg" disabled={!canSubmit} onClick={handleSubmit}>
@@ -234,7 +254,8 @@ const JobCompletionSheet = ({
           </Button>
           {!canSubmit && !saving && (
             <p className="text-center text-xs text-muted-foreground">
-              A work summary and customer signature are required.
+              A work summary and a customer signature are required — tick "customer not
+              available to sign" to close the job out from the office.
             </p>
           )}
         </div>

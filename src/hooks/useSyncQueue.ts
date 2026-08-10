@@ -463,7 +463,27 @@ export function useSyncQueue(isOnline: boolean) {
         }
         
         case 'job_completion': {
-          const record = operation.data as Record<string, unknown>;
+          const { __metricsUnknown, ...rest } = operation.data as Record<string, unknown>;
+          const record = rest;
+
+          // Offline sign-offs can't read parts/photos/time, so recompute the
+          // totals now that we're online instead of persisting zeros.
+          if (__metricsUnknown) {
+            const leadId = operation.recordId;
+            const [partsRes, photosRes, timeRes] = await Promise.all([
+              supabase.from('job_used_parts' as never).select('line_total').eq('lead_id', leadId),
+              supabase.from('job_photos' as never).select('id', { count: 'exact', head: true }).eq('lead_id', leadId),
+              supabase.from('job_time_entries').select('hours_onsite, travel_hours').eq('lead_id', leadId),
+            ]);
+            record.parts_total = ((partsRes.data as { line_total: number }[] | null) || [])
+              .reduce((sum, r) => sum + Number(r.line_total || 0), 0);
+            record.photo_count = photosRes.count ?? 0;
+            record.labour_minutes = Math.round(
+              ((timeRes.data as { hours_onsite: number; travel_hours: number }[] | null) || [])
+                .reduce((sum, r) => sum + Number(r.hours_onsite || 0) + Number(r.travel_hours || 0), 0) * 60
+            );
+          }
+
           const { error: compErr } = await supabase
             .from('job_completions' as never)
             .upsert(record as never, { onConflict: 'lead_id' });
