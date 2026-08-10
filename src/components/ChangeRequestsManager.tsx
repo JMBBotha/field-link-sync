@@ -92,12 +92,11 @@ const ChangeRequestsManager = ({ leadId, showAll = false }: ChangeRequestsManage
 
       if (error) throw error;
 
-      // Fetch requester profiles separately
-      const requestorIds = [...new Set((data || []).map(r => r.requested_by))];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", requestorIds);
+      // Fetch requester profiles separately (customer requests have none)
+      const requestorIds = [...new Set((data || []).map(r => r.requested_by).filter(Boolean))] as string[];
+      const { data: profiles } = requestorIds.length
+        ? await supabase.from("profiles").select("id, full_name").in("id", requestorIds)
+        : { data: [] as { id: string; full_name: string }[] };
 
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
@@ -105,8 +104,11 @@ const ChangeRequestsManager = ({ leadId, showAll = false }: ChangeRequestsManage
       const mapped = (data || []).map((r) => ({
         ...r,
         lead: r.lead as { customer_name: string; service_type: string } | undefined,
-        requester: profileMap.get(r.requested_by) as { full_name: string } | undefined,
+        requester: (r.requested_by ? profileMap.get(r.requested_by) : undefined) as
+          | { full_name: string }
+          | undefined,
       }));
+
 
       setRequests(mapped);
     } catch (error) {
