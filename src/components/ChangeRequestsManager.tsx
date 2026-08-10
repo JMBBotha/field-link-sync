@@ -22,11 +22,13 @@ import {
 interface ChangeRequest {
   id: string;
   lead_id: string;
-  requested_by: string;
+  requested_by: string | null;
   request_type: string;
   current_value: string | null;
   requested_value: string;
   reason: string | null;
+  source?: string | null;
+  customer_message?: string | null;
   status: string;
   review_notes: string | null;
   created_at: string;
@@ -40,13 +42,24 @@ interface ChangeRequest {
   };
 }
 
+/** Customer-raised reschedule/cancellation requests are resolved server-side
+ *  so the booking is updated and the customer gets a WhatsApp reply. */
+const isCustomerRequest = (r: ChangeRequest) =>
+  r.source === "customer_whatsapp" ||
+  r.request_type === "reschedule" ||
+  r.request_type === "cancellation";
+
+
 const REQUEST_TYPE_CONFIG: Record<string, { icon: React.ReactNode; label: string }> = {
   adjust_start_time: { icon: <Clock className="h-4 w-4" />, label: "Start Time" },
   adjust_scheduled_date: { icon: <Calendar className="h-4 w-4" />, label: "Scheduled Date" },
   adjust_completed_time: { icon: <CheckCircle2 className="h-4 w-4" />, label: "Completion Time" },
   adjust_duration: { icon: <Timer className="h-4 w-4" />, label: "Duration" },
   adjust_job_times: { icon: <Clock className="h-4 w-4" />, label: "Job Times" },
+  reschedule: { icon: <Calendar className="h-4 w-4" />, label: "Reschedule (customer)" },
+  cancellation: { icon: <X className="h-4 w-4" />, label: "Cancellation (customer)" },
 };
+
 
 interface ChangeRequestsManagerProps {
   leadId?: string; // Optional - filter by lead
@@ -82,12 +95,11 @@ const ChangeRequestsManager = ({ leadId, showAll = false }: ChangeRequestsManage
 
       if (error) throw error;
 
-      // Fetch requester profiles separately
-      const requestorIds = [...new Set((data || []).map(r => r.requested_by))];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", requestorIds);
+      // Fetch requester profiles separately (customer requests have none)
+      const requestorIds = [...new Set((data || []).map(r => r.requested_by).filter(Boolean))] as string[];
+      const { data: profiles } = requestorIds.length
+        ? await supabase.from("profiles").select("id, full_name").in("id", requestorIds)
+        : { data: [] as { id: string; full_name: string }[] };
 
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
@@ -95,8 +107,11 @@ const ChangeRequestsManager = ({ leadId, showAll = false }: ChangeRequestsManage
       const mapped = (data || []).map((r) => ({
         ...r,
         lead: r.lead as { customer_name: string; service_type: string } | undefined,
-        requester: profileMap.get(r.requested_by) as { full_name: string } | undefined,
+        requester: (r.requested_by ? profileMap.get(r.requested_by) : undefined) as
+          | { full_name: string }
+          | undefined,
       }));
+
 
       setRequests(mapped);
     } catch (error) {
@@ -110,9 +125,54 @@ const ChangeRequestsManager = ({ leadId, showAll = false }: ChangeRequestsManage
     fetchRequests();
   }, [fetchRequests]);
 
+  const resolveViaFunction = async (
+    request: ChangeRequest,
+    action: "approve" | "reject",
+  ) => {
+    const { data, error } = await supabase.functions.invoke("resolve-change-request", {
+      body: {
+        requestId: request.id,
+        action,
+        reviewNotes: reviewNotes[request.id] || null,
+      },
+    });
+    if (error) {
+      const details =
+        typeof (error as { context?: { text?: () => Promise<string> } }).context?.text ===
+        "function"
+          ? await (error as { context: { text: () => Promise<string> } }).context.text()
+          : error.message;
+      throw new Error(details || error.message);
+    }
+    if (data?.error) throw new Error(data.error);
+    return data as {
+      kind: string;
+      applied: { lead: boolean; jobs: number };
+      whatsapp?: { sent?: boolean };
+    };
+  };
+
   const handleApprove = async (request: ChangeRequest) => {
     setProcessing(request.id);
     try {
+      if (isCustomerRequest(request)) {
+        const result = await resolveViaFunction(request, "approve");
+        toast({
+          title: result.kind === "cancellation" ? "Cancelled ✓" : "Rescheduled ✓",
+          description: `${
+            result.kind === "cancellation"
+              ? "Booking cancelled"
+              : "New time applied to the booking"
+          }${result.applied?.jobs ? ` and ${result.applied.jobs} job(s)` : ""}. ${
+            result.whatsapp?.sent
+              ? "Customer notified on WhatsApp."
+              : "Customer WhatsApp notification could not be sent."
+          }`,
+        });
+        fetchRequests();
+        return;
+      }
+
       // First, apply the change to the lead
       const updates = getLeadUpdates(request);
 
@@ -158,6 +218,20 @@ const ChangeRequestsManager = ({ leadId, showAll = false }: ChangeRequestsManage
   const handleReject = async (request: ChangeRequest) => {
     setProcessing(request.id);
     try {
+      if (isCustomerRequest(request)) {
+        const result = await resolveViaFunction(request, "reject");
+        toast({
+          title: "Rejected",
+          description: `Original booking kept. ${
+            result.whatsapp?.sent
+              ? "Customer notified on WhatsApp."
+              : "Customer WhatsApp notification could not be sent."
+          }`,
+        });
+        fetchRequests();
+        return;
+      }
+
       const { error } = await supabase
         .from("lead_change_requests")
         .update({
@@ -186,6 +260,7 @@ const ChangeRequestsManager = ({ leadId, showAll = false }: ChangeRequestsManage
       setProcessing(null);
     }
   };
+
 
   const getLeadUpdates = (request: ChangeRequest): Record<string, unknown> => {
     const updates: Record<string, unknown> = {};
@@ -326,14 +401,23 @@ const ChangeRequestsManager = ({ leadId, showAll = false }: ChangeRequestsManage
               </CardHeader>
               <CardContent className="space-y-3">
                 {/* Requester info */}
-                {request.requester && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <User className="h-3 w-3" />
-                    <span>{request.requester.full_name}</span>
-                    <span>•</span>
-                    <span>{format(new Date(request.created_at), "MMM d, h:mm a")}</span>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <User className="h-3 w-3" />
+                  <span>
+                    {request.requester?.full_name ||
+                      (request.source === "customer_whatsapp" ? "Customer (WhatsApp)" : "System")}
+                  </span>
+                  <span>•</span>
+                  <span>{format(new Date(request.created_at), "MMM d, h:mm a")}</span>
+                </div>
+
+                {request.customer_message && (
+                  <div className="text-sm rounded bg-muted/50 p-2">
+                    <p className="text-xs text-muted-foreground">Customer said</p>
+                    <p className="italic">"{request.customer_message}"</p>
                   </div>
                 )}
+
 
                 {/* Current vs Requested */}
                 <div className="grid grid-cols-2 gap-2 text-sm">
