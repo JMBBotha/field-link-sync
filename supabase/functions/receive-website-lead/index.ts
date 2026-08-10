@@ -114,7 +114,7 @@ serve(async (req) => {
     }
 
     const normalizedPhone = normalizePhone(phone);
-    const customerName = full_name || "Website Visitor";
+    const customerName = full_name || customerNameAlias || nameAlias || "Website Visitor";
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
