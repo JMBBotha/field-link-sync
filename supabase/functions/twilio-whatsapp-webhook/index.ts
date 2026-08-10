@@ -232,11 +232,18 @@ serve(async (req) => {
             source: "customer_whatsapp",
             status: "pending",
             current_value: currentValue,
+            // IMPORTANT: only store a date when the customer actually asked for
+            // a different day. A time-only request must keep the booked date —
+            // baking in today's value here caused stale dates to be applied at
+            // approval time (appointment silently jumped to another day).
             requested_value: intent.wantsCancel
               ? "cancel appointment"
-              : (when.date || when.time
-                ? `${when.date ?? currentValue?.slice(0, 10) ?? ""} ${when.time ?? ""}`.trim()
-                : "unspecified — customer asked to change the time"),
+              : (when.date
+                ? `${when.date} ${when.time ?? ""}`.trim()
+                : (when.time
+                  ? when.time
+                  : "unspecified — customer asked to change the time")),
+
             reason: `Customer WhatsApp request from ${from}`,
             customer_message: body,
           })
