@@ -56,7 +56,10 @@ const REQUEST_TYPE_CONFIG: Record<string, { icon: React.ReactNode; label: string
   adjust_completed_time: { icon: <CheckCircle2 className="h-4 w-4" />, label: "Completion Time" },
   adjust_duration: { icon: <Timer className="h-4 w-4" />, label: "Duration" },
   adjust_job_times: { icon: <Clock className="h-4 w-4" />, label: "Job Times" },
+  reschedule: { icon: <Calendar className="h-4 w-4" />, label: "Reschedule (customer)" },
+  cancellation: { icon: <X className="h-4 w-4" />, label: "Cancellation (customer)" },
 };
+
 
 interface ChangeRequestsManagerProps {
   leadId?: string; // Optional - filter by lead
