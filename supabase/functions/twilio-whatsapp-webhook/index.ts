@@ -86,7 +86,7 @@ serve(async (req) => {
     const { data: lead } = await supabase
       .from("leads")
       .select("id")
-      .ilike("phone", `%${last9}`)
+      .or(`phone.ilike.%${last9},customer_phone.ilike.%${last9}`)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
