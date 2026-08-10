@@ -401,14 +401,23 @@ const ChangeRequestsManager = ({ leadId, showAll = false }: ChangeRequestsManage
               </CardHeader>
               <CardContent className="space-y-3">
                 {/* Requester info */}
-                {request.requester && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <User className="h-3 w-3" />
-                    <span>{request.requester.full_name}</span>
-                    <span>•</span>
-                    <span>{format(new Date(request.created_at), "MMM d, h:mm a")}</span>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <User className="h-3 w-3" />
+                  <span>
+                    {request.requester?.full_name ||
+                      (request.source === "customer_whatsapp" ? "Customer (WhatsApp)" : "System")}
+                  </span>
+                  <span>•</span>
+                  <span>{format(new Date(request.created_at), "MMM d, h:mm a")}</span>
+                </div>
+
+                {request.customer_message && (
+                  <div className="text-sm rounded bg-muted/50 p-2">
+                    <p className="text-xs text-muted-foreground">Customer said</p>
+                    <p className="italic">"{request.customer_message}"</p>
                   </div>
                 )}
+
 
                 {/* Current vs Requested */}
                 <div className="grid grid-cols-2 gap-2 text-sm">
