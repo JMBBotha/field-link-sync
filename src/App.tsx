@@ -188,6 +188,8 @@ const App = () => (
                     <Route path="reports/vat" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]}><VatSummaryReportPage /></RequireRole>} />
                     <Route path="analytics" element={<RequireRole allowedRoles={["admin", "dispatcher", "viewer"]}><AnalyticsDashboard /></RequireRole>} />
                     <Route path="notifications" element={<RequireRole allowedRoles={["admin"]}><AdminNotificationSettings /></RequireRole>} />
+                    <Route path="change-requests" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminChangeRequestsPage /></RequireRole>} />
+
                     <Route path="audit" element={<RequireRole allowedRoles={["admin"]}><AuditLogViewer /></RequireRole>} />
                     <Route path="import" element={<RequireRole allowedRoles={["admin"]}><AdminImportPage /></RequireRole>} />
                     <Route path="settings" element={<RequireRole allowedRoles={["admin"]}><AdminSettingsPage /></RequireRole>} />
