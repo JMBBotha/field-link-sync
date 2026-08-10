@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendAppointmentConfirmation } from "../_shared/appointmentConfirmation.ts";
 
 /**
  * book-appointment
@@ -156,7 +157,7 @@ serve(async (req) => {
       ].join(",");
       const { data } = await supabase
         .from("customers")
-        .select("id, name, phone, address, primary_address_line1, company_id")
+        .select("id, name, email, phone, address, primary_address_line1, company_id")
         .or(orFilter)
         .limit(1);
       customer = data?.[0] || null;
@@ -172,7 +173,7 @@ serve(async (req) => {
           status: "active",
           lead_source: "other",
         })
-        .select("id, name, phone, address, primary_address_line1, company_id")
+        .select("id, name, email, phone, address, primary_address_line1, company_id")
         .single();
       if (error) {
         console.error("[book-appointment] customer insert failed:", error);
@@ -349,12 +350,35 @@ serve(async (req) => {
       `Tell them it is confirmed in the system and they will get a reminder. Do not say anyone needs to call them back.`;
 
 
+    // --- WhatsApp confirmation (uses data we already captured) -------------
+    let whatsappConfirmation = { sent: false, askedForEmail: false } as {
+      sent: boolean; askedForEmail: boolean; error?: string;
+    };
+    try {
+      whatsappConfirmation = await sendAppointmentConfirmation({
+        supabase,
+        phone: phone || customer.phone,
+        customerName: customer.name,
+        serviceType,
+        scheduledFor: when.iso,
+        address,
+        customerId: customer.id,
+        leadId,
+        email: customer.email,
+        rescheduled: jobMoved,
+      });
+    } catch (e) {
+      console.error("[book-appointment] whatsapp confirmation failed:", e);
+    }
+
     console.log(`[book-appointment] booked lead=${leadId} job=${jobCreated} at ${when.iso}`);
 
     return new Response(JSON.stringify({
       success: true,
       lead_id: leadId,
       job_created: jobCreated,
+      whatsapp_sent: whatsappConfirmation.sent,
+      email_requested: whatsappConfirmation.askedForEmail,
       scheduled_for: when.iso,
       address,
       result: confirmation,

@@ -6050,6 +6050,60 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_conversation_state: {
+        Row: {
+          context: Json
+          created_at: string
+          customer_id: string | null
+          expires_at: string
+          id: string
+          job_id: string | null
+          lead_id: string | null
+          phone: string
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          context?: Json
+          created_at?: string
+          customer_id?: string | null
+          expires_at?: string
+          id?: string
+          job_id?: string | null
+          lead_id?: string | null
+          phone: string
+          state: string
+          updated_at?: string
+        }
+        Update: {
+          context?: Json
+          created_at?: string
+          customer_id?: string | null
+          expires_at?: string
+          id?: string
+          job_id?: string | null
+          lead_id?: string | null
+          phone?: string
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_conversation_state_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_conversation_state_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_messages: {
         Row: {
           body: string | null

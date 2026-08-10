@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { trustedCompanyId } from "../_shared/leadIntake.ts";
+import { sendAppointmentConfirmation } from "../_shared/appointmentConfirmation.ts";
 
 /**
  * receive-website-lead
@@ -235,8 +236,33 @@ serve(async (req) => {
 
     console.log(`[receive-website-lead] Lead created: ${newLead.id} (geocoded: ${!!geo})`);
 
+    // When the website form captured a preferred date, treat it as a booked
+    // appointment and send the WhatsApp confirmation straight away.
+    let whatsappConfirmed = false;
+    let emailRequested = false;
+    if (preferred_date) {
+      try {
+        const conf = await sendAppointmentConfirmation({
+          supabase,
+          phone: normalizedPhone,
+          customerName,
+          serviceType: mapServiceType(service_type),
+          date: preferred_date,
+          time: preferred_time,
+          address,
+          customerId,
+          leadId: newLead.id,
+          email: email || null,
+        });
+        whatsappConfirmed = conf.sent;
+        emailRequested = conf.askedForEmail;
+      } catch (e) {
+        console.error("[receive-website-lead] confirmation send failed:", e);
+      }
+    }
+
     let whatsappQueued = false;
-    if (customerId) {
+    if (customerId && !whatsappConfirmed) {
       try {
         const { error: notifError } = await supabase
           .from("notification_queue")
@@ -275,6 +301,8 @@ serve(async (req) => {
       is_existing_customer: isExistingCustomer,
       geocoded: !!geo,
       whatsapp_queued: whatsappQueued,
+      whatsapp_confirmation_sent: whatsappConfirmed,
+      email_requested: emailRequested,
       company_id: resolvedCompanyId,
       message: "Lead received — a specialist will be in touch shortly.",
     };
