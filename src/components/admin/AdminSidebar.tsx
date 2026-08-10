@@ -146,6 +146,7 @@ const AdminSidebar = ({
             { path: "/admin/jobs/dispatch", label: "Dispatch Board", icon: ClipboardList },
             { path: "/admin/schedule", label: "Schedule", icon: CalendarDays },
             { path: "/admin/my-jobs", label: "My Jobs", icon: Briefcase },
+            { path: "/admin/change-requests", label: "Change Requests", icon: CalendarDays, roles: ["admin", "dispatcher"] },
             { path: "/admin/maintenance", label: "Maintenance", icon: Wrench, roles: ["admin", "dispatcher"] },
           ],
         },
