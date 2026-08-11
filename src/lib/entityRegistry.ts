@@ -172,6 +172,34 @@ export const ENTITY_REGISTRY: Record<EntityType, EntityConfig> = {
       { key: "notes", label: "Notes", kind: "textarea", wide: true },
     ],
   },
+  project: {
+    type: "project",
+    table: "fb_projects",
+    label: "Project",
+    select: "*",
+    cacheKeys: ["project", "fb-projects", "fb-project-detail", "projects"],
+    fields: [
+      { key: "name", label: "Project Name", kind: "text", wide: true },
+      {
+        key: "status",
+        label: "Status",
+        kind: "select",
+        options: ["active", "on_hold", "completed", "archived"].map((v) => ({
+          value: v,
+          label: v.replace(/_/g, " "),
+        })),
+      },
+      { key: "budget", label: "Budget (R)", kind: "number" },
+      {
+        key: "client_id",
+        label: "Client",
+        kind: "select",
+        optionSource: "fb_contacts",
+        wide: true,
+      },
+    ],
+  },
 };
+
 
 export const getEntityConfig = (type: EntityType) => ENTITY_REGISTRY[type];
