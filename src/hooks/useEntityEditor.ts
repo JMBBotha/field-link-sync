@@ -125,8 +125,10 @@ export function useEntityEditor(
       return { previous, rollbackLists };
     },
     onError: (err: any, _patch, ctx) => {
-      if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous);
+      // Roll the list caches back first: the entity's own key is also covered by
+      // `cacheKeys`, and its snapshot was taken after the single-key patch.
       ctx?.rollbackLists?.();
+      if (ctx?.previous !== undefined) qc.setQueryData(queryKey, ctx.previous);
       toast({
         title: "Couldn't save change",
         description: err?.message || "Reverted.",
