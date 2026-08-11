@@ -6,10 +6,11 @@
  * mutating (via the `update_entity` RPC), optimistic cache patching and realtime.
  */
 
-export type EntityType = "lead" | "job" | "client";
+export type EntityType = "lead" | "job" | "client" | "project";
 
 export type EditableFieldKind =
   | "text"
+  | "number"
   | "email"
   | "tel"
   | "textarea"
