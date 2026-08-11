@@ -216,6 +216,10 @@ const AdminJobDetailPage = () => {
                 </div>
               )}
             </div>
+          </CardContent>
+        </Card>
+
+
 
 
         {/* Linked invoice */}
