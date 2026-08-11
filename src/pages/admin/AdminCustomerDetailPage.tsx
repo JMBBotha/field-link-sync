@@ -362,7 +362,7 @@ const AdminCustomerDetailPage = () => {
                   ]}
                   className="grid-cols-1"
                 />
-                </div>
+
               </CardContent>
             </Card>
 
