@@ -136,6 +136,9 @@ const EntityDetailsForm = ({
               return <EditableField {...shared} type="email" />;
             case "tel":
               return <EditableField {...shared} type="tel" />;
+            case "number":
+              return <EditableField {...shared} type="number" />;
+
             default:
               return <EditableField {...shared} placeholder={field.placeholder} />;
           }
