@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import InvoiceForm from "./InvoiceForm";
 import JobCompletionFlow from "./JobCompletionFlow";
 import CustomerProfile from "./CustomerProfile";
-import EditLeadDialog from "./EditLeadDialog";
+import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
 import JobDurationPicker from "./JobDurationPicker";
 import JobProgressSection from "./JobProgressSection";
 import { PhotoGallery } from "./PhotoGallery";
