@@ -161,7 +161,6 @@ const LeadDetailSheet = ({
   const [showCompletionFlow, setShowCompletionFlow] = useState(false);
   const [showSignOff, setShowSignOff] = useState(false);
   const [showCustomerProfile, setShowCustomerProfile] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [showChangeRequestDialog, setShowChangeRequestDialog] = useState(false);
   const [showAcceptDialog, setShowAcceptDialog] = useState(false);
@@ -733,7 +732,7 @@ const LeadDetailSheet = ({
               />
               
               {/* Secondary actions row - Photo, Edit, Time Change */}
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-2 gap-1.5">
                 <Button
                   variant="outline"
                   size="sm"
@@ -755,18 +754,6 @@ const LeadDetailSheet = ({
                     </>
                   )}
                 </Button>
-
-                {canEdit && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-11 rounded-lg text-xs px-2"
-                    onClick={() => setShowEditDialog(true)}
-                  >
-                    <Pencil className="h-3.5 w-3.5 mr-1" />
-                    Edit
-                  </Button>
-                )}
 
                 {isOwner && (isClaimed || isInProgress || isCompleted) && (
                   <Button
@@ -960,17 +947,6 @@ const LeadDetailSheet = ({
                   )}
                 </Button>
 
-                {canEdit && (
-                  <Button
-                    variant="outline"
-                    className="h-12 px-3 shrink-0"
-                    onClick={() => setShowEditDialog(true)}
-                    aria-label="Edit notes"
-                  >
-                    <Pencil className="h-5 w-5" />
-                  </Button>
-                )}
-
 
                 {isAvailable && (
                   <Button
@@ -1058,14 +1034,6 @@ const LeadDetailSheet = ({
         customerId={lead.customer_id || null}
         open={showCustomerProfile}
         onClose={() => setShowCustomerProfile(false)}
-      />
-
-      {/* Edit Lead Dialog */}
-      <EditLeadDialog
-        lead={lead}
-        open={showEditDialog}
-        onOpenChange={setShowEditDialog}
-        onSuccess={onLeadUpdated}
       />
 
       {/* Job Duration Picker */}
