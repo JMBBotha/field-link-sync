@@ -108,6 +108,7 @@ const App = () => (
       <TooltipProvider>
         <OfflineProvider>
           <ErrorBoundary>
+            <EntityRealtimeSync />
             <OfflineBanner />
             <Toaster />
             <Sonner />
