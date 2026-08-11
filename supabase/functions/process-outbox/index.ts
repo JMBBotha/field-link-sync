@@ -129,10 +129,61 @@ async function recalcInvoice(ev: OutboxEvent) {
   return { recalculated: results };
 }
 
+async function notifyTeam(ev: OutboxEvent) {
+  const next = ev.payload?.new ?? {};
+  const changed: string[] = ev.payload?.changed ?? [];
+  const actor: string | null = ev.payload?.actor ?? null;
+
+  const label =
+    next.customer_name || next.title || next.name || "Record";
+  const bits: string[] = [];
+  if (changed.includes("status")) bits.push(`status \u2192 ${next.status}`);
+  if (changed.includes("priority")) bits.push(`priority \u2192 ${next.priority}`);
+  if (changed.some((c) => ["scheduled_date", "scheduled_time", "scheduled_for"].includes(c))) {
+    bits.push(
+      `scheduled ${fmtDate(next.scheduled_date) || next.scheduled_for || ""}${
+        next.scheduled_time ? ` ${String(next.scheduled_time).slice(0, 5)}` : ""
+      }`.trim(),
+    );
+  }
+  if (changed.includes("assigned_agent_id")) bits.push("reassigned");
+  if (!bits.length) return { skipped: "nothing notable" };
+
+  const title = `${ev.entity_type === "lead" ? "Job" : ev.entity_type[0].toUpperCase() + ev.entity_type.slice(1)} updated`;
+  const body = `${label}: ${bits.join(", ")}`;
+
+  // Admins + dispatchers in the same company, plus the assigned technician.
+  const recipients = new Set<string>();
+  const { data: staff } = await admin
+    .from("user_roles")
+    .select("user_id, role, profiles!inner(company_id)")
+    .in("role", ["admin", "dispatcher"]);
+  (staff ?? []).forEach((r: any) => {
+    if (!ev.company_id || r.profiles?.company_id === ev.company_id) recipients.add(r.user_id);
+  });
+  if (next.assigned_agent_id) recipients.add(next.assigned_agent_id);
+  if (actor) recipients.delete(actor);
+  if (!recipients.size) return { skipped: "no recipients" };
+
+  const { error } = await admin.from("notifications").insert(
+    [...recipients].map((user_id) => ({
+      user_id,
+      type: "entity_update",
+      title,
+      body,
+      related_id: ev.entity_id,
+    })),
+  );
+  if (error) throw error;
+  return { notified: recipients.size };
+}
+
 async function handle(ev: OutboxEvent) {
   switch (ev.event_type) {
     case "notify_customer":
       return await notifyCustomer(ev);
+    case "notify_team":
+      return await notifyTeam(ev);
     case "recalc_invoice":
       return await recalcInvoice(ev);
     case "entity_updated":

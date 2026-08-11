@@ -56,6 +56,21 @@ const EntityDetailsForm = ({
     },
   });
 
+  const needsContacts = config.fields.some((f) => f.optionSource === "fb_contacts");
+  const { data: contacts = [] } = useQuery({
+    queryKey: ["entity-form-fb-contacts"],
+    enabled: needsContacts,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fb_contacts")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const fields = useMemo(() => {
     if (!visibleFields) return config.fields;
     return visibleFields
@@ -70,8 +85,12 @@ const EntityDetailsForm = ({
         label: a.full_name || "Unnamed",
       }));
     }
+    if (field.optionSource === "fb_contacts") {
+      return contacts.map((c: any) => ({ value: c.id, label: c.name || "Unnamed" }));
+    }
     return field.options ?? [];
   };
+
 
   if (isLoading && !data) {
     return (
@@ -117,6 +136,9 @@ const EntityDetailsForm = ({
               return <EditableField {...shared} type="email" />;
             case "tel":
               return <EditableField {...shared} type="tel" />;
+            case "number":
+              return <EditableField {...shared} type="number" />;
+
             default:
               return <EditableField {...shared} placeholder={field.placeholder} />;
           }

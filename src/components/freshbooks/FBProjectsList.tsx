@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
+import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
 
@@ -174,17 +175,12 @@ const FBProjectsList = () => {
 
                 <CollapsibleContent>
                   <div className="border-t border-border p-5 space-y-4">
-                    <div className="flex gap-2">
-                      <Select value={p.status} onValueChange={v => updateMutation.mutate({ id: p.id, status: v })}>
-                        <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                          <SelectItem value="on_hold">On Hold</SelectItem>
-                          <SelectItem value="archived">Archived</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <EntityDetailsForm
+                      entityType="project"
+                      entityId={p.id}
+                      initialData={p}
+                    />
+
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                       <div className="bg-muted/50 rounded-lg p-3 text-center">
