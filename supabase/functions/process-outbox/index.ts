@@ -67,25 +67,21 @@ async function notifyCustomer(ev: OutboxEvent) {
 
   await admin.from("communication_log").insert({
     lead_id: ev.entity_type === "lead" ? ev.entity_id : null,
-    channel: "whatsapp",
-    direction: "outbound",
-    content: body,
-    company_id: ev.company_id,
+    type: "whatsapp",
+    subject: "Job update",
+    body,
   });
 
   return result;
 }
 
 async function recalcInvoice(ev: OutboxEvent) {
-  const leadId = ev.entity_type === "lead" ? ev.entity_id : null;
-  const jobId = ev.entity_type === "job" ? ev.entity_id : null;
+  if (ev.entity_type !== "lead") return { skipped: "no linked invoice source" };
 
-  let invoiceQuery = admin.from("invoices").select("id, status");
-  if (leadId) invoiceQuery = invoiceQuery.eq("lead_id", leadId);
-  else if (jobId) invoiceQuery = invoiceQuery.eq("job_id", jobId);
-  else return { skipped: "no linked entity" };
-
-  const { data: invoices, error } = await invoiceQuery;
+  const { data: invoices, error } = await admin
+    .from("invoices")
+    .select("id, status, tax_rate, line_items")
+    .eq("lead_id", ev.entity_id);
   if (error) throw error;
   if (!invoices?.length) return { skipped: "no linked invoice" };
 
@@ -93,20 +89,32 @@ async function recalcInvoice(ev: OutboxEvent) {
   for (const inv of invoices) {
     const { data: items } = await admin
       .from("invoice_items")
-      .select("quantity, unit_price, total")
+      .select("quantity, unit_price, amount")
       .eq("invoice_id", inv.id);
 
-    const subtotal = (items ?? []).reduce(
-      (sum: number, it: any) =>
-        sum + Number(it.total ?? Number(it.quantity ?? 0) * Number(it.unit_price ?? 0)),
-      0,
-    );
-    const vat = Math.round(subtotal * 0.15 * 100) / 100;
-    const grand = Math.round((subtotal + vat) * 100) / 100;
+    const rows = items?.length
+      ? items
+      : Array.isArray(inv.line_items)
+        ? (inv.line_items as any[])
+        : [];
+
+    const subtotal =
+      Math.round(
+        rows.reduce(
+          (sum: number, it: any) =>
+            sum +
+            Number(it.amount ?? Number(it.quantity ?? 0) * Number(it.unit_price ?? 0)),
+          0,
+        ) * 100,
+      ) / 100;
+
+    const rate = Number(inv.tax_rate ?? 15);
+    const tax = Math.round(subtotal * (rate / 100) * 100) / 100;
+    const grand = Math.round((subtotal + tax) * 100) / 100;
 
     const patch: Record<string, any> = {
       subtotal,
-      vat_amount: vat,
+      tax_amount: tax,
       grand_total: grand,
       updated_at: new Date().toISOString(),
     };
