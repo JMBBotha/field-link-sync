@@ -632,3 +632,5 @@ const EmptyRow = ({ cols, text }: { cols: number; text: string }) => (
   </TableRow>
 );
 
+
+export default AdminCustomerDetailPage;
