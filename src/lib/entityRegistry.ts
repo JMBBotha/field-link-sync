@@ -27,7 +27,7 @@ export interface EntityFieldConfig {
   /** Options for `select` fields. */
   options?: { value: string; label: string }[];
   /** Resolve options dynamically (e.g. agents list) via the form's optionSources. */
-  optionSource?: "agents" | "customers";
+  optionSource?: "agents" | "customers" | "fb_contacts";
   placeholder?: string;
   /** Rendered full width in the two-column grid. */
   wide?: boolean;
