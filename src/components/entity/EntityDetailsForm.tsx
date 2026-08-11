@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
@@ -93,7 +93,6 @@ const EntityDetailsForm = ({
     <div className={cn("grid grid-cols-2 gap-x-4 gap-y-3", className)}>
       {fields.map((field) => {
         const shared = {
-          key: field.key,
           label: field.label,
           value: data[field.key],
           saving: savingField === field.key,
@@ -102,24 +101,28 @@ const EntityDetailsForm = ({
           className: field.wide ? "col-span-2" : undefined,
         };
 
-        switch (field.kind) {
-          case "select":
-            return <EditableSelect {...shared} options={optionsFor(field)} />;
-          case "textarea":
-            return <EditableNotes {...shared} placeholder={field.placeholder} />;
-          case "datetime":
-            return <EditableDateTime {...shared} />;
-          case "date":
-            return <EditableField {...shared} type="date" />;
-          case "time":
-            return <EditableField {...shared} type="time" />;
-          case "email":
-            return <EditableField {...shared} type="email" />;
-          case "tel":
-            return <EditableField {...shared} type="tel" />;
-          default:
-            return <EditableField {...shared} placeholder={field.placeholder} />;
-        }
+        const render = () => {
+          switch (field.kind) {
+            case "select":
+              return <EditableSelect {...shared} options={optionsFor(field)} />;
+            case "textarea":
+              return <EditableNotes {...shared} placeholder={field.placeholder} />;
+            case "datetime":
+              return <EditableDateTime {...shared} />;
+            case "date":
+              return <EditableField {...shared} type="date" />;
+            case "time":
+              return <EditableField {...shared} type="time" />;
+            case "email":
+              return <EditableField {...shared} type="email" />;
+            case "tel":
+              return <EditableField {...shared} type="tel" />;
+            default:
+              return <EditableField {...shared} placeholder={field.placeholder} />;
+          }
+        };
+
+        return <Fragment key={field.key}>{render()}</Fragment>;
       })}
     </div>
   );
