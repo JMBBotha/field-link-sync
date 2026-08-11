@@ -171,9 +171,21 @@ const AdminJobDetailPage = () => {
               </div>
             </div>
 
-            {j.description && (
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{j.description}</p>
-            )}
+            <EntityDetailsForm
+              entityType="job"
+              entityId={j.id}
+              initialData={j}
+              visibleFields={[
+                "title",
+                "status",
+                "priority",
+                "job_type",
+                "scheduled_for",
+                "estimated_duration",
+                "address",
+                "description",
+              ]}
+            />
 
             <div className="grid gap-2 text-sm">
               {j.customers?.name && (
@@ -188,7 +200,7 @@ const AdminJobDetailPage = () => {
                   {j.customers.phone && <span className="text-xs">· {j.customers.phone}</span>}
                 </div>
               )}
-              {(location?.label || location?.address_line1 || j.address) && (
+              {(location?.label || location?.address_line1) && (
                 <div className="flex items-start gap-2 text-muted-foreground">
                   <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
                   <span className="text-foreground">
@@ -200,27 +212,11 @@ const AdminJobDetailPage = () => {
                         {location.city ? `, ${location.city}` : ""}
                       </>
                     )}
-                    {!location && j.address}
                   </span>
-                </div>
-              )}
-              {j.scheduled_for && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <CalendarDays className="h-4 w-4 shrink-0" />
-                  <span className="text-foreground">
-                    {format(new Date(j.scheduled_for), "EEE dd MMM yyyy · HH:mm")}
-                  </span>
-                </div>
-              )}
-              {j.estimated_duration && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Clock className="h-4 w-4 shrink-0" />
-                  <span className="text-foreground">Est. {j.estimated_duration}</span>
                 </div>
               )}
             </div>
-          </CardContent>
-        </Card>
+
 
         {/* Linked invoice */}
         {invoice?.id && (
