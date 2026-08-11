@@ -6459,6 +6459,14 @@ export type Database = {
         }[]
       }
       backfill_leads_to_customers: { Args: never; Returns: Json }
+      broadcast_lead_to_agents: {
+        Args: { p_lead_id: string; p_radius_km?: number }
+        Returns: {
+          agent_id: string
+          distance_km: number
+          offer_method: string
+        }[]
+      }
       calculate_distance_km: {
         Args: { lat1: number; lat2: number; lng1: number; lng2: number }
         Returns: number
