@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { formatRand } from "@/utils/formatRand";
 import CustomerLocationsManager from "@/components/customers/CustomerLocationsManager";
 import QuickTemplateDialog from "@/components/quoting/QuickTemplateDialog";
+import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
 
 import { LEAD_SOURCE_OPTIONS, DEFAULT_LEAD_SOURCE, toLeadSourceValue, leadSourceLabel } from "@/lib/leadSources";
 
@@ -70,7 +71,6 @@ const AdminCustomerDetailPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [showEdit, setShowEdit] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
 
   const { data: customer, isLoading } = useQuery({
@@ -276,15 +276,6 @@ const AdminCustomerDetailPage = () => {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-2xl font-bold">{headerName}</h1>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground"
-            onClick={() => setShowEdit(true)}
-            aria-label="Edit customer"
-          >
-            <Settings2 className="h-4 w-4" />
-          </Button>
           <Badge variant="outline" className={cn("text-[10px]", LEAD_SOURCE_STYLES[toLeadSourceValue(customer.lead_source)])}>
             {leadSourceLabel(customer.lead_source)}
           </Badge>
@@ -352,19 +343,26 @@ const AdminCustomerDetailPage = () => {
                 </div>
                 {/* Always render every core field so it is immediately clear
                     what is on file and what is still missing. */}
-                <div className="space-y-2 text-sm">
-                  <ContactRow icon={Mail} value={customer.email} label="No email on file" breakAll />
-                  <ContactRow icon={Phone} value={customer.phone} label="No phone on file" />
-                  {customer.secondary_phone && (
-                    <ContactRow icon={Phone} value={`${customer.secondary_phone} (alt)`} label="" />
-                  )}
-                  <ContactRow icon={MapPin} value={fullAddress} label="No address on file" />
-                  <ContactRow
-                    icon={FileText}
-                    value={customer.vat_number ? `VAT: ${customer.vat_number}` : ""}
-                    label="No VAT number on file"
-                  />
-                </div>
+                <EntityDetailsForm
+                  entityType="client"
+                  entityId={customer.id}
+                  initialData={customer as any}
+                  visibleFields={[
+                    "name",
+                    "company_name",
+                    "phone",
+                    "secondary_phone",
+                    "email",
+                    "primary_address_line1",
+                    "city",
+                    "postal_code",
+                    "vat_number",
+                    "status",
+                    "notes",
+                  ]}
+                  className="grid-cols-1"
+                />
+
               </CardContent>
             </Card>
 
@@ -567,12 +565,6 @@ const AdminCustomerDetailPage = () => {
         </TabsContent>
       </Tabs>
 
-      <EditCustomerDialog
-        open={showEdit}
-        onOpenChange={setShowEdit}
-        customer={customer}
-        onSaved={() => qc.invalidateQueries({ queryKey: ["customer-detail", id] })}
-      />
       <QuickTemplateDialog
         open={showTemplatePicker}
         onClose={() => setShowTemplatePicker(false)}
@@ -640,128 +632,5 @@ const EmptyRow = ({ cols, text }: { cols: number; text: string }) => (
   </TableRow>
 );
 
-// ---------- Edit dialog ----------
-const EditCustomerDialog = ({
-  open, onOpenChange, customer, onSaved,
-}: {
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-  customer: any;
-  onSaved: () => void;
-}) => {
-  const { toast } = useToast();
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    first_name: customer.first_name || "",
-    last_name: customer.last_name || "",
-    company_name: customer.company_name || "",
-    email: customer.email || "",
-    phone: customer.phone || "",
-    address: customer.primary_address_line1 || "",
-    city: customer.city || "",
-    postal_code: customer.postal_code || "",
-    vat_number: customer.vat_number || "",
-    notes: customer.notes || "",
-    status: customer.status || "lead",
-    lead_source: toLeadSourceValue(customer.lead_source, DEFAULT_LEAD_SOURCE),
-  });
-  const set = (k: keyof typeof form, v: string) => setForm(p => ({ ...p, [k]: v }));
-
-  const save = async () => {
-    setSaving(true);
-    try {
-      const payload = {
-        first_name: form.first_name,
-        last_name: form.last_name,
-        name: `${form.first_name} ${form.last_name}`.trim(),
-        company_name: form.company_name || null,
-        is_company: !!form.company_name,
-        email: form.email || null,
-        phone: form.phone,
-        primary_address_line1: form.address || null,
-        address: [form.address, form.city, form.postal_code].filter(Boolean).join(", "),
-        city: form.city || null,
-        postal_code: form.postal_code || null,
-        vat_number: form.vat_number || null,
-        notes: form.notes || null,
-        status: form.status,
-        lead_source: toLeadSourceValue(form.lead_source),
-      };
-
-      let { error } = await supabase.from("customers").update(payload).eq("id", customer.id);
-      if (error && /lead_source/i.test(error.message || "")) {
-        ({ error } = await supabase
-          .from("customers")
-          .update({ ...payload, lead_source: "other" })
-          .eq("id", customer.id));
-      }
-      if (error) throw error;
-      toast({ title: "Customer updated ✅" });
-      onOpenChange(false);
-      onSaved();
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Customer</DialogTitle>
-          <DialogDescription>Update client details.</DialogDescription>
-        </DialogHeader>
-        <div className="grid grid-cols-2 gap-4">
-          <DField label="First Name"><Input value={form.first_name} onChange={e => set("first_name", e.target.value)} /></DField>
-          <DField label="Last Name"><Input value={form.last_name} onChange={e => set("last_name", e.target.value)} /></DField>
-          <DField label="Company Name" full><Input value={form.company_name} onChange={e => set("company_name", e.target.value)} /></DField>
-          <DField label="Email"><Input value={form.email} onChange={e => set("email", e.target.value)} /></DField>
-          <DField label="Phone"><Input value={form.phone} onChange={e => set("phone", e.target.value)} /></DField>
-          <DField label="Address" full><Input value={form.address} onChange={e => set("address", e.target.value)} /></DField>
-          <DField label="City"><Input value={form.city} onChange={e => set("city", e.target.value)} /></DField>
-          <DField label="Postal Code"><Input value={form.postal_code} onChange={e => set("postal_code", e.target.value)} /></DField>
-          <DField label="VAT Number" full><Input value={form.vat_number} onChange={e => set("vat_number", e.target.value)} /></DField>
-          <DField label="Status">
-            <Select value={form.status} onValueChange={(v) => set("status", v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="lead">Lead</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </DField>
-          <DField label="Lead Source">
-            <Select value={form.lead_source} onValueChange={(v) => set("lead_source", v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {LEAD_SOURCE_OPTIONS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </DField>
-          <DField label="Notes" full>
-            <Textarea value={form.notes} onChange={e => set("notes", e.target.value)} rows={3} />
-          </DField>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={save} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Save Changes
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-const DField = ({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) => (
-  <div className={cn("space-y-1.5", full && "col-span-2")}>
-    <Label className="text-xs">{label}</Label>
-    {children}
-  </div>
-);
 
 export default AdminCustomerDetailPage;

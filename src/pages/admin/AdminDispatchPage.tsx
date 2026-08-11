@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -845,75 +846,37 @@ const AdminDispatchPage = () => {
               <Info className="h-5 w-5 text-primary" />
               Job Details
             </DialogTitle>
-            <DialogDescription>Full information for this job.</DialogDescription>
+            <DialogDescription>
+              Every field is editable — changes save instantly and sync to the board, calendar and customer.
+            </DialogDescription>
           </DialogHeader>
           {jobInfoLead && (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                <div>
-                  <p className="text-muted-foreground text-xs">Customer</p>
-                  <p className="font-medium">{jobInfoLead.customer_name}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Phone</p>
-                  <p className="font-medium flex items-center gap-1">
-                    <Phone className="h-3 w-3" />
-                    {jobInfoLead.customer_phone || "N/A"}
-                  </p>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-muted-foreground text-xs">Address</p>
-                  <p className="font-medium flex items-center gap-1">
-                    <MapPin className="h-3 w-3 shrink-0" />
-                    {displayAddress(jobInfoLead.customer_address)}
-                  </p>
-                </div>
-              </div>
-              <Separator />
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                <div>
-                  <p className="text-muted-foreground text-xs">Job Type</p>
-                  <Badge variant="outline">{jobInfoLead.service_type}</Badge>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Priority</p>
-                  <Badge variant={PRIORITY_COLORS[jobInfoLead.priority] as any || "secondary"}>{jobInfoLead.priority}</Badge>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Status</p>
-                  <Badge style={{ backgroundColor: STATUS_COLORS[jobInfoLead.status], color: "white" }}>{jobInfoLead.status.replace("_", " ")}</Badge>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Assigned To</p>
-                  <p className="font-medium">
-                    {jobInfoLead.assigned_agent_id
-                      ? agents.find(a => a.id === jobInfoLead.assigned_agent_id)?.full_name || "Unknown"
-                      : "Unassigned"}
-                  </p>
-                </div>
-              </div>
+              <EntityDetailsForm
+                entityType="lead"
+                entityId={jobInfoLead.id}
+                initialData={jobInfoLead as any}
+                visibleFields={[
+                  "customer_name",
+                  "customer_phone",
+                  "customer_address",
+                  "service_type",
+                  "priority",
+                  "status",
+                  "assigned_agent_id",
+                  "scheduled_date",
+                  "scheduled_time",
+                  "order_status",
+                  "parts_status",
+                  "notes",
+                ]}
+              />
               {jobInfoSchedule && (
                 <>
                   <Separator />
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                    <div>
-                      <p className="text-muted-foreground text-xs">Scheduled Date</p>
-                      <p className="font-medium">{jobInfoSchedule.scheduled_date}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs">Time Slot</p>
-                      <p className="font-medium">{jobInfoSchedule.start_time} – {jobInfoSchedule.end_time}</p>
-                    </div>
-                  </div>
-                </>
-              )}
-              {jobInfoLead.notes && (
-                <>
-                  <Separator />
-                  <div className="text-sm">
-                    <p className="text-muted-foreground text-xs mb-1">Notes</p>
-                    <p className="text-sm bg-muted/50 rounded p-2">{jobInfoLead.notes}</p>
-                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Calendar slot: {jobInfoSchedule.scheduled_date} · {jobInfoSchedule.start_time} – {jobInfoSchedule.end_time}
+                  </p>
                 </>
               )}
             </div>

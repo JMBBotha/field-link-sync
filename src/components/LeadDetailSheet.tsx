@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import InvoiceForm from "./InvoiceForm";
 import JobCompletionFlow from "./JobCompletionFlow";
 import CustomerProfile from "./CustomerProfile";
-import EditLeadDialog from "./EditLeadDialog";
+import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
 import JobDurationPicker from "./JobDurationPicker";
 import JobProgressSection from "./JobProgressSection";
 import { PhotoGallery } from "./PhotoGallery";
@@ -161,7 +161,6 @@ const LeadDetailSheet = ({
   const [showCompletionFlow, setShowCompletionFlow] = useState(false);
   const [showSignOff, setShowSignOff] = useState(false);
   const [showCustomerProfile, setShowCustomerProfile] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [showChangeRequestDialog, setShowChangeRequestDialog] = useState(false);
   const [showAcceptDialog, setShowAcceptDialog] = useState(false);
@@ -559,41 +558,29 @@ const LeadDetailSheet = ({
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Service type</p>
-                  <p className="text-sm font-medium">{lead.service_type || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Priority</p>
-                  <p className="text-sm font-medium capitalize">{lead.priority || "normal"}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Status</p>
-                  <div className="mt-0.5">{getStatusBadge(lead.status)}</div>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Scheduled</p>
-                  <p className="text-sm font-medium">
-                    {lead.scheduled_date
-                      ? `${new Date(lead.scheduled_date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}${(lead as any).scheduled_time ? ` @ ${String((lead as any).scheduled_time).slice(0, 5)}` : ''}`
-                      : "Not scheduled"}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Issue description</p>
-                <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                  {lead.notes?.trim() ? lead.notes : <span className="text-muted-foreground italic">No description provided at intake.</span>}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Address</p>
-                <p className="text-sm break-words">{lead.customer_address}</p>
-              </div>
+              <EntityDetailsForm
+                entityType="lead"
+                entityId={lead.id}
+                initialData={lead as any}
+                readOnly={!canEdit}
+                visibleFields={[
+                  "customer_name",
+                  "customer_phone",
+                  "customer_email",
+                  "customer_address",
+                  "service_type",
+                  "priority",
+                  "status",
+                  "assigned_agent_id",
+                  "scheduled_date",
+                  "scheduled_time",
+                  "order_status",
+                  "parts_status",
+                  "notes",
+                ]}
+              />
             </div>
+
 
             {/* Customer Job History */}
             <CustomerJobHistory
@@ -745,7 +732,7 @@ const LeadDetailSheet = ({
               />
               
               {/* Secondary actions row - Photo, Edit, Time Change */}
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-2 gap-1.5">
                 <Button
                   variant="outline"
                   size="sm"
@@ -767,18 +754,6 @@ const LeadDetailSheet = ({
                     </>
                   )}
                 </Button>
-
-                {canEdit && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-11 rounded-lg text-xs px-2"
-                    onClick={() => setShowEditDialog(true)}
-                  >
-                    <Pencil className="h-3.5 w-3.5 mr-1" />
-                    Edit
-                  </Button>
-                )}
 
                 {isOwner && (isClaimed || isInProgress || isCompleted) && (
                   <Button
@@ -972,17 +947,6 @@ const LeadDetailSheet = ({
                   )}
                 </Button>
 
-                {canEdit && (
-                  <Button
-                    variant="outline"
-                    className="h-12 px-3 shrink-0"
-                    onClick={() => setShowEditDialog(true)}
-                    aria-label="Edit notes"
-                  >
-                    <Pencil className="h-5 w-5" />
-                  </Button>
-                )}
-
 
                 {isAvailable && (
                   <Button
@@ -1070,14 +1034,6 @@ const LeadDetailSheet = ({
         customerId={lead.customer_id || null}
         open={showCustomerProfile}
         onClose={() => setShowCustomerProfile(false)}
-      />
-
-      {/* Edit Lead Dialog */}
-      <EditLeadDialog
-        lead={lead}
-        open={showEditDialog}
-        onOpenChange={setShowEditDialog}
-        onSuccess={onLeadUpdated}
       />
 
       {/* Job Duration Picker */}

@@ -1118,6 +1118,48 @@ export type Database = {
         }
         Relationships: []
       }
+      entity_outbox: {
+        Row: {
+          attempts: number
+          company_id: string | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          event_type: string
+          id: string
+          last_error: string | null
+          payload: Json
+          processed_at: string | null
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          company_id?: string | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          event_type: string
+          id?: string
+          last_error?: string | null
+          payload?: Json
+          processed_at?: string | null
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          company_id?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          event_type?: string
+          id?: string
+          last_error?: string | null
+          payload?: Json
+          processed_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       equipment: {
         Row: {
           brand: string | null
@@ -7667,6 +7709,10 @@ export type Database = {
       }
       unconvert_lead: { Args: { p_lead_id: string }; Returns: undefined }
       unlockrows: { Args: { "": string }; Returns: number }
+      update_entity: {
+        Args: { p_entity_id: string; p_entity_type: string; p_patch: Json }
+        Returns: Json
+      }
       update_overdue_invoices: { Args: never; Returns: undefined }
       updategeometrysrid: {
         Args: {
