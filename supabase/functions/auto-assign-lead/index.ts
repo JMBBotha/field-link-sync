@@ -218,25 +218,30 @@ serve(async (req) => {
       await supabase.from("notifications").insert({
         user_id: offer.agent_id,
         title: isUrgent ? "🚨 Urgent Lead Nearby" : "New Lead Available",
-        message: `${lead.customer_name || "Customer"} — ${lead.service_type || "General"}. ${distText}. Tap to accept.`,
+        body: `${lead.customer_name || "Customer"} — ${lead.service_type || "General"}. ${distText}. Tap to accept.`,
         type: "lead_offer",
-        data: {
-          lead_id,
-          distance_km: offer.distance_km,
-          offer_method: offer.offer_method,
-        },
+        related_id: lead_id,
       });
     }
 
-    // If no agents found, alert admin
+    // If no agents found, alert admins/dispatchers in-app
     if (offerCount === 0) {
-      await supabase.from("admin_alerts").insert({
-        alert_type: "no_agents_available",
-        severity: "warning",
-        title: "No agents available for lead",
-        message: `Lead for ${lead.customer_name || "Unknown"} (${lead.service_type || "General"}) — no agents found within ${radius_km}km. Manual assignment needed.`,
-        data: { lead_id, radius_km },
-      });
+      const { data: admins } = await supabase
+        .from("user_roles")
+        .select("user_id, role")
+        .in("role", ["admin", "dispatcher"]);
+
+      if (admins?.length) {
+        await supabase.from("notifications").insert(
+          admins.map((a: { user_id: string }) => ({
+            user_id: a.user_id,
+            title: "No agents available for lead",
+            body: `Lead for ${lead.customer_name || "Unknown"} (${lead.service_type || "General"}) — no agents found within ${radius_km}km. Manual assignment needed.`,
+            type: "no_agents_available",
+            related_id: lead_id,
+          }))
+        );
+      }
     }
 
     return new Response(JSON.stringify({
