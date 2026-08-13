@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { r2, VAT_RATE, inclVatFromExcl } from "@/utils/pricing";
+import { r2, VAT_RATE, inclVatFromExcl } from "@/lib/pricing";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search, Wand2, ChevronUp, ChevronDown, ArrowLeft, FileDown, Save,

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { calcSellingPrice } from "@/utils/pricing";
+import { calcSellingPrice } from "@/lib/pricing";
 import { Info, X, ImageIcon, Sparkles, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useProductAiDescription } from "@/hooks/useProductAiDescription";

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { calcSellingPrice } from "@/utils/pricing";
+import { calcSellingPrice } from "@/lib/pricing";
 import { X, GripVertical, Minus, Maximize2, ChevronUp, ChevronDown, CheckCircle2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";

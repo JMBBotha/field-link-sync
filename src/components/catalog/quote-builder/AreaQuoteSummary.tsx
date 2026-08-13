@@ -4,7 +4,7 @@
  */
 
 import { useMemo, useState, useEffect, useRef } from "react";
-import { calcSellingPrice, r2, VAT_RATE } from "@/utils/pricing";
+import { calcSellingPrice, r2, VAT_RATE } from "@/lib/pricing";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";

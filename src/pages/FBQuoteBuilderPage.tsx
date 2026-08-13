@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
-import { r2, VAT_RATE } from "@/utils/pricing";
+import { r2, VAT_RATE } from "@/lib/pricing";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search, Wand2, ChevronUp, ChevronDown, ArrowLeft, FileDown, Save,

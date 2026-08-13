@@ -1,6 +1,6 @@
 /* eslint-disable -- visual catalog panel */
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { inclVatFromExcl } from "@/utils/pricing";
+import { inclVatFromExcl } from "@/lib/pricing";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { supabase } from "@/integrations/supabase/client";

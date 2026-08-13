@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { calcSellingPrice, VAT_RATE } from "@/utils/pricing";
+import { calcSellingPrice, VAT_RATE } from "@/lib/pricing";
 import { computeLineTotal, resolvePricingUnit, unitSuffix } from "@/lib/pricingUnits";
 import { RotateCcw, FileDown, Loader2, TrendingUp, ChevronDown, ChevronRight, Package, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +25,7 @@ interface Props {
   generating?: boolean;
 }
 
-// VAT_RATE now imported from @/utils/pricing
+// VAT_RATE now imported from @/lib/pricing
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(value);

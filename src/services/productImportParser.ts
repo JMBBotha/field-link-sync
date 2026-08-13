@@ -5,7 +5,7 @@
  * selling_price is a DB generated column, never set in code.
  */
 
-import { VAT_RATE, stripVat, applyDiscount, addVat } from "@/utils/pricing";
+import { VAT_RATE, stripVat, applyDiscount, addVat } from "@/lib/pricing";
 import { supabase } from "@/integrations/supabase/client";
 import { renderPDFToImages } from "@/utils/pdfEnhancer";
 

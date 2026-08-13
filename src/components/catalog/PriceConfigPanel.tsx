@@ -40,8 +40,7 @@ function calculatePrices(rawPrice: number, config: PriceConfig) {
   if (config.priceIncludesMarkup && config.supplierMarkupPercent > 0) {
     price = price / (1 + config.supplierMarkupPercent / 100);
   }
-  // This is the BASE list price excl VAT — no discount applied.
-  // Discount is applied only at runtime by calculatePricing() in src/utils/pricing.ts
+  // This is the BASE list price excl VAT, before the supplier trade discount.
   const listPriceExclVat = price;
 
   // Preview values (for the live preview panel only)
