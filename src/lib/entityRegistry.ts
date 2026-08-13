@@ -167,7 +167,10 @@ export const ENTITY_REGISTRY: Record<EntityType, EntityConfig> = {
         key: "status",
         label: "Status",
         kind: "select",
-        options: ["active", "inactive", "archived"].map((v) => ({ value: v, label: v })),
+        options: ["lead", "active", "inactive", "archived"].map((v) => ({
+          value: v,
+          label: v,
+        })),
       },
       { key: "notes", label: "Notes", kind: "textarea", wide: true },
     ],
