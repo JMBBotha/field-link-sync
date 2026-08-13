@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { calcSellingPrice } from "@/utils/pricing";
-import { Info, X, ImageIcon } from "lucide-react";
+import { Info, X, ImageIcon, Sparkles, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useProductAiDescription } from "@/hooks/useProductAiDescription";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   Dialog,
@@ -73,6 +75,11 @@ export default function ProductInfoDialog({ product, onMarkupSaved, open: contro
 
   const [markup, setMarkup] = useState(initialMarkup);
   const [saving, setSaving] = useState(false);
+  const aiDescription = useProductAiDescription(
+    product.id,
+    (product as any).ai_sales_description,
+    (product as any).ai_sales_description_generated_at
+  );
   const sellingPrice = costPrice > 0 ? Math.round(costPrice * (1 + markup / 100) * 100) / 100 : (product.selling_price || 0);
   const markupPercent = costPrice > 0 ? markup : (product.selling_price && costPrice > 0 ? ((product.selling_price / costPrice) - 1) * 100 : 0);
   const pricing = { sellingPrice, markupPercent };
@@ -160,6 +167,34 @@ export default function ProductInfoDialog({ product, onMarkupSaved, open: contro
                 <InfoRow label="Description" value={product.description} />
                 <InfoRow label="Supplier" value={product.supplier_name} />
                 {(product as any).name && <InfoRow label="Full Name" value={(product as any).name} />}
+              </div>
+
+              {/* AI sales description — generated once and cached in the DB, reused on every future quote/estimate */}
+              <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Sales Description
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs gap-1"
+                    disabled={aiDescription.isLoading}
+                    onClick={() => (aiDescription.description ? aiDescription.regenerate() : aiDescription.generate())}
+                  >
+                    <RefreshCw className={cn("h-3 w-3", aiDescription.isLoading && "animate-spin")} />
+                    {aiDescription.isLoading ? "Generating..." : aiDescription.description ? "Regenerate" : "Generate"}
+                  </Button>
+                </div>
+                {aiDescription.description ? (
+                  <p className="text-xs leading-relaxed">{aiDescription.description}</p>
+                ) : aiDescription.error ? (
+                  <p className="text-xs text-destructive">{aiDescription.error.message || "Failed to generate description"}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">No sales description yet — click Generate to write one with AI.</p>
+                )}
               </div>
 
               <Separator />
