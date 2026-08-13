@@ -48,11 +48,11 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
   const bankingSection: TermsBlock[] = hasBankingDetails
     ? [
         { type: "heading", text: "Banking Details:" },
-        { type: "banking", text: `6.1 Account Name: ${(company.accountName || name).toUpperCase()}` },
-        ...(company.bankName ? [{ type: "banking", text: `6.2 Bank: ${company.bankName}` } as TermsBlock] : []),
-        ...(company.accountType ? [{ type: "banking", text: `6.3 Account Type: ${company.accountType}` } as TermsBlock] : []),
-        ...(company.accountNumber ? [{ type: "banking", text: `6.4 Account Number: ${company.accountNumber}` } as TermsBlock] : []),
-        ...(company.branchCode ? [{ type: "banking", text: `6.5 Branch Code: ${company.branchCode}` } as TermsBlock] : []),
+        { type: "banking", text: `7.1 Account Name: ${(company.accountName || name).toUpperCase()}` },
+        ...(company.bankName ? [{ type: "banking", text: `7.2 Bank: ${company.bankName}` } as TermsBlock] : []),
+        ...(company.accountType ? [{ type: "banking", text: `7.3 Account Type: ${company.accountType}` } as TermsBlock] : []),
+        ...(company.accountNumber ? [{ type: "banking", text: `7.4 Account Number: ${company.accountNumber}` } as TermsBlock] : []),
+        ...(company.branchCode ? [{ type: "banking", text: `7.5 Branch Code: ${company.branchCode}` } as TermsBlock] : []),
         { type: "spacer", text: "" },
       ]
     : [];
@@ -85,25 +85,32 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
     { type: "heading", text: "Warranty:" },
     { type: "paragraph", text: "5.1 Two years warranty on all moving parts and a 3-year manufacturer's warranty on the compressor, subject to a service contract." },
     { type: "paragraph", text: `5.2 Our service contract extends the manufacturer's warranty on the compressor to 5 years. If the compressor fails, we will install the replacement compressor free of charge. Please note that this warranty is only valid on new units supplied and installed by ${nameUpper}.` },
+    { type: "paragraph", text: "5.3 This warranty is in addition to, and does not replace or limit, any rights you have under the Consumer Protection Act 68 of 2008." },
+    { type: "spacer", text: "" },
+
+    { type: "heading", text: "Errors and Omissions:" },
+    { type: "paragraph", text: `6.1 While every effort is made to ensure the accuracy of quotations, estimates, invoices and related documentation, including descriptions, specifications, and pricing, ${name} shall not be held liable for any genuine clerical, typographical, printing, or administrative error or omission appearing in such documentation, provided that any such error is corrected as soon as it is identified and does not result in you being charged more than the fair value of the goods or services actually supplied.` },
+    { type: "paragraph", text: "6.2 Product specifications, capacities and performance figures referenced in our documentation are based on information published by the relevant manufacturer or supplier. While we take reasonable care in relying on this information, we cannot guarantee against errors made by third-party manufacturers or suppliers. Should a material error in a manufacturer's specification affect the suitability of a unit for your requirements, we will work with you in good faith to find a fair resolution." },
+    { type: "paragraph", text: "6.3 Nothing in this clause limits or excludes any right you may have under the Consumer Protection Act 68 of 2008, and this clause does not apply to, and does not limit our liability for, gross negligence, fraud, or wilful misconduct." },
     { type: "spacer", text: "" },
 
     ...bankingSection,
 
     { type: "heading", text: "Deposit Reference:" },
-    { type: "paragraph", text: "7.1 Please use the Proposal number found at the top of the page as a reference when making the deposit." },
+    { type: "paragraph", text: "8.1 Please use the Proposal number found at the top of the page as a reference when making the deposit." },
     { type: "spacer", text: "" },
 
     { type: "heading", text: "Confidentiality:" },
-    { type: "paragraph", text: "8.1 We respect the privacy and confidentiality of our clients. Any information shared during the course of our engagement will be treated as confidential and will not be disclosed to third parties, except as required by law." },
+    { type: "paragraph", text: "9.1 We respect the privacy and confidentiality of our clients. Any information shared during the course of our engagement will be treated as confidential and will not be disclosed to third parties, except as required by law or the Protection of Personal Information Act 4 of 2013 (POPIA)." },
     { type: "spacer", text: "" },
 
     { type: "heading", text: "Termination:" },
-    { type: "paragraph", text: "9.1 Either party may terminate the agreement by providing written notice to the other party, specifying the reasons for termination." },
-    { type: "paragraph", text: "9.2 Termination may result in the settlement of outstanding payments for services already provided, as per the agreed terms." },
+    { type: "paragraph", text: "10.1 Either party may terminate the agreement by providing written notice to the other party, specifying the reasons for termination." },
+    { type: "paragraph", text: "10.2 Termination may result in the settlement of outstanding payments for services already provided, as per the agreed terms." },
     { type: "spacer", text: "" },
 
     { type: "heading", text: "Dispute Resolution:" },
-    { type: "paragraph", text: "10.1 In the event of any disputes or disagreements arising from our services, both parties agree to engage in good-faith negotiations to resolve the matter amicably." },
+    { type: "paragraph", text: "11.1 In the event of any disputes or disagreements arising from our services, both parties agree to engage in good-faith negotiations to resolve the matter amicably before referring the matter to the National Consumer Commission, an accredited consumer ombud, or a court of competent jurisdiction." },
     { type: "spacer", text: "" },
 
     { type: "heading", text: "Importance of Servicing AC Units" },
