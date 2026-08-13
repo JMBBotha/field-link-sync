@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
           {
             role: "user",
             content: [
-              { type: "text", text: `Extract WEBSHOP PRICE rows from page ${pageNum} with bbox coordinates.` },
+              { type: "text", text: `Extract INSTALLER PRICE rows from page ${pageNum} with bbox coordinates.` },
               { type: "image_url", image_url: { url: `data:application/pdf;base64,${base64Pdf}` } },
             ],
           },
@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
         skipReasons["bad_bbox_types"] = (skipReasons["bad_bbox_types"] || 0) + 1;
         skipped++; continue;
       }
-      // Daikin webshop price column is mid-page — rightmost rule does not apply here.
+      // Daikin installer price column is not necessarily the rightmost column on the page — rightmost-column heuristic does not apply here.
 
       // Build candidate SKU list from AI-returned code
       // Handles: "FBA35A9 (x2)", "FBA35A9 + FBA50A9", "FFA25A9 + FFA35A9\n+ FFA50A9"

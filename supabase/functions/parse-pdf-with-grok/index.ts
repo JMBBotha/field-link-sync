@@ -93,7 +93,7 @@ brand: detect from product name/code (Samsung=AR*, Alliance=FOUR*/ALL*, Midea, D
 shortName: BRAND BTU/kW ABBREV format (e.g. "Samsung 9K INV MW")
 
 Prices: ZAR format "R 7 700,00" = 7700. Use rightmost NETT/COST column preferentially.
-For Daikin price lists: prefer the "WEBSHOP PRICE" column as the primary cost column, NOT "RRP" or "WEBSHOP CAMPAIGN PRICE".
+Current supplier price lists mark the correct cost column with a red highlight/rectangle in the PDF to flag which price to use. For Daikin price lists specifically: the correct cost column is "INSTALLER PRICE" (the red-marked column) — NOT "RRP", NOT any "Incl Corrosion Treatment" add-on column, and NOT "Webshop Price" (older Daikin lists had a Webshop Price column; current lists no longer include one — do not look for it).
 
 CRITICAL MULTI-COLUMN PRICE RULE: When a price list has MULTIPLE price columns per row (e.g. "Installer Price", "Incl Corrosion Treatment Partial", "Incl Corrosion Treatment Full", or "Trade", "Wholesale", "Retail"), you MUST:
 1. Identify the BASE/INSTALLER/TRADE/DEALER price column (usually the LEFTMOST or LOWEST-priced column, the one WITHOUT add-ons like "Incl Corrosion", "Incl Treatment", "Incl Coating", "Incl Warranty Extended").
@@ -132,18 +132,13 @@ function pickBestPrice(
   const entries = Object.entries(prices).filter(([, v]) => typeof v === "number" && v > 0);
   if (entries.length === 0) return { price: 0, columnName: "", isInclVat: false };
 
-  // Daikin override: ALWAYS use the Contractor column when present.
-  // Daikin price lists have 3 columns (List / Contractor / RRP); Contractor is our buy price.
-  // One Daikin SKU → one supplier_products row, priced from Contractor.
-  const isDaikin = !!supplierName && /DAIKIN/i.test(supplierName);
-  if (isDaikin) {
-    const contractor = entries.find(([col]) => /CONTRACTOR/i.test(col));
-    if (contractor) {
-      console.log(`[Grok] Daikin override → using Contractor column "${contractor[0]}" = ${contractor[1]}`);
-      return { price: contractor[1], columnName: contractor[0], isInclVat: false };
-    }
-    console.warn(`[Grok] Daikin: no Contractor column found in [${entries.map(([c]) => c).join(", ")}] — falling back`);
-  }
+  // NOTE: Daikin price lists used to have a fixed List/Contractor/RRP layout
+  // with a hardcoded "Contractor" column override here. Current Daikin lists
+  // use "Installer Price" (the red-highlighted column) instead, and have no
+  // Contractor column at all, so that override was removed — the generic
+  // exclPatterns priority below (INSTALLER first) already selects the right
+  // column by name for Daikin and every other supplier, without hardcoding
+  // a specific column name per brand.
 
   if (entries.length === 1) {
     const [col, val] = entries[0];
@@ -165,7 +160,9 @@ function pickBestPrice(
     if (match) return { price: match[1], columnName: match[0], isInclVat: false };
   }
 
-  // Webshop price priority (e.g. Daikin) — prefer WEBSHOP PRICE over CAMPAIGN/RRP
+  // Webshop price fallback for any supplier whose only price column is literally named
+  // "Webshop Price" (no longer Daikin — current Daikin lists use "Installer Price", already
+  // matched by exclPatterns above) — prefer WEBSHOP PRICE over CAMPAIGN/RRP.
   const webshopPatterns = [/WEBSHOP.*PRICE/i, /\bWEBSHOP\b/i];
   for (const pattern of webshopPatterns) {
     const match = pool.find(([col]) => pattern.test(col) && !/CAMPAIGN/i.test(col));
