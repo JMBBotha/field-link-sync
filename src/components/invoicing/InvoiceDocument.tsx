@@ -129,14 +129,22 @@ const InvoiceDocument = ({
             </tr>
           </thead>
           <tbody>
-            {items.map((item, idx) => (
-              <tr key={idx} className="border-b border-slate-100 align-top">
-                <td className="py-3 pr-4 text-slate-800">{item.description}</td>
-                <td className="py-3 text-right text-slate-600">{formatCurrency(item.unit_price)}</td>
-                <td className="py-3 text-right text-slate-600">{item.quantity}</td>
-                <td className="py-3 text-right font-medium text-slate-900">{formatCurrency(item.amount)}</td>
-              </tr>
-            ))}
+            {items.map((item, idx) => {
+              const [name, ...detailLines] = item.description.split("\n");
+              return (
+                <tr key={idx} className="border-b border-slate-100 align-top">
+                  <td className="py-3 pr-4 text-slate-800">
+                    <p className="font-medium">{name}</p>
+                    {detailLines.map((line, li) => (
+                      <p key={li} className="mt-0.5 text-[11px] text-slate-500">{line}</p>
+                    ))}
+                  </td>
+                  <td className="py-3 text-right text-slate-600">{formatCurrency(item.unit_price)}</td>
+                  <td className="py-3 text-right text-slate-600">{item.quantity}</td>
+                  <td className="py-3 text-right font-medium text-slate-900">{formatCurrency(item.amount)}</td>
+                </tr>
+              );
+            })}
             {items.length === 0 && (
               <tr>
                 <td colSpan={4} className="py-6 text-center text-slate-400">No line items</td>

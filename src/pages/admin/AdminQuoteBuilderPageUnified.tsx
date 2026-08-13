@@ -35,13 +35,11 @@ import { createEmptyArea, computeAreaSubtotal, detectBTU } from "@/components/ca
 import type { PaletteBundle } from "@/components/catalog/quote-builder/ProductPalette";
 import { useQuoteLiveTotals } from "@/stores/quoteLiveTotalsStore";
 import { areasToBaskets } from "@/components/catalog/quote-builder/QuoteBuilderPopup";
-import { computeQuoteTotals, QUOTE_VAT_RATE } from "@/utils/quoteTransformers";
+import { computeQuoteTotals } from "@/utils/quoteTransformers";
 import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
 import { pdfItemToPaletteProduct } from "@/utils/pdfItemToProduct";
 import { persistQuoteFromBaskets } from "@/utils/persistQuoteFromBaskets";
-import { calculateBasketItemSell } from "@/utils/quoteBasketTotals";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
-import type { QuotePDFData } from "@/components/QuotePDFDocument";
 
 
 export type QuoteBuilderMode = "admin" | "agent";
@@ -689,37 +687,6 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   const [sendOpen, setSendOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
 
-  const pdfData: QuotePDFData = useMemo(() => {
-    const items = displayBaskets.flatMap((b) =>
-      b.items.map((i) => ({
-        areaName: b.name,
-        unitName: i.product.short_name || i.product.product_code || "Item",
-        btu: 0,
-        quantity: i.quantity,
-        unitPrice: i.quantity ? calculateBasketItemSell(i) / i.quantity : 0,
-        markupPercent: 0,
-        lineTotal: calculateBasketItemSell(i),
-      })),
-    );
-    const today = new Date();
-    const validUntil = new Date(today);
-    validUntil.setDate(validUntil.getDate() + 30);
-    return {
-      quoteNumber: meta?.quote_number || "Draft",
-      date: today.toLocaleDateString("en-ZA"),
-      validUntil: meta?.valid_until
-        ? new Date(meta.valid_until).toLocaleDateString("en-ZA")
-        : validUntil.toLocaleDateString("en-ZA"),
-      clientName: meta?.customer_name || "Client",
-      clientEmail: "",
-      items,
-      subtotal: displayQuoteTotals.subtotal,
-      vatRate: QUOTE_VAT_RATE,
-      vatAmount: displayQuoteTotals.vatAmount,
-      total: displayQuoteTotals.total,
-    };
-  }, [displayBaskets, displayQuoteTotals, meta]);
-
   const handleGenerateQuote = useCallback(async () => {
     if (!quoteId) return;
     if (displayQuoteTotals.itemCount === 0) {
@@ -822,6 +789,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
                     onClearAllRef={areaClearAllRef}
                     pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
                     initialAreas={initialWizardAreas}
+                    onGenerateQuote={handleGenerateQuote}
+                    generating={generating}
                   />
                 }
                 areaAddZone={() => areaAddZoneRef.current?.()}
@@ -897,6 +866,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
                 onAddProductRef={areaAddProductRef}
                 pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
                 initialAreas={initialWizardAreas}
+                onGenerateQuote={handleGenerateQuote}
+                generating={generating}
               />
             </div>
             {/* Summary - right sidebar */}
@@ -939,7 +910,6 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         quoteNumber={meta?.quote_number || "Draft"}
         customerId={meta?.customer_id ?? null}
         customerName={meta?.customer_name || ""}
-        pdfData={pdfData}
       />
 
       {generating && (

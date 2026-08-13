@@ -50,6 +50,12 @@ interface Props {
   /** Seed areas from an existing quote so the wizard reflects real DB items
    *  instead of an empty "Additional Items/Services" placeholder. */
   initialAreas?: QuoteArea[] | null;
+  /** Real, persisted "Generate Quote" action forwarded to the Pricing step,
+   *  so the wizard's own button always saves against the actual selected
+   *  client and opens the correct send-to-client PDF flow — instead of the
+   *  step building its own disconnected, client-only quote/PDF. */
+  onGenerateQuote?: () => void;
+  generating?: boolean;
 }
 
 const DRAFT_STORAGE_KEY = "quote-builder-draft";
@@ -83,7 +89,7 @@ function hasAreaContent(area: QuoteArea): boolean {
   );
 }
 
-export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPdfSearch, onAreasChange, onAddProductRef, onDropProductToAreaRef, onDropBundleToAreaRef, onAddAreaRef, onApplyTemplateRef, onClearAllRef, pdfSelection, initialAreas }: Props) {
+export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPdfSearch, onAreasChange, onAddProductRef, onDropProductToAreaRef, onDropBundleToAreaRef, onAddAreaRef, onApplyTemplateRef, onClearAllRef, pdfSelection, initialAreas, onGenerateQuote, generating }: Props) {
   const [currentStep, setCurrentStep] = useState(0);
   const [areas, setAreas] = useState<QuoteArea[]>(() => {
     if (initialAreas && initialAreas.length > 0) return initialAreas;
@@ -344,12 +350,12 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
     switch (currentStep) {
       case 0: return <AreaDefinitionStep {...props} />;
       case 1: return <ACSelectionStep {...props} products={products} bundles={bundles} onPdfSearch={onPdfSearch} />;
-      case 2: return <PricingStep {...props} />;
+      case 2: return <PricingStep {...props} onGenerateQuote={onGenerateQuote} generating={generating} />;
       case 3: return <TimeAllocationStep {...props} />;
       case 4: return <ReviewStep {...props} />;
       default: return null;
     }
-  }, [currentStep, areas, products, bundles, onPdfSearch]);
+  }, [currentStep, areas, products, bundles, onPdfSearch, onGenerateQuote, generating]);
 
   const grandTotal = useMemo(() => areas.reduce((s, a) => s + computeAreaSubtotal(a), 0), [areas]);
 

@@ -22,7 +22,7 @@ export async function buildQuoteLineItems(
   const [{ data: items }, { data: areas }] = await Promise.all([
     supabase
       .from("quote_items")
-      .select("item_name, description, quantity, unit_price, total_price, area_id, parent_item_id, sort_order")
+      .select("item_name, item_number, description, quantity, unit_price, total_price, area_id, parent_item_id, sort_order")
       .eq("quote_id", quoteId)
       .is("parent_item_id", null)
       .order("sort_order"),
@@ -37,8 +37,18 @@ export async function buildQuoteLineItems(
       const rate = Number(i.unit_price) || 0;
       const amount = i.total_price != null ? Number(i.total_price) : Number((qty * rate).toFixed(2));
       const prefix = i.area_id && areaName.get(i.area_id) ? `[${areaName.get(i.area_id)}] ` : "";
+      // Compose a rich, self-contained line: name, then model no. and full
+      // description on their own lines so nothing captured at quote-build
+      // time (model number, spec description) is ever lost on the document.
+      const name = i.item_name || i.description || "Item";
+      const detailParts: string[] = [];
+      if (i.item_number) detailParts.push(`Model: ${i.item_number}`);
+      if (i.description && i.description !== name) detailParts.push(i.description);
+      const description = detailParts.length > 0
+        ? `${prefix}${name}\n${detailParts.join(" — ")}`
+        : `${prefix}${name}`;
       lineItems.push({
-        description: `${prefix}${i.item_name || i.description || "Item"}`,
+        description,
         quantity: qty,
         rate,
         amount,

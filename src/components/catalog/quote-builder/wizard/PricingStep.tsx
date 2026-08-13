@@ -1,26 +1,28 @@
-import { useState, useMemo, useCallback, lazy, Suspense } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { calcSellingPrice, VAT_RATE } from "@/utils/pricing";
 import { computeLineTotal, resolvePricingUnit, unitSuffix } from "@/lib/pricingUnits";
-import { RotateCcw, FileDown, Loader2, Mail, Check, TrendingUp, ChevronDown, ChevronRight, Package, Pencil } from "lucide-react";
+import { RotateCcw, FileDown, Loader2, TrendingUp, ChevronDown, ChevronRight, Package, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import QuantityControl from "../QuantityControl";
-import { supabase } from "@/integrations/supabase/client";
-import { pdf } from "@react-pdf/renderer";
-import QuotePDFDocument from "@/components/QuotePDFDocument";
 import type { QuoteArea } from "../quoteWizardTypes";
-import type { QuotePDFData, QuotePDFSubItem } from "@/components/QuotePDFDocument";
 
 interface Props {
   areas: QuoteArea[];
   onAreasChange: (areas: QuoteArea[]) => void;
+  /** Real, persisted "Generate Quote" action (saves to quote_items/quote_areas
+   *  with the actual selected client, then opens the send-to-client dialog
+   *  using the correct up-to-date PDF template). When omitted, the button is
+   *  hidden — this step should never fall back to its own disconnected,
+   *  client-side-only quote generation again. */
+  onGenerateQuote?: () => void;
+  generating?: boolean;
 }
 
 // VAT_RATE now imported from @/utils/pricing
@@ -49,9 +51,6 @@ function getMarkupColor(markup: number): string {
   if (markup <= 35) return "bg-amber-400";
   return "bg-red-500";
 }
-
-/* Lazy-load heavy PDF components */
-const PDFDownloadButton = lazy(() => import("./PDFDownloadButton"));
 
 /* ── Bundle Sub-Items for a single area ── */
 function AreaSubItems({ area }: { area: QuoteArea }) {
@@ -218,7 +217,7 @@ function getProductMarkup(product: any): number {
   return product?.default_markup_percent ?? 35;
 }
 
-export default function PricingStep({ areas, onAreasChange }: Props) {
+export default function PricingStep({ areas, onAreasChange, onGenerateQuote, generating }: Props) {
   // Derive initial global markup from the first AC unit's product markup
   const defaultMarkup = useMemo(() => {
     for (const a of areas) {
@@ -228,9 +227,6 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
   }, []);
 
   const [globalMarkup, setGlobalMarkup] = useState(defaultMarkup);
-  const [pdfReady, setPdfReady] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [editingAreaId, setEditingAreaId] = useState<string | null>(null);
   const [areaPricing, setAreaPricing] = useState<Record<string, AreaPricing>>(() => {
@@ -273,7 +269,6 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
 
   const handleBundleSave = useCallback((updatedArea: QuoteArea) => {
     onAreasChange(areas.map(a => a.id === updatedArea.id ? updatedArea : a));
-    setPdfReady(false);
   }, [areas, onAreasChange]);
 
   const allHaveUnits = areas.every((a) => a.acUnits.length > 0);
@@ -329,53 +324,6 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
     return withUnits.length > 0 ? withUnits.reduce((s, l) => s + l.markup, 0) / withUnits.length : 0;
   }, [lineItems]);
 
-  // Build PDF data
-  const quoteData: QuotePDFData | null = useMemo(() => {
-    if (!pdfReady || !allHaveUnits) return null;
-    const now = new Date();
-    const validUntil = new Date(now);
-    validUntil.setDate(validUntil.getDate() + 30);
-
-    return {
-      quoteNumber: `AQ-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
-      date: now.toLocaleDateString("en-ZA"),
-      validUntil: validUntil.toLocaleDateString("en-ZA"),
-      clientName: "",
-      clientEmail: "",
-      items: lineItems.map((li) => {
-        const subItems: QuotePDFSubItem[] = [];
-        for (const mat of li.area.materials) {
-          const isLen = mat.pricingMode === "length";
-          const unitPrice = unitPriceOf(mat.product);
-          const qty = isLen ? mat.adjustedLength : mat.unitQuantity;
-          const lineTotal = isLen ? mat.totalCost : lineTotalOf(mat.product, mat.unitQuantity);
-          subItems.push({ name: mat.product.short_name || mat.product.product_code, quantity: qty, unitPrice, lineTotal, pricingMode: isLen ? "per-meter" : "per-unit" });
-        }
-        for (const cons of (li.area.consumables ?? [])) {
-          const price = unitPriceOf(cons.product);
-          subItems.push({ name: cons.product.short_name || cons.product.product_code, quantity: cons.quantity, unitPrice: price, lineTotal: lineTotalOf(cons.product, cons.quantity), pricingMode: "per-unit" });
-        }
-        for (const br of li.area.brackets) {
-          subItems.push({ name: `Bracket ${br.size}`, quantity: br.quantity, unitPrice: br.price, lineTotal: br.price * br.quantity, pricingMode: "per-unit" });
-        }
-        return {
-          areaName: li.area.name,
-          unitName: li.area.acUnits[0]?.product.short_name || li.area.acUnits[0]?.product.product_code || "—",
-          btu: li.area.acUnits[0]?.btu || 0,
-          quantity: li.quantity,
-          unitPrice: li.sellingPrice,
-          markupPercent: li.markup,
-          lineTotal: li.lineTotal,
-          subItems: subItems.length > 0 ? subItems : undefined,
-        };
-      }),
-      subtotal,
-      vatRate: VAT_RATE,
-      vatAmount,
-      total,
-    };
-  }, [pdfReady, allHaveUnits, lineItems, subtotal, vatAmount, total]);
-
   const editingArea = editingAreaId ? areas.find(a => a.id === editingAreaId) : null;
 
   return (
@@ -403,7 +351,7 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
             <Input
               type="number"
               value={globalMarkup}
-              onChange={(e) => { setGlobalMarkup(parseFloat(e.target.value) || 0); setPdfReady(false); }}
+              onChange={(e) => { setGlobalMarkup(parseFloat(e.target.value) || 0); }}
               className="h-8 w-24 text-sm"
               min={0}
               step={5}
@@ -480,7 +428,7 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
                     {unit ? (
                       <QuantityControl
                         value={pricing.quantity}
-                        onChange={(v) => { updateAreaPricing(area.id, { quantity: v }); setPdfReady(false); }}
+                        onChange={(v) => { updateAreaPricing(area.id, { quantity: v }); }}
                         min={1}
                         max={20}
                         showSlider={false}
@@ -502,7 +450,7 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
                           <Input
                             type="number"
                             value={pricing.markupPercent}
-                            onChange={(e) => { updateAreaPricing(area.id, { markupPercent: parseFloat(e.target.value) || 0 }); setPdfReady(false); }}
+                            onChange={(e) => { updateAreaPricing(area.id, { markupPercent: parseFloat(e.target.value) || 0 }); }}
                             className="h-8 text-xs w-16 text-center min-h-[44px] sm:min-h-0 sm:h-7"
                             min={0}
                             step={5}
@@ -598,81 +546,26 @@ export default function PricingStep({ areas, onAreasChange }: Props) {
         </CardContent>
       </Card>
 
-      {/* Generate Quote / Download PDF / Send Email */}
-      <div className="space-y-2">
-        {!pdfReady ? (
+      {/* Generate Quote — delegates to the SAME persisted save-then-send flow
+          used by the sidebar's Generate Quote button, so the client selected
+          in the header is always attached and the correct estimate/invoice
+          PDF template is always used. This step no longer builds its own
+          disconnected, client-only quote/PDF. */}
+      {onGenerateQuote && (
+        <div className="space-y-2">
           <Button
             className="w-full"
-            onClick={() => setPdfReady(true)}
-            disabled={!allHaveUnits}
+            onClick={onGenerateQuote}
+            disabled={!allHaveUnits || generating}
           >
-            <FileDown className="h-4 w-4 mr-2" />
-            Generate Quote
+            {generating ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving…</>
+            ) : (
+              <><FileDown className="h-4 w-4 mr-2" /> Generate Quote</>
+            )}
           </Button>
-        ) : quoteData ? (
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Suspense fallback={
-              <Button className="flex-1" disabled>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Preparing PDF…
-              </Button>
-            }>
-              <PDFDownloadButton data={quoteData} />
-            </Suspense>
-            <Button
-              className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
-              disabled={sending || emailSent || !allHaveUnits || !quoteData.clientEmail}
-              onClick={async () => {
-                if (!quoteData) return;
-                setSending(true);
-                try {
-                  const blob = await pdf(<QuotePDFDocument data={quoteData} />).toBlob();
-                  const arrayBuffer = await blob.arrayBuffer();
-                  const bytes = new Uint8Array(arrayBuffer);
-                  let binary = "";
-                  for (let i = 0; i < bytes.length; i++) {
-                    binary += String.fromCharCode(bytes[i]);
-                  }
-                  const pdfBase64 = btoa(binary);
-
-                  const unsubscribeToken = crypto.randomUUID();
-                  const { error } = await supabase.functions.invoke("send-quote-email", {
-                    body: {
-                      to: quoteData.clientEmail,
-                      subject: `Your 0800BeCool Quote ${quoteData.quoteNumber}`,
-                      quoteNumber: quoteData.quoteNumber,
-                      clientName: quoteData.clientName,
-                      totalAmount: quoteData.total,
-                      unsubscribeToken,
-                      pdfBase64,
-                    },
-                  });
-
-                  if (error) throw error;
-                  setEmailSent(true);
-                  toast.success(`Quote sent to ${quoteData.clientEmail}!`);
-                } catch (err: any) {
-                  toast.error(err?.message || "Failed to send quote email");
-                } finally {
-                  setSending(false);
-                }
-              }}
-            >
-              {sending ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending…</>
-              ) : emailSent ? (
-                <><Check className="h-4 w-4 mr-2" /> Sent ✓</>
-              ) : (
-                <><Mail className="h-4 w-4 mr-2" /> Send Quote Email</>
-              )}
-            </Button>
-          </div>
-        ) : null}
-        {pdfReady && quoteData && !quoteData.clientEmail && (
-          <p className="text-xs text-muted-foreground text-center">
-            Add a client email to enable email sending.
-          </p>
-        )}
-      </div>
+        </div>
+      )}
 
       {!allHaveUnits && (
         <p className="text-xs text-destructive text-center">
