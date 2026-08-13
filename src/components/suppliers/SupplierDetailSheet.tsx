@@ -12,7 +12,7 @@ import { Building2, Globe, MapPin, Pencil, Users, Package, FileText, Wallet, Tag
 import { toast } from "sonner";
 import SupplierContactsTab from "./SupplierContactsTab";
 import SupplierDocumentsTab from "./SupplierDocumentsTab";
-import SupplierImportPanel from "./SupplierImportPanel";
+import SupplierProductImporter from "@/components/catalog/SupplierProductImporter";
 
 interface SupplierDetailSheetProps {
   supplierId: string;
@@ -177,10 +177,14 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit }: Supplie
 
           <TabsContent value="import">
             <div className="mt-2">
-              <SupplierImportPanel
+              {/* Uses the safe diff-based importer (archives missing products instead of
+                  hard-deleting the whole catalog on every import) — see
+                  docs/pricing-and-import-architecture-findings.md */}
+              <SupplierProductImporter
                 supplierId={supplierId}
                 supplierName={supplier.company_name || supplier.name}
-                onImportComplete={() => {
+                isConsumablesSupplier={supplier.supplier_type === "consumables"}
+                onComplete={() => {
                   queryClient.invalidateQueries({ queryKey: ["supplier-product-count", supplierId] });
                   queryClient.invalidateQueries({ queryKey: ["supplier-product-counts"] });
                   queryClient.invalidateQueries({ queryKey: ["admin-suppliers-list"] });

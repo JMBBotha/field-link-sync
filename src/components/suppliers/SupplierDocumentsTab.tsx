@@ -17,7 +17,7 @@ import ImportPreviewModal from "./ImportPreviewModal";
 import type { ExtractedSupplierInfo } from "@/services/supplierInfoExtractor";
 import type { ImportPreview, ParsedProduct } from "@/services/productImportParser";
 import { cleanImportForSupplier, logImportAction } from "@/services/cleanImportPipeline";
-import { runImportPipeline } from "@/services/pdfImportPipeline";
+import { buildProductDiff, applyProductDiff, type DiffImportRow } from "@/services/diffImportPipeline";
 
 interface SupplierDocument {
   id: string;
@@ -60,8 +60,6 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [importFileName, setImportFileName] = useState("");
   const [importConfirming, setImportConfirming] = useState(false);
-  const [showImportCleanConfirm, setShowImportCleanConfirm] = useState(false);
-  const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
 
   const { data: documents = [], isLoading } = useQuery({
     queryKey: ["supplier-documents", supplierId],
@@ -246,20 +244,34 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
     }
   }, [catalogPageCount, toast]);
 
-  /** Process a PDF into page images for the Visual Catalog — with clean purge first */
+  /** Process a PDF into page images for the Visual Catalog.
+   * Only replaces this supplier's OLD PAGE IMAGES — this flow is purely for
+   * the visual-catalog viewer and must never touch supplier_products. It used
+   * to call cleanImportForSupplier() (full hard-delete of the product catalog)
+   * even though it doesn't import any products; see
+   * docs/pricing-and-import-architecture-findings.md. */
   const processUpload = useCallback(async (file: File) => {
     setProcessingPriceList(true);
-    setPriceListProgress("Purging old data...");
+    setPriceListProgress("Removing old pages...");
 
     try {
-      // ── MANDATORY CLEAN PURGE ──
-      const purgeResult = await cleanImportForSupplier(supplierId);
-      await logImportAction({
-        supplierId,
-        action: "clean_purge",
-        productsDeleted: purgeResult.deletedProducts,
-        pdfsDeleted: purgeResult.deletedPdfs,
-      });
+      // ── Replace only the old PDF page images (not products) ──
+      const { data: oldPages } = await (supabase.from("supplier_pdf_pages" as any) as any)
+        .select("page_image_url")
+        .eq("supplier_id", supplierId);
+      if (oldPages && oldPages.length > 0) {
+        const imagePaths = oldPages
+          .map((p: any) => {
+            const url = p.page_image_url || "";
+            const match = url.match(/supplier-pdf-pages\/(.+)$/);
+            return match ? match[1] : null;
+          })
+          .filter(Boolean) as string[];
+        if (imagePaths.length > 0) {
+          await supabase.storage.from("supplier-pdf-pages").remove(imagePaths);
+        }
+      }
+      await (supabase.from("supplier_pdf_pages" as any) as any).delete().eq("supplier_id", supplierId);
 
       // ── Process the new PDF ──
       setPriceListProgress("Loading PDF...");
@@ -413,7 +425,8 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
 
   const deleteDoc = documents.find((d) => d.id === deleteId);
 
-  // ── AI Import Handler — with mandatory clean purge ──
+  // ── AI Import Handler — safe diff-based import (archives missing products,
+  // never hard-deletes) — see docs/pricing-and-import-architecture-findings.md ──
   const handleImportFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -425,15 +438,12 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
       return;
     }
 
-    // If products exist, show confirmation first
-    if (activeProductCount > 0) {
-      setPendingImportFile(file);
-      setShowImportCleanConfirm(true);
-    } else {
-      runImportAnalysis(file);
-    }
+    // Diff-based import safely merges with any existing catalog (new/updated
+    // rows are upserted, missing rows are archived) — no destructive purge
+    // confirmation needed regardless of how many products already exist.
+    runImportAnalysis(file);
     if (importInputRef.current) importInputRef.current.value = "";
-  }, [activeProductCount, toast]);
+  }, [toast]);
 
   const runImportAnalysis = useCallback(async (file: File) => {
     setImportAnalysing(true);
@@ -455,21 +465,43 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
     try {
       const file = importFileRef.current;
 
-      const result = await runImportPipeline({
+      // Safe diff-based import: matches by product_code, upserts new/changed
+      // rows, and archives (never hard-deletes) rows missing from this file.
+      const rows: DiffImportRow[] = products.map((p) => ({
+        product_code: p.model_number,
+        description: p.description || "",
+        category: p.category || "General",
+        cost_price: p.cost_price,
+        pipe_size: p.pipe_size || null,
+        btu_rating: p.btu_rating ?? null,
+        refrigerant_type: p.refrigerant_type || null,
+        is_price_on_request: (p.raw_price ?? p.cost_price) <= 0,
+        short_name: p.short_name || null,
+        brand: p.brand || null,
+        product_category: p.product_category || p.category || undefined,
+        sold_in_length: p.sold_in_length || false,
+        unit_length: p.unit_length ?? null,
+        price_per_metre: p.price_per_metre ?? null,
+      })).filter((r) => r.product_code && r.product_code.trim().length >= 2);
+
+      const diffRows = await buildProductDiff(supplierId, rows);
+      const { imported, updated, archived, errors, firstError } = await applyProductDiff({
         supplierId,
         supplierName: supplierName || "",
-        products,
-        file,
+        diffRows,
+        defaultMarkupPercent: products[0]?.default_markup_percent || 30,
+        fileName: file?.name || "AI Import",
       });
 
-      if (!result.success) {
-        throw new Error(result.error || "Import pipeline failed");
+      if (imported === 0 && updated === 0 && archived === 0 && errors > 0) {
+        throw new Error(firstError || "Import pipeline failed");
       }
 
       invalidateAll();
       toast({
-        title: `✅ ${result.productsImported} products imported`,
-        description: `${supplierName || "Supplier"} catalog updated.${result.productsSkipped > 0 ? ` ${result.productsSkipped} skipped.` : ""}`,
+        title: `✅ ${imported} new, ${updated} updated, ${archived} archived`,
+        description: `${supplierName || "Supplier"} catalog updated.${errors > 0 ? ` ${errors} failed — ${firstError.substring(0, 100)}` : ""}`,
+        variant: errors > 0 ? "destructive" : undefined,
       });
       setImportPreview(null);
 
@@ -629,7 +661,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
                 AI Product Import
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Upload a PDF or CSV — AI detects VAT, discounts & pricing. Always starts fresh.
+                Upload a PDF or CSV — AI detects VAT, discounts & pricing. Safely merges with your existing catalog.
               </p>
             </div>
             <div className="shrink-0">
@@ -847,37 +879,13 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
           <AlertDialogHeader>
             <AlertDialogTitle>Replace PDF Catalog?</AlertDialogTitle>
             <AlertDialogDescription>
-              ⚠️ This will DELETE all existing products and {catalogPageCount} pages, then import from the new PDF. This ensures a clean slate with no data mixing.
+              This will remove the {catalogPageCount} existing page images and replace them with the new PDF. Your product catalog (prices, stock, etc.) is not affected.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => { setShowReplaceConfirm(false); if (pendingReplaceFile) { processUpload(pendingReplaceFile); setPendingReplaceFile(null); } }}>
-              Replace & Clean
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Import clean confirmation */}
-      <AlertDialog open={showImportCleanConfirm} onOpenChange={(o) => { if (!o) { setShowImportCleanConfirm(false); setPendingImportFile(null); } }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Replace existing products?</AlertDialogTitle>
-            <AlertDialogDescription>
-              ⚠️ This will DELETE all {activeProductCount} existing products for this supplier before importing new ones. This ensures a clean catalog with no stale data.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => {
-              setShowImportCleanConfirm(false);
-              if (pendingImportFile) {
-                runImportAnalysis(pendingImportFile);
-                setPendingImportFile(null);
-              }
-            }}>
-              Continue — Clean & Import
+              Replace Pages
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

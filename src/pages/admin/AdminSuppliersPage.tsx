@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import SupplierDetailSheet from "@/components/suppliers/SupplierDetailSheet";
 import SupplierFormDialog from "@/components/suppliers/SupplierFormDialog";
-import SupplierImportPanel from "@/components/suppliers/SupplierImportPanel";
+import SupplierProductImporter from "@/components/catalog/SupplierProductImporter";
 import FloatingQuoteBuilderButton from "@/components/shared/FloatingQuoteBuilderButton";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -467,11 +467,14 @@ const AdminSuppliersPage = () => {
                 Cancel
               </Button>
             </div>
-            <SupplierImportPanel
+            {/* Safe diff-based importer — archives missing products instead of
+                hard-deleting the whole catalog on every import. See
+                docs/pricing-and-import-architecture-findings.md */}
+            <SupplierProductImporter
               supplierId={s.id}
               supplierName={s.company_name || s.name}
-              compact
-              onImportComplete={() => {
+              isConsumablesSupplier={s.supplier_type === "consumables"}
+              onComplete={() => {
                 setExpandedImportId(null);
                 refreshAll();
               }}

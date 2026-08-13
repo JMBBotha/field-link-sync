@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import PriceConfigPanel, { calculatePrices, type PriceConfig } from "./PriceConfigPanel";
+import { buildProductDiff, applyProductDiff, type DiffImportRow, type DiffRow as SharedDiffRow, type DiffAction as SharedDiffAction } from "@/services/diffImportPipeline";
 
 /** Strip non-numeric chars from AI values like "9000 BTU" → 9000 */
 function sanitizeInt(val: any): number | null {
@@ -122,33 +123,12 @@ function loadPdfJs(): Promise<any> {
   return pdfJsLoadPromise;
 }
 
-interface ParsedRow {
-  product_code: string;
-  description: string;
-  category: string;
-  cost_price: number;
-  pipe_size: string | null;
-  btu_rating: number | null;
-  refrigerant_type: string | null;
-  is_price_on_request: boolean;
-  short_name: string | null;
-  product_type?: string;
-  sold_in_length?: boolean;
-  unit_length?: number | null;
-  unit_length_unit?: string;
-  price_per_metre?: number | null;
-  min_cut_length?: number;
-  brand?: string | null;
-  product_category?: string;
-}
-
-type DiffAction = "new" | "update" | "archive" | "unchanged" | "restore";
-
-interface DiffRow extends ParsedRow {
-  action: DiffAction;
-  old_cost_price?: number;
-  existing_id?: string;
-}
+// ParsedRow/DiffRow/DiffAction are the same shape used by every safe import
+// entry point — defined once in `@/services/diffImportPipeline` and re-used
+// here under the original local names to avoid a large rename.
+type ParsedRow = DiffImportRow;
+type DiffAction = SharedDiffAction;
+type DiffRow = SharedDiffRow;
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -384,87 +364,9 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
   };
 
   // ─── Build diff against existing catalog ───
+  // Delegates to the shared `buildProductDiff` used by every safe import entry point.
   const buildDiff = async (incoming: ParsedRow[]): Promise<DiffRow[]> => {
-    // Fetch ALL existing products INCLUDING archived (to detect restores)
-    const { data: existing, error: fetchErr } = await supabase
-      .from("supplier_products" as any)
-      .select("id, product_code, cost_price, archived, description, brand, product_category, category")
-      .eq("supplier_id", supplierId)
-      .limit(5000);
-    
-    if (fetchErr) {
-      console.error("[Import] Failed to fetch existing products for diff:", fetchErr);
-    }
-
-    const existingMap = new Map<string, { id: string; cost_price: number; archived: boolean; description: string; brand: string | null; product_category: string | null; category: string | null }>();
-    (existing || []).forEach((e: any) => {
-      existingMap.set((e.product_code || "").toUpperCase(), {
-        id: e.id,
-        cost_price: e.cost_price || 0,
-        archived: !!e.archived,
-        description: e.description || "",
-        brand: e.brand || null,
-        product_category: e.product_category || null,
-        category: e.category || null,
-      });
-    });
-
-    const incomingCodes = new Set(incoming.map(r => r.product_code.toUpperCase()));
-    const diff: DiffRow[] = [];
-
-    // Process incoming products
-    for (const row of incoming) {
-      const key = row.product_code.toUpperCase();
-      const match = existingMap.get(key);
-      if (match) {
-        // If product is archived, mark as "restore"
-        if (match.archived) {
-          diff.push({
-            ...row,
-            action: "restore",
-            old_cost_price: match.cost_price,
-            existing_id: match.id,
-          });
-          continue;
-        }
-        // Compare multiple fields, not just price
-        const priceChanged = Math.abs(match.cost_price - row.cost_price) > 0.01;
-        const descChanged = row.description && row.description !== match.description;
-        const brandChanged = row.brand && row.brand !== match.brand;
-        const catChanged = row.product_category && row.product_category !== (match.product_category || match.category);
-        const hasChanges = priceChanged || descChanged || brandChanged || catChanged;
-        diff.push({
-          ...row,
-          action: hasChanges ? "update" : "unchanged",
-          old_cost_price: match.cost_price,
-          existing_id: match.id,
-        });
-      } else {
-        diff.push({ ...row, action: "new" });
-      }
-    }
-
-    // Products to archive (active in existing but not in incoming)
-    for (const [code, data] of existingMap) {
-      if (!incomingCodes.has(code) && !data.archived) {
-        diff.push({
-          product_code: code,
-          description: "(existing product not in new list)",
-          category: "",
-          cost_price: data.cost_price,
-          pipe_size: null,
-          btu_rating: null,
-          refrigerant_type: null,
-          is_price_on_request: false,
-          short_name: null,
-          action: "archive",
-          existing_id: data.id,
-          old_cost_price: data.cost_price,
-        });
-      }
-    }
-
-    return diff;
+    return buildProductDiff(supplierId, incoming);
   };
 
   // ─── AI Parse extracted text ───
@@ -699,11 +601,11 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         brand: p.brand || null,
         product_category: p.product_category || (isConsumablesSupplier ? "Consumables" : "Air Conditioning"),
         // Extra price data stored for import
-        _cost_excl_vat: calculated.costExclVat,
-        _cost_incl_vat: calculated.costInclVat,
+        cost_excl_vat: calculated.costExclVat,
+        cost_incl_vat: calculated.costInclVat,
         _rrp: rrp,
-        _supplier_discount_percent: config.supplierDiscountPercent,
-        _vat_rate: config.vatRate,
+        supplier_discount_percent: config.supplierDiscountPercent,
+        vat_rate: config.vatRate,
       } as any;
     });
 
@@ -717,141 +619,37 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
   // ─── Apply diff import ───
   const handleApplyDiff = async (forceAll = false) => {
     setImportingDiff(true); setError(null); setProgress(0);
-    
-    // If forceAll, convert all unchanged to update
-    const workingRows = forceAll
+
+    const workingRowsPreview = forceAll
       ? diffRows.map(r => r.action === "unchanged" ? { ...r, action: "update" as DiffAction } : r)
       : diffRows;
-    
-    const newRows = workingRows.filter(r => r.action === "new");
-    const updateRows = workingRows.filter(r => r.action === "update" || r.action === "restore");
-    const archiveRows = workingRows.filter(r => r.action === "archive");
-    const total = newRows.length + updateRows.length + archiveRows.length;
-    if (total === 0) { 
+    const archiveRowsPreview = workingRowsPreview.filter(r => r.action === "archive");
+    const totalPreview = workingRowsPreview.filter(r => r.action === "new" || r.action === "update" || r.action === "restore" || r.action === "archive").length;
+    if (totalPreview === 0) {
       toast({ title: "Nothing to apply", description: "All products are unchanged. Use 'Force Re-import All' to refresh all products.", variant: "destructive" });
-      setImportingDiff(false); return; 
+      setImportingDiff(false); return;
     }
 
-    let imported = 0, updated = 0, archived = 0, errors = 0;
-    let firstError = "";
-    let processed = 0;
-
-    const tick = () => { processed++; setProgress(Math.round((processed / total) * 100)); };
-
     try {
-      console.log(`[Import] Starting import for supplier "${supplierName}" (id: ${supplierId}), ${newRows.length} new, ${updateRows.length} updates, ${archiveRows.length} archives`);
-      // ── PHASE 1: INSERT new products (in batches of 50) ──
-      const BATCH = 50;
-      for (let b = 0; b < newRows.length; b += BATCH) {
-        const batch = newRows.slice(b, b + BATCH);
-        const batchData = batch.map(row => ({
-          supplier_id: supplierId,
-          product_code: row.product_code,
-          description: row.description,
-          category: row.category || "General",
-          cost_price: row.cost_price,
-          pipe_size: row.pipe_size,
-          btu_rating: sanitizeInt(row.btu_rating),
-          refrigerant_type: row.refrigerant_type,
-          is_price_on_request: row.is_price_on_request,
-          default_markup_percent: aiMarkup,
-          is_active: true,
-          archived: false,
-          short_name: row.short_name,
-          product_type: isConsumablesSupplier ? "consumable" : "ac_unit",
-          product_category: (row as any).product_category || (isConsumablesSupplier ? "Consumables" : "Air Conditioning"),
-          brand: (row as any).brand || null,
-          sold_in_length: row.sold_in_length || false,
-          unit_length: row.unit_length || null,
-          unit_length_unit: row.unit_length_unit || "m",
-          price_per_metre: row.price_per_metre || null,
-          min_cut_length: row.min_cut_length || 0.5,
-           // Optional price columns
-           cost_excl_vat: (row as any)._cost_excl_vat ?? null,
-           cost_incl_vat: (row as any)._cost_incl_vat ?? null,
-           supplier_discount_percent: (row as any)._supplier_discount_percent || 0,
-           vat_rate: (row as any)._vat_rate || 15,
-        }));
+      // Delegates to the shared diff-apply logic used by every safe import entry point.
+      const { imported, updated, archived, errors, firstError } = await applyProductDiff({
+        supplierId,
+        supplierName,
+        diffRows,
+        forceAll,
+        isConsumablesSupplier,
+        defaultMarkupPercent: aiMarkup,
+        fileName: pdfFile?.name || "AI Import",
+        onProgress: setProgress,
+      });
 
-        const { error: err, data } = await (supabase.from("supplier_products" as any) as any).upsert(batchData as any, { onConflict: "supplier_id,product_code" }).select("id");
-        if (err) {
-          const msg = `INSERT batch failed: ${err.message} | ${err.details || ""} | ${err.hint || ""}`;
-          console.error(`[Import]`, msg, err);
-          if (!firstError) firstError = msg;
-          errors += batch.length;
-        } else {
-          imported += (data as any[])?.length || batch.length;
-        }
-        for (let i = 0; i < batch.length; i++) tick();
-      }
-
-      // ── PHASE 2: UPDATE existing products (including restores) ──
-      for (const row of updateRows) {
-        const updateData: any = {
-          cost_price: row.cost_price,
-          description: row.description,
-          category: row.category || "General",
-          brand: (row as any).brand || null,
-          product_category: (row as any).product_category || null,
-          short_name: row.short_name,
-          updated_at: new Date().toISOString(),
-          archived: false,
-          archived_at: null,
-        };
-         if ((row as any)._cost_excl_vat !== undefined) {
-           updateData.cost_excl_vat = (row as any)._cost_excl_vat;
-           updateData.cost_incl_vat = (row as any)._cost_incl_vat;
-         }
-        const { error: err } = await supabase.from("supplier_products" as any)
-          .update(updateData)
-          .eq("id", row.existing_id);
-        if (err) {
-          const msg = `UPDATE failed for ${row.product_code}: ${err.message}`;
-          console.error(`[Import]`, msg, err);
-          if (!firstError) firstError = msg;
-          errors++;
-        } else updated++;
-        tick();
-      }
-
-      // ── PHASE 3: ARCHIVE only if inserts + updates had no errors ──
-      if (errors > 0 && archiveRows.length > 0) {
-        console.warn(`[Import] Skipping archive of ${archiveRows.length} products because ${errors} insert/update errors occurred`);
+      if (errors > 0 && archiveRowsPreview.length > 0) {
         toast({
           title: "Archive skipped",
-          description: `${archiveRows.length} products were NOT archived because ${errors} errors occurred during insert/update. Fix errors first.`,
+          description: `${archiveRowsPreview.length} products were NOT archived because ${errors} errors occurred during insert/update. Fix errors first.`,
           variant: "destructive",
         });
-        // Count them as processed for the progress bar
-        for (let i = 0; i < archiveRows.length; i++) tick();
-      } else {
-        for (const row of archiveRows) {
-          const { error: err } = await supabase.from("supplier_products" as any)
-            .update({ archived: true, archived_at: new Date().toISOString() } as any)
-            .eq("id", row.existing_id);
-          if (err) {
-            const msg = `ARCHIVE failed for ${row.product_code}: ${err.message}`;
-            console.error(`[Import]`, msg, err);
-            if (!firstError) firstError = msg;
-            errors++;
-          } else archived++;
-          tick();
-        }
       }
-
-      // Record import history
-      const { data: userData } = await supabase.auth.getUser();
-      await supabase.from("price_list_uploads" as any).insert({
-        supplier_id: supplierId,
-        file_name: pdfFile?.name || "AI Import",
-        file_type: "pdf",
-        status: errors > 0 ? "partial" : "completed",
-        products_imported: imported,
-        products_updated: updated,
-        products_skipped: errors,
-        products_archived: archived,
-        uploaded_by: userData?.user?.id || null,
-      } as any);
 
       // Capture PDF pages for visual catalog (only if not already captured in handlePdfFile)
       if (pdfFile && storedPdfPages.length === 0) {
