@@ -139,9 +139,16 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
     notes: invoice.notes,
   });
 
-  const handleDownloadPDF = () => {
-    downloadInvoicePDF(getInvoiceDataForPDF());
-    toast({ title: "PDF Downloaded 📄" });
+  const handleDownloadPDF = async () => {
+    setGeneratingPDF(true);
+    try {
+      await downloadInvoicePDF(getInvoiceDataForPDF());
+      toast({ title: "PDF Downloaded 📄" });
+    } catch (err) {
+      console.error("Download PDF error:", err);
+      toast({ title: "Error", description: "Failed to generate PDF", variant: "destructive" });
+    }
+    setGeneratingPDF(false);
   };
 
   const handleGenerateAndShare = async () => {
@@ -267,8 +274,8 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
 
         {/* Share/Download actions */}
         <div className="grid grid-cols-3 gap-2">
-          <Button variant="outline" className="h-10 rounded-xl text-xs" onClick={handleDownloadPDF}>
-            <Download className="h-3.5 w-3.5 mr-1" /> PDF
+          <Button variant="outline" className="h-10 rounded-xl text-xs" onClick={handleDownloadPDF} disabled={generatingPDF}>
+            {generatingPDF ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />} PDF
           </Button>
           {invoice.customer_phone && (
             <Button variant="outline" className="h-10 rounded-xl text-xs" onClick={handleWhatsApp} disabled={generatingPDF}>

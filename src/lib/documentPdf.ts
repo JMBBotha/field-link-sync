@@ -183,15 +183,16 @@ function downloadPdfBlob(pdfBytes: Uint8Array, fileName: string) {
 }
 
 /**
- * Generates a PDF for invoices/proposals from captured DOM, and for quotes
- * from the styled react-pdf document (QuotePDFDocument).
+ * Captures the on-screen document (invoice/estimate/proposal) exactly as rendered,
+ * appends the terms pages, merges brochures if any, and returns the final PDF bytes.
+ * This is the shared core used by both the direct-download and blob/upload flows below,
+ * so every document type always produces a pixel-accurate PDF of what's on screen —
+ * never a separately hand-drawn, generic-looking version.
  */
-export async function generateDocumentPdf(opts: DocumentPdfOptions) {
+async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Array> {
   let disableCaptureMode: (() => void) | null = null;
 
   try {
-    const fileName = `${opts.docType}-${opts.docNumber || "DRAFT"}.pdf`;
-
     const captureElement = resolveCaptureElement(opts);
 
     disableCaptureMode = enableCaptureMode();
@@ -250,16 +251,42 @@ export async function generateDocumentPdf(opts: DocumentPdfOptions) {
         brochures: opts.brochures,
         quoteNumber: opts.docNumber,
       });
-
-      downloadPdfBlob(new Uint8Array(merged), fileName);
-      return;
+      return new Uint8Array(merged);
     }
 
-    doc.save(fileName);
+    return new Uint8Array(doc.output("arraybuffer"));
+  } finally {
+    disableCaptureMode?.();
+  }
+}
+
+/**
+ * Generates a PDF for invoices/proposals/estimates from captured DOM, and
+ * triggers a browser download. Use `generateDocumentPdfBlob` instead when you
+ * need the PDF bytes for upload or sharing rather than an immediate download.
+ */
+export async function generateDocumentPdf(opts: DocumentPdfOptions) {
+  try {
+    const fileName = `${opts.docType}-${opts.docNumber || "DRAFT"}.pdf`;
+    const bytes = await buildDocumentPdfBytes(opts);
+    downloadPdfBlob(bytes, fileName);
   } catch (err: any) {
     console.error("[PDF] generateDocumentPdf error:", err);
     throw err;
-  } finally {
-    disableCaptureMode?.();
+  }
+}
+
+/**
+ * Same capture pipeline as `generateDocumentPdf`, but returns a Blob instead
+ * of downloading — for uploading to storage, sharing a link, or sending via
+ * WhatsApp/email.
+ */
+export async function generateDocumentPdfBlob(opts: DocumentPdfOptions): Promise<Blob> {
+  try {
+    const bytes = await buildDocumentPdfBytes(opts);
+    return new Blob([new Uint8Array(bytes)], { type: "application/pdf" });
+  } catch (err: any) {
+    console.error("[PDF] generateDocumentPdfBlob error:", err);
+    throw err;
   }
 }
