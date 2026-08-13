@@ -184,6 +184,7 @@ const InvoiceDocument = ({
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Banking Details</p>
             <div className="mt-1 grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-4">
+              <p><span className="text-slate-400">Account Name: </span>{bank.account_name || settings.company_name || "—"}</p>
               <p><span className="text-slate-400">Bank: </span>{bank.bank_name || "—"}</p>
               <p><span className="text-slate-400">Account: </span>{bank.account_number || "—"}</p>
               <p><span className="text-slate-400">Branch Code: </span>{bank.branch_code || "—"}</p>

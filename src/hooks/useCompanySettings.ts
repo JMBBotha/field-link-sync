@@ -17,6 +17,7 @@ export interface CompanySettings {
   payfast_merchant_key: string;
   banking_details: {
     bank_name?: string;
+    account_name?: string;
     account_number?: string;
     branch_code?: string;
     account_type?: string;

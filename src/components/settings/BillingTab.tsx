@@ -42,6 +42,10 @@ const BillingTab = () => {
         <CardHeader><CardTitle>Banking Details (shown on invoices)</CardTitle></CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div>
+            <Label>Account Name</Label>
+            <Input value={form.banking_details.account_name || ""} onChange={(e) => updateBanking("account_name", e.target.value)} placeholder={form.company_name || "e.g. 0800-BE-COOL AC Super Service"} />
+          </div>
+          <div>
             <Label>Bank Name</Label>
             <Input value={form.banking_details.bank_name || ""} onChange={(e) => updateBanking("bank_name", e.target.value)} />
           </div>

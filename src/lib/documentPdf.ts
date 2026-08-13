@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
-import { TERMS_BLOCKS } from "./defaultTerms";
+import { buildTermsBlocks, type TermsCompanyInfo } from "./defaultTerms";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DocumentPdfOptions {
   docType: "Invoice" | "Quote" | "Proposal";
@@ -62,7 +63,40 @@ async function waitForCaptureFrame() {
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }
 
-const addTermsFooter = (doc: jsPDF) => {
+/**
+ * Fetches the real tenant's company/banking info directly from the database
+ * for use on the terms & banking page, independent of whatever the caller
+ * happened to pass in `opts`. This guarantees every PDF's terms/banking page
+ * always matches the actual signed-in company—never a leftover hardcoded
+ * placeholder company—even if a future call site forgets to pass it through.
+ */
+async function fetchTermsCompanyInfo(fallbackName?: string): Promise<TermsCompanyInfo> {
+  try {
+    const { data, error } = await supabase
+      .from("company_settings")
+      .select("company_name, banking_details")
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data) {
+      return { companyName: fallbackName };
+    }
+
+    const banking = (data.banking_details as Record<string, string> | null) || {};
+    return {
+      companyName: data.company_name || fallbackName,
+      bankName: banking.bank_name,
+      accountName: banking.account_name,
+      accountNumber: banking.account_number,
+      branchCode: banking.branch_code,
+      accountType: banking.account_type,
+    };
+  } catch {
+    return { companyName: fallbackName };
+  }
+}
+
+const addTermsFooter = (doc: jsPDF, company: TermsCompanyInfo) => {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 25;
@@ -71,7 +105,7 @@ const addTermsFooter = (doc: jsPDF) => {
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
 
-  const footerText = "MassAir Ind cc | Tel: +27 12 809 1258 | admin@massair.co.za | www.massair.co.za";
+  const footerText = company.companyName || "Our Company";
 
   doc.text(footerText, pageWidth / 2, pageHeight - 18, {
     maxWidth: pageWidth - margin * 2,
@@ -79,8 +113,8 @@ const addTermsFooter = (doc: jsPDF) => {
   });
 };
 
-function appendTermsPages(doc: jsPDF, _legacyText?: string) {
-  const termsBlocks = TERMS_BLOCKS;
+function appendTermsPages(doc: jsPDF, company: TermsCompanyInfo) {
+  const termsBlocks = buildTermsBlocks(company);
   if (!termsBlocks || termsBlocks.length === 0) return;
 
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -100,7 +134,7 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
 
   termsBlocks.forEach((block) => {
     if (y > doc.internal.pageSize.getHeight() - 30) {
-      addTermsFooter(doc);
+      addTermsFooter(doc, company);
       doc.addPage();
       doc.setDrawColor(...BLUE);
       doc.setLineWidth(2.5);
@@ -113,7 +147,7 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
         doc.setTextColor(...BLUE);
         doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
-        const titleLines: string[] = doc.splitTextToSize(block.text || "MassAir Ind cc Terms and Conditions", pageWidth - margin * 2);
+        const titleLines: string[] = doc.splitTextToSize(block.text || "Terms and Conditions", pageWidth - margin * 2);
         doc.text(titleLines, margin, y);
         y += titleLines.length * lineHeight + 4;
         break;
@@ -169,7 +203,7 @@ function appendTermsPages(doc: jsPDF, _legacyText?: string) {
     }
   });
 
-  addTermsFooter(doc);
+  addTermsFooter(doc, company);
 }
 
 function downloadPdfBlob(pdfBytes: Uint8Array, fileName: string) {
@@ -242,7 +276,8 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
       }
     }
 
-    appendTermsPages(doc, opts.terms);
+    const termsCompany = await fetchTermsCompanyInfo(opts.companyName);
+    appendTermsPages(doc, termsCompany);
 
     if (opts.brochures && opts.brochures.length > 0) {
       const quoteBytes = doc.output("arraybuffer");
