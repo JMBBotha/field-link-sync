@@ -164,7 +164,8 @@ export const EditableSelect = ({
         <SelectValue placeholder={placeholder}>
           {renderValue
             ? renderValue(value)
-            : options.find((o) => o.value === value)?.label ?? placeholder}
+            : options.find((o) => o.value === value)?.label ??
+              (value ? String(value).replace(/_/g, " ") : placeholder)}
         </SelectValue>
       </SelectTrigger>
       <SelectContent className="z-[60]">
