@@ -2,7 +2,7 @@ import React from "react";
 import {
   Document, Page, Text, View, StyleSheet, Font, Image,
 } from "@react-pdf/renderer";
-import { TERMS_BLOCKS, type TermsBlock } from "@/lib/defaultTerms";
+import { buildTermsBlocks, type TermsBlock, type TermsCompanyInfo } from "@/lib/defaultTerms";
 
 /* ─── Font registration ─── */
 Font.register({
@@ -45,6 +45,8 @@ export interface QuotePDFData {
   vatAmount: number;
   total: number;
   logoUrl?: string | null;
+  /** Real tenant company + banking info used on the Terms page. */
+  termsCompany?: TermsCompanyInfo;
 }
 
 /* ─── Helpers ─── */
@@ -291,7 +293,7 @@ export default function QuotePDFDocument({ data }: { data: QuotePDFData }) {
         <View style={s.tcTopBorder} />
         <Text style={s.tcMainTitle}>Terms & Conditions</Text>
 
-        {TERMS_BLOCKS.map((block, i) => (
+        {buildTermsBlocks(data.termsCompany || {}).map((block, i) => (
           <TermsBlockRenderer key={i} block={block} />
         ))}
 

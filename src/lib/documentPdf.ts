@@ -70,7 +70,7 @@ async function waitForCaptureFrame() {
  * always matches the actual signed-in company—never a leftover hardcoded
  * placeholder company—even if a future call site forgets to pass it through.
  */
-async function fetchTermsCompanyInfo(fallbackName?: string): Promise<TermsCompanyInfo> {
+export async function fetchTermsCompanyInfo(fallbackName?: string): Promise<TermsCompanyInfo> {
   try {
     const { data, error } = await supabase
       .from("company_settings")
