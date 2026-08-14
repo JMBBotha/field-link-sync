@@ -16,11 +16,8 @@ import {
   format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday,
   isBefore, addMonths, subMonths, isSameDay, addDays, startOfWeek, endOfWeek,
 } from "date-fns";
-import {
-  CalendarDays, AlertTriangle, CheckCircle2, Clock, RefreshCw, Search,
-  ChevronLeft, ChevronRight, Loader2, Wrench, ArrowRight, Calendar as CalendarIcon,
-  BarChart3, DollarSign, Percent, List, LayoutGrid, Plus,
-} from "lucide-react";
+import { CalendarDays, AlertTriangle, CheckCircle2, Clock, RefreshCw, Search, ChevronLeft, ChevronRight, Loader2, Wrench, ArrowRight, Calendar as CalendarIcon, BarChart3, Percent, List, LayoutGrid, Plus } from "lucide-react";
+import RandSign from "@/components/icons/RandSign";
 import FloatingQuoteBuilderButton from "@/components/shared/FloatingQuoteBuilderButton";
 
 interface MaintenanceSchedule {
@@ -243,7 +240,7 @@ const AdminMaintenancePage = () => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="h-4 w-4 text-emerald-500" />
+              <RandSign className="h-4 w-4 text-emerald-500" />
               <span className="text-xs text-muted-foreground">Recurring Revenue</span>
             </div>
             <p className="text-2xl font-bold">R {(metrics?.recurringRevenue ?? 0).toLocaleString()}</p>

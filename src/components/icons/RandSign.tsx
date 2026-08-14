@@ -1,7 +1,7 @@
 import { forwardRef, type SVGProps } from "react";
 
 /**
- * Rand currency glyph — drop-in replacement for lucide's DollarSign.
+ * Rand currency glyph — drop-in replacement for lucide's RandSign.
  * Uses currentColor and the same 24x24 viewBox / stroke conventions.
  */
 const RandSign = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>(

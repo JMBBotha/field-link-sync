@@ -9,9 +9,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format, subDays, startOfWeek, startOfMonth, endOfDay, differenceInMinutes } from "date-fns";
-import {
-  DollarSign, Briefcase, Clock, Users, FileCheck, CalendarDays, Download, TrendingUp, Award, Filter, Wrench, AlertTriangle, Percent, FileText,
-} from "lucide-react";
+import { Briefcase, Clock, Users, FileCheck, CalendarDays, Download, TrendingUp, Award, Filter, Wrench, AlertTriangle, Percent, FileText } from "lucide-react";
+import RandSign from "@/components/icons/RandSign";
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend,
 } from "recharts";
@@ -345,9 +344,9 @@ const AnalyticsDashboard = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-9 gap-3">
-        <KPICard label="Invoiced" value={revenueMetrics?.totalInvoiced || 0} prefix="R" icon={DollarSign}
+        <KPICard label="Invoiced" value={revenueMetrics?.totalInvoiced || 0} prefix="R" icon={RandSign}
           gradient="linear-gradient(135deg, hsl(204, 100%, 30%) 0%, hsl(204, 100%, 42%) 100%)" />
-        <KPICard label="Paid" value={revenueMetrics?.totalPaid || 0} prefix="R" icon={DollarSign}
+        <KPICard label="Paid" value={revenueMetrics?.totalPaid || 0} prefix="R" icon={RandSign}
           gradient="linear-gradient(135deg, hsl(142, 76%, 30%) 0%, hsl(142, 76%, 40%) 100%)" />
         <KPICard label="Jobs Done" value={jobCount} icon={Briefcase}
           gradient="linear-gradient(135deg, hsl(38, 92%, 40%) 0%, hsl(38, 92%, 54%) 100%)" />

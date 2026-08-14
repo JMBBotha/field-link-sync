@@ -16,10 +16,8 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
 } from "recharts";
-import {
-  BarChart3, CalendarDays, Download, FileText, Users, Wrench, TrendingUp,
-  DollarSign, Clock, Star, AlertTriangle,
-} from "lucide-react";
+import { BarChart3, CalendarDays, Download, FileText, Users, Wrench, TrendingUp, Clock, Star, AlertTriangle } from "lucide-react";
+import RandSign from "@/components/icons/RandSign";
 import { exportToCSV } from "@/lib/csvExport";
 import jsPDF from "jspdf";
 import logo from "@/assets/logo.png";
@@ -441,7 +439,7 @@ const AdminAdvancedReportsPage = () => {
       {/* Summary KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KPICard icon={<FileText className="h-4 w-4" />} label="Total Jobs" value={filteredLeads.length} loading={isLoading} />
-        <KPICard icon={<DollarSign className="h-4 w-4 text-emerald-500" />} label="Revenue" value={`R ${Math.round(totalRevenue).toLocaleString()}`} loading={isLoading} />
+        <KPICard icon={<RandSign className="h-4 w-4 text-emerald-500" />} label="Revenue" value={`R ${Math.round(totalRevenue).toLocaleString()}`} loading={isLoading} />
         <KPICard icon={<Clock className="h-4 w-4 text-primary" />} label="Completed" value={filteredLeads.filter(l => l.status === "completed").length} loading={isLoading} />
         <KPICard icon={<Star className="h-4 w-4 text-yellow-500" />} label="Avg Rating" value={feedback.length > 0 ? (feedback.reduce((s, f) => s + f.rating, 0) / feedback.length).toFixed(1) : "—"} loading={isLoading} />
       </div>
@@ -450,7 +448,7 @@ const AdminAdvancedReportsPage = () => {
       <Tabs defaultValue="performance" className="space-y-4">
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="performance" className="gap-1.5"><Users className="h-3.5 w-3.5" /> Performance</TabsTrigger>
-          <TabsTrigger value="revenue" className="gap-1.5"><DollarSign className="h-3.5 w-3.5" /> Revenue</TabsTrigger>
+          <TabsTrigger value="revenue" className="gap-1.5"><RandSign className="h-3.5 w-3.5" /> Revenue</TabsTrigger>
           <TabsTrigger value="maintenance" className="gap-1.5"><Wrench className="h-3.5 w-3.5" /> Maintenance</TabsTrigger>
         </TabsList>
 

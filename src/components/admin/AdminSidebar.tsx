@@ -4,43 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole, type AppRole } from "@/hooks/useRole";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import {
-  LayoutDashboard,
-  MapPin,
-  MessageSquare,
-  Phone,
-  CalendarDays,
-  LayoutGrid,
-  FileText,
-  FileSignature,
-  Receipt,
-  FileCheck,
-  Package,
-  DollarSign,
-  BarChart3,
-  ShoppingBag,
-  LineChart,
-  TrendingUp,
-  Bell,
-  History,
-  Upload,
-  Settings,
-  Plus,
-  Users,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  X,
-  Building2,
-  Briefcase,
-  ClipboardList,
-  Sparkles,
-  HelpCircle,
-  CreditCard,
-  Navigation,
-  Wrench,
-} from "lucide-react";
+import { LayoutDashboard, MapPin, MessageSquare, Phone, CalendarDays, LayoutGrid, FileText, FileSignature, Receipt, FileCheck, Package, BarChart3, ShoppingBag, LineChart, TrendingUp, Bell, History, Upload, Settings, Plus, Users, LogOut, ChevronLeft, ChevronRight, ChevronDown, X, Building2, Briefcase, ClipboardList, Sparkles, HelpCircle, CreditCard, Navigation, Wrench } from "lucide-react";
+import RandSign from "@/components/icons/RandSign";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -177,7 +142,7 @@ const AdminSidebar = ({
             { path: "/admin/inventory", label: "Stock", icon: Package },
             { path: "/admin/consumables", label: "Consumables", icon: Package },
             { path: "/admin/suppliers", label: "Suppliers", icon: Building2 },
-            { path: "/admin/flat-rate", label: "Pricing", icon: DollarSign },
+            { path: "/admin/flat-rate", label: "Pricing", icon: RandSign },
             { path: "/admin/pdf-documents", label: "PDF Documents", icon: FileText },
             { path: "/admin/brochures", label: "Brochures", icon: FileText },
           ],

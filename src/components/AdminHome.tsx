@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, FileText, BarChart3, ClipboardList, AlertTriangle, CheckCircle2, Clock, DollarSign, Users, Wrench, ChevronDown, UserPlus, Loader2, UserCheck as UserCheckIcon } from "lucide-react";
+import { Plus, FileText, BarChart3, ClipboardList, AlertTriangle, CheckCircle2, Clock, Users, Wrench, ChevronDown, UserPlus, Loader2, UserCheck as UserCheckIcon } from "lucide-react";
+import RandSign from "@/components/icons/RandSign";
 import { Briefcase, UserCheck, Timer } from "lucide-react";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import AdminAlertsPanel from "@/components/AdminAlertsPanel";
@@ -514,7 +515,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
               <Card className="surface-card">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-1">
-                    <DollarSign className="h-4 w-4 text-primary" />
+                    <RandSign className="h-4 w-4 text-primary" />
                     <span className="text-xs text-muted-foreground">Revenue Today</span>
                   </div>
                   <p className="text-2xl font-bold">R {(stats.revenueToday ?? 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</p>
