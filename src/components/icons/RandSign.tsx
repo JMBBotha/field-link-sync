@@ -1,8 +1,8 @@
 import { forwardRef, type SVGProps } from "react";
 
 /**
- * Rand currency glyph — drop-in replacement for lucide's dollar icon.
- * Uses currentColor and the same 24x24 viewBox / stroke conventions.
+ * Rand currency glyph — a bold "R" inside a solid black coin.
+ * The dot and light text are the same in both light and dark modes.
  */
 const RandSign = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>(
   ({ className, ...props }, ref) => (
@@ -11,16 +11,23 @@ const RandSign = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>(
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
       className={className}
       aria-hidden="true"
       {...props}
     >
-      <path d="M6 21V3h5a5 5 0 0 1 0 10H6" />
-      <path d="M11 13l6 8" />
+      <circle cx="12" cy="12" r="10.5" fill="black" />
+      <text
+        x="12"
+        y="12"
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill="white"
+        fontSize="16"
+        fontWeight="bold"
+        fontFamily="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+      >
+        R
+      </text>
     </svg>
   )
 );
