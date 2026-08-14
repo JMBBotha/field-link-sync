@@ -14,7 +14,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, DollarSign, Loader2 } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
+import RandSign from "@/components/icons/RandSign";
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -127,7 +128,7 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal }: PaymentRecorderProps) => {
     <Card>
       <CardHeader className="py-3 px-4">
         <CardTitle className="text-sm flex items-center gap-2">
-          <DollarSign className="h-4 w-4" /> Payments
+          <RandSign className="h-4 w-4" /> Payments
         </CardTitle>
       </CardHeader>
       <CardContent className="px-4 pb-4 space-y-3">

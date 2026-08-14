@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import CommunicationTimeline from "./communication/CommunicationTimeline";
-import { X, Loader2, User, Phone, Mail, MapPin, Calendar, FileText, Wrench, Star, Edit, ChevronRight, RefreshCw, DollarSign, Clock } from "lucide-react";
+import { X, Loader2, User, Phone, Mail, MapPin, Calendar, FileText, Wrench, Star, Edit, ChevronRight, RefreshCw, Clock } from "lucide-react";
+import RandSign from "@/components/icons/RandSign";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -345,7 +346,7 @@ const CustomerProfile = ({ customerId, open, onClose }: CustomerProfileProps) =>
                               </div>
                               <div className="flex items-center justify-between text-xs">
                                 <div className="flex items-center gap-2">
-                                  <DollarSign className="h-3 w-3 text-green-600" />
+                                  <RandSign className="h-3 w-3 text-green-600" />
                                   <span className="font-medium">R {Number(agreement.price).toLocaleString()}</span>
                                 </div>
                                 {agreement.next_service_due && (

@@ -5,7 +5,8 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, User, Phone, Mail, MapPin, FileText, Receipt, Star, DollarSign } from "lucide-react";
+import { Loader2, User, Phone, Mail, MapPin, FileText, Receipt, Star } from "lucide-react";
+import RandSign from "@/components/icons/RandSign";
 import { useClientDetails } from "@/hooks/useUnifiedClients";
 import { formatDistanceToNow } from "date-fns";
 
@@ -93,7 +94,7 @@ const ClientInfoPopover = ({ customerId, children, side = "bottom" }: ClientInfo
               </div>
               <div className="p-2.5 text-center">
                 <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
-                  <DollarSign className="h-3 w-3" />
+                  <RandSign className="h-3 w-3" />
                   Revenue
                 </div>
                 <p className="text-sm font-bold mt-0.5">{formatZAR(data.totalRevenue)}</p>

@@ -36,20 +36,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Plus, 
-  Calendar as CalendarIcon, 
-  FileText, 
-  DollarSign, 
-  AlertTriangle,
-  RefreshCw,
-  Loader2,
-  Search,
-  Download,
-  X,
-  Clock,
-  Users
-} from "lucide-react";
+import { Plus, Calendar as CalendarIcon, FileText, AlertTriangle, RefreshCw, Loader2, Search, Download, X, Clock, Users } from "lucide-react";
+import RandSign from "@/components/icons/RandSign";
 import { format, addMonths, addYears } from "date-fns";
 import { cn } from "@/lib/utils";
 import CustomerSearchSelector from "@/components/customers/CustomerSearchSelector";
@@ -412,7 +400,7 @@ const ServiceAgreements = () => {
 
         <div className="flex flex-wrap gap-3">
           <Card className="px-4 py-2 flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-green-600" />
+            <RandSign className="h-4 w-4 text-green-600" />
             <div>
               <p className="text-xs text-muted-foreground">Active Revenue</p>
               <p className="font-semibold text-sm">R {totalActiveValue.toLocaleString()}</p>

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
-import { Clock, Car, DollarSign, Loader2 } from "lucide-react";
+import { Clock, Car, Loader2 } from "lucide-react";
+import RandSign from "@/components/icons/RandSign";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 
@@ -138,7 +139,7 @@ const TimeEntryList = ({ leadId, refreshKey }: TimeEntryListProps) => {
       {/* Running Total */}
       <div className="rounded-lg bg-primary/10 p-3 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-semibold">
-          <DollarSign className="h-4 w-4 text-primary" />
+          <RandSign className="h-4 w-4 text-primary" />
           Total Billable
         </div>
         <div className="text-right">

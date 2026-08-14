@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ClockIcon, Images, Plus, FileText, Timer, GitBranch, CloudOff } from "lucide-react";
+import RandSign from "@/components/icons/RandSign";
 import BookingBadge from "@/components/BookingBadge";
 import CustomerJobHistory from "@/components/CustomerJobHistory";
 import CreateInvoiceDialog from "@/components/invoicing/CreateInvoiceDialog";
@@ -35,7 +36,7 @@ import CallHistoryPanel from "./calls/CallHistoryPanel";
 import UsedPartsSection from "./UsedPartsSection";
 import JobCompletionSheet from "./jobs/JobCompletionSheet";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, DollarSign } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import QuickTemplateDialog from "./quoting/QuickTemplateDialog";
 import AcceptLeadDialog from "./leads/AcceptLeadDialog";
 import LeadClassificationPanel from "./leads/LeadClassificationPanel";

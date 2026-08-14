@@ -2,7 +2,8 @@ import { useCompany } from "@/providers/CompanyProvider";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { DollarSign, FileText, AlertTriangle, TrendingUp, CreditCard, Plus, Clock, CalendarClock, Database, Receipt, Users } from "lucide-react";
+import { FileText, AlertTriangle, TrendingUp, CreditCard, Plus, Clock, CalendarClock, Database, Receipt, Users } from "lucide-react";
+import RandSign from "@/components/icons/RandSign";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -236,7 +237,7 @@ const FBDashboard = () => {
         <StatCard title="Outstanding" value={fmt(outstanding)} icon={FileText} color="bg-blue-100 text-blue-600" />
         <StatCard title="Revenue" value={fmt(revenue)} icon={TrendingUp} color="bg-blue-100 text-blue-600" />
         <StatCard title="Overdue" value={String(overdueInvoices.length)} icon={AlertTriangle} color="bg-red-100 text-red-600" />
-        <StatCard title="Expenses" value={fmt(totalExpenses)} icon={DollarSign} color="bg-blue-100 text-blue-600" />
+        <StatCard title="Expenses" value={fmt(totalExpenses)} icon={RandSign} color="bg-blue-100 text-blue-600" />
         <StatCard title="Revenue Today" value={fmt(allPayments.filter((p: any) => p.date === stats?.todayStr).reduce((s: number, p: any) => s + Number(p.amount), 0))} icon={CreditCard} color="bg-blue-100 text-blue-600" />
       </div>
 

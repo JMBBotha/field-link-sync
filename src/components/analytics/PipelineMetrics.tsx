@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Percent, Clock, DollarSign, Trophy } from "lucide-react";
+import { Percent, Clock, Trophy } from "lucide-react";
+import RandSign from "@/components/icons/RandSign";
 import { subDays } from "date-fns";
 import { useMemo } from "react";
 
@@ -122,7 +123,7 @@ const PipelineMetrics = () => {
       label: "Open Quotes Value",
       value: data ? formatZAR(data.openValue) : "—",
       hint: data ? `${data.openCount} open ${data.openCount === 1 ? "quote" : "quotes"}` : "",
-      icon: DollarSign,
+      icon: RandSign,
       accent: "text-orange-500",
     },
     {
