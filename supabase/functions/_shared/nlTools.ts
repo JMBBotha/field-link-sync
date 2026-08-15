@@ -788,6 +788,7 @@ export async function executeTool(
       const known = (id: string) => stockByProduct.has(String(id));
       let enriched = products.map((p) => ({
         ...p,
+        ...productSpeechFields(p),
         quantity_on_hand: known(p.id) ? stockByProduct.get(String(p.id))! : null,
         in_stock: known(p.id) ? stockByProduct.get(String(p.id))! > 0 : null,
       }));
