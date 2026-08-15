@@ -329,7 +329,7 @@ Deno.serve(async (req) => {
     // system prompt) always win over whatever is stored in the dashboard.
     const assistantConfig = {
       name: "Mandy",
-      firstMessage: "Hi, Mandy here. What do you need?",
+      firstMessage: `Hi ${firstName}, Mandy here. What do you need?`,
       firstMessageMode: "assistant-speaks-first",
       maxDurationSeconds: 900,
       silenceTimeoutSeconds: 45,
