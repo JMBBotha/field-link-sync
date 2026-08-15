@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, Globe, MapPin, Pencil, Users, Package, FileText, Wallet, Tag, Settings2, Loader2, CheckCircle2, Upload } from "lucide-react";
+import { Building2, Globe, MapPin, Pencil, Users, Package, FileText, Wallet, Tag, Percent, Settings2, Loader2, CheckCircle2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import SupplierContactsTab from "./SupplierContactsTab";
 import SupplierDocumentsTab from "./SupplierDocumentsTab";
@@ -54,31 +54,50 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit }: Supplie
 
   const [localPriceListType, setLocalPriceListType] = useState<string | null>(null);
   const [localTradeDiscount, setLocalTradeDiscount] = useState<number | null>(null);
+  const [localBuiltInMarkup, setLocalBuiltInMarkup] = useState<number | null>(null);
   const [localMarkup, setLocalMarkup] = useState<number | null>(null);
 
-  const priceListType = localPriceListType ?? supplier?.price_list_type ?? "cost_price";
-  const tradeDiscount = localTradeDiscount ?? supplier?.default_trade_discount ?? 0;
+  // NOTE: price_list_type is the single source of truth for "what shape is this
+  // supplier's PDF price in". It maps onto the richer price_includes_markup /
+  // supplier_markup_percent / supplier_discount_percent columns (also read by
+  // PriceConfigPanel during import) so the persistent Pricing tab and the
+  // per-import wizard never drift out of sync again.
+  const priceListType =
+    localPriceListType ?? supplier?.price_list_type ?? (supplier?.price_includes_markup ? "list_price_with_markup" : "cost_price");
+  const tradeDiscount = localTradeDiscount ?? supplier?.supplier_discount_percent ?? supplier?.default_trade_discount ?? 0;
+  const builtInMarkup = localBuiltInMarkup ?? supplier?.supplier_markup_percent ?? 0;
   const markupPercent = localMarkup ?? supplier?.default_markup_percent ?? 20;
 
   const hasChanges =
     (localPriceListType !== null && localPriceListType !== (supplier?.price_list_type ?? "cost_price")) ||
     (localTradeDiscount !== null && localTradeDiscount !== (supplier?.default_trade_discount ?? 0)) ||
+    (localBuiltInMarkup !== null && localBuiltInMarkup !== (supplier?.supplier_markup_percent ?? 0)) ||
     (localMarkup !== null && localMarkup !== (supplier?.default_markup_percent ?? 20));
 
   const savePricingSettings = async () => {
     setSavingPricing(true);
     try {
+      const isDiscount = priceListType === "list_price_with_discount";
+      const isMarkup = priceListType === "list_price_with_markup";
       const { error } = await (supabase.from("suppliers") as any)
         .update({
+          // Legacy/display columns (still used to render the Pricing tab itself)
           price_list_type: priceListType,
-          default_trade_discount: priceListType === "list_price_with_discount" ? tradeDiscount : 0,
+          default_trade_discount: isDiscount ? tradeDiscount : 0,
           default_markup_percent: markupPercent,
+          // Columns actually consumed by PriceConfigPanel during import — kept in
+          // sync so a fresh import always pre-fills with the correct stripping config.
+          price_includes_markup: isMarkup,
+          supplier_markup_percent: isMarkup ? builtInMarkup : 0,
+          supplier_discount_percent: isDiscount ? tradeDiscount : 0,
         })
         .eq("id", supplierId);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["supplier-detail", supplierId] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-config", supplierId] });
       setLocalPriceListType(null);
       setLocalTradeDiscount(null);
+      setLocalBuiltInMarkup(null);
       setLocalMarkup(null);
       toast.success("Pricing settings saved");
     } catch (err: any) {
@@ -224,11 +243,21 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit }: Supplie
                       >
                         <Tag className="h-3 w-3 mr-1" /> List + Discount
                       </Button>
+                      <Button
+                        size="sm"
+                        variant={priceListType === "list_price_with_markup" ? "default" : "outline"}
+                        className="text-xs flex-1"
+                        onClick={() => setLocalPriceListType("list_price_with_markup")}
+                      >
+                        <Percent className="h-3 w-3 mr-1" /> List + Markup
+                      </Button>
                     </div>
                     <p className="text-[11px] text-muted-foreground">
                       {priceListType === "cost_price"
-                        ? "This supplier's PDF shows our buy price directly — no discount needed."
-                        : "PDF shows RRP/list price — trade discount applied to get cost price."}
+                        ? "This supplier's PDF shows our buy price directly — no adjustment needed."
+                        : priceListType === "list_price_with_discount"
+                        ? "PDF shows RRP/list price — trade discount applied to get cost price."
+                        : "PDF price already has the supplier's own markup baked in — it's divided out to get our true cost, then our resale markup is applied on top of that."}
                     </p>
                   </div>
 
@@ -246,10 +275,27 @@ const SupplierDetailSheet = ({ supplierId, open, onOpenChange, onEdit }: Supplie
                     </div>
                   )}
 
+                  {priceListType === "list_price_with_markup" && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">Supplier's Built-in Markup %</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={builtInMarkup}
+                        onChange={(e) => setLocalBuiltInMarkup(parseFloat(e.target.value) || 0)}
+                        className="w-28 h-8 text-sm"
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        e.g. 20 if the PDF price already includes a 20% distributor markup over true cost.
+                      </p>
+                    </div>
+                  )}
+
                   {priceListType === "cost_price" && (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded px-3 py-2">
                       <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                      Trade Discount: N/A — cost price supplier.
+                      Trade Discount / Markup: N/A — cost price supplier.
                     </div>
                   )}
 

@@ -49,10 +49,10 @@ function calculatePrices(rawPrice: number, config: PriceConfig) {
   const sellingPrice = discountedCost * (1 + config.yourMarkupPercent / 100);
 
   return {
-    trueCost: discountedCost,        // preview only
-    costExclVat: listPriceExclVat,   // STORED in DB — raw, undiscounted
-    costInclVat,                      // preview only
-    sellingPrice,                     // preview only
+    trueCost: discountedCost,        // adjusted true cost (VAT/markup stripped, discount applied)
+    costExclVat: discountedCost,     // STORED in DB — must always match trueCost/cost_price (see pricing.ts invariant)
+    costInclVat,
+    sellingPrice,
   };
 }
 

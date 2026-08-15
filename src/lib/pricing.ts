@@ -241,7 +241,7 @@ export function computeProductPricing(product: {
   supplier_name?: string;
   supplier_discount_percent?: number | null;
 }): ComputedPricing {
-  const listPrice = product.cost_excl_vat || product.cost_price || 0;
+  const listPrice = product.cost_price || product.cost_excl_vat || 0;
   const markupPct = product.default_markup_percent ?? product.markup_percent ?? 35;
   const supplierCode = resolveSupplierCode(product.supplier_name);
   return computePricing(supplierCode, listPrice, markupPct, product.cost_price || null);
