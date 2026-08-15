@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { anthropicTools, TOOL_KIND, type ToolName } from "../_shared/nlTools.ts";
+import { OPS_ROLES } from "../_shared/recordAccess.ts";
 import { signSession } from "../_shared/voiceSession.ts";
 
 /**
@@ -22,18 +23,27 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-const SYSTEM_PROMPT =
-  `You are the voice operations assistant for an HVAC field-service company in South Africa (currency ZAR, timezone Africa/Johannesburg).
+function buildSystemPrompt(callerName: string, isOps: boolean, roleLabel: string): string {
+  const scopeLine = isOps
+    ? `You are talking with ${callerName}, a ${roleLabel} — they have full access to every client, lead, job, quote and invoice across the company.`
+    : `You are talking with ${callerName}, a ${roleLabel} — they can only see and act on their OWN leads, jobs, quotes, invoices and the customers tied to those, never a colleague's. This is enforced automatically; if something comes back empty or fails because it isn't theirs, just tell them plainly rather than mentioning permissions or access levels.`;
+
+  return `You are the voice operations assistant for an HVAC field-service company in South Africa (currency ZAR, timezone Africa/Johannesburg).
+
+${scopeLine}
 
 You are on a phone-style voice call, so keep every answer short and spoken-friendly: a sentence or two, no lists of raw IDs, no reading out UUIDs. The operator sees the full table on screen.
 
 You can ONLY answer using the tools provided. Never invent data and never claim to have done something no tool supports.
 
+BUILDING AN ESTIMATE: to build a quote, first prepare create_quote_draft for the lead (and get it confirmed), then use search_products to find real catalogue items and call add_quote_item for each line — read the running total back after each one. To turn an accepted quote into an invoice, use accept_quote; it creates the invoice automatically. Use add_invoice_item for anything added to an invoice afterwards, and create_invoice only for a standalone invoice with no underlying quote.
+
 NAME RESOLUTION: callers mispronounce and misspell names. Whenever a person, product, quote or job is referred to by name, call resolve_entity first. If the result is an automatic match, continue naturally. If it returns several candidates, say "did you mean..." and read at most three options aloud, then wait. If nothing matches, ask them to repeat it or spell the name. Never act on a guess.
 
-WRITE ACTIONS (create_quote_draft, assign_job) are never executed immediately. Calling them only prepares the action. After calling one, read the key details back to the operator and ask "should I confirm that?". Only when they clearly say yes (for example "yes, confirm") do you call confirm_pending_action with confirm set to true. If they say no, call confirm_pending_action with confirm set to false.
+WRITE ACTIONS (create_quote_draft, assign_job, add_quote_item, accept_quote, add_invoice_item, create_invoice) are never executed immediately. Calling them only prepares the action. After calling one, read the key details back to the operator and ask "should I confirm that?". Only when they clearly say yes (for example "yes, confirm") do you call confirm_pending_action with confirm set to true. If they say no, call confirm_pending_action with confirm set to false.
 
 Today's date is ${new Date().toISOString().slice(0, 10)}.`;
+}
 
 function vapiTools(serverUrl: string) {
   const tools = anthropicTools.map((t) => ({
@@ -96,13 +106,17 @@ Deno.serve(async (req) => {
     });
 
     const { data: profile } = await db.from("profiles")
-      .select("company_id").eq("id", userId).maybeSingle();
+      .select("company_id, full_name").eq("id", userId).maybeSingle();
     const companyId: string | null = profile?.company_id ?? null;
     if (!companyId) {
       return json({
         error: "Your account is not linked to a company yet, so the assistant has no data to work with.",
       }, 403);
     }
+    const { data: roleRows } = await db.from("user_roles").select("role").eq("user_id", userId);
+    const roles = ((roleRows ?? []) as { role: string }[]).map((r) => r.role);
+    const isOps = roles.some((r) => OPS_ROLES.has(r));
+    const SYSTEM_PROMPT = buildSystemPrompt(profile?.full_name || "the operator", isOps, roles[0] ?? "team member");
 
     const body = await req.json().catch(() => ({}));
     const action = String(body?.action ?? "start");
