@@ -1289,11 +1289,15 @@ export async function executeTool(
 
 
     case "add_quote_item": {
+      if (!args.quote_id) {
+        throw new Error("I need to know which quote to add this to — open the quote or tell me the quote number");
+      }
       const { data: quote, error: quoteErr } = await db.from("quotes")
         .select("id, company_id, sales_engineer_id, status, discount_type, discount_value, vat_rate")
         .eq("id", args.quote_id).maybeSingle();
-      if (quoteErr) throw quoteErr;
+      if (quoteErr) throw new Error(`Could not look up that quote (${quoteErr.message})`);
       if (!quote || !companyId || quote.company_id !== companyId) throw new Error("Quote not found");
+
       if (!isOps && quote.sales_engineer_id !== ctx.userId) throw new Error("You don't have access to that quote");
 
       let description = args.description ? String(args.description) : null;
