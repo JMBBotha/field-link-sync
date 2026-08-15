@@ -159,10 +159,16 @@ Deno.serve(async (req) => {
         }));
 
       // A pending write is the newest confirmation_required row that has not
-      // been resolved by a later executed/cancelled row.
+      // been resolved by a later executed/cancelled row. IMPORTANT: resolution
+      // is checked against ALL rows for this user/company, not only rows tagged
+      // with this voice session_id — the on-screen confirmation runs through
+      // nl-query (channel "text", no session_id), and scoping the check to the
+      // session made every confirmed/cancelled write look unresolved forever,
+      // which is what caused the modal to reappear in a loop.
+      const allRows = rows ?? [];
       const lastPending = [...mine].reverse().find((r) => r.status === "confirmation_required");
       const resolvedAfter = lastPending
-        ? mine.some((r) =>
+        ? allRows.some((r) =>
           ["executed", "cancelled", "error"].includes(r.status) &&
           r.tool_name === lastPending.tool_name &&
           r.created_at > lastPending.created_at
@@ -172,10 +178,40 @@ Deno.serve(async (req) => {
       return json({
         results,
         pending: lastPending && !resolvedAfter
-          ? { tool_name: lastPending.tool_name, args: lastPending.args }
+          ? { id: lastPending.id, tool_name: lastPending.tool_name, args: lastPending.args }
           : null,
       });
     }
+
+    // ------------------------------------------------------------------
+    // Resolve: the on-screen modal was answered (usually "Cancel"). Write a
+    // terminal row so neither the poll nor the voice agent can resurrect it.
+    // ------------------------------------------------------------------
+    if (action === "resolve") {
+      const pendingId = String(body?.pending_id ?? "");
+      const sessionId = String(body?.session_id ?? "");
+      const status = body?.status === "executed" ? "executed" : "cancelled";
+      if (!pendingId) return json({ ok: true });
+
+      const { data: row } = await db.from("nl_audit_log")
+        .select("id, tool_name, args, status")
+        .eq("id", pendingId)
+        .eq("user_id", userId)
+        .eq("company_id", companyId)
+        .maybeSingle();
+      if (!row) return json({ ok: true });
+
+      await db.from("nl_audit_log").insert({
+        user_id: userId,
+        company_id: companyId,
+        tool_name: row.tool_name,
+        args: row.args ?? {},
+        result: { session_id: sessionId, channel: "voice", resolved_by: "ui", pending_id: pendingId },
+        status,
+      });
+      return json({ ok: true });
+    }
+
 
     // ------------------------------------------------------------------
     // Start: mint a scoped session token and return the transient assistant.

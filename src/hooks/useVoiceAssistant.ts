@@ -10,9 +10,12 @@ export interface TranscriptEntry {
 }
 
 export interface PendingConfirmation {
+  /** nl_audit_log row id of the queued write — used to make the modal one-shot. */
+  id?: string;
   tool_name: string;
   args: Record<string, unknown>;
 }
+
 
 export type VoiceStatus = "idle" | "connecting" | "live" | "ended" | "error";
 
@@ -43,6 +46,9 @@ export function useVoiceAssistant() {
   const vapiRef = useRef<Vapi | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const seenResultIds = useRef<Set<string>>(new Set());
+  /** Pending writes already answered on screen — never surfaced again. */
+  const resolvedPendingIds = useRef<Set<string>>(new Set());
+  const lastPendingIdRef = useRef<string | null>(null);
   const pollRef = useRef<number | null>(null);
 
   const stopPolling = () => {
@@ -66,8 +72,16 @@ export function useVoiceAssistant() {
       fresh.forEach((r) => seenResultIds.current.add(r.id));
       setResults((prev) => [...prev, ...fresh.map((r) => ({ tool_name: r.tool_name, rows: r.rows }))]);
     }
-    setPending(payload.pending ?? null);
+    const next = payload.pending ?? null;
+    const nextId = next?.id ?? null;
+    if (next && nextId && resolvedPendingIds.current.has(nextId)) {
+      setPending(null);
+      return;
+    }
+    lastPendingIdRef.current = nextId;
+    setPending(next);
   }, []);
+
 
   const stop = useCallback(() => {
     stopPolling();
@@ -182,11 +196,23 @@ export function useVoiceAssistant() {
   }, [muted]);
 
   /** Called after the on-screen confirmation modal runs the write. */
-  const clearPending = useCallback((spoken?: string) => {
+  const clearPending = useCallback((spoken?: string, opts?: { id?: string; status?: "executed" | "cancelled" }) => {
+    const id = opts?.id ?? lastPendingIdRef.current ?? undefined;
+    if (id) resolvedPendingIds.current.add(id);
     setPending(null);
     if (spoken) setTranscript((prev) => [...prev, { role: "assistant", text: spoken, final: true }]);
+    // Write a terminal row server-side so the poll (and the voice agent) treat
+    // this write as finished — otherwise the modal comes straight back.
+    const sessionId = sessionIdRef.current;
+    if (id && sessionId) {
+      void supabase.functions.invoke("nl-voice-session", {
+        body: { action: "resolve", session_id: sessionId, pending_id: id, status: opts?.status ?? "cancelled" },
+      }).then(() => poll());
+      return;
+    }
     void poll();
   }, [poll]);
+
 
   useEffect(() => () => {
     stopPolling();

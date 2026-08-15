@@ -24,9 +24,12 @@ interface ChatMessage {
 }
 
 interface PendingConfirmation {
+  /** nl_audit_log row id when the write came from a voice session. */
+  id?: string;
   tool_name: string;
   args: Record<string, unknown>;
 }
+
 
 const SUGGESTIONS = [
   "Show me emergency leads from this week",
@@ -75,9 +78,15 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
   }, [open, mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A write tool queued during the voice call falls back to the same modal.
+  // Answered pendings are remembered so a re-poll can never resurrect them.
+  const answeredPendingIds = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (voice.pending && !pending) setPending(voice.pending);
+    const p = voice.pending;
+    if (!p || pending) return;
+    if (p.id && answeredPendingIds.current.has(p.id)) return;
+    setPending(p);
   }, [voice.pending]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -120,33 +129,40 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
 
   const confirmAction = async () => {
     if (!pending) return;
+    const answered = pending;
+    if (answered.id) answeredPendingIds.current.add(answered.id);
+    // Close first: the answer is final, the modal must never come back.
+    setPending(null);
     setConfirming(true);
     try {
-      const res = await callFunction({ confirm: pending });
+      const res = await callFunction({ confirm: { tool_name: answered.tool_name, args: answered.args } });
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
           content: res.message,
-          data: res.data ? [{ tool_name: pending.tool_name, rows: res.data as unknown as Row[] }] : undefined,
+          data: res.data ? [{ tool_name: answered.tool_name, rows: res.data as unknown as Row[] }] : undefined,
         },
       ]);
       toast({ title: "Action completed", description: res.message });
-      setPending(null);
-      if (mode === "voice") voice.clearPending(res.message);
+      voice.clearPending(res.message, { id: answered.id, status: "executed" });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Action failed";
       toast({ title: "Action failed", description: message, variant: "destructive" });
+      voice.clearPending(message, { id: answered.id, status: "cancelled" });
     } finally {
       setConfirming(false);
     }
   };
 
   const cancelAction = () => {
+    const answered = pending;
+    if (answered?.id) answeredPendingIds.current.add(answered.id);
     setPending(null);
-    if (mode === "voice") voice.clearPending("Cancelled — nothing was changed.");
+    voice.clearPending("Cancelled — nothing was changed.", { id: answered?.id, status: "cancelled" });
     setMessages((prev) => [...prev, { role: "assistant", content: "Cancelled — nothing was changed." }]);
   };
+
 
   return (
     <>
