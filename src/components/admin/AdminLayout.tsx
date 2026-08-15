@@ -19,6 +19,7 @@ import GlobalSearchDialog from "@/components/GlobalSearchDialog";
 import NLCommandBar from "@/components/admin/NLCommandBar";
 
 import { useIdleLogout } from "@/hooks/useIdleLogout";
+import { useAssistantContextTracker } from "@/hooks/useAssistantContextTracker";
 import { WelcomeTourDialog } from "@/components/admin/WelcomeTourDialog";
 import logo from "@/assets/logo.png";
 
@@ -40,6 +41,8 @@ const AdminLayout = () => {
   const { toast } = useToast();
   const { resolvedTheme, toggleTheme } = useTheme();
   const { showWarning, secondsLeft, stayActive } = useIdleLogout();
+  // Keeps Mandy aware of the page / record the operator currently has open.
+  useAssistantContextTracker();
 
   // Global Cmd+K shortcut
   useEffect(() => {
