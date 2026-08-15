@@ -89,5 +89,8 @@ verify_jwt = false
 [functions.hello]
 verify_jwt = false
 
+[functions.assistant-tools]
+verify_jwt = false
+
 [functions.twilio-whatsapp-webhook]
 verify_jwt = false
