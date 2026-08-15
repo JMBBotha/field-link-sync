@@ -109,6 +109,18 @@ function vapiTools(serverUrl: string) {
     async: false,
     server: { url: serverUrl },
     function: {
+      name: "get_current_context",
+      description:
+        "Return what the operator currently has open on screen (page, open quote, selected customer, last search). Call this when they say 'this quote', 'this client', 'here', or when you need to know where they are.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  } as (typeof tools)[number]);
+
+  tools.push({
+    type: "function",
+    async: false,
+    server: { url: serverUrl },
+    function: {
       name: "confirm_pending_action",
       description:
         "Execute (confirm true) or discard (confirm false) the write action waiting for confirmation. Call this exactly once, immediately after the operator answers yes or no. Never ask for confirmation again after calling it.",
@@ -336,6 +348,15 @@ Deno.serve(async (req) => {
     }
 
     const { token, sessionId } = await signSession(userId, companyId);
+    // Seed the live UI context reported by the browser at call start.
+    const startContext = await saveSessionContext(db, sessionId, userId, companyId, body?.context);
+    const SYSTEM_PROMPT = buildSystemPrompt(
+      displayName,
+      firstName,
+      isOps,
+      roles[0] ?? "team member",
+      startContext,
+    );
     const serverUrl = `${supabaseUrl}/functions/v1/nl-voice-tool?s=${encodeURIComponent(token)}`;
 
     // The assistant config. When a saved Vapi assistant exists we send this as
