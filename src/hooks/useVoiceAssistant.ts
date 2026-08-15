@@ -121,13 +121,27 @@ export function useVoiceAssistant() {
       vapi.on("speech-start", () => setAssistantSpeaking(true));
       vapi.on("speech-end", () => setAssistantSpeaking(false));
       vapi.on("error", (e: unknown) => {
-        const message = e instanceof Error
-          ? e.message
-          : (e as { errorMsg?: string })?.errorMsg ?? "The voice call failed.";
+        // Vapi surfaces API rejections as { error: { message } } or as a Response-like
+        // object; unwrap it so the operator sees the real reason (billing, config…).
+        const anyErr = e as {
+          message?: string;
+          errorMsg?: string;
+          error?: { message?: string | string[]; error?: string } | string;
+        } | null;
+        const inner = typeof anyErr?.error === "object" ? anyErr?.error : undefined;
+        const innerMsg = Array.isArray(inner?.message) ? inner?.message.join(", ") : inner?.message;
+        const message =
+          innerMsg ||
+          (typeof anyErr?.error === "string" ? anyErr.error : undefined) ||
+          anyErr?.errorMsg ||
+          (e instanceof Error ? e.message : undefined) ||
+          "The voice call failed.";
+        console.error("[useVoiceAssistant] vapi error", e);
         setError(message);
         setStatus("error");
         stopPolling();
       });
+
       vapi.on("message", (msg: Record<string, any>) => {
         if (msg?.type !== "transcript" || !msg?.transcript) return;
         const role: "user" | "assistant" = msg.role === "assistant" ? "assistant" : "user";
