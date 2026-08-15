@@ -255,9 +255,9 @@ Deno.serve(async (req) => {
         try {
           const out = await executeTool(toolName, parsed.data, ctx);
           await audit(toolName, parsed.data, { summary: out.summary, rows: out.rows.slice(0, 25), pending_id: pending.id }, "executed", out);
-          results.push({ toolCallId, result: out.summary });
+          results.push({ toolCallId, result: `${out.summary} The action is complete — do not ask for confirmation again.` });
         } catch (e) {
-          const msg = e instanceof Error ? e.message : "Execution failed";
+          const msg = errMessage(e);
           await audit(toolName, parsed.data, { error: msg, pending_id: pending.id }, "error");
           results.push({ toolCallId, result: `That failed: ${msg}` });
         }
@@ -331,7 +331,7 @@ Deno.serve(async (req) => {
           result: JSON.stringify({ summary: out.summary, rows: out.rows.slice(0, 10) }),
         });
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Tool failed";
+        const msg = errMessage(e);
         await audit(toolName, parsed.data, { error: msg }, "error");
         results.push({ toolCallId, result: `That failed: ${msg}` });
       }
