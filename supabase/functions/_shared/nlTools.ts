@@ -1158,18 +1158,33 @@ export async function executeTool(
     case "search_products": {
       const raw = String(args.query).trim();
       const tokens = nameTokens(raw);
-      const fields = ["name", "short_name", "description", "model", "product_code", "brand", "model_range"];
+      const fields = ["name", "short_name", "description", "model", "product_code", "brand", "model_range", "category"];
       const patterns = tokens.length ? tokens : [raw.replace(/[%,()]/g, "")];
-      const orFilter = patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(",");
       let q = db.from("supplier_products").select(
-        "id, name, short_name, category, subcategory, brand, model, product_code, selling_price, sell_price_incl_vat, price_includes_vat, is_price_on_request, unit_type, capacity_btu, kw",
-      ).eq("is_active", true).or("archived.is.false,archived.is.null").or(orFilter).limit(Math.min(Number(args.limit ?? 15), 25));
+        "id, name, short_name, description, category, subcategory, brand, model, product_code, selling_price, sell_price_incl_vat, price_includes_vat, is_price_on_request, unit_type, capacity_btu, kw",
+      ).eq("is_active", true).or("archived.is.false,archived.is.null");
+      // Every token must match SOMEWHERE (chained .or() groups are ANDed),
+      // otherwise "samsung cassette" returns any Samsung product at all.
+      for (const t of patterns) {
+        q = q.or(fields.map((f) => `${f}.ilike.%${t}%`).join(","));
+      }
+      q = q.limit(Math.min(Number(args.limit ?? 15), 25));
       if (args.category) q = q.ilike("category", `%${args.category}%`);
-      const { data, error } = await q;
+      let { data, error } = await q;
       if (error) throw error;
+      // Fallback: if the strict AND search finds nothing, widen to ANY token.
+      if (!data?.length && patterns.length > 1) {
+        const orFilter = patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(",");
+        const wide = await db.from("supplier_products").select(
+          "id, name, short_name, description, category, subcategory, brand, model, product_code, selling_price, sell_price_incl_vat, price_includes_vat, is_price_on_request, unit_type, capacity_btu, kw",
+        ).eq("is_active", true).or("archived.is.false,archived.is.null").or(orFilter).limit(15);
+        if (wide.error) throw wide.error;
+        data = wide.data;
+      }
       const rows = scrub(tool, data ?? []);
       return { rows, summary: `${rows.length} product(s)` };
     }
+
 
     case "add_quote_item": {
       const { data: quote, error: quoteErr } = await db.from("quotes")
