@@ -199,7 +199,7 @@ const PII_ALLOW: Record<ToolName, string[]> = {
   // Deliberately excludes cost_price / markup / supplier_discount_percent —
   // margin data is never surfaced through the assistant, for any role.
   search_products: [
-    "id", "name", "short_name", "category", "subcategory", "brand", "model",
+    "id", "name", "short_name", "description", "category", "subcategory", "brand", "model",
     "product_code", "selling_price", "sell_price_incl_vat", "price_includes_vat",
     "is_price_on_request", "unit_type", "capacity_btu", "kw",
   ],
@@ -217,7 +217,7 @@ const PII_ALLOW: Record<ToolName, string[]> = {
   ],
   // Never exposes unit_cost / supplier margin data.
   search_inventory: [
-    "id", "name", "short_name", "category", "subcategory", "brand", "model",
+    "id", "name", "short_name", "description", "category", "subcategory", "brand", "model",
     "product_code", "selling_price", "sell_price_incl_vat", "unit_type",
     "is_price_on_request", "quantity_on_hand", "in_stock",
   ],
