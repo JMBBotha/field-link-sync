@@ -440,11 +440,34 @@ function withinTolerance(target: number, actual: number): boolean {
   return actual >= target * (1 - BTU_TOLERANCE) && actual <= target * (1 + BTU_TOLERANCE);
 }
 
-/** Tokens worth matching as text (capacity terms and filler removed). */
-function productTokens(raw: string): string[] {
-  return raw
+/**
+ * Normalise spoken model codes: "AR 40" / "ar-40" -> "ar40" so a family
+ * reference survives tokenisation as a single searchable unit.
+ */
+function normalizeQuery(raw: string): string {
+  return String(raw ?? "")
     .toLowerCase()
     .replace(/[%,()"']/g, " ")
+    .replace(/\b([a-z]{2,4})[\s-]+(\d{2,4})\b/g, "$1$2");
+}
+
+/**
+ * Model-family references such as "ar40", "msz18", "ar12txhq".
+ * These are treated as a HARD requirement so an "AR40" request never comes
+ * back with an unrelated model.
+ */
+function modelTokens(raw: string): string[] {
+  const out = new Set<string>();
+  for (const t of normalizeQuery(raw).split(/[\s/]+/)) {
+    const token = t.trim();
+    if (/^[a-z]{2,4}\d{2,6}[a-z0-9-]*$/.test(token) && token.length >= 3) out.add(token);
+  }
+  return [...out];
+}
+
+/** Tokens worth matching as text (capacity terms and filler removed). */
+function productTokens(raw: string): string[] {
+  return normalizeQuery(raw)
     .replace(/(\d+(?:[.,]\d+)?)\s*(?:kw|kilowatts?)\b/g, " ")
     .replace(/(\d{4,6})\s*btus?\b/g, " ")
     .replace(/\b\d{4,6}\b/g, " ")
@@ -453,6 +476,16 @@ function productTokens(raw: string): string[] {
     .map((t) => t.trim())
     .filter((t) => t.length >= 2 && !STOP_WORDS.has(t));
 }
+
+/** Does the row belong to any requested model family (prefix-aware)? */
+function matchesModelFamily(row: Record<string, any>, models: string[]): boolean {
+  if (models.length === 0) return true;
+  const haystack = [row.product_code, row.short_name, row.model, row.name, row.description]
+    .map((v) => String(v ?? "").toLowerCase().replace(/[\s-]/g, ""))
+    .join(" ");
+  return models.some((m) => haystack.includes(m));
+}
+
 
 function productBlob(row: Record<string, any>): string {
   return PRODUCT_TEXT_FIELDS.map((f) => row[f] ?? "")
@@ -469,7 +502,8 @@ function scoreProduct(
   row: Record<string, any>,
   tokens: string[],
   targetBtu: number | null,
-): { score: number; matchedTokens: number; capacityOk: boolean } {
+  models: string[] = [],
+): { score: number; matchedTokens: number; capacityOk: boolean; modelOk: boolean } {
   const fieldWeights: Record<string, number> = {
     product_code: 5,
     short_name: 4,
@@ -486,7 +520,8 @@ function scoreProduct(
     for (const field of PRODUCT_TEXT_FIELDS) {
       const value = String(row[field] ?? "").toLowerCase();
       if (!value) continue;
-      if (value.includes(token)) {
+      const flat = value.replace(/[\s-]/g, "");
+      if (value.includes(token) || flat.includes(token)) {
         const exactWord = new RegExp(`(^|[^a-z0-9])${escapeRegex(token)}([^a-z0-9]|$)`).test(value);
         best = Math.max(best, fieldWeights[field] * (exactWord ? 1.5 : 1));
       }
@@ -497,11 +532,18 @@ function scoreProduct(
     }
   }
 
+  const modelOk = matchesModelFamily(row, models);
+  if (models.length > 0 && modelOk) score += 20;
+
   let capacityOk = false;
   if (targetBtu != null) {
     const numeric = typeof row.btu_rating === "number" ? row.btu_rating : null;
     const fromKw = row.kw ? Math.round(Number(row.kw) * BTU_PER_KW) : null;
-    const fromText = capacityFromCode(row.product_code, row.short_name, row.description);
+    // When a model family was named, digits inside the code are part of the
+    // family name (AR40), not a capacity — only trust the real numeric columns.
+    const fromText = models.length > 0
+      ? null
+      : capacityFromCode(row.product_code, row.short_name, row.description);
     const candidates = [numeric, fromKw, fromText].filter((n): n is number => !!n);
 
     if (candidates.some((c) => withinTolerance(targetBtu, c))) {
@@ -511,7 +553,8 @@ function scoreProduct(
     }
   }
 
-  return { score, matchedTokens, capacityOk };
+
+  return { score, matchedTokens, capacityOk, modelOk };
 }
 
 function escapeRegex(s: string): string {
@@ -577,6 +620,7 @@ async function searchItems(
   const raw = String(query ?? "").trim();
   const targetBtu = parseCapacity(raw);
   const tokens = productTokens(raw);
+  const models = modelTokens(raw);
   const cap = Math.min(limit, 25);
 
   const base = () =>
@@ -593,6 +637,24 @@ async function searchItems(
   const orFilter = buildProductOrFilter(tokens);
   if (orFilter) q = q.or(orFilter);
 
+  // A named model family (AR40, MSZ18...) is a hard requirement: fetch it
+  // directly so the family is found even when nothing else in the phrase hits.
+  let modelPool: Record<string, any>[] = [];
+  if (models.length > 0) {
+    const parts: string[] = [];
+    for (const m of models) {
+      const safe = m.replace(/[%_,]/g, "");
+      if (!safe) continue;
+      for (const field of ["product_code", "short_name", "description", "model", "name"]) {
+        parts.push(`${field}.ilike.%${safe}%`);
+      }
+    }
+    if (parts.length) {
+      const { data: byModel } = await base().or(parts.join(",")).limit(300);
+      modelPool = (byModel ?? []) as Record<string, any>[];
+    }
+  }
+
   if (targetBtu != null) {
     const lo = Math.floor(targetBtu * (1 - BTU_TOLERANCE));
     const hi = Math.ceil(targetBtu * (1 + BTU_TOLERANCE));
@@ -606,14 +668,20 @@ async function searchItems(
     if (error) throw error;
 
     const merged = new Map<string, Record<string, any>>();
-    for (const row of [...(byText ?? []), ...(byCapacity ?? [])]) merged.set(row.id, row);
-    return rankProducts([...merged.values()], tokens, targetBtu, cap);
+    for (const row of [...(byText ?? []), ...(byCapacity ?? []), ...modelPool]) {
+      merged.set(row.id, row);
+    }
+    return rankProducts([...merged.values()], tokens, targetBtu, cap, models);
   }
 
   const { data, error } = await q;
   if (error) throw error;
 
-  let pool = (data ?? []) as Record<string, any>[];
+  const merged = new Map<string, Record<string, any>>();
+  for (const row of [...((data ?? []) as Record<string, any>[]), ...modelPool]) {
+    merged.set(row.id, row);
+  }
+  let pool = [...merged.values()];
 
   // Nothing matched the tokens — fall back to a general recent slice so the
   // agent can still offer options rather than claiming the catalogue is empty.
@@ -624,7 +692,7 @@ async function searchItems(
     pool = (fallback ?? []) as Record<string, any>[];
   }
 
-  return rankProducts(pool, tokens, targetBtu, cap);
+  return rankProducts(pool, tokens, targetBtu, cap, models);
 }
 
 function rankProducts(
@@ -632,16 +700,23 @@ function rankProducts(
   tokens: string[],
   targetBtu: number | null,
   cap: number,
+  models: string[] = [],
 ) {
-  const scored = pool.map((row) => ({ row, ...scoreProduct(row, tokens, targetBtu) }));
+  const scored = pool.map((row) => ({ row, ...scoreProduct(row, tokens, targetBtu, models) }));
+
+  // A requested model family is never relaxed away: unrelated models are
+  // dropped entirely rather than offered as "close enough".
+  const familyScoped = models.length > 0 ? scored.filter((s) => s.modelOk) : scored;
+  const searchable = familyScoped.length > 0 ? familyScoped : scored;
 
   // Prefer rows that satisfy the capacity request AND matched at least one word.
-  const strict = scored.filter((s) =>
-    (targetBtu == null || s.capacityOk) && (tokens.length === 0 || s.matchedTokens > 0)
+  const strict = searchable.filter((s) =>
+    (targetBtu == null || s.capacityOk) &&
+    (tokens.length === 0 || s.matchedTokens > 0 || (models.length > 0 && s.modelOk))
   );
-  const relaxed = scored.filter((s) => s.score > 0);
+  const relaxed = searchable.filter((s) => s.score > 0);
 
-  const chosen = strict.length > 0 ? strict : (relaxed.length > 0 ? relaxed : scored);
+  const chosen = strict.length > 0 ? strict : (relaxed.length > 0 ? relaxed : searchable);
 
   return chosen
     .sort((a, b) =>
@@ -654,6 +729,7 @@ function rankProducts(
     .slice(0, cap)
     .map((s) => shapeProduct(s.row));
 }
+
 
 async function createEstimate(db: any, member: CallerContext, params: any): Promise<ToolResult> {
   // If the caller passed a pending_id and confirm, just confirm it.
