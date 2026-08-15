@@ -56,9 +56,11 @@ const CreateEstimateParamsSchema = z.object({
   pending_id: z.string().uuid().optional(),
 });
 
+// `confirm` may be false (the user said no / cancel) and `pending_id` may be
+// omitted — in that case we resolve the caller's most recent pending draft.
 const ConfirmPendingActionSchema = z.object({
-  pending_id: z.string().uuid(),
-  confirm: z.literal(true),
+  pending_id: z.string().uuid().optional(),
+  confirm: z.boolean().default(true),
 });
 
 // ========== TYPES ==========
