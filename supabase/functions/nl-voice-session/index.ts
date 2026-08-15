@@ -23,7 +23,12 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-function buildSystemPrompt(callerName: string, isOps: boolean, roleLabel: string): string {
+function buildSystemPrompt(
+  callerName: string,
+  firstName: string,
+  isOps: boolean,
+  roleLabel: string,
+): string {
   const scopeLine = isOps
     ? `You are talking with ${callerName}, a ${roleLabel} — they have full access to every client, lead, job, quote and invoice across the company.`
     : `You are talking with ${callerName}, a ${roleLabel} — they can only see and act on their OWN leads, jobs, quotes, invoices and the customers tied to those, never a colleague's. This is enforced automatically; if something comes back empty or fails because it isn't theirs, just tell them plainly rather than mentioning permissions or access levels.`;
@@ -31,6 +36,8 @@ function buildSystemPrompt(callerName: string, isOps: boolean, roleLabel: string
   return `You are Mandy, the voice operations assistant for an HVAC field-service company in South Africa (currency ZAR, timezone Africa/Johannesburg).
 
 ${scopeLine}
+
+WHO YOU ARE SPEAKING TO: the signed-in operator on this call is ${callerName}. Their first name is "${firstName}" — this comes from their authenticated account, so it is always correct and you never need to ask who they are. Greet them by first name at the start ("Hi ${firstName}") and use it naturally now and then ("Sure ${firstName}, I'll create that quote"), but do not repeat it in every single sentence. If they ask who you are talking to, say their name. Never ask them to confirm their own name, and never use a name a caller merely claims — only "${firstName}".
 
 You are on a phone-style voice call, so keep every answer short and spoken-friendly: a sentence or two, no lists of raw IDs, no reading out UUIDs. The operator sees the full table on screen.
 
@@ -146,7 +153,19 @@ Deno.serve(async (req) => {
     const { data: roleRows } = await db.from("user_roles").select("role").eq("user_id", userId);
     const roles = ((roleRows ?? []) as { role: string }[]).map((r) => r.role);
     const isOps = roles.some((r) => OPS_ROLES.has(r));
-    const SYSTEM_PROMPT = buildSystemPrompt(profile?.full_name || "the operator", isOps, roles[0] ?? "team member");
+
+    // Identity comes ONLY from the verified JWT + the profile row it points at.
+    // Anything in the request body is ignored, so a client can never rename itself.
+    const claimEmail = typeof claimsData.claims.email === "string" ? claimsData.claims.email : "";
+    const fullName = (profile?.full_name ?? "").trim() ||
+      (claimEmail ? claimEmail.split("@")[0].replace(/[._-]+/g, " ") : "");
+    const displayName = fullName || "the operator";
+    const rawFirst = fullName.split(/\s+/)[0] ?? "";
+    const firstName = rawFirst
+      ? rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1)
+      : "there";
+
+    const SYSTEM_PROMPT = buildSystemPrompt(displayName, firstName, isOps, roles[0] ?? "team member");
 
     const body = await req.json().catch(() => ({}));
     const action = String(body?.action ?? "start");
@@ -310,7 +329,7 @@ Deno.serve(async (req) => {
     // system prompt) always win over whatever is stored in the dashboard.
     const assistantConfig = {
       name: "Mandy",
-      firstMessage: "Hi, Mandy here. What do you need?",
+      firstMessage: `Hi ${firstName}, Mandy here. What do you need?`,
       firstMessageMode: "assistant-speaks-first",
       maxDurationSeconds: 900,
       silenceTimeoutSeconds: 45,
