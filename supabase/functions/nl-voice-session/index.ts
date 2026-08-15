@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { anthropicTools, TOOL_KIND, type ToolName } from "../_shared/nlTools.ts";
 import { OPS_ROLES } from "../_shared/recordAccess.ts";
 import { signSession } from "../_shared/voiceSession.ts";
+import { describeContext, saveSessionContext, type UiContext } from "../_shared/sessionContext.ts";
 
 /**
  * Issues a Vapi voice session for the operations assistant.
@@ -28,6 +29,7 @@ function buildSystemPrompt(
   firstName: string,
   isOps: boolean,
   roleLabel: string,
+  uiContext?: UiContext | null,
 ): string {
   const scopeLine = isOps
     ? `You are talking with ${callerName}, a ${roleLabel} — they have full access to every client, lead, job, quote and invoice across the company.`
@@ -38,6 +40,8 @@ function buildSystemPrompt(
 ${scopeLine}
 
 WHO YOU ARE SPEAKING TO: the signed-in operator on this call is ${callerName}. Their first name is "${firstName}" — this comes from their authenticated account, so it is always correct and you never need to ask who they are. Greet them by first name at the start ("Hi ${firstName}") and use it naturally now and then ("Sure ${firstName}, I'll create that quote"), but do not repeat it in every single sentence. If they ask who you are talking to, say their name. Never ask them to confirm their own name, and never use a name a caller merely claims — only "${firstName}".
+
+LIVE SCREEN CONTEXT: right now ${firstName} is ${describeContext(uiContext)}. Treat this as what they can see. If they say "this quote", "this client", "this job" or "here", assume they mean whatever is open on that screen and use those ids with your tools. Call get_current_context whenever you need to re-check what is on screen — it is always the latest. Never use this context to decide what they are allowed to see; the system enforces that for you.
 
 You are on a phone-style voice call, so keep every answer short and spoken-friendly: a sentence or two, no lists of raw IDs, no reading out UUIDs. The operator sees the full table on screen.
 
