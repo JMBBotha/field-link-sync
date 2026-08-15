@@ -196,11 +196,23 @@ export function useVoiceAssistant() {
   }, [muted]);
 
   /** Called after the on-screen confirmation modal runs the write. */
-  const clearPending = useCallback((spoken?: string) => {
+  const clearPending = useCallback((spoken?: string, opts?: { id?: string; status?: "executed" | "cancelled" }) => {
+    const id = opts?.id ?? lastPendingIdRef.current ?? undefined;
+    if (id) resolvedPendingIds.current.add(id);
     setPending(null);
     if (spoken) setTranscript((prev) => [...prev, { role: "assistant", text: spoken, final: true }]);
+    // Write a terminal row server-side so the poll (and the voice agent) treat
+    // this write as finished — otherwise the modal comes straight back.
+    const sessionId = sessionIdRef.current;
+    if (id && sessionId) {
+      void supabase.functions.invoke("nl-voice-session", {
+        body: { action: "resolve", session_id: sessionId, pending_id: id, status: opts?.status ?? "cancelled" },
+      }).then(() => poll());
+      return;
+    }
     void poll();
   }, [poll]);
+
 
   useEffect(() => () => {
     stopPolling();
