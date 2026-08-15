@@ -174,6 +174,32 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        // Atomically claim the source pending row before executing/cancelling.
+        // A concurrent poll or duplicate confirm can no longer discover it.
+        const { data: claimed, error: claimError } = await db.from("nl_audit_log")
+          .update({
+            status: "resolving",
+            result: {
+              session_id: sessionId,
+              channel: "voice",
+              pending_id: pending.id,
+              requested_confirmation: args.confirm === true,
+            },
+          })
+          .eq("id", pending.id)
+          .eq("status", "confirmation_required")
+          .select("id")
+          .maybeSingle();
+        if (claimError || !claimed) {
+          console.log("[nl-voice-tool] pending claim lost", JSON.stringify({
+            sessionId,
+            pendingId: pending.id,
+            error: claimError?.message ?? null,
+          }));
+          results.push({ toolCallId, result: "That action has already been answered." });
+          continue;
+        }
+
         if (args.confirm !== true) {
           await audit(pending.tool_name, pending.args, { cancelled_by: "voice", pending_id: pending.id }, "cancelled");
           results.push({ toolCallId, result: "Discarded. Nothing was changed." });

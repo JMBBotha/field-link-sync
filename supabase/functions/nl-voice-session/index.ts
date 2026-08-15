@@ -226,6 +226,33 @@ Deno.serve(async (req) => {
         return json({ ok: true, already_resolved: true });
       }
 
+      // Remove the source row from the pending set before writing the terminal
+      // audit row. This makes resolution hard even if the insert is delayed or
+      // the client immediately polls again.
+      const { error: resolveError } = await db.from("nl_audit_log")
+        .update({
+          status: "resolved",
+          result: {
+            session_id: sessionId,
+            channel: "voice",
+            resolved_by: "ui",
+            pending_id: pendingId,
+            terminal_status: status,
+          },
+        })
+        .eq("id", pendingId)
+        .eq("status", "confirmation_required")
+        .eq("user_id", userId)
+        .eq("company_id", companyId);
+      if (resolveError) {
+        console.error("[nl-voice-session] source resolution failed", JSON.stringify({
+          sessionId,
+          pendingId,
+          message: resolveError.message,
+        }));
+        return json({ error: "Could not resolve pending action" }, 500);
+      }
+
       await db.from("nl_audit_log").insert({
         user_id: userId,
         company_id: companyId,
