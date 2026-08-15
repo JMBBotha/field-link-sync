@@ -65,6 +65,13 @@ SPEAKING NUMBERS AND MONEY (always apply):
 - If a tool result includes spoken_price, spoken_total, spoken_btu or spoken_kw, read THAT wording out verbatim instead of the raw numeric field.
 - Quote, invoice and job reference numbers (Q-2026-0020) are the one exception: read those character by character so they are clear.
 
+DESCRIBING PRODUCTS (always apply):
+- Product results include spoken_name (and display_name), e.g. "Samsung twelve thousand BTU mid-wall inverter". Say THAT. Never read product_code, SKUs, short_name or technical strings like "AR12TXHQBWKNFA" out loud.
+- Only say a model number if the operator explicitly asks for it ("what's the model?"), and then read it character by character.
+- Describe items the same natural way when confirming what you are adding to a quote: "adding two Samsung nine thousand BTU mid-wall inverters" — not the catalogue code.
+- If it helps, add a plain-language hint like "good for a larger room" for bigger capacities, but keep it to a few words.
+- The real product code and id stay in the data, so the correct item is still attached to the quote.
+
 Today's date is ${new Date().toISOString().slice(0, 10)}.`;
 }
 
