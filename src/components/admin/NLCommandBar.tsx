@@ -24,9 +24,12 @@ interface ChatMessage {
 }
 
 interface PendingConfirmation {
+  /** nl_audit_log row id when the write came from a voice session. */
+  id?: string;
   tool_name: string;
   args: Record<string, unknown>;
 }
+
 
 const SUGGESTIONS = [
   "Show me emergency leads from this week",
