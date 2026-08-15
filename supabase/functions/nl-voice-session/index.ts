@@ -202,23 +202,12 @@ Deno.serve(async (req) => {
       },
     };
 
-    // Prefer the saved assistant (VAPI_ASSISTANT_ID) when it is reachable.
-    const assistantId = (Deno.env.get("VAPI_OPS_ASSISTANT_ID") || Deno.env.get("VAPI_ASSISTANT_ID"))?.trim();
-    const privateKey = Deno.env.get("VAPI_PRIVATE_API_KEY");
-    let useSavedAssistant = false;
-    if (assistantId && privateKey) {
-      try {
-        const res = await fetch(`https://api.vapi.ai/assistant/${assistantId}`, {
-          headers: { Authorization: `Bearer ${privateKey}` },
-        });
-        useSavedAssistant = res.ok;
-        if (!res.ok) {
-          console.warn("[nl-voice-session] assistant lookup failed", res.status, await res.text());
-        }
-      } catch (e) {
-        console.warn("[nl-voice-session] assistant lookup error", e);
-      }
-    }
+    // Always start a TRANSIENT assistant. A saved dashboard assistant only
+    // applies its own tool list; transient tool overrides are not reliably
+    // merged, which made the model call tools it had never been given
+    // ("Tool not recognized" for resolve_entity). Sending the whole config
+    // inline guarantees the system prompt, all whitelisted tools and the
+    // session-scoped nl-voice-tool webhook URL always travel together.
 
     // Tag the session as internal so the shared Vapi webhook never treats a
     // staff conversation with the ops assistant as an inbound customer call.
@@ -228,13 +217,9 @@ Deno.serve(async (req) => {
       publicKey,
       sessionId,
       metadata: internalMetadata,
-      ...(useSavedAssistant
-        ? {
-            assistantId,
-            assistantOverrides: { ...assistantConfig, metadata: internalMetadata },
-          }
-        : { assistant: { ...assistantConfig, metadata: internalMetadata } }),
+      assistant: { ...assistantConfig, metadata: internalMetadata },
     });
+
 
 
   } catch (e) {
