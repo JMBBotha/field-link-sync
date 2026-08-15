@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, MessageSquare, Mic, Send, Sparkle, X } from "lucide-react";
 import ResultTable, { TOOL_LABELS, type Row, type Structured } from "@/components/admin/nl/ResultTable";
 import VoiceAssistantPanel from "@/components/admin/nl/VoiceAssistantPanel";
+import VoiceCallDock from "@/components/admin/nl/VoiceCallDock";
 import { useVoiceAssistant } from "@/hooks/useVoiceAssistant";
 
 interface ChatMessage {
@@ -62,10 +63,13 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const voice = useVoiceAssistant();
+  // While a call runs the big dialog collapses into a small corner widget.
+  const [docked, setDocked] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setMode(initialMode);
+    setDocked(false);
     if (initialMode === "text") setTimeout(() => inputRef.current?.focus(), 50);
   }, [open, initialMode]);
 
@@ -80,6 +84,13 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
       if (voice.status === "live" || voice.status === "connecting") voice.stop();
     }
   }, [open, mode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Collapse to the corner widget as soon as the call connects; restore on end.
+  useEffect(() => {
+    if (mode !== "voice") { setDocked(false); return; }
+    if (voice.status === "live" || voice.status === "connecting") setDocked(true);
+    else setDocked(false);
+  }, [mode, voice.status]);
 
   // A write tool queued during the voice call falls back to the same modal.
   // Answered pendings are remembered so a re-poll can never resurrect them.
@@ -179,7 +190,7 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open && !docked} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl p-0 gap-0 bg-card">
           <DialogHeader className="px-4 py-3 border-b border-border">
             <DialogTitle className="text-base flex items-center gap-2">
@@ -287,6 +298,19 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
           )}
         </DialogContent>
       </Dialog>
+
+      {open && docked && (
+        <VoiceCallDock
+          status={voice.status}
+          error={voice.error}
+          transcript={voice.transcript}
+          assistantSpeaking={voice.assistantSpeaking}
+          muted={voice.muted}
+          onStop={voice.stop}
+          onToggleMute={voice.toggleMute}
+          onExpand={() => setDocked(false)}
+        />
+      )}
 
       <Dialog open={!!pending} onOpenChange={(o) => !o && cancelAction()}>
         <DialogContent className="max-w-md bg-card">
