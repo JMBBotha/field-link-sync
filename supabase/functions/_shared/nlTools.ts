@@ -616,6 +616,216 @@ export async function executeTool(
   const isOps = isOpsRole(ctx.roles);
 
   switch (tool) {
+    // =================================================================
+    // Secure read-only slice. Scope is derived entirely server-side from
+    // the verified caller identity — no scoping input is accepted.
+    // =================================================================
+    case "search_customers": {
+      const scope = await resolveScope(db, ctx.userId, companyId, ctx.roles, ctx.email);
+      if (scope.customerIds && scope.customerIds.size === 0) {
+        return { rows: [], summary: "No customers found.", access_granted: true, resource_type: "customer" };
+      }
+      const raw = String(args.query).trim();
+      const tokens = nameTokens(raw);
+      const fields = ["first_name", "last_name", "company_name", "phone", "email"];
+      const patterns = tokens.length ? tokens : [raw.replace(/[%,()]/g, "")];
+      const orFilter = patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(",");
+      const take = Math.min(Number(args.limit ?? 10), 25);
+      const from = Number(args.offset ?? 0);
+      let q = db.from("customers")
+        .select("id, first_name, last_name, company_name, phone, email, city, status")
+        .or(orFilter)
+        .order("last_name", { ascending: true })
+        .range(from, from + take - 1);
+      q = scopeCompany(q, companyId);
+      if (scope.customerIds) q = q.in("id", [...scope.customerIds]);
+      const { data, error } = await q;
+      if (error) throw error;
+      const rows = scrub(
+        tool,
+        ((data ?? []) as Record<string, any>[]).map((c) => ({
+          ...c,
+          display_name: [c.first_name, c.last_name].filter(Boolean).join(" ") || c.company_name || "Unnamed",
+        })),
+      );
+      return {
+        rows,
+        summary: rows.length ? `${rows.length} customer(s)` : "No customers found.",
+        resource_type: "customer",
+        access_granted: true,
+      };
+    }
+
+    case "get_customer_details": {
+      const scope = await resolveScope(db, ctx.userId, companyId, ctx.roles, ctx.email);
+      const notFound = {
+        rows: [] as Record<string, unknown>[],
+        summary: "No customer found with that reference.",
+        resource_type: "customer",
+        resource_id: String(args.customer_id),
+        access_granted: false,
+      };
+      if (scope.customerIds && !scope.customerIds.has(String(args.customer_id))) return notFound;
+
+      let cq = db.from("customers")
+        .select(
+          "id, first_name, last_name, company_name, phone, email, primary_address_line1, city, postal_code, status",
+        )
+        .eq("id", args.customer_id)
+        .limit(1);
+      cq = scopeCompany(cq, companyId);
+      const { data: custRows, error } = await cq;
+      if (error) throw error;
+      const customer = ((custRows ?? []) as Record<string, any>[])[0];
+      // Same response whether the row belongs to another organisation or
+      // does not exist at all — never disclose existence.
+      if (!customer) return notFound;
+
+      let jq = db.from("jobs")
+        .select("id, title, status, scheduled_for")
+        .eq("customer_id", customer.id)
+        .order("scheduled_for", { ascending: false, nullsFirst: false })
+        .limit(20);
+      jq = scopeCompany(jq, companyId);
+      const { data: jobRows } = await jq;
+      let jobs = ((jobRows ?? []) as Record<string, any>[]);
+      if (scope.jobIds) jobs = jobs.filter((j) => scope.jobIds!.has(String(j.id)));
+
+      let qq = db.from("quotes").select("id").eq("customer_id", customer.id).limit(50);
+      qq = scopeCompany(qq, companyId);
+      const { data: quoteRows } = await qq;
+
+      const closed = new Set(["completed", "cancelled", "closed"]);
+      const detail = {
+        id: customer.id,
+        display_name: [customer.first_name, customer.last_name].filter(Boolean).join(" ") ||
+          customer.company_name || "Unnamed",
+        company_name: customer.company_name,
+        phone: customer.phone,
+        email: customer.email,
+        primary_address_line1: customer.primary_address_line1,
+        city: customer.city,
+        postal_code: customer.postal_code,
+        status: customer.status,
+        open_job_count: jobs.filter((j) => !closed.has(String(j.status ?? "").toLowerCase())).length,
+        recent_jobs: jobs.slice(0, 5).map((j) => ({
+          id: j.id,
+          title: j.title,
+          status: j.status,
+          scheduled_for: j.scheduled_for,
+        })),
+        quote_count: scope.persona === "ops" ? (quoteRows ?? []).length : undefined,
+        last_job_at: jobs[0]?.scheduled_for ?? null,
+      };
+      const rows = scrub(tool, [detail]);
+      return {
+        rows,
+        summary: `${detail.display_name}: ${detail.open_job_count} open job(s)`,
+        resource_type: "customer",
+        resource_id: String(customer.id),
+        access_granted: true,
+      };
+    }
+
+    case "search_inventory": {
+      const scope = await resolveScope(db, ctx.userId, companyId, ctx.roles, ctx.email);
+      if (!scope.canSeeInventory) {
+        return {
+          rows: [],
+          summary: "No inventory available for this account.",
+          resource_type: "inventory",
+          access_granted: false,
+        };
+      }
+      const raw = String(args.query).trim();
+      const tokens = nameTokens(raw);
+      const fields = ["name", "short_name", "model", "product_code", "brand"];
+      const patterns = tokens.length ? tokens : [raw.replace(/[%,()]/g, "")];
+      const orFilter = patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(",");
+      const take = Math.min(Number(args.limit ?? 10), 25);
+      const from = Number(args.offset ?? 0);
+      let q = db.from("supplier_products")
+        .select(
+          "id, name, short_name, category, subcategory, brand, model, product_code, selling_price, sell_price_incl_vat, is_price_on_request, unit_type",
+        )
+        .eq("is_active", true)
+        .or("archived.is.false,archived.is.null")
+        .or(orFilter)
+        .range(from, from + take - 1);
+      if (args.category) q = q.ilike("category", `%${args.category}%`);
+      const { data, error } = await q;
+      if (error) throw error;
+      const products = (data ?? []) as Record<string, any>[];
+
+      let stockByProduct = new Map<string, number>();
+      if (products.length) {
+        const { data: stock } = await db.from("inventory_stock")
+          .select("product_id, quantity").in("product_id", products.map((p) => p.id));
+        stockByProduct = new Map(
+          ((stock ?? []) as { product_id: string; quantity: number | null }[])
+            .map((s) => [String(s.product_id), Number(s.quantity ?? 0)]),
+        );
+      }
+      let enriched = products.map((p) => ({
+        ...p,
+        quantity_on_hand: stockByProduct.get(String(p.id)) ?? 0,
+        in_stock: (stockByProduct.get(String(p.id)) ?? 0) > 0,
+      }));
+      if (args.in_stock_only) enriched = enriched.filter((p) => p.in_stock);
+      const rows = scrub(tool, enriched);
+      return {
+        rows,
+        summary: rows.length ? `${rows.length} item(s)` : "No inventory items found.",
+        resource_type: "inventory",
+        access_granted: true,
+      };
+    }
+
+    case "get_assigned_jobs": {
+      const scope = await resolveScope(db, ctx.userId, companyId, ctx.roles, ctx.email);
+      if (scope.jobIds && scope.jobIds.size === 0) {
+        return { rows: [], summary: "No jobs found.", resource_type: "job", access_granted: true };
+      }
+      const take = Math.min(Number(args.limit ?? 20), 50);
+      const from = Number(args.offset ?? 0);
+      let q = db.from("jobs")
+        .select("id, title, status, priority, job_type, address, scheduled_for, customer_id")
+        .order("scheduled_for", { ascending: true, nullsFirst: false })
+        .range(from, from + take - 1);
+      q = scopeCompany(q, companyId);
+      if (scope.jobIds) q = q.in("id", [...scope.jobIds]);
+      if (args.status) q = q.eq("status", args.status);
+      if (args.date_from) q = q.gte("scheduled_for", `${args.date_from}T00:00:00Z`);
+      if (args.date_to) q = q.lte("scheduled_for", `${args.date_to}T23:59:59Z`);
+      const { data, error } = await q;
+      if (error) throw error;
+      const jobs = (data ?? []) as Record<string, any>[];
+
+      const customerIds = [...new Set(jobs.map((j) => j.customer_id).filter(Boolean).map(String))];
+      let names = new Map<string, string>();
+      if (customerIds.length) {
+        let cq = db.from("customers").select("id, first_name, last_name, company_name").in("id", customerIds);
+        cq = scopeCompany(cq, companyId);
+        const { data: custs } = await cq;
+        names = new Map(
+          ((custs ?? []) as Record<string, any>[]).map((c) => [
+            String(c.id),
+            [c.first_name, c.last_name].filter(Boolean).join(" ") || c.company_name || "Unnamed",
+          ]),
+        );
+      }
+      const rows = scrub(
+        tool,
+        jobs.map((j) => ({ ...j, customer_name: j.customer_id ? names.get(String(j.customer_id)) ?? null : null })),
+      );
+      return {
+        rows,
+        summary: rows.length ? `${rows.length} job(s)` : "No jobs found.",
+        resource_type: "job",
+        access_granted: true,
+      };
+    }
+
     case "query_leads": {
       let q = db.from("leads").select(
         "id, customer_name, phone, service_type, status, lead_status, priority, lead_priority, primary_intent, normalized_address, customer_address, created_at, scheduled_date, assigned_agent_id, technician_name",
