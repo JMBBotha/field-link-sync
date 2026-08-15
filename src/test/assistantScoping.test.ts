@@ -60,8 +60,29 @@ function mockDb(fixture = FIXTURE) {
         return api;
       },
       or: (expr: string) => {
-        const clauses = expr.split(",").map((c) => c.split("."));
-        out = out.filter((r) => clauses.some(([col, , val]) => String(r[col]) === val));
+        // Split on the first two dots only — values (e.g. emails) contain dots.
+        const clauses = expr.split(",").map((c) => {
+          const [col, op, ...rest] = c.split(".");
+          return [col, op, rest.join(".")] as const;
+        });
+        out = out.filter((r) =>
+          clauses.some(([col, op, val]) =>
+            op === "is" ? (val === "null" ? r[col] == null : String(r[col]) === val) : String(r[col]) === val
+          )
+        );
+        return api;
+      },
+      is: (c: string, v: unknown) => {
+        out = out.filter((r) => (v === null ? r[c] == null : r[c] === v));
+        return api;
+      },
+      not: () => api,
+      gte: () => api,
+      lte: () => api,
+      ilike: () => api,
+      order: () => api,
+      range: (from: number, to: number) => {
+        out = out.slice(from, to + 1);
         return api;
       },
       limit: (n: number) => {
