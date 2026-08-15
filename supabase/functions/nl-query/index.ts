@@ -7,6 +7,13 @@ import {
   type ToolName,
 } from "../_shared/nlTools.ts";
 import { OPS_ROLES } from "../_shared/recordAccess.ts";
+import {
+  type AssistantAuditEntry,
+  logAssistantAudit,
+  resolvePersona,
+} from "../_shared/assistantScope.ts";
+
+type AssistantOutcome = AssistantAuditEntry["outcome"];
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
