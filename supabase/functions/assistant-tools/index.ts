@@ -620,6 +620,7 @@ async function searchItems(
   const raw = String(query ?? "").trim();
   const targetBtu = parseCapacity(raw);
   const tokens = productTokens(raw);
+  const models = modelTokens(raw);
   const cap = Math.min(limit, 25);
 
   const base = () =>
@@ -636,6 +637,24 @@ async function searchItems(
   const orFilter = buildProductOrFilter(tokens);
   if (orFilter) q = q.or(orFilter);
 
+  // A named model family (AR40, MSZ18...) is a hard requirement: fetch it
+  // directly so the family is found even when nothing else in the phrase hits.
+  let modelPool: Record<string, any>[] = [];
+  if (models.length > 0) {
+    const parts: string[] = [];
+    for (const m of models) {
+      const safe = m.replace(/[%_,]/g, "");
+      if (!safe) continue;
+      for (const field of ["product_code", "short_name", "description", "model", "name"]) {
+        parts.push(`${field}.ilike.%${safe}%`);
+      }
+    }
+    if (parts.length) {
+      const { data: byModel } = await base().or(parts.join(",")).limit(300);
+      modelPool = (byModel ?? []) as Record<string, any>[];
+    }
+  }
+
   if (targetBtu != null) {
     const lo = Math.floor(targetBtu * (1 - BTU_TOLERANCE));
     const hi = Math.ceil(targetBtu * (1 + BTU_TOLERANCE));
@@ -649,14 +668,20 @@ async function searchItems(
     if (error) throw error;
 
     const merged = new Map<string, Record<string, any>>();
-    for (const row of [...(byText ?? []), ...(byCapacity ?? [])]) merged.set(row.id, row);
-    return rankProducts([...merged.values()], tokens, targetBtu, cap);
+    for (const row of [...(byText ?? []), ...(byCapacity ?? []), ...modelPool]) {
+      merged.set(row.id, row);
+    }
+    return rankProducts([...merged.values()], tokens, targetBtu, cap, models);
   }
 
   const { data, error } = await q;
   if (error) throw error;
 
-  let pool = (data ?? []) as Record<string, any>[];
+  const merged = new Map<string, Record<string, any>>();
+  for (const row of [...((data ?? []) as Record<string, any>[]), ...modelPool]) {
+    merged.set(row.id, row);
+  }
+  let pool = [...merged.values()];
 
   // Nothing matched the tokens — fall back to a general recent slice so the
   // agent can still offer options rather than claiming the catalogue is empty.
@@ -667,7 +692,7 @@ async function searchItems(
     pool = (fallback ?? []) as Record<string, any>[];
   }
 
-  return rankProducts(pool, tokens, targetBtu, cap);
+  return rankProducts(pool, tokens, targetBtu, cap, models);
 }
 
 function rankProducts(
@@ -675,16 +700,23 @@ function rankProducts(
   tokens: string[],
   targetBtu: number | null,
   cap: number,
+  models: string[] = [],
 ) {
-  const scored = pool.map((row) => ({ row, ...scoreProduct(row, tokens, targetBtu) }));
+  const scored = pool.map((row) => ({ row, ...scoreProduct(row, tokens, targetBtu, models) }));
+
+  // A requested model family is never relaxed away: unrelated models are
+  // dropped entirely rather than offered as "close enough".
+  const familyScoped = models.length > 0 ? scored.filter((s) => s.modelOk) : scored;
+  const searchable = familyScoped.length > 0 ? familyScoped : scored;
 
   // Prefer rows that satisfy the capacity request AND matched at least one word.
-  const strict = scored.filter((s) =>
-    (targetBtu == null || s.capacityOk) && (tokens.length === 0 || s.matchedTokens > 0)
+  const strict = searchable.filter((s) =>
+    (targetBtu == null || s.capacityOk) &&
+    (tokens.length === 0 || s.matchedTokens > 0 || (models.length > 0 && s.modelOk))
   );
-  const relaxed = scored.filter((s) => s.score > 0);
+  const relaxed = searchable.filter((s) => s.score > 0);
 
-  const chosen = strict.length > 0 ? strict : (relaxed.length > 0 ? relaxed : scored);
+  const chosen = strict.length > 0 ? strict : (relaxed.length > 0 ? relaxed : searchable);
 
   return chosen
     .sort((a, b) =>
@@ -697,6 +729,7 @@ function rankProducts(
     .slice(0, cap)
     .map((s) => shapeProduct(s.row));
 }
+
 
 async function createEstimate(db: any, member: CallerContext, params: any): Promise<ToolResult> {
   // If the caller passed a pending_id and confirm, just confirm it.
