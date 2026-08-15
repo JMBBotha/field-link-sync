@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
         rows?: unknown[];
       },
     ) => {
-      await db.from("nl_audit_log").insert({
+      const { data: auditRow, error: auditError } = await db.from("nl_audit_log").insert({
         user_id: userId,
         company_id: companyId,
         tool_name: tool,
@@ -146,7 +146,8 @@ Deno.serve(async (req) => {
         resource_type: resource?.resource_type ?? null,
         resource_id: resource?.resource_id ?? null,
         access_granted: resource?.access_granted ?? null,
-      });
+      }).select("id").single();
+      if (auditError) console.error("[nl-query] audit insert failed", auditError.message);
       const denied = resource?.access_granted === false;
       await logAssistantAudit(db, {
         userId,
@@ -160,6 +161,7 @@ Deno.serve(async (req) => {
         channel: "text",
         sessionId: null,
       });
+      return auditRow?.id as string | undefined;
     };
 
     // ===================================================================
@@ -167,6 +169,7 @@ Deno.serve(async (req) => {
     // ===================================================================
     if (body?.confirm) {
       const toolName = String(body.confirm.tool_name ?? "") as ToolName;
+      const pendingId = String(body.confirm.id ?? "");
       if (!(toolName in toolSchemas) || TOOL_KIND[toolName] !== "write") {
         await audit(toolName || "unknown", body.confirm?.args, { error: "not_whitelisted" }, "rejected");
         return json({ error: "That action is not available." }, 400);
@@ -176,13 +179,37 @@ Deno.serve(async (req) => {
         await audit(toolName, body.confirm.args, { error: parsed.error.issues }, "invalid_args");
         return json({ error: "Invalid arguments for this action." }, 400);
       }
+      if (!pendingId) return json({ error: "This confirmation has expired. Please prepare the action again." }, 409);
+
+      const { data: claimed, error: claimError } = await db.from("nl_audit_log")
+        .update({
+          status: "resolving",
+          result: { channel: "text", pending_id: pendingId, requested_confirmation: true },
+        })
+        .eq("id", pendingId)
+        .eq("user_id", userId)
+        .eq("company_id", companyId)
+        .eq("tool_name", toolName)
+        .eq("status", "confirmation_required")
+        .select("id")
+        .maybeSingle();
+      console.log("[nl-query] confirm claim trace", JSON.stringify({
+        pendingId,
+        toolName,
+        claimed: Boolean(claimed),
+        error: claimError?.message ?? null,
+      }));
+      if (claimError) return json({ error: "Could not claim this confirmation." }, 500);
+      if (!claimed) {
+        return json({ type: "executed", tool_name: toolName, message: "This action was already answered.", data: [] });
+      }
       try {
         const out = await executeTool(toolName, parsed.data, ctx);
-        await audit(toolName, parsed.data, out, "executed", out);
+        await audit(toolName, parsed.data, { ...out, pending_id: pendingId }, "executed", out);
         return json({ type: "executed", tool_name: toolName, message: out.summary, data: out.rows });
       } catch (e) {
         const message = e instanceof Error ? e.message : "Execution failed";
-        await audit(toolName, parsed.data, { error: message }, "error");
+        await audit(toolName, parsed.data, { error: message, pending_id: pendingId }, "error");
         return json({ error: message }, 400);
       }
     }
@@ -202,7 +229,7 @@ Deno.serve(async (req) => {
 
     if (messages.length === 0) return json({ error: "No message provided" }, 400);
 
-    let pendingConfirmation: { tool_name: string; args: unknown } | null = null;
+    let pendingConfirmation: { id?: string; tool_name: string; args: unknown } | null = null;
     const structured: Array<{ tool_name: string; rows: Record<string, unknown>[] }> = [];
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
@@ -279,8 +306,13 @@ Deno.serve(async (req) => {
         }
 
         if (TOOL_KIND[name] === "write") {
-          pendingConfirmation = { tool_name: name, args: parsed.data };
-          await audit(name, parsed.data, { status: "awaiting_confirmation" }, "confirmation_required");
+          const pendingId = await audit(
+            name,
+            parsed.data,
+            { status: "awaiting_confirmation" },
+            "confirmation_required",
+          );
+          pendingConfirmation = { id: pendingId, tool_name: name, args: parsed.data };
           toolResults.push({
             type: "tool_result",
             tool_use_id: use.id,

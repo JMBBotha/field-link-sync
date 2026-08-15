@@ -146,7 +146,9 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
     setPending(null);
     setConfirming(true);
     try {
-      const res = await callFunction({ confirm: { tool_name: answered.tool_name, args: answered.args } });
+      const res = await callFunction({
+        confirm: { id: answered.id, tool_name: answered.tool_name, args: answered.args },
+      });
       setMessages((prev) => [
         ...prev,
         {
