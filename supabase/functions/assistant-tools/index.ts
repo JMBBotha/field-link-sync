@@ -345,6 +345,210 @@ async function searchCustomers(
   }));
 }
 
+// ---------- Product search intelligence ----------
+
+const BTU_PER_KW = 3412;
+const BTU_TOLERANCE = 0.15;
+
+/** Columns that actually carry product info in this catalogue. */
+const PRODUCT_TEXT_FIELDS = [
+  "product_code",
+  "short_name",
+  "description",
+  "brand",
+  "category",
+] as const;
+
+const PRODUCT_SELECT =
+  "id, name, short_name, description, category, subcategory, brand, model, product_code, " +
+  "selling_price, sell_price_incl_vat, is_price_on_request, unit_type, btu_rating, kw";
+
+/** Words that add noise rather than signal in a spoken query. */
+const STOP_WORDS = new Set([
+  "the", "a", "an", "and", "for", "with", "unit", "units", "aircon", "air",
+  "con", "conditioner", "please", "find", "show", "me", "some", "any", "of",
+  "btu", "btus", "kw", "kilowatt", "kilowatts", "watt", "watts",
+]);
+
+/**
+ * Extract a target BTU capacity from free text.
+ * Handles: "9000", "9000 btu", "9k", "2.6kw", "2,6 kw", "AR09", "AR14".
+ */
+function parseCapacity(raw: string): number | null {
+  const text = raw.toLowerCase();
+
+  // kW first — "2.6kw", "2,6 kw", "3.5 kilowatt"
+  const kwMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(?:kw|kilowatts?)\b/);
+  if (kwMatch) {
+    const kw = parseFloat(kwMatch[1].replace(",", "."));
+    if (kw > 0 && kw < 100) return Math.round(kw * BTU_PER_KW);
+  }
+
+  // Explicit BTU — "9000 btu", "12 000btu"
+  const btuMatch = text.match(/(\d{4,6})\s*btus?\b/);
+  if (btuMatch) return parseInt(btuMatch[1], 10);
+
+  // Shorthand "9k", "12k", "24 k"
+  const kMatch = text.match(/\b(\d{1,3})\s*k\b/);
+  if (kMatch) {
+    const n = parseInt(kMatch[1], 10);
+    if (n >= 5 && n <= 100) return n * 1000;
+  }
+
+  // Bare 4-6 digit number that looks like a BTU rating
+  const bare = text.match(/\b(\d{4,6})\b/);
+  if (bare) {
+    const n = parseInt(bare[1], 10);
+    if (n >= 5000 && n <= 120000) return n;
+  }
+
+  return null;
+}
+
+/**
+ * Capacity encoded inside a model code, e.g. "AR09BSHGAWK/FA" -> 9000,
+ * "AR14" -> 14000, or a short name like "Samsung 24K INV MW" -> 24000.
+ */
+function capacityFromCode(...values: (string | null | undefined)[]): number | null {
+  for (const v of values) {
+    if (!v) continue;
+    const s = v.toLowerCase();
+
+    const kShort = s.match(/\b(\d{1,3})\s*k\b/);
+    if (kShort) {
+      const n = parseInt(kShort[1], 10);
+      if (n >= 5 && n <= 100) return n * 1000;
+    }
+
+    // Leading letters followed by 2 digits: AR09, AR14, MSZ18...
+    const codeNum = s.match(/[a-z]{2,4}[-\s]?(\d{2})(?![0-9])/);
+    if (codeNum) {
+      const n = parseInt(codeNum[1], 10);
+      if (n >= 5 && n <= 60) return n * 1000;
+    }
+  }
+  return null;
+}
+
+function withinTolerance(target: number, actual: number): boolean {
+  return actual >= target * (1 - BTU_TOLERANCE) && actual <= target * (1 + BTU_TOLERANCE);
+}
+
+/** Tokens worth matching as text (capacity terms and filler removed). */
+function productTokens(raw: string): string[] {
+  return raw
+    .toLowerCase()
+    .replace(/[%,()"']/g, " ")
+    .replace(/(\d+(?:[.,]\d+)?)\s*(?:kw|kilowatts?)\b/g, " ")
+    .replace(/(\d{4,6})\s*btus?\b/g, " ")
+    .replace(/\b\d{4,6}\b/g, " ")
+    .replace(/\b\d{1,3}\s*k\b/g, " ")
+    .split(/[\s/]+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2 && !STOP_WORDS.has(t));
+}
+
+function productBlob(row: Record<string, any>): string {
+  return PRODUCT_TEXT_FIELDS.map((f) => row[f] ?? "")
+    .concat(row.subcategory ?? "", row.short_name ?? "")
+    .join(" ")
+    .toLowerCase();
+}
+
+/**
+ * Score a candidate row: text-token hits (weighted by field priority)
+ * plus a capacity bonus when the requested BTU matches.
+ */
+function scoreProduct(
+  row: Record<string, any>,
+  tokens: string[],
+  targetBtu: number | null,
+): { score: number; matchedTokens: number; capacityOk: boolean } {
+  const fieldWeights: Record<string, number> = {
+    product_code: 5,
+    short_name: 4,
+    brand: 3,
+    description: 2,
+    category: 1,
+  };
+
+  let score = 0;
+  let matchedTokens = 0;
+
+  for (const token of tokens) {
+    let best = 0;
+    for (const field of PRODUCT_TEXT_FIELDS) {
+      const value = String(row[field] ?? "").toLowerCase();
+      if (!value) continue;
+      if (value.includes(token)) {
+        const exactWord = new RegExp(`(^|[^a-z0-9])${escapeRegex(token)}([^a-z0-9]|$)`).test(value);
+        best = Math.max(best, fieldWeights[field] * (exactWord ? 1.5 : 1));
+      }
+    }
+    if (best > 0) {
+      matchedTokens++;
+      score += best;
+    }
+  }
+
+  let capacityOk = false;
+  if (targetBtu != null) {
+    const numeric = typeof row.btu_rating === "number" ? row.btu_rating : null;
+    const fromKw = row.kw ? Math.round(Number(row.kw) * BTU_PER_KW) : null;
+    const fromText = capacityFromCode(row.product_code, row.short_name, row.description);
+    const candidates = [numeric, fromKw, fromText].filter((n): n is number => !!n);
+
+    if (candidates.some((c) => withinTolerance(targetBtu, c))) {
+      capacityOk = true;
+      // Exact numeric column match ranks highest.
+      score += numeric != null && withinTolerance(targetBtu, numeric) ? 12 : 8;
+    }
+  }
+
+  return { score, matchedTokens, capacityOk };
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function buildProductOrFilter(tokens: string[]): string {
+  const parts: string[] = [];
+  for (const token of tokens) {
+    const escaped = token.replace(/[%_,]/g, " ").trim();
+    if (!escaped) continue;
+    for (const field of PRODUCT_TEXT_FIELDS) {
+      parts.push(`${field}.ilike.%${escaped}%`);
+    }
+  }
+  return parts.join(",");
+}
+
+function shapeProduct(row: Record<string, any>) {
+  const capacity = typeof row.btu_rating === "number"
+    ? row.btu_rating
+    : capacityFromCode(row.product_code, row.short_name);
+
+  return {
+    id: row.id,
+    // Most rows have a null `name`; fall back so the agent never sees a blank label.
+    name: row.name ?? row.short_name ?? row.product_code ?? "Unnamed product",
+    short_name: row.short_name,
+    description: row.description,
+    category: row.category,
+    subcategory: row.subcategory,
+    brand: row.brand,
+    model: row.model ?? row.product_code,
+    product_code: row.product_code,
+    selling_price: row.selling_price,
+    sell_price_incl_vat: row.sell_price_incl_vat,
+    is_price_on_request: row.is_price_on_request,
+    unit_type: row.unit_type,
+    btu_rating: capacity,
+    kw: row.kw,
+  };
+}
+
 async function searchItems(
   db: any,
   member: CallerContext,
@@ -361,27 +565,84 @@ async function searchItems(
   }
 
   const raw = String(query ?? "").trim();
-  const tokens = nameTokens(raw);
-  const fields = ["name", "short_name", "model", "product_code", "brand"];
-  const patterns = tokens.length ? tokens : [raw.replace(/[%,()]/g, "")].filter(Boolean);
-  const orFilter = patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(",");
+  const targetBtu = parseCapacity(raw);
+  const tokens = productTokens(raw);
+  const cap = Math.min(limit, 25);
 
-  let q = db
-    .from("supplier_products")
-    .select(
-      "id, name, short_name, category, subcategory, brand, model, product_code, selling_price, sell_price_incl_vat, is_price_on_request, unit_type",
-    )
-    .eq("is_active", true)
-    .or("archived.is.false,archived.is.null")
-    .order("name", { ascending: true })
-    .limit(Math.min(limit, 25));
+  const base = () =>
+    db
+      .from("supplier_products")
+      .select(PRODUCT_SELECT)
+      .eq("is_active", true)
+      .or("archived.is.false,archived.is.null");
 
+  // Pull a wide candidate pool, then rank in code so partial/extra/missing
+  // words and capacity variations all still surface the right products.
+  let q = base().limit(400);
+
+  const orFilter = buildProductOrFilter(tokens);
   if (orFilter) q = q.or(orFilter);
+
+  if (targetBtu != null) {
+    const lo = Math.floor(targetBtu * (1 - BTU_TOLERANCE));
+    const hi = Math.ceil(targetBtu * (1 + BTU_TOLERANCE));
+    // Widen the pool with anything in the capacity band, even if no word matched.
+    const { data: byCapacity } = await base()
+      .gte("btu_rating", lo)
+      .lte("btu_rating", hi)
+      .limit(200);
+
+    const { data: byText, error } = await q;
+    if (error) throw error;
+
+    const merged = new Map<string, Record<string, any>>();
+    for (const row of [...(byText ?? []), ...(byCapacity ?? [])]) merged.set(row.id, row);
+    return rankProducts([...merged.values()], tokens, targetBtu, cap);
+  }
 
   const { data, error } = await q;
   if (error) throw error;
 
-  return (data ?? []) as Record<string, any>[];
+  let pool = (data ?? []) as Record<string, any>[];
+
+  // Nothing matched the tokens — fall back to a general recent slice so the
+  // agent can still offer options rather than claiming the catalogue is empty.
+  if (pool.length === 0 && tokens.length > 0) {
+    const { data: fallback } = await base()
+      .order("quote_usage_count", { ascending: false, nullsFirst: false })
+      .limit(cap);
+    pool = (fallback ?? []) as Record<string, any>[];
+  }
+
+  return rankProducts(pool, tokens, targetBtu, cap);
+}
+
+function rankProducts(
+  pool: Record<string, any>[],
+  tokens: string[],
+  targetBtu: number | null,
+  cap: number,
+) {
+  const scored = pool.map((row) => ({ row, ...scoreProduct(row, tokens, targetBtu) }));
+
+  // Prefer rows that satisfy the capacity request AND matched at least one word.
+  const strict = scored.filter((s) =>
+    (targetBtu == null || s.capacityOk) && (tokens.length === 0 || s.matchedTokens > 0)
+  );
+  const relaxed = scored.filter((s) => s.score > 0);
+
+  const chosen = strict.length > 0 ? strict : (relaxed.length > 0 ? relaxed : scored);
+
+  return chosen
+    .sort((a, b) =>
+      b.score - a.score ||
+      b.matchedTokens - a.matchedTokens ||
+      String(a.row.short_name ?? a.row.product_code ?? "").localeCompare(
+        String(b.row.short_name ?? b.row.product_code ?? ""),
+      )
+    )
+    .slice(0, cap)
+    .map((s) => shapeProduct(s.row));
 }
 
 async function createEstimate(db: any, member: CallerContext, params: any): Promise<ToolResult> {
