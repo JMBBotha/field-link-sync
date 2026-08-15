@@ -148,6 +148,10 @@ export const TOOL_KIND: Record<ToolName, ToolKind> = {
   accept_quote: "write",
   add_invoice_item: "write",
   create_invoice: "write",
+  search_customers: "read",
+  get_customer_details: "read",
+  search_inventory: "read",
+  get_assigned_jobs: "read",
 };
 
 
