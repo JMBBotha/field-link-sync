@@ -56,9 +56,11 @@ const CreateEstimateParamsSchema = z.object({
   pending_id: z.string().uuid().optional(),
 });
 
+// `confirm` may be false (the user said no / cancel) and `pending_id` may be
+// omitted — in that case we resolve the caller's most recent pending draft.
 const ConfirmPendingActionSchema = z.object({
-  pending_id: z.string().uuid(),
-  confirm: z.literal(true),
+  pending_id: z.string().uuid().optional(),
+  confirm: z.boolean().default(true),
 });
 
 // ========== TYPES ==========
@@ -211,10 +213,13 @@ export async function handleRequest(req: Request): Promise<Response> {
           throw new Error("Your role is not allowed to confirm estimates");
         }
         const params = ConfirmPendingActionSchema.parse(rawArgs);
-        const confirmed = await confirmPendingEstimate(db, member, params.pending_id);
+        const pendingId = params.pending_id ?? await latestPendingEstimateId(db, member);
+        const confirmed = params.confirm
+          ? await confirmPendingEstimate(db, member, pendingId)
+          : await cancelPendingEstimate(db, member, pendingId);
         result = confirmed;
         resourceType = "quote";
-        resourceId = confirmed.id ?? null;
+        resourceId = (confirmed.id as string | undefined) ?? null;
         break;
       }
       default:
@@ -752,11 +757,18 @@ async function createEstimate(db: any, member: CallerContext, params: any): Prom
   const { error: linesErr } = await db.from("quote_line_items").insert(quoteLineItems);
   if (linesErr) throw new Error(linesErr.message);
 
+  const spoken =
+    `${customerDisplayName}: ${lineItems.length} line${lineItems.length === 1 ? "" : "s"}, ` +
+    `total R${total.toFixed(2)} including VAT.`;
+
   return {
     confirmed: false,
+    awaiting_confirmation: true,
     pending_id: draft.id,
     quote_number: draft.quote_number,
-    message: "Estimate created as a draft. Read the summary and ask the user to confirm.",
+    spoken_summary: spoken,
+    message:
+      "Read spoken_summary aloud ONCE and ask 'should I create it?' exactly once. Do not repeat the question or re-summarise.",
     summary: {
       customer: customerDisplayName,
       title,
@@ -768,11 +780,28 @@ async function createEstimate(db: any, member: CallerContext, params: any): Prom
       total: `R${total.toFixed(2)}`,
       valid_until: draft.valid_until,
     },
-    next_step: "Call confirm_pending_action with this pending_id after the user says yes.",
+    next_step:
+      "On yes/confirm/go ahead → call confirm_pending_action { confirm: true }. On no/cancel/never mind → call confirm_pending_action { confirm: false }. Never ask a second time.",
   };
 }
 
-async function confirmPendingEstimate(db: any, member: CallerContext, pendingId: string): Promise<ToolResult> {
+/** Most recent draft prepared by this caller — lets the agent confirm without echoing an id. */
+async function latestPendingEstimateId(db: any, member: CallerContext): Promise<string> {
+  const { data } = await db
+    .from("quotes")
+    .select("id")
+    .eq("company_id", member.companyId)
+    .eq("sales_engineer_id", member.userId)
+    .eq("status", "draft")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data?.id) throw new Error("There is nothing waiting for confirmation.");
+  return data.id as string;
+}
+
+async function loadPendingDraft(db: any, member: CallerContext, pendingId: string) {
   const { data: draft, error } = await db
     .from("quotes")
     .select("id, quote_number, company_id, sales_engineer_id, status, total, title, customer_name")
@@ -780,18 +809,34 @@ async function confirmPendingEstimate(db: any, member: CallerContext, pendingId:
     .eq("company_id", member.companyId)
     .single();
 
-  if (error || !draft) {
-    throw new Error("Pending estimate not found");
-  }
+  if (error || !draft) throw new Error("Pending estimate not found");
 
-  // Only ops or the creator may confirm the draft.
+  // Only ops or the creator may act on the draft.
   const isOps = member.roles.some((r) => OPS_ROLES.has(r));
   if (!isOps && draft.sales_engineer_id !== member.userId) {
     throw new Error("You don't have access to that estimate");
   }
+  return draft;
+}
 
+async function confirmPendingEstimate(db: any, member: CallerContext, pendingId: string): Promise<ToolResult> {
+  const draft = await loadPendingDraft(db, member, pendingId);
+
+  // Idempotent: a second confirm for the same draft returns the same success
+  // answer instead of throwing, which is what previously restarted the loop.
   if (draft.status !== "draft") {
-    throw new Error(`Estimate is already ${draft.status}`);
+    return {
+      confirmed: true,
+      already_final: true,
+      id: draft.id,
+      quote_number: draft.quote_number,
+      title: draft.title,
+      customer: draft.customer_name,
+      total: draft.total,
+      status: draft.status,
+      message: `Estimate ${draft.quote_number} is already ${draft.status}. Nothing more to confirm.`,
+      next_step: "Do not ask for confirmation again.",
+    };
   }
 
   const { data: finalised, error: updateErr } = await db
@@ -815,5 +860,39 @@ async function confirmPendingEstimate(db: any, member: CallerContext, pendingId:
     total: finalised.total,
     status: finalised.status,
     message: `Estimate ${finalised.quote_number} has been confirmed and sent.`,
+    next_step: "Say it is done in one short sentence. Do not ask for confirmation again.",
+  };
+}
+
+/** User said no: drop the prepared draft so nothing is left pending. */
+async function cancelPendingEstimate(db: any, member: CallerContext, pendingId: string): Promise<ToolResult> {
+  const draft = await loadPendingDraft(db, member, pendingId);
+
+  if (draft.status !== "draft") {
+    return {
+      confirmed: false,
+      cancelled: false,
+      id: draft.id,
+      quote_number: draft.quote_number,
+      status: draft.status,
+      message: `Estimate ${draft.quote_number} was already ${draft.status}, so it can't be discarded here.`,
+      next_step: "Do not ask for confirmation again.",
+    };
+  }
+
+  await db.from("quote_line_items").delete().eq("quote_id", pendingId);
+  const { error: delErr } = await db
+    .from("quotes")
+    .delete()
+    .eq("id", pendingId)
+    .eq("company_id", member.companyId);
+  if (delErr) throw new Error(delErr.message);
+
+  return {
+    confirmed: false,
+    cancelled: true,
+    id: pendingId,
+    message: "Discarded. Nothing was created.",
+    next_step: "Acknowledge in one short sentence. Do not ask for confirmation again.",
   };
 }
