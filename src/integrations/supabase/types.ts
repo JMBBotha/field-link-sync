@@ -271,6 +271,51 @@ export type Database = {
           },
         ]
       }
+      assistant_audit_logs: {
+        Row: {
+          channel: string
+          company_id: string | null
+          created_at: string
+          error_code: string | null
+          id: string
+          input: Json
+          outcome: string
+          resolved_role: string
+          result_count: number | null
+          session_id: string | null
+          tool_name: string
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          company_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          id?: string
+          input?: Json
+          outcome: string
+          resolved_role?: string
+          result_count?: number | null
+          session_id?: string | null
+          tool_name: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          company_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          id?: string
+          input?: Json
+          outcome?: string
+          resolved_role?: string
+          result_count?: number | null
+          session_id?: string | null
+          tool_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
