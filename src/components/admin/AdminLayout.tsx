@@ -218,7 +218,7 @@ const AdminLayout = () => {
               title="Talk to the operations assistant"
             >
               <Sparkle className="h-4 w-4" />
-              <span className="text-xs hidden sm:inline">Ask AI</span>
+              <span className="text-xs hidden sm:inline">Ask Mandy</span>
             </Button>
 
             <NotificationBell />
