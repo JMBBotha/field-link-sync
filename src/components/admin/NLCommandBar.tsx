@@ -126,33 +126,40 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
 
   const confirmAction = async () => {
     if (!pending) return;
+    const answered = pending;
+    if (answered.id) answeredPendingIds.current.add(answered.id);
+    // Close first: the answer is final, the modal must never come back.
+    setPending(null);
     setConfirming(true);
     try {
-      const res = await callFunction({ confirm: pending });
+      const res = await callFunction({ confirm: { tool_name: answered.tool_name, args: answered.args } });
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
           content: res.message,
-          data: res.data ? [{ tool_name: pending.tool_name, rows: res.data as unknown as Row[] }] : undefined,
+          data: res.data ? [{ tool_name: answered.tool_name, rows: res.data as unknown as Row[] }] : undefined,
         },
       ]);
       toast({ title: "Action completed", description: res.message });
-      setPending(null);
-      if (mode === "voice") voice.clearPending(res.message);
+      voice.clearPending(res.message, { id: answered.id, status: "executed" });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Action failed";
       toast({ title: "Action failed", description: message, variant: "destructive" });
+      voice.clearPending(message, { id: answered.id, status: "cancelled" });
     } finally {
       setConfirming(false);
     }
   };
 
   const cancelAction = () => {
+    const answered = pending;
+    if (answered?.id) answeredPendingIds.current.add(answered.id);
     setPending(null);
-    if (mode === "voice") voice.clearPending("Cancelled — nothing was changed.");
+    voice.clearPending("Cancelled — nothing was changed.", { id: answered?.id, status: "cancelled" });
     setMessages((prev) => [...prev, { role: "assistant", content: "Cancelled — nothing was changed." }]);
   };
+
 
   return (
     <>
