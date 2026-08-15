@@ -227,7 +227,7 @@ export async function handleRequest(req: Request): Promise<Response> {
       userId: member.userId,
       companyId: member.companyId,
       role: resolvePersona(member.roles),
-      toolName: toolName === "unknown" ? "unknown" : toolName,
+      toolName: toolName,
       args: sanitizeArgs(rawArgs),
       resultCount,
       outcome,
