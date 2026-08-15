@@ -740,23 +740,34 @@ export async function executeTool(
       }
       const raw = String(args.query).trim();
       const tokens = nameTokens(raw);
-      const fields = ["name", "short_name", "model", "product_code", "brand"];
+      const fields = ["name", "short_name", "description", "model", "product_code", "brand", "category"];
       const patterns = tokens.length ? tokens : [raw.replace(/[%,()]/g, "")];
-      const orFilter = patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(",");
       const take = Math.min(Number(args.limit ?? 10), 25);
       const from = Number(args.offset ?? 0);
+      const cols =
+        "id, name, short_name, description, category, subcategory, brand, model, product_code, selling_price, sell_price_incl_vat, is_price_on_request, unit_type";
       let q = db.from("supplier_products")
-        .select(
-          "id, name, short_name, category, subcategory, brand, model, product_code, selling_price, sell_price_incl_vat, is_price_on_request, unit_type",
-        )
+        .select(cols)
         .eq("is_active", true)
-        .or("archived.is.false,archived.is.null")
-        .or(orFilter)
-        .range(from, from + take - 1);
+        .or("archived.is.false,archived.is.null");
+      // Chained .or() groups are ANDed: every spoken token must match somewhere.
+      for (const t of patterns) {
+        q = q.or(fields.map((f) => `${f}.ilike.%${t}%`).join(","));
+      }
+      q = q.range(from, from + take - 1);
       if (args.category) q = q.ilike("category", `%${args.category}%`);
-      const { data, error } = await q;
+      let { data, error } = await q;
       if (error) throw error;
+      if (!data?.length && patterns.length > 1) {
+        const orFilter = patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(",");
+        const wide = await db.from("supplier_products").select(cols)
+          .eq("is_active", true).or("archived.is.false,archived.is.null").or(orFilter)
+          .range(from, from + take - 1);
+        if (wide.error) throw wide.error;
+        data = wide.data;
+      }
       const products = (data ?? []) as Record<string, any>[];
+
 
       let stockByProduct = new Map<string, number>();
       if (products.length) {
