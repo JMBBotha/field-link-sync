@@ -218,7 +218,13 @@ class OfflineDatabase extends Dexie {
       if (agentLeadIds.length > 0) {
         await this.leads.bulkDelete(agentLeadIds);
       }
-      const unassignedLeadIds = await this.leads.where('assigned_agent_id').equals(null as any).primaryKeys();
+      // IndexedDB (and therefore Dexie's `.equals()`) does not accept null/undefined
+      // as a key, and records with a null/missing indexed field are excluded from the
+      // index entirely — so we can't query for them via `.where().equals()`. Filter
+      // the full table instead.
+      const unassignedLeadIds = await this.leads
+        .filter(lead => lead.assigned_agent_id === null || lead.assigned_agent_id === undefined)
+        .primaryKeys();
       if (unassignedLeadIds.length > 0) {
         await this.leads.bulkDelete(unassignedLeadIds);
       }
