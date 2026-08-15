@@ -68,6 +68,12 @@ type ToolName =
   | "create_estimate"
   | "confirm_pending_action";
 
+interface ToolResult {
+  id?: string;
+  pending_id?: string;
+  [key: string]: unknown;
+}
+
 interface CallerContext {
   userId: string;
   companyId: string;
