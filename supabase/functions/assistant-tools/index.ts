@@ -511,7 +511,7 @@ async function createEstimate(db: any, member: CallerContext, params: any): Prom
   };
 }
 
-async function confirmPendingEstimate(db: any, member: CallerContext, pendingId: string) {
+async function confirmPendingEstimate(db: any, member: CallerContext, pendingId: string): Promise<ToolResult> {
   const { data: draft, error } = await db
     .from("quotes")
     .select("id, quote_number, company_id, sales_engineer_id, status, total, title, customer_name")
