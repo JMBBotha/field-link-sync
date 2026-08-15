@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
       // ---- spoken confirmation of a queued write -----------------------
       if (name === "confirm_pending_action") {
         const { data: rows } = await db.from("nl_audit_log")
-          .select("tool_name, args, result, status, created_at")
+          .select("id, tool_name, args, result, status, created_at")
           .eq("user_id", userId)
           .eq("company_id", companyId)
           .order("created_at", { ascending: false })
@@ -151,27 +151,57 @@ Deno.serve(async (req) => {
         const mine = (rows ?? []).filter((r) =>
           (r.result as { session_id?: string } | null)?.session_id === sessionId
         );
-        const pending = mine.find((r) => r.status === "confirmation_required");
-        // Resolution is checked across ALL of the caller's rows (not just this
-        // session) so a write already confirmed/cancelled in the on-screen
-        // modal — which runs through nl-query without a session_id — is never
-        // executed a second time by the voice agent.
-        const alreadyResolved = pending
-          ? (rows ?? []).some((r) =>
-            ["executed", "cancelled", "error"].includes(r.status) &&
-            r.tool_name === pending.tool_name &&
-            r.created_at > pending.created_at
-          )
-          : true;
+        const resolvedPendingIds = new Set(
+          (rows ?? [])
+            .filter((r) => ["executed", "cancelled", "error", "invalid_args"].includes(r.status))
+            .map((r) => (r.result as { pending_id?: string } | null)?.pending_id)
+            .filter((id): id is string => Boolean(id)),
+        );
+        const pending = mine.find((r) =>
+          r.status === "confirmation_required" && !resolvedPendingIds.has(r.id)
+        );
 
+        console.log("[nl-voice-tool] confirm pending trace", JSON.stringify({
+          sessionId,
+          confirm: args.confirm === true,
+          pendingId: pending?.id ?? null,
+          sessionPendingIds: mine.filter((r) => r.status === "confirmation_required").map((r) => r.id),
+          resolvedPendingIds: [...resolvedPendingIds],
+        }));
 
-        if (!pending || alreadyResolved) {
+        if (!pending) {
           results.push({ toolCallId, result: "There is no action waiting for confirmation." });
           continue;
         }
 
+        // Atomically claim the source pending row before executing/cancelling.
+        // A concurrent poll or duplicate confirm can no longer discover it.
+        const { data: claimed, error: claimError } = await db.from("nl_audit_log")
+          .update({
+            status: "resolving",
+            result: {
+              session_id: sessionId,
+              channel: "voice",
+              pending_id: pending.id,
+              requested_confirmation: args.confirm === true,
+            },
+          })
+          .eq("id", pending.id)
+          .eq("status", "confirmation_required")
+          .select("id")
+          .maybeSingle();
+        if (claimError || !claimed) {
+          console.log("[nl-voice-tool] pending claim lost", JSON.stringify({
+            sessionId,
+            pendingId: pending.id,
+            error: claimError?.message ?? null,
+          }));
+          results.push({ toolCallId, result: "That action has already been answered." });
+          continue;
+        }
+
         if (args.confirm !== true) {
-          await audit(pending.tool_name, pending.args, { cancelled_by: "voice" }, "cancelled");
+          await audit(pending.tool_name, pending.args, { cancelled_by: "voice", pending_id: pending.id }, "cancelled");
           results.push({ toolCallId, result: "Discarded. Nothing was changed." });
           continue;
         }
@@ -179,17 +209,17 @@ Deno.serve(async (req) => {
         const toolName = pending.tool_name as ToolName;
         const parsed = toolSchemas[toolName]?.safeParse(pending.args ?? {});
         if (!parsed?.success) {
-          await audit(toolName, pending.args, { error: "invalid_args" }, "invalid_args");
+          await audit(toolName, pending.args, { error: "invalid_args", pending_id: pending.id }, "invalid_args");
           results.push({ toolCallId, result: "Those details are no longer valid. Please start again." });
           continue;
         }
         try {
           const out = await executeTool(toolName, parsed.data, ctx);
-          await audit(toolName, parsed.data, { summary: out.summary, rows: out.rows.slice(0, 25) }, "executed", out);
+          await audit(toolName, parsed.data, { summary: out.summary, rows: out.rows.slice(0, 25), pending_id: pending.id }, "executed", out);
           results.push({ toolCallId, result: out.summary });
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Execution failed";
-          await audit(toolName, parsed.data, { error: msg }, "error");
+          await audit(toolName, parsed.data, { error: msg, pending_id: pending.id }, "error");
           results.push({ toolCallId, result: `That failed: ${msg}` });
         }
         continue;
@@ -214,6 +244,37 @@ Deno.serve(async (req) => {
       }
 
       if (TOOL_KIND[toolName] === "write") {
+        const { data: recentRows } = await db.from("nl_audit_log")
+          .select("id, tool_name, args, result, status")
+          .eq("user_id", userId)
+          .eq("company_id", companyId)
+          .order("created_at", { ascending: false })
+          .limit(60);
+        const sessionRows = (recentRows ?? []).filter((row) =>
+          (row.result as { session_id?: string } | null)?.session_id === sessionId
+        );
+        const resolvedIds = new Set(
+          sessionRows
+            .filter((row) => ["executed", "cancelled", "error", "invalid_args"].includes(row.status))
+            .map((row) => (row.result as { pending_id?: string } | null)?.pending_id)
+            .filter((id): id is string => Boolean(id)),
+        );
+        const existingPending = sessionRows.find((row) =>
+          row.status === "confirmation_required" && !resolvedIds.has(row.id)
+        );
+        if (existingPending) {
+          console.log("[nl-voice-tool] duplicate pending suppressed", JSON.stringify({
+            sessionId,
+            requestedTool: toolName,
+            existingPendingId: existingPending.id,
+            existingTool: existingPending.tool_name,
+          }));
+          results.push({
+            toolCallId,
+            result: "Another action is already waiting for your spoken confirmation. Ask for yes or no and call confirm_pending_action before preparing anything else.",
+          });
+          continue;
+        }
         await audit(toolName, parsed.data, { status: "awaiting_confirmation" }, "confirmation_required");
         results.push({
           toolCallId,

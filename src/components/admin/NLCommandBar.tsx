@@ -40,6 +40,10 @@ const SUGGESTIONS = [
 
 type AssistantMode = "text" | "voice";
 
+// Temporary safety switch: voice writes use Mandy's spoken confirmation only.
+// Keeping the second UI confirmation active creates two competing resolvers.
+const VOICE_CONFIRMATION_MODAL_ENABLED = false;
+
 interface NLCommandBarProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -84,6 +88,13 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
     const p = voice.pending;
     if (!p || pending) return;
     if (p.id && answeredPendingIds.current.has(p.id)) return;
+    if (!VOICE_CONFIRMATION_MODAL_ENABLED) {
+      console.info("[NLCommandBar] voice confirmation modal suppressed", {
+        pendingId: p.id,
+        toolName: p.tool_name,
+      });
+      return;
+    }
     setPending(p);
   }, [voice.pending]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -135,7 +146,9 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
     setPending(null);
     setConfirming(true);
     try {
-      const res = await callFunction({ confirm: { tool_name: answered.tool_name, args: answered.args } });
+      const res = await callFunction({
+        confirm: { id: answered.id, tool_name: answered.tool_name, args: answered.args },
+      });
       setMessages((prev) => [
         ...prev,
         {

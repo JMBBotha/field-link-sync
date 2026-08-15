@@ -158,26 +158,31 @@ Deno.serve(async (req) => {
           summary: (r.result as { summary?: string } | null)?.summary ?? "",
         }));
 
-      // A pending write is the newest confirmation_required row that has not
-      // been resolved by a later executed/cancelled row. IMPORTANT: resolution
-      // is checked against ALL rows for this user/company, not only rows tagged
-      // with this voice session_id — the on-screen confirmation runs through
-      // nl-query (channel "text", no session_id), and scoping the check to the
-      // session made every confirmed/cancelled write look unresolved forever,
-      // which is what caused the modal to reappear in a loop.
+      // A terminal row carries the exact pending id it resolves. Once that id
+      // appears here it is permanently excluded, regardless of tool name,
+      // timestamps, channel, retries, or any newer pending action.
       const allRows = rows ?? [];
-      const lastPending = [...mine].reverse().find((r) => r.status === "confirmation_required");
-      const resolvedAfter = lastPending
-        ? allRows.some((r) =>
-          ["executed", "cancelled", "error"].includes(r.status) &&
-          r.tool_name === lastPending.tool_name &&
-          r.created_at > lastPending.created_at
-        )
-        : true;
+      const resolvedPendingIds = new Set(
+        allRows
+          .filter((r) => ["executed", "cancelled", "error", "invalid_args"].includes(r.status))
+          .map((r) => (r.result as { pending_id?: string } | null)?.pending_id)
+          .filter((id): id is string => Boolean(id)),
+      );
+      const unresolved = mine.filter((r) =>
+        r.status === "confirmation_required" && !resolvedPendingIds.has(r.id)
+      );
+      const lastPending = unresolved.at(-1) ?? null;
+
+      console.log("[nl-voice-session] poll pending trace", JSON.stringify({
+        sessionId,
+        pendingIds: mine.filter((r) => r.status === "confirmation_required").map((r) => r.id),
+        resolvedPendingIds: [...resolvedPendingIds],
+        returnedPendingId: lastPending?.id ?? null,
+      }));
 
       return json({
         results,
-        pending: lastPending && !resolvedAfter
+        pending: lastPending
           ? { id: lastPending.id, tool_name: lastPending.tool_name, args: lastPending.args }
           : null,
       });
@@ -201,6 +206,53 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (!row) return json({ ok: true });
 
+      const { data: recentRows } = await db.from("nl_audit_log")
+        .select("id, result, status")
+        .eq("user_id", userId)
+        .eq("company_id", companyId)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      const existingTerminal = (recentRows ?? []).find((candidate) =>
+        ["executed", "cancelled", "error", "invalid_args"].includes(candidate.status) &&
+        (candidate.result as { pending_id?: string } | null)?.pending_id === pendingId
+      );
+      if (existingTerminal) {
+        console.log("[nl-voice-session] resolve idempotent", JSON.stringify({
+          sessionId,
+          pendingId,
+          existingTerminalId: existingTerminal.id,
+          existingStatus: existingTerminal.status,
+        }));
+        return json({ ok: true, already_resolved: true });
+      }
+
+      // Remove the source row from the pending set before writing the terminal
+      // audit row. This makes resolution hard even if the insert is delayed or
+      // the client immediately polls again.
+      const { error: resolveError } = await db.from("nl_audit_log")
+        .update({
+          status: "resolved",
+          result: {
+            session_id: sessionId,
+            channel: "voice",
+            resolved_by: "ui",
+            pending_id: pendingId,
+            terminal_status: status,
+          },
+        })
+        .eq("id", pendingId)
+        .eq("status", "confirmation_required")
+        .eq("user_id", userId)
+        .eq("company_id", companyId);
+      if (resolveError) {
+        console.error("[nl-voice-session] source resolution failed", JSON.stringify({
+          sessionId,
+          pendingId,
+          message: resolveError.message,
+        }));
+        return json({ error: "Could not resolve pending action" }, 500);
+      }
+
       await db.from("nl_audit_log").insert({
         user_id: userId,
         company_id: companyId,
@@ -209,6 +261,11 @@ Deno.serve(async (req) => {
         result: { session_id: sessionId, channel: "voice", resolved_by: "ui", pending_id: pendingId },
         status,
       });
+      console.log("[nl-voice-session] resolve terminal written", JSON.stringify({
+        sessionId,
+        pendingId,
+        status,
+      }));
       return json({ ok: true });
     }
 
