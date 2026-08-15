@@ -153,7 +153,19 @@ Deno.serve(async (req) => {
     const { data: roleRows } = await db.from("user_roles").select("role").eq("user_id", userId);
     const roles = ((roleRows ?? []) as { role: string }[]).map((r) => r.role);
     const isOps = roles.some((r) => OPS_ROLES.has(r));
-    const SYSTEM_PROMPT = buildSystemPrompt(profile?.full_name || "the operator", isOps, roles[0] ?? "team member");
+
+    // Identity comes ONLY from the verified JWT + the profile row it points at.
+    // Anything in the request body is ignored, so a client can never rename itself.
+    const claimEmail = typeof claimsData.claims.email === "string" ? claimsData.claims.email : "";
+    const fullName = (profile?.full_name ?? "").trim() ||
+      (claimEmail ? claimEmail.split("@")[0].replace(/[._-]+/g, " ") : "");
+    const displayName = fullName || "the operator";
+    const rawFirst = fullName.split(/\s+/)[0] ?? "";
+    const firstName = rawFirst
+      ? rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1)
+      : "there";
+
+    const SYSTEM_PROMPT = buildSystemPrompt(displayName, firstName, isOps, roles[0] ?? "team member");
 
     const body = await req.json().catch(() => ({}));
     const action = String(body?.action ?? "start");
