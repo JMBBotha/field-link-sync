@@ -15,6 +15,7 @@ import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 import { spokenBtu, spokenKw, spokenRand } from "../_shared/numberSpeech.ts";
+import { naturalProductName, productSpeechFields } from "../_shared/productSpeech.ts";
 import {
   logAssistantAudit,
   resolvePersona,
@@ -573,15 +574,20 @@ function buildProductOrFilter(tokens: string[]): string {
   return parts.join(",");
 }
 
-function shapeProduct(row: Record<string, any>) {
+function shapeProduct(row: Record<string, any>, includeModel = false) {
   const capacity = typeof row.btu_rating === "number"
     ? row.btu_rating
     : capacityFromCode(row.product_code, row.short_name);
+
+  const speech = productSpeechFields({ ...row, btu_rating: capacity }, includeModel);
 
   return {
     id: row.id,
     // Most rows have a null `name`; fall back so the agent never sees a blank label.
     name: row.name ?? row.short_name ?? row.product_code ?? "Unnamed product",
+    // Natural label the agent should SAY (raw code stays below for the quote).
+    display_name: speech.display_name,
+    spoken_name: speech.spoken_name,
     short_name: row.short_name,
     description: row.description,
     category: row.category,
