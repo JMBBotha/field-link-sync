@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Pencil, FileCheck2, Send, Download, Printer, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useRegisterAssistantContext } from "@/hooks/useAssistantContextTracker";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
@@ -39,6 +40,15 @@ const AdminEstimateDetailPage = () => {
       return data as any;
     },
     enabled: !!id,
+  });
+
+  // Tell the voice assistant which quote is open on screen.
+  useRegisterAssistantContext({
+    open_quote_id: id,
+    open_quote_number: quote?.quote_number ?? undefined,
+    open_quote_status: quote?.status ?? undefined,
+    selected_customer_id: quote?.customer_id ?? undefined,
+    selected_customer_name: quote?.customer_name ?? undefined,
   });
 
   const { data: items = [] } = useQuery({
