@@ -58,6 +58,19 @@ const parseArgs = (raw: unknown): Record<string, unknown> => {
   return raw as Record<string, unknown>;
 };
 
+/** Never swallow a PostgREST/plain-object error into "Execution failed". */
+const errMessage = (e: unknown): string => {
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === "object") {
+    const o = e as { message?: string; details?: string; hint?: string };
+    return o.message || o.details || o.hint || JSON.stringify(o).slice(0, 200);
+  }
+  return String(e ?? "Unknown error");
+};
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
