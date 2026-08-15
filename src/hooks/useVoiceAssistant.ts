@@ -10,9 +10,12 @@ export interface TranscriptEntry {
 }
 
 export interface PendingConfirmation {
+  /** nl_audit_log row id of the queued write — used to make the modal one-shot. */
+  id?: string;
   tool_name: string;
   args: Record<string, unknown>;
 }
+
 
 export type VoiceStatus = "idle" | "connecting" | "live" | "ended" | "error";
 
