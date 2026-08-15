@@ -1,6 +1,13 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { executeTool, TOOL_KIND, toolSchemas, type ToolName } from "../_shared/nlTools.ts";
 import { verifySession } from "../_shared/voiceSession.ts";
+import {
+  type AssistantAuditEntry,
+  logAssistantAudit,
+  resolvePersona,
+} from "../_shared/assistantScope.ts";
+
+type AssistantOutcome = AssistantAuditEntry["outcome"];
 
 // The signed voice session only carries { userId, companyId } — roles are not
 // embedded in the token, so we fetch them fresh on every tool call. This is
