@@ -152,13 +152,18 @@ Deno.serve(async (req) => {
           (r.result as { session_id?: string } | null)?.session_id === sessionId
         );
         const pending = mine.find((r) => r.status === "confirmation_required");
+        // Resolution is checked across ALL of the caller's rows (not just this
+        // session) so a write already confirmed/cancelled in the on-screen
+        // modal — which runs through nl-query without a session_id — is never
+        // executed a second time by the voice agent.
         const alreadyResolved = pending
-          ? mine.some((r) =>
-            ["executed", "cancelled"].includes(r.status) &&
+          ? (rows ?? []).some((r) =>
+            ["executed", "cancelled", "error"].includes(r.status) &&
             r.tool_name === pending.tool_name &&
             r.created_at > pending.created_at
           )
           : true;
+
 
         if (!pending || alreadyResolved) {
           results.push({ toolCallId, result: "There is no action waiting for confirmation." });
