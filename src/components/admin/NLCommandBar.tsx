@@ -75,9 +75,15 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
   }, [open, mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A write tool queued during the voice call falls back to the same modal.
+  // Answered pendings are remembered so a re-poll can never resurrect them.
+  const answeredPendingIds = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (voice.pending && !pending) setPending(voice.pending);
+    const p = voice.pending;
+    if (!p || pending) return;
+    if (p.id && answeredPendingIds.current.has(p.id)) return;
+    setPending(p);
   }, [voice.pending]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
