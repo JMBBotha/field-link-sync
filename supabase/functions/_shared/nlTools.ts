@@ -3,6 +3,7 @@ import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { hasRecordAccess } from "./recordAccess.ts";
 import { resolveCandidates, type EntityCandidate } from "./entityResolution.ts";
 import { getOwnedScope, isOpsRole } from "./ownership.ts";
+import { resolveScope } from "./assistantScope.ts";
 
 const DEFAULT_VAT_RATE = 0.15; // South Africa standard rate, used only when a quote/invoice row has none set.
 
