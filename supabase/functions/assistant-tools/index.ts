@@ -347,21 +347,24 @@ async function searchItems(
 ) {
   const scope = await resolveScope(db, member.userId, member.companyId, member.roles, member.email);
   if (!scope.canSeeInventory) {
-    return [];
+    return {
+      rows: [],
+      summary: "No inventory available for this account.",
+      access_granted: false,
+    };
   }
 
   const raw = String(query ?? "").trim();
   const tokens = nameTokens(raw);
-  const fields = ["name", "short_name", "description", "model", "product_code", "brand", "category"];
+  const fields = ["name", "short_name", "model", "product_code", "brand"];
   const patterns = tokens.length ? tokens : [raw.replace(/[%,()]/g, "")].filter(Boolean);
   const orFilter = patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(",");
 
   let q = db
     .from("supplier_products")
     .select(
-      "id, name, short_name, category, subcategory, brand, model, product_code, selling_price, sell_price_incl_vat, unit_type, is_price_on_request",
+      "id, name, short_name, category, subcategory, brand, model, product_code, selling_price, sell_price_incl_vat, is_price_on_request, unit_type",
     )
-    .eq("company_id", member.companyId)
     .eq("is_active", true)
     .or("archived.is.false,archived.is.null")
     .order("name", { ascending: true })
