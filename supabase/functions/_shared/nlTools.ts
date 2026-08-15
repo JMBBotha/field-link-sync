@@ -1315,7 +1315,11 @@ export async function executeTool(
       if (!description) throw new Error("A description or product_id is required");
       spokenDescription = spokenDescription ?? naturalProductName({ name: description });
       if (unitPrice == null) throw new Error("A unit_price or product_id is required");
-      const quantity = args.quantity != null ? Number(args.quantity) : 1;
+      // quote_line_items.quantity is an INTEGER column and total is a GENERATED
+      // column — never send `total`, and never send a fractional quantity.
+      const rawQty = args.quantity != null ? Number(args.quantity) : 1;
+      const quantity = Math.max(1, Math.round(Number.isFinite(rawQty) ? rawQty : 1));
+      unitPrice = Math.round(unitPrice * 100) / 100;
       const lineTotal = Math.round(quantity * unitPrice * 100) / 100;
 
       const { error: insErr } = await db.from("quote_line_items").insert({
@@ -1323,13 +1327,12 @@ export async function executeTool(
         description,
         quantity,
         unit_price: unitPrice,
-        total: lineTotal,
       });
-      if (insErr) throw insErr;
+      if (insErr) throw new Error(`Could not add the line to the quote (${insErr.message})`);
 
       const { data: items, error: itemsErr } = await db.from("quote_line_items")
         .select("total").eq("quote_id", quote.id);
-      if (itemsErr) throw itemsErr;
+      if (itemsErr) throw new Error(`The line was added but the totals could not be read back (${itemsErr.message})`);
       const subtotal = (items ?? []).reduce((s: number, r: { total: number | null }) => s + Number(r.total ?? 0), 0);
       const discountAmt = quote.discount_type === "percentage"
         ? subtotal * (Number(quote.discount_value ?? 0) / 100)
@@ -1343,13 +1346,14 @@ export async function executeTool(
       const { error: updErr } = await db.from("quotes").update({
         subtotal, vat_amount: vatAmount, total,
       }).eq("id", quote.id);
-      if (updErr) throw updErr;
+      if (updErr) throw new Error(`The line was added but the quote total could not be updated (${updErr.message})`);
 
       return {
         rows: scrub(tool, [{ id: quote.id, quote_id: quote.id, description, quantity, unit_price: unitPrice, total: lineTotal, quote_total: total }]),
         summary:
-          `Added ${quantity} × ${spokenDescription} to the quote. New total: ${spokenRand(total)}`,
+          `Done — added ${quantity} × ${spokenDescription} to the quote. The new total is ${spokenRand(total)}.`,
       };
+
     }
 
     case "accept_quote": {
