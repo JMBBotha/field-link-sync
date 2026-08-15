@@ -440,11 +440,34 @@ function withinTolerance(target: number, actual: number): boolean {
   return actual >= target * (1 - BTU_TOLERANCE) && actual <= target * (1 + BTU_TOLERANCE);
 }
 
-/** Tokens worth matching as text (capacity terms and filler removed). */
-function productTokens(raw: string): string[] {
-  return raw
+/**
+ * Normalise spoken model codes: "AR 40" / "ar-40" -> "ar40" so a family
+ * reference survives tokenisation as a single searchable unit.
+ */
+function normalizeQuery(raw: string): string {
+  return String(raw ?? "")
     .toLowerCase()
     .replace(/[%,()"']/g, " ")
+    .replace(/\b([a-z]{2,4})[\s-]+(\d{2,4})\b/g, "$1$2");
+}
+
+/**
+ * Model-family references such as "ar40", "msz18", "ar12txhq".
+ * These are treated as a HARD requirement so an "AR40" request never comes
+ * back with an unrelated model.
+ */
+function modelTokens(raw: string): string[] {
+  const out = new Set<string>();
+  for (const t of normalizeQuery(raw).split(/[\s/]+/)) {
+    const token = t.trim();
+    if (/^[a-z]{2,4}\d{2,6}[a-z0-9-]*$/.test(token) && token.length >= 3) out.add(token);
+  }
+  return [...out];
+}
+
+/** Tokens worth matching as text (capacity terms and filler removed). */
+function productTokens(raw: string): string[] {
+  return normalizeQuery(raw)
     .replace(/(\d+(?:[.,]\d+)?)\s*(?:kw|kilowatts?)\b/g, " ")
     .replace(/(\d{4,6})\s*btus?\b/g, " ")
     .replace(/\b\d{4,6}\b/g, " ")
@@ -453,6 +476,16 @@ function productTokens(raw: string): string[] {
     .map((t) => t.trim())
     .filter((t) => t.length >= 2 && !STOP_WORDS.has(t));
 }
+
+/** Does the row belong to any requested model family (prefix-aware)? */
+function matchesModelFamily(row: Record<string, any>, models: string[]): boolean {
+  if (models.length === 0) return true;
+  const haystack = [row.product_code, row.short_name, row.model, row.name, row.description]
+    .map((v) => String(v ?? "").toLowerCase().replace(/[\s-]/g, ""))
+    .join(" ");
+  return models.some((m) => haystack.includes(m));
+}
+
 
 function productBlob(row: Record<string, any>): string {
   return PRODUCT_TEXT_FIELDS.map((f) => row[f] ?? "")
