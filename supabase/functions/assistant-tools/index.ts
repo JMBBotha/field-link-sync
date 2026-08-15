@@ -384,7 +384,7 @@ async function searchItems(
   return (data ?? []) as Record<string, any>[];
 }
 
-async function createEstimate(db: any, member: CallerContext, params: any) {
+async function createEstimate(db: any, member: CallerContext, params: any): Promise<ToolResult> {
   // If the caller passed a pending_id and confirm, just confirm it.
   if (params.confirm && params.pending_id) {
     return confirmPendingEstimate(db, member, params.pending_id);
