@@ -12,15 +12,29 @@ const baseConfig: PriceConfig = {
 };
 
 describe("calculatePrices", () => {
-  it("Samsung scenario: strips the supplier's built-in 20% markup before applying our resale markup", () => {
-    // Regression guard for the Aug 2026 Samsung double-markup bug: Samsung's
-    // PDF price already has a 20% distributor markup baked in. If it isn't
-    // divided out first, our 25% resale markup gets stacked on top of it,
-    // overpricing every quote. See docs for the full writeup.
+  it("generic supplier with a true built-in markup on cost: divides it out before applying our resale markup", () => {
+    // Generic case for a supplier whose PDF price is genuinely cost * (1 +
+    // markup%) -- e.g. a recommended-retail-style list built up FROM cost.
+    // NOT Samsung: see the discount test below for Samsung's actual structure.
     const config: PriceConfig = { ...baseConfig, priceIncludesMarkup: true, supplierMarkupPercent: 20 };
     const result = calculatePrices(1200, config); // PDF price already includes the 20% markup
     expect(result.trueCost).toBeCloseTo(1000, 2); // 1200 / 1.20
     expect(result.sellingPrice).toBeCloseTo(1250, 2); // 1000 * 1.25
+  });
+
+  it("Samsung scenario: a 20% trade discount off list price, which exactly round-trips with a 25% resale markup", () => {
+    // Regression guard for the Aug 2026 Samsung pricing bug and its
+    // corrected fix: Samsung's PDF shows a LIST price. Our true cost is the
+    // list price minus a 20% trade discount (NOT list / 1.20 -- that is a
+    // different, incorrect formula that was briefly and wrongly applied and
+    // then reverted). Because 0.80 * 1.25 == 1.0 exactly, cost * 1.25 lands
+    // back on the original list price -- this is the empirical signature
+    // that confirmed the discount formula (not the markup-divide formula)
+    // is the correct one for Samsung.
+    const config: PriceConfig = { ...baseConfig, supplierDiscountPercent: 20, yourMarkupPercent: 25 };
+    const result = calculatePrices(22694.78, config); // Samsung PDF list price
+    expect(result.trueCost).toBeCloseTo(18155.82, 1);
+    expect(result.sellingPrice).toBeCloseTo(22694.78, 1); // round-trips to the original list price
   });
 
   it("keeps costExclVat in sync with trueCost/cost_price (the write-time invariant)", () => {
