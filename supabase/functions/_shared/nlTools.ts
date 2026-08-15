@@ -100,6 +100,32 @@ export const toolSchemas = {
     amount_excl_vat: z.number().nonnegative().max(10_000_000),
     lead_id: uuid.nullable().optional(),
   }),
+  // --- secure read-only slice (server-authorized, no write side effects) ---
+  // NOTE: these schemas deliberately accept NO user_id / organisation_id /
+  // role / client_id / technician_id / scope fields. Identity comes only from
+  // the verified JWT or signed voice session.
+  search_customers: z.object({
+    query: z.string().min(2).max(120),
+    limit: z.number().int().min(1).max(25).nullable().optional(),
+    offset: z.number().int().min(0).max(500).nullable().optional(),
+  }).strict(),
+  get_customer_details: z.object({
+    customer_id: uuid,
+  }).strict(),
+  search_inventory: z.object({
+    query: z.string().min(2).max(120),
+    category: z.string().max(60).nullable().optional(),
+    in_stock_only: z.boolean().nullable().optional(),
+    limit: z.number().int().min(1).max(25).nullable().optional(),
+    offset: z.number().int().min(0).max(500).nullable().optional(),
+  }).strict(),
+  get_assigned_jobs: z.object({
+    status: z.string().max(40).nullable().optional(),
+    date_from: isoDate.nullable().optional(),
+    date_to: isoDate.nullable().optional(),
+    limit: z.number().int().min(1).max(50).nullable().optional(),
+    offset: z.number().int().min(0).max(500).nullable().optional(),
+  }).strict(),
 } as const;
 
 
