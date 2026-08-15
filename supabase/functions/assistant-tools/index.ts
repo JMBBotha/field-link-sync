@@ -502,7 +502,8 @@ function scoreProduct(
   row: Record<string, any>,
   tokens: string[],
   targetBtu: number | null,
-): { score: number; matchedTokens: number; capacityOk: boolean } {
+  models: string[] = [],
+): { score: number; matchedTokens: number; capacityOk: boolean; modelOk: boolean } {
   const fieldWeights: Record<string, number> = {
     product_code: 5,
     short_name: 4,
@@ -519,7 +520,8 @@ function scoreProduct(
     for (const field of PRODUCT_TEXT_FIELDS) {
       const value = String(row[field] ?? "").toLowerCase();
       if (!value) continue;
-      if (value.includes(token)) {
+      const flat = value.replace(/[\s-]/g, "");
+      if (value.includes(token) || flat.includes(token)) {
         const exactWord = new RegExp(`(^|[^a-z0-9])${escapeRegex(token)}([^a-z0-9]|$)`).test(value);
         best = Math.max(best, fieldWeights[field] * (exactWord ? 1.5 : 1));
       }
@@ -530,11 +532,18 @@ function scoreProduct(
     }
   }
 
+  const modelOk = matchesModelFamily(row, models);
+  if (models.length > 0 && modelOk) score += 20;
+
   let capacityOk = false;
   if (targetBtu != null) {
     const numeric = typeof row.btu_rating === "number" ? row.btu_rating : null;
     const fromKw = row.kw ? Math.round(Number(row.kw) * BTU_PER_KW) : null;
-    const fromText = capacityFromCode(row.product_code, row.short_name, row.description);
+    // When a model family was named, digits inside the code are part of the
+    // family name (AR40), not a capacity — only trust the real numeric columns.
+    const fromText = models.length > 0
+      ? null
+      : capacityFromCode(row.product_code, row.short_name, row.description);
     const candidates = [numeric, fromKw, fromText].filter((n): n is number => !!n);
 
     if (candidates.some((c) => withinTolerance(targetBtu, c))) {
@@ -543,6 +552,7 @@ function scoreProduct(
       score += numeric != null && withinTolerance(targetBtu, numeric) ? 12 : 8;
     }
   }
+
 
   return { score, matchedTokens, capacityOk };
 }
