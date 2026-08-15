@@ -6,7 +6,7 @@
       "name": "vite_react_shadcn_ts",
       "dependencies": {
         "@capacitor/android": "^8.0.0",
-        "@capacitor/app": "^6.0.3",
+        "@capacitor/app": "^8.0.0",
         "@capacitor/camera": "^8.0.0",
         "@capacitor/cli": "^8.0.0",
         "@capacitor/core": "^8.0.0",
@@ -61,7 +61,7 @@
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "cmdk": "^1.1.1",
-        "date-fns": "^4.1.0",
+        "date-fns": "^3.6.0",
         "dexie": "4.3.0",
         "dompurify": "^3.4.13",
         "embla-carousel-react": "^8.6.0",
@@ -136,7 +136,7 @@
 
     "@capacitor/android": ["@capacitor/android@8.0.0", "", { "peerDependencies": { "@capacitor/core": "^8.0.0" } }, "sha512-FrBSvVAC5JuLaYHNyDnwQny0/SYnP+xDQbc/KA4wInmRkMXLDv22fkx9aBJIDrxjuUVd+jsRih4SAt8FgMEzCw=="],
 
-    "@capacitor/app": ["@capacitor/app@6.0.3", "", { "peerDependencies": { "@capacitor/core": "^6.0.0" } }, "sha512-4gFUCbcVz0N/YYN32OBFerocWXslIv3Nc90gDiRsBkJc0plwK6kIUT6PKa5WtW2kfhteUeCVXQbvArH2fH+0Ug=="],
+    "@capacitor/app": ["@capacitor/app@8.1.1", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@capacitor/app/-/app-8.1.1.tgz", { "peerDependencies": { "@capacitor/core": ">=8.0.0" } }, "sha512-xM2ZTX5jK60tFtmjsmJv+Cdj1Qsb6NcavkqmdEnCPQBeya9oKhamZJxYOnQNj1ZvcJM7sWfG6BEtSLx42pisbA=="],
 
     "@capacitor/camera": ["@capacitor/camera@8.0.0", "", { "peerDependencies": { "@capacitor/core": ">=8.0.0" } }, "sha512-Iu8j2oxoIhY2mLuoEckbL7PFgw1XFm1nqmeWdIkILpcT3H9A+BrSDUDlzWqM/EeaDKo6JnhR59tYHwUhOdXaUg=="],
 
@@ -960,7 +960,7 @@
 
     "date-arithmetic": ["date-arithmetic@4.1.0", "", {}, "sha512-QWxYLR5P/6GStZcdem+V1xoto6DMadYWpMXU82ES3/RfR3Wdwr3D0+be7mgOJ+Ov0G9D5Dmb9T17sNLQYj9XOg=="],
 
-    "date-fns": ["date-fns@4.1.0", "", {}, "sha512-Ukq0owbQXxa/U3EGtsdVBkR1w7KOQ5gIBqdH2hkvknzZPYvBxb/aa6E8L7tmjFtkwZBu3UXBbjIgPo/Ez4xaNg=="],
+    "date-fns": ["date-fns@3.6.0", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/date-fns/-/date-fns-3.6.0.tgz", {}, "sha512-fRHTG8g/Gif+kSh50gaGEdToemgfj74aRX3swtiouboip5JDLAyDE9F11nHMIcvOaXeOC6D7SpNhi7uFyB7Uww=="],
 
     "dayjs": ["dayjs@1.11.19", "", {}, "sha512-t5EcLVS6QPBNqM2z8fakk/NKel+Xzshgt8FFKAn+qwlD1pzZWxh0nVCrvFK7ZDb6XucZeF9z8C7CBWTRIVApAw=="],
 
