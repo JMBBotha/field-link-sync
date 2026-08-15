@@ -85,12 +85,19 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
     }
   }, [open, mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Collapse to the corner widget as soon as the call connects; restore on end.
+  // Collapse to the corner widget when a call starts; restore when it ends.
+  const callActive = voice.status === "live" || voice.status === "connecting";
+  const prevCallActive = useRef(false);
   useEffect(() => {
-    if (mode !== "voice") { setDocked(false); return; }
-    if (voice.status === "live" || voice.status === "connecting") setDocked(true);
-    else setDocked(false);
-  }, [mode, voice.status]);
+    if (mode !== "voice") {
+      setDocked(false);
+    } else if (callActive && !prevCallActive.current) {
+      setDocked(true);
+    } else if (!callActive) {
+      setDocked(false);
+    }
+    prevCallActive.current = callActive;
+  }, [mode, callActive]);
 
   // A write tool queued during the voice call falls back to the same modal.
   // Answered pendings are remembered so a re-poll can never resurrect them.
