@@ -64,6 +64,9 @@ Deno.serve(async (req) => {
     );
     if (claimsError || !claimsData?.claims?.sub) return json({ error: "Unauthorized" }, 401);
     const userId = String(claimsData.claims.sub);
+    // Identity (id + email) comes ONLY from the verified JWT claims — any
+    // user_id / organisation_id / role in the request body is ignored.
+    const userEmail = (claimsData.claims as { email?: string }).email ?? null;
 
     const db = createClient(
       Deno.env.get("SUPABASE_URL")!,
