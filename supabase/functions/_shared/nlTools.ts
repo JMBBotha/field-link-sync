@@ -82,7 +82,10 @@ export const toolSchemas = {
     limit: z.number().int().min(1).max(25).nullable().optional(),
   }),
   add_quote_item: z.object({
-    quote_id: uuid,
+    // Optional: when omitted, the caller (voice tool) fills it from the quote
+    // currently open on screen.
+    quote_id: uuid.nullable().optional(),
+
     product_id: uuid.nullable().optional(),
     description: z.string().min(2).max(200).nullable().optional(),
     quantity: z.number().positive().max(9999).nullable().optional(),
