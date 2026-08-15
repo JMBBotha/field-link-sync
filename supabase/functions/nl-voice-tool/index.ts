@@ -66,14 +66,33 @@ Deno.serve(async (req) => {
     );
     const { data: roleRows } = await db.from("user_roles").select("role").eq("user_id", userId);
     const roles = ((roleRows ?? []) as { role: string }[]).map((r) => r.role);
-    const ctx = { db, userId, companyId, roles };
+    // Email is looked up server-side from the session's user id (never sent by
+    // Vapi) and is only used to resolve client-portal users to their own record.
+    const { data: authUser } = await db.auth.admin.getUserById(userId);
+    const email = authUser?.user?.email ?? null;
+    const ctx = { db, userId, companyId, roles, email };
+    const persona = resolvePersona(roles);
+
+    const OUTCOME: Record<string, AssistantOutcome> = {
+      executed: "success",
+      confirmation_required: "success",
+      invalid_args: "invalid_input",
+      rejected: "rejected",
+      error: "error",
+      cancelled: "rejected",
+    };
 
     const audit = async (
       tool: string,
       args: unknown,
       result: Record<string, unknown> | null,
       status: string,
-      resource?: { resource_type?: string; resource_id?: string | null; access_granted?: boolean },
+      resource?: {
+        resource_type?: string;
+        resource_id?: string | null;
+        access_granted?: boolean;
+        rows?: unknown[];
+      },
     ) => {
       await db.from("nl_audit_log").insert({
         user_id: userId,
@@ -85,6 +104,19 @@ Deno.serve(async (req) => {
         resource_type: resource?.resource_type ?? null,
         resource_id: resource?.resource_id ?? null,
         access_granted: resource?.access_granted ?? null,
+      });
+      const denied = resource?.access_granted === false;
+      await logAssistantAudit(db, {
+        userId,
+        companyId,
+        role: persona,
+        toolName: tool,
+        args,
+        resultCount: Array.isArray(resource?.rows) ? resource!.rows!.length : null,
+        outcome: denied ? "access_denied" : (OUTCOME[status] ?? "error"),
+        errorCode: status === "executed" ? null : status,
+        channel: "voice",
+        sessionId,
       });
     };
 
