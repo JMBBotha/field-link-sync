@@ -1240,7 +1240,6 @@ export async function executeTool(
           if (inBand.length) rowsRaw = inBand;
         }
 
-        }
       } else {
         let q = applyCategory(baseQuery());
         for (const t of (tokens.length ? tokens : [normalized.trim()])) {
