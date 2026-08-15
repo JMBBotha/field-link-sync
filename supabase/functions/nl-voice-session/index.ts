@@ -169,10 +169,20 @@ Deno.serve(async (req) => {
       ? rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1)
       : "there";
 
-    const SYSTEM_PROMPT = buildSystemPrompt(displayName, firstName, isOps, roles[0] ?? "team member");
-
     const body = await req.json().catch(() => ({}));
     const action = String(body?.action ?? "start");
+
+    // ------------------------------------------------------------------
+    // Context: the browser reports what the operator currently has open. It
+    // is a HINT for the assistant only — scoping still comes from the JWT.
+    // ------------------------------------------------------------------
+    if (action === "context") {
+      const sessionId = String(body?.session_id ?? "");
+      if (!sessionId) return json({ error: "session_id required" }, 400);
+      const saved = await saveSessionContext(db, sessionId, userId, companyId, body?.context);
+      return json({ ok: true, context: saved, summary: describeContext(saved) });
+    }
+
 
     // ------------------------------------------------------------------
     // Poll: the tool webhook runs out-of-band (Vapi calls it), so the panel
