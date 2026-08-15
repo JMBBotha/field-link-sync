@@ -39,7 +39,7 @@ const TYPE_PATTERNS: Array<[RegExp, string]> = [
 /** Human capacity, e.g. 12000 -> "12,000 BTU" */
 function capacityLabel(btu: number | null): string | null {
   if (btu == null || !Number.isFinite(btu)) return null;
-  return `${Math.round(btu).toLocaleString("en-ZA").replace(/\u00a0/g, ",")} BTU`;
+  return `${Math.round(btu).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")} BTU`;
 }
 
 function resolveBtu(p: ProductLike): number | null {
