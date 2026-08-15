@@ -554,7 +554,7 @@ function scoreProduct(
   }
 
 
-  return { score, matchedTokens, capacityOk };
+  return { score, matchedTokens, capacityOk, modelOk };
 }
 
 function escapeRegex(s: string): string {
