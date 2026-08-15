@@ -1221,10 +1221,25 @@ export async function executeTool(
         rowsRaw = (data ?? []) as Record<string, any>[];
         if (targetBtu != null) {
           const lo = targetBtu * 0.85, hi = targetBtu * 1.15;
-          const inBand = rowsRaw.filter((r) =>
-            typeof r.capacity_btu === "number" && r.capacity_btu >= lo && r.capacity_btu <= hi
-          );
+          // capacity_btu is often null on catalogue rows, so also read the
+          // capacity encoded in the code/short name ("12K", "AR40F12C0AG").
+          const codedBtu = (r: Record<string, any>): number | null => {
+            if (typeof r.capacity_btu === "number") return r.capacity_btu;
+            const s = `${r.short_name ?? ""} ${r.product_code ?? ""} ${r.model ?? ""}`.toLowerCase();
+            const k = s.match(/\b(\d{1,3})\s*k\b/) ?? s.match(/[a-z](\d{2})[a-z]/);
+            if (k) {
+              const n = parseInt(k[1], 10);
+              if (n >= 5 && n <= 100) return n * 1000;
+            }
+            return null;
+          };
+          const inBand = rowsRaw.filter((r) => {
+            const b = codedBtu(r);
+            return b != null && b >= lo && b <= hi;
+          });
           if (inBand.length) rowsRaw = inBand;
+        }
+
         }
       } else {
         let q = applyCategory(baseQuery());
