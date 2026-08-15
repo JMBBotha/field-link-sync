@@ -213,10 +213,13 @@ export async function handleRequest(req: Request): Promise<Response> {
           throw new Error("Your role is not allowed to confirm estimates");
         }
         const params = ConfirmPendingActionSchema.parse(rawArgs);
-        const confirmed = await confirmPendingEstimate(db, member, params.pending_id);
+        const pendingId = params.pending_id ?? await latestPendingEstimateId(db, member);
+        const confirmed = params.confirm
+          ? await confirmPendingEstimate(db, member, pendingId)
+          : await cancelPendingEstimate(db, member, pendingId);
         result = confirmed;
         resourceType = "quote";
-        resourceId = confirmed.id ?? null;
+        resourceId = (confirmed.id as string | undefined) ?? null;
         break;
       }
       default:
