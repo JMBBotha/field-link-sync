@@ -2,6 +2,9 @@ import { z } from "npm:zod@3.23.8";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { hasRecordAccess } from "./recordAccess.ts";
 import { resolveCandidates, type EntityCandidate } from "./entityResolution.ts";
+import { getOwnedScope, isOpsRole } from "./ownership.ts";
+
+const DEFAULT_VAT_RATE = 0.15; // South Africa standard rate, used only when a quote/invoice row has none set.
 
 /** ---------------------------------------------------------------
  *  Whitelisted tool registry for the natural-language interface.
@@ -70,6 +73,33 @@ export const toolSchemas = {
     for_action: z.enum(["read", "write"]).nullable().optional(),
     limit: z.number().int().min(1).max(5).nullable().optional(),
   }),
+  search_products: z.object({
+    query: z.string().min(2).max(120),
+    category: z.string().max(60).nullable().optional(),
+    limit: z.number().int().min(1).max(25).nullable().optional(),
+  }),
+  add_quote_item: z.object({
+    quote_id: uuid,
+    product_id: uuid.nullable().optional(),
+    description: z.string().min(2).max(200).nullable().optional(),
+    quantity: z.number().positive().max(9999).nullable().optional(),
+    unit_price: z.number().nonnegative().max(10_000_000).nullable().optional(),
+  }),
+  accept_quote: z.object({
+    quote_id: uuid,
+  }),
+  add_invoice_item: z.object({
+    invoice_id: uuid,
+    description: z.string().min(2).max(200),
+    quantity: z.number().positive().max(9999).nullable().optional(),
+    unit_price: z.number().nonnegative().max(10_000_000),
+  }),
+  create_invoice: z.object({
+    customer_id: uuid,
+    description: z.string().min(2).max(200),
+    amount_excl_vat: z.number().nonnegative().max(10_000_000),
+    lead_id: uuid.nullable().optional(),
+  }),
 } as const;
 
 
@@ -87,6 +117,11 @@ export const TOOL_KIND: Record<ToolName, ToolKind> = {
   create_quote_draft: "write",
   assign_job: "write",
   resolve_entity: "read",
+  search_products: "read",
+  add_quote_item: "write",
+  accept_quote: "write",
+  add_invoice_item: "write",
+  create_invoice: "write",
 };
 
 
@@ -130,6 +165,17 @@ const PII_ALLOW: Record<ToolName, string[]> = {
   create_quote_draft: ["id", "quote_number", "status", "customer_id", "lead_id", "total"],
   assign_job: ["id", "status", "title", "assigned_staff_id", "scheduled_for"],
   resolve_entity: ["entity_type", "id", "label", "sublabel", "reference", "score"],
+  // Deliberately excludes cost_price / markup / supplier_discount_percent —
+  // margin data is never surfaced through the assistant, for any role.
+  search_products: [
+    "id", "name", "short_name", "category", "subcategory", "brand", "model",
+    "product_code", "selling_price", "sell_price_incl_vat", "price_includes_vat",
+    "is_price_on_request", "unit_type", "capacity_btu", "kw",
+  ],
+  add_quote_item: ["id", "quote_id", "description", "quantity", "unit_price", "total", "quote_total"],
+  accept_quote: ["id", "quote_number", "status", "accepted_at", "invoice_id", "invoice_number"],
+  add_invoice_item: ["id", "invoice_id", "description", "quantity", "unit_price", "amount", "invoice_total"],
+  create_invoice: ["id", "invoice_number", "status", "customer_id", "grand_total"],
 };
 
 
@@ -309,6 +355,82 @@ export const anthropicTools = [
       additionalProperties: false,
     },
   },
+  {
+    name: "search_products",
+    description: "Search the supplier product catalogue by name, brand, model or product code. Use this to find real items and their selling price when building a quote or invoice line. Never returns cost price or margin.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Name, brand, model or product code fragment" },
+        category: { type: "string", description: "Optional category filter, e.g. 'split unit', 'ducting'" },
+        limit: { type: "integer" },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "add_quote_item",
+    description:
+      "Add a line item to an existing draft quote/estimate, from a catalogue product (product_id) or a free-text description with your own price, then recalculate the quote's totals. This is a WRITE action and requires explicit user confirmation before it runs.",
+    input_schema: {
+      type: "object",
+      properties: {
+        quote_id: { type: "string", description: "UUID of the quote to add the item to" },
+        product_id: { type: "string", description: "UUID of a catalogue product from search_products, if using one" },
+        description: { type: "string", description: "Line description; required if no product_id" },
+        quantity: { type: "number", description: "Defaults to 1" },
+        unit_price: { type: "number", description: "Required if no product_id; ignored (looked up) if product_id is given" },
+      },
+      required: ["quote_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "accept_quote",
+    description:
+      "Mark a quote/estimate as accepted by the customer. This automatically generates the invoice from the quote's line items — it is the normal way to turn an estimate into an invoice. This is a WRITE action and requires explicit user confirmation before it runs.",
+    input_schema: {
+      type: "object",
+      properties: {
+        quote_id: { type: "string", description: "UUID of the quote to accept" },
+      },
+      required: ["quote_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "add_invoice_item",
+    description:
+      "Add an extra line item to an existing invoice (for example a call-out fee or part added after the fact) and recalculate its totals. This is a WRITE action and requires explicit user confirmation before it runs.",
+    input_schema: {
+      type: "object",
+      properties: {
+        invoice_id: { type: "string", description: "UUID of the invoice" },
+        description: { type: "string" },
+        quantity: { type: "number", description: "Defaults to 1" },
+        unit_price: { type: "number" },
+      },
+      required: ["invoice_id", "description", "unit_price"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "create_invoice",
+    description:
+      "Create a brand-new, standalone invoice for a customer that has no underlying quote (e.g. an ad-hoc job). For a customer who already has an accepted quote, use accept_quote instead. This is a WRITE action and requires explicit user confirmation before it runs.",
+    input_schema: {
+      type: "object",
+      properties: {
+        customer_id: { type: "string", description: "UUID of the customer, from resolve_entity or search_customer" },
+        description: { type: "string", description: "What the single invoice line is for" },
+        amount_excl_vat: { type: "number", description: "Line amount excluding VAT" },
+        lead_id: { type: "string", description: "Optional UUID of the related lead/job" },
+      },
+      required: ["customer_id", "description", "amount_excl_vat"],
+      additionalProperties: false,
+    },
+  },
 ];
 
 
@@ -322,6 +444,14 @@ export interface ExecContext {
   rlsDb?: SupabaseClient;
   userId: string;
   companyId: string | null;
+  /**
+   * All app_role rows for the caller (e.g. ["field_agent"], ["admin"]).
+   * Ops roles (see OPS_ROLES in recordAccess.ts / isOpsRole in ownership.ts)
+   * get full company access; everyone else is scoped to their own records
+   * by executeTool below. Callers MUST populate this — an empty array is
+   * treated as "no ops privileges", never as "unrestricted".
+   */
+  roles: string[];
 }
 
 /** Mirrors the quotes/invoices SELECT RLS policies for the voice path. */
@@ -368,6 +498,7 @@ export async function executeTool(
   const args = toolSchemas[tool].parse(rawArgs ?? {}) as Record<string, any>;
   const limit = Math.min(Number(args.limit ?? 20), 50);
   const { db, companyId } = ctx;
+  const isOps = isOpsRole(ctx.roles);
 
   switch (tool) {
     case "query_leads": {
@@ -375,6 +506,8 @@ export async function executeTool(
         "id, customer_name, phone, service_type, status, lead_status, priority, lead_priority, primary_intent, normalized_address, customer_address, created_at, scheduled_date, assigned_agent_id, technician_name",
       ).is("deleted_at", null).order("created_at", { ascending: false }).limit(limit);
       q = scopeCompany(q, companyId);
+      // Non-ops roles (field agents / viewers) only ever see leads assigned to them.
+      if (!isOps) q = q.eq("assigned_agent_id", ctx.userId);
       if (args.status) q = q.eq("status", args.status);
       if (args.priority) q = q.eq("lead_priority", args.priority);
       if (args.date_from) q = q.gte("created_at", `${args.date_from}T00:00:00Z`);
@@ -401,6 +534,8 @@ export async function executeTool(
         .order("due_date", { ascending: true })
         .limit(limit);
       q = scopeCompany(q, companyId);
+      // Non-ops roles only see invoices billed under their own name.
+      if (!isOps) q = q.eq("agent_id", ctx.userId);
       if (args.location) q = q.ilike("customer_address", `%${args.location}%`);
       const { data, error } = await q;
       if (error) throw error;
@@ -417,12 +552,24 @@ export async function executeTool(
     }
 
     case "query_jobs": {
+      // Non-ops roles can only ever see their own jobs: ignore whatever
+      // staff_id was requested (asking about a colleague's jobs is not
+      // allowed) and force the filter to the caller themselves.
+      const staffIdFilter = isOps ? args.staff_id : ctx.userId;
       let jobIds: string[] | null = null;
-      if (args.staff_id) {
+      if (staffIdFilter) {
         const { data: asg, error: asgErr } = await db.from("assignments")
-          .select("job_id").eq("profile_id", args.staff_id).limit(200);
+          .select("job_id").eq("profile_id", staffIdFilter).limit(200);
         if (asgErr) throw asgErr;
         jobIds = (asg ?? []).map((a: { job_id: string }) => a.job_id).filter(Boolean);
+        if (!isOps) {
+          // A field agent should also see jobs they created themselves even
+          // if not formally assigned via the assignments table.
+          const { data: created } = await db.from("jobs").select("id")
+            .eq("created_by", ctx.userId).eq("company_id", companyId).limit(200);
+          for (const j of (created ?? []) as { id: string }[]) jobIds.push(j.id);
+          jobIds = [...new Set(jobIds)];
+        }
         if (jobIds.length === 0) return { rows: [], summary: "0 job(s)" };
       }
       let q = db.from("jobs").select(
@@ -441,6 +588,15 @@ export async function executeTool(
     }
 
     case "search_customer": {
+      // Non-ops roles can only search customers they are actually connected
+      // to (via an assigned lead, a job, a quote or an invoice) — never the
+      // whole company's client list.
+      let ownedCustomerIds: Set<string> | null = null;
+      if (!isOps) {
+        const scope = await getOwnedScope(db, ctx.userId, companyId);
+        ownedCustomerIds = scope.customerIds;
+        if (ownedCustomerIds.size === 0) return { rows: [], summary: "0 customer(s)" };
+      }
       const raw = String(args.query).trim();
       const tokens = nameTokens(raw);
       const fields = ["first_name", "last_name", "company_name", "phone", "email"];
@@ -452,6 +608,7 @@ export async function executeTool(
         "id, first_name, last_name, company_name, phone, email, primary_address_line1, city, status",
       ).or(orFilter).limit(50);
       q = scopeCompany(q, companyId);
+      if (ownedCustomerIds) q = q.in("id", [...ownedCustomerIds]);
       const { data, error } = await q;
       if (error) throw error;
       // Prefer rows matching every token of the query (handles "Andre Blom"
@@ -481,6 +638,11 @@ export async function executeTool(
     }
 
     case "get_unassigned_queue": {
+      // The dispatch/escalation queue is a management view, not client info
+      // — field agents don't get it, ops roles do.
+      if (!isOps) {
+        return { rows: [], summary: "The unassigned queue is limited to dispatchers and admins." };
+      }
       let q = db.from("unassigned_queue").select(
         "id, lead_id, reason, priority, escalate_at, escalated, resolved, created_at",
       ).order("created_at", { ascending: false }).limit(limit);
@@ -591,14 +753,37 @@ export async function executeTool(
         p_entity_type: args.entity_type,
         p_query: args.query,
         p_company_id: companyId,
-        p_limit: Math.min(Number(args.limit ?? 5), 5),
+        // Ask the DB for extra candidates when we'll post-filter by
+        // ownership below, so a non-ops caller doesn't lose real matches
+        // just because someone else's records ranked higher.
+        p_limit: isOps ? Math.min(Number(args.limit ?? 5), 5) : 25,
       });
       if (error) throw error;
+
+      let candidates = (data ?? []) as EntityCandidate[];
+      // Non-ops roles must never have resolve_entity reveal (even fuzzily)
+      // customers, leads, jobs or quotes that aren't theirs — that would be
+      // a backdoor around the same scoping applied to the read tools above.
+      // Products and staff are not client-sensitive, so they pass through.
+      if (!isOps && ["customer", "lead", "job", "quote", "all"].includes(args.entity_type)) {
+        const scope = await getOwnedScope(db, ctx.userId, companyId);
+        const ownedSets: Partial<Record<EntityCandidate["entity_type"], Set<string>>> = {
+          customer: scope.customerIds,
+          lead: scope.leadIds,
+          job: scope.jobIds,
+          quote: scope.quoteIds,
+        };
+        candidates = candidates.filter((c) => {
+          const owned = ownedSets[c.entity_type];
+          return owned ? owned.has(c.id) : true; // product / staff: unfiltered
+        });
+      }
+      candidates = candidates.slice(0, Math.min(Number(args.limit ?? 5), 5));
 
       const resolution = resolveCandidates(
         args.query,
         args.entity_type,
-        (data ?? []) as EntityCandidate[],
+        candidates,
         { riskyAction: args.for_action === "write" },
       );
 
@@ -614,18 +799,23 @@ export async function executeTool(
     case "create_quote_draft": {
 
       const { data: lead, error: leadErr } = await db.from("leads")
-        .select("id, customer_id, customer_name, company_id")
+        .select("id, customer_id, customer_name, company_id, assigned_agent_id")
         .eq("id", args.lead_id).maybeSingle();
       if (leadErr) throw leadErr;
       if (!lead) throw new Error("Lead not found");
       if (!companyId || lead.company_id !== companyId) {
         throw new Error("Lead belongs to another company");
       }
+      // Field agents can only build estimates for their own leads.
+      if (!isOps && lead.assigned_agent_id !== ctx.userId) {
+        throw new Error("That lead is not assigned to you.");
+      }
       const { data, error } = await db.from("quotes").insert({
         lead_id: lead.id,
         customer_id: lead.customer_id,
         customer_name: lead.customer_name,
         company_id: lead.company_id ?? companyId,
+        sales_engineer_id: ctx.userId,
         status: "draft",
         notes: args.notes ?? null,
         subtotal: 0,
@@ -634,6 +824,212 @@ export async function executeTool(
       }).select("id, quote_number, status, customer_id, lead_id, total").single();
       if (error) throw error;
       return { rows: scrub(tool, [data]), summary: `Draft quote ${data.quote_number ?? ""} created` };
+    }
+
+    case "search_products": {
+      const raw = String(args.query).trim();
+      const tokens = nameTokens(raw);
+      const fields = ["name", "short_name", "description", "model", "product_code", "brand", "model_range"];
+      const patterns = tokens.length ? tokens : [raw.replace(/[%,()]/g, "")];
+      const orFilter = patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(",");
+      let q = db.from("supplier_products").select(
+        "id, name, short_name, category, subcategory, brand, model, product_code, selling_price, sell_price_incl_vat, price_includes_vat, is_price_on_request, unit_type, capacity_btu, kw",
+      ).eq("is_active", true).or("archived.is.false,archived.is.null").or(orFilter).limit(Math.min(Number(args.limit ?? 15), 25));
+      if (args.category) q = q.ilike("category", `%${args.category}%`);
+      const { data, error } = await q;
+      if (error) throw error;
+      const rows = scrub(tool, data ?? []);
+      return { rows, summary: `${rows.length} product(s)` };
+    }
+
+    case "add_quote_item": {
+      const { data: quote, error: quoteErr } = await db.from("quotes")
+        .select("id, company_id, sales_engineer_id, status, discount_type, discount_value, vat_rate")
+        .eq("id", args.quote_id).maybeSingle();
+      if (quoteErr) throw quoteErr;
+      if (!quote || !companyId || quote.company_id !== companyId) throw new Error("Quote not found");
+      if (!isOps && quote.sales_engineer_id !== ctx.userId) throw new Error("You don't have access to that quote");
+
+      let description = args.description ? String(args.description) : null;
+      let unitPrice = args.unit_price != null ? Number(args.unit_price) : null;
+      if (args.product_id) {
+        const { data: product, error: prodErr } = await db.from("supplier_products")
+          .select("id, name, short_name, selling_price, sell_price_incl_vat, price_includes_vat")
+          .eq("id", args.product_id).maybeSingle();
+        if (prodErr) throw prodErr;
+        if (!product) throw new Error("Product not found");
+        description = description ?? product.name ?? product.short_name ?? "Item";
+        // Quote line items are priced ex-VAT (the quote's own vat_amount is
+        // computed separately), so prefer the excl-VAT selling price.
+        unitPrice = unitPrice ?? product.selling_price ?? product.sell_price_incl_vat ?? 0;
+      }
+      if (!description) throw new Error("A description or product_id is required");
+      if (unitPrice == null) throw new Error("A unit_price or product_id is required");
+      const quantity = args.quantity != null ? Number(args.quantity) : 1;
+      const lineTotal = Math.round(quantity * unitPrice * 100) / 100;
+
+      const { error: insErr } = await db.from("quote_line_items").insert({
+        quote_id: quote.id,
+        description,
+        quantity,
+        unit_price: unitPrice,
+        total: lineTotal,
+      });
+      if (insErr) throw insErr;
+
+      const { data: items, error: itemsErr } = await db.from("quote_line_items")
+        .select("total").eq("quote_id", quote.id);
+      if (itemsErr) throw itemsErr;
+      const subtotal = (items ?? []).reduce((s: number, r: { total: number | null }) => s + Number(r.total ?? 0), 0);
+      const discountAmt = quote.discount_type === "percentage"
+        ? subtotal * (Number(quote.discount_value ?? 0) / 100)
+        : quote.discount_type === "fixed"
+        ? Number(quote.discount_value ?? 0)
+        : 0;
+      const vatRate = quote.vat_rate ?? DEFAULT_VAT_RATE;
+      const vatAmount = Math.max(0, subtotal - discountAmt) * vatRate;
+      const total = Math.max(0, subtotal - discountAmt) + vatAmount;
+
+      const { error: updErr } = await db.from("quotes").update({
+        subtotal, vat_amount: vatAmount, total,
+      }).eq("id", quote.id);
+      if (updErr) throw updErr;
+
+      return {
+        rows: scrub(tool, [{ id: quote.id, quote_id: quote.id, description, quantity, unit_price: unitPrice, total: lineTotal, quote_total: total }]),
+        summary: `Added "${description}" x${quantity} to the quote. New total: R${total.toFixed(2)}`,
+      };
+    }
+
+    case "accept_quote": {
+      const { data: quote, error: quoteErr } = await db.from("quotes")
+        .select("id, company_id, sales_engineer_id, status, quote_number")
+        .eq("id", args.quote_id).maybeSingle();
+      if (quoteErr) throw quoteErr;
+      if (!quote || !companyId || quote.company_id !== companyId) throw new Error("Quote not found");
+      if (!isOps && quote.sales_engineer_id !== ctx.userId) throw new Error("You don't have access to that quote");
+
+      if (quote.status === "accepted") {
+        const { data: existingInvoice } = await db.from("invoices")
+          .select("id, invoice_number, status").eq("quote_id", quote.id).maybeSingle();
+        return {
+          rows: scrub(tool, [{
+            id: quote.id, quote_number: quote.quote_number, status: "accepted",
+            accepted_at: null, invoice_id: existingInvoice?.id ?? null,
+            invoice_number: existingInvoice?.invoice_number ?? null,
+          }]),
+          summary: existingInvoice
+            ? `Quote ${quote.quote_number ?? ""} was already accepted — invoice ${existingInvoice.invoice_number} exists.`
+            : `Quote ${quote.quote_number ?? ""} was already accepted.`,
+        };
+      }
+
+      const { data: updated, error: updErr } = await db.from("quotes").update({
+        status: "accepted", accepted_at: new Date().toISOString(), accepted_by: ctx.userId,
+      }).eq("id", quote.id).select("id, quote_number, status, accepted_at").single();
+      if (updErr) throw updErr;
+
+      // The create_invoice_from_accepted_quote() DB trigger fires on this
+      // status transition and creates the invoice + invoice_items for us.
+      const { data: invoice } = await db.from("invoices")
+        .select("id, invoice_number").eq("quote_id", quote.id).maybeSingle();
+
+      return {
+        rows: scrub(tool, [{
+          id: updated.id, quote_number: updated.quote_number, status: updated.status,
+          accepted_at: updated.accepted_at, invoice_id: invoice?.id ?? null,
+          invoice_number: invoice?.invoice_number ?? null,
+        }]),
+        summary: invoice
+          ? `Quote ${updated.quote_number ?? ""} accepted — invoice ${invoice.invoice_number} created.`
+          : `Quote ${updated.quote_number ?? ""} accepted.`,
+      };
+    }
+
+    case "add_invoice_item": {
+      const { data: invoice, error: invErr } = await db.from("invoices")
+        .select("id, company_id, agent_id, tax_rate")
+        .eq("id", args.invoice_id).maybeSingle();
+      if (invErr) throw invErr;
+      if (!invoice || !companyId || invoice.company_id !== companyId) throw new Error("Invoice not found");
+      if (!isOps && invoice.agent_id !== ctx.userId) throw new Error("You don't have access to that invoice");
+
+      const quantity = args.quantity != null ? Number(args.quantity) : 1;
+      const unitPrice = Number(args.unit_price);
+      const amount = Math.round(quantity * unitPrice * 100) / 100;
+
+      const { error: insErr } = await db.from("invoice_items").insert({
+        invoice_id: invoice.id, description: args.description, quantity, unit_price: unitPrice, amount,
+      });
+      if (insErr) throw insErr;
+
+      const { data: items, error: itemsErr } = await db.from("invoice_items")
+        .select("amount").eq("invoice_id", invoice.id);
+      if (itemsErr) throw itemsErr;
+      const subtotal = (items ?? []).reduce((s: number, r: { amount: number | null }) => s + Number(r.amount ?? 0), 0);
+      const taxRate = invoice.tax_rate ?? DEFAULT_VAT_RATE;
+      const taxAmount = subtotal * taxRate;
+      const grandTotal = subtotal + taxAmount;
+
+      const { error: updErr } = await db.from("invoices").update({
+        subtotal, tax_amount: taxAmount, grand_total: grandTotal,
+      }).eq("id", invoice.id);
+      if (updErr) throw updErr;
+
+      return {
+        rows: scrub(tool, [{ id: invoice.id, invoice_id: invoice.id, description: args.description, quantity, unit_price: unitPrice, amount, invoice_total: grandTotal }]),
+        summary: `Added "${args.description}" x${quantity} to the invoice. New total: R${grandTotal.toFixed(2)}`,
+      };
+    }
+
+    case "create_invoice": {
+      if (!isOps) {
+        const scope = await getOwnedScope(db, ctx.userId, companyId);
+        if (!scope.customerIds.has(args.customer_id)) {
+          throw new Error("You don't have access to that customer");
+        }
+      }
+      const { data: customer, error: custErr } = await db.from("customers")
+        .select("id, company_id, name, phone, email, address")
+        .eq("id", args.customer_id).maybeSingle();
+      if (custErr) throw custErr;
+      if (!customer || !companyId || customer.company_id !== companyId) throw new Error("Customer not found");
+
+      const { data: invNumber, error: numErr } = await db.rpc("generate_invoice_number");
+      if (numErr) throw numErr;
+
+      const amount = Number(args.amount_excl_vat);
+      const taxAmount = amount * DEFAULT_VAT_RATE;
+      const grandTotal = amount + taxAmount;
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 30);
+
+      const { data: invoice, error: invErr } = await db.from("invoices").insert({
+        company_id: companyId,
+        customer_id: customer.id,
+        customer_name: customer.name ?? "",
+        customer_phone: customer.phone ?? null,
+        customer_email: customer.email ?? null,
+        customer_address: customer.address ?? null,
+        agent_id: ctx.userId,
+        lead_id: args.lead_id ?? null,
+        invoice_number: invNumber,
+        subtotal: amount,
+        tax_rate: DEFAULT_VAT_RATE,
+        tax_amount: taxAmount,
+        grand_total: grandTotal,
+        due_date: dueDate.toISOString().slice(0, 10),
+        status: "draft",
+        line_items: [],
+      }).select("id, invoice_number, status, customer_id, grand_total").single();
+      if (invErr) throw invErr;
+
+      const { error: itemErr } = await db.from("invoice_items").insert({
+        invoice_id: invoice.id, description: args.description, quantity: 1, unit_price: amount, amount,
+      });
+      if (itemErr) throw itemErr;
+
+      return { rows: scrub(tool, [invoice]), summary: `Invoice ${invoice.invoice_number} created for R${grandTotal.toFixed(2)}` };
     }
 
     case "assign_job": {

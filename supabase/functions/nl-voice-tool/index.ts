@@ -2,6 +2,13 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { executeTool, TOOL_KIND, toolSchemas, type ToolName } from "../_shared/nlTools.ts";
 import { verifySession } from "../_shared/voiceSession.ts";
 
+// The signed voice session only carries { userId, companyId } — roles are not
+// embedded in the token, so we fetch them fresh on every tool call. This is
+// the sole enforcement point for the voice channel (no JWT/RLS is available
+// here, everything runs under the service-role key), so this fetch is not
+// optional: without it every write/read tool would fall through the
+// `roles` checks in nlTools.ts/ownership.ts as if the caller had no roles.
+
 /**
  * Vapi tool webhook for the voice operations assistant.
  *
@@ -57,7 +64,9 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { auth: { persistSession: false } },
     );
-    const ctx = { db, userId, companyId };
+    const { data: roleRows } = await db.from("user_roles").select("role").eq("user_id", userId);
+    const roles = ((roleRows ?? []) as { role: string }[]).map((r) => r.role);
+    const ctx = { db, userId, companyId, roles };
 
     const audit = async (
       tool: string,
