@@ -58,6 +58,19 @@ const parseArgs = (raw: unknown): Record<string, unknown> => {
   return raw as Record<string, unknown>;
 };
 
+/** Never swallow a PostgREST/plain-object error into "Execution failed". */
+const errMessage = (e: unknown): string => {
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === "object") {
+    const o = e as { message?: string; details?: string; hint?: string };
+    return o.message || o.details || o.hint || JSON.stringify(o).slice(0, 200);
+  }
+  return String(e ?? "Unknown error");
+};
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -139,6 +152,18 @@ Deno.serve(async (req) => {
       const toolCallId = String(call.id ?? "");
       const name = String(call.function?.name ?? "");
       const args = parseArgs(call.function?.arguments);
+
+      // ---- fill quote_id from the quote open on screen ------------------
+      // The context is only a convenience hint; the tool still re-checks
+      // company scoping and ownership of that quote server-side.
+      if (name === "add_quote_item" && !UUID_RE.test(String(args.quote_id ?? ""))) {
+        const uiContext = await loadSessionContext(db, sessionId, userId, companyId);
+        const openQuoteId = (uiContext as { open_quote_id?: string } | null)?.open_quote_id;
+        if (openQuoteId && UUID_RE.test(openQuoteId)) args.quote_id = openQuoteId;
+        else delete args.quote_id;
+      }
+
+
 
       // ---- live screen context (hint only, never an auth decision) ------
       if (name === "get_current_context") {
@@ -230,9 +255,9 @@ Deno.serve(async (req) => {
         try {
           const out = await executeTool(toolName, parsed.data, ctx);
           await audit(toolName, parsed.data, { summary: out.summary, rows: out.rows.slice(0, 25), pending_id: pending.id }, "executed", out);
-          results.push({ toolCallId, result: out.summary });
+          results.push({ toolCallId, result: `${out.summary} The action is complete — do not ask for confirmation again.` });
         } catch (e) {
-          const msg = e instanceof Error ? e.message : "Execution failed";
+          const msg = errMessage(e);
           await audit(toolName, parsed.data, { error: msg, pending_id: pending.id }, "error");
           results.push({ toolCallId, result: `That failed: ${msg}` });
         }
@@ -306,7 +331,7 @@ Deno.serve(async (req) => {
           result: JSON.stringify({ summary: out.summary, rows: out.rows.slice(0, 10) }),
         });
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Tool failed";
+        const msg = errMessage(e);
         await audit(toolName, parsed.data, { error: msg }, "error");
         results.push({ toolCallId, result: `That failed: ${msg}` });
       }
