@@ -1169,33 +1169,97 @@ export async function executeTool(
 
     case "search_products": {
       const raw = String(args.query).trim();
-      const tokens = nameTokens(raw);
+      const cols =
+        "id, name, short_name, description, category, subcategory, brand, model, product_code, selling_price, sell_price_incl_vat, price_includes_vat, is_price_on_request, unit_type, capacity_btu, kw";
       const fields = ["name", "short_name", "description", "model", "product_code", "brand", "model_range", "category"];
-      const patterns = tokens.length ? tokens : [raw.replace(/[%,()]/g, "")];
-      let q = db.from("supplier_products").select(
-        "id, name, short_name, description, category, subcategory, brand, model, product_code, selling_price, sell_price_incl_vat, price_includes_vat, is_price_on_request, unit_type, capacity_btu, kw",
-      ).eq("is_active", true).or("archived.is.false,archived.is.null");
-      // Every token must match SOMEWHERE (chained .or() groups are ANDed),
-      // otherwise "samsung cassette" returns any Samsung product at all.
-      for (const t of patterns) {
-        q = q.or(fields.map((f) => `${f}.ilike.%${t}%`).join(","));
+      const limit = Math.min(Number(args.limit ?? 15), 25);
+
+      // "AR 40" / "ar-40" -> "ar40" so a model family stays one searchable unit.
+      const normalized = raw.toLowerCase().replace(/[%,()"']/g, " ")
+        .replace(/\b([a-z]{2,4})[\s-]+(\d{2,4})\b/g, "$1$2");
+      const models = [...new Set(
+        normalized.split(/[\s/]+/).map((t) => t.trim())
+          .filter((t) => t.length >= 3 && /^[a-z]{2,4}\d{2,6}[a-z0-9-]*$/.test(t)),
+      )];
+
+      // Capacity: kW, "12000 btu", "12k", or a bare 4-6 digit number.
+      let targetBtu: number | null = null;
+      const kwM = normalized.match(/(\d+(?:[.,]\d+)?)\s*(?:kw|kilowatts?)\b/);
+      const btuM = normalized.match(/(\d{4,6})\s*btus?\b/);
+      const kM = normalized.match(/\b(\d{1,3})\s*k\b/);
+      const bareM = normalized.match(/\b(\d{4,6})\b/);
+      if (kwM) targetBtu = Math.round(parseFloat(kwM[1].replace(",", ".")) * 3412);
+      else if (btuM) targetBtu = parseInt(btuM[1], 10);
+      else if (kM && +kM[1] >= 5 && +kM[1] <= 100) targetBtu = +kM[1] * 1000;
+      else if (bareM && +bareM[1] >= 5000 && +bareM[1] <= 120000) targetBtu = parseInt(bareM[1], 10);
+
+      // Text tokens exclude capacity numbers — those are matched numerically.
+      const tokens = nameTokens(
+        normalized
+          .replace(/(\d+(?:[.,]\d+)?)\s*(?:kw|kilowatts?)\b/g, " ")
+          .replace(/(\d{4,6})\s*btus?\b/g, " ")
+          .replace(/\b\d{4,6}\b/g, " ")
+          .replace(/\b\d{1,3}\s*k\b/g, " "),
+      ).filter((t: string) => !["btu", "btus", "kw"].includes(t));
+
+      const baseQuery = () =>
+        db.from("supplier_products").select(cols)
+          .eq("is_active", true).or("archived.is.false,archived.is.null");
+
+      const applyCategory = (q: any) => (args.category ? q.ilike("category", `%${args.category}%`) : q);
+
+      let rowsRaw: Record<string, any>[] = [];
+
+      if (models.length > 0) {
+        // A named model family is a hard requirement — fetch it directly and
+        // never fall back to unrelated models.
+        const orFilter = models.flatMap((m) =>
+          fields.map((f) => `${f}.ilike.%${m.replace(/[%_]/g, "")}%`)
+        ).join(",");
+        const { data, error } = await applyCategory(baseQuery().or(orFilter)).limit(200);
+        if (error) throw error;
+        rowsRaw = (data ?? []) as Record<string, any>[];
+        if (targetBtu != null) {
+          const lo = targetBtu * 0.85, hi = targetBtu * 1.15;
+          const inBand = rowsRaw.filter((r) =>
+            typeof r.capacity_btu === "number" && r.capacity_btu >= lo && r.capacity_btu <= hi
+          );
+          if (inBand.length) rowsRaw = inBand;
+        }
+      } else {
+        let q = applyCategory(baseQuery());
+        for (const t of (tokens.length ? tokens : [normalized.trim()])) {
+          if (t) q = q.or(fields.map((f) => `${f}.ilike.%${t}%`).join(","));
+        }
+        if (targetBtu != null) {
+          q = q.gte("capacity_btu", Math.floor(targetBtu * 0.85))
+            .lte("capacity_btu", Math.ceil(targetBtu * 1.15));
+        }
+        const { data, error } = await q.limit(limit);
+        if (error) throw error;
+        rowsRaw = (data ?? []) as Record<string, any>[];
+
+        // Capacity-only fallback: keep the BTU band, drop the word filter.
+        if (!rowsRaw.length && targetBtu != null) {
+          const { data: byCap } = await applyCategory(baseQuery())
+            .gte("capacity_btu", Math.floor(targetBtu * 0.85))
+            .lte("capacity_btu", Math.ceil(targetBtu * 1.15))
+            .limit(limit);
+          rowsRaw = (byCap ?? []) as Record<string, any>[];
+        }
+        // Widen to ANY token as a last resort.
+        if (!rowsRaw.length && tokens.length > 1) {
+          const orFilter = tokens.flatMap((t: string) => fields.map((f) => `${f}.ilike.%${t}%`)).join(",");
+          const { data: wide, error: wideErr } = await applyCategory(baseQuery().or(orFilter)).limit(limit);
+          if (wideErr) throw wideErr;
+          rowsRaw = (wide ?? []) as Record<string, any>[];
+        }
       }
-      q = q.limit(Math.min(Number(args.limit ?? 15), 25));
-      if (args.category) q = q.ilike("category", `%${args.category}%`);
-      let { data, error } = await q;
-      if (error) throw error;
-      // Fallback: if the strict AND search finds nothing, widen to ANY token.
-      if (!data?.length && patterns.length > 1) {
-        const orFilter = patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(",");
-        const wide = await db.from("supplier_products").select(
-          "id, name, short_name, description, category, subcategory, brand, model, product_code, selling_price, sell_price_incl_vat, price_includes_vat, is_price_on_request, unit_type, capacity_btu, kw",
-        ).eq("is_active", true).or("archived.is.false,archived.is.null").or(orFilter).limit(15);
-        if (wide.error) throw wide.error;
-        data = wide.data;
-      }
-      const rows = scrub(tool, data ?? []);
+
+      const rows = scrub(tool, rowsRaw.slice(0, limit));
       return { rows, summary: `${rows.length} product(s)` };
     }
+
 
 
     case "add_quote_item": {
