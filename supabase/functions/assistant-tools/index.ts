@@ -844,8 +844,13 @@ async function createEstimate(db: any, member: CallerContext, params: any): Prom
   const { error: linesErr } = await db.from("quote_line_items").insert(quoteLineItems);
   if (linesErr) throw new Error(linesErr.message);
 
+  // Spoken lines use the natural product description, never the raw code.
+  const spokenLines = lineItems.map((li: any) =>
+    `${li.quantity} × ${naturalProductName({ name: li.description })}`
+  );
+
   const spoken =
-    `${customerDisplayName}: ${lineItems.length} line${lineItems.length === 1 ? "" : "s"}, ` +
+    `${customerDisplayName}: ${spokenLines.join(", ")}, ` +
     `total ${spokenRand(total)} including VAT.`;
 
   return {
@@ -855,13 +860,14 @@ async function createEstimate(db: any, member: CallerContext, params: any): Prom
     quote_number: draft.quote_number,
     spoken_summary: spoken,
     message:
-      "Read spoken_summary aloud ONCE and ask 'should I create it?' exactly once. Do not repeat the question or re-summarise.",
+      "Read spoken_summary aloud ONCE and ask 'should I create it?' exactly once. Do not repeat the question, re-summarise, or read product codes.",
     summary: {
       customer: customerDisplayName,
       title,
       line_items: lineItems.map((li: any) =>
         `${li.quantity} × ${li.description} @ R${li.unit_price.toFixed(2)}`
       ),
+      spoken_line_items: spokenLines,
       subtotal: `R${subtotal.toFixed(2)}`,
       vat: `R${taxAmount.toFixed(2)}`,
       total: `R${total.toFixed(2)}`,
