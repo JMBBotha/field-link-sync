@@ -206,6 +206,24 @@ const PII_ALLOW: Record<ToolName, string[]> = {
   accept_quote: ["id", "quote_number", "status", "accepted_at", "invoice_id", "invoice_number"],
   add_invoice_item: ["id", "invoice_id", "description", "quantity", "unit_price", "amount", "invoice_total"],
   create_invoice: ["id", "invoice_number", "status", "customer_id", "grand_total"],
+  search_customers: [
+    "id", "display_name", "company_name", "phone", "email", "city", "status",
+  ],
+  get_customer_details: [
+    "id", "display_name", "company_name", "phone", "email",
+    "primary_address_line1", "city", "postal_code", "status",
+    "open_job_count", "recent_jobs", "quote_count", "last_job_at",
+  ],
+  // Never exposes unit_cost / supplier margin data.
+  search_inventory: [
+    "id", "name", "short_name", "category", "subcategory", "brand", "model",
+    "product_code", "selling_price", "sell_price_incl_vat", "unit_type",
+    "is_price_on_request", "quantity_on_hand", "in_stock",
+  ],
+  get_assigned_jobs: [
+    "id", "title", "status", "priority", "job_type", "address",
+    "scheduled_for", "customer_id", "customer_name",
+  ],
 };
 
 
