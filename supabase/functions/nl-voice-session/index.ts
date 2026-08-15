@@ -78,7 +78,7 @@ function vapiTools(serverUrl: string) {
     function: {
       name: "confirm_pending_action",
       description:
-        "Execute (or discard) the write action that is waiting for confirmation. Only call this after the operator has clearly said yes or no out loud.",
+        "Execute (confirm true) or discard (confirm false) the write action waiting for confirmation. Call this exactly once, immediately after the operator answers yes or no. Never ask for confirmation again after calling it.",
       parameters: {
         type: "object",
         properties: {
