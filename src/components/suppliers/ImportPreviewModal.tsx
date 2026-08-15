@@ -22,7 +22,10 @@ interface ImportPreviewModalProps {
   onOpenChange: (open: boolean) => void;
   preview: ImportPreview;
   fileName: string;
-  onConfirm: (products: ParsedProduct[]) => void;
+  /** isFullCatalogue: true if this file represents the supplier's entire
+   *  current catalogue (missing products get archived), false for a
+   *  partial/delta file (nothing gets archived). */
+  onConfirm: (products: ParsedProduct[], isFullCatalogue: boolean) => void;
   confirming?: boolean;
 }
 
@@ -50,6 +53,7 @@ const ImportPreviewModal = ({
   const [discount, setDiscount] = useState(preview.detectedDiscount || ss.tradeDiscount);
   const [markup, setMarkup] = useState(ss.markupPercent);
   const [search, setSearch] = useState("");
+  const [isFullCatalogue, setIsFullCatalogue] = useState(true);
 
   const effectiveDiscount = priceListType === "list_price_with_discount" ? discount : 0;
 
@@ -381,17 +385,28 @@ const ImportPreviewModal = ({
           </div>
         </div>
 
-        <DialogFooter className="flex-row justify-between sm:justify-between gap-2 pt-4 border-t mt-4">
+        <DialogFooter className="flex-row items-center justify-between sm:justify-between gap-2 pt-4 border-t mt-4">
+          <div className="flex items-center gap-2">
+            <Switch id="import-is-full-catalogue" checked={isFullCatalogue} onCheckedChange={setIsFullCatalogue} disabled={confirming} />
+            <Label htmlFor="import-is-full-catalogue" className="text-xs whitespace-nowrap cursor-pointer">
+              Full price list
+              <span className="text-muted-foreground ml-1">
+                {isFullCatalogue ? "(missing items archived)" : "(partial file, nothing archived)"}
+              </span>
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={confirming}>
             Cancel
           </Button>
-          <Button onClick={() => onConfirm(products)} disabled={confirming || products.length === 0}>
+          <Button onClick={() => onConfirm(products, isFullCatalogue)} disabled={confirming || products.length === 0}>
             {confirming ? (
               <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Uploading...</>
             ) : (
               <>✅ Confirm & Upload {products.length} Products</>
             )}
           </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

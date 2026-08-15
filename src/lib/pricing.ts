@@ -39,10 +39,33 @@ export const VAT_RATE = 0.15;
 /** Round to 2 decimals */
 export const r2 = (n: number) => Math.round(n * 100) / 100;
 
+/** Clamp a value between min and max */
+const clampRange = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
+
+/**
+ * Defend against NaN/negative/absurd inputs reaching a quote or invoice.
+ * A garbage cost_price (bad AI parse, empty field, corrupt import row)
+ * should never silently produce a R0 or a runaway selling price — it
+ * should clamp to a safe, visible value instead.
+ */
+function sanitizeCostPrice(v: unknown): number {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.min(n, 10_000_000); // hard ceiling — no product costs R10m+
+}
+
+function sanitizeMarkupPercent(v: unknown): number {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 35; // fall back to standard markup, not 0
+  return clampRange(n, -50, 500); // allow modest loss-leaders, cap runaway markups
+}
+
 // ─── THE ONE PRICING FUNCTION (cost is already net of any discount) ───
 
 export function calcSellingPrice(costPrice: number, markupPercent: number) {
-  const sellingExclVat = r2(costPrice * (1 + markupPercent / 100));
+  const safeCostPrice = sanitizeCostPrice(costPrice);
+  const safeMarkupPercent = sanitizeMarkupPercent(markupPercent);
+  const sellingExclVat = r2(safeCostPrice * (1 + safeMarkupPercent / 100));
   const vatAmount = r2(sellingExclVat * VAT_RATE);
   const sellingInclVat = r2(sellingExclVat + vatAmount);
   return { sellingExclVat, vatAmount, sellingInclVat };
@@ -195,7 +218,8 @@ export function computePricing(
     : (supplier as SupplierCode);
 
   const safeMarkupPercent = normalizeMarkupPercent(markupPercent);
-  const costExVat = r2(overrideCostExVat != null && overrideCostExVat > 0 ? overrideCostExVat : listPriceExVat);
+  const rawCost = overrideCostExVat != null && overrideCostExVat > 0 ? overrideCostExVat : listPriceExVat;
+  const costExVat = r2(sanitizeCostPrice(rawCost));
 
   const sellExVat = r2(costExVat * (1 + safeMarkupPercent / 100));
   const sellInclVat = r2(sellExVat * (1 + VAT_RATE));

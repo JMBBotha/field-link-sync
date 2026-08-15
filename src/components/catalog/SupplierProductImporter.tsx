@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Upload, FileSpreadsheet, Loader2, AlertCircle, Check, Sparkles, FileUp, FileText, X, Trash2, ArrowUp, ArrowDown, Minus, RefreshCw, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -153,6 +154,12 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
   const [diffRows, setDiffRows] = useState<DiffRow[]>([]);
   const [showDiff, setShowDiff] = useState(false);
   const [aiMarkup, setAiMarkup] = useState(30);
+  // Whether the uploaded file is the supplier's full current price list
+  // (default) vs. a partial/delta file (e.g. only price changes). Full
+  // catalogue files archive any active product missing from the diff;
+  // delta files never archive, since absence from a small file isn't
+  // evidence a product was discontinued.
+  const [isFullCatalogue, setIsFullCatalogue] = useState(true);
   const [aiResult, setAiResult] = useState<{ imported: number; updated: number; skipped: number; archived: number } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [importingDiff, setImportingDiff] = useState(false);
@@ -623,8 +630,8 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
     const workingRowsPreview = forceAll
       ? diffRows.map(r => r.action === "unchanged" ? { ...r, action: "update" as DiffAction } : r)
       : diffRows;
-    const archiveRowsPreview = workingRowsPreview.filter(r => r.action === "archive");
-    const totalPreview = workingRowsPreview.filter(r => r.action === "new" || r.action === "update" || r.action === "restore" || r.action === "archive").length;
+    const archiveRowsPreview = isFullCatalogue ? workingRowsPreview.filter(r => r.action === "archive") : [];
+    const totalPreview = workingRowsPreview.filter(r => r.action === "new" || r.action === "update" || r.action === "restore" || (isFullCatalogue && r.action === "archive")).length;
     if (totalPreview === 0) {
       toast({ title: "Nothing to apply", description: "All products are unchanged. Use 'Force Re-import All' to refresh all products.", variant: "destructive" });
       setImportingDiff(false); return;
@@ -641,6 +648,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
         defaultMarkupPercent: aiMarkup,
         fileName: pdfFile?.name || "AI Import",
         onProgress: setProgress,
+        isFullCatalogue,
       });
 
       if (errors > 0 && archiveRowsPreview.length > 0) {
@@ -1130,6 +1138,15 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
                     <Input type="number" value={aiMarkup} onChange={(e) => setAiMarkup(Number(e.target.value) || 0)}
                       className="w-20 h-8 text-sm" min={0} max={200} />
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Switch id="is-full-catalogue" checked={isFullCatalogue} onCheckedChange={setIsFullCatalogue} />
+                    <Label htmlFor="is-full-catalogue" className="text-xs whitespace-nowrap cursor-pointer">
+                      Full price list
+                      <span className="text-muted-foreground ml-1">
+                        {isFullCatalogue ? "(missing items will be archived)" : "(partial file — nothing archived)"}
+                      </span>
+                    </Label>
+                  </div>
                   <div className="flex items-center gap-2 ml-auto">
                     {diffSummary.unchanged > 0 && (
                       <Button size="sm" variant="outline" onClick={() => handleApplyDiff(true)} disabled={importingDiff}>
@@ -1139,7 +1156,7 @@ const SupplierProductImporter = ({ supplierId, supplierName, isConsumablesSuppli
                     )}
                     <Button size="sm" onClick={() => handleApplyDiff(false)} disabled={importingDiff}>
                       {importingDiff ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
-                      Apply {diffSummary.new + diffSummary.update + diffSummary.archive + diffSummary.restore} Changes
+                      Apply {diffSummary.new + diffSummary.update + (isFullCatalogue ? diffSummary.archive : 0) + diffSummary.restore} Changes
                     </Button>
                   </div>
                 </div>

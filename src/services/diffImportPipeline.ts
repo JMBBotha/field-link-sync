@@ -94,10 +94,41 @@ export async function buildProductDiff(
     });
   });
 
-  const incomingCodes = new Set(incoming.map((r) => r.product_code.toUpperCase()));
+  // ---------- Sanitize & dedupe incoming rows before diffing ----------
+  // A supplier file can legitimately contain a duplicate SKU (two rows for
+  // the same product_code, e.g. from a merged multi-page PDF parse) or a
+  // row with a missing/garbage cost_price (bad AI parse, blank cell). Either
+  // one silently corrupts the diff — duplicates make "new" vs "update"
+  // ambiguous, and a NaN/negative cost would get inserted or would archive
+  // a perfectly good existing product by never matching. Both are dropped
+  // here (last occurrence of a duplicate code wins) with a console warning
+  // so the import can proceed safely instead of failing or corrupting data.
+  const seenCodes = new Set<string>();
+  const cleanIncoming: DiffImportRow[] = [];
+  for (let i = incoming.length - 1; i >= 0; i--) {
+    const row = incoming[i];
+    const code = (row.product_code || "").trim().toUpperCase();
+    if (!code) {
+      console.warn("[DiffImport] Skipping row with empty product_code", row);
+      continue;
+    }
+    if (seenCodes.has(code)) {
+      console.warn(`[DiffImport] Duplicate product_code "${code}" in incoming file — keeping the last occurrence, dropping the rest`);
+      continue;
+    }
+    const cost = Number(row.cost_price);
+    if (!Number.isFinite(cost) || cost < 0) {
+      console.warn(`[DiffImport] Skipping row "${code}" with invalid cost_price:`, row.cost_price);
+      continue;
+    }
+    seenCodes.add(code);
+    cleanIncoming.unshift({ ...row, product_code: code, cost_price: cost });
+  }
+
+  const incomingCodes = new Set(cleanIncoming.map((r) => r.product_code.toUpperCase()));
   const diff: DiffRow[] = [];
 
-  for (const row of incoming) {
+  for (const row of cleanIncoming) {
     const key = row.product_code.toUpperCase();
     const match = existingMap.get(key);
     if (match) {
@@ -149,6 +180,17 @@ export interface ApplyDiffOptions {
   /** File name recorded in the price_list_uploads audit row. */
   fileName?: string | null;
   onProgress?: (pct: number) => void;
+  /**
+   * Whether the incoming file represents the supplier's ENTIRE current
+   * catalogue (default true). When true, any active product missing from
+   * the file is archived (soft-deleted) — the normal, safe behavior for a
+   * full price-list replacement. When false (a partial/delta file — e.g. a
+   * "price changes only" sheet or a promo update covering a handful of
+   * SKUs), the archive step is skipped entirely so products simply absent
+   * from this smaller file are left untouched instead of being wrongly
+   * archived.
+   */
+  isFullCatalogue?: boolean;
 }
 
 export interface ApplyDiffResult {
@@ -175,6 +217,7 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
     defaultMarkupPercent = 30,
     fileName = null,
     onProgress,
+    isFullCatalogue = true,
   } = opts;
 
   const workingRows = forceAll
@@ -183,7 +226,9 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
 
   const newRows = workingRows.filter((r) => r.action === "new");
   const updateRows = workingRows.filter((r) => r.action === "update" || r.action === "restore");
-  const archiveRows = workingRows.filter((r) => r.action === "archive");
+  // Delta/partial files never archive — a product just not being in a small
+  // "price changes only" file is not evidence it was discontinued.
+  const archiveRows = isFullCatalogue ? workingRows.filter((r) => r.action === "archive") : [];
   const total = newRows.length + updateRows.length + archiveRows.length;
 
   let imported = 0, updated = 0, archived = 0, errors = 0;

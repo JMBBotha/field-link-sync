@@ -460,7 +460,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
     }
   }, [supplierId, toast]);
 
-  const handleImportConfirm = useCallback(async (products: ParsedProduct[]) => {
+  const handleImportConfirm = useCallback(async (products: ParsedProduct[], isFullCatalogue: boolean = true) => {
     setImportConfirming(true);
     try {
       const file = importFileRef.current;
@@ -491,6 +491,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
         diffRows,
         defaultMarkupPercent: products[0]?.default_markup_percent || 30,
         fileName: file?.name || "AI Import",
+        isFullCatalogue,
       });
 
       if (imported === 0 && updated === 0 && archived === 0 && errors > 0) {
