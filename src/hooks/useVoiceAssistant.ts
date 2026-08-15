@@ -46,6 +46,9 @@ export function useVoiceAssistant() {
   const vapiRef = useRef<Vapi | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const seenResultIds = useRef<Set<string>>(new Set());
+  /** Pending writes already answered on screen — never surfaced again. */
+  const resolvedPendingIds = useRef<Set<string>>(new Set());
+  const lastPendingIdRef = useRef<string | null>(null);
   const pollRef = useRef<number | null>(null);
 
   const stopPolling = () => {
@@ -69,8 +72,16 @@ export function useVoiceAssistant() {
       fresh.forEach((r) => seenResultIds.current.add(r.id));
       setResults((prev) => [...prev, ...fresh.map((r) => ({ tool_name: r.tool_name, rows: r.rows }))]);
     }
-    setPending(payload.pending ?? null);
+    const next = payload.pending ?? null;
+    const nextId = next?.id ?? null;
+    if (next && nextId && resolvedPendingIds.current.has(nextId)) {
+      setPending(null);
+      return;
+    }
+    lastPendingIdRef.current = nextId;
+    setPending(next);
   }, []);
+
 
   const stop = useCallback(() => {
     stopPolling();
