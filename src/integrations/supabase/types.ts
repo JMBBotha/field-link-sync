@@ -6095,6 +6095,30 @@ export type Database = {
           },
         ]
       }
+      voice_session_context: {
+        Row: {
+          company_id: string
+          context: Json
+          session_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          context?: Json
+          session_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          context?: Json
+          session_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       webhook_dead_letters: {
         Row: {
           company_id: string | null

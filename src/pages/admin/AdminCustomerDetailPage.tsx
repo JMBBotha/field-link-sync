@@ -36,6 +36,7 @@ import { formatRand } from "@/utils/formatRand";
 import CustomerLocationsManager from "@/components/customers/CustomerLocationsManager";
 import QuickTemplateDialog from "@/components/quoting/QuickTemplateDialog";
 import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
+import { useRegisterAssistantContext } from "@/hooks/useAssistantContextTracker";
 
 import { LEAD_SOURCE_OPTIONS, DEFAULT_LEAD_SOURCE, toLeadSourceValue, leadSourceLabel } from "@/lib/leadSources";
 
@@ -81,6 +82,12 @@ const AdminCustomerDetailPage = () => {
       if (error) throw error;
       return data;
     },
+  });
+
+  // Tell the voice assistant which client is open on screen.
+  useRegisterAssistantContext({
+    selected_customer_id: id,
+    selected_customer_name: customer?.name ?? undefined,
   });
 
   const { data: invoices = [] } = useQuery({

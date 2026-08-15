@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { executeTool, TOOL_KIND, toolSchemas, type ToolName } from "../_shared/nlTools.ts";
 import { verifySession } from "../_shared/voiceSession.ts";
+import { describeContext, loadSessionContext } from "../_shared/sessionContext.ts";
 import {
   type AssistantAuditEntry,
   logAssistantAudit,
@@ -138,6 +139,19 @@ Deno.serve(async (req) => {
       const toolCallId = String(call.id ?? "");
       const name = String(call.function?.name ?? "");
       const args = parseArgs(call.function?.arguments);
+
+      // ---- live screen context (hint only, never an auth decision) ------
+      if (name === "get_current_context") {
+        const uiContext = await loadSessionContext(db, sessionId, userId, companyId);
+        results.push({
+          toolCallId,
+          result: JSON.stringify({
+            summary: describeContext(uiContext),
+            context: uiContext ?? {},
+          }),
+        });
+        continue;
+      }
 
       // ---- spoken confirmation of a queued write -----------------------
       if (name === "confirm_pending_action") {

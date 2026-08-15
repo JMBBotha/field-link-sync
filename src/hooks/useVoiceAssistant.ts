@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Vapi from "@vapi-ai/web";
 import { supabase } from "@/integrations/supabase/client";
 import type { Structured } from "@/components/admin/nl/ResultTable";
+import { getAssistantContext, useAssistantContextStore } from "@/stores/assistantContextStore";
 
 export interface TranscriptEntry {
   role: "user" | "assistant";
@@ -50,6 +51,8 @@ export function useVoiceAssistant() {
   const resolvedPendingIds = useRef<Set<string>>(new Set());
   const lastPendingIdRef = useRef<string | null>(null);
   const pollRef = useRef<number | null>(null);
+  /** Last context payload pushed to the server — used to skip no-op pushes. */
+  const lastContextRef = useRef<string>("");
 
   const stopPolling = () => {
     if (pollRef.current) {
@@ -83,6 +86,22 @@ export function useVoiceAssistant() {
   }, []);
 
 
+  /**
+   * Push the live UI context (current page, open quote/customer, last search)
+   * to the voice session. Fire-and-forget and de-duplicated so it stays cheap.
+   */
+  const pushContext = useCallback(async (force = false) => {
+    const sessionId = sessionIdRef.current;
+    if (!sessionId) return;
+    const ctx = getAssistantContext();
+    const serialized = JSON.stringify(ctx);
+    if (!force && serialized === lastContextRef.current) return;
+    lastContextRef.current = serialized;
+    await supabase.functions.invoke("nl-voice-session", {
+      body: { action: "context", session_id: sessionId, context: ctx },
+    });
+  }, []);
+
   const stop = useCallback(() => {
     stopPolling();
     try {
@@ -100,7 +119,7 @@ export function useVoiceAssistant() {
     setStatus("connecting");
     try {
       const { data, error: fnError } = await supabase.functions.invoke("nl-voice-session", {
-        body: { action: "start" },
+        body: { action: "start", context: getAssistantContext() },
       });
       if (fnError) throw new Error(fnError.message || "Could not start the voice session");
       const payload = data as {
@@ -117,6 +136,7 @@ export function useVoiceAssistant() {
       }
 
       sessionIdRef.current = payload.sessionId;
+      lastContextRef.current = JSON.stringify(getAssistantContext());
       seenResultIds.current = new Set();
       setTranscript([]);
       setResults([]);
@@ -179,13 +199,16 @@ export function useVoiceAssistant() {
       } else {
         await vapi.start(payload.assistant as never);
       }
-      pollRef.current = window.setInterval(() => void poll(), 3000);
+      pollRef.current = window.setInterval(() => {
+        void poll();
+        void pushContext();
+      }, 3000);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not start voice mode");
       setStatus("error");
       stopPolling();
     }
-  }, [poll]);
+  }, [poll, pushContext]);
 
   const toggleMute = useCallback(() => {
     const vapi = vapiRef.current;
@@ -214,6 +237,14 @@ export function useVoiceAssistant() {
   }, [poll]);
 
 
+  // Push immediately whenever the operator navigates or opens a record, so the
+  // context is fresh on the very next turn instead of up to 3s stale.
+  useEffect(() => {
+    if (status !== "live") return;
+    void pushContext(true);
+    return useAssistantContextStore.subscribe(() => void pushContext());
+  }, [status, pushContext]);
+
   useEffect(() => () => {
     stopPolling();
     try {
@@ -236,5 +267,6 @@ export function useVoiceAssistant() {
     toggleMute,
     clearPending,
     refresh: poll,
+    pushContext,
   };
 }
