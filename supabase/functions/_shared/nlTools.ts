@@ -479,6 +479,67 @@ export const anthropicTools = [
       additionalProperties: false,
     },
   },
+  {
+    name: "search_customers",
+    description:
+      "Search customers the caller is permitted to see (by name, company, phone or email). Read-only. Results are already scoped server-side to the caller's organisation and role — never ask for or pass an organisation, user or client id.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Name, company, phone or email fragment" },
+        limit: { type: "integer", description: "Max rows, default 10, max 25" },
+        offset: { type: "integer", description: "Pagination offset" },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "get_customer_details",
+    description:
+      "Get a concise profile for one customer (contact details, address, status, open jobs, recent job history). Read-only. If the caller is not permitted to see that customer, it simply returns not found — never say the record exists but is restricted.",
+    input_schema: {
+      type: "object",
+      properties: {
+        customer_id: { type: "string", description: "Customer UUID from search_customers or resolve_entity" },
+      },
+      required: ["customer_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "search_inventory",
+    description:
+      "Search the parts/equipment catalogue with current stock levels. Read-only. Returns selling prices only — never cost price or margin.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Name, brand, model or product code fragment" },
+        category: { type: "string" },
+        in_stock_only: { type: "boolean", description: "Only items with stock on hand" },
+        limit: { type: "integer" },
+        offset: { type: "integer" },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "get_assigned_jobs",
+    description:
+      "List the jobs the caller is permitted to see (a technician's own assigned jobs; organisation-wide for admins/dispatchers), optionally filtered by status and scheduled date range. Read-only.",
+    input_schema: {
+      type: "object",
+      properties: {
+        status: { type: "string" },
+        date_from: { type: "string", description: "YYYY-MM-DD, scheduled_for >=" },
+        date_to: { type: "string", description: "YYYY-MM-DD, scheduled_for <=" },
+        limit: { type: "integer" },
+        offset: { type: "integer" },
+      },
+      additionalProperties: false,
+    },
+  },
 ];
 
 
