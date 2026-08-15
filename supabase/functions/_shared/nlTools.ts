@@ -199,7 +199,7 @@ const PII_ALLOW: Record<ToolName, string[]> = {
   // Deliberately excludes cost_price / markup / supplier_discount_percent —
   // margin data is never surfaced through the assistant, for any role.
   search_products: [
-    "id", "name", "short_name", "category", "subcategory", "brand", "model",
+    "id", "name", "short_name", "description", "category", "subcategory", "brand", "model",
     "product_code", "selling_price", "sell_price_incl_vat", "price_includes_vat",
     "is_price_on_request", "unit_type", "capacity_btu", "kw",
   ],
@@ -217,7 +217,7 @@ const PII_ALLOW: Record<ToolName, string[]> = {
   ],
   // Never exposes unit_cost / supplier margin data.
   search_inventory: [
-    "id", "name", "short_name", "category", "subcategory", "brand", "model",
+    "id", "name", "short_name", "description", "category", "subcategory", "brand", "model",
     "product_code", "selling_price", "sell_price_incl_vat", "unit_type",
     "is_price_on_request", "quantity_on_hand", "in_stock",
   ],
@@ -740,23 +740,34 @@ export async function executeTool(
       }
       const raw = String(args.query).trim();
       const tokens = nameTokens(raw);
-      const fields = ["name", "short_name", "model", "product_code", "brand"];
+      const fields = ["name", "short_name", "description", "model", "product_code", "brand", "category"];
       const patterns = tokens.length ? tokens : [raw.replace(/[%,()]/g, "")];
-      const orFilter = patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(",");
       const take = Math.min(Number(args.limit ?? 10), 25);
       const from = Number(args.offset ?? 0);
+      const cols =
+        "id, name, short_name, description, category, subcategory, brand, model, product_code, selling_price, sell_price_incl_vat, is_price_on_request, unit_type";
       let q = db.from("supplier_products")
-        .select(
-          "id, name, short_name, category, subcategory, brand, model, product_code, selling_price, sell_price_incl_vat, is_price_on_request, unit_type",
-        )
+        .select(cols)
         .eq("is_active", true)
-        .or("archived.is.false,archived.is.null")
-        .or(orFilter)
-        .range(from, from + take - 1);
+        .or("archived.is.false,archived.is.null");
+      // Chained .or() groups are ANDed: every spoken token must match somewhere.
+      for (const t of patterns) {
+        q = q.or(fields.map((f) => `${f}.ilike.%${t}%`).join(","));
+      }
+      q = q.range(from, from + take - 1);
       if (args.category) q = q.ilike("category", `%${args.category}%`);
-      const { data, error } = await q;
+      let { data, error } = await q;
       if (error) throw error;
+      if (!data?.length && patterns.length > 1) {
+        const orFilter = patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(",");
+        const wide = await db.from("supplier_products").select(cols)
+          .eq("is_active", true).or("archived.is.false,archived.is.null").or(orFilter)
+          .range(from, from + take - 1);
+        if (wide.error) throw wide.error;
+        data = wide.data;
+      }
       const products = (data ?? []) as Record<string, any>[];
+
 
       let stockByProduct = new Map<string, number>();
       if (products.length) {
@@ -1158,18 +1169,33 @@ export async function executeTool(
     case "search_products": {
       const raw = String(args.query).trim();
       const tokens = nameTokens(raw);
-      const fields = ["name", "short_name", "description", "model", "product_code", "brand", "model_range"];
+      const fields = ["name", "short_name", "description", "model", "product_code", "brand", "model_range", "category"];
       const patterns = tokens.length ? tokens : [raw.replace(/[%,()]/g, "")];
-      const orFilter = patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(",");
       let q = db.from("supplier_products").select(
-        "id, name, short_name, category, subcategory, brand, model, product_code, selling_price, sell_price_incl_vat, price_includes_vat, is_price_on_request, unit_type, capacity_btu, kw",
-      ).eq("is_active", true).or("archived.is.false,archived.is.null").or(orFilter).limit(Math.min(Number(args.limit ?? 15), 25));
+        "id, name, short_name, description, category, subcategory, brand, model, product_code, selling_price, sell_price_incl_vat, price_includes_vat, is_price_on_request, unit_type, capacity_btu, kw",
+      ).eq("is_active", true).or("archived.is.false,archived.is.null");
+      // Every token must match SOMEWHERE (chained .or() groups are ANDed),
+      // otherwise "samsung cassette" returns any Samsung product at all.
+      for (const t of patterns) {
+        q = q.or(fields.map((f) => `${f}.ilike.%${t}%`).join(","));
+      }
+      q = q.limit(Math.min(Number(args.limit ?? 15), 25));
       if (args.category) q = q.ilike("category", `%${args.category}%`);
-      const { data, error } = await q;
+      let { data, error } = await q;
       if (error) throw error;
+      // Fallback: if the strict AND search finds nothing, widen to ANY token.
+      if (!data?.length && patterns.length > 1) {
+        const orFilter = patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(",");
+        const wide = await db.from("supplier_products").select(
+          "id, name, short_name, description, category, subcategory, brand, model, product_code, selling_price, sell_price_incl_vat, price_includes_vat, is_price_on_request, unit_type, capacity_btu, kw",
+        ).eq("is_active", true).or("archived.is.false,archived.is.null").or(orFilter).limit(15);
+        if (wide.error) throw wide.error;
+        data = wide.data;
+      }
       const rows = scrub(tool, data ?? []);
       return { rows, summary: `${rows.length} product(s)` };
     }
+
 
     case "add_quote_item": {
       const { data: quote, error: quoteErr } = await db.from("quotes")
