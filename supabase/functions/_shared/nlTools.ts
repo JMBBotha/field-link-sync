@@ -4,6 +4,7 @@ import { hasRecordAccess } from "./recordAccess.ts";
 import { resolveCandidates, type EntityCandidate } from "./entityResolution.ts";
 import { getOwnedScope, isOpsRole } from "./ownership.ts";
 import { resolveScope } from "./assistantScope.ts";
+import { spokenRand } from "./numberSpeech.ts";
 
 const DEFAULT_VAT_RATE = 0.15; // South Africa standard rate, used only when a quote/invoice row has none set.
 
@@ -1252,7 +1253,7 @@ export async function executeTool(
 
       return {
         rows: scrub(tool, [{ id: quote.id, quote_id: quote.id, description, quantity, unit_price: unitPrice, total: lineTotal, quote_total: total }]),
-        summary: `Added "${description}" x${quantity} to the quote. New total: R${total.toFixed(2)}`,
+        summary: `Added "${description}" x${quantity} to the quote. New total: ${spokenRand(total)}`,
       };
     }
 
@@ -1333,7 +1334,7 @@ export async function executeTool(
 
       return {
         rows: scrub(tool, [{ id: invoice.id, invoice_id: invoice.id, description: args.description, quantity, unit_price: unitPrice, amount, invoice_total: grandTotal }]),
-        summary: `Added "${args.description}" x${quantity} to the invoice. New total: R${grandTotal.toFixed(2)}`,
+        summary: `Added "${args.description}" x${quantity} to the invoice. New total: ${spokenRand(grandTotal)}`,
       };
     }
 
@@ -1384,7 +1385,7 @@ export async function executeTool(
       });
       if (itemErr) throw itemErr;
 
-      return { rows: scrub(tool, [invoice]), summary: `Invoice ${invoice.invoice_number} created for R${grandTotal.toFixed(2)}` };
+      return { rows: scrub(tool, [invoice]), summary: `Invoice ${invoice.invoice_number} created for ${spokenRand(grandTotal)}` };
     }
 
     case "assign_job": {

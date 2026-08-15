@@ -14,6 +14,7 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
+import { spokenBtu, spokenKw, spokenRand } from "../_shared/numberSpeech.ts";
 import {
   logAssistantAudit,
   resolvePersona,
@@ -551,6 +552,10 @@ function shapeProduct(row: Record<string, any>) {
     unit_type: row.unit_type,
     btu_rating: capacity,
     kw: row.kw,
+    // Spoken forms: read these aloud verbatim instead of the raw numbers.
+    spoken_price: spokenRand(row.sell_price_incl_vat ?? row.selling_price),
+    spoken_btu: spokenBtu(capacity),
+    spoken_kw: spokenKw(row.kw),
   };
 }
 
@@ -759,7 +764,7 @@ async function createEstimate(db: any, member: CallerContext, params: any): Prom
 
   const spoken =
     `${customerDisplayName}: ${lineItems.length} line${lineItems.length === 1 ? "" : "s"}, ` +
-    `total R${total.toFixed(2)} including VAT.`;
+    `total ${spokenRand(total)} including VAT.`;
 
   return {
     confirmed: false,
@@ -778,6 +783,7 @@ async function createEstimate(db: any, member: CallerContext, params: any): Prom
       subtotal: `R${subtotal.toFixed(2)}`,
       vat: `R${taxAmount.toFixed(2)}`,
       total: `R${total.toFixed(2)}`,
+      spoken_total: spokenRand(total),
       valid_until: draft.valid_until,
     },
     next_step:
