@@ -26,17 +26,19 @@ Deno.test("assistant-tools rejects missing Authorization header", async () => {
   assertEquals(json.error, "Missing or invalid Authorization header");
 });
 
-Deno.test("assistant-tools rejects unsupported tool before auth", async () => {
+Deno.test("assistant-tools returns 500 when server env vars are missing", async () => {
   const req = new Request("http://localhost/functions/v1/assistant-tools", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": "Bearer invalid-token",
+      "Authorization": "Bearer dummy-token",
     },
-    body: JSON.stringify({ tool: "delete_everything" }),
+    body: JSON.stringify({ tool: "search_customers", parameters: { query: "Acme" } }),
   });
 
-  // This will fail auth first because the token is invalid, but verifies the route is wired.
   const res = await handleRequest(req);
-  assertEquals(res.status, 401);
+  const json = await res.json();
+
+  assertEquals(res.status, 500);
+  assertEquals(json.error, "Server configuration error");
 });
