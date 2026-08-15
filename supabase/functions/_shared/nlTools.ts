@@ -5,6 +5,7 @@ import { resolveCandidates, type EntityCandidate } from "./entityResolution.ts";
 import { getOwnedScope, isOpsRole } from "./ownership.ts";
 import { resolveScope } from "./assistantScope.ts";
 import { spokenRand } from "./numberSpeech.ts";
+import { naturalProductName, productSpeechFields } from "./productSpeech.ts";
 
 const DEFAULT_VAT_RATE = 0.15; // South Africa standard rate, used only when a quote/invoice row has none set.
 
@@ -203,6 +204,8 @@ const PII_ALLOW: Record<ToolName, string[]> = {
     "id", "name", "short_name", "description", "category", "subcategory", "brand", "model",
     "product_code", "selling_price", "sell_price_incl_vat", "price_includes_vat",
     "is_price_on_request", "unit_type", "capacity_btu", "kw",
+    // Natural spoken label — read this aloud instead of the raw code.
+    "display_name", "spoken_name",
   ],
   add_quote_item: ["id", "quote_id", "description", "quantity", "unit_price", "total", "quote_total"],
   accept_quote: ["id", "quote_number", "status", "accepted_at", "invoice_id", "invoice_number"],
@@ -221,6 +224,7 @@ const PII_ALLOW: Record<ToolName, string[]> = {
     "id", "name", "short_name", "description", "category", "subcategory", "brand", "model",
     "product_code", "selling_price", "sell_price_incl_vat", "unit_type",
     "is_price_on_request", "quantity_on_hand", "in_stock",
+    "display_name", "spoken_name",
   ],
   get_assigned_jobs: [
     "id", "title", "status", "priority", "job_type", "address",
@@ -784,6 +788,7 @@ export async function executeTool(
       const known = (id: string) => stockByProduct.has(String(id));
       let enriched = products.map((p) => ({
         ...p,
+        ...productSpeechFields(p),
         quantity_on_hand: known(p.id) ? stockByProduct.get(String(p.id))! : null,
         in_stock: known(p.id) ? stockByProduct.get(String(p.id))! > 0 : null,
       }));
@@ -1270,7 +1275,11 @@ export async function executeTool(
         }
       }
 
-      const rows = scrub(tool, rowsRaw.slice(0, limit));
+      const withSpeech = rowsRaw.slice(0, limit).map((r) => ({
+        ...r,
+        ...productSpeechFields(r, models.length > 0),
+      }));
+      const rows = scrub(tool, withSpeech);
       return { rows, summary: `${rows.length} product(s)` };
     }
 
@@ -1285,19 +1294,26 @@ export async function executeTool(
       if (!isOps && quote.sales_engineer_id !== ctx.userId) throw new Error("You don't have access to that quote");
 
       let description = args.description ? String(args.description) : null;
+      // What Mandy SAYS about the line — natural, never a raw catalogue code.
+      let spokenDescription: string | null = null;
       let unitPrice = args.unit_price != null ? Number(args.unit_price) : null;
       if (args.product_id) {
         const { data: product, error: prodErr } = await db.from("supplier_products")
-          .select("id, name, short_name, selling_price, sell_price_incl_vat, price_includes_vat")
+          .select(
+            "id, name, short_name, description, brand, category, subcategory, model, product_code, " +
+              "capacity_btu, kw, selling_price, sell_price_incl_vat, price_includes_vat",
+          )
           .eq("id", args.product_id).maybeSingle();
         if (prodErr) throw prodErr;
         if (!product) throw new Error("Product not found");
         description = description ?? product.name ?? product.short_name ?? "Item";
+        spokenDescription = naturalProductName(product);
         // Quote line items are priced ex-VAT (the quote's own vat_amount is
         // computed separately), so prefer the excl-VAT selling price.
         unitPrice = unitPrice ?? product.selling_price ?? product.sell_price_incl_vat ?? 0;
       }
       if (!description) throw new Error("A description or product_id is required");
+      spokenDescription = spokenDescription ?? naturalProductName({ name: description });
       if (unitPrice == null) throw new Error("A unit_price or product_id is required");
       const quantity = args.quantity != null ? Number(args.quantity) : 1;
       const lineTotal = Math.round(quantity * unitPrice * 100) / 100;
@@ -1331,7 +1347,8 @@ export async function executeTool(
 
       return {
         rows: scrub(tool, [{ id: quote.id, quote_id: quote.id, description, quantity, unit_price: unitPrice, total: lineTotal, quote_total: total }]),
-        summary: `Added "${description}" x${quantity} to the quote. New total: ${spokenRand(total)}`,
+        summary:
+          `Added ${quantity} × ${spokenDescription} to the quote. New total: ${spokenRand(total)}`,
       };
     }
 

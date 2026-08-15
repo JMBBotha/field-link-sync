@@ -15,6 +15,7 @@ import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 import { spokenBtu, spokenKw, spokenRand } from "../_shared/numberSpeech.ts";
+import { naturalProductName, productSpeechFields } from "../_shared/productSpeech.ts";
 import {
   logAssistantAudit,
   resolvePersona,
@@ -573,15 +574,20 @@ function buildProductOrFilter(tokens: string[]): string {
   return parts.join(",");
 }
 
-function shapeProduct(row: Record<string, any>) {
+function shapeProduct(row: Record<string, any>, includeModel = false) {
   const capacity = typeof row.btu_rating === "number"
     ? row.btu_rating
     : capacityFromCode(row.product_code, row.short_name);
+
+  const speech = productSpeechFields({ ...row, btu_rating: capacity }, includeModel);
 
   return {
     id: row.id,
     // Most rows have a null `name`; fall back so the agent never sees a blank label.
     name: row.name ?? row.short_name ?? row.product_code ?? "Unnamed product",
+    // Natural label the agent should SAY (raw code stays below for the quote).
+    display_name: speech.display_name,
+    spoken_name: speech.spoken_name,
     short_name: row.short_name,
     description: row.description,
     category: row.category,
@@ -727,7 +733,7 @@ function rankProducts(
       )
     )
     .slice(0, cap)
-    .map((s) => shapeProduct(s.row));
+    .map((s) => shapeProduct(s.row, models.length > 0));
 }
 
 
@@ -838,8 +844,13 @@ async function createEstimate(db: any, member: CallerContext, params: any): Prom
   const { error: linesErr } = await db.from("quote_line_items").insert(quoteLineItems);
   if (linesErr) throw new Error(linesErr.message);
 
+  // Spoken lines use the natural product description, never the raw code.
+  const spokenLines = lineItems.map((li: any) =>
+    `${li.quantity} × ${naturalProductName({ name: li.description })}`
+  );
+
   const spoken =
-    `${customerDisplayName}: ${lineItems.length} line${lineItems.length === 1 ? "" : "s"}, ` +
+    `${customerDisplayName}: ${spokenLines.join(", ")}, ` +
     `total ${spokenRand(total)} including VAT.`;
 
   return {
@@ -849,13 +860,14 @@ async function createEstimate(db: any, member: CallerContext, params: any): Prom
     quote_number: draft.quote_number,
     spoken_summary: spoken,
     message:
-      "Read spoken_summary aloud ONCE and ask 'should I create it?' exactly once. Do not repeat the question or re-summarise.",
+      "Read spoken_summary aloud ONCE and ask 'should I create it?' exactly once. Do not repeat the question, re-summarise, or read product codes.",
     summary: {
       customer: customerDisplayName,
       title,
       line_items: lineItems.map((li: any) =>
         `${li.quantity} × ${li.description} @ R${li.unit_price.toFixed(2)}`
       ),
+      spoken_line_items: spokenLines,
       subtotal: `R${subtotal.toFixed(2)}`,
       vat: `R${taxAmount.toFixed(2)}`,
       total: `R${total.toFixed(2)}`,
