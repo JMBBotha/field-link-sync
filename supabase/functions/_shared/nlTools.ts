@@ -767,12 +767,15 @@ export async function executeTool(
             .map((s) => [String(s.product_id), Number(s.quantity ?? 0)]),
         );
       }
+      // Stock is tracked separately and may not cover every catalogue item —
+      // unknown stock is reported as null, never as "out of stock".
+      const known = (id: string) => stockByProduct.has(String(id));
       let enriched = products.map((p) => ({
         ...p,
-        quantity_on_hand: stockByProduct.get(String(p.id)) ?? 0,
-        in_stock: (stockByProduct.get(String(p.id)) ?? 0) > 0,
+        quantity_on_hand: known(p.id) ? stockByProduct.get(String(p.id))! : null,
+        in_stock: known(p.id) ? stockByProduct.get(String(p.id))! > 0 : null,
       }));
-      if (args.in_stock_only) enriched = enriched.filter((p) => p.in_stock);
+      if (args.in_stock_only) enriched = enriched.filter((p) => p.in_stock !== false);
       const rows = scrub(tool, enriched);
       return {
         rows,
