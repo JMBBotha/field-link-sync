@@ -561,6 +561,12 @@ export interface ExecContext {
    * treated as "no ops privileges", never as "unrestricted".
    */
   roles: string[];
+  /**
+   * The caller's verified auth email, taken from the JWT (text channel) or
+   * looked up server-side from the session's user id (voice channel). Used
+   * only to resolve a client-portal user to their own customer record.
+   */
+  email?: string | null;
 }
 
 /** Mirrors the quotes/invoices SELECT RLS policies for the voice path. */
