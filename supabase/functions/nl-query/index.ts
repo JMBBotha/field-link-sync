@@ -103,16 +103,31 @@ Deno.serve(async (req) => {
       isOps,
       roles[0] ?? "team member",
     );
-    const ctx = { db, rlsDb: anonClient, userId, companyId, roles };
+    const ctx = { db, rlsDb: anonClient, userId, companyId, roles, email: userEmail };
+    const persona = resolvePersona(roles);
 
     const body = await req.json().catch(() => ({}));
+
+    const OUTCOME: Record<string, AssistantOutcome> = {
+      executed: "success",
+      confirmation_required: "success",
+      invalid_args: "invalid_input",
+      rejected: "rejected",
+      error: "error",
+      cancelled: "rejected",
+    };
 
     const audit = async (
       tool: string,
       args: unknown,
       result: unknown,
       status: string,
-      resource?: { resource_type?: string; resource_id?: string | null; access_granted?: boolean },
+      resource?: {
+        resource_type?: string;
+        resource_id?: string | null;
+        access_granted?: boolean;
+        rows?: unknown[];
+      },
     ) => {
       await db.from("nl_audit_log").insert({
         user_id: userId,
@@ -124,6 +139,19 @@ Deno.serve(async (req) => {
         resource_type: resource?.resource_type ?? null,
         resource_id: resource?.resource_id ?? null,
         access_granted: resource?.access_granted ?? null,
+      });
+      const denied = resource?.access_granted === false;
+      await logAssistantAudit(db, {
+        userId,
+        companyId,
+        role: persona,
+        toolName: tool,
+        args,
+        resultCount: Array.isArray(resource?.rows) ? resource!.rows!.length : null,
+        outcome: denied ? "access_denied" : (OUTCOME[status] ?? "error"),
+        errorCode: status === "executed" ? null : status,
+        channel: "text",
+        sessionId: null,
       });
     };
 
