@@ -733,7 +733,7 @@ function rankProducts(
       )
     )
     .slice(0, cap)
-    .map((s) => shapeProduct(s.row));
+    .map((s) => shapeProduct(s.row, models.length > 0));
 }
 
 
