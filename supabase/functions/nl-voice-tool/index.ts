@@ -153,6 +153,18 @@ Deno.serve(async (req) => {
       const name = String(call.function?.name ?? "");
       const args = parseArgs(call.function?.arguments);
 
+      // ---- fill quote_id from the quote open on screen ------------------
+      // The context is only a convenience hint; the tool still re-checks
+      // company scoping and ownership of that quote server-side.
+      if (name === "add_quote_item" && !UUID_RE.test(String(args.quote_id ?? ""))) {
+        const uiContext = await loadSessionContext(db, sessionId, userId, companyId);
+        const openQuoteId = (uiContext as { open_quote_id?: string } | null)?.open_quote_id;
+        if (openQuoteId && UUID_RE.test(openQuoteId)) args.quote_id = openQuoteId;
+        else delete args.quote_id;
+      }
+
+
+
       // ---- live screen context (hint only, never an auth decision) ------
       if (name === "get_current_context") {
         const uiContext = await loadSessionContext(db, sessionId, userId, companyId);
