@@ -1304,6 +1304,7 @@ export async function executeTool(
       // What Mandy SAYS about the line — natural, never a raw catalogue code.
       let spokenDescription: string | null = null;
       let unitPrice = args.unit_price != null ? Number(args.unit_price) : null;
+      let productRow: Record<string, unknown> | null = null;
       if (args.product_id) {
         const { data: product, error: prodErr } = await db.from("supplier_products")
           .select(
@@ -1313,6 +1314,7 @@ export async function executeTool(
           .eq("id", args.product_id).maybeSingle();
         if (prodErr) throw prodErr;
         if (!product) throw new Error("Product not found");
+        productRow = product as Record<string, unknown>;
         description = description ?? product.name ?? product.short_name ?? "Item";
         spokenDescription = naturalProductName(product);
         // Quote line items are priced ex-VAT (the quote's own vat_amount is
@@ -1322,25 +1324,43 @@ export async function executeTool(
       if (!description) throw new Error("A description or product_id is required");
       spokenDescription = spokenDescription ?? naturalProductName({ name: description });
       if (unitPrice == null) throw new Error("A unit_price or product_id is required");
-      // quote_line_items.quantity is an INTEGER column and total is a GENERATED
-      // column — never send `total`, and never send a fractional quantity.
       const rawQty = args.quantity != null ? Number(args.quantity) : 1;
       const quantity = Math.max(1, Math.round(Number.isFinite(rawQty) ? rawQty : 1));
       unitPrice = Math.round(unitPrice * 100) / 100;
       const lineTotal = Math.round(quantity * unitPrice * 100) / 100;
 
-      const { error: insErr } = await db.from("quote_line_items").insert({
+      // IMPORTANT: `quote_items` is the table the quote builder / PDF read.
+      // The legacy `quote_line_items` table is NOT rendered, so writing there
+      // moved the total without ever showing a product line.
+      const { data: lastItem } = await db.from("quote_items")
+        .select("sort_order").eq("quote_id", quote.id)
+        .order("sort_order", { ascending: false }).limit(1).maybeSingle();
+      const sortOrder = Number((lastItem as { sort_order?: number } | null)?.sort_order ?? -1) + 1;
+
+      const { data: inserted, error: insErr } = await db.from("quote_items").insert({
         quote_id: quote.id,
-        description,
+        item_name: description,
+        description: (productRow?.description as string | null) ?? null,
+        item_number: (productRow?.product_code as string | null) ?? null,
+        supplier: (productRow?.brand as string | null) ?? null,
+        product_id: (productRow?.id as string | null) ?? null,
+        source: productRow ? "catalog" : "manual",
         quantity,
         unit_price: unitPrice,
-      });
+        total_price: lineTotal,
+        sort_order: sortOrder,
+      }).select("id").maybeSingle();
       if (insErr) throw new Error(`Could not add the line to the quote (${insErr.message})`);
+      if (!inserted?.id) throw new Error("The line item was not created — nothing was added to the quote");
 
-      const { data: items, error: itemsErr } = await db.from("quote_line_items")
-        .select("total").eq("quote_id", quote.id);
+      const { data: items, error: itemsErr } = await db.from("quote_items")
+        .select("quantity, unit_price, total_price").eq("quote_id", quote.id);
       if (itemsErr) throw new Error(`The line was added but the totals could not be read back (${itemsErr.message})`);
-      const subtotal = (items ?? []).reduce((s: number, r: { total: number | null }) => s + Number(r.total ?? 0), 0);
+      const subtotal = (items ?? []).reduce(
+        (s: number, r: { quantity: number | null; unit_price: number | null; total_price: number | null }) =>
+          s + Number(r.total_price ?? Number(r.quantity ?? 0) * Number(r.unit_price ?? 0)),
+        0,
+      );
       const discountAmt = quote.discount_type === "percentage"
         ? subtotal * (Number(quote.discount_value ?? 0) / 100)
         : quote.discount_type === "fixed"
@@ -1356,10 +1376,11 @@ export async function executeTool(
       if (updErr) throw new Error(`The line was added but the quote total could not be updated (${updErr.message})`);
 
       return {
-        rows: scrub(tool, [{ id: quote.id, quote_id: quote.id, description, quantity, unit_price: unitPrice, total: lineTotal, quote_total: total }]),
+        rows: scrub(tool, [{ id: inserted.id, quote_id: quote.id, description, quantity, unit_price: unitPrice, total: lineTotal, quote_total: total }]),
         summary:
           `Done — added ${quantity} × ${spokenDescription} to the quote. The new total is ${spokenRand(total)}.`,
       };
+
 
     }
 
