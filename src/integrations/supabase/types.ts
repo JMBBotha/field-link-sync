@@ -6736,6 +6736,10 @@ export type Database = {
         Returns: unknown
       }
       _st_within: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      accept_quote: {
+        Args: { p_quote_id: string; p_version_id: string }
+        Returns: string
+      }
       accept_quote_by_token: {
         Args: { p_accepted_by: string; p_signature?: Json; p_token: string }
         Returns: boolean
@@ -6833,10 +6837,12 @@ export type Database = {
         }
         Returns: number
       }
+      create_change_order: { Args: { p_quote_id: string }; Returns: string }
       create_portal_booking: {
         Args: { p_notes?: string; p_service_type: string; p_token: string }
         Returns: string
       }
+      create_quote_version: { Args: { p_quote_id: string }; Returns: string }
       decline_quote_by_token: { Args: { p_token: string }; Returns: boolean }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
