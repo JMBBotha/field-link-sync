@@ -463,6 +463,133 @@ export type Database = {
           },
         ]
       }
+      change_order_line_items: {
+        Row: {
+          change_order_id: string
+          created_at: string
+          description: string
+          id: string
+          original_line_item_id: string | null
+          quantity: number
+          sort_order: number
+          total: number
+          type: string
+          unit_price: number
+        }
+        Insert: {
+          change_order_id: string
+          created_at?: string
+          description: string
+          id?: string
+          original_line_item_id?: string | null
+          quantity?: number
+          sort_order?: number
+          total?: number
+          type: string
+          unit_price?: number
+        }
+        Update: {
+          change_order_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          original_line_item_id?: string | null
+          quantity?: number
+          sort_order?: number
+          total?: number
+          type?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "change_order_line_items_change_order_id_fkey"
+            columns: ["change_order_id"]
+            isOneToOne: false
+            referencedRelation: "change_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "change_order_line_items_original_line_item_id_fkey"
+            columns: ["original_line_item_id"]
+            isOneToOne: false
+            referencedRelation: "quote_line_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      change_orders: {
+        Row: {
+          accepted_at: string | null
+          accepted_quote_version_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          job_id: string | null
+          owner_id: string | null
+          quote_id: string
+          reason: string | null
+          requested_by: string | null
+          status: string
+          total_impact_ex_vat: number
+          total_impact_incl_vat: number
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_quote_version_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id?: string | null
+          owner_id?: string | null
+          quote_id: string
+          reason?: string | null
+          requested_by?: string | null
+          status?: string
+          total_impact_ex_vat?: number
+          total_impact_incl_vat?: number
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_quote_version_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id?: string | null
+          owner_id?: string | null
+          quote_id?: string
+          reason?: string | null
+          requested_by?: string | null
+          status?: string
+          total_impact_ex_vat?: number
+          total_impact_incl_vat?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "change_orders_accepted_quote_version_id_fkey"
+            columns: ["accepted_quote_version_id"]
+            isOneToOne: false
+            referencedRelation: "quote_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "change_orders_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "change_orders_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       communication_log: {
         Row: {
           agent_id: string
@@ -4595,8 +4722,11 @@ export type Database = {
           id: string
           quantity: number
           quote_id: string
+          quote_version_id: string | null
           service_id: string | null
+          sort_order: number
           total: number | null
+          unit: string | null
           unit_price: number
         }
         Insert: {
@@ -4605,8 +4735,11 @@ export type Database = {
           id?: string
           quantity: number
           quote_id: string
+          quote_version_id?: string | null
           service_id?: string | null
+          sort_order?: number
           total?: number | null
+          unit?: string | null
           unit_price: number
         }
         Update: {
@@ -4615,8 +4748,11 @@ export type Database = {
           id?: string
           quantity?: number
           quote_id?: string
+          quote_version_id?: string | null
           service_id?: string | null
+          sort_order?: number
           total?: number | null
+          unit?: string | null
           unit_price?: number
         }
         Relationships: [
@@ -4625,6 +4761,13 @@ export type Database = {
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_line_items_quote_version_id_fkey"
+            columns: ["quote_version_id"]
+            isOneToOne: false
+            referencedRelation: "quote_versions"
             referencedColumns: ["id"]
           },
           {
@@ -4723,13 +4866,63 @@ export type Database = {
         }
         Relationships: []
       }
+      quote_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          quote_id: string
+          terms: string | null
+          total_ex_vat: number
+          total_incl_vat: number
+          valid_until: string | null
+          version_number: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          quote_id: string
+          terms?: string | null
+          total_ex_vat?: number
+          total_incl_vat?: number
+          valid_until?: string | null
+          version_number: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          quote_id?: string
+          terms?: string | null
+          total_ex_vat?: number
+          total_incl_vat?: number
+          valid_until?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_versions_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotes: {
         Row: {
           accepted_at: string | null
           accepted_by: string | null
           accepted_signature: Json | null
+          accepted_version_id: string | null
           company_id: string | null
           created_at: string
+          created_by: string | null
+          current_version_id: string | null
           customer_id: string | null
           customer_name: string | null
           declined_at: string | null
@@ -4740,11 +4933,13 @@ export type Database = {
           legacy_original_total: number | null
           location_id: string | null
           notes: string | null
+          owner_id: string | null
           public_token: string | null
           quote_number: string | null
           reference_text: string | null
           sales_engineer_id: string
           sent_at: string | null
+          site_id: string | null
           status: string
           subtotal: number
           superseded_by: string | null
@@ -4761,8 +4956,11 @@ export type Database = {
           accepted_at?: string | null
           accepted_by?: string | null
           accepted_signature?: Json | null
+          accepted_version_id?: string | null
           company_id?: string | null
           created_at?: string
+          created_by?: string | null
+          current_version_id?: string | null
           customer_id?: string | null
           customer_name?: string | null
           declined_at?: string | null
@@ -4773,11 +4971,13 @@ export type Database = {
           legacy_original_total?: number | null
           location_id?: string | null
           notes?: string | null
+          owner_id?: string | null
           public_token?: string | null
           quote_number?: string | null
           reference_text?: string | null
           sales_engineer_id: string
           sent_at?: string | null
+          site_id?: string | null
           status?: string
           subtotal?: number
           superseded_by?: string | null
@@ -4794,8 +4994,11 @@ export type Database = {
           accepted_at?: string | null
           accepted_by?: string | null
           accepted_signature?: Json | null
+          accepted_version_id?: string | null
           company_id?: string | null
           created_at?: string
+          created_by?: string | null
+          current_version_id?: string | null
           customer_id?: string | null
           customer_name?: string | null
           declined_at?: string | null
@@ -4806,11 +5009,13 @@ export type Database = {
           legacy_original_total?: number | null
           location_id?: string | null
           notes?: string | null
+          owner_id?: string | null
           public_token?: string | null
           quote_number?: string | null
           reference_text?: string | null
           sales_engineer_id?: string
           sent_at?: string | null
+          site_id?: string | null
           status?: string
           subtotal?: number
           superseded_by?: string | null
@@ -4825,6 +5030,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "quotes_accepted_version_id_fkey"
+            columns: ["accepted_version_id"]
+            isOneToOne: false
+            referencedRelation: "quote_versions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "quotes_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -4837,6 +5049,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "company_stats"
             referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "quotes_current_version_id_fkey"
+            columns: ["current_version_id"]
+            isOneToOne: false
+            referencedRelation: "quote_versions"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "quotes_customer_id_fkey"
