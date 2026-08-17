@@ -419,16 +419,15 @@ async function parsePDFWithFullPipeline(
   const discountDetection = detectDiscount(allText);
   const warnings: string[] = [];
 
-  // If Grok detected the selected column is INCL VAT, override VAT detection
-  const effectiveInclVat = grokDetectedInclVat
-    ? true
-    : (vatDetection.confidence === "high" ? vatDetection.isIncl : settings.pricesIncludeVat);
+  // PDF supplier price lists are always EXCL VAT — confirmed policy, no exceptions.
+  // Keep vatDetection/grokDetectedInclVat computed above only to surface a warning if a
+  // list looks like it might say otherwise, but never let them flip pricing behavior.
+  const effectiveInclVat = false;
   const effectiveDiscount = discountDetection.confidence === "high" ? discountDetection.percent : settings.tradeDiscount;
 
-  if (grokDetectedInclVat && !vatDetection.isIncl) {
-    warnings.push("⚠️ AI detected the selected price column is INCL VAT — VAT will be stripped");
+  if (grokDetectedInclVat || (vatDetection.confidence === "high" && vatDetection.isIncl)) {
+    warnings.push("⚠️ This list looked like it might say INCL VAT, but PDF price lists are treated as EXCL VAT — please verify manually if unsure");
   }
-  if (vatDetection.confidence === "low") warnings.push("⚠️ Could not detect VAT — please verify");
   if (parseMethod === "regex") warnings.push("📝 Text extraction — results may be less accurate");
   if (detectedPriceColumns.length > 1) {
     warnings.push(`📊 Multiple price columns detected: ${detectedPriceColumns.join(", ")}. Using "${selectedPriceColumn || detectedPriceColumns[0]}".`);

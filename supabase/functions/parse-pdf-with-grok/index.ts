@@ -127,7 +127,6 @@ function parseAIContent(content: string): { detected_price_columns: string[]; pr
 
 function pickBestPrice(
   prices: Record<string, number>,
-  supplierName?: string,
 ): { price: number; columnName: string; isInclVat: boolean } {
   const entries = Object.entries(prices).filter(([, v]) => typeof v === "number" && v > 0);
   if (entries.length === 0) return { price: 0, columnName: "", isInclVat: false };
@@ -141,10 +140,10 @@ function pickBestPrice(
   // a specific column name per brand.
 
   if (entries.length === 1) {
+    // PDF supplier price lists are always EXCL VAT (confirmed policy) — never
+    // treat a single price column as INCL VAT regardless of its header wording.
     const [col, val] = entries[0];
-    const upper = col.toUpperCase();
-    const isIncl = /INCL|INC\b|INCLUDING/.test(upper) && !/EXCL/.test(upper);
-    return { price: val, columnName: col, isInclVat: isIncl };
+    return { price: val, columnName: col, isInclVat: false };
   }
 
   // Reject any "Incl <add-on>" columns (corrosion treatment, coating, warranty, etc.) — they are NOT base prices
@@ -341,7 +340,7 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
     const deduped = result.products.filter((p) => {
       const sku = (p.sku || "").toLowerCase();
       if (!sku) return true; // keep products without SKU
-      const bestPrice = pickBestPrice(p.prices || {}, supplier_name).price;
+      const bestPrice = pickBestPrice(p.prices || {}).price;
       const page = p.pageNumber || 0;
       // Bucket y-position to nearest 2% so only rows at nearly the same vertical position dedup
       const yPct = p.rowBbox?.y ?? -1;
@@ -368,7 +367,7 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
         console.warn(`[Grok] Reject short code: "${code}"`);
         return false;
       }
-      const bestP = pickBestPrice(p.prices || {}, supplier_name);
+      const bestP = pickBestPrice(p.prices || {});
       if (!bestP.price || !Number.isFinite(bestP.price) || bestP.price < SHARED_MIN_PRICE || bestP.price > SHARED_MAX_PRICE) {
         console.warn(`[Grok] Reject "${code}" invalid/out-of-range price: ${bestP.price}`);
         return false;
@@ -405,7 +404,7 @@ Add fields: soldInLength (bool), unitLength (number), unitLengthUnit ("m"), pric
         success: true,
         detected_price_columns: [...allCols],
         products: validated.map(p => {
-          const bestPrice = pickBestPrice(p.prices || {}, supplier_name);
+          const bestPrice = pickBestPrice(p.prices || {});
           const costPrice = bestPrice.price;
           const soldInLength = p.soldInLength || false;
           const unitLength = p.unitLength || null;
