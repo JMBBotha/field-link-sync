@@ -13,13 +13,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, FileText, Download, Link2, FileCheck2, ChevronDown, FileSignature } from "lucide-react";
+import { Plus, Search, FileText, Download, Link2, FileCheck2, ChevronDown, FileSignature, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { convertQuoteToInvoice } from "@/lib/convertQuoteToInvoice";
@@ -168,6 +178,55 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   const toggleAll = () => setSelected(allSelected ? [] : docs.map((d) => d.id));
   const toggleOne = (id: string) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  // Only draft documents may be deleted.
+  const draftDocs = docs.filter((d) => d.status === "draft");
+  const selectedDrafts = draftDocs.filter((d) => selected.includes(d.id));
+
+  const performDelete = async (targets: typeof docs) => {
+    setDeleting(true);
+    try {
+      const estimateIds = targets.filter((d) => d.kind === "estimate").map((d) => d.id);
+      const proposalIds = targets.filter((d) => d.kind === "proposal").map((d) => d.id);
+
+      if (estimateIds.length) {
+        // Remove children first — some FKs are restrict-only.
+        await supabase.from("quote_items").delete().in("quote_id", estimateIds);
+        await supabase.from("quote_line_items").delete().in("quote_id", estimateIds);
+        await supabase.from("quote_areas").delete().in("quote_id", estimateIds);
+        const { error } = await supabase
+          .from("quotes")
+          .delete()
+          .in("id", estimateIds)
+          .eq("status", "draft");
+        if (error) throw error;
+      }
+      if (proposalIds.length) {
+        const { error } = await (supabase as any)
+          .from("visual_proposals")
+          .delete()
+          .in("id", proposalIds)
+          .eq("status", "draft");
+        if (error) throw error;
+      }
+
+      setSelected((prev) => prev.filter((id) => !targets.some((t) => t.id === id)));
+      qc.invalidateQueries({ queryKey: ["quotes"] });
+      qc.invalidateQueries({ queryKey: ["visual-proposals"] });
+      toast({
+        title: `${targets.length} draft${targets.length !== 1 ? "s" : ""} deleted`,
+      });
+    } catch (e: any) {
+      toast({
+        title: "Delete failed",
+        description: e.message || "Could not delete the selected drafts.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+      setPendingDelete(null);
+    }
+  };
 
   const openDoc = (doc: (typeof docs)[number]) => {
     if (doc.kind === "proposal") navigate(`/admin/proposal-builder?proposalId=${doc.id}`);
