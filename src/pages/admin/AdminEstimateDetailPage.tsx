@@ -167,6 +167,13 @@ const AdminEstimateDetailPage = () => {
         </span>
       </div>
 
+      <QuoteVersionsPanel
+        quoteId={quote.id}
+        status={quote.status}
+        acceptedVersionId={quote.accepted_version_id}
+        currentVersionId={quote.current_version_id}
+      />
+
       <EstimateDocument
         estimateNumber={quote.quote_number}
         issueDate={quote.created_at}
