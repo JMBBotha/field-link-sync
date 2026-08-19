@@ -482,7 +482,6 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                                 />
                               </>
                             )}
-                          </div>
                             {doc.status === "draft" && (
                               <Button
                                 variant="ghost"
