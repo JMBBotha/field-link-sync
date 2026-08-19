@@ -55,6 +55,8 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   const [typeFilter, setTypeFilter] = useState<"all" | "estimate" | "proposal">("all");
   const [converting, setConverting] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
+  const [deleting, setDeleting] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<any[] | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
