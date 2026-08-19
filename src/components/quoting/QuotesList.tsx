@@ -288,6 +288,22 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
           ))}
         </div>
 
+        {selectedDrafts.length > 0 && (
+          <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              {selectedDrafts.length} draft{selectedDrafts.length !== 1 ? "s" : ""} selected
+            </p>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={deleting}
+              onClick={() => setPendingDelete(selectedDrafts)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Delete drafts
+            </Button>
+          </div>
+        )}
+
         {/* Filters */}
         <div className="flex flex-col gap-2 sm:flex-row">
           <div className="relative flex-1">
