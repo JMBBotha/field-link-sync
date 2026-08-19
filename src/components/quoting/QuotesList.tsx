@@ -55,6 +55,8 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   const [typeFilter, setTypeFilter] = useState<"all" | "estimate" | "proposal">("all");
   const [converting, setConverting] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
+  const [deleting, setDeleting] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<any[] | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -286,6 +288,22 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
           ))}
         </div>
 
+        {selectedDrafts.length > 0 && (
+          <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              {selectedDrafts.length} draft{selectedDrafts.length !== 1 ? "s" : ""} selected
+            </p>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={deleting}
+              onClick={() => setPendingDelete(selectedDrafts)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Delete drafts
+            </Button>
+          </div>
+        )}
+
         {/* Filters */}
         <div className="flex flex-col gap-2 sm:flex-row">
           <div className="relative flex-1">
@@ -464,6 +482,17 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                                 />
                               </>
                             )}
+                            {doc.status === "draft" && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-destructive hover:text-destructive"
+                                onClick={() => setPendingDelete([doc])}
+                                title="Delete draft"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -476,6 +505,33 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
           </Card>
         )}
       </div>
+
+      <AlertDialog open={!!pendingDelete} onOpenChange={(o) => !o && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {pendingDelete?.length ?? 0} draft
+              {(pendingDelete?.length ?? 0) !== 1 ? "s" : ""}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the selected draft documents and their line items. This
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(e) => {
+                e.preventDefault();
+                if (pendingDelete) performDelete(pendingDelete as any);
+              }}
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
