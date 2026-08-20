@@ -12,9 +12,13 @@ import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 function getPopupPricing(product: PaletteProduct, priceOverride?: number | null) {
   const markup = product.default_markup_percent ?? 35;
   // Live PDF pink-column price wins — keeps popup in sync with what's visible on the page,
-  // even if the DB cost is stale from an older upload.
+  // even if the DB cost is stale from an older upload. NOTE: the PDF column is the supplier
+  // LIST price, so the trade discount must be applied before it is treated as our cost —
+  // otherwise the markup stacks on top of list (e.g. Samsung R17 477 -> R21 846 instead of R17 477).
   if (priceOverride != null && isFinite(priceOverride) && priceOverride > 0) {
-    return getProductPricing(priceOverride, markup);
+    const discount = Number(product.supplier_discount_percent) || 0;
+    const netCost = discount > 0 ? priceOverride * (1 - discount / 100) : priceOverride;
+    return getProductPricing(netCost, markup);
   }
   const cost = product.cost_price || product.cost_excl_vat || 0;
   if (cost <= 0) {
@@ -24,6 +28,7 @@ function getPopupPricing(product: PaletteProduct, priceOverride?: number | null)
   }
   return getProductPricing(cost, markup);
 }
+
 
 interface EnhancedProductPopupProps {
   product: PaletteProduct;
