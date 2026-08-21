@@ -1,5 +1,5 @@
 import { memo, useRef, useCallback } from "react";
-import { computeProductPricing } from "@/lib/pricing";
+import { computeProductPricing, resolveRowCostExVat } from "@/lib/pricing";
 import { parsePdfRowSpecs } from "./parsePdfRowSpecs";
 import { Info, Circle, CheckCircle2, Star } from "lucide-react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
