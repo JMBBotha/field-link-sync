@@ -6,28 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getCategoryIcon, getCategoryBg } from "./ProductPalette";
 import { getProductDisplayName } from "./productDisplayUtils";
-import { getProductPricing, stripVat } from "@/lib/pricing";
+import { getProductPricing, resolveRowCostExVat } from "@/lib/pricing";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
 function getPopupPricing(product: PaletteProduct, priceOverride?: number | null) {
   const markup = product.default_markup_percent ?? 35;
-  // Live PDF pink-column price wins — keeps popup in sync with what's visible on the page,
-  // even if the DB cost is stale from an older upload. NOTE: the PDF column is the supplier
-  // LIST price, so the trade discount must be applied before it is treated as our cost —
-  // otherwise the markup stacks on top of list (e.g. Samsung R17 477 -> R21 846 instead of R17 477).
-  if (priceOverride != null && isFinite(priceOverride) && priceOverride > 0) {
-    const discount = Number(product.supplier_discount_percent) || 0;
-    const netCost = discount > 0 ? priceOverride * (1 - discount / 100) : priceOverride;
-    return getProductPricing(netCost, markup);
-  }
-  const cost = product.cost_price || product.cost_excl_vat || 0;
-  if (cost <= 0) {
-    const fallbackRaw = product.cost_incl_vat || 0;
-    const fallbackCost = fallbackRaw > 0 ? stripVat(fallbackRaw) : 0;
-    return getProductPricing(fallbackCost, markup);
-  }
+  // The catalog cost_price is already net of the supplier trade discount, so it
+  // always wins. A PDF pink-column number is a LIST price, so it only gets used
+  // when there is no stored cost — and then the discount is applied first, which
+  // keeps list x 0.80 x 1.25 === list (Samsung R10 000 -> R10 000).
+  const cost = resolveRowCostExVat(product, priceOverride);
   return getProductPricing(cost, markup);
 }
+
 
 
 interface EnhancedProductPopupProps {
