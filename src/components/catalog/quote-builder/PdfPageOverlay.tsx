@@ -1,5 +1,5 @@
 import { memo, useRef, useCallback } from "react";
-import { computeProductPricing } from "@/lib/pricing";
+import { computeProductPricing, resolveRowCostExVat } from "@/lib/pricing";
 import { parsePdfRowSpecs } from "./parsePdfRowSpecs";
 import { Info, Circle, CheckCircle2, Star } from "lucide-react";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
@@ -123,18 +123,17 @@ const RegionBox = memo(({
     const alreadySelectedInPdf = !!pdfSelection?.selectedFromPdf.some((item) => item.code === code);
 
     if (pdfSelection) {
-      // Use the row's actual pink-column price (region.detected_price) as the
-      // source of truth — this is the installer/cost price for THIS specific row,
-      // not the product's catalog default (which may differ between rows that
-      // share a product_code).
-      const rowCost = region.detected_price ?? 0;
-      const baseCost = Number(product.cost_price ?? product.cost_excl_vat ?? product.cost_incl_vat ?? 0);
-      const effectiveCost = rowCost > 0 ? rowCost : baseCost;
+      // The row's pink-column number (region.detected_price) is the supplier
+      // LIST price, not our cost. resolveRowCostExVat prefers the catalog's
+      // stored (already-discounted) cost and otherwise applies the trade
+      // discount to the list price, so list x 0.80 x 1.25 lands back on list.
+      const effectiveCost = resolveRowCostExVat(product, region.detected_price ?? null);
       const markupPct = product.default_markup_percent ?? product.markup_percent ?? 35;
       const normalizedMarkup = markupPct > 0 && markupPct <= 1 ? markupPct * 100 : markupPct;
       const sellExVat = effectiveCost > 0
         ? Math.round(effectiveCost * (1 + normalizedMarkup / 100) * 100) / 100
         : (computeProductPricing(product).sellExVat || 0);
+
       const specs = parsePdfRowSpecs(region.label || "");
       pdfSelection.handleSelectProduct({
         code,

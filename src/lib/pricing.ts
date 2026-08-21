@@ -113,6 +113,58 @@ export function applyDiscount(listPrice: number, discountPercent: number): numbe
   return r2(listPrice * (1 - discountPercent / 100));
 }
 
+/**
+ * Convert a supplier LIST price into our net cost by applying the trade discount.
+ * This is the first half of the business identity
+ *   list x (1 - discount) x (1 + markup) === list
+ * e.g. Samsung: 10 000 x 0.80 x 1.25 = 10 000.
+ *
+ * Never round here — rounding the intermediate cost is what breaks the identity
+ * (e.g. 15 825.23 x 0.8 = 12 660.184 -> 12 660.18 -> x1.25 = 15 825.225 -> 15 825.23).
+ * Round only at the final selling price.
+ */
+export function netCostFromList(listPriceExVat: number, discountPercent: number): number {
+  const list = sanitizeCostPrice(listPriceExVat);
+  const d = Number(discountPercent);
+  if (!Number.isFinite(d) || d <= 0) return list;
+  return list * (1 - clampRange(d, 0, 95) / 100);
+}
+
+/**
+ * Single source of truth for "what does this row actually cost us, ex VAT".
+ *
+ * - A catalog product's stored cost_price/cost_excl_vat is ALREADY net of the
+ *   supplier trade discount (see file header) — trust it verbatim.
+ * - A price scraped off a supplier PDF price column is a LIST price — the trade
+ *   discount must be applied before markup, otherwise markup stacks on list and
+ *   the 0.80 x 1.25 identity is lost.
+ */
+export function resolveRowCostExVat(
+  product: {
+    cost_price?: number | null;
+    cost_excl_vat?: number | null;
+    cost_incl_vat?: number | null;
+    supplier_discount_percent?: number | null;
+  } | null | undefined,
+  detectedListPriceExVat?: number | null,
+  supplierDiscountFallbackPercent?: number | null,
+): number {
+  const storedCost = Number(product?.cost_price ?? 0) || Number(product?.cost_excl_vat ?? 0);
+  if (storedCost > 0) return storedCost;
+
+  const discount =
+    Number(product?.supplier_discount_percent ?? 0) ||
+    Number(supplierDiscountFallbackPercent ?? 0) ||
+    0;
+
+  const list = Number(detectedListPriceExVat ?? 0);
+  if (list > 0) return netCostFromList(list, discount);
+
+  const inclVat = Number(product?.cost_incl_vat ?? 0);
+  return inclVat > 0 ? stripVat(inclVat) : 0;
+}
+
+
 /** @deprecated Use stripVat */
 export const exclVatFromIncl = stripVat;
 
