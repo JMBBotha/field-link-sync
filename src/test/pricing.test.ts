@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcSellingPrice, getProductPricing, computePricing } from "../lib/pricing";
+import { calcSellingPrice, getProductPricing, computePricing, netCostFromList, resolveRowCostExVat } from "../lib/pricing";
 
 describe("calcSellingPrice", () => {
   it("applies markup to cost_price with NO re-discounting (cost_price is already net)", () => {
@@ -69,5 +69,36 @@ describe("computePricing", () => {
     const result = computePricing("SAMSUNG", 500, 35, NaN as unknown as number);
     expect(Number.isFinite(result.costExVat)).toBe(true);
     expect(Number.isFinite(result.sellExVat)).toBe(true);
+  });
+});
+
+describe("list -> discount -> markup identity (Samsung pattern)", () => {
+  it("returns exactly the list price for 20% discount + 25% markup", () => {
+    const list = 10000;
+    const cost = netCostFromList(list, 20);
+    const { sellingExclVat } = calcSellingPrice(cost, 25);
+    expect(sellingExclVat).toBe(10000);
+  });
+
+  it("holds the identity on an awkward real Samsung list price", () => {
+    const list = 15825.23; // AR18BSHCMWK/FA
+    const cost = netCostFromList(list, 20);
+    const { sellingExclVat } = calcSellingPrice(cost, 25);
+    expect(Math.abs(sellingExclVat - list)).toBeLessThanOrEqual(0.01);
+  });
+
+  it("trusts a stored (already-discounted) cost_price and never re-discounts it", () => {
+    const cost = resolveRowCostExVat(
+      { cost_price: 12660.18, supplier_discount_percent: 20 },
+      15825.23,
+    );
+    expect(cost).toBe(12660.18);
+    expect(calcSellingPrice(cost, 25).sellingExclVat).toBe(15825.23);
+  });
+
+  it("treats a PDF list price as list (not cost) when there is no stored cost", () => {
+    const cost = resolveRowCostExVat({ cost_price: 0, supplier_discount_percent: 20 }, 10000);
+    expect(cost).toBe(8000);
+    expect(calcSellingPrice(cost, 25).sellingExclVat).toBe(10000);
   });
 });
