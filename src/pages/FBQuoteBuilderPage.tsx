@@ -83,14 +83,14 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
     let cancelled = false;
     (async () => {
       const { data } = await (supabase.from("customer_locations") as any)
-        .select("id, label, address_line1, city")
+        .select("id, label, address")
         .eq("customer_id", prefillCustomerId)
         .order("is_primary", { ascending: false })
         .order("created_at", { ascending: true });
       if (cancelled) return;
       const rows = ((data as any[]) || []).map((r) => ({
         id: r.id,
-        label: r.label || [r.address_line1, r.city].filter(Boolean).join(", ") || "Location",
+        label: r.label || r.address || "Location",
       }));
       setLocations(rows);
       // Default to first location if nothing picked yet
