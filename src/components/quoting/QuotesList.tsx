@@ -192,24 +192,48 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
       const proposalIds = targets.filter((d) => d.kind === "proposal").map((d) => d.id);
 
       if (estimateIds.length) {
-        // Remove children first — some FKs are restrict-only.
-        await supabase.from("quote_items").delete().in("quote_id", estimateIds);
-        await supabase.from("quote_line_items").delete().in("quote_id", estimateIds);
-        await supabase.from("quote_areas").delete().in("quote_id", estimateIds);
-        const { error } = await supabase
+        // Delete the parent FIRST so a permission failure can never orphan/wipe
+        // the children. `.select()` tells us which rows were actually removed —
+        // an RLS-filtered delete returns no error and no rows.
+        let { data: removed, error } = await supabase
           .from("quotes")
           .delete()
           .in("id", estimateIds)
-          .eq("status", "draft");
+          .eq("status", "draft")
+          .select("id");
+
+        // Restrict-only FKs: clear children, then retry the parent.
+        if (error && (error as any).code === "23503") {
+          await supabase.from("quote_items").delete().in("quote_id", estimateIds);
+          await supabase.from("quote_line_items").delete().in("quote_id", estimateIds);
+          await supabase.from("quote_areas").delete().in("quote_id", estimateIds);
+          ({ data: removed, error } = await supabase
+            .from("quotes")
+            .delete()
+            .in("id", estimateIds)
+            .eq("status", "draft")
+            .select("id"));
+        }
         if (error) throw error;
+        if (!removed || removed.length === 0) {
+          throw new Error(
+            "You do not have permission to delete these drafts. Ask an administrator.",
+          );
+        }
       }
       if (proposalIds.length) {
-        const { error } = await (supabase as any)
+        const { data: removed, error } = await (supabase as any)
           .from("visual_proposals")
           .delete()
           .in("id", proposalIds)
-          .eq("status", "draft");
+          .eq("status", "draft")
+          .select("id");
         if (error) throw error;
+        if (!removed || removed.length === 0) {
+          throw new Error(
+            "You do not have permission to delete these drafts. Ask an administrator.",
+          );
+        }
       }
 
       setSelected((prev) => prev.filter((id) => !targets.some((t) => t.id === id)));
@@ -219,6 +243,8 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
         title: `${targets.length} draft${targets.length !== 1 ? "s" : ""} deleted`,
       });
     } catch (e: any) {
+      qc.invalidateQueries({ queryKey: ["quotes"] });
+      qc.invalidateQueries({ queryKey: ["visual-proposals"] });
       toast({
         title: "Delete failed",
         description: e.message || "Could not delete the selected drafts.",
@@ -229,6 +255,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
       setPendingDelete(null);
     }
   };
+
 
   const openDoc = (doc: (typeof docs)[number]) => {
     if (doc.kind === "proposal") navigate(`/admin/proposal-builder?proposalId=${doc.id}`);
