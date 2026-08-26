@@ -6,7 +6,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight, Maximize2, Minimize2 } from "lucide-react";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { formatRand } from "@/utils/formatRand";
 import VoiceQuoteDialog from "@/components/quoting/VoiceQuoteDialog";
@@ -707,6 +707,9 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
      section at a time (palette / areas / summary) ── */
   const isCompact = useIsTabletOrBelow();
   const [areaSection, setAreaSection] = useState<"palette" | "areas" | "summary">("areas");
+  /* True full-page mode for the Product Palette: hides the Area Quote and
+     Quote Summary headers/content entirely so the palette fills the screen */
+  const [paletteMaximized, setPaletteMaximized] = useState(false);
 
   const handleGenerateQuote = useCallback(async () => {
     if (!quoteId) return;
