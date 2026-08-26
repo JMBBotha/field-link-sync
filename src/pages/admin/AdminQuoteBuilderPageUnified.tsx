@@ -6,7 +6,9 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Users, X, Loader2, Mic } from "lucide-react";
+import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight } from "lucide-react";
+import { useIsTabletOrBelow } from "@/hooks/use-mobile";
+import { formatRand } from "@/utils/formatRand";
 import VoiceQuoteDialog from "@/components/quoting/VoiceQuoteDialog";
 import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
 import { useProductUsageStats } from "@/hooks/useProductUsageStats";
