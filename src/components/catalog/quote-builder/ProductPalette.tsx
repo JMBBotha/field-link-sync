@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import { getProductDisplayName, getProductBriefDescription } from "./productDisplayUtils";
+import { allTermsMatchBlob } from "../searchSynonyms";
 import BundleItemsPopover, { computeBundlePricing, type BundleSubItem } from "./BundleItemsPopover";
 
 function HighlightText({ text, searchTerm }: { text: string; searchTerm: string }) {
