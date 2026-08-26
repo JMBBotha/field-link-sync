@@ -763,16 +763,16 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             <TabsTrigger value="normal" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Build</TabsTrigger>
             <TabsTrigger value="visual" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Visual PDF</TabsTrigger>
             <TabsTrigger value="area" className="text-xs text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground px-4">Build Area Quote</TabsTrigger>
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={() => setVoiceOpen(true)}
+              className="h-7 w-7 ml-0.5 border-transparent bg-transparent hover:bg-accent"
+              title="Speak your line items"
+            >
+              <Mic className="h-3.5 w-3.5" />
+            </Button>
           </TabsList>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setVoiceOpen(true)}
-            className="ml-2 h-8 gap-1.5 text-xs"
-            title="Speak your line items"
-          >
-            <Mic className="h-3.5 w-3.5" /> Build with voice
-          </Button>
         </div>
       </Tabs>
 
