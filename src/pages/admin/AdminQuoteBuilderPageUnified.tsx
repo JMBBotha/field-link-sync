@@ -969,7 +969,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
               </button>
             )}
             <div className={`w-full lg:w-[320px] lg:shrink-0 lg:border-t-0 lg:border-l overflow-y-auto bg-card p-3 lg:max-h-none ${
-              isCompact ? (areaSection === "summary" ? "flex-1 min-h-0" : "hidden") : "shrink-0 border-t"
+              isCompact ? (areaSection === "summary" && !paletteMaximized ? "flex-1 min-h-0" : "hidden") : "shrink-0 border-t"
             }`}>
               <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
             </div>
