@@ -37,6 +37,25 @@ export const quoteVersionKeys = {
   changeOrders: (quoteId: string | null | undefined) => ["quote-change-orders", quoteId] as const,
 };
 
+export async function createQuoteVersionSnapshot(quoteId: string | null | undefined): Promise<string> {
+  if (!quoteId) throw new Error("A quote must be open before creating a version.");
+
+  const { count, error: countError } = await supabase
+    .from("quote_items")
+    .select("id", { count: "exact", head: true })
+    .eq("quote_id", quoteId);
+
+  if (countError) throw countError;
+  if (!count) {
+    throw new Error("Add at least one line item before creating a quote version.");
+  }
+
+  const { data, error } = await supabase.rpc("create_quote_version", { p_quote_id: quoteId });
+  if (error) throw error;
+  if (!data) throw new Error("The quote version was not created.");
+  return data as string;
+}
+
 export function useQuoteVersions(quoteId: string | null | undefined) {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -80,11 +99,7 @@ export function useQuoteVersions(quoteId: string | null | undefined) {
   });
 
   const createVersion = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.rpc("create_quote_version", { p_quote_id: quoteId as string });
-      if (error) throw error;
-      return data as string;
-    },
+    mutationFn: () => createQuoteVersionSnapshot(quoteId),
     onSuccess: () => {
       invalidate();
       toast({ title: "New version created", description: "The quote was snapshotted as a new version." });
