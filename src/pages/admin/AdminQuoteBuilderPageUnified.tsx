@@ -767,8 +767,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
           </div>
         )}
         {!ctxLoading && activeTab === "normal" &&
-        <div className="h-full flex">
-            <div className="flex-1 min-w-0 overflow-y-auto">
+        <div className="h-full flex flex-col lg:flex-row overflow-hidden">
+            <div className="flex-1 min-w-0 min-h-0 overflow-y-auto">
               <QuoteBuilderTab
                 initialBaskets={initialBaskets}
                 onBasketsChange={setBaskets}
@@ -803,15 +803,15 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
                 quoteTotals={displayQuoteTotals}
               />
             </div>
-            <div className="w-[320px] shrink-0 border-l overflow-y-auto p-3 bg-card">
+            <div className="w-full lg:w-[320px] shrink-0 border-t lg:border-t-0 lg:border-l overflow-y-auto p-3 bg-card max-h-[38vh] lg:max-h-none">
               <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
 
             </div>
           </div>
         }
         {!ctxLoading && activeTab === "visual" &&
-        <div className="h-full flex">
-            <div className="flex-1 min-w-0 overflow-hidden">
+        <div className="h-full flex flex-col lg:flex-row overflow-hidden">
+            <div className="flex-1 min-w-0 min-h-0 overflow-hidden">
               <VisualCatalogPanel
               open={true}
               onClose={() => setActiveTab("normal")}
