@@ -826,15 +826,15 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
               pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }} />
 
             </div>
-            <div className="w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
+            <div className="w-full lg:w-[320px] shrink-0 border-t lg:border-t-0 lg:border-l overflow-y-auto bg-card p-3 max-h-[38vh] lg:max-h-none">
               <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
             </div>
           </div>
         }
         {!ctxLoading && activeTab === "area" &&
-        <div className="h-full flex">
-            {/* Product Palette - left sidebar */}
-            <div className="w-[280px] shrink-0 flex flex-col min-h-0 overflow-hidden pl-2 py-1">
+        <div className="h-full flex flex-col lg:flex-row overflow-hidden">
+            {/* Product Palette - top section on mobile, left sidebar on desktop */}
+            <div className="w-full lg:w-[280px] shrink-0 flex flex-col min-h-0 overflow-hidden pl-2 py-1 max-h-[32vh] lg:max-h-none border-b lg:border-b-0">
               <ProductPalette
                 products={areaFilteredProducts}
                 isLoading={false}
@@ -856,7 +856,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
               />
             </div>
             {/* Area Builder - center */}
-            <div className="flex-1 min-w-0 overflow-hidden p-1">
+            <div className="flex-1 min-w-0 min-h-0 overflow-hidden p-1">
               <AreaQuoteBuilderInline
                 products={products}
                 bundles={bundles}
