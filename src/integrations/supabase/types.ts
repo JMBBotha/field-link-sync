@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -5556,6 +5556,8 @@ export type Database = {
       }
       supplier_products: {
         Row: {
+          ai_sales_description: string | null
+          ai_sales_description_generated_at: string | null
           allows_decimal_qty: boolean
           archived: boolean
           archived_at: string | null
@@ -5629,6 +5631,8 @@ export type Database = {
           vat_rate: number
         }
         Insert: {
+          ai_sales_description?: string | null
+          ai_sales_description_generated_at?: string | null
           allows_decimal_qty?: boolean
           archived?: boolean
           archived_at?: string | null
@@ -5702,6 +5706,8 @@ export type Database = {
           vat_rate?: number
         }
         Update: {
+          ai_sales_description?: string | null
+          ai_sales_description_generated_at?: string | null
           allows_decimal_qty?: boolean
           archived?: boolean
           archived_at?: string | null
