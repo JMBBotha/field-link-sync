@@ -5556,6 +5556,8 @@ export type Database = {
       }
       supplier_products: {
         Row: {
+          ai_sales_description: string | null
+          ai_sales_description_generated_at: string | null
           allows_decimal_qty: boolean
           archived: boolean
           archived_at: string | null
@@ -5629,6 +5631,8 @@ export type Database = {
           vat_rate: number
         }
         Insert: {
+          ai_sales_description?: string | null
+          ai_sales_description_generated_at?: string | null
           allows_decimal_qty?: boolean
           archived?: boolean
           archived_at?: string | null
@@ -5702,6 +5706,8 @@ export type Database = {
           vat_rate?: number
         }
         Update: {
+          ai_sales_description?: string | null
+          ai_sales_description_generated_at?: string | null
           allows_decimal_qty?: boolean
           archived?: boolean
           archived_at?: string | null
