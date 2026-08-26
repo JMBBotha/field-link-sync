@@ -827,7 +827,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
 
   return (
     <div className="flex flex-col h-full overflow-hidden gap-3 relative pb-2 min-w-0">
-      <div className="border bg-card p-3 z-10 shadow-sm shrink-0 rounded-sm py-[6px] mx-[4px] my-[8px] flex flex-col gap-[6px]">
+      <div className="hidden md:flex flex-col border bg-card p-3 z-10 shadow-sm shrink-0 rounded-sm py-[6px] mx-[4px] my-[8px] gap-[6px]">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-muted-foreground">
             Quote Total ({quoteTotals.itemCount} items across {quoteTotals.zoneCount} zones)
