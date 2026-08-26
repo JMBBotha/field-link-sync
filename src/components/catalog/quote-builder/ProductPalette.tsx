@@ -864,7 +864,13 @@ const ProductPalette = ({
             Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)
           ) : sortedProducts.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-8">
-              {categoryFilter === "favorites" ? "No favorites yet — star products to add them" : "No products found"}
+              {searchQuery.trim()
+                ? "No products match your search"
+                : categoryFilter === "favorites"
+                ? "No favorites yet — star products to add them"
+                : categoryFilter === "recent"
+                ? "No recently used products"
+                : "No products found"}
             </p>
           ) : (
             Object.entries(grouped).map(([category, items]) => (
