@@ -798,8 +798,18 @@ const ProductPalette = ({
                 placeholder="Search products..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                className="pl-8 h-8 text-xs"
+                className="pl-8 pr-8 h-8 text-xs"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => onSearchChange("")}
+                  className="absolute right-2 top-1.5 p-0.5 rounded hover:bg-muted text-muted-foreground"
+                  title="Clear search"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
             <div className="flex flex-wrap gap-1">
               {CATEGORIES.map((cat) => {
