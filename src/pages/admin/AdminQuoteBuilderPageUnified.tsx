@@ -859,20 +859,34 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         <div className="h-full flex flex-col lg:flex-row overflow-hidden">
             {/* Product Palette — collapsible full-screen section on mobile, left sidebar on desktop */}
             {isCompact && (
-              <button
-                type="button"
-                onClick={() => setAreaSection(areaSection === "palette" ? "areas" : "palette")}
-                className="shrink-0 flex items-center justify-between w-full px-3 py-2 border-b bg-card text-xs font-semibold text-foreground lg:hidden"
-              >
-                <span className="flex items-center gap-1.5">
-                  {areaSection === "palette" ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                  Product Palette
-                </span>
-                <span className="text-[10px] font-normal text-muted-foreground">{areaFilteredProducts.length} items</span>
-              </button>
+              <div className="shrink-0 flex items-center w-full border-b bg-card lg:hidden">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (paletteMaximized) return;
+                    setAreaSection(areaSection === "palette" ? "areas" : "palette");
+                  }}
+                  className="flex-1 flex items-center justify-between px-3 py-2 text-xs font-semibold text-foreground"
+                >
+                  <span className="flex items-center gap-1.5">
+                    {areaSection === "palette" || paletteMaximized ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                    Product Palette
+                  </span>
+                  <span className="text-[10px] font-normal text-muted-foreground">{areaFilteredProducts.length} items</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaletteMaximized((v) => !v)}
+                  className="shrink-0 flex items-center gap-1 px-3 py-2 text-[10px] font-medium text-muted-foreground hover:text-foreground border-l"
+                  title={paletteMaximized ? "Exit full screen" : "Full screen"}
+                >
+                  {paletteMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                  {paletteMaximized ? "Exit" : "Full page"}
+                </button>
+              </div>
             )}
             <div className={`w-full lg:w-[280px] lg:shrink-0 flex flex-col min-h-0 overflow-hidden pl-2 py-1 lg:border-b-0 ${
-              isCompact ? (areaSection === "palette" ? "flex-1" : "hidden") : ""
+              isCompact ? (paletteMaximized || areaSection === "palette" ? "flex-1" : "hidden") : ""
             }`}>
               <ProductPalette
                 products={areaFilteredProducts}
