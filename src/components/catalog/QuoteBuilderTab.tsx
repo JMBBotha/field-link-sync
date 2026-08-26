@@ -845,7 +845,7 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 flex-1 min-h-0 overflow-hidden px-2">
+      <div className="grid grid-cols-1 grid-rows-[minmax(0,2fr)_minmax(0,3fr)] md:grid-rows-1 md:grid-cols-5 gap-4 flex-1 min-h-0 overflow-hidden px-2">
           <div className="md:col-span-2 flex flex-col min-h-0 overflow-hidden pl-2">
             <ProductPalette
               products={filteredProducts}
