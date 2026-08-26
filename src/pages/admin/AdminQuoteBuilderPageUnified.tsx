@@ -918,7 +918,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             </div>
 
             {/* Area Builder — center / collapsible full-screen section on mobile */}
-            {isCompact && (
+            {isCompact && !paletteMaximized && (
               <button
                 type="button"
                 onClick={() => setAreaSection("areas")}
@@ -934,7 +934,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
               </button>
             )}
             <div className={`min-w-0 min-h-0 overflow-hidden p-1 ${
-              isCompact ? (areaSection === "areas" ? "flex-1" : "hidden") : "flex-1"
+              isCompact ? (areaSection === "areas" && !paletteMaximized ? "flex-1" : "hidden") : "flex-1"
             }`}>
               <AreaQuoteBuilderInline
                 products={products}
