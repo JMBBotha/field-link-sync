@@ -870,8 +870,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
                 generating={generating}
               />
             </div>
-            {/* Summary - right sidebar */}
-            <div className="w-[320px] shrink-0 border-l overflow-y-auto bg-card p-3">
+            {/* Summary - bottom section on mobile, right sidebar on desktop */}
+            <div className="w-full lg:w-[320px] shrink-0 border-t lg:border-t-0 lg:border-l overflow-y-auto bg-card p-3 max-h-[32vh] lg:max-h-none">
               <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
             </div>
           </div>
