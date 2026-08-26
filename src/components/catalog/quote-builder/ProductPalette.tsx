@@ -688,15 +688,35 @@ const ProductPalette = ({
   const [selectedCollapsed, setSelectedCollapsed] = useState(false);
   const recentIds = useMemo(() => getRecentProductIds(), [products]);
   const filteredProducts = useMemo(() => {
+    let result = products;
     if (categoryFilter === "favorites") {
-      return products.filter((p) => favorites.has(p.id));
-    }
-    if (categoryFilter === "recent") {
+      result = result.filter((p) => favorites.has(p.id));
+    } else if (categoryFilter === "recent") {
       const idSet = new Set(recentIds);
-      return products.filter((p) => idSet.has(p.id)).sort((a, b) => recentIds.indexOf(a.id) - recentIds.indexOf(b.id));
+      result = result
+        .filter((p) => idSet.has(p.id))
+        .sort((a, b) => recentIds.indexOf(a.id) - recentIds.indexOf(b.id));
     }
-    return products;
-  }, [products, categoryFilter, favorites, recentIds]);
+    if (searchQuery.trim()) {
+      const terms = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
+      result = result.filter((p) => {
+        const blob = [
+          p.product_code,
+          p.short_name,
+          p.brand,
+          p.description,
+          p.category,
+          p.product_category,
+          p.supplier_name,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return allTermsMatchBlob(terms, blob);
+      });
+    }
+    return result;
+  }, [products, categoryFilter, favorites, recentIds, searchQuery]);
 
   // Sort: favorites first, then by usage count DESC, then alphabetical
   const sortedProducts = useMemo(() => {
