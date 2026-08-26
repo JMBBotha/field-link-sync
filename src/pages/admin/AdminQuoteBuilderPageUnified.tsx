@@ -706,7 +706,15 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   /* ── Mobile/tablet accordion for the Area tab: one full-screen scrollable
      section at a time (palette / areas / summary) ── */
   const isCompact = useIsTabletOrBelow();
-  const [areaSection, setAreaSection] = useState<"palette" | "areas" | "summary">("areas");
+  type AreaSectionKey = "palette" | "areas" | "summary";
+  const [openSections, setOpenSections] = useState<Record<AreaSectionKey, boolean>>({
+    palette: true,
+    areas: false,
+    summary: false,
+  });
+  const toggleSection = useCallback((key: AreaSectionKey) => {
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
   /* True full-page mode for the Product Palette: hides the Area Quote and
      Quote Summary headers/content entirely so the palette fills the screen */
   const [paletteMaximized, setPaletteMaximized] = useState(false);
