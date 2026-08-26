@@ -313,11 +313,9 @@ function DraggableProductCard({
               <HoverCardTrigger asChild>
                 <div
                   ref={setNodeRef}
-                  {...attributes}
-                  {...listeners}
                   onClick={handleCardClick}
-                  style={{ touchAction: "none", pointerEvents: isDraggingGlobal && !isDragging ? "none" : "auto" }}
-                  className={`group relative flex items-start gap-2.5 rounded-lg border bg-card p-2.5 cursor-grab active:cursor-grabbing transition-all hover:shadow-md hover:border-primary/20 ${
+                  style={{ pointerEvents: isDraggingGlobal && !isDragging ? "none" : "auto" }}
+                  className={`group relative flex items-start gap-2.5 rounded-lg border bg-card p-2.5 cursor-pointer transition-all hover:shadow-md hover:border-primary/20 ${
                     isDragging ? "opacity-40 shadow-lg scale-95" : ""
                   } ${product.is_pinned ? "border-primary/30" : ""} ${
                     isFavorite ? "border-l-2 border-l-yellow-400 bg-yellow-50/50 dark:bg-yellow-950/20" : ""
@@ -379,7 +377,14 @@ function DraggableProductCard({
                     </div>
                   </div>
                   <div className="flex flex-col items-center gap-1 shrink-0">
-                    <div className="p-0.5 rounded">
+                    <div
+                      {...attributes}
+                      {...listeners}
+                      style={{ touchAction: "none" }}
+                      onClick={(e) => e.stopPropagation()}
+                      title="Drag to add"
+                      className="p-1 -m-0.5 rounded cursor-grab active:cursor-grabbing"
+                    >
                       <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
                     </div>
                     <button

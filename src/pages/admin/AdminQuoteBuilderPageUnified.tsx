@@ -205,6 +205,22 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   // wizard's areas-as-baskets. Every display (header pill, "Quote Total" bar,
   // sidebar) reads from THIS list — no parallel calculations.
   const wizardBaskets = useMemo(() => areasToBaskets(wizardAreas), [wizardAreas]);
+
+  // Tap-to-add targets for the Area tab palette: each wizard area becomes a
+  // pickable "zone" so tapping a product adds it without drag-and-drop.
+  const areaPickerBaskets = useMemo<Basket[]>(() => {
+    if (wizardAreas.length === 0) {
+      // Synthetic target so tap-to-add works before any area exists — the
+      // callback routes "__auto__" to the builder's auto-area add.
+      return [{ id: "__auto__", name: "New area (auto)", items: [] }];
+    }
+    return wizardAreas.map((a) => ({
+      id: a.id,
+      name: a.name,
+      // Only .length is read by the palette's zone-picker badge
+      items: Array(a.acUnits.length + a.materials.length + a.consumables.length + a.brackets.length).fill(null) as unknown as Basket["items"],
+    }));
+  }, [wizardAreas]);
   /**
    * Both the Normal-tab baskets and the inline Area builder hydrate from the
    * SAME persisted quote_items when an existing quote is opened, so naively
@@ -847,9 +863,17 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
                 onToggleFavorite={() => {}}
                 usageMap={areaUsageMap}
                 bundles={bundles}
-                baskets={[]}
-                onAddProductToBasket={(_basketId, product) => {
-                  areaAddProductRef.current?.(product);
+                baskets={areaPickerBaskets}
+                onAddProductToBasket={(areaId, product) => {
+                  if (areaId === "__auto__") areaAddProductRef.current?.(product);
+                  else areaDropProductToAreaRef.current?.(areaId, product);
+                }}
+                onAddBundleToBasket={(areaId, bundle) => {
+                  if (areaId === "__auto__") {
+                    toast({ title: "Create an area first", description: "Add an area, then tap the bundle to apply it." });
+                    return;
+                  }
+                  areaDropBundleToAreaRef.current?.(areaId, bundle);
                 }}
                 pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
                 onPopOutSelected={() => setFloatingOpen(true)}
@@ -864,6 +888,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
                 onPdfSearch={pdfSearchRef.current || undefined}
                 onAreasChange={setWizardAreas}
                 onAddProductRef={areaAddProductRef}
+                onDropProductToAreaRef={areaDropProductToAreaRef}
+                onDropBundleToAreaRef={areaDropBundleToAreaRef}
                 pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
                 initialAreas={initialWizardAreas}
                 onGenerateQuote={handleGenerateQuote}
