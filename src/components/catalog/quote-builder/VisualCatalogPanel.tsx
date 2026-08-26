@@ -595,7 +595,19 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="flex items-center gap-2 px-3 py-2 border-b bg-card text-foreground shrink-0">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
+            {/* Back to quote builder — always first so it stays visible on mobile */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 shrink-0 gap-1 text-[11px]"
+              onClick={onClose}
+              title="Close the PDF viewer and return to the quote builder"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to Quote Builder
+            </Button>
+
+            <div className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto no-scrollbar">
               <FileImage className="h-4 w-4 text-primary shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold truncate text-foreground">{currentSupplierName || "Visual Catalog"}</p>
@@ -642,108 +654,96 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                 </AlertDialog>
               )}
 
-            </div>
+              {/* Page indicator + quick-jump buttons */}
+              {pages.length > 0 && (
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => goToPage(-1)} disabled={visiblePageIndex === 0}>
+                    <span className="text-xs">◀</span>
+                  </Button>
+                  <span className="text-[10px] font-medium text-muted-foreground min-w-[60px] text-center">
+                    Page {visiblePageIndex + 1} of {pages.length}
+                  </span>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => goToPage(1)} disabled={visiblePageIndex >= pages.length - 1}>
+                    <span className="text-xs">▶</span>
+                  </Button>
+                </div>
+              )}
 
-            {/* Page indicator + quick-jump buttons */}
-            {pages.length > 0 && (
-              <div className="flex items-center gap-1 shrink-0">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => goToPage(-1)} disabled={visiblePageIndex === 0}>
-                  <span className="text-xs">◀</span>
+              <div className="flex items-center gap-0.5 shrink-0">
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}>
+                  <ZoomOut className="h-3.5 w-3.5" />
                 </Button>
-                <span className="text-[10px] font-medium text-muted-foreground min-w-[60px] text-center">
-                  Page {visiblePageIndex + 1} of {pages.length}
-                </span>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => goToPage(1)} disabled={visiblePageIndex >= pages.length - 1}>
-                  <span className="text-xs">▶</span>
+                <span className="text-[10px] text-muted-foreground w-9 text-center">{Math.round(zoom * 100)}%</span>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom((z) => Math.min(3, z + 0.25))}>
+                  <ZoomIn className="h-3.5 w-3.5" />
                 </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={loupeActive ? "secondary" : "ghost"}
+                      size="icon"
+                      className={`h-7 w-7 ${loupeActive ? "ring-1 ring-primary" : ""}`}
+                      onClick={() => setLoupeActive(a => !a)}
+                    >
+                      <Search className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-[10px]">Magnifying glass</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={hdMode ? "secondary" : "ghost"}
+                      size="icon"
+                      className={`h-7 w-7 text-[9px] font-bold ${hdMode ? "ring-1 ring-primary" : ""}`}
+                      onClick={() => {
+                        const next = !hdMode;
+                        setHdMode(next);
+                        localStorage.setItem(HD_KEY, String(next));
+                        // Clear cache so pages re-render at new quality
+                        clearExtractionCache();
+                        queryClient.removeQueries({ queryKey: ["visual-panel-live-extract"] });
+                      }}
+                    >
+                      HD
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-[10px]">High quality PDF render (slower)</TooltipContent>
+                </Tooltip>
               </div>
-            )}
 
-            <div className="flex items-center gap-0.5 shrink-0">
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}>
-                <ZoomOut className="h-3.5 w-3.5" />
-              </Button>
-              <span className="text-[10px] text-muted-foreground w-9 text-center">{Math.round(zoom * 100)}%</span>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom((z) => Math.min(3, z + 0.25))}>
-                <ZoomIn className="h-3.5 w-3.5" />
-              </Button>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={loupeActive ? "secondary" : "ghost"}
-                    size="icon"
-                    className={`h-7 w-7 ${loupeActive ? "ring-1 ring-primary" : ""}`}
-                    onClick={() => setLoupeActive(a => !a)}
-                  >
-                    <Search className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-[10px]">Magnifying glass</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={hdMode ? "secondary" : "ghost"}
-                    size="icon"
-                    className={`h-7 w-7 text-[9px] font-bold ${hdMode ? "ring-1 ring-primary" : ""}`}
-                    onClick={() => {
-                      const next = !hdMode;
-                      setHdMode(next);
-                      localStorage.setItem(HD_KEY, String(next));
-                      // Clear cache so pages re-render at new quality
-                      clearExtractionCache();
-                      queryClient.removeQueries({ queryKey: ["visual-panel-live-extract"] });
-                    }}
-                  >
-                    HD
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-[10px]">High quality PDF render (slower)</TooltipContent>
-              </Tooltip>
+              <Select value={selectedSupplier} onValueChange={(v) => { setSelectedSupplier(v); }}>
+                <SelectTrigger className="h-7 w-32 text-[10px]"><SelectValue placeholder="All Suppliers" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Suppliers</SelectItem>
+                  {supplierOptions.filter((s) => s && s.trim() !== '' && !UUID_PATTERN.test(supplierNameMap[s] || s)).map((s) => (<SelectItem key={s} value={s}>{supplierNameMap[s] || s}</SelectItem>))}
+                </SelectContent>
+              </Select>
+
+              {pdfSelection && pdfSelection.selectedFromPdf.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-[10px] shrink-0"
+                  onClick={() => pdfSelection.setSelectedFromPdf([])}
+                  title="Clear all selected items"
+                >
+                  Clear selected ({pdfSelection.selectedFromPdf.length})
+                </Button>
+              )}
+
+              {onAddSelectedToQuote && pdfSelection && pdfSelection.selectedFromPdf.length > 0 && (
+                <Button
+                  size="sm"
+                  className="h-7 shrink-0 gap-1 text-[11px]"
+                  onClick={onAddSelectedToQuote}
+                  title="Add the selected PDF products to this quote"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add {pdfSelection.selectedFromPdf.length} to quote
+                </Button>
+              )}
             </div>
-
-            <Select value={selectedSupplier} onValueChange={(v) => { setSelectedSupplier(v); }}>
-              <SelectTrigger className="h-7 w-32 text-[10px]"><SelectValue placeholder="All Suppliers" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Suppliers</SelectItem>
-                {supplierOptions.filter((s) => s && s.trim() !== '' && !UUID_PATTERN.test(supplierNameMap[s] || s)).map((s) => (<SelectItem key={s} value={s}>{supplierNameMap[s] || s}</SelectItem>))}
-              </SelectContent>
-            </Select>
-
-            {pdfSelection && pdfSelection.selectedFromPdf.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-[10px] shrink-0"
-                onClick={() => pdfSelection.setSelectedFromPdf([])}
-                title="Clear all selected items"
-              >
-                Clear selected ({pdfSelection.selectedFromPdf.length})
-              </Button>
-            )}
-
-            {onAddSelectedToQuote && pdfSelection && pdfSelection.selectedFromPdf.length > 0 && (
-              <Button
-                size="sm"
-                className="h-7 shrink-0 gap-1 text-[11px]"
-                onClick={onAddSelectedToQuote}
-                title="Add the selected PDF products to this quote"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add {pdfSelection.selectedFromPdf.length} to quote
-              </Button>
-            )}
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 shrink-0 gap-1 text-[11px]"
-              onClick={onClose}
-              title="Close the PDF viewer and return to the quote builder"
-            >
-              <X className="h-3.5 w-3.5" />
-              Close PDF
-            </Button>
           </div>
 
           {/* Content: Continuous scroll */}
