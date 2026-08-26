@@ -607,7 +607,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
               Back to Quote Builder
             </Button>
 
-            <div className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto">
               <FileImage className="h-4 w-4 text-primary shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold truncate text-foreground">{currentSupplierName || "Visual Catalog"}</p>
