@@ -21,6 +21,7 @@ import {
   ExternalLink,
   MapPin,
   CheckCircle2,
+  X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import { getProductDisplayName, getProductBriefDescription } from "./productDisplayUtils";
+import { allTermsMatchBlob } from "../searchSynonyms";
 import BundleItemsPopover, { computeBundlePricing, type BundleSubItem } from "./BundleItemsPopover";
 
 function HighlightText({ text, searchTerm }: { text: string; searchTerm: string }) {
@@ -686,15 +688,35 @@ const ProductPalette = ({
   const [selectedCollapsed, setSelectedCollapsed] = useState(false);
   const recentIds = useMemo(() => getRecentProductIds(), [products]);
   const filteredProducts = useMemo(() => {
+    let result = products;
     if (categoryFilter === "favorites") {
-      return products.filter((p) => favorites.has(p.id));
-    }
-    if (categoryFilter === "recent") {
+      result = result.filter((p) => favorites.has(p.id));
+    } else if (categoryFilter === "recent") {
       const idSet = new Set(recentIds);
-      return products.filter((p) => idSet.has(p.id)).sort((a, b) => recentIds.indexOf(a.id) - recentIds.indexOf(b.id));
+      result = result
+        .filter((p) => idSet.has(p.id))
+        .sort((a, b) => recentIds.indexOf(a.id) - recentIds.indexOf(b.id));
     }
-    return products;
-  }, [products, categoryFilter, favorites, recentIds]);
+    if (searchQuery.trim()) {
+      const terms = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
+      result = result.filter((p) => {
+        const blob = [
+          p.product_code,
+          p.short_name,
+          p.brand,
+          p.description,
+          p.category,
+          p.product_category,
+          p.supplier_name,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return allTermsMatchBlob(terms, blob);
+      });
+    }
+    return result;
+  }, [products, categoryFilter, favorites, recentIds, searchQuery]);
 
   // Sort: favorites first, then by usage count DESC, then alphabetical
   const sortedProducts = useMemo(() => {
@@ -776,8 +798,18 @@ const ProductPalette = ({
                 placeholder="Search products..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                className="pl-8 h-8 text-xs"
+                className="pl-8 pr-8 h-8 text-xs"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => onSearchChange("")}
+                  className="absolute right-2 top-1.5 p-0.5 rounded hover:bg-muted text-muted-foreground"
+                  title="Clear search"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
             <div className="flex flex-wrap gap-1">
               {CATEGORIES.map((cat) => {
@@ -832,7 +864,13 @@ const ProductPalette = ({
             Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)
           ) : sortedProducts.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-8">
-              {categoryFilter === "favorites" ? "No favorites yet — star products to add them" : "No products found"}
+              {searchQuery.trim()
+                ? "No products match your search"
+                : categoryFilter === "favorites"
+                ? "No favorites yet — star products to add them"
+                : categoryFilter === "recent"
+                ? "No recently used products"
+                : "No products found"}
             </p>
           ) : (
             Object.entries(grouped).map(([category, items]) => (
