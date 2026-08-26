@@ -872,12 +872,12 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
                   type="button"
                   onClick={() => {
                     if (paletteMaximized) return;
-                    setAreaSection(areaSection === "palette" ? "areas" : "palette");
+                    toggleSection("palette");
                   }}
                   className="flex-1 flex items-center justify-between px-3 py-2 text-xs font-semibold text-foreground"
                 >
                   <span className="flex items-center gap-1.5">
-                    {areaSection === "palette" || paletteMaximized ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                    {openSections.palette || paletteMaximized ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                     Product Palette
                   </span>
                   <span className="text-[10px] font-normal text-muted-foreground">{areaFilteredProducts.length} items</span>
@@ -894,7 +894,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
               </div>
             )}
             <div className={`w-full lg:w-[280px] lg:shrink-0 flex flex-col min-h-0 overflow-hidden pl-2 py-1 lg:border-b-0 ${
-              isCompact ? (paletteMaximized || areaSection === "palette" ? "flex-1" : "hidden") : ""
+              isCompact ? (paletteMaximized || openSections.palette ? "flex-1" : "hidden") : ""
             }`}>
               <ProductPalette
                 products={areaFilteredProducts}
@@ -929,11 +929,11 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             {isCompact && !paletteMaximized && (
               <button
                 type="button"
-                onClick={() => setAreaSection("areas")}
+                onClick={() => toggleSection("areas")}
                 className="shrink-0 flex items-center justify-between w-full px-3 py-2 border-b bg-card text-xs font-semibold text-foreground lg:hidden"
               >
                 <span className="flex items-center gap-1.5">
-                  {areaSection === "areas" ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                  {openSections.areas ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                   Area Quote
                 </span>
                 <span className="text-[10px] font-normal text-muted-foreground">
@@ -942,7 +942,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
               </button>
             )}
             <div className={`min-w-0 min-h-0 overflow-hidden p-1 ${
-              isCompact ? (areaSection === "areas" && !paletteMaximized ? "flex-1" : "hidden") : "flex-1"
+              isCompact ? (openSections.areas && !paletteMaximized ? "flex-1" : "hidden") : "flex-1"
             }`}>
               <AreaQuoteBuilderInline
                 products={products}
@@ -964,11 +964,11 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             {isCompact && !paletteMaximized && (
               <button
                 type="button"
-                onClick={() => setAreaSection(areaSection === "summary" ? "areas" : "summary")}
+                onClick={() => toggleSection("summary")}
                 className="shrink-0 flex items-center justify-between w-full px-3 py-2 border-t bg-card text-xs font-semibold text-foreground lg:hidden"
               >
                 <span className="flex items-center gap-1.5">
-                  {areaSection === "summary" ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                  {openSections.summary ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                   Quote Summary
                 </span>
                 <span className="text-[11px] font-bold text-primary tabular-nums">
@@ -977,7 +977,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
               </button>
             )}
             <div className={`w-full lg:w-[320px] lg:shrink-0 lg:border-t-0 lg:border-l overflow-y-auto bg-card p-3 lg:max-h-none ${
-              isCompact ? (areaSection === "summary" && !paletteMaximized ? "flex-1 min-h-0" : "hidden") : "shrink-0 border-t"
+              isCompact ? (openSections.summary && !paletteMaximized ? "flex-1 min-h-0" : "hidden") : "shrink-0 border-t"
             }`}>
               <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
             </div>
