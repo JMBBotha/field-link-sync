@@ -705,6 +705,11 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   const [sendOpen, setSendOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
 
+  /* ── Mobile/tablet accordion for the Area tab: one full-screen scrollable
+     section at a time (palette / areas / summary) ── */
+  const isCompact = useIsTabletOrBelow();
+  const [areaSection, setAreaSection] = useState<"palette" | "areas" | "summary">("areas");
+
   const handleGenerateQuote = useCallback(async () => {
     if (!quoteId) return;
     if (displayQuoteTotals.itemCount === 0) {
