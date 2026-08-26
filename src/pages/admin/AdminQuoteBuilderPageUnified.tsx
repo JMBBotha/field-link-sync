@@ -6,7 +6,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight, Maximize2, Minimize2 } from "lucide-react";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { formatRand } from "@/utils/formatRand";
 import VoiceQuoteDialog from "@/components/quoting/VoiceQuoteDialog";
@@ -707,6 +707,9 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
      section at a time (palette / areas / summary) ── */
   const isCompact = useIsTabletOrBelow();
   const [areaSection, setAreaSection] = useState<"palette" | "areas" | "summary">("areas");
+  /* True full-page mode for the Product Palette: hides the Area Quote and
+     Quote Summary headers/content entirely so the palette fills the screen */
+  const [paletteMaximized, setPaletteMaximized] = useState(false);
 
   const handleGenerateQuote = useCallback(async () => {
     if (!quoteId) return;
@@ -856,20 +859,34 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         <div className="h-full flex flex-col lg:flex-row overflow-hidden">
             {/* Product Palette — collapsible full-screen section on mobile, left sidebar on desktop */}
             {isCompact && (
-              <button
-                type="button"
-                onClick={() => setAreaSection(areaSection === "palette" ? "areas" : "palette")}
-                className="shrink-0 flex items-center justify-between w-full px-3 py-2 border-b bg-card text-xs font-semibold text-foreground lg:hidden"
-              >
-                <span className="flex items-center gap-1.5">
-                  {areaSection === "palette" ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                  Product Palette
-                </span>
-                <span className="text-[10px] font-normal text-muted-foreground">{areaFilteredProducts.length} items</span>
-              </button>
+              <div className="shrink-0 flex items-center w-full border-b bg-card lg:hidden">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (paletteMaximized) return;
+                    setAreaSection(areaSection === "palette" ? "areas" : "palette");
+                  }}
+                  className="flex-1 flex items-center justify-between px-3 py-2 text-xs font-semibold text-foreground"
+                >
+                  <span className="flex items-center gap-1.5">
+                    {areaSection === "palette" || paletteMaximized ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                    Product Palette
+                  </span>
+                  <span className="text-[10px] font-normal text-muted-foreground">{areaFilteredProducts.length} items</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaletteMaximized((v) => !v)}
+                  className="shrink-0 flex items-center gap-1 px-3 py-2 text-[10px] font-medium text-muted-foreground hover:text-foreground border-l"
+                  title={paletteMaximized ? "Exit full screen" : "Full screen"}
+                >
+                  {paletteMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                  {paletteMaximized ? "Exit" : "Full page"}
+                </button>
+              </div>
             )}
             <div className={`w-full lg:w-[280px] lg:shrink-0 flex flex-col min-h-0 overflow-hidden pl-2 py-1 lg:border-b-0 ${
-              isCompact ? (areaSection === "palette" ? "flex-1" : "hidden") : ""
+              isCompact ? (paletteMaximized || areaSection === "palette" ? "flex-1" : "hidden") : ""
             }`}>
               <ProductPalette
                 products={areaFilteredProducts}
@@ -901,7 +918,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             </div>
 
             {/* Area Builder — center / collapsible full-screen section on mobile */}
-            {isCompact && (
+            {isCompact && !paletteMaximized && (
               <button
                 type="button"
                 onClick={() => setAreaSection("areas")}
@@ -917,7 +934,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
               </button>
             )}
             <div className={`min-w-0 min-h-0 overflow-hidden p-1 ${
-              isCompact ? (areaSection === "areas" ? "flex-1" : "hidden") : "flex-1"
+              isCompact ? (areaSection === "areas" && !paletteMaximized ? "flex-1" : "hidden") : "flex-1"
             }`}>
               <AreaQuoteBuilderInline
                 products={products}
@@ -936,7 +953,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             </div>
 
             {/* Summary — collapsible full-screen section on mobile, right sidebar on desktop */}
-            {isCompact && (
+            {isCompact && !paletteMaximized && (
               <button
                 type="button"
                 onClick={() => setAreaSection(areaSection === "summary" ? "areas" : "summary")}
@@ -952,7 +969,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
               </button>
             )}
             <div className={`w-full lg:w-[320px] lg:shrink-0 lg:border-t-0 lg:border-l overflow-y-auto bg-card p-3 lg:max-h-none ${
-              isCompact ? (areaSection === "summary" ? "flex-1 min-h-0" : "hidden") : "shrink-0 border-t"
+              isCompact ? (areaSection === "summary" && !paletteMaximized ? "flex-1 min-h-0" : "hidden") : "shrink-0 border-t"
             }`}>
               <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
             </div>
