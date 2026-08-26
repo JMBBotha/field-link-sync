@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  ZoomIn, ZoomOut, X, FileImage, ScanSearch, Loader2, Lightbulb, Search, Trash2, Star, Plus, MonitorUp,
+  ZoomIn, ZoomOut, FileImage, ScanSearch, Loader2, Lightbulb, Search, Trash2, Star, Plus, MonitorUp,
   ArrowLeft,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
