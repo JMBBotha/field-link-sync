@@ -953,7 +953,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             </div>
 
             {/* Summary — collapsible full-screen section on mobile, right sidebar on desktop */}
-            {isCompact && (
+            {isCompact && !paletteMaximized && (
               <button
                 type="button"
                 onClick={() => setAreaSection(areaSection === "summary" ? "areas" : "summary")}
