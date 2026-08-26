@@ -360,7 +360,7 @@ export default function AreaQuoteBuilderInline({ products, bundles, onSave, onPd
   const grandTotal = useMemo(() => areas.reduce((s, a) => s + computeAreaSubtotal(a), 0), [areas]);
 
   return (
-    <div className="flex flex-col bg-card rounded-lg overflow-hidden relative">
+    <div className="flex flex-col h-full min-h-0 bg-card rounded-lg overflow-hidden relative">
       {/* PDF import button */}
       {pdfSelection && pdfSelection.selectedFromPdf.length > 0 && (
         <div className="flex justify-end px-4 pt-3">

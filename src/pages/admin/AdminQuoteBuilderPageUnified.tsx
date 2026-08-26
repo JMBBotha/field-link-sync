@@ -692,13 +692,11 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     setAreaWizardOpen(false);
   }, []);
 
-  // Auto-open wizard when switching to Area tab
+  // Switching tabs: the Area tab uses the inline builder, no modal popup
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab);
-    if (tab === "area") {
-      setAreaWizardOpen(true);
-    }
   }, []);
+
 
   /* ── Generate Quote: persist the merged basket state (Build + Visual PDF +
      Area tabs) into the ONE unified quote, then open the send-to-client flow ── */
