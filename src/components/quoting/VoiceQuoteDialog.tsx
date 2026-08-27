@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, Check, Loader2, Mic, Square, Trash2, X } from "lucide-react";
 import { WavRecorder } from "@/lib/wavRecorder";
@@ -41,11 +43,16 @@ type Phase = "idle" | "recording" | "transcribing" | "parsing" | "review";
 const VoiceQuoteDialog = ({ open, onOpenChange, products, quoteId, onConfirm }: VoiceQuoteDialogProps) => {
   const { toast } = useToast();
   const recorderRef = useRef<WavRecorder | null>(null);
+  const stopRef = useRef<(() => Promise<void>) | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [transcript, setTranscript] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<VoiceDraftItem[]>([]);
   const [saving, setSaving] = useState(false);
+  /** Hands-free: start listening automatically and stop on a natural pause. */
+  const [handsFree, setHandsFree] = useState(true);
+  const [heardSpeech, setHeardSpeech] = useState(false);
+  const [level, setLevel] = useState(0);
 
   const busy = phase === "transcribing" || phase === "parsing";
   const needsReview = items.some((i) => i.needsReview);
@@ -58,12 +65,25 @@ const VoiceQuoteDialog = ({ open, onOpenChange, products, quoteId, onConfirm }: 
     setTranscript("");
     setNotes("");
     setItems([]);
+    setHeardSpeech(false);
+    setLevel(0);
   };
 
-  const startRecording = async () => {
+  const startRecording = useCallback(async (auto = handsFree) => {
+    if (recorderRef.current) return;
     try {
       const rec = new WavRecorder();
-      await rec.start();
+      setHeardSpeech(false);
+      setLevel(0);
+      await rec.start(
+        auto
+          ? {
+              onSpeechStart: () => setHeardSpeech(true),
+              onLevel: (l) => setLevel(l),
+              onSilence: () => void stopRef.current?.(),
+            }
+          : { onLevel: (l) => setLevel(l), onSpeechStart: () => setHeardSpeech(true) },
+      );
       recorderRef.current = rec;
       setPhase("recording");
     } catch {
@@ -73,7 +93,8 @@ const VoiceQuoteDialog = ({ open, onOpenChange, products, quoteId, onConfirm }: 
         variant: "destructive",
       });
     }
-  };
+  }, [handsFree, toast]);
+
 
   const runParse = useCallback(async (text: string) => {
     setPhase("parsing");
@@ -120,6 +141,25 @@ const VoiceQuoteDialog = ({ open, onOpenChange, products, quoteId, onConfirm }: 
       });
     }
   };
+  stopRef.current = stopRecording;
+
+  // Hands-free: start listening as soon as the dialog opens, and after each
+  // batch is reviewed the operator can just keep talking (mic button) instead
+  // of hunting for a record control.
+  useEffect(() => {
+    if (!open || !handsFree) return;
+    if (phase !== "idle") return;
+    const t = window.setTimeout(() => void startRecording(true), 250);
+    return () => window.clearTimeout(t);
+  }, [open, handsFree, phase, startRecording]);
+
+  useEffect(() => {
+    if (open) return;
+    recorderRef.current?.cancel();
+    recorderRef.current = null;
+  }, [open]);
+
+
 
   const patch = (id: string, changes: Partial<VoiceDraftItem>) =>
     setItems((prev) =>
@@ -198,19 +238,33 @@ const VoiceQuoteDialog = ({ open, onOpenChange, products, quoteId, onConfirm }: 
           <div className="flex flex-wrap items-center gap-3">
             {phase === "recording" ? (
               <Button variant="destructive" onClick={() => void stopRecording()} className="gap-2">
-                <Square className="h-4 w-4" /> Stop &amp; parse
+                <Square className="h-4 w-4" /> {handsFree ? "Stop now" : "Stop & parse"}
               </Button>
             ) : (
-              <Button onClick={() => void startRecording()} disabled={busy} className="gap-2">
+              <Button onClick={() => void startRecording(handsFree)} disabled={busy} className="gap-2">
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
-                {items.length ? "Record more" : "Start speaking"}
+                {items.length ? "Speak again" : "Start speaking"}
               </Button>
             )}
             {phase === "recording" && (
               <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="h-2 w-2 rounded-full bg-destructive animate-pulse" /> Listening…
+                <span
+                  className="h-2 w-2 rounded-full bg-destructive animate-pulse"
+                  style={{ transform: `scale(${1 + Math.min(level, 1) * 1.6})` }}
+                />
+                {heardSpeech
+                  ? handsFree
+                    ? "Listening — pause when you're done"
+                    : "Listening…"
+                  : "Waiting for you to speak…"}
               </span>
             )}
+            <div className="ml-auto flex items-center gap-2">
+              <Switch id="voice-hands-free" checked={handsFree} onCheckedChange={setHandsFree} />
+              <Label htmlFor="voice-hands-free" className="text-xs text-muted-foreground">
+                Hands-free
+              </Label>
+            </div>
             {phase === "transcribing" && <span className="text-xs text-muted-foreground">Transcribing…</span>}
             {phase === "parsing" && <span className="text-xs text-muted-foreground">Matching against the catalog…</span>}
           </div>

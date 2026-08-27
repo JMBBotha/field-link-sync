@@ -2,27 +2,91 @@
  * Minimal Web Audio PCM recorder that always produces a complete 16 kHz mono
  * WAV file — MediaRecorder fragments (and iOS Safari's fragmented MP4) are
  * rejected by transcription models, so we encode the container ourselves.
+ *
+ * Optional voice-activity detection (VAD) lets callers run hands-free: the
+ * recorder reports when speech starts and when the speaker has gone quiet, so
+ * the UI can auto-stop and transcribe without a stop button.
  */
+export interface VadOptions {
+  /** RMS level above which audio counts as speech (0–1). */
+  threshold?: number;
+  /** Silence after speech before `onSilence` fires (ms). */
+  silenceMs?: number;
+  /** Fires once the first speech is detected. */
+  onSpeechStart?: () => void;
+  /** Fires once when the speaker has gone quiet after speaking. */
+  onSilence?: () => void;
+  /** Continuous input level (0–1) for meters. */
+  onLevel?: (level: number) => void;
+}
+
 export class WavRecorder {
   private ctx: AudioContext | null = null;
   private stream: MediaStream | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
   private node: ScriptProcessorNode | null = null;
   private chunks: Float32Array[] = [];
+  private vad: VadOptions | null = null;
+  private speechStarted = false;
+  private silenceFired = false;
+  private quietSince: number | null = null;
 
-  async start() {
-    this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  async start(vad?: VadOptions) {
+    this.vad = vad ?? null;
+    this.speechStarted = false;
+    this.silenceFired = false;
+    this.quietSince = null;
+    this.stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
     const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     this.ctx = new Ctor();
     this.source = this.ctx.createMediaStreamSource(this.stream);
     this.node = this.ctx.createScriptProcessor(4096, 1, 1);
     this.chunks = [];
     this.node.onaudioprocess = (e) => {
-      this.chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+      const data = e.inputBuffer.getChannelData(0);
+      this.chunks.push(new Float32Array(data));
+      if (this.vad) this.analyse(data);
     };
     this.source.connect(this.node);
     this.node.connect(this.ctx.destination);
   }
+
+  /** True once the speaker has actually said something. */
+  get hasSpeech() {
+    return this.speechStarted;
+  }
+
+  private analyse(data: Float32Array) {
+    const vad = this.vad!;
+    const threshold = vad.threshold ?? 0.015;
+    const silenceMs = vad.silenceMs ?? 1600;
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+    const rms = Math.sqrt(sum / data.length);
+    vad.onLevel?.(Math.min(1, rms * 8));
+
+    if (rms > threshold) {
+      this.quietSince = null;
+      if (!this.speechStarted) {
+        this.speechStarted = true;
+        vad.onSpeechStart?.();
+      }
+      return;
+    }
+    if (!this.speechStarted || this.silenceFired) return;
+    const now = Date.now();
+    if (this.quietSince === null) {
+      this.quietSince = now;
+      return;
+    }
+    if (now - this.quietSince >= silenceMs) {
+      this.silenceFired = true;
+      vad.onSilence?.();
+    }
+  }
+
 
   /** Stops capture and returns the recording as a base64 WAV payload. */
   async stop(): Promise<{ base64: string; bytes: number }> {
