@@ -139,6 +139,25 @@ const VoiceQuoteDialog = ({ open, onOpenChange, products, quoteId, onConfirm }: 
       });
     }
   };
+  stopRef.current = stopRecording;
+
+  // Hands-free: start listening as soon as the dialog opens, and after each
+  // batch is reviewed the operator can just keep talking (mic button) instead
+  // of hunting for a record control.
+  useEffect(() => {
+    if (!open || !handsFree) return;
+    if (phase !== "idle") return;
+    const t = window.setTimeout(() => void startRecording(true), 250);
+    return () => window.clearTimeout(t);
+  }, [open, handsFree, phase, startRecording]);
+
+  useEffect(() => {
+    if (open) return;
+    recorderRef.current?.cancel();
+    recorderRef.current = null;
+  }, [open]);
+
+
 
   const patch = (id: string, changes: Partial<VoiceDraftItem>) =>
     setItems((prev) =>
