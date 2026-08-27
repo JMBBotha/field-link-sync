@@ -170,37 +170,74 @@ function BundlePaletteButton({
 
   const { pricingType, unitPrice } = useMemo(() => computeBundlePricing(subItems), [subItems]);
 
+  const [zonePickerOpen, setZonePickerOpen] = useState(false);
+
   const handleClick = useCallback(() => {
-    if (baskets && baskets.length > 0 && onAddBundleToBasket) {
+    if (!baskets || baskets.length === 0 || !onAddBundleToBasket) return;
+    if (baskets.length === 1) {
       onAddBundleToBasket(baskets[0].id, bundle);
+      return;
     }
+    setZonePickerOpen(true);
   }, [baskets, onAddBundleToBasket, bundle]);
 
   return (
-    <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
-      <div
-        ref={setNodeRef}
-        {...attributes}
-        {...listeners}
-        onClick={handleClick}
-        style={{ touchAction: "none" }}
-        className={`group flex items-center gap-2 rounded-md border-2 border-primary/50 bg-card px-2.5 py-1.5 cursor-grab active:cursor-grabbing transition-all hover:shadow-md hover:border-primary hover:bg-accent/40 ${
-          isDragging ? "opacity-50 scale-95" : ""
-        }`}
-      >
-        <Package className="h-3.5 w-3.5 text-primary shrink-0" />
-        <span className="text-xs font-medium truncate flex-1">
-          <HighlightText text={bundle.name} searchTerm={searchTerm} />
-        </span>
-        <Badge variant="secondary" className="text-[8px] px-1 py-0 h-3.5 shrink-0">
-          {subItems.length}
-        </Badge>
-        <span className="text-[10px] font-bold shrink-0">
-          R{unitPrice.toFixed(0)}/{pricingType === "p/meter" ? "m" : "ea"}
-        </span>
-      </div>
-    </BundleItemsPopover>
+    <Popover open={zonePickerOpen} onOpenChange={setZonePickerOpen}>
+      <PopoverTrigger asChild>
+        <div>
+          <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
+            <div
+              ref={setNodeRef}
+              {...attributes}
+              {...listeners}
+              onClick={handleClick}
+              style={{ touchAction: "none" }}
+              className={`group flex items-center gap-2 rounded-md border-2 border-primary/50 bg-card px-2.5 py-1.5 cursor-grab active:cursor-grabbing transition-all hover:shadow-md hover:border-primary hover:bg-accent/40 ${
+                isDragging ? "opacity-50 scale-95" : ""
+              }`}
+            >
+              <Package className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span className="text-xs font-medium truncate flex-1">
+                <HighlightText text={bundle.name} searchTerm={searchTerm} />
+              </span>
+              <Badge variant="secondary" className="text-[8px] px-1 py-0 h-3.5 shrink-0">
+                {subItems.length}
+              </Badge>
+              <span className="text-[10px] font-bold shrink-0">
+                R{unitPrice.toFixed(0)}/{pricingType === "p/meter" ? "m" : "ea"}
+              </span>
+            </div>
+          </BundleItemsPopover>
+        </div>
+      </PopoverTrigger>
+      <PopoverContent side="right" align="start" className="w-48 p-2" data-no-dnd="true">
+        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+          <MapPin className="h-3 w-3 inline mr-1" />Add bundle to Zone
+        </p>
+        <div className="space-y-1">
+          {(baskets || []).map((basket) => (
+            <Button
+              key={basket.id}
+              variant="outline"
+              size="sm"
+              className="w-full justify-start text-xs h-7 gap-1.5"
+              onClick={() => {
+                onAddBundleToBasket?.(basket.id, bundle);
+                setZonePickerOpen(false);
+              }}
+            >
+              <Package className="h-3 w-3 text-primary shrink-0" />
+              <span className="truncate">{basket.name}</span>
+              <Badge variant="secondary" className="text-[8px] px-1 py-0 ml-auto shrink-0">
+                {basket.items.length}
+              </Badge>
+            </Button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
+
 }
 
 interface ProductPaletteProps {
