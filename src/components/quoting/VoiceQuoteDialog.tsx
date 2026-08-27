@@ -41,11 +41,16 @@ type Phase = "idle" | "recording" | "transcribing" | "parsing" | "review";
 const VoiceQuoteDialog = ({ open, onOpenChange, products, quoteId, onConfirm }: VoiceQuoteDialogProps) => {
   const { toast } = useToast();
   const recorderRef = useRef<WavRecorder | null>(null);
+  const stopRef = useRef<(() => Promise<void>) | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [transcript, setTranscript] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<VoiceDraftItem[]>([]);
   const [saving, setSaving] = useState(false);
+  /** Hands-free: start listening automatically and stop on a natural pause. */
+  const [handsFree, setHandsFree] = useState(true);
+  const [heardSpeech, setHeardSpeech] = useState(false);
+  const [level, setLevel] = useState(0);
 
   const busy = phase === "transcribing" || phase === "parsing";
   const needsReview = items.some((i) => i.needsReview);
@@ -58,12 +63,25 @@ const VoiceQuoteDialog = ({ open, onOpenChange, products, quoteId, onConfirm }: 
     setTranscript("");
     setNotes("");
     setItems([]);
+    setHeardSpeech(false);
+    setLevel(0);
   };
 
-  const startRecording = async () => {
+  const startRecording = useCallback(async (auto = handsFree) => {
+    if (recorderRef.current) return;
     try {
       const rec = new WavRecorder();
-      await rec.start();
+      setHeardSpeech(false);
+      setLevel(0);
+      await rec.start(
+        auto
+          ? {
+              onSpeechStart: () => setHeardSpeech(true),
+              onLevel: (l) => setLevel(l),
+              onSilence: () => void stopRef.current?.(),
+            }
+          : { onLevel: (l) => setLevel(l), onSpeechStart: () => setHeardSpeech(true) },
+      );
       recorderRef.current = rec;
       setPhase("recording");
     } catch {
@@ -73,7 +91,8 @@ const VoiceQuoteDialog = ({ open, onOpenChange, products, quoteId, onConfirm }: 
         variant: "destructive",
       });
     }
-  };
+  }, [handsFree, toast]);
+
 
   const runParse = useCallback(async (text: string) => {
     setPhase("parsing");
