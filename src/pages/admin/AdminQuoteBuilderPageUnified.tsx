@@ -867,7 +867,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         <div className="h-full flex flex-col lg:flex-row overflow-hidden">
             {/* Product Palette — collapsible full-screen section on mobile, left sidebar on desktop */}
             {isCompact && (
-              <div className="shrink-0 flex items-center w-full border-b bg-card lg:hidden">
+              <div className="shrink-0 flex items-center w-full border-b bg-card">
                 <button
                   type="button"
                   onClick={() => {
@@ -930,7 +930,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
               <button
                 type="button"
                 onClick={() => toggleSection("areas")}
-                className="shrink-0 flex items-center justify-between w-full px-3 py-2 border-b bg-card text-xs font-semibold text-foreground lg:hidden"
+                className="shrink-0 flex items-center justify-between w-full px-3 py-2 border-b bg-card text-xs font-semibold text-foreground"
               >
                 <span className="flex items-center gap-1.5">
                   {openSections.areas ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
@@ -965,7 +965,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
               <button
                 type="button"
                 onClick={() => toggleSection("summary")}
-                className="shrink-0 flex items-center justify-between w-full px-3 py-2 border-t bg-card text-xs font-semibold text-foreground lg:hidden"
+                className="shrink-0 flex items-center justify-between w-full px-3 py-2 border-t bg-card text-xs font-semibold text-foreground"
               >
                 <span className="flex items-center gap-1.5">
                   {openSections.summary ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
