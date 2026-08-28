@@ -1,7 +1,5 @@
 import { useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { PenTool } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import QuotesList from "@/components/quoting/QuotesList";
 
 /**
@@ -39,15 +37,6 @@ const AdminQuotesPage = () => {
         onEditQuote={(id) => navigate(`/admin/quote-builder?quoteId=${id}`)}
       />
 
-      {/* Floating button to open the unified Quote Builder */}
-      <Button
-        onClick={() => navigate("/admin/quote-builder")}
-        className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all"
-        size="icon"
-        title="Open Quote Builder"
-      >
-        <PenTool className="h-5 w-5" />
-      </Button>
     </>
   );
 };
