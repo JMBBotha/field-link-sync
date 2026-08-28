@@ -132,6 +132,15 @@ export const toolSchemas = {
     limit: z.number().int().min(1).max(50).nullable().optional(),
     offset: z.number().int().min(0).max(500).nullable().optional(),
   }).strict(),
+  // --- UI control (no data access; returns a route for the browser to open) ---
+  navigate_app: z.object({
+    page: z.string().min(2).max(60),
+  }).strict(),
+  open_record: z.object({
+    entity_type: z.enum(["quote", "invoice", "customer", "job"]),
+    identifier: z.string().min(2).max(120),
+  }).strict(),
+  go_back: z.object({}).strict(),
 } as const;
 
 
