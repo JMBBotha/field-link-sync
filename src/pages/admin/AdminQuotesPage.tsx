@@ -1,7 +1,5 @@
 import { useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { PenTool } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import QuotesList from "@/components/quoting/QuotesList";
 
 /**
