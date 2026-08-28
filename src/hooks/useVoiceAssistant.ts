@@ -75,7 +75,12 @@ export function useVoiceAssistant() {
     const fresh = (payload.results ?? []).filter((r) => !seenResultIds.current.has(r.id));
     if (fresh.length) {
       fresh.forEach((r) => seenResultIds.current.add(r.id));
-      setResults((prev) => [...prev, ...fresh.map((r) => ({ tool_name: r.tool_name, rows: r.rows }))]);
+      const blocks = fresh.map((r) => ({ tool_name: r.tool_name, rows: r.rows }));
+      // Navigation the assistant asked for is applied here — it never renders
+      // as a result table.
+      applyUiActions(blocks);
+      const visible = blocks.filter((b) => !isUiActionBlock(b));
+      if (visible.length) setResults((prev) => [...prev, ...visible]);
     }
     const next = payload.pending ?? null;
     const nextId = next?.id ?? null;
@@ -85,7 +90,7 @@ export function useVoiceAssistant() {
     }
     lastPendingIdRef.current = nextId;
     setPending(next);
-  }, []);
+  }, [applyUiActions]);
 
 
   /**
