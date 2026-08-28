@@ -610,6 +610,36 @@ export const anthropicTools = [
       additionalProperties: false,
     },
   },
+  {
+    name: "navigate_app",
+    description:
+      "Actually open a page in the operator's browser (dashboard, map, dispatch, jobs, schedule, quotes, invoices, customers, catalogue, inventory, suppliers, reports, analytics, team, settings…). Use this whenever the operator asks you to open, show or go to a page. Only report that the page is open if this tool returns a route.",
+    input_schema: {
+      type: "object",
+      properties: { page: { type: "string", description: "Page name the operator asked for, e.g. 'invoices'" } },
+      required: ["page"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "open_record",
+    description:
+      "Actually open a specific quote, invoice, customer or job on the operator's screen, found by number or name. Use this whenever they ask to open or pull up a record. Only say it is open if this tool returns a route; if it returns nothing, say you could not find it.",
+    input_schema: {
+      type: "object",
+      properties: {
+        entity_type: { type: "string", enum: ["quote", "invoice", "customer", "job"] },
+        identifier: { type: "string", description: "Quote/invoice number, client name, or UUID" },
+      },
+      required: ["entity_type", "identifier"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "go_back",
+    description: "Navigate the operator's browser back to the previous page.",
+    input_schema: { type: "object", properties: {}, additionalProperties: false },
+  },
 ];
 
 
