@@ -183,7 +183,7 @@ function BundlePaletteButton({
 
   return (
     <Popover open={zonePickerOpen} onOpenChange={setZonePickerOpen}>
-      <PopoverTrigger asChild>
+      <PopoverAnchor asChild>
         <div>
           <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
             <div
