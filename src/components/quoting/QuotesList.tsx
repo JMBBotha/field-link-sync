@@ -202,11 +202,24 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
           .eq("status", "draft")
           .select("id");
 
-        // Restrict-only FKs: clear children, then retry the parent.
+        // Restrict-only FKs: clear/detach children, then retry the parent.
         if (error && (error as any).code === "23503") {
+          // Block deletion when the draft has already produced billing records.
+          const { data: linkedInvoices } = await supabase
+            .from("invoices")
+            .select("id")
+            .in("quote_id", estimateIds)
+            .limit(1);
+          if (linkedInvoices && linkedInvoices.length > 0) {
+            throw new Error(
+              "This draft has an invoice linked to it. Delete or unlink the invoice first.",
+            );
+          }
           await supabase.from("quote_items").delete().in("quote_id", estimateIds);
           await supabase.from("quote_line_items").delete().in("quote_id", estimateIds);
           await supabase.from("quote_areas").delete().in("quote_id", estimateIds);
+          // Jobs reference quotes with NO ACTION — detach them instead of deleting.
+          await supabase.from("jobs").update({ quote_id: null }).in("quote_id", estimateIds);
           ({ data: removed, error } = await supabase
             .from("quotes")
             .delete()
@@ -220,6 +233,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
             "You do not have permission to delete these drafts. Ask an administrator.",
           );
         }
+
       }
       if (proposalIds.length) {
         const { data: removed, error } = await (supabase as any)
