@@ -13,6 +13,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, MessageSquare, Mic, Send, Sparkle, X } from "lucide-react";
+import { isUiActionBlock, useAssistantUiActions, type UiActionBlock } from "@/hooks/useAssistantUiActions";
 import ResultTable, { TOOL_LABELS, type Row, type Structured } from "@/components/admin/nl/ResultTable";
 import VoiceAssistantPanel from "@/components/admin/nl/VoiceAssistantPanel";
 import VoiceCallDock from "@/components/admin/nl/VoiceCallDock";
@@ -144,7 +145,9 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
       const res = await callFunction({
         messages: nextMessages.slice(-8).map((m) => ({ role: m.role, content: m.content })),
       });
-      setMessages((prev) => [...prev, { role: "assistant", content: res.message, data: res.data }]);
+      applyUiActions((res.data ?? []) as UiActionBlock[]);
+      const visible = (res.data ?? []).filter((b) => !isUiActionBlock(b as UiActionBlock));
+      setMessages((prev) => [...prev, { role: "assistant", content: res.message, data: visible }]);
       if (res.type === "confirmation_required" && res.confirmation) setPending(res.confirmation);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Something went wrong";
