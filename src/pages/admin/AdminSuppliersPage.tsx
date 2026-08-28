@@ -26,7 +26,6 @@ import {
 import SupplierDetailSheet from "@/components/suppliers/SupplierDetailSheet";
 import SupplierFormDialog from "@/components/suppliers/SupplierFormDialog";
 import SupplierProductImporter from "@/components/catalog/SupplierProductImporter";
-import FloatingQuoteBuilderButton from "@/components/shared/FloatingQuoteBuilderButton";
 import { useToast } from "@/hooks/use-toast";
 import {
   deleteSupplierCompletely,
@@ -586,7 +585,7 @@ const AdminSuppliersPage = () => {
       )}
 
       <SupplierFormDialog open={formOpen} onOpenChange={setFormOpen} supplierId={editingSupplierId} />
-      <FloatingQuoteBuilderButton />
+
     </div>
   );
 };

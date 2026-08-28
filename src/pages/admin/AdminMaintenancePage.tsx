@@ -18,7 +18,6 @@ import {
 } from "date-fns";
 import { CalendarDays, AlertTriangle, CheckCircle2, Clock, RefreshCw, Search, ChevronLeft, ChevronRight, Loader2, Wrench, ArrowRight, Calendar as CalendarIcon, BarChart3, Percent, List, LayoutGrid, Plus } from "lucide-react";
 import RandSign from "@/components/icons/RandSign";
-import FloatingQuoteBuilderButton from "@/components/shared/FloatingQuoteBuilderButton";
 
 interface MaintenanceSchedule {
   id: string;
@@ -428,7 +427,7 @@ const AdminMaintenancePage = () => {
           )}
         </div>
       )}
-      <FloatingQuoteBuilderButton />
+
     </div>
   );
 };

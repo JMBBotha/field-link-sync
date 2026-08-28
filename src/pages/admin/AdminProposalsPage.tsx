@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Paperclip } from "lucide-react";
 import ProposalBuilder from "@/components/proposals/ProposalBuilder";
 import QuoteStatusBadge from "@/components/quoting/QuoteStatusBadge";
-import FloatingQuoteBuilderButton from "@/components/shared/FloatingQuoteBuilderButton";
 import BrochureManagement from "@/components/brochures/BrochureManagement";
 
 const formatZAR = (n: number) =>
@@ -110,7 +109,7 @@ const AdminProposalsPage = () => {
         </TabsContent>
       </Tabs>
 
-      <FloatingQuoteBuilderButton />
+
     </div>
   );
 };
