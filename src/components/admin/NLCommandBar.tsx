@@ -64,6 +64,7 @@ const NLCommandBar = ({ open, onOpenChange, initialMode = "text" }: NLCommandBar
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const voice = useVoiceAssistant();
+  const applyUiActions = useAssistantUiActions();
   // While a call runs the big dialog collapses into a small corner widget.
   const [docked, setDocked] = useState(false);
 
