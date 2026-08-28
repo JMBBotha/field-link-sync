@@ -717,6 +717,117 @@ export async function executeTool(
 
   switch (tool) {
     // =================================================================
+    // UI control. These touch no data of their own — they return a route
+    // the browser applies, so the assistant can only claim a page is open
+    // when a real route came back.
+    // =================================================================
+    case "navigate_app": {
+      const hit = resolvePage(String(args.page));
+      if (!hit) {
+        return {
+          rows: [],
+          summary: `There is no "${args.page}" page I can open.`,
+          resource_type: "ui",
+          access_granted: false,
+        };
+      }
+      return {
+        rows: scrub(tool, [{ ui_action: "navigate", route: hit.route, page: hit.label, label: hit.label }]),
+        summary: `Opening ${hit.label}.`,
+        resource_type: "ui",
+        access_granted: true,
+      };
+    }
+
+    case "go_back": {
+      return {
+        rows: scrub(tool, [{ ui_action: "back", label: "Previous page" }]),
+        summary: "Going back.",
+        resource_type: "ui",
+        access_granted: true,
+      };
+    }
+
+    case "open_record": {
+      const entity = String(args.entity_type);
+      const identifier = String(args.identifier);
+      const notFound = {
+        rows: [] as Record<string, unknown>[],
+        summary: `I could not find that ${entity}.`,
+        resource_type: "ui",
+        access_granted: false,
+      };
+
+      // Resolution runs through the existing, access-checked read tools so
+      // navigation can never expose a record the caller may not see.
+      if (entity === "quote" || entity === "invoice") {
+        const inner = await executeTool(entity === "quote" ? "get_quote" : "get_invoice", {
+          identifier,
+          limit: 5,
+        }, ctx);
+        const row = inner.rows[0] as Record<string, any> | undefined;
+        if (!row?.id) return notFound;
+        const reference = String(row.quote_number ?? row.invoice_number ?? "");
+        const route = entity === "quote" ? `/admin/estimates/${row.id}` : `/admin/invoices/${row.id}`;
+        return {
+          rows: scrub(tool, [{
+            ui_action: "navigate",
+            route,
+            entity_type: entity,
+            id: row.id,
+            reference,
+            label: `${reference || entity} ${row.customer_name ? `for ${row.customer_name}` : ""}`.trim(),
+          }]),
+          summary: `Opening ${reference || `that ${entity}`}.`,
+          resource_type: entity,
+          resource_id: String(row.id),
+          access_granted: true,
+        };
+      }
+
+      if (entity === "customer") {
+        const inner = await executeTool("search_customers", { query: identifier, limit: 5 }, ctx);
+        const row = inner.rows[0] as Record<string, any> | undefined;
+        if (!row?.id) return notFound;
+        return {
+          rows: scrub(tool, [{
+            ui_action: "navigate",
+            route: `/admin/customers/${row.id}`,
+            entity_type: "customer",
+            id: row.id,
+            label: String(row.display_name ?? row.company_name ?? "Customer"),
+          }]),
+          summary: `Opening ${row.display_name ?? "that client"}.`,
+          resource_type: "customer",
+          resource_id: String(row.id),
+          access_granted: true,
+        };
+      }
+
+      // job
+      const inner = await executeTool("resolve_entity", {
+        entity_type: "job",
+        query: identifier,
+        limit: 3,
+      }, ctx);
+      const row = (inner.rows as Record<string, any>[]).find((r) => r.id);
+      if (!row) return notFound;
+      return {
+        rows: scrub(tool, [{
+          ui_action: "navigate",
+          route: `/admin/jobs/${row.id}`,
+          entity_type: "job",
+          id: row.id,
+          label: String(row.label ?? "Job"),
+        }]),
+        summary: `Opening ${row.label ?? "that job"}.`,
+        resource_type: "job",
+        resource_id: String(row.id),
+        access_granted: true,
+      };
+    }
+
+    // =================================================================
     // Secure read-only slice. Scope is derived entirely server-side from
     // the verified caller identity — no scoping input is accepted.
     // =================================================================
