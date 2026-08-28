@@ -28,7 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
@@ -183,7 +183,7 @@ function BundlePaletteButton({
 
   return (
     <Popover open={zonePickerOpen} onOpenChange={setZonePickerOpen}>
-      <PopoverTrigger asChild>
+      <PopoverAnchor asChild>
         <div>
           <BundleItemsPopover bundleName={bundle.name} items={subItems} side="right">
             <div
@@ -209,7 +209,7 @@ function BundlePaletteButton({
             </div>
           </BundleItemsPopover>
         </div>
-      </PopoverTrigger>
+      </PopoverAnchor>
       <PopoverContent side="right" align="start" className="w-48 p-2" data-no-dnd="true">
         <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
           <MapPin className="h-3 w-3 inline mr-1" />Add bundle to Zone
