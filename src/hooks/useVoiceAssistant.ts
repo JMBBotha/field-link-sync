@@ -38,6 +38,7 @@ interface PollResult {
  */
 export function useVoiceAssistant() {
   const [status, setStatus] = useState<VoiceStatus>("idle");
+  const applyUiActions = useAssistantUiActions();
   const [error, setError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [results, setResults] = useState<Structured[]>([]);
