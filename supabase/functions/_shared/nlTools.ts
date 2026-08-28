@@ -132,6 +132,15 @@ export const toolSchemas = {
     limit: z.number().int().min(1).max(50).nullable().optional(),
     offset: z.number().int().min(0).max(500).nullable().optional(),
   }).strict(),
+  // --- UI control (no data access; returns a route for the browser to open) ---
+  navigate_app: z.object({
+    page: z.string().min(2).max(60),
+  }).strict(),
+  open_record: z.object({
+    entity_type: z.enum(["quote", "invoice", "customer", "job"]),
+    identifier: z.string().min(2).max(120),
+  }).strict(),
+  go_back: z.object({}).strict(),
 } as const;
 
 
@@ -158,6 +167,9 @@ export const TOOL_KIND: Record<ToolName, ToolKind> = {
   get_customer_details: "read",
   search_inventory: "read",
   get_assigned_jobs: "read",
+  navigate_app: "read",
+  open_record: "read",
+  go_back: "read",
 };
 
 
@@ -233,7 +245,56 @@ const PII_ALLOW: Record<ToolName, string[]> = {
     "id", "title", "status", "priority", "job_type", "address",
     "scheduled_for", "customer_id", "customer_name",
   ],
+  navigate_app: ["ui_action", "route", "page", "label"],
+  open_record: ["ui_action", "route", "entity_type", "id", "label", "reference"],
+  go_back: ["ui_action", "label"],
 };
+
+/**
+ * Pages the assistant may open, mapped to real app routes. Keys are spoken
+ * names / synonyms; nothing outside this map is ever navigated to.
+ */
+const PAGE_ROUTES: Record<string, { route: string; label: string }> = {
+  dashboard: { route: "/admin", label: "Dashboard" },
+  home: { route: "/admin", label: "Dashboard" },
+  map: { route: "/admin/map", label: "Map" },
+  "jobs map": { route: "/admin/jobs-map", label: "Jobs map" },
+  dispatch: { route: "/admin/dispatch", label: "Dispatch" },
+  "unassigned queue": { route: "/admin/unassigned-queue", label: "Unassigned queue" },
+  leads: { route: "/admin/dispatch", label: "Leads" },
+  jobs: { route: "/admin/jobs", label: "Jobs" },
+  "my jobs": { route: "/admin/my-jobs", label: "My jobs" },
+  schedule: { route: "/admin/schedule", label: "Schedule" },
+  calendar: { route: "/admin/schedule", label: "Schedule" },
+  quotes: { route: "/admin/quotes", label: "Quotes" },
+  estimates: { route: "/admin/quotes", label: "Quotes" },
+  "quote builder": { route: "/admin/quote-builder", label: "Quote builder" },
+  invoices: { route: "/admin/invoices", label: "Invoices" },
+  customers: { route: "/admin/customers", label: "Customers" },
+  clients: { route: "/admin/customers", label: "Customers" },
+  catalog: { route: "/admin/catalog", label: "Catalogue" },
+  catalogue: { route: "/admin/catalog", label: "Catalogue" },
+  inventory: { route: "/admin/inventory", label: "Inventory" },
+  suppliers: { route: "/admin/suppliers", label: "Suppliers" },
+  reports: { route: "/admin/reports", label: "Reports" },
+  analytics: { route: "/admin/analytics", label: "Analytics" },
+  maintenance: { route: "/admin/maintenance", label: "Maintenance" },
+  agreements: { route: "/admin/agreements", label: "Service agreements" },
+  "change requests": { route: "/admin/change-requests", label: "Change requests" },
+  calls: { route: "/admin/calls", label: "Calls" },
+  whatsapp: { route: "/admin/whatsapp", label: "WhatsApp" },
+  team: { route: "/admin/team", label: "Team" },
+  settings: { route: "/admin/settings", label: "Settings" },
+  billing: { route: "/admin/billing", label: "Billing" },
+  help: { route: "/admin/help", label: "Help" },
+};
+
+function resolvePage(input: string): { route: string; label: string } | null {
+  const key = input.trim().toLowerCase().replace(/^(the|open|go to|show me|show)\s+/i, "").replace(/\s+page$/, "").trim();
+  if (PAGE_ROUTES[key]) return PAGE_ROUTES[key];
+  const hit = Object.keys(PAGE_ROUTES).find((k) => k.includes(key) || key.includes(k));
+  return hit ? PAGE_ROUTES[hit] : null;
+}
 
 
 function scrub(tool: ToolName, rows: Record<string, unknown>[]) {
@@ -549,6 +610,36 @@ export const anthropicTools = [
       additionalProperties: false,
     },
   },
+  {
+    name: "navigate_app",
+    description:
+      "Actually open a page in the operator's browser (dashboard, map, dispatch, jobs, schedule, quotes, invoices, customers, catalogue, inventory, suppliers, reports, analytics, team, settings…). Use this whenever the operator asks you to open, show or go to a page. Only report that the page is open if this tool returns a route.",
+    input_schema: {
+      type: "object",
+      properties: { page: { type: "string", description: "Page name the operator asked for, e.g. 'invoices'" } },
+      required: ["page"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "open_record",
+    description:
+      "Actually open a specific quote, invoice, customer or job on the operator's screen, found by number or name. Use this whenever they ask to open or pull up a record. Only say it is open if this tool returns a route; if it returns nothing, say you could not find it.",
+    input_schema: {
+      type: "object",
+      properties: {
+        entity_type: { type: "string", enum: ["quote", "invoice", "customer", "job"] },
+        identifier: { type: "string", description: "Quote/invoice number, client name, or UUID" },
+      },
+      required: ["entity_type", "identifier"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "go_back",
+    description: "Navigate the operator's browser back to the previous page.",
+    input_schema: { type: "object", properties: {}, additionalProperties: false },
+  },
 ];
 
 
@@ -625,6 +716,117 @@ export async function executeTool(
   const isOps = isOpsRole(ctx.roles);
 
   switch (tool) {
+    // =================================================================
+    // UI control. These touch no data of their own — they return a route
+    // the browser applies, so the assistant can only claim a page is open
+    // when a real route came back.
+    // =================================================================
+    case "navigate_app": {
+      const hit = resolvePage(String(args.page));
+      if (!hit) {
+        return {
+          rows: [],
+          summary: `There is no "${args.page}" page I can open.`,
+          resource_type: "ui",
+          access_granted: false,
+        };
+      }
+      return {
+        rows: scrub(tool, [{ ui_action: "navigate", route: hit.route, page: hit.label, label: hit.label }]),
+        summary: `Opening ${hit.label}.`,
+        resource_type: "ui",
+        access_granted: true,
+      };
+    }
+
+    case "go_back": {
+      return {
+        rows: scrub(tool, [{ ui_action: "back", label: "Previous page" }]),
+        summary: "Going back.",
+        resource_type: "ui",
+        access_granted: true,
+      };
+    }
+
+    case "open_record": {
+      const entity = String(args.entity_type);
+      const identifier = String(args.identifier);
+      const notFound = {
+        rows: [] as Record<string, unknown>[],
+        summary: `I could not find that ${entity}.`,
+        resource_type: "ui",
+        access_granted: false,
+      };
+
+      // Resolution runs through the existing, access-checked read tools so
+      // navigation can never expose a record the caller may not see.
+      if (entity === "quote" || entity === "invoice") {
+        const inner = await executeTool(entity === "quote" ? "get_quote" : "get_invoice", {
+          identifier,
+          limit: 5,
+        }, ctx);
+        const row = inner.rows[0] as Record<string, any> | undefined;
+        if (!row?.id) return notFound;
+        const reference = String(row.quote_number ?? row.invoice_number ?? "");
+        const route = entity === "quote" ? `/admin/estimates/${row.id}` : `/admin/invoices/${row.id}`;
+        return {
+          rows: scrub(tool, [{
+            ui_action: "navigate",
+            route,
+            entity_type: entity,
+            id: row.id,
+            reference,
+            label: `${reference || entity} ${row.customer_name ? `for ${row.customer_name}` : ""}`.trim(),
+          }]),
+          summary: `Opening ${reference || `that ${entity}`}.`,
+          resource_type: entity,
+          resource_id: String(row.id),
+          access_granted: true,
+        };
+      }
+
+      if (entity === "customer") {
+        const inner = await executeTool("search_customers", { query: identifier, limit: 5 }, ctx);
+        const row = inner.rows[0] as Record<string, any> | undefined;
+        if (!row?.id) return notFound;
+        return {
+          rows: scrub(tool, [{
+            ui_action: "navigate",
+            route: `/admin/customers/${row.id}`,
+            entity_type: "customer",
+            id: row.id,
+            label: String(row.display_name ?? row.company_name ?? "Customer"),
+          }]),
+          summary: `Opening ${row.display_name ?? "that client"}.`,
+          resource_type: "customer",
+          resource_id: String(row.id),
+          access_granted: true,
+        };
+      }
+
+      // job
+      const inner = await executeTool("resolve_entity", {
+        entity_type: "job",
+        query: identifier,
+        limit: 3,
+      }, ctx);
+      const row = (inner.rows as Record<string, any>[]).find((r) => r.id);
+      if (!row) return notFound;
+      return {
+        rows: scrub(tool, [{
+          ui_action: "navigate",
+          route: `/admin/jobs/${row.id}`,
+          entity_type: "job",
+          id: row.id,
+          label: String(row.label ?? "Job"),
+        }]),
+        summary: `Opening ${row.label ?? "that job"}.`,
+        resource_type: "job",
+        resource_id: String(row.id),
+        access_granted: true,
+      };
+    }
+
     // =================================================================
     // Secure read-only slice. Scope is derived entirely server-side from
     // the verified caller identity — no scoping input is accepted.

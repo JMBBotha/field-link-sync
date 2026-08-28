@@ -3,6 +3,7 @@ import Vapi from "@vapi-ai/web";
 import { supabase } from "@/integrations/supabase/client";
 import type { Structured } from "@/components/admin/nl/ResultTable";
 import { getAssistantContext, useAssistantContextStore } from "@/stores/assistantContextStore";
+import { isUiActionBlock, useAssistantUiActions } from "@/hooks/useAssistantUiActions";
 
 export interface TranscriptEntry {
   role: "user" | "assistant";
@@ -37,6 +38,7 @@ interface PollResult {
  */
 export function useVoiceAssistant() {
   const [status, setStatus] = useState<VoiceStatus>("idle");
+  const applyUiActions = useAssistantUiActions();
   const [error, setError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [results, setResults] = useState<Structured[]>([]);
@@ -73,7 +75,12 @@ export function useVoiceAssistant() {
     const fresh = (payload.results ?? []).filter((r) => !seenResultIds.current.has(r.id));
     if (fresh.length) {
       fresh.forEach((r) => seenResultIds.current.add(r.id));
-      setResults((prev) => [...prev, ...fresh.map((r) => ({ tool_name: r.tool_name, rows: r.rows }))]);
+      const blocks = fresh.map((r) => ({ tool_name: r.tool_name, rows: r.rows }));
+      // Navigation the assistant asked for is applied here — it never renders
+      // as a result table.
+      applyUiActions(blocks);
+      const visible = blocks.filter((b) => !isUiActionBlock(b));
+      if (visible.length) setResults((prev) => [...prev, ...visible]);
     }
     const next = payload.pending ?? null;
     const nextId = next?.id ?? null;
@@ -83,7 +90,7 @@ export function useVoiceAssistant() {
     }
     lastPendingIdRef.current = nextId;
     setPending(next);
-  }, []);
+  }, [applyUiActions]);
 
 
   /**
