@@ -167,6 +167,9 @@ export const TOOL_KIND: Record<ToolName, ToolKind> = {
   get_customer_details: "read",
   search_inventory: "read",
   get_assigned_jobs: "read",
+  navigate_app: "read",
+  open_record: "read",
+  go_back: "read",
 };
 
 
