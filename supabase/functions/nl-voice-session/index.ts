@@ -216,12 +216,15 @@ Deno.serve(async (req) => {
         .select("id, tool_name, args, result, status, created_at")
         .eq("user_id", userId)
         .eq("company_id", companyId)
-        .order("created_at", { ascending: true })
-        .limit(60);
+        .eq("result->>session_id", sessionId)
+        // Fetch the newest rows first. The previous ascending limit permanently
+        // excluded new tool results once a user had more than 60 audit rows,
+        // so Mandy could receive a successful route while the browser never
+        // saw the navigation action.
+        .order("created_at", { ascending: false })
+        .limit(100);
 
-      const mine = (rows ?? []).filter((r) =>
-        (r.result as { session_id?: string } | null)?.session_id === sessionId
-      );
+      const mine = (rows ?? []).reverse();
 
       const results = mine
         .filter((r) => r.status === "executed")
