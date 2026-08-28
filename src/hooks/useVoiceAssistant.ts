@@ -3,6 +3,7 @@ import Vapi from "@vapi-ai/web";
 import { supabase } from "@/integrations/supabase/client";
 import type { Structured } from "@/components/admin/nl/ResultTable";
 import { getAssistantContext, useAssistantContextStore } from "@/stores/assistantContextStore";
+import { isUiActionBlock, useAssistantUiActions } from "@/hooks/useAssistantUiActions";
 
 export interface TranscriptEntry {
   role: "user" | "assistant";
