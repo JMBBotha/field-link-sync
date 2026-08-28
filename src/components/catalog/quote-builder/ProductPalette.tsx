@@ -209,7 +209,7 @@ function BundlePaletteButton({
             </div>
           </BundleItemsPopover>
         </div>
-      </PopoverTrigger>
+      </PopoverAnchor>
       <PopoverContent side="right" align="start" className="w-48 p-2" data-no-dnd="true">
         <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
           <MapPin className="h-3 w-3 inline mr-1" />Add bundle to Zone
