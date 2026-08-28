@@ -245,7 +245,56 @@ const PII_ALLOW: Record<ToolName, string[]> = {
     "id", "title", "status", "priority", "job_type", "address",
     "scheduled_for", "customer_id", "customer_name",
   ],
+  navigate_app: ["ui_action", "route", "page", "label"],
+  open_record: ["ui_action", "route", "entity_type", "id", "label", "reference"],
+  go_back: ["ui_action", "label"],
 };
+
+/**
+ * Pages the assistant may open, mapped to real app routes. Keys are spoken
+ * names / synonyms; nothing outside this map is ever navigated to.
+ */
+const PAGE_ROUTES: Record<string, { route: string; label: string }> = {
+  dashboard: { route: "/admin", label: "Dashboard" },
+  home: { route: "/admin", label: "Dashboard" },
+  map: { route: "/admin/map", label: "Map" },
+  "jobs map": { route: "/admin/jobs-map", label: "Jobs map" },
+  dispatch: { route: "/admin/dispatch", label: "Dispatch" },
+  "unassigned queue": { route: "/admin/unassigned-queue", label: "Unassigned queue" },
+  leads: { route: "/admin/dispatch", label: "Leads" },
+  jobs: { route: "/admin/jobs", label: "Jobs" },
+  "my jobs": { route: "/admin/my-jobs", label: "My jobs" },
+  schedule: { route: "/admin/schedule", label: "Schedule" },
+  calendar: { route: "/admin/schedule", label: "Schedule" },
+  quotes: { route: "/admin/quotes", label: "Quotes" },
+  estimates: { route: "/admin/quotes", label: "Quotes" },
+  "quote builder": { route: "/admin/quote-builder", label: "Quote builder" },
+  invoices: { route: "/admin/invoices", label: "Invoices" },
+  customers: { route: "/admin/customers", label: "Customers" },
+  clients: { route: "/admin/customers", label: "Customers" },
+  catalog: { route: "/admin/catalog", label: "Catalogue" },
+  catalogue: { route: "/admin/catalog", label: "Catalogue" },
+  inventory: { route: "/admin/inventory", label: "Inventory" },
+  suppliers: { route: "/admin/suppliers", label: "Suppliers" },
+  reports: { route: "/admin/reports", label: "Reports" },
+  analytics: { route: "/admin/analytics", label: "Analytics" },
+  maintenance: { route: "/admin/maintenance", label: "Maintenance" },
+  agreements: { route: "/admin/agreements", label: "Service agreements" },
+  "change requests": { route: "/admin/change-requests", label: "Change requests" },
+  calls: { route: "/admin/calls", label: "Calls" },
+  whatsapp: { route: "/admin/whatsapp", label: "WhatsApp" },
+  team: { route: "/admin/team", label: "Team" },
+  settings: { route: "/admin/settings", label: "Settings" },
+  billing: { route: "/admin/billing", label: "Billing" },
+  help: { route: "/admin/help", label: "Help" },
+};
+
+function resolvePage(input: string): { route: string; label: string } | null {
+  const key = input.trim().toLowerCase().replace(/^(the|open|go to|show me|show)\s+/i, "").replace(/\s+page$/, "").trim();
+  if (PAGE_ROUTES[key]) return PAGE_ROUTES[key];
+  const hit = Object.keys(PAGE_ROUTES).find((k) => k.includes(key) || key.includes(k));
+  return hit ? PAGE_ROUTES[hit] : null;
+}
 
 
 function scrub(tool: ToolName, rows: Record<string, unknown>[]) {
