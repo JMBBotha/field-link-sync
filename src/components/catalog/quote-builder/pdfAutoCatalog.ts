@@ -144,14 +144,14 @@ export async function autoCatalogFromRegions(
   let supplierDiscountPercent = 0;
   let supplierMarkupPercent = 35; // default 35%
   const { data: supplierData } = await (supabase.from("suppliers") as any)
-    .select("discount_percent, apply_discount, default_markup_percent")
+    .select("supplier_discount_percent, default_trade_discount, default_markup_percent")
     .eq("id", supplierUuid)
     .limit(1);
   if (supplierData && supplierData.length > 0) {
     const row = supplierData[0];
-    // Only apply discount if the apply_discount toggle is true
-    if (row.apply_discount && row.discount_percent != null) {
-      supplierDiscountPercent = row.discount_percent;
+    const discount = row.supplier_discount_percent ?? row.default_trade_discount ?? 0;
+    if (discount != null) {
+      supplierDiscountPercent = Number(discount) || 0;
     }
     if (row.default_markup_percent != null) {
       supplierMarkupPercent = row.default_markup_percent;
