@@ -42,11 +42,14 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
   const { data: items = [] } = useQuery<SearchItem[]>({
     queryKey: ["global-search-items"],
     queryFn: async () => {
-      const [quotes, invoices, customers, leads] = await Promise.all([
+      const [quotes, invoices, customers, leads, suppliers, proposals, maintenance] = await Promise.all([
         supabase.from("quotes").select("id, quote_number, status, total").neq("status", "superseded").limit(300),
         supabase.from("invoices").select("id, invoice_number, customer_name, grand_total, status").limit(300),
         supabase.from("customers").select("id, name, phone, email").limit(300),
         supabase.from("leads").select("id, customer_name, service_type, status").limit(300),
+        supabase.from("suppliers").select("id, name, contact_name, main_phone, contact_phone, supplier_type").limit(300),
+        supabase.from("proposals").select("id, proposal_number, reference, status, total").limit(300),
+        supabase.from("maintenance_schedules").select("id, due_date, status, notes, customers(name)").limit(300),
       ]);
 
       const result: SearchItem[] = [];
@@ -61,6 +64,33 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
       );
       leads.data?.forEach((l) =>
         result.push({ id: l.id, type: "lead", title: l.customer_name, subtitle: `${l.service_type} • ${l.status}`, path: "/admin/dispatch" })
+      );
+      suppliers.data?.forEach((s: any) =>
+        result.push({
+          id: s.id,
+          type: "supplier",
+          title: s.name,
+          subtitle: [s.contact_name, s.main_phone || s.contact_phone, s.supplier_type].filter(Boolean).join(" • "),
+          path: "/admin/suppliers",
+        })
+      );
+      proposals.data?.forEach((p: any) =>
+        result.push({
+          id: p.id,
+          type: "proposal",
+          title: p.proposal_number || p.reference || "Proposal",
+          subtitle: [p.reference, p.status, p.total != null ? `R${Number(p.total).toLocaleString("en-ZA")}` : null].filter(Boolean).join(" • "),
+          path: "/admin/templates",
+        })
+      );
+      maintenance.data?.forEach((m: any) =>
+        result.push({
+          id: m.id,
+          type: "maintenance",
+          title: m.customers?.name || "Maintenance visit",
+          subtitle: [m.due_date ? `Due ${m.due_date}` : null, m.status, m.notes].filter(Boolean).join(" • "),
+          path: "/admin/maintenance",
+        })
       );
       return result;
     },
