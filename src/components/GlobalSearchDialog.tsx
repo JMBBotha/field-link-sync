@@ -6,11 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, FileText, Receipt, Users, Briefcase, Command } from "lucide-react";
+import { Search, FileText, Receipt, Users, Briefcase, Command, Truck, ClipboardList, Wrench } from "lucide-react";
 
 interface SearchItem {
   id: string;
-  type: "quote" | "invoice" | "customer" | "lead";
+  type: "quote" | "invoice" | "customer" | "lead" | "supplier" | "proposal" | "maintenance";
   title: string;
   subtitle: string;
   path: string;
@@ -21,6 +21,9 @@ const typeConfig = {
   invoice: { icon: Receipt, color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30", label: "Invoice" },
   customer: { icon: Users, color: "bg-purple-500/20 text-purple-400 border-purple-500/30", label: "Customer" },
   lead: { icon: Briefcase, color: "bg-amber-500/20 text-amber-400 border-amber-500/30", label: "Job" },
+  supplier: { icon: Truck, color: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30", label: "Supplier" },
+  proposal: { icon: ClipboardList, color: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30", label: "Proposal" },
+  maintenance: { icon: Wrench, color: "bg-rose-500/20 text-rose-400 border-rose-500/30", label: "Maintenance" },
 };
 
 interface GlobalSearchDialogProps {
