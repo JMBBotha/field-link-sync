@@ -6,11 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, FileText, Receipt, Users, Briefcase, Command } from "lucide-react";
+import { Search, FileText, Receipt, Users, Briefcase, Command, Truck, ClipboardList, Wrench } from "lucide-react";
 
 interface SearchItem {
   id: string;
-  type: "quote" | "invoice" | "customer" | "lead";
+  type: "quote" | "invoice" | "customer" | "lead" | "supplier" | "proposal" | "maintenance";
   title: string;
   subtitle: string;
   path: string;
@@ -21,6 +21,9 @@ const typeConfig = {
   invoice: { icon: Receipt, color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30", label: "Invoice" },
   customer: { icon: Users, color: "bg-purple-500/20 text-purple-400 border-purple-500/30", label: "Customer" },
   lead: { icon: Briefcase, color: "bg-amber-500/20 text-amber-400 border-amber-500/30", label: "Job" },
+  supplier: { icon: Truck, color: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30", label: "Supplier" },
+  proposal: { icon: ClipboardList, color: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30", label: "Proposal" },
+  maintenance: { icon: Wrench, color: "bg-rose-500/20 text-rose-400 border-rose-500/30", label: "Maintenance" },
 };
 
 interface GlobalSearchDialogProps {
@@ -39,11 +42,14 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
   const { data: items = [] } = useQuery<SearchItem[]>({
     queryKey: ["global-search-items"],
     queryFn: async () => {
-      const [quotes, invoices, customers, leads] = await Promise.all([
+      const [quotes, invoices, customers, leads, suppliers, proposals, maintenance] = await Promise.all([
         supabase.from("quotes").select("id, quote_number, status, total").neq("status", "superseded").limit(300),
         supabase.from("invoices").select("id, invoice_number, customer_name, grand_total, status").limit(300),
         supabase.from("customers").select("id, name, phone, email").limit(300),
         supabase.from("leads").select("id, customer_name, service_type, status").limit(300),
+        supabase.from("suppliers").select("id, name, contact_name, main_phone, contact_phone, supplier_type").limit(300),
+        supabase.from("proposals").select("id, proposal_number, reference, status, total").limit(300),
+        supabase.from("maintenance_schedules").select("id, due_date, status, notes, customers(name)").limit(300),
       ]);
 
       const result: SearchItem[] = [];
@@ -58,6 +64,33 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
       );
       leads.data?.forEach((l) =>
         result.push({ id: l.id, type: "lead", title: l.customer_name, subtitle: `${l.service_type} • ${l.status}`, path: "/admin/dispatch" })
+      );
+      suppliers.data?.forEach((s: any) =>
+        result.push({
+          id: s.id,
+          type: "supplier",
+          title: s.name,
+          subtitle: [s.contact_name, s.main_phone || s.contact_phone, s.supplier_type].filter(Boolean).join(" • "),
+          path: "/admin/suppliers",
+        })
+      );
+      proposals.data?.forEach((p: any) =>
+        result.push({
+          id: p.id,
+          type: "proposal",
+          title: p.proposal_number || p.reference || "Proposal",
+          subtitle: [p.reference, p.status, p.total != null ? `R${Number(p.total).toLocaleString("en-ZA")}` : null].filter(Boolean).join(" • "),
+          path: "/admin/templates",
+        })
+      );
+      maintenance.data?.forEach((m: any) =>
+        result.push({
+          id: m.id,
+          type: "maintenance",
+          title: m.customers?.name || "Maintenance visit",
+          subtitle: [m.due_date ? `Due ${m.due_date}` : null, m.status, m.notes].filter(Boolean).join(" • "),
+          path: "/admin/maintenance",
+        })
       );
       return result;
     },
@@ -80,7 +113,7 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
           <Search className="h-4 w-4 text-muted-foreground mr-3 shrink-0" />
           <Input
             autoFocus
-            placeholder="Search jobs, customers, invoices, quotes..."
+            placeholder="Search jobs, customers, quotes, suppliers, proposals, maintenance..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="border-0 shadow-none focus-visible:ring-0 px-0 text-base"
