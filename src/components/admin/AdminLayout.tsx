@@ -247,7 +247,7 @@ const AdminLayout = () => {
             className="flex w-full items-center gap-2 rounded-md bg-white/10 px-3 py-2 text-sm text-blue-100 transition-colors hover:bg-white/20"
           >
             <Search className="h-4 w-4 shrink-0" />
-            <span>Search agents, leads, customers…</span>
+            <span>Search leads, customers, suppliers, proposals…</span>
           </button>
         </div>
 

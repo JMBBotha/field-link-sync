@@ -113,7 +113,7 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
           <Search className="h-4 w-4 text-muted-foreground mr-3 shrink-0" />
           <Input
             autoFocus
-            placeholder="Search jobs, customers, invoices, quotes..."
+            placeholder="Search jobs, customers, quotes, suppliers, proposals, maintenance..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="border-0 shadow-none focus-visible:ring-0 px-0 text-base"
