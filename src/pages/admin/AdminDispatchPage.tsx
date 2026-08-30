@@ -160,6 +160,7 @@ const AdminDispatchPage = () => {
       const { data, error } = await supabase
         .from("leads")
         .select("*")
+        .is("deleted_at", null)
         .in("status", ["pending", "accepted", "in_progress"])
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -186,6 +187,24 @@ const AdminDispatchPage = () => {
     },
   });
 
+  /**
+   * Calendar staff rows = sales people AND technicians for this company.
+   * Sales people are staff on dispatch, not techs-only.
+   */
+  const dispatchAgents = useMemo<Agent[]>(() => {
+    const byId = new Map<string, Agent>();
+    [...salesStaff, ...technicians].forEach(s =>
+      byId.set(s.id, { id: s.id, full_name: s.full_name, availability_status: s.availability_status }),
+    );
+    agents.forEach(a => { if (!byId.has(a.id)) byId.set(a.id, a); });
+    return Array.from(byId.values()).sort((a, b) => {
+      const laneA = laneById.get(a.id) === "sales" ? 0 : 1;
+      const laneB = laneById.get(b.id) === "sales" ? 0 : 1;
+      if (laneA !== laneB) return laneA - laneB;
+      return a.full_name.localeCompare(b.full_name);
+    });
+  }, [salesStaff, technicians, agents, laneById]);
+
   const { data: agentLocations = [] } = useQuery({
     queryKey: ["dispatch-agent-locations"],
     queryFn: async () => {
@@ -196,7 +215,8 @@ const AdminDispatchPage = () => {
     refetchInterval: 30000,
   });
 
-  const { data: schedules = [], refetch: refetchSchedules, isLoading: schedulesLoading } = useQuery({
+  
+  const { data: rawSchedules = [], refetch: refetchSchedules, isLoading: schedulesLoading } = useQuery({
     queryKey: ["dispatch-schedules"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -207,6 +227,41 @@ const AdminDispatchPage = () => {
       return data as Schedule[];
     },
   });
+
+  /**
+   * LOCKED RULE: a lead with an assigned person + a scheduled date IS a calendar job,
+   * even if no job_schedules row exists yet. Synthesize a schedule-shaped tile for those.
+   */
+  const schedules = useMemo<Schedule[]>(() => {
+    const withRow = new Set(rawSchedules.map(s => s.lead_id));
+    const synthetic: Schedule[] = allLeads
+      .filter(l => l.assigned_agent_id && l.scheduled_date && !withRow.has(l.id))
+      .map(l => {
+        const start = (l.scheduled_time || "08:00").slice(0, 8);
+        const [h, m] = start.split(":").map(Number);
+        const endH = Math.min((h || 8) + 2, 23);
+        return {
+          id: `lead-${l.id}`,
+          lead_id: l.id,
+          agent_id: l.assigned_agent_id as string,
+          scheduled_date: l.scheduled_date as string,
+          start_time: start,
+          end_time: `${String(endH).padStart(2, "0")}:${String(m || 0).padStart(2, "0")}`,
+          notes: null,
+          leads: {
+            customer_name: l.customer_name,
+            service_type: l.service_type,
+            status: l.status,
+            priority: l.priority,
+            customer_address: l.customer_address,
+            latitude: l.latitude,
+            longitude: l.longitude,
+          },
+        } as Schedule;
+      });
+    return [...rawSchedules, ...synthetic];
+  }, [rawSchedules, allLeads]);
+
 
   // ─── Realtime subscriptions ───
   useEffect(() => {
@@ -285,9 +340,9 @@ const AdminDispatchPage = () => {
       unassigned: unassignedLeads.length,
       inProgress: inProgressToday,
       onlineAgents,
-      totalAgents: agents.length,
+      totalAgents: dispatchAgents.length,
     };
-  }, [unassignedLeads, allLeads, agentLocations, agents]);
+  }, [unassignedLeads, allLeads, agentLocations, dispatchAgents]);
 
   // ─── Mutations ───
   const assignMutation = useMutation({
@@ -324,7 +379,7 @@ const AdminDispatchPage = () => {
         .eq("id", leadId);
     },
     onSuccess: (_, variables) => {
-      const agentName = agents.find(a => a.id === variables.agentId)?.full_name || "technician";
+      const agentName = dispatchAgents.find(a => a.id === variables.agentId)?.full_name || "technician";
       toast({ title: `✅ Job assigned to ${agentName}` });
       queryClient.invalidateQueries({ queryKey: ["dispatch-leads"] });
       queryClient.invalidateQueries({ queryKey: ["dispatch-schedules"] });
@@ -419,7 +474,7 @@ const AdminDispatchPage = () => {
     }
 
     // Assign all dragged leads
-    const agentName = agents.find(a => a.id === agentId)?.full_name || "technician";
+    const agentName = dispatchAgents.find(a => a.id === agentId)?.full_name || "technician";
     if (leadIds.length > 1) {
       // Bulk assign - show consolidated toast after all mutations
       let completed = 0;
@@ -519,7 +574,7 @@ const AdminDispatchPage = () => {
 
     // Agent locations
     agentLocations.forEach(loc => {
-      const agent = agents.find(a => a.id === loc.agent_id);
+      const agent = dispatchAgents.find(a => a.id === loc.agent_id);
       const el = document.createElement("div");
       el.style.cssText = `width:16px;height:16px;border-radius:50%;background:hsl(204,100%,36%);border:2px solid white;cursor:pointer;`;
       el.title = agent?.full_name || "Agent";
@@ -725,7 +780,7 @@ const AdminDispatchPage = () => {
                       </p>
                       <p className="text-[11px] text-muted-foreground">
                         {inboxMode
-                          ? "Every lead has a technician and a date."
+                          ? "Every lead has a salesperson or technician and a date."
                           : "Nothing waiting to be dispatched."}
                       </p>
                     </div>
@@ -837,7 +892,7 @@ const AdminDispatchPage = () => {
             {viewMode === "day" ? (
               <DayTimeline
                 date={currentDate}
-                agents={agents}
+                agents={dispatchAgents}
                 schedules={schedulesForDates.get(format(currentDate, "yyyy-MM-dd")) || []}
                 isAgentOnline={isAgentOnline}
                 hasConflict={hasConflict}
@@ -856,7 +911,7 @@ const AdminDispatchPage = () => {
             ) : (
               <WeekTimeline
                 dates={dateRange}
-                agents={agents}
+                agents={dispatchAgents}
                 schedulesMap={schedulesForDates}
                 isAgentOnline={isAgentOnline}
                 hasConflict={hasConflict}
@@ -916,7 +971,7 @@ const AdminDispatchPage = () => {
                 ? salesStaff.map(s => ({ id: s.id, full_name: s.full_name }))
                 : technicians.length
                   ? technicians.map(s => ({ id: s.id, full_name: s.full_name }))
-                  : agents.map(a => ({ id: a.id, full_name: a.full_name }));
+                  : dispatchAgents.map(a => ({ id: a.id, full_name: a.full_name }));
             return (
           <div className="space-y-4">
             <div className="space-y-2">
@@ -1149,7 +1204,7 @@ const DayTimeline = ({
         })()}
         {agents.length === 0 && (
           <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm py-20">
-            No technicians found. Add field agents in Settings.
+            No staff found. Add sales people or technicians in Settings.
           </div>
         )}
 
@@ -1281,7 +1336,7 @@ const WeekTimeline = ({
         <thead>
           <tr>
             <th className="border-b border-r p-2 text-xs font-semibold text-muted-foreground bg-muted/30 sticky left-0 z-10 w-36">
-              Technician
+              Staff
             </th>
             {dates.map(d => (
               <th key={d.toISOString()} className={`border-b p-2 text-xs font-semibold ${isToday(d) ? "bg-primary/10 text-primary" : "text-muted-foreground bg-muted/30"}`}>
