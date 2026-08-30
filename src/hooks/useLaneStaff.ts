@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { LeadLane } from "@/lib/leadLane";
@@ -75,12 +76,13 @@ export function useLaneStaff() {
     },
   });
 
-  const staff = query.data || [];
-  return {
-    staff,
-    salesStaff: staff.filter((s) => s.lane === "sales"),
-    technicians: staff.filter((s) => s.lane === "service"),
-    laneById: new Map(staff.map((s) => [s.id, s.lane] as const)),
-    isLoading: query.isLoading,
-  };
+  const staff = useMemo(() => query.data || [], [query.data]);
+  const salesStaff = useMemo(() => staff.filter((s) => s.lane === "sales"), [staff]);
+  const technicians = useMemo(() => staff.filter((s) => s.lane === "service"), [staff]);
+  const laneById = useMemo(
+    () => new Map(staff.map((s) => [s.id, s.lane] as const)),
+    [staff],
+  );
+
+  return { staff, salesStaff, technicians, laneById, isLoading: query.isLoading };
 }
