@@ -32,7 +32,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Users, MapPin, Radio, CalendarIcon, UserCheck, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import LocationPicker from "./LocationPicker";
+import LocationPicker, { type LocationChangeSource } from "./LocationPicker";
+import { geocodeAddress } from "@/lib/geocodeAddress";
+import { hasValidCoords } from "@/lib/leadCoords";
 import { useNearbyAgents } from "@/hooks/useNearbyAgents";
 import { useBroadcastSettings } from "@/hooks/useBroadcastSettings";
 import { getBroadcastRadiusForType, formatDistance } from "@/lib/geolocation";
@@ -83,6 +85,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
     return '+27' + digits;
   };
   const [latitude, setLatitude] = useState<number | null>(null);
+  const [geocoding, setGeocoding] = useState(false);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [customRadius, setCustomRadius] = useState<number | null>(null);
   const [nearbyAgents, setNearbyAgents] = useState<NearbyAgent[]>([]);
@@ -110,6 +113,26 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
       )
       .slice(0, 30);
   })();
+
+  const persistCustomerCoords = async (customerId: string, lat: number, lng: number) => {
+    try {
+      await supabase.from("customers").update({ latitude: lat, longitude: lng }).eq("id", customerId);
+      const { data: primary } = await supabase
+        .from("customer_locations")
+        .select("id")
+        .eq("customer_id", customerId)
+        .eq("is_primary", true)
+        .maybeSingle();
+      if (primary?.id) {
+        await supabase
+          .from("customer_locations")
+          .update({ latitude: lat, longitude: lng })
+          .eq("id", primary.id);
+      }
+    } catch {
+      /* best effort */
+    }
+  };
 
   const handleSelectClient = async (client: UnifiedClient) => {
     const customerId = client.customer_id!;
@@ -174,9 +197,25 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
     // Map pin from the customer or their primary location
     const lat = cust.latitude ?? loc?.latitude ?? null;
     const lng = cust.longitude ?? loc?.longitude ?? null;
-    if (lat !== null && lng !== null) {
+    if (hasValidCoords(lat, lng)) {
       setLatitude(Number(lat));
       setLongitude(Number(lng));
+    } else if (fullAddress.trim().length > 2) {
+      // No stored coords — geocode the composed address (ZA bias) so a pin still drops.
+      setLatitude(null);
+      setLongitude(null);
+      setGeocoding(true);
+      const geo = await geocodeAddress(fullAddress);
+      setGeocoding(false);
+      if (geo && hasValidCoords(geo.latitude, geo.longitude)) {
+        setLatitude(geo.latitude);
+        setLongitude(geo.longitude);
+        // Persist so the next lead for this client already has a pin (address text untouched)
+        void persistCustomerCoords(customerId, geo.latitude, geo.longitude);
+      }
+    } else {
+      setLatitude(null);
+      setLongitude(null);
     }
 
     setCustomerMatch({
@@ -246,12 +285,22 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
     latitude !== null &&
     longitude !== null;
 
-  const handleLocationChange = (lat: number, lng: number, address?: string) => {
+  const handleLocationChange = (
+    lat: number,
+    lng: number,
+    address?: string,
+    source?: LocationChangeSource,
+  ) => {
     setLatitude(lat);
     setLongitude(lng);
-    // Auto-fill address if provided from geocoder
-    if (address) {
+    // Only replace the saved address when the user explicitly picked a new one
+    // from the map search (or when we have no address at all yet).
+    if (address && (source === "search" || formData.customer_address.trim() === "")) {
       setFormData(prev => ({ ...prev, customer_address: address }));
+    }
+    // Keep the linked customer's pin corrected too (address text stays as-is)
+    if (linkedCustomerId) {
+      void persistCustomerCoords(linkedCustomerId, lat, lng);
     }
   };
 
@@ -524,9 +573,24 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
             <LocationPicker
               latitude={latitude}
               longitude={longitude}
+              addressHint={formData.customer_address}
               onLocationChange={handleLocationChange}
             />
+            {geocoding ? (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Loader2 className="h-3 w-3 animate-spin" /> Finding this client's address on the map…
+              </p>
+            ) : latitude === null || longitude === null ? (
+              <p className="text-xs text-muted-foreground">
+                No pin yet — search the map or tap it to drop a pin.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Pin looks wrong? Drag it, tap the map, or search.
+              </p>
+            )}
           </div>
+
 
           <div className="space-y-2">
             <Label htmlFor="customer_address">
