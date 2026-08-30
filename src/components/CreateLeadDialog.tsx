@@ -584,8 +584,16 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
             )}
           </div>
 
-          {/* Broadcast Radius Preview */}
-          {latitude && longitude && (
+          {/* Broadcast Radius Preview — service lane only */}
+          {lane !== "service" && formData.service_type && (
+            <div className="rounded-lg border border-dashed p-3 text-[11px] text-muted-foreground">
+              {lane === "sales"
+                ? "No broadcast for sales leads — a named salesperson owns this one."
+                : "No broadcast until a human picks sales or service."}
+            </div>
+          )}
+          {canBroadcast && latitude && longitude && (
+
             <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
