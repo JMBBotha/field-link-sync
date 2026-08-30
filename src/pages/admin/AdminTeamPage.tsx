@@ -337,6 +337,30 @@ const AdminTeamPage = () => {
                             </div>
                           </TableCell>
                           <TableCell>
+                            <Select
+                              value={member.dispatch_role ?? "auto"}
+                              onValueChange={(v) =>
+                                changeLaneMutation.mutate({
+                                  userId: member.id,
+                                  dispatchRole: v === "auto" ? null : v,
+                                })
+                              }
+                              disabled={member.participant_type === "independent_tech"}
+                            >
+                              <SelectTrigger className="h-8 w-[140px] text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="auto">
+                                  Auto ({resolveLane({ dispatch_role: null, participant_type: member.participant_type, roles: member.roles }) === "sales" ? "Sales" : resolveLane({ dispatch_role: null, participant_type: member.participant_type, roles: member.roles }) === "service" ? "Technician" : "None"})
+                                </SelectItem>
+                                <SelectItem value="sales">Sales</SelectItem>
+                                <SelectItem value="technician">Technician</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+
+                          <TableCell>
                             <div className="flex items-center gap-1.5">
                               <span className={`h-2 w-2 rounded-full ${member.availability === "available" ? "bg-emerald-500" : member.availability === "busy" ? "bg-amber-500" : "bg-muted-foreground/40"}`} />
                               <span className="text-sm capitalize text-muted-foreground">{member.availability}</span>
