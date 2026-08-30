@@ -85,12 +85,24 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
   const [customerMatch, setCustomerMatch] = useState<CustomerMatch | null>(null);
   const [linkedCustomerId, setLinkedCustomerId] = useState<string | null>(null);
   const [matchDismissed, setMatchDismissed] = useState(false);
+  const [laneOverride, setLaneOverride] = useState<LeadLane | "unknown" | null>(null);
+  const [salesOwnerId, setSalesOwnerId] = useState<string>("");
   const { toast } = useToast();
   const { findNearbyAgents, loading: loadingAgents } = useNearbyAgents();
   const { settings: broadcastSettings } = useBroadcastSettings();
+  const { salesStaff } = useLaneStaff();
+
+  // Lane: derived from the service type, dispatcher can override
+  const derivedLane = laneFromServiceType(formData.service_type);
+  const lane: LeadLane | null =
+    laneOverride === null ? derivedLane : laneOverride === "unknown" ? null : laneOverride;
+
+  // Only service leads get a geofenced first-accept broadcast
+  const canBroadcast = lane === "service";
 
   // Calculate effective radius based on service type
   const effectiveRadius = customRadius ?? getBroadcastRadiusForType(formData.service_type, broadcastSettings);
+
 
   // Fetch nearby agents when location or radius changes
   useEffect(() => {
