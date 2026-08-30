@@ -1349,6 +1349,7 @@ const DayTimeline = ({
             </div>
           );
         })}
+        ))}
       </div>
     </div>
   );
@@ -1356,11 +1357,12 @@ const DayTimeline = ({
 
 // ─── Week Timeline (compact) ───
 const WeekTimeline = ({
-  dates, agents, schedulesMap, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads, onJobInfoClick,
+  dates, agents, schedulesMap, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads, onJobInfoClick, laneById,
   isDragging, dragOverSlot, onSlotDragEnter, onSlotDragLeave,
 }: {
   dates: Date[];
   agents: Agent[];
+  laneById: Map<string, LeadLane | null>;
   schedulesMap: Map<string, Schedule[]>;
   isAgentOnline: (id: string) => boolean;
   hasConflict: (agentId: string, dateStr: string, hour: number) => boolean;
