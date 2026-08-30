@@ -1350,7 +1350,8 @@ const DayTimeline = ({
               </div>
             </div>
           );
-        })}
+            })}
+          </Fragment>
         ))}
       </div>
     </div>
