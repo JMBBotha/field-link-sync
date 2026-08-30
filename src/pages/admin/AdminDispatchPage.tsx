@@ -1493,6 +1493,8 @@ const WeekTimeline = ({
                 );
               })}
             </tr>
+              ))}
+            </Fragment>
           ))}
         </tbody>
       </table>
