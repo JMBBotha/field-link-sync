@@ -50,7 +50,7 @@ const AdminTeamPage = () => {
 
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, full_name, phone, avatar_url, availability_status, updated_at")
+        .select("id, full_name, phone, avatar_url, availability_status, updated_at, dispatch_role, participant_type")
         .in("id", userIds);
 
       const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
@@ -73,6 +73,8 @@ const AdminTeamPage = () => {
           phone: profile?.phone || "",
           avatar_url: profile?.avatar_url,
           availability: profile?.availability_status || "offline",
+          dispatch_role: (profile as any)?.dispatch_role || null,
+          participant_type: (profile as any)?.participant_type || null,
           last_active: profile?.updated_at || "",
           roles: info.roles,
           joined: info.created_at,
@@ -120,6 +122,25 @@ const AdminTeamPage = () => {
     },
     onError: (err: any) => {
       toast({ title: "Failed to update role", description: err.message, variant: "destructive" });
+    },
+  });
+
+  // Dispatch lane (sales vs technician) mutation
+  const changeLaneMutation = useMutation({
+    mutationFn: async ({ userId, dispatchRole }: { userId: string; dispatchRole: string | null }) => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ dispatch_role: dispatchRole })
+        .eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team-members"] });
+      queryClient.invalidateQueries({ queryKey: ["lane-staff"] });
+      toast({ title: "Dispatch lane updated" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to update lane", description: err.message, variant: "destructive" });
     },
   });
 
@@ -281,6 +302,7 @@ const AdminTeamPage = () => {
                   <TableHead>Name</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Dispatch Lane</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Last Active</TableHead>
                   <TableHead className="w-10"></TableHead>
