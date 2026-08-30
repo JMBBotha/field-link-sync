@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import logo from "@/assets/logo.png";
+import { useLeadInbox, INBOX_ROUTE } from "@/hooks/useLeadInbox";
 
 interface NavItem {
   path: string;
@@ -47,6 +48,8 @@ const AdminSidebar = ({
   const location = useLocation();
   const { isAdmin, isDispatcher, isFieldAgent, roles } = useRole();
   const { settings } = useCompanySettings();
+  const { count: inboxCount } = useLeadInbox();
+
 
   const companyName = settings?.company_name?.trim() || "My Company";
   const roleLabel = isAdmin
@@ -107,7 +110,7 @@ const AdminSidebar = ({
           label: "Jobs & Dispatch",
           icon: Briefcase,
           children: [
-            { path: "/admin/dispatch", label: "Leads", icon: Sparkles },
+            { path: "/admin/dispatch", label: "Leads", icon: Sparkles, badge: inboxCount > 0 ? inboxCount : undefined },
             { path: "/admin/jobs/dispatch", label: "Dispatch Board", icon: ClipboardList },
             { path: "/admin/schedule", label: "Schedule", icon: CalendarDays },
             { path: "/admin/my-jobs", label: "My Jobs", icon: Briefcase },
@@ -358,18 +361,42 @@ const AdminSidebar = ({
 
       {/* New Lead button */}
       <div className={cn("px-3 pt-3 pb-2", collapsed && "px-2")}>
-        <Button
-          variant="brand"
-          onClick={() => {
-            onCreateLead();
-            onMobileClose?.();
-          }}
-          className={cn("w-full", collapsed && "px-0")}
-          size={collapsed ? "icon" : "default"}
-        >
-          <Plus className="h-4 w-4" />
-          {!collapsed && "New Lead"}
-        </Button>
+        <div className={cn("flex items-center gap-1.5", collapsed && "flex-col gap-1")}>
+          <Button
+            variant="brand"
+            onClick={() => handleNav(INBOX_ROUTE)}
+            className={cn("relative flex-1 min-w-0", collapsed && "w-full px-0")}
+            size={collapsed ? "icon" : "default"}
+            title="New Leads inbox"
+          >
+            <Bell className="h-4 w-4" />
+            {!collapsed && <span className="truncate">New Leads</span>}
+            {inboxCount > 0 && (
+              collapsed ? (
+                <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-white">
+                  {inboxCount > 99 ? "99+" : inboxCount}
+                </span>
+              ) : (
+                <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 px-1 text-[10px]">
+                  {inboxCount > 99 ? "99+" : inboxCount}
+                </Badge>
+              )
+            )}
+          </Button>
+          <Button
+            variant="brand"
+            size="icon"
+            onClick={() => {
+              onCreateLead();
+              onMobileClose?.();
+            }}
+            className={cn("shrink-0", collapsed && "w-full")}
+            title="Create lead"
+            aria-label="Create lead"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Navigation */}

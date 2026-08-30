@@ -15,6 +15,7 @@ import SyncConflictsSection from "@/components/admin/SyncConflictsSection";
 import AdminMapPage from "@/pages/admin/AdminMapPage";
 import KpiDetailDialog from "@/components/admin/KpiDetailDialog";
 import KpiHoverPreview from "@/components/admin/KpiHoverPreview";
+import { useLeadInbox, INBOX_ROUTE } from "@/hooks/useLeadInbox";
 import QuotePerformanceWidget from "@/components/analytics/QuotePerformanceWidget";
 import PipelineMetrics from "@/components/analytics/PipelineMetrics";
 import QuickTemplateDialog from "@/components/quoting/QuickTemplateDialog";
@@ -31,7 +32,7 @@ import { fetchOverdueMaintenanceCount } from "@/lib/maintenanceMetrics";
 
 
 const kpiViewAllHref: Record<string, string> = {
-  new_leads: "/admin/dispatch",
+  new_leads: "/admin/dispatch?inbox=1",
   active_jobs: "/admin/jobs",
   pending_quotes: "/admin/quotes",
   overdue_invoices: "/admin/invoices",
@@ -46,6 +47,7 @@ interface AdminHomeProps {
 const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
   const today = new Date().toISOString().split("T")[0];
   const [selectedKpi, setSelectedKpi] = useState<string | null>(null);
+  const { count: inboxCount } = useLeadInbox();
   const [convertingId, setConvertingId] = useState<string | null>(null);
   const [jobDialog, setJobDialog] = useState<{ open: boolean; leadId?: string; customerId?: string }>({ open: false });
   const [leadsRange, setLeadsRange] = useState<"day" | "week" | "month">("week");
@@ -234,12 +236,12 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
 
   // Core 5 KPIs — focused on Lead → Job → Invoice flow
   const kpiCards = useMemo(() => [
-    { key: "new_leads", label: "New Leads Today", value: stats?.newLeads ?? 0, icon: Plus, color: "text-primary", sparkKey: "leads" as const, sparkColor: "#0077B6" },
+    { key: "new_leads", label: "New Leads", value: inboxCount, icon: Plus, color: "text-primary", sparkKey: "leads" as const, sparkColor: "#0077B6" },
     { key: "active_jobs", label: "Today's Jobs", value: stats?.activeJobs ?? 0, icon: Clock, color: "text-green-500", sparkKey: "active" as const, sparkColor: "#22c55e" },
     { key: "pending_quotes", label: "Pending Quotes", value: stats?.pendingQuotes ?? 0, icon: FileText, color: "text-orange-500", sparkKey: "leads" as const, sparkColor: "#f97316" },
     { key: "overdue_invoices", label: "Overdue Invoices", value: stats?.overdueInvoices ?? 0, icon: AlertTriangle, color: "text-destructive", sparkKey: "leads" as const, sparkColor: "#ef4444" },
     { key: "active_techs", label: "Active Techs", value: jobStats?.activeFieldAgents ?? 0, icon: UserCheck, color: "text-blue-500", sparkKey: "active" as const, sparkColor: "#3b82f6" },
-  ], [stats, jobStats]);
+  ], [stats, jobStats, inboxCount]);
 
   const [showMore, setShowMore] = useState(false);
 
@@ -305,7 +307,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
               >
               <Card
                 className="surface-card surface-card-interactive cursor-pointer"
-                onClick={() => setSelectedKpi(kpi.key)}
+                onClick={() => (kpi.key === "new_leads" ? navigate(INBOX_ROUTE) : setSelectedKpi(kpi.key))}
               >
                 <CardContent className="p-3 md:p-4">
                   <div className="flex items-center gap-2 mb-1">

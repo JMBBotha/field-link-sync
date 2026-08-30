@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
+import { useLeadInbox } from "@/hooks/useLeadInbox";
+import CreateLeadDialog from "@/components/CreateLeadDialog";
 import { usePresence } from "@/hooks/usePresence";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -117,6 +120,11 @@ const AdminDispatchPage = () => {
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const inboxMode = searchParams.get("inbox") === "1";
+  const { leads: inboxLeads } = useLeadInbox();
+  const [showCreateLead, setShowCreateLead] = useState(false);
+
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState("");
@@ -228,7 +236,9 @@ const AdminDispatchPage = () => {
 
   // ─── Derived data ───
   const unassignedLeads = useMemo(() => {
-    let leads = allLeads.filter(l => !l.assigned_agent_id && l.status === "pending");
+    let leads: Lead[] = inboxMode
+      ? (inboxLeads as unknown as Lead[])
+      : allLeads.filter(l => !l.assigned_agent_id && l.status === "pending");
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       leads = leads.filter(l =>
@@ -241,7 +251,7 @@ const AdminDispatchPage = () => {
       leads = leads.filter(l => l.priority === "urgent" || l.priority === "high");
     }
     return leads;
-  }, [allLeads, searchQuery, showUrgentOnly]);
+  }, [allLeads, inboxLeads, inboxMode, searchQuery, showUrgentOnly]);
 
   const dateRange = useMemo(() => {
     if (viewMode === "day") return [currentDate];
@@ -631,9 +641,9 @@ const AdminDispatchPage = () => {
             <>
               <div className="p-3 border-b space-y-2">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-sm">Unassigned Jobs</h3>
+                  <h3 className="font-semibold text-sm">{inboxMode ? "New Leads Inbox" : "Unassigned Jobs"}</h3>
                   <div className="flex items-center gap-1">
-                    <Badge variant="secondary" className="text-xs">{unassignedLeads.length}</Badge>
+                    <Badge variant={inboxMode ? "destructive" : "secondary"} className="text-xs">{unassignedLeads.length}</Badge>
                     <button onClick={() => setSidebarCollapsed(true)} className="p-1 hover:bg-muted rounded" title="Collapse"><ChevronLeft className="h-3.5 w-3.5" /></button>
                   </div>
                 </div>
@@ -647,20 +657,52 @@ const AdminDispatchPage = () => {
                     className="pl-8 h-8 text-xs"
                   />
                 </div>
+                <div className="flex gap-1.5">
+                  <Button
+                    variant={showUrgentOnly ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1 text-xs h-7"
+                    onClick={() => setShowUrgentOnly(!showUrgentOnly)}
+                  >
+                    <Filter className="h-3 w-3 mr-1" />
+                    {showUrgentOnly ? "Urgent/High" : "Urgent"}
+                  </Button>
+                  <Button
+                    variant={inboxMode ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1 text-xs h-7"
+                    onClick={() => {
+                      const next = new URLSearchParams(searchParams);
+                      if (inboxMode) next.delete("inbox");
+                      else next.set("inbox", "1");
+                      setSearchParams(next, { replace: true });
+                    }}
+                  >
+                    {inboxMode ? "Show all" : "Inbox only"}
+                  </Button>
+                </div>
                 <Button
-                  variant={showUrgentOnly ? "default" : "outline"}
+                  variant="brand"
                   size="sm"
                   className="w-full text-xs h-7"
-                  onClick={() => setShowUrgentOnly(!showUrgentOnly)}
+                  onClick={() => setShowCreateLead(true)}
                 >
-                  <Filter className="h-3 w-3 mr-1" />
-                  {showUrgentOnly ? "Showing Urgent/High" : "Filter Urgent"}
+                  New Lead
                 </Button>
               </div>
               <ScrollArea className="flex-1">
                 <div className="p-2 space-y-1.5">
                   {unassignedLeads.length === 0 && (
-                    <p className="text-xs text-muted-foreground text-center py-6">No unassigned jobs</p>
+                    <div className="px-3 py-8 text-center space-y-1">
+                      <p className="text-xs font-medium">
+                        {inboxMode ? "Inbox clear" : "No unassigned jobs"}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {inboxMode
+                          ? "Every lead has a technician and a date."
+                          : "Nothing waiting to be dispatched."}
+                      </p>
+                    </div>
                   )}
                   {unassignedLeads.map(lead => (
                     <motion.div
@@ -903,6 +945,8 @@ const AdminDispatchPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CreateLeadDialog open={showCreateLead} onOpenChange={setShowCreateLead} />
     </div>
   );
 };
