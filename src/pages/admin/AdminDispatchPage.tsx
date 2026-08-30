@@ -880,18 +880,53 @@ const AdminDispatchPage = () => {
       <Dialog open={!!quickAssignLead} onOpenChange={(open) => { if (!open) setQuickAssignLead(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Quick Assign Job</DialogTitle>
+            <DialogTitle>Assign Lead</DialogTitle>
             <DialogDescription>
               Assign <span className="font-semibold">{quickAssignLead?.customer_name}</span> – {quickAssignLead?.service_type}
             </DialogDescription>
           </DialogHeader>
+          {(() => {
+            const lane = quickAssignLead ? laneOf(quickAssignLead) : null;
+            if (!lane) {
+              return (
+                <div className="space-y-3 rounded-lg border border-dashed p-4 text-sm">
+                  <p className="font-medium">This lead needs a human to pick a lane.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Sales leads go to a named salesperson. Service leads are offered to nearby technicians.
+                    Nothing is broadcast until you choose.
+                  </p>
+                  <div className="flex gap-2">
+                    {(["sales", "service"] as LeadLane[]).map(l => (
+                      <Button
+                        key={l}
+                        size="sm"
+                        variant="outline"
+                        disabled={setLaneMutation.isPending}
+                        onClick={() => quickAssignLead && setLaneMutation.mutate({ leadId: quickAssignLead.id, lane: l })}
+                      >
+                        {LANE_META[l].label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              );
+            }
+            const candidates =
+              lane === "sales"
+                ? salesStaff.map(s => ({ id: s.id, full_name: s.full_name }))
+                : technicians.length
+                  ? technicians.map(s => ({ id: s.id, full_name: s.full_name }))
+                  : agents.map(a => ({ id: a.id, full_name: a.full_name }));
+            return (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-sm">Technician</Label>
+              <Label className="text-sm">{lane === "sales" ? "Salesperson" : "Technician"}</Label>
               <Select value={quickAssignAgent} onValueChange={setQuickAssignAgent}>
-                <SelectTrigger><SelectValue placeholder="Select technician" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder={candidates.length ? `Select ${lane === "sales" ? "salesperson" : "technician"}` : `No ${lane === "sales" ? "sales" : "technician"} lane people yet`} />
+                </SelectTrigger>
                 <SelectContent>
-                  {agents.map(a => (
+                  {candidates.map(a => (
                     <SelectItem key={a.id} value={a.id}>
                       <div className="flex items-center gap-2">
                         <div className={`h-2 w-2 rounded-full ${isAgentOnline(a.id) ? "bg-success" : "bg-muted-foreground/40"}`} />
@@ -901,7 +936,13 @@ const AdminDispatchPage = () => {
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-[11px] text-muted-foreground">
+                {lane === "sales"
+                  ? "Named assignment — sales leads are never a first-accept race."
+                  : "Technician lane only. First-accept broadcast still applies to nearby techs."}
+              </p>
             </div>
+
             <div className="space-y-2">
               <Label className="text-sm">Date</Label>
               <Input type="date" value={quickAssignDate} onChange={e => setQuickAssignDate(e.target.value)} />
