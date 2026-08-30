@@ -266,6 +266,8 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
       setMatchDismissed(false);
       setLaneOverride(null);
       setSalesOwnerId("");
+      setClientQuery("");
+      setClientSearchOpen(false);
 
 
       onOpenChange(false);
@@ -291,6 +293,61 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Existing client search */}
+          <div className="space-y-2">
+            <Label htmlFor="client_search">Existing Client</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="client_search"
+                className="pl-9"
+                placeholder="Search clients by name, phone, email or address..."
+                value={clientQuery}
+                onChange={(e) => {
+                  setClientQuery(e.target.value);
+                  setClientSearchOpen(true);
+                }}
+                onFocus={() => setClientSearchOpen(true)}
+                onBlur={() => setTimeout(() => setClientSearchOpen(false), 200)}
+              />
+              {clientSearchOpen && !linkedCustomerId && (
+                <div className="absolute z-50 top-full mt-1 w-full rounded-lg border bg-popover shadow-xl max-h-56 overflow-y-auto">
+                  {filteredClients.length === 0 ? (
+                    <p className="p-3 text-center text-sm text-muted-foreground">
+                      {clientQuery.trim()
+                        ? `No clients match "${clientQuery.trim()}" — fill the form below to create a new lead`
+                        : "No existing clients yet"}
+                    </p>
+                  ) : (
+                    filteredClients.map((c) => (
+                      <button
+                        key={c.customer_id}
+                        type="button"
+                        className="w-full flex items-center gap-3 px-3 py-2 hover:bg-accent text-left"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          handleSelectClient(c);
+                        }}
+                      >
+                        <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <User className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{c.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {c.phone}
+                            {c.email ? ` · ${c.email}` : ""}
+                            {c.address ? ` · ${c.address}` : ""}
+                          </p>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="customer_name">
               Customer Name <span className="text-destructive">*</span>
