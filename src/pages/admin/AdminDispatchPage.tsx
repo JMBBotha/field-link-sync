@@ -958,10 +958,13 @@ const AdminDispatchPage = () => {
               </div>
             </div>
           </div>
+            );
+          })()}
           <DialogFooter>
             <Button variant="outline" onClick={() => setQuickAssignLead(null)}>Cancel</Button>
             <Button
-              disabled={!quickAssignAgent || assignMutation.isPending}
+              disabled={!quickAssignAgent || !laneOf(quickAssignLead || {}) || assignMutation.isPending}
+
               onClick={() => {
                 if (!quickAssignLead || !quickAssignAgent) return;
                 assignMutation.mutate(
