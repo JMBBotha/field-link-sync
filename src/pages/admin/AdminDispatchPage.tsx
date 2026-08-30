@@ -893,6 +893,7 @@ const AdminDispatchPage = () => {
               <DayTimeline
                 date={currentDate}
                 agents={dispatchAgents}
+                laneById={laneById}
                 schedules={schedulesForDates.get(format(currentDate, "yyyy-MM-dd")) || []}
                 isAgentOnline={isAgentOnline}
                 hasConflict={hasConflict}
@@ -912,6 +913,7 @@ const AdminDispatchPage = () => {
               <WeekTimeline
                 dates={dateRange}
                 agents={dispatchAgents}
+                laneById={laneById}
                 schedulesMap={schedulesForDates}
                 isAgentOnline={isAgentOnline}
                 hasConflict={hasConflict}
