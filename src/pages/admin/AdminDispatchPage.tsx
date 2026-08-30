@@ -215,7 +215,7 @@ const AdminDispatchPage = () => {
     refetchInterval: 30000,
   });
 
-  const { data: schedules: _unusedNever = [] } = { data: [] } as any;
+  
   const { data: rawSchedules = [], refetch: refetchSchedules, isLoading: schedulesLoading } = useQuery({
     queryKey: ["dispatch-schedules"],
     queryFn: async () => {
