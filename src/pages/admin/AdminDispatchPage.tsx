@@ -1426,13 +1426,24 @@ const WeekTimeline = ({
               );
             })}
           </tr>
-          {agents.map(agent => (
+          {groupAgentsByLane(agents, laneById).map(group => (
+            <Fragment key={group.key ?? "unknown"}>
+              {/* Lane group header row */}
+              <tr>
+                <td colSpan={dates.length + 1} className="border-b border-r bg-muted/20 px-2 py-1">
+                  <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {group.label}
+                  </span>
+                </td>
+              </tr>
+              {group.agents.map(agent => (
 
             <tr key={agent.id}>
               <td className="border-b border-r p-2 bg-card sticky left-0 z-10">
                 <div className="flex items-center gap-1.5">
                   <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${isAgentOnline(agent.id) ? "bg-success animate-pulse" : "bg-muted-foreground/40"}`} />
                   <span className="text-xs font-medium truncate">{agent.full_name}</span>
+                  <LaneBadge lane={laneById.get(agent.id) ?? null} />
                   {isAgentOnline(agent.id) && <span className="text-[9px] text-success font-semibold ml-auto shrink-0">Online</span>}
                 </div>
               </td>
