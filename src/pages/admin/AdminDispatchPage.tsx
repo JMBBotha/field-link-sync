@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { useLeadInbox } from "@/hooks/useLeadInbox";
@@ -198,8 +198,8 @@ const AdminDispatchPage = () => {
     );
     agents.forEach(a => { if (!byId.has(a.id)) byId.set(a.id, a); });
     return Array.from(byId.values()).sort((a, b) => {
-      const laneA = laneById.get(a.id) === "sales" ? 0 : 1;
-      const laneB = laneById.get(b.id) === "sales" ? 0 : 1;
+      const laneA = laneRank(laneById.get(a.id) ?? null);
+      const laneB = laneRank(laneById.get(b.id) ?? null);
       if (laneA !== laneB) return laneA - laneB;
       return a.full_name.localeCompare(b.full_name);
     });
@@ -1121,6 +1121,37 @@ const StatBadge = ({ icon, label, value, variant }: { icon: React.ReactNode; lab
     </div>
   );
 };
+
+// ─── Day Timeline ───
+// ─── Lane grouping: Sales first, then Technical, then unlaned ───
+const LANE_GROUPS: { key: LeadLane | null; label: string }[] = [
+  { key: "sales", label: "Sales" },
+  { key: "service", label: "Technical" },
+  { key: null, label: "Needs lane" },
+];
+
+/** Sort rank: sales (0), service (1), unknown (2). */
+const laneRank = (lane: LeadLane | null | undefined) =>
+  lane === "sales" ? 0 : lane === "service" ? 1 : 2;
+
+function groupAgentsByLane(agents: Agent[], laneById: Map<string, LeadLane | null>) {
+  return LANE_GROUPS
+    .map(g => ({ ...g, agents: agents.filter(a => (laneById.get(a.id) ?? null) === g.key) }))
+    .filter(g => g.agents.length > 0);
+}
+
+/** Small lane badge for staff rows. Staff badge says "Tech" (not "Service"); lead labels unchanged. */
+function LaneBadge({ lane }: { lane: LeadLane | null }) {
+  return (
+    <span
+      className={`shrink-0 rounded border px-1 py-px text-[9px] font-semibold leading-tight whitespace-nowrap ${
+        lane ? LANE_META[lane].className : UNKNOWN_LANE_META.className
+      }`}
+    >
+      {lane === "sales" ? "Sales" : lane === "service" ? "Tech" : "Needs lane"}
+    </span>
+  );
+}
 
 // ─── Day Timeline ───
 const DayTimeline = ({
