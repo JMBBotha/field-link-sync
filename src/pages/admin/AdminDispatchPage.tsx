@@ -340,9 +340,9 @@ const AdminDispatchPage = () => {
       unassigned: unassignedLeads.length,
       inProgress: inProgressToday,
       onlineAgents,
-      totalAgents: agents.length,
+      totalAgents: dispatchAgents.length,
     };
-  }, [unassignedLeads, allLeads, agentLocations, agents]);
+  }, [unassignedLeads, allLeads, agentLocations, dispatchAgents]);
 
   // ─── Mutations ───
   const assignMutation = useMutation({
@@ -379,7 +379,7 @@ const AdminDispatchPage = () => {
         .eq("id", leadId);
     },
     onSuccess: (_, variables) => {
-      const agentName = agents.find(a => a.id === variables.agentId)?.full_name || "technician";
+      const agentName = dispatchAgents.find(a => a.id === variables.agentId)?.full_name || "technician";
       toast({ title: `✅ Job assigned to ${agentName}` });
       queryClient.invalidateQueries({ queryKey: ["dispatch-leads"] });
       queryClient.invalidateQueries({ queryKey: ["dispatch-schedules"] });
@@ -474,7 +474,7 @@ const AdminDispatchPage = () => {
     }
 
     // Assign all dragged leads
-    const agentName = agents.find(a => a.id === agentId)?.full_name || "technician";
+    const agentName = dispatchAgents.find(a => a.id === agentId)?.full_name || "technician";
     if (leadIds.length > 1) {
       // Bulk assign - show consolidated toast after all mutations
       let completed = 0;
@@ -574,7 +574,7 @@ const AdminDispatchPage = () => {
 
     // Agent locations
     agentLocations.forEach(loc => {
-      const agent = agents.find(a => a.id === loc.agent_id);
+      const agent = dispatchAgents.find(a => a.id === loc.agent_id);
       const el = document.createElement("div");
       el.style.cssText = `width:16px;height:16px;border-radius:50%;background:hsl(204,100%,36%);border:2px solid white;cursor:pointer;`;
       el.title = agent?.full_name || "Agent";
@@ -780,7 +780,7 @@ const AdminDispatchPage = () => {
                       </p>
                       <p className="text-[11px] text-muted-foreground">
                         {inboxMode
-                          ? "Every lead has a technician and a date."
+                          ? "Every lead has a salesperson or technician and a date."
                           : "Nothing waiting to be dispatched."}
                       </p>
                     </div>
@@ -892,7 +892,7 @@ const AdminDispatchPage = () => {
             {viewMode === "day" ? (
               <DayTimeline
                 date={currentDate}
-                agents={agents}
+                agents={dispatchAgents}
                 schedules={schedulesForDates.get(format(currentDate, "yyyy-MM-dd")) || []}
                 isAgentOnline={isAgentOnline}
                 hasConflict={hasConflict}
@@ -911,7 +911,7 @@ const AdminDispatchPage = () => {
             ) : (
               <WeekTimeline
                 dates={dateRange}
-                agents={agents}
+                agents={dispatchAgents}
                 schedulesMap={schedulesForDates}
                 isAgentOnline={isAgentOnline}
                 hasConflict={hasConflict}
@@ -971,7 +971,7 @@ const AdminDispatchPage = () => {
                 ? salesStaff.map(s => ({ id: s.id, full_name: s.full_name }))
                 : technicians.length
                   ? technicians.map(s => ({ id: s.id, full_name: s.full_name }))
-                  : agents.map(a => ({ id: a.id, full_name: a.full_name }));
+                  : dispatchAgents.map(a => ({ id: a.id, full_name: a.full_name }));
             return (
           <div className="space-y-4">
             <div className="space-y-2">
@@ -1204,7 +1204,7 @@ const DayTimeline = ({
         })()}
         {agents.length === 0 && (
           <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm py-20">
-            No technicians found. Add field agents in Settings.
+            No staff found. Add sales people or technicians in Settings.
           </div>
         )}
 
@@ -1336,7 +1336,7 @@ const WeekTimeline = ({
         <thead>
           <tr>
             <th className="border-b border-r p-2 text-xs font-semibold text-muted-foreground bg-muted/30 sticky left-0 z-10 w-36">
-              Technician
+              Staff
             </th>
             {dates.map(d => (
               <th key={d.toISOString()} className={`border-b p-2 text-xs font-semibold ${isToday(d) ? "bg-primary/10 text-primary" : "text-muted-foreground bg-muted/30"}`}>
