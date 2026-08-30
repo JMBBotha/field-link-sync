@@ -760,9 +760,39 @@ const AdminDispatchPage = () => {
                         </Badge>
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                        {(() => {
+                          const lane = laneOf(lead);
+                          return (
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] h-5 ${lane ? LANE_META[lane].className : UNKNOWN_LANE_META.className}`}
+                            >
+                              {lane ? LANE_META[lane].label : UNKNOWN_LANE_META.label}
+                            </Badge>
+                          );
+                        })()}
                         <Badge variant="outline" className="text-[10px] h-auto whitespace-normal break-words">
                           {lead.service_type}
                         </Badge>
+                      </div>
+                      {/* Dispatcher can set / change the lane while the lead is uncommitted */}
+                      <div className="flex items-center gap-1 mt-1.5" onClick={e => e.stopPropagation()}>
+                        {(["sales", "service"] as LeadLane[]).map(l => (
+                          <Button
+                            key={l}
+                            type="button"
+                            size="sm"
+                            variant={laneOf(lead) === l ? "default" : "outline"}
+                            className="h-6 px-2 text-[10px]"
+                            disabled={setLaneMutation.isPending}
+                            onClick={() => setLaneMutation.mutate({ leadId: lead.id, lane: l })}
+                          >
+                            {LANE_META[l].label}
+                          </Button>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+
                         {lead.scheduled_time && (
                           <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
                             <Clock className="h-2.5 w-2.5" />{lead.scheduled_time}
