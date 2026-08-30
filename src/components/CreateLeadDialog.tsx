@@ -576,7 +576,21 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
               addressHint={formData.customer_address}
               onLocationChange={handleLocationChange}
             />
+            {geocoding ? (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Loader2 className="h-3 w-3 animate-spin" /> Finding this client's address on the map…
+              </p>
+            ) : latitude === null || longitude === null ? (
+              <p className="text-xs text-muted-foreground">
+                No pin yet — search the map or tap it to drop a pin.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Pin looks wrong? Drag it, tap the map, or search.
+              </p>
+            )}
           </div>
+
 
           <div className="space-y-2">
             <Label htmlFor="customer_address">
