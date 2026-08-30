@@ -111,7 +111,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
       .slice(0, 30);
   })();
 
-  const handleSelectClient = (client: UnifiedClient) => {
+  const handleSelectClient = async (client: UnifiedClient) => {
     const customerId = client.customer_id!;
     setLinkedCustomerId(customerId);
     setMatchDismissed(false);
@@ -122,17 +122,70 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
       email: client.email,
       matchedOn: "phone",
     });
-    // Fill the lead form from the client; strip +27 prefix for the phone field
-    const digits = client.phone.replace(/\D/g, "");
-    const localPhone = digits.startsWith("27") ? digits.slice(2) : digits.startsWith("0") ? digits.slice(1) : digits;
-    setFormData((p) => ({
-      ...p,
-      customer_name: client.name,
-      customer_phone: localPhone,
-      customer_address: client.address || p.customer_address,
-    }));
     setClientQuery("");
     setClientSearchOpen(false);
+
+    // Fetch the FULL customer record (+ primary location) so the lead is complete
+    const [{ data: cust }, { data: loc }] = await Promise.all([
+      supabase.from("customers").select("*").eq("id", customerId).single(),
+      supabase
+        .from("customer_locations")
+        .select("address, latitude, longitude, notes")
+        .eq("customer_id", customerId)
+        .eq("is_primary", true)
+        .maybeSingle(),
+    ]);
+    if (!cust) return;
+
+    // Build a complete address from structured fields, falling back to the combined field
+    const addressParts = [
+      cust.primary_address_line1,
+      cust.primary_address_line2,
+      cust.city,
+      cust.postal_code,
+      cust.area,
+    ].filter((p): p is string => !!p && p.trim() !== "");
+    const fullAddress =
+      addressParts.length > 0
+        ? addressParts.join(", ")
+        : cust.address || loc?.address || "";
+
+    const name =
+      cust.name ||
+      [cust.first_name, cust.last_name].filter(Boolean).join(" ") ||
+      cust.company_name ||
+      client.name;
+
+    // Strip +27 prefix for the phone field
+    const phone = cust.phone || client.phone || "";
+    const digits = phone.replace(/\D/g, "");
+    const localPhone = digits.startsWith("27") ? digits.slice(2) : digits.startsWith("0") ? digits.slice(1) : digits;
+
+    setFormData((p) => ({
+      ...p,
+      customer_name: name,
+      company_name: cust.company_name || "",
+      email: cust.email || "",
+      customer_phone: localPhone,
+      customer_address: fullAddress || p.customer_address,
+      notes: cust.notes || loc?.notes || p.notes,
+    }));
+
+    // Map pin from the customer or their primary location
+    const lat = cust.latitude ?? loc?.latitude ?? null;
+    const lng = cust.longitude ?? loc?.longitude ?? null;
+    if (lat !== null && lng !== null) {
+      setLatitude(Number(lat));
+      setLongitude(Number(lng));
+    }
+
+    setCustomerMatch({
+      id: customerId,
+      name,
+      phone: cust.phone || client.phone,
+      email: cust.email,
+      matchedOn: "phone",
+    });
   };
   const { findNearbyAgents, loading: loadingAgents } = useNearbyAgents();
   const { settings: broadcastSettings } = useBroadcastSettings();
