@@ -59,6 +59,8 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     customer_name: "",
+    company_name: "",
+    email: "",
     customer_phone: "",
     customer_address: "",
     service_type: "",
