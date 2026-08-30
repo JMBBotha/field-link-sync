@@ -175,22 +175,32 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
         priority: formData.priority,
         latitude,
         longitude,
-        broadcast_radius_km: customRadius,
+        broadcast_radius_km: canBroadcast ? customRadius : null,
         scheduled_date: scheduledDate ? format(scheduledDate, "yyyy-MM-dd") : null,
         scheduled_time: scheduledTime || null,
         status: "pending",
         company_id,
         customer_id: linkedCustomerId,
+        assigned_agent_id: lane === "sales" && salesOwnerId ? salesOwnerId : null,
+        ...leadLaneFields(lane),
       });
 
       if (error) throw error;
 
       toast({
         title: "Lead Created 🎉",
-        description: nearbyAgents.length > 0 
-          ? `Notifying ${nearbyAgents.length} agent${nearbyAgents.length > 1 ? 's' : ''} within ${effectiveRadius}km`
-          : "Lead created - no agents in range",
+        description:
+          lane === "sales"
+            ? salesOwnerId
+              ? `Sales lead assigned to ${salesStaff.find(s => s.id === salesOwnerId)?.full_name ?? "sales"}`
+              : "Sales lead created — pick a salesperson in the dispatch inbox"
+            : lane === "service"
+              ? nearbyAgents.length > 0
+                ? `Notifying ${nearbyAgents.length} technician${nearbyAgents.length > 1 ? "s" : ""} within ${effectiveRadius}km`
+                : "Service lead created - no technicians in range"
+              : "Lead created — needs a human to pick sales or service",
       });
+
 
       setFormData({
         customer_name: "",
