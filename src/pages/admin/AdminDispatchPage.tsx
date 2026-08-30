@@ -1155,11 +1155,12 @@ function LaneBadge({ lane }: { lane: LeadLane | null }) {
 
 // ─── Day Timeline ───
 const DayTimeline = ({
-  date, agents, schedules, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads, onJobInfoClick,
+  date, agents, schedules, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads, onJobInfoClick, laneById,
   isDragging, dragOverSlot, onSlotDragEnter, onSlotDragLeave, shakeSlot,
 }: {
   date: Date;
   agents: Agent[];
+  laneById: Map<string, LeadLane | null>;
   schedules: Schedule[];
   isAgentOnline: (id: string) => boolean;
   hasConflict: (agentId: string, dateStr: string, hour: number) => boolean;
