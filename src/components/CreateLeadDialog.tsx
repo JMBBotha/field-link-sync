@@ -268,6 +268,8 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
       const company_id = await getUserCompanyId(user?.id);
       const { error } = await supabase.from("leads").insert({
         customer_name: formData.customer_name,
+        company_name: formData.company_name || null,
+        email: formData.email || null,
         customer_phone: formattedPhone,
         customer_address: formData.customer_address,
         service_type: formData.service_type,
@@ -304,6 +306,8 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
 
       setFormData({
         customer_name: "",
+        company_name: "",
+        email: "",
         customer_phone: "",
         customer_address: "",
         service_type: "",
