@@ -8,11 +8,21 @@ import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
 
 const DEFAULT_CENTER: [number, number] = [18.4241, -33.9249]; // [lng, lat] Cape Town
 
+export type LocationChangeSource = "map" | "drag" | "gps" | "search";
+
 interface LocationPickerProps {
   latitude: number | null;
   longitude: number | null;
-  onLocationChange: (lat: number, lng: number, address?: string) => void;
+  onLocationChange: (
+    lat: number,
+    lng: number,
+    address?: string,
+    source?: LocationChangeSource,
+  ) => void;
+  /** Optional address text shown in the empty state when no pin exists yet. */
+  addressHint?: string | null;
 }
+
 
 interface Suggestion {
   id: string;
