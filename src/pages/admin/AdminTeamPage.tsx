@@ -19,6 +19,7 @@ import {
 import { format } from "date-fns";
 import type { AppRole } from "@/hooks/useRole";
 import AgentAvailabilityEditor from "@/components/scheduling/AgentAvailabilityEditor";
+import { resolveLane } from "@/hooks/useLaneStaff";
 
 const ROLE_META: Record<string, { label: string; color: string; icon: React.ElementType; description: string }> = {
   admin: { label: "Admin", color: "bg-purple-600 text-purple-50", icon: Shield, description: "Full access to all features" },
