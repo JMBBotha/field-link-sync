@@ -404,6 +404,63 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
               </Select>
             </div>
 
+          {/* Lane: Sales vs Service */}
+          <div className="space-y-2">
+            <Label>
+              Lane <span className="text-destructive">*</span>
+            </Label>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { key: "sales" as const, label: "Sales" },
+                { key: "service" as const, label: "Service" },
+                { key: "unknown" as const, label: "Not sure" },
+              ]).map(opt => {
+                const active =
+                  opt.key === "unknown" ? lane === null : lane === opt.key;
+                return (
+                  <Button
+                    key={opt.key}
+                    type="button"
+                    size="sm"
+                    variant={active ? "default" : "outline"}
+                    className="h-9"
+                    onClick={() => setLaneOverride(opt.key)}
+                  >
+                    {opt.label}
+                  </Button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              {lane === "sales"
+                ? "Sales lead — assigned to a named salesperson, no first-accept race."
+                : lane === "service"
+                  ? "Service lead — broadcast to nearby technicians, first accept wins."
+                  : "Lane unknown — this lead stays in the inbox and will not be broadcast."}
+            </p>
+          </div>
+
+          {/* Sales owner picker */}
+          {lane === "sales" && (
+            <div className="space-y-2">
+              <Label>Salesperson (optional)</Label>
+              <Select value={salesOwnerId} onValueChange={setSalesOwnerId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={salesStaff.length ? "Assign to…" : "No sales-lane people yet"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {salesStaff.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Tag people as Sales on the Team page to grow this list.
+              </p>
+            </div>
+          )}
+
+
             <div className="space-y-2">
               <Label htmlFor="priority">Priority</Label>
               <Select
