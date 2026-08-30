@@ -160,6 +160,7 @@ const AdminDispatchPage = () => {
       const { data, error } = await supabase
         .from("leads")
         .select("*")
+        .is("deleted_at", null)
         .in("status", ["pending", "accepted", "in_progress"])
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -186,6 +187,24 @@ const AdminDispatchPage = () => {
     },
   });
 
+  /**
+   * Calendar staff rows = sales people AND technicians for this company.
+   * Sales people are staff on dispatch, not techs-only.
+   */
+  const dispatchAgents = useMemo<Agent[]>(() => {
+    const byId = new Map<string, Agent>();
+    [...salesStaff, ...technicians].forEach(s =>
+      byId.set(s.id, { id: s.id, full_name: s.full_name, availability_status: s.availability_status }),
+    );
+    agents.forEach(a => { if (!byId.has(a.id)) byId.set(a.id, a); });
+    return Array.from(byId.values()).sort((a, b) => {
+      const laneA = laneById.get(a.id) === "sales" ? 0 : 1;
+      const laneB = laneById.get(b.id) === "sales" ? 0 : 1;
+      if (laneA !== laneB) return laneA - laneB;
+      return a.full_name.localeCompare(b.full_name);
+    });
+  }, [salesStaff, technicians, agents, laneById]);
+
   const { data: agentLocations = [] } = useQuery({
     queryKey: ["dispatch-agent-locations"],
     queryFn: async () => {
@@ -196,7 +215,8 @@ const AdminDispatchPage = () => {
     refetchInterval: 30000,
   });
 
-  const { data: schedules = [], refetch: refetchSchedules, isLoading: schedulesLoading } = useQuery({
+  const { data: schedules: _unusedNever = [] } = { data: [] } as any;
+  const { data: rawSchedules = [], refetch: refetchSchedules, isLoading: schedulesLoading } = useQuery({
     queryKey: ["dispatch-schedules"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -207,6 +227,41 @@ const AdminDispatchPage = () => {
       return data as Schedule[];
     },
   });
+
+  /**
+   * LOCKED RULE: a lead with an assigned person + a scheduled date IS a calendar job,
+   * even if no job_schedules row exists yet. Synthesize a schedule-shaped tile for those.
+   */
+  const schedules = useMemo<Schedule[]>(() => {
+    const withRow = new Set(rawSchedules.map(s => s.lead_id));
+    const synthetic: Schedule[] = allLeads
+      .filter(l => l.assigned_agent_id && l.scheduled_date && !withRow.has(l.id))
+      .map(l => {
+        const start = (l.scheduled_time || "08:00").slice(0, 8);
+        const [h, m] = start.split(":").map(Number);
+        const endH = Math.min((h || 8) + 2, 23);
+        return {
+          id: `lead-${l.id}`,
+          lead_id: l.id,
+          agent_id: l.assigned_agent_id as string,
+          scheduled_date: l.scheduled_date as string,
+          start_time: start,
+          end_time: `${String(endH).padStart(2, "0")}:${String(m || 0).padStart(2, "0")}`,
+          notes: null,
+          leads: {
+            customer_name: l.customer_name,
+            service_type: l.service_type,
+            status: l.status,
+            priority: l.priority,
+            customer_address: l.customer_address,
+            latitude: l.latitude,
+            longitude: l.longitude,
+          },
+        } as Schedule;
+      });
+    return [...rawSchedules, ...synthetic];
+  }, [rawSchedules, allLeads]);
+
 
   // ─── Realtime subscriptions ───
   useEffect(() => {
