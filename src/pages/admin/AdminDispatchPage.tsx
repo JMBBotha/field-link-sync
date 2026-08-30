@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { useLeadInbox } from "@/hooks/useLeadInbox";
@@ -198,8 +198,8 @@ const AdminDispatchPage = () => {
     );
     agents.forEach(a => { if (!byId.has(a.id)) byId.set(a.id, a); });
     return Array.from(byId.values()).sort((a, b) => {
-      const laneA = laneById.get(a.id) === "sales" ? 0 : 1;
-      const laneB = laneById.get(b.id) === "sales" ? 0 : 1;
+      const laneA = laneRank(laneById.get(a.id) ?? null);
+      const laneB = laneRank(laneById.get(b.id) ?? null);
       if (laneA !== laneB) return laneA - laneB;
       return a.full_name.localeCompare(b.full_name);
     });
@@ -893,6 +893,7 @@ const AdminDispatchPage = () => {
               <DayTimeline
                 date={currentDate}
                 agents={dispatchAgents}
+                laneById={laneById}
                 schedules={schedulesForDates.get(format(currentDate, "yyyy-MM-dd")) || []}
                 isAgentOnline={isAgentOnline}
                 hasConflict={hasConflict}
@@ -912,6 +913,7 @@ const AdminDispatchPage = () => {
               <WeekTimeline
                 dates={dateRange}
                 agents={dispatchAgents}
+                laneById={laneById}
                 schedulesMap={schedulesForDates}
                 isAgentOnline={isAgentOnline}
                 hasConflict={hasConflict}
@@ -1123,12 +1125,44 @@ const StatBadge = ({ icon, label, value, variant }: { icon: React.ReactNode; lab
 };
 
 // ─── Day Timeline ───
+// ─── Lane grouping: Sales first, then Technical, then unlaned ───
+const LANE_GROUPS: { key: LeadLane | null; label: string }[] = [
+  { key: "sales", label: "Sales" },
+  { key: "service", label: "Technical" },
+  { key: null, label: "Needs lane" },
+];
+
+/** Sort rank: sales (0), service (1), unknown (2). */
+const laneRank = (lane: LeadLane | null | undefined) =>
+  lane === "sales" ? 0 : lane === "service" ? 1 : 2;
+
+function groupAgentsByLane(agents: Agent[], laneById: Map<string, LeadLane | null>) {
+  return LANE_GROUPS
+    .map(g => ({ ...g, agents: agents.filter(a => (laneById.get(a.id) ?? null) === g.key) }))
+    .filter(g => g.agents.length > 0);
+}
+
+/** Small lane badge for staff rows. Staff badge says "Tech" (not "Service"); lead labels unchanged. */
+function LaneBadge({ lane }: { lane: LeadLane | null }) {
+  return (
+    <span
+      className={`shrink-0 rounded border px-1 py-px text-[9px] font-semibold leading-tight whitespace-nowrap ${
+        lane ? LANE_META[lane].className : UNKNOWN_LANE_META.className
+      }`}
+    >
+      {lane === "sales" ? "Sales" : lane === "service" ? "Tech" : "Needs lane"}
+    </span>
+  );
+}
+
+// ─── Day Timeline ───
 const DayTimeline = ({
-  date, agents, schedules, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads, onJobInfoClick,
+  date, agents, schedules, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads, onJobInfoClick, laneById,
   isDragging, dragOverSlot, onSlotDragEnter, onSlotDragLeave, shakeSlot,
 }: {
   date: Date;
   agents: Agent[];
+  laneById: Map<string, LeadLane | null>;
   schedules: Schedule[];
   isAgentOnline: (id: string) => boolean;
   hasConflict: (agentId: string, dateStr: string, hour: number) => boolean;
@@ -1208,9 +1242,23 @@ const DayTimeline = ({
           </div>
         )}
 
-        {agents.map(agent => {
+        {groupAgentsByLane(agents, laneById).map(group => (
+          <Fragment key={group.key ?? "unknown"}>
+            {/* Lane group header strip */}
+            <div className="shrink-0 w-5 border-r bg-muted/20">
+              <div className="h-10 border-b flex items-center justify-center overflow-hidden">
+                <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground [writing-mode:vertical-rl] rotate-180 whitespace-nowrap">
+                  {group.label}
+                </span>
+              </div>
+              {HOURS.map(h => (
+                <div key={h} className="border-b" style={{ height: pxPerHour }} />
+              ))}
+            </div>
+            {group.agents.map(agent => {
           const agentSchedules = schedules.filter(s => s.agent_id === agent.id);
           const online = isAgentOnline(agent.id);
+          const lane = laneById.get(agent.id) ?? null;
 
           return (
             <div key={agent.id} className="flex-1 min-w-[160px] border-r last:border-r-0">
@@ -1218,6 +1266,7 @@ const DayTimeline = ({
               <div className="h-10 border-b px-2 flex items-center gap-1.5 bg-muted/30 sticky top-0 z-10">
                 <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${online ? "bg-success animate-pulse" : "bg-muted-foreground/40"}`} />
                 <span className="text-xs font-medium truncate">{agent.full_name}</span>
+                <LaneBadge lane={lane} />
                 {online && <span className="text-[9px] text-success font-semibold ml-auto shrink-0">Online</span>}
               </div>
 
@@ -1301,7 +1350,9 @@ const DayTimeline = ({
               </div>
             </div>
           );
-        })}
+            })}
+          </Fragment>
+        ))}
       </div>
     </div>
   );
@@ -1309,11 +1360,12 @@ const DayTimeline = ({
 
 // ─── Week Timeline (compact) ───
 const WeekTimeline = ({
-  dates, agents, schedulesMap, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads, onJobInfoClick,
+  dates, agents, schedulesMap, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads, onJobInfoClick, laneById,
   isDragging, dragOverSlot, onSlotDragEnter, onSlotDragLeave,
 }: {
   dates: Date[];
   agents: Agent[];
+  laneById: Map<string, LeadLane | null>;
   schedulesMap: Map<string, Schedule[]>;
   isAgentOnline: (id: string) => boolean;
   hasConflict: (agentId: string, dateStr: string, hour: number) => boolean;
@@ -1377,13 +1429,24 @@ const WeekTimeline = ({
               );
             })}
           </tr>
-          {agents.map(agent => (
+          {groupAgentsByLane(agents, laneById).map(group => (
+            <Fragment key={group.key ?? "unknown"}>
+              {/* Lane group header row */}
+              <tr>
+                <td colSpan={dates.length + 1} className="border-b border-r bg-muted/20 px-2 py-1">
+                  <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {group.label}
+                  </span>
+                </td>
+              </tr>
+              {group.agents.map(agent => (
 
             <tr key={agent.id}>
               <td className="border-b border-r p-2 bg-card sticky left-0 z-10">
                 <div className="flex items-center gap-1.5">
                   <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${isAgentOnline(agent.id) ? "bg-success animate-pulse" : "bg-muted-foreground/40"}`} />
                   <span className="text-xs font-medium truncate">{agent.full_name}</span>
+                  <LaneBadge lane={laneById.get(agent.id) ?? null} />
                   {isAgentOnline(agent.id) && <span className="text-[9px] text-success font-semibold ml-auto shrink-0">Online</span>}
                 </div>
               </td>
@@ -1433,6 +1496,8 @@ const WeekTimeline = ({
                 );
               })}
             </tr>
+              ))}
+            </Fragment>
           ))}
         </tbody>
       </table>
