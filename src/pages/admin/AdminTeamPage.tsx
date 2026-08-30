@@ -19,7 +19,8 @@ import {
 import { format } from "date-fns";
 import type { AppRole } from "@/hooks/useRole";
 import AgentAvailabilityEditor from "@/components/scheduling/AgentAvailabilityEditor";
-import { resolveLane } from "@/hooks/useLaneStaff";
+import { resolveLane, type LaneStaffMember } from "@/hooks/useLaneStaff";
+import { LANE_META, UNKNOWN_LANE_META } from "@/lib/leadLane";
 
 const ROLE_META: Record<string, { label: string; color: string; icon: React.ElementType; description: string }> = {
   admin: { label: "Admin", color: "bg-purple-600 text-purple-50", icon: Shield, description: "Full access to all features" },
@@ -338,27 +339,45 @@ const AdminTeamPage = () => {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Select
-                              value={member.dispatch_role ?? "auto"}
-                              onValueChange={(v) =>
-                                changeLaneMutation.mutate({
-                                  userId: member.id,
-                                  dispatchRole: v === "auto" ? null : v,
-                                })
-                              }
-                              disabled={member.participant_type === "independent_tech"}
-                            >
-                              <SelectTrigger className="h-8 w-[140px] text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="auto">
-                                  Auto ({resolveLane({ dispatch_role: null, participant_type: member.participant_type, roles: member.roles }) === "sales" ? "Sales" : resolveLane({ dispatch_role: null, participant_type: member.participant_type, roles: member.roles }) === "service" ? "Technician" : "None"})
-                                </SelectItem>
-                                <SelectItem value="sales">Sales</SelectItem>
-                                <SelectItem value="technician">Technician</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <div className="flex items-center gap-1.5">
+                              <Select
+                                value={member.dispatch_role ?? "auto"}
+                                onValueChange={(v) =>
+                                  changeLaneMutation.mutate({
+                                    userId: member.id,
+                                    dispatchRole: v === "auto" ? null : v,
+                                  })
+                                }
+                                disabled={member.participant_type === "independent_tech"}
+                              >
+                                <SelectTrigger className="h-8 w-[140px] text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="auto">
+                                    Auto ({resolveLane({ dispatch_role: null, participant_type: member.participant_type, roles: member.roles }) === "sales" ? "Sales" : resolveLane({ dispatch_role: null, participant_type: member.participant_type, roles: member.roles }) === "service" ? "Technician" : "None"})
+                                  </SelectItem>
+                                  <SelectItem value="sales">Sales</SelectItem>
+                                  <SelectItem value="technician">Technician</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              {(() => {
+                                const lane = resolveLane({
+                                  dispatch_role: member.dispatch_role,
+                                  participant_type: member.participant_type,
+                                  roles: member.roles,
+                                });
+                                return (
+                                  <span
+                                    className={`shrink-0 whitespace-nowrap rounded border px-1.5 py-0.5 text-[10px] font-semibold ${
+                                      lane ? LANE_META[lane].className : UNKNOWN_LANE_META.className
+                                    }`}
+                                  >
+                                    {lane === "sales" ? "Sales" : lane === "service" ? "Tech" : "Needs lane"}
+                                  </span>
+                                );
+                              })()}
+                            </div>
                           </TableCell>
 
                           <TableCell>
