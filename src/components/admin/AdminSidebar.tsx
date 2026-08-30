@@ -47,6 +47,8 @@ const AdminSidebar = ({
   const location = useLocation();
   const { isAdmin, isDispatcher, isFieldAgent, roles } = useRole();
   const { settings } = useCompanySettings();
+  const { count: inboxCount } = useLeadInbox();
+
 
   const companyName = settings?.company_name?.trim() || "My Company";
   const roleLabel = isAdmin
