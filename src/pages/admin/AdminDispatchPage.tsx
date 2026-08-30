@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { useLeadInbox } from "@/hooks/useLeadInbox";
+import { useLaneStaff } from "@/hooks/useLaneStaff";
+import { laneOf, leadLaneFields, LANE_META, UNKNOWN_LANE_META, type LeadLane } from "@/lib/leadLane";
 import CreateLeadDialog from "@/components/CreateLeadDialog";
 import { usePresence } from "@/hooks/usePresence";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,6 +44,7 @@ interface Lead {
   scheduled_date: string | null;
   scheduled_time: string | null;
   assigned_agent_id: string | null;
+  primary_intent?: string | null;
   notes: string | null;
   created_at: string | null;
 }
@@ -123,6 +126,7 @@ const AdminDispatchPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const inboxMode = searchParams.get("inbox") === "1";
   const { leads: inboxLeads } = useLeadInbox();
+  const { salesStaff, technicians, laneById } = useLaneStaff();
   const [showCreateLead, setShowCreateLead] = useState(false);
 
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
@@ -311,7 +315,12 @@ const AdminDispatchPage = () => {
       // Update lead
       await supabase
         .from("leads")
-        .update({ assigned_agent_id: agentId, scheduled_date: date, scheduled_time: startTime })
+        .update({
+          assigned_agent_id: agentId,
+          scheduled_date: date,
+          scheduled_time: startTime,
+          assignment_method: laneById.get(agentId) === "sales" ? "manual_sales" : "manual_dispatch",
+        })
         .eq("id", leadId);
     },
     onSuccess: (_, variables) => {
@@ -323,6 +332,23 @@ const AdminDispatchPage = () => {
     onError: (err: any) => {
       toast({ title: "Assignment failed", description: err.message, variant: "destructive" });
     },
+  });
+
+  // ─── Lane (sales vs service) ───
+  const setLaneMutation = useMutation({
+    mutationFn: async ({ leadId, lane }: { leadId: string; lane: LeadLane | null }) => {
+      const { error } = await supabase
+        .from("leads")
+        .update(leadLaneFields(lane) as any)
+        .eq("id", leadId);
+      if (error) throw error;
+    },
+    onSuccess: (_, v) => {
+      toast({ title: v.lane ? `Lane set to ${LANE_META[v.lane].label}` : "Lane cleared — needs a human" });
+      queryClient.invalidateQueries({ queryKey: ["dispatch-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["lead-inbox"] });
+    },
+    onError: (err: any) => toast({ title: "Could not set lane", description: err.message, variant: "destructive" }),
   });
 
   // ─── Multi-select handler ───
