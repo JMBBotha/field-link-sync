@@ -394,7 +394,7 @@ const AdminTeamPage = () => {
                         </TableRow>
                         <CollapsibleContent asChild>
                           <tr>
-                            <td colSpan={7} className="p-0">
+                            <td colSpan={8} className="p-0">
                               <div className="bg-muted/20 border-t border-border/30 p-4">
                                 <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                                   <Activity className="h-4 w-4 text-primary" />
