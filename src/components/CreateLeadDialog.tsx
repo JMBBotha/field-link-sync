@@ -39,6 +39,8 @@ import { getBroadcastRadiusForType, formatDistance } from "@/lib/geolocation";
 import { findCustomerMatch, type CustomerMatch } from "@/lib/customerMatch";
 import { laneFromServiceType, leadLaneFields, type LeadLane } from "@/lib/leadLane";
 import { useLaneStaff } from "@/hooks/useLaneStaff";
+import { useUnifiedClients, type UnifiedClient } from "@/hooks/useUnifiedClients";
+import { Search, User } from "lucide-react";
 
 interface CreateLeadDialogProps {
   open: boolean;
