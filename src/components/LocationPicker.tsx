@@ -34,7 +34,7 @@ interface Suggestion {
 const getStoredToken = () =>
   (typeof window !== "undefined" && localStorage.getItem("mapbox_token")) || "";
 
-const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPickerProps) => {
+const LocationPicker = ({ latitude, longitude, onLocationChange, addressHint }: LocationPickerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
@@ -172,12 +172,12 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
           const ll = m.getLngLat();
           setDragPreview(null);
           const address = await reverseGeocode(ll.lat, ll.lng);
-          onLocationChange(ll.lat, ll.lng, address);
+          onLocationChange(ll.lat, ll.lng, address, "drag");
         });
         markerRef.current = m;
       }
       if (emit) {
-        reverseGeocode(lat, lng).then((address) => onLocationChange(lat, lng, address));
+        reverseGeocode(lat, lng).then((address) => onLocationChange(lat, lng, address, "map"));
       }
     },
     [onLocationChange, reverseGeocode],
@@ -224,7 +224,7 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
     const [lng, lat] = s.center;
     placeMarker(lat, lng, false);
     mapRef.current?.flyTo({ center: [lng, lat], zoom: 16, duration: 800 });
-    onLocationChange(lat, lng, s.place_name);
+    onLocationChange(lat, lng, s.place_name, "search");
     setQuery(s.text);
     setShowSuggestions(false);
   };
@@ -238,7 +238,7 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
         placeMarker(lat, lng, false);
         mapRef.current?.flyTo({ center: [lng, lat], zoom: 16, duration: 800 });
         const address = await reverseGeocode(lat, lng);
-        onLocationChange(lat, lng, address);
+        onLocationChange(lat, lng, address, "gps");
         setGpsLoading(false);
       },
       () => setGpsLoading(false),
@@ -337,6 +337,20 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
 
       {/* Map */}
       <div ref={containerRef} className="absolute inset-0" />
+
+      {/* Pin guidance */}
+      {latitude == null || longitude == null ? (
+        <div className="absolute bottom-2 left-2 right-2 z-10 rounded-md bg-background/95 backdrop-blur px-3 py-2 text-[11px] shadow pointer-events-none">
+          <div className="font-medium">No pin yet — search or tap the map to drop a pin.</div>
+          {addressHint ? (
+            <div className="text-muted-foreground truncate">{addressHint}</div>
+          ) : null}
+        </div>
+      ) : !dragPreview ? (
+        <div className="absolute bottom-2 left-2 z-10 rounded-md bg-background/90 backdrop-blur px-2 py-1 text-[11px] shadow pointer-events-none">
+          Pin looks wrong? Drag it, tap the map, or search.
+        </div>
+      ) : null}
 
       {mapError && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 p-4">
