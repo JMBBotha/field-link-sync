@@ -1240,9 +1240,23 @@ const DayTimeline = ({
           </div>
         )}
 
-        {agents.map(agent => {
+        {groupAgentsByLane(agents, laneById).map(group => (
+          <Fragment key={group.key ?? "unknown"}>
+            {/* Lane group header strip */}
+            <div className="shrink-0 w-5 border-r bg-muted/20">
+              <div className="h-10 border-b flex items-center justify-center overflow-hidden">
+                <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground [writing-mode:vertical-rl] rotate-180 whitespace-nowrap">
+                  {group.label}
+                </span>
+              </div>
+              {HOURS.map(h => (
+                <div key={h} className="border-b" style={{ height: pxPerHour }} />
+              ))}
+            </div>
+            {group.agents.map(agent => {
           const agentSchedules = schedules.filter(s => s.agent_id === agent.id);
           const online = isAgentOnline(agent.id);
+          const lane = laneById.get(agent.id) ?? null;
 
           return (
             <div key={agent.id} className="flex-1 min-w-[160px] border-r last:border-r-0">
@@ -1250,6 +1264,7 @@ const DayTimeline = ({
               <div className="h-10 border-b px-2 flex items-center gap-1.5 bg-muted/30 sticky top-0 z-10">
                 <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${online ? "bg-success animate-pulse" : "bg-muted-foreground/40"}`} />
                 <span className="text-xs font-medium truncate">{agent.full_name}</span>
+                <LaneBadge lane={lane} />
                 {online && <span className="text-[9px] text-success font-semibold ml-auto shrink-0">Online</span>}
               </div>
 
