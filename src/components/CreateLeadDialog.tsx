@@ -37,6 +37,8 @@ import { useNearbyAgents } from "@/hooks/useNearbyAgents";
 import { useBroadcastSettings } from "@/hooks/useBroadcastSettings";
 import { getBroadcastRadiusForType, formatDistance } from "@/lib/geolocation";
 import { findCustomerMatch, type CustomerMatch } from "@/lib/customerMatch";
+import { laneFromServiceType, leadLaneFields, LANE_META, type LeadLane } from "@/lib/leadLane";
+import { useLaneStaff } from "@/hooks/useLaneStaff";
 
 interface CreateLeadDialogProps {
   open: boolean;
