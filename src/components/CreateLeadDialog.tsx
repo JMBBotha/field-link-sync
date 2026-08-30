@@ -219,6 +219,9 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
       setCustomerMatch(null);
       setLinkedCustomerId(null);
       setMatchDismissed(false);
+      setLaneOverride(null);
+      setSalesOwnerId("");
+
 
       onOpenChange(false);
     } catch (error: any) {
