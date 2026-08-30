@@ -37,7 +37,7 @@ import { useNearbyAgents } from "@/hooks/useNearbyAgents";
 import { useBroadcastSettings } from "@/hooks/useBroadcastSettings";
 import { getBroadcastRadiusForType, formatDistance } from "@/lib/geolocation";
 import { findCustomerMatch, type CustomerMatch } from "@/lib/customerMatch";
-import { laneFromServiceType, leadLaneFields, LANE_META, type LeadLane } from "@/lib/leadLane";
+import { laneFromServiceType, leadLaneFields, type LeadLane } from "@/lib/leadLane";
 import { useLaneStaff } from "@/hooks/useLaneStaff";
 
 interface CreateLeadDialogProps {
@@ -90,7 +90,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
   const { toast } = useToast();
   const { findNearbyAgents, loading: loadingAgents } = useNearbyAgents();
   const { settings: broadcastSettings } = useBroadcastSettings();
-  const { salesStaff } = useLaneStaff();
+  const { salesStaff, laneById } = useLaneStaff();
 
   // Lane: derived from the service type, dispatcher can override
   const derivedLane = laneFromServiceType(formData.service_type);
@@ -107,15 +107,16 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
   // Fetch nearby agents when location or radius changes
   useEffect(() => {
     const fetchAgents = async () => {
-      if (latitude && longitude && effectiveRadius) {
+      if (canBroadcast && latitude && longitude && effectiveRadius) {
         const agents = await findNearbyAgents(latitude, longitude, effectiveRadius);
-        setNearbyAgents(agents);
+        // Service lane only: never offer a lead to someone who is not a technician
+        setNearbyAgents(agents.filter(a => (laneById.get(a.agent_id) ?? "service") === "service"));
       } else {
         setNearbyAgents([]);
       }
     };
     fetchAgents();
-  }, [latitude, longitude, effectiveRadius, findNearbyAgents]);
+  }, [latitude, longitude, effectiveRadius, findNearbyAgents, canBroadcast, laneById]);
 
   // Debounced customer dedup lookup by phone
   useEffect(() => {
