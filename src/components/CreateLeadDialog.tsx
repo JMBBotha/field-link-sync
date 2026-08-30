@@ -404,6 +404,42 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
               </Select>
             </div>
 
+
+            <div className="space-y-2">
+              <Label htmlFor="priority">Priority</Label>
+              <Select
+                value={formData.priority}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, priority: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="high">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-destructive" />
+                      High
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="medium">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-orange-500" />
+                      Medium
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="low">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-muted-foreground" />
+                      Low
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           {/* Lane: Sales vs Service */}
           <div className="space-y-2">
             <Label>
@@ -460,41 +496,6 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
             </div>
           )}
 
-
-            <div className="space-y-2">
-              <Label htmlFor="priority">Priority</Label>
-              <Select
-                value={formData.priority}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, priority: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="high">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-destructive" />
-                      High
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="medium">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-orange-500" />
-                      Medium
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="low">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-muted-foreground" />
-                      Low
-                    </span>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
 
           {/* Scheduled Date & Time */}
           <div className="space-y-2">
