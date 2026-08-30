@@ -19,6 +19,7 @@ import {
 import { format } from "date-fns";
 import type { AppRole } from "@/hooks/useRole";
 import AgentAvailabilityEditor from "@/components/scheduling/AgentAvailabilityEditor";
+import { resolveLane } from "@/hooks/useLaneStaff";
 
 const ROLE_META: Record<string, { label: string; color: string; icon: React.ElementType; description: string }> = {
   admin: { label: "Admin", color: "bg-purple-600 text-purple-50", icon: Shield, description: "Full access to all features" },
@@ -50,7 +51,7 @@ const AdminTeamPage = () => {
 
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, full_name, phone, avatar_url, availability_status, updated_at")
+        .select("id, full_name, phone, avatar_url, availability_status, updated_at, dispatch_role, participant_type")
         .in("id", userIds);
 
       const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
@@ -73,6 +74,8 @@ const AdminTeamPage = () => {
           phone: profile?.phone || "",
           avatar_url: profile?.avatar_url,
           availability: profile?.availability_status || "offline",
+          dispatch_role: (profile as any)?.dispatch_role || null,
+          participant_type: (profile as any)?.participant_type || null,
           last_active: profile?.updated_at || "",
           roles: info.roles,
           joined: info.created_at,
@@ -120,6 +123,25 @@ const AdminTeamPage = () => {
     },
     onError: (err: any) => {
       toast({ title: "Failed to update role", description: err.message, variant: "destructive" });
+    },
+  });
+
+  // Dispatch lane (sales vs technician) mutation
+  const changeLaneMutation = useMutation({
+    mutationFn: async ({ userId, dispatchRole }: { userId: string; dispatchRole: string | null }) => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ dispatch_role: dispatchRole })
+        .eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team-members"] });
+      queryClient.invalidateQueries({ queryKey: ["lane-staff"] });
+      toast({ title: "Dispatch lane updated" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to update lane", description: err.message, variant: "destructive" });
     },
   });
 
@@ -281,6 +303,7 @@ const AdminTeamPage = () => {
                   <TableHead>Name</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Dispatch Lane</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Last Active</TableHead>
                   <TableHead className="w-10"></TableHead>
@@ -315,6 +338,30 @@ const AdminTeamPage = () => {
                             </div>
                           </TableCell>
                           <TableCell>
+                            <Select
+                              value={member.dispatch_role ?? "auto"}
+                              onValueChange={(v) =>
+                                changeLaneMutation.mutate({
+                                  userId: member.id,
+                                  dispatchRole: v === "auto" ? null : v,
+                                })
+                              }
+                              disabled={member.participant_type === "independent_tech"}
+                            >
+                              <SelectTrigger className="h-8 w-[140px] text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="auto">
+                                  Auto ({resolveLane({ dispatch_role: null, participant_type: member.participant_type, roles: member.roles }) === "sales" ? "Sales" : resolveLane({ dispatch_role: null, participant_type: member.participant_type, roles: member.roles }) === "service" ? "Technician" : "None"})
+                                </SelectItem>
+                                <SelectItem value="sales">Sales</SelectItem>
+                                <SelectItem value="technician">Technician</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+
+                          <TableCell>
                             <div className="flex items-center gap-1.5">
                               <span className={`h-2 w-2 rounded-full ${member.availability === "available" ? "bg-emerald-500" : member.availability === "busy" ? "bg-amber-500" : "bg-muted-foreground/40"}`} />
                               <span className="text-sm capitalize text-muted-foreground">{member.availability}</span>
@@ -347,7 +394,7 @@ const AdminTeamPage = () => {
                         </TableRow>
                         <CollapsibleContent asChild>
                           <tr>
-                            <td colSpan={7} className="p-0">
+                            <td colSpan={8} className="p-0">
                               <div className="bg-muted/20 border-t border-border/30 p-4">
                                 <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                                   <Activity className="h-4 w-4 text-primary" />

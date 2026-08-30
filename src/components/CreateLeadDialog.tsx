@@ -37,6 +37,8 @@ import { useNearbyAgents } from "@/hooks/useNearbyAgents";
 import { useBroadcastSettings } from "@/hooks/useBroadcastSettings";
 import { getBroadcastRadiusForType, formatDistance } from "@/lib/geolocation";
 import { findCustomerMatch, type CustomerMatch } from "@/lib/customerMatch";
+import { laneFromServiceType, leadLaneFields, type LeadLane } from "@/lib/leadLane";
+import { useLaneStaff } from "@/hooks/useLaneStaff";
 
 interface CreateLeadDialogProps {
   open: boolean;
@@ -83,25 +85,38 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
   const [customerMatch, setCustomerMatch] = useState<CustomerMatch | null>(null);
   const [linkedCustomerId, setLinkedCustomerId] = useState<string | null>(null);
   const [matchDismissed, setMatchDismissed] = useState(false);
+  const [laneOverride, setLaneOverride] = useState<LeadLane | "unknown" | null>(null);
+  const [salesOwnerId, setSalesOwnerId] = useState<string>("");
   const { toast } = useToast();
   const { findNearbyAgents, loading: loadingAgents } = useNearbyAgents();
   const { settings: broadcastSettings } = useBroadcastSettings();
+  const { salesStaff, laneById } = useLaneStaff();
+
+  // Lane: derived from the service type, dispatcher can override
+  const derivedLane = laneFromServiceType(formData.service_type);
+  const lane: LeadLane | null =
+    laneOverride === null ? derivedLane : laneOverride === "unknown" ? null : laneOverride;
+
+  // Only service leads get a geofenced first-accept broadcast
+  const canBroadcast = lane === "service";
 
   // Calculate effective radius based on service type
   const effectiveRadius = customRadius ?? getBroadcastRadiusForType(formData.service_type, broadcastSettings);
 
+
   // Fetch nearby agents when location or radius changes
   useEffect(() => {
     const fetchAgents = async () => {
-      if (latitude && longitude && effectiveRadius) {
+      if (canBroadcast && latitude && longitude && effectiveRadius) {
         const agents = await findNearbyAgents(latitude, longitude, effectiveRadius);
-        setNearbyAgents(agents);
+        // Service lane only: never offer a lead to someone who is not a technician
+        setNearbyAgents(agents.filter(a => (laneById.get(a.agent_id) ?? "service") === "service"));
       } else {
         setNearbyAgents([]);
       }
     };
     fetchAgents();
-  }, [latitude, longitude, effectiveRadius, findNearbyAgents]);
+  }, [latitude, longitude, effectiveRadius, findNearbyAgents, canBroadcast, laneById]);
 
   // Debounced customer dedup lookup by phone
   useEffect(() => {
@@ -161,22 +176,32 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
         priority: formData.priority,
         latitude,
         longitude,
-        broadcast_radius_km: customRadius,
+        broadcast_radius_km: canBroadcast ? customRadius : null,
         scheduled_date: scheduledDate ? format(scheduledDate, "yyyy-MM-dd") : null,
         scheduled_time: scheduledTime || null,
         status: "pending",
         company_id,
         customer_id: linkedCustomerId,
+        assigned_agent_id: lane === "sales" && salesOwnerId ? salesOwnerId : null,
+        ...leadLaneFields(lane),
       });
 
       if (error) throw error;
 
       toast({
         title: "Lead Created 🎉",
-        description: nearbyAgents.length > 0 
-          ? `Notifying ${nearbyAgents.length} agent${nearbyAgents.length > 1 ? 's' : ''} within ${effectiveRadius}km`
-          : "Lead created - no agents in range",
+        description:
+          lane === "sales"
+            ? salesOwnerId
+              ? `Sales lead assigned to ${salesStaff.find(s => s.id === salesOwnerId)?.full_name ?? "sales"}`
+              : "Sales lead created — pick a salesperson in the dispatch inbox"
+            : lane === "service"
+              ? nearbyAgents.length > 0
+                ? `Notifying ${nearbyAgents.length} technician${nearbyAgents.length > 1 ? "s" : ""} within ${effectiveRadius}km`
+                : "Service lead created - no technicians in range"
+              : "Lead created — needs a human to pick sales or service",
       });
+
 
       setFormData({
         customer_name: "",
@@ -195,6 +220,9 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
       setCustomerMatch(null);
       setLinkedCustomerId(null);
       setMatchDismissed(false);
+      setLaneOverride(null);
+      setSalesOwnerId("");
+
 
       onOpenChange(false);
     } catch (error: any) {
@@ -377,6 +405,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
               </Select>
             </div>
 
+
             <div className="space-y-2">
               <Label htmlFor="priority">Priority</Label>
               <Select
@@ -411,6 +440,63 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
               </Select>
             </div>
           </div>
+
+          {/* Lane: Sales vs Service */}
+          <div className="space-y-2">
+            <Label>
+              Lane <span className="text-destructive">*</span>
+            </Label>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { key: "sales" as const, label: "Sales" },
+                { key: "service" as const, label: "Service" },
+                { key: "unknown" as const, label: "Not sure" },
+              ]).map(opt => {
+                const active =
+                  opt.key === "unknown" ? lane === null : lane === opt.key;
+                return (
+                  <Button
+                    key={opt.key}
+                    type="button"
+                    size="sm"
+                    variant={active ? "default" : "outline"}
+                    className="h-9"
+                    onClick={() => setLaneOverride(opt.key)}
+                  >
+                    {opt.label}
+                  </Button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              {lane === "sales"
+                ? "Sales lead — assigned to a named salesperson, no first-accept race."
+                : lane === "service"
+                  ? "Service lead — broadcast to nearby technicians, first accept wins."
+                  : "Lane unknown — this lead stays in the inbox and will not be broadcast."}
+            </p>
+          </div>
+
+          {/* Sales owner picker */}
+          {lane === "sales" && (
+            <div className="space-y-2">
+              <Label>Salesperson (optional)</Label>
+              <Select value={salesOwnerId} onValueChange={setSalesOwnerId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={salesStaff.length ? "Assign to…" : "No sales-lane people yet"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {salesStaff.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Tag people as Sales on the Team page to grow this list.
+              </p>
+            </div>
+          )}
+
 
           {/* Scheduled Date & Time */}
           <div className="space-y-2">
@@ -499,8 +585,16 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
             )}
           </div>
 
-          {/* Broadcast Radius Preview */}
-          {latitude && longitude && (
+          {/* Broadcast Radius Preview — service lane only */}
+          {lane !== "service" && formData.service_type && (
+            <div className="rounded-lg border border-dashed p-3 text-[11px] text-muted-foreground">
+              {lane === "sales"
+                ? "No broadcast for sales leads — a named salesperson owns this one."
+                : "No broadcast until a human picks sales or service."}
+            </div>
+          )}
+          {canBroadcast && latitude && longitude && (
+
             <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

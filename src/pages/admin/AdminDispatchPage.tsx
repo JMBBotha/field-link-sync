@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { useLeadInbox } from "@/hooks/useLeadInbox";
+import { useLaneStaff } from "@/hooks/useLaneStaff";
+import { laneOf, leadLaneFields, LANE_META, UNKNOWN_LANE_META, type LeadLane } from "@/lib/leadLane";
 import CreateLeadDialog from "@/components/CreateLeadDialog";
 import { usePresence } from "@/hooks/usePresence";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,6 +44,7 @@ interface Lead {
   scheduled_date: string | null;
   scheduled_time: string | null;
   assigned_agent_id: string | null;
+  primary_intent?: string | null;
   notes: string | null;
   created_at: string | null;
 }
@@ -123,6 +126,7 @@ const AdminDispatchPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const inboxMode = searchParams.get("inbox") === "1";
   const { leads: inboxLeads } = useLeadInbox();
+  const { salesStaff, technicians, laneById } = useLaneStaff();
   const [showCreateLead, setShowCreateLead] = useState(false);
 
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
@@ -311,7 +315,12 @@ const AdminDispatchPage = () => {
       // Update lead
       await supabase
         .from("leads")
-        .update({ assigned_agent_id: agentId, scheduled_date: date, scheduled_time: startTime })
+        .update({
+          assigned_agent_id: agentId,
+          scheduled_date: date,
+          scheduled_time: startTime,
+          assignment_method: laneById.get(agentId) === "sales" ? "manual_sales" : "manual_dispatch",
+        })
         .eq("id", leadId);
     },
     onSuccess: (_, variables) => {
@@ -323,6 +332,23 @@ const AdminDispatchPage = () => {
     onError: (err: any) => {
       toast({ title: "Assignment failed", description: err.message, variant: "destructive" });
     },
+  });
+
+  // ─── Lane (sales vs service) ───
+  const setLaneMutation = useMutation({
+    mutationFn: async ({ leadId, lane }: { leadId: string; lane: LeadLane | null }) => {
+      const { error } = await supabase
+        .from("leads")
+        .update(leadLaneFields(lane) as any)
+        .eq("id", leadId);
+      if (error) throw error;
+    },
+    onSuccess: (_, v) => {
+      toast({ title: v.lane ? `Lane set to ${LANE_META[v.lane].label}` : "Lane cleared — needs a human" });
+      queryClient.invalidateQueries({ queryKey: ["dispatch-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["lead-inbox"] });
+    },
+    onError: (err: any) => toast({ title: "Could not set lane", description: err.message, variant: "destructive" }),
   });
 
   // ─── Multi-select handler ───
@@ -734,9 +760,39 @@ const AdminDispatchPage = () => {
                         </Badge>
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                        {(() => {
+                          const lane = laneOf(lead);
+                          return (
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] h-5 ${lane ? LANE_META[lane].className : UNKNOWN_LANE_META.className}`}
+                            >
+                              {lane ? LANE_META[lane].label : UNKNOWN_LANE_META.label}
+                            </Badge>
+                          );
+                        })()}
                         <Badge variant="outline" className="text-[10px] h-auto whitespace-normal break-words">
                           {lead.service_type}
                         </Badge>
+                      </div>
+                      {/* Dispatcher can set / change the lane while the lead is uncommitted */}
+                      <div className="flex items-center gap-1 mt-1.5" onClick={e => e.stopPropagation()}>
+                        {(["sales", "service"] as LeadLane[]).map(l => (
+                          <Button
+                            key={l}
+                            type="button"
+                            size="sm"
+                            variant={laneOf(lead) === l ? "default" : "outline"}
+                            className="h-6 px-2 text-[10px]"
+                            disabled={setLaneMutation.isPending}
+                            onClick={() => setLaneMutation.mutate({ leadId: lead.id, lane: l })}
+                          >
+                            {LANE_META[l].label}
+                          </Button>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+
                         {lead.scheduled_time && (
                           <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
                             <Clock className="h-2.5 w-2.5" />{lead.scheduled_time}
@@ -824,18 +880,53 @@ const AdminDispatchPage = () => {
       <Dialog open={!!quickAssignLead} onOpenChange={(open) => { if (!open) setQuickAssignLead(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Quick Assign Job</DialogTitle>
+            <DialogTitle>Assign Lead</DialogTitle>
             <DialogDescription>
               Assign <span className="font-semibold">{quickAssignLead?.customer_name}</span> – {quickAssignLead?.service_type}
             </DialogDescription>
           </DialogHeader>
+          {(() => {
+            const lane = quickAssignLead ? laneOf(quickAssignLead) : null;
+            if (!lane) {
+              return (
+                <div className="space-y-3 rounded-lg border border-dashed p-4 text-sm">
+                  <p className="font-medium">This lead needs a human to pick a lane.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Sales leads go to a named salesperson. Service leads are offered to nearby technicians.
+                    Nothing is broadcast until you choose.
+                  </p>
+                  <div className="flex gap-2">
+                    {(["sales", "service"] as LeadLane[]).map(l => (
+                      <Button
+                        key={l}
+                        size="sm"
+                        variant="outline"
+                        disabled={setLaneMutation.isPending}
+                        onClick={() => quickAssignLead && setLaneMutation.mutate({ leadId: quickAssignLead.id, lane: l })}
+                      >
+                        {LANE_META[l].label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              );
+            }
+            const candidates =
+              lane === "sales"
+                ? salesStaff.map(s => ({ id: s.id, full_name: s.full_name }))
+                : technicians.length
+                  ? technicians.map(s => ({ id: s.id, full_name: s.full_name }))
+                  : agents.map(a => ({ id: a.id, full_name: a.full_name }));
+            return (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-sm">Technician</Label>
+              <Label className="text-sm">{lane === "sales" ? "Salesperson" : "Technician"}</Label>
               <Select value={quickAssignAgent} onValueChange={setQuickAssignAgent}>
-                <SelectTrigger><SelectValue placeholder="Select technician" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder={candidates.length ? `Select ${lane === "sales" ? "salesperson" : "technician"}` : `No ${lane === "sales" ? "sales" : "technician"} lane people yet`} />
+                </SelectTrigger>
                 <SelectContent>
-                  {agents.map(a => (
+                  {candidates.map(a => (
                     <SelectItem key={a.id} value={a.id}>
                       <div className="flex items-center gap-2">
                         <div className={`h-2 w-2 rounded-full ${isAgentOnline(a.id) ? "bg-success" : "bg-muted-foreground/40"}`} />
@@ -845,7 +936,13 @@ const AdminDispatchPage = () => {
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-[11px] text-muted-foreground">
+                {lane === "sales"
+                  ? "Named assignment — sales leads are never a first-accept race."
+                  : "Technician lane only. First-accept broadcast still applies to nearby techs."}
+              </p>
             </div>
+
             <div className="space-y-2">
               <Label className="text-sm">Date</Label>
               <Input type="date" value={quickAssignDate} onChange={e => setQuickAssignDate(e.target.value)} />
@@ -861,10 +958,13 @@ const AdminDispatchPage = () => {
               </div>
             </div>
           </div>
+            );
+          })()}
           <DialogFooter>
             <Button variant="outline" onClick={() => setQuickAssignLead(null)}>Cancel</Button>
             <Button
-              disabled={!quickAssignAgent || assignMutation.isPending}
+              disabled={!quickAssignAgent || !laneOf(quickAssignLead || {}) || assignMutation.isPending}
+
               onClick={() => {
                 if (!quickAssignLead || !quickAssignAgent) return;
                 assignMutation.mutate(
