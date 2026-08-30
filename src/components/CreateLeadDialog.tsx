@@ -315,7 +315,9 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
       const formattedPhone = formatPhoneForWhatsApp(formData.customer_phone);
       
       const company_id = await getUserCompanyId(user?.id);
-      const { error } = await supabase.from("leads").insert({
+      const assignedAgentId = lane === "sales" && salesOwnerId ? salesOwnerId : null;
+      const scheduledDateStr = scheduledDate ? format(scheduledDate, "yyyy-MM-dd") : null;
+      const { data: insertedLead, error } = await supabase.from("leads").insert({
         customer_name: formData.customer_name,
         company_name: formData.company_name || null,
         email: formData.email || null,
@@ -327,16 +329,30 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
         latitude,
         longitude,
         broadcast_radius_km: canBroadcast ? customRadius : null,
-        scheduled_date: scheduledDate ? format(scheduledDate, "yyyy-MM-dd") : null,
+        scheduled_date: scheduledDateStr,
         scheduled_time: scheduledTime || null,
         status: "pending",
         company_id,
         customer_id: linkedCustomerId,
-        assigned_agent_id: lane === "sales" && salesOwnerId ? salesOwnerId : null,
+        assigned_agent_id: assignedAgentId,
         ...leadLaneFields(lane),
-      });
+      }).select("id").single();
 
       if (error) throw error;
+
+      // Assigned person + date/time => this is a calendar job. Mirror onto job_schedules.
+      if (insertedLead?.id && assignedAgentId && scheduledDateStr && scheduledTime) {
+        const [h, m] = scheduledTime.split(":").map(Number);
+        const endHour = Math.min((h || 0) + 1, 23);
+        await supabase.from("job_schedules").insert({
+          lead_id: insertedLead.id,
+          agent_id: assignedAgentId,
+          scheduled_date: scheduledDateStr,
+          start_time: scheduledTime,
+          end_time: `${String(endHour).padStart(2, "0")}:${String(m || 0).padStart(2, "0")}`,
+        });
+      }
+
 
       toast({
         title: "Lead Created 🎉",
