@@ -400,6 +400,11 @@ const AdminDispatchPage = () => {
     },
     onSuccess: (_, v) => {
       toast({ title: v.lane ? `Lane set to ${LANE_META[v.lane].label}` : "Lane cleared — needs a human" });
+      // Keep the open Quick Assign dialog in sync so the agent/date/time UI appears
+      // immediately after the dispatcher picks a lane (no close/reopen needed).
+      setQuickAssignLead(prev =>
+        prev && prev.id === v.leadId ? ({ ...prev, ...leadLaneFields(v.lane) } as Lead) : prev
+      );
       queryClient.invalidateQueries({ queryKey: ["dispatch-leads"] });
       queryClient.invalidateQueries({ queryKey: ["lead-inbox"] });
     },
