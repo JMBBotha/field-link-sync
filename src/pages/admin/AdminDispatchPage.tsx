@@ -147,6 +147,14 @@ const AdminDispatchPage = () => {
   const [jobInfoLead, setJobInfoLead] = useState<Lead | null>(null);
   const [jobInfoSchedule, setJobInfoSchedule] = useState<Schedule | null>(null);
 
+  // Sales job → quote. The quote-builder resolver opens the latest
+  // non-superseded quote for this lead or creates a draft hung on it.
+  const openQuoteForLead = useCallback((lead: Lead) => {
+    const params = new URLSearchParams({ leadId: lead.id });
+    if (lead.customer_id) params.set("customerId", lead.customer_id);
+    navigate(`/admin/quote-builder?${params.toString()}`);
+  }, [navigate]);
+
   // Multi-select & drag-drop state
   const [multiSelectedIds, setMultiSelectedIds] = useState<Set<string>>(new Set());
   const [isDragging, setIsDragging] = useState(false);
