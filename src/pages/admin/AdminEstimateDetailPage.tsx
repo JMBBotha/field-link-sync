@@ -13,6 +13,7 @@ import { generateDocumentPdf } from "@/lib/documentPdf";
 import EstimateDocument from "@/components/quoting/EstimateDocument";
 import StatusPill from "@/components/shared/StatusPill";
 import QuoteVersionsPanel from "@/components/quoting/QuoteVersionsPanel";
+import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 /**
