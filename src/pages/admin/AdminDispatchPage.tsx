@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useLeadInbox } from "@/hooks/useLeadInbox";
 import { useLaneStaff } from "@/hooks/useLaneStaff";
 import { laneOf, leadLaneFields, LANE_META, UNKNOWN_LANE_META, type LeadLane } from "@/lib/leadLane";
@@ -45,6 +45,7 @@ interface Lead {
   scheduled_time: string | null;
   assigned_agent_id: string | null;
   primary_intent?: string | null;
+  customer_id?: string | null;
   notes: string | null;
   created_at: string | null;
 }
@@ -116,6 +117,7 @@ const minutesToPx = (mins: number, pxPerHour: number) => (mins / 60) * pxPerHour
 // ─── Component ───
 const AdminDispatchPage = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isOnline: isPresenceOnline } = usePresence("dispatch-presence");
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -144,6 +146,14 @@ const AdminDispatchPage = () => {
   const [quickAssignEnd, setQuickAssignEnd] = useState("10:00");
   const [jobInfoLead, setJobInfoLead] = useState<Lead | null>(null);
   const [jobInfoSchedule, setJobInfoSchedule] = useState<Schedule | null>(null);
+
+  // Sales job → quote. The quote-builder resolver opens the latest
+  // non-superseded quote for this lead or creates a draft hung on it.
+  const openQuoteForLead = useCallback((lead: Lead) => {
+    const params = new URLSearchParams({ leadId: lead.id });
+    if (lead.customer_id) params.set("customerId", lead.customer_id);
+    navigate(`/admin/quote-builder?${params.toString()}`);
+  }, [navigate]);
 
   // Multi-select & drag-drop state
   const [multiSelectedIds, setMultiSelectedIds] = useState<Set<string>>(new Set());
@@ -908,6 +918,7 @@ const AdminDispatchPage = () => {
                 pxPerHour={PX_PER_HOUR}
                 allLeads={allLeads}
                 onJobInfoClick={(lead, schedule) => { setJobInfoLead(lead); setJobInfoSchedule(schedule); }}
+                onQuoteClick={openQuoteForLead}
                 isDragging={isDragging}
                 dragOverSlot={dragOverSlot}
                 onSlotDragEnter={handleSlotDragEnter}
@@ -928,6 +939,7 @@ const AdminDispatchPage = () => {
                 pxPerHour={PX_PER_HOUR}
                 allLeads={allLeads}
                 onJobInfoClick={(lead, schedule) => { setJobInfoLead(lead); setJobInfoSchedule(schedule); }}
+                onQuoteClick={openQuoteForLead}
                 isDragging={isDragging}
                 dragOverSlot={dragOverSlot}
                 onSlotDragEnter={handleSlotDragEnter}
@@ -1086,6 +1098,20 @@ const AdminDispatchPage = () => {
             </div>
           )}
           <DialogFooter>
+            {jobInfoLead && laneOf(jobInfoLead) === "sales" && (
+              <Button
+                variant="brand"
+                onClick={() => {
+                  const lead = jobInfoLead;
+                  setJobInfoLead(null);
+                  setJobInfoSchedule(null);
+                  openQuoteForLead(lead);
+                }}
+              >
+                <FileText className="h-4 w-4 mr-1" />
+                Create / Open Quote
+              </Button>
+            )}
             {jobInfoLead && !jobInfoLead.assigned_agent_id && (
               <Button
                 onClick={() => {
@@ -1162,7 +1188,7 @@ function LaneBadge({ lane }: { lane: LeadLane | null }) {
 
 // ─── Day Timeline ───
 const DayTimeline = ({
-  date, agents, schedules, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads, onJobInfoClick, laneById,
+  date, agents, schedules, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads, onJobInfoClick, onQuoteClick, laneById,
   isDragging, dragOverSlot, onSlotDragEnter, onSlotDragLeave, shakeSlot,
 }: {
   date: Date;
@@ -1177,6 +1203,7 @@ const DayTimeline = ({
   pxPerHour: number;
   allLeads: Lead[];
   onJobInfoClick: (lead: Lead, schedule: Schedule) => void;
+  onQuoteClick?: (lead: Lead) => void;
   isDragging: boolean;
   dragOverSlot: string | null;
   onSlotDragEnter: (slotKey: string) => void;
@@ -1336,6 +1363,19 @@ const DayTimeline = ({
                         if (lead) { onJobInfoClick(lead, schedule); }
                       }}
                     >
+                      {(() => {
+                        const qLead = allLeads.find(l => l.id === schedule.lead_id);
+                        return qLead && laneOf(qLead) === "sales" && onQuoteClick ? (
+                          <button
+                            type="button"
+                            title="Create / open quote"
+                            className="absolute top-1 right-1 rounded bg-white/20 hover:bg-white/40 p-0.5"
+                            onClick={(e) => { e.stopPropagation(); onQuoteClick(qLead); }}
+                          >
+                            <FileText className="h-3 w-3" />
+                          </button>
+                        ) : null;
+                      })()}
                       <p className="font-semibold leading-tight break-words">{schedule.leads?.customer_name || "Job"}</p>
                       {height > 30 && <p className="break-words opacity-80">{schedule.leads?.service_type}</p>}
                       {height > 45 && <p className="opacity-60">{schedule.start_time}–{schedule.end_time}</p>}
@@ -1365,7 +1405,7 @@ const DayTimeline = ({
 
 // ─── Week Timeline (compact) ───
 const WeekTimeline = ({
-  dates, agents, schedulesMap, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads, onJobInfoClick, laneById,
+  dates, agents, schedulesMap, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads, onJobInfoClick, onQuoteClick, laneById,
   isDragging, dragOverSlot, onSlotDragEnter, onSlotDragLeave,
 }: {
   dates: Date[];
@@ -1380,6 +1420,7 @@ const WeekTimeline = ({
   pxPerHour: number;
   allLeads: Lead[];
   onJobInfoClick: (lead: Lead, schedule: Schedule) => void;
+  onQuoteClick?: (lead: Lead) => void;
   isDragging: boolean;
   dragOverSlot: string | null;
   onSlotDragEnter: (slotKey: string) => void;
@@ -1490,6 +1531,19 @@ const WeekTimeline = ({
                             }}
                           >
                             <span className="font-medium">{schedule.start_time}</span> {schedule.leads?.customer_name || "Job"}
+                            {(() => {
+                              const qLead = allLeads.find(l => l.id === schedule.lead_id);
+                              return qLead && laneOf(qLead) === "sales" && onQuoteClick ? (
+                                <button
+                                  type="button"
+                                  title="Create / open quote"
+                                  className="float-right rounded bg-white/20 hover:bg-white/40 p-0.5 ml-1"
+                                  onClick={(e) => { e.stopPropagation(); onQuoteClick(qLead); }}
+                                >
+                                  <FileText className="h-3 w-3" />
+                                </button>
+                              ) : null;
+                            })()}
                           </div>
                         );
                       })}
