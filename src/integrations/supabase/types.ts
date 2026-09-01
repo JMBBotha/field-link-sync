@@ -6844,6 +6844,10 @@ export type Database = {
         Returns: number
       }
       create_change_order: { Args: { p_quote_id: string }; Returns: string }
+      create_deposit_invoice_for_quote: {
+        Args: { p_quote_id: string }
+        Returns: string
+      }
       create_portal_booking: {
         Args: { p_notes?: string; p_service_type: string; p_token: string }
         Returns: string
