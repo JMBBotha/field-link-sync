@@ -1420,6 +1420,7 @@ const WeekTimeline = ({
   pxPerHour: number;
   allLeads: Lead[];
   onJobInfoClick: (lead: Lead, schedule: Schedule) => void;
+  onQuoteClick?: (lead: Lead) => void;
   isDragging: boolean;
   dragOverSlot: string | null;
   onSlotDragEnter: (slotKey: string) => void;
