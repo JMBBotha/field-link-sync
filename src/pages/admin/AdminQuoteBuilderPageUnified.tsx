@@ -1523,6 +1523,15 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
         // Pass 1: reuse a draft with real data OR a recent-empty draft of ours.
         const toSupersede: string[] = [];
         for (const d of drafts) {
+          // A live (non-draft) quote for this lead is always reopened as-is —
+          // never superseded or judged by the empty-draft safeguard.
+          if ((d as any).status && (d as any).status !== "draft") {
+            if (!cancelled) {
+              setQuoteId(d.id);
+              setCreating(false);
+            }
+            return;
+          }
           const hasReal = await draftHasRealData(d.id);
           if (hasReal || isRecentEmptyDraft(d as any)) {
             for (const oldId of toSupersede) await supersedeDraft(oldId, d.id);
