@@ -175,6 +175,9 @@ const AdminEstimateDetailPage = () => {
         currentVersionId={quote.current_version_id}
       />
 
+      <AcceptedWorkSection quoteId={quote.id} />
+
+
       <EstimateDocument
         estimateNumber={quote.quote_number}
         issueDate={quote.created_at}
