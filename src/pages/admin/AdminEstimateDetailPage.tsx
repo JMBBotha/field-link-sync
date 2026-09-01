@@ -13,6 +13,7 @@ import { generateDocumentPdf } from "@/lib/documentPdf";
 import EstimateDocument from "@/components/quoting/EstimateDocument";
 import StatusPill from "@/components/shared/StatusPill";
 import QuoteVersionsPanel from "@/components/quoting/QuoteVersionsPanel";
+import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 /**
@@ -173,6 +174,9 @@ const AdminEstimateDetailPage = () => {
         acceptedVersionId={quote.accepted_version_id}
         currentVersionId={quote.current_version_id}
       />
+
+      <AcceptedWorkSection quoteId={quote.id} />
+
 
       <EstimateDocument
         estimateNumber={quote.quote_number}

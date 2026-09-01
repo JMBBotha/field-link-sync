@@ -9,6 +9,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight, Maximize2, Minimize2 } from "lucide-react";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { formatRand } from "@/utils/formatRand";
+import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
 import VoiceQuoteDialog from "@/components/quoting/VoiceQuoteDialog";
 import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
 import { useProductUsageStats } from "@/hooks/useProductUsageStats";
@@ -776,19 +777,15 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         </div>
       </Tabs>
 
-
-
-
-
-
-
-
-
-
-
-
+      {/* Post-acceptance: deposit invoice + hand over to installation */}
+      {quoteId && meta?.status === "accepted" && (
+        <div className="shrink-0 px-3 pb-2">
+          <AcceptedWorkSection quoteId={quoteId} />
+        </div>
+      )}
 
       {/* Tab content */}
+
       <div className="flex-1 min-h-0 overflow-hidden">
         {ctxLoading && (
           <div className="h-full flex items-center justify-center">
