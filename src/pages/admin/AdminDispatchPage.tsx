@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useLeadInbox } from "@/hooks/useLeadInbox";
 import { useLaneStaff } from "@/hooks/useLaneStaff";
 import { laneOf, leadLaneFields, LANE_META, UNKNOWN_LANE_META, type LeadLane } from "@/lib/leadLane";
@@ -45,6 +45,7 @@ interface Lead {
   scheduled_time: string | null;
   assigned_agent_id: string | null;
   primary_intent?: string | null;
+  customer_id?: string | null;
   notes: string | null;
   created_at: string | null;
 }
@@ -116,6 +117,7 @@ const minutesToPx = (mins: number, pxPerHour: number) => (mins / 60) * pxPerHour
 // ─── Component ───
 const AdminDispatchPage = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isOnline: isPresenceOnline } = usePresence("dispatch-presence");
   const mapContainerRef = useRef<HTMLDivElement>(null);
