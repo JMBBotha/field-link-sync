@@ -1366,13 +1366,29 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
         .eq("id", userId)
         .maybeSingle();
       if (profileErr) throw profileErr;
-      const companyId = (profile?.company_id as string | null) || null;
+
+      // Dispatch-calendar path: hang the quote on the sales job — the
+      // assigned salesperson owns it, not necessarily the logged-in admin,
+      // and the lead's company wins over the profile fallback.
+      let salesEngineerId = userId;
+      let leadCompanyId: string | null = null;
+      if (paramLeadId) {
+        const { data: leadRow } = await supabase
+          .from("leads")
+          .select("assigned_agent_id, company_id")
+          .eq("id", paramLeadId)
+          .maybeSingle();
+        if (leadRow?.assigned_agent_id) salesEngineerId = leadRow.assigned_agent_id as string;
+        leadCompanyId = (leadRow?.company_id as string | null) || null;
+      }
+
+      const companyId = leadCompanyId || (profile?.company_id as string | null) || null;
       if (!companyId) {
         throw new Error("Your account is not linked to a company. Contact an admin.");
       }
 
       const insertPayload: Record<string, unknown> = {
-        sales_engineer_id: userId,
+        sales_engineer_id: salesEngineerId,
         company_id: companyId,
         status: "draft",
         subtotal: 0,
@@ -1476,14 +1492,17 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
         // Fetch recent drafts scoped to this lead/customer.
         const fetchDrafts = async () => {
           if (paramLeadId) {
-            const { data } = await supabase
+            // A lead is a sales job: open the latest LIVE quote for it —
+            // draft/sent/viewed/accepted all fine, skip superseded.
+            const { data: live } = await supabase
               .from("quotes")
-              .select("id, created_at, sales_engineer_id")
+              .select("id, created_at, sales_engineer_id, status")
               .eq("lead_id", paramLeadId)
-              .eq("status", "draft")
+              .neq("status", "superseded")
               .order("created_at", { ascending: false })
-              .limit(5);
-            return data ?? [];
+              .limit(1);
+            if (live && live.length > 0) return live;
+            return [];
           }
           if (resolvedCustomerId) {
             const { data } = await supabase
