@@ -918,6 +918,7 @@ const AdminDispatchPage = () => {
                 pxPerHour={PX_PER_HOUR}
                 allLeads={allLeads}
                 onJobInfoClick={(lead, schedule) => { setJobInfoLead(lead); setJobInfoSchedule(schedule); }}
+                onQuoteClick={openQuoteForLead}
                 isDragging={isDragging}
                 dragOverSlot={dragOverSlot}
                 onSlotDragEnter={handleSlotDragEnter}
@@ -938,6 +939,7 @@ const AdminDispatchPage = () => {
                 pxPerHour={PX_PER_HOUR}
                 allLeads={allLeads}
                 onJobInfoClick={(lead, schedule) => { setJobInfoLead(lead); setJobInfoSchedule(schedule); }}
+                onQuoteClick={openQuoteForLead}
                 isDragging={isDragging}
                 dragOverSlot={dragOverSlot}
                 onSlotDragEnter={handleSlotDragEnter}
