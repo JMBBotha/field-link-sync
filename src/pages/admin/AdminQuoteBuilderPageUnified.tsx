@@ -776,19 +776,15 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
         </div>
       </Tabs>
 
-
-
-
-
-
-
-
-
-
-
-
+      {/* Post-acceptance: deposit invoice + hand over to installation */}
+      {quoteId && meta?.status === "accepted" && (
+        <div className="shrink-0 px-3 pb-2">
+          <AcceptedWorkSection quoteId={quoteId} />
+        </div>
+      )}
 
       {/* Tab content */}
+
       <div className="flex-1 min-h-0 overflow-hidden">
         {ctxLoading && (
           <div className="h-full flex items-center justify-center">
