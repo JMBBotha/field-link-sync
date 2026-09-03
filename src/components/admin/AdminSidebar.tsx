@@ -317,9 +317,8 @@ const AdminSidebar = ({
     const groupBtn = (
       <button
         onClick={() => {
-          if (badged) {
-            setLowStockOpen((v) => !v);
-          } else {
+          // When badged, the PopoverTrigger handles opening; chevron still expands.
+          if (!badged) {
             setExpanded((s) => ({ ...s, [item.path]: !open }));
           }
         }}
