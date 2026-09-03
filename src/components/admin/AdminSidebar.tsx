@@ -314,28 +314,47 @@ const AdminSidebar = ({
       }
       return renderLeaf(item);
     }
+    const groupBtn = (
+      <button
+        onClick={() => {
+          if (badged) {
+            setLowStockOpen((v) => !v);
+          } else {
+            setExpanded((s) => ({ ...s, [item.path]: !open }));
+          }
+        }}
+        className={cn(
+          "w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-colors relative",
+          active
+            ? "bg-nav-active text-white font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-r before:bg-white/80"
+            : "text-nav-foreground/85 hover:text-white hover:bg-white/[0.07]",
+        )}
+      >
+        <item.icon className="h-[17px] w-[17px] shrink-0" strokeWidth={1.75} />
+        <span className="truncate">{item.label}</span>
+        {badged ? (
+          <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 text-[10px]">
+            {item.badge! > 99 ? "99+" : item.badge}
+          </Badge>
+        ) : null}
+        <span
+          role="button"
+          aria-label={`Expand ${item.label}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded((s) => ({ ...s, [item.path]: !open }));
+          }}
+          className={cn("p-1 -m-1 rounded hover:bg-white/10", !badged && "ml-auto")}
+        >
+          <ChevronDown
+            className={cn("h-3.5 w-3.5 transition-transform opacity-70", open && "rotate-180")}
+          />
+        </span>
+      </button>
+    );
     return (
       <div key={item.path}>
-        <button
-          onClick={() => setExpanded((s) => ({ ...s, [item.path]: !open }))}
-          className={cn(
-            "w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-colors relative",
-            active
-              ? "bg-nav-active text-white font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-r before:bg-white/80"
-              : "text-nav-foreground/85 hover:text-white hover:bg-white/[0.07]",
-          )}
-        >
-          <item.icon className="h-[17px] w-[17px] shrink-0" strokeWidth={1.75} />
-          <span className="truncate">{item.label}</span>
-          {item.badge && item.badge > 0 ? (
-            <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 text-[10px]">
-              {item.badge > 99 ? "99+" : item.badge}
-            </Badge>
-          ) : null}
-          <ChevronDown
-            className={cn("h-3.5 w-3.5 transition-transform opacity-70", !item.badge && "ml-auto", open && "rotate-180")}
-          />
-        </button>
+        {badged && item.path === "/admin/catalog" ? lowStockPopover(groupBtn) : groupBtn}
         {open && <div className="mt-0.5 space-y-px">{item.children.map((c) => renderLeaf(c, 1))}</div>}
       </div>
     );
