@@ -60,19 +60,20 @@ const AdminSidebar = ({
         ? "Technician"
         : "Viewer";
 
-  const { data: lowStockCount = 0 } = useQuery({
-    queryKey: ["low-stock-count-sidebar"],
+  const { data: lowStockItems = [] } = useQuery({
+    queryKey: ["low-stock-items-sidebar"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("inventory_stock")
-        .select("quantity, low_stock_threshold, stock_mode");
-      if (error) return 0;
+        .select("product_id, quantity, low_stock_threshold, stock_mode, supplier_products:product_id(description, product_code)");
+      if (error) return [];
       return (data || []).filter(
         (r: any) => r.stock_mode === "stock_sensitive" && r.quantity <= r.low_stock_threshold
-      ).length;
+      );
     },
     refetchInterval: 60000,
   });
+  const lowStockCount = lowStockItems.length;
 
   // FreshBooks-style ordering. Every existing route is preserved —
   // items are only regrouped/relabelled for the accounting-app layout.
@@ -113,7 +114,7 @@ const AdminSidebar = ({
           badge: lowStockCount > 0 ? lowStockCount : undefined,
           children: [
             { path: "/admin/catalog", label: "Catalog", icon: ShoppingBag },
-            { path: "/admin/inventory", label: "Stock", icon: Package },
+            { path: "/admin/inventory", label: "Stock", icon: Package, badge: lowStockCount > 0 ? lowStockCount : undefined },
             { path: "/admin/suppliers", label: "Suppliers", icon: Building2 },
           ],
         },
