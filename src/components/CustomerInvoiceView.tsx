@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, FileText, Download, Clock, CheckCircle } from "lucide-react";
 import PayfastPayButton from "@/components/payments/PayfastPayButton";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
+import { attachPaymentTotals } from "@/lib/depositInvoice";
 import { format } from "date-fns";
 import logo from "@/assets/logo.png";
 
@@ -101,7 +102,8 @@ const CustomerInvoiceView = () => {
           : [],
       })) as Invoice[];
 
-      setInvoices(parsedInvoices);
+      await attachPaymentTotals(parsedInvoices as any[]);
+      setInvoices([...parsedInvoices]);
 
       // If specific invoice requested, select it
       if (invoiceId) {
