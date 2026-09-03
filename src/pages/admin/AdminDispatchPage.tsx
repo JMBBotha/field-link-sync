@@ -1097,6 +1097,8 @@ const AdminDispatchPage = () => {
                   </p>
                 </>
               )}
+              {/* Deposit payment chip for installation handoff jobs */}
+              <InstallDepositChip leadId={jobInfoLead.id} showOpen />
             </div>
           )}
           <DialogFooter>
@@ -1423,6 +1425,9 @@ const DayTimeline = ({
                       <p className="font-semibold leading-tight break-words">{schedule.leads?.customer_name || "Job"}</p>
                       {height > 30 && <p className="break-words opacity-80">{schedule.leads?.service_type}</p>}
                       {height > 45 && <p className="opacity-60">{schedule.start_time}–{schedule.end_time}</p>}
+                      {height > 60 && isInstallSchedule(schedule) && (
+                        <span className="mt-0.5 inline-block"><InstallDepositChip leadId={schedule.lead_id} compact /></span>
+                      )}
                     </motion.div>
                   );
                 })}
@@ -1575,6 +1580,9 @@ const WeekTimeline = ({
                             }}
                           >
                             <span className="font-medium">{schedule.start_time}</span> {schedule.leads?.customer_name || "Job"}
+                            {isInstallSchedule(schedule) && (
+                              <span className="ml-1 inline-block align-middle"><InstallDepositChip leadId={schedule.lead_id} compact /></span>
+                            )}
                             {(() => {
                               const qLead = allLeads.find(l => l.id === schedule.lead_id);
                               return qLead && laneOf(qLead) === "sales" && onQuoteClick ? (
