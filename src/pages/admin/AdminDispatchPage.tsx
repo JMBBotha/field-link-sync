@@ -1442,7 +1442,10 @@ const DayTimeline = ({
           </div>
         )}
 
-        {groupAgentsByLane(agents, laneById).map(group => (
+        {/* Unassigned first-accept installs still show under Technical when no tech rows exist. */}
+        {!hasTechGroup && poolSchedules.length > 0 && <PoolColumn />}
+        {laneGroups.map(group => (
+
           <Fragment key={group.key ?? "unknown"}>
             {/* Lane group header strip */}
             <div className="shrink-0 w-5 border-r bg-muted/20">
