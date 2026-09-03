@@ -835,6 +835,10 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                     scrollBehavior: "smooth",
                     WebkitOverflowScrolling: "touch",
                     willChange: "transform",
+                    // Keep pinch + overscroll inside the viewer: no browser
+                    // page zoom, no pull-to-refresh reload on mobile.
+                    touchAction: "pan-x pan-y",
+                    overscrollBehavior: "contain",
                   }}
                 >
                   <div ref={pdfAreaRef} style={{ cursor: loupeActive ? "none" : zoom > 1 ? "grab" : "default" }}>
