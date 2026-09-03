@@ -1570,7 +1570,9 @@ const DayTimeline = ({
             </div>
           );
             })}
+            {group.key === "service" && poolSchedules.length > 0 && <PoolColumn />}
           </Fragment>
+
         ))}
       </div>
     </div>
