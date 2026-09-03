@@ -171,6 +171,7 @@ const AdminEstimateDetailPage = () => {
       <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/50 px-4 py-3 print:hidden">
         <span className="text-sm text-muted-foreground">Status</span>
         <StatusPill status={quote.status} />
+        {canConvert && <DepositPaymentChip invoice={depositInvoice} accepted />}
         <span className="text-xs text-muted-foreground">
           Created {new Date(quote.created_at).toLocaleDateString("en-ZA")}
         </span>
