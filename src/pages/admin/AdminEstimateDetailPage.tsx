@@ -76,6 +76,12 @@ const AdminEstimateDetailPage = () => {
   /** Standard workflow: only an accepted estimate may become a billable invoice. */
   const canConvert = String(quote?.status || "").toLowerCase() === "accepted";
 
+  const { data: depositInvoice } = useQuery({
+    queryKey: ["quote-deposit-invoice", id],
+    enabled: !!id && canConvert,
+    queryFn: () => fetchQuoteInvoice(id),
+  });
+
   const handleSend = async () => {
     setBusy("send");
     const { error } = await supabase.from("quotes").update({ status: "sent" }).eq("id", id);
