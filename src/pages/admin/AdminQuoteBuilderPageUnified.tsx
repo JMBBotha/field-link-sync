@@ -6,7 +6,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import type { PdfSelectedProduct } from "@/types/pdfSelection";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight, Maximize2, Minimize2 } from "lucide-react";
+import { ArrowLeft, Users, X, Loader2, Mic, ChevronDown, ChevronRight, Maximize2, Minimize2, Send } from "lucide-react";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { formatRand } from "@/utils/formatRand";
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
@@ -1178,6 +1178,29 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
           </div>
         }
       </div>
+
+      {/* Phone/tablet thumb bar: live total + primary Send, always visible
+          while building. Sits above the fixed mobile bottom nav. */}
+      {isCompact && (
+        <div className="shrink-0 flex items-center justify-between gap-3 border-t bg-card px-4 py-3 mb-16 lg:mb-0">
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Total incl. VAT
+            </p>
+            <p className="text-base font-bold text-foreground tabular-nums truncate">
+              {formatRand(displayQuoteTotals.total)}
+            </p>
+          </div>
+          <Button
+            onClick={handleGenerateQuote}
+            disabled={generating}
+            className="h-11 px-5 text-sm font-semibold gap-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-gray-900 shrink-0"
+          >
+            {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Send
+          </Button>
+        </div>
+      )}
 
       {/* Floating selected items panel */}
       {floatingOpen && (
