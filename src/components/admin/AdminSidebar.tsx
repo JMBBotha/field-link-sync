@@ -42,6 +42,7 @@ const AdminSidebar = ({
   onMobileClose,
 }: AdminSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { isAdmin, isDispatcher, isFieldAgent, roles } = useRole();
@@ -130,22 +131,18 @@ const AdminSidebar = ({
             { path: "/admin/analytics", label: "Analytics", icon: LineChart },
           ],
         },
-        {
-          path: "/admin/settings#advanced",
-          label: "Advanced",
-          icon: Sparkles,
-          roles: ["admin"],
-          children: [
-            { path: "/admin/jobs", label: "Legacy Jobs List", icon: ClipboardList },
-            { path: "/admin/audit", label: "Audit Log", icon: History },
-            { path: "/admin/import", label: "Import", icon: Upload },
-            { path: "/admin/companies", label: "Companies", icon: Building2 },
-            { path: "/admin/overlay-debug", label: "Overlay Debug", icon: LayoutGrid },
-            { path: "/field", label: "Field Agent View", icon: Users },
-          ],
-        },
       ],
     },
+  ];
+
+  // Footer-only advanced/legacy links — never in daily primary nav.
+  const advancedItems: NavItem[] = [
+    { path: "/admin/jobs", label: "Legacy Jobs List", icon: ClipboardList },
+    { path: "/admin/audit", label: "Audit Log", icon: History },
+    { path: "/admin/import", label: "Import", icon: Upload },
+    { path: "/admin/companies", label: "Companies", icon: Building2 },
+    { path: "/admin/overlay-debug", label: "Overlay Debug", icon: LayoutGrid },
+    { path: "/field", label: "Field Agent View", icon: Users },
   ];
 
   const hasRole = (allowed?: AppRole[]) => {
@@ -395,6 +392,38 @@ const AdminSidebar = ({
             {!collapsed && <span>{item.label}</span>}
           </button>
         ))}
+        {isAdmin && (
+          <>
+            <button
+              onClick={() => setAdvancedOpen((v) => !v)}
+              className={cn(
+                "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
+                collapsed && "justify-center px-0"
+              )}
+            >
+              <Sparkles className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+              {!collapsed && (
+                <>
+                  <span>Advanced</span>
+                  <ChevronDown className={cn("ml-auto h-3.5 w-3.5 opacity-70", advancedOpen && "rotate-180")} />
+                </>
+              )}
+            </button>
+            {advancedOpen && advancedItems.map((item) => (
+              <button
+                key={item.path}
+                onClick={() => handleNav(item.path)}
+                className={cn(
+                  "w-full flex items-center gap-3 rounded-md pl-7 pr-3 py-1 text-[12px] text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
+                  collapsed && "justify-center px-0"
+                )}
+              >
+                <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+                {!collapsed && <span className="truncate">{item.label}</span>}
+              </button>
+            ))}
+          </>
+        )}
         <button
           onClick={() => {
             onSignOut();
