@@ -13,7 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { UserPlus, Save, X, Trash2 } from "lucide-react";
+import { UserPlus, Save, X, Trash2, Undo2 } from "lucide-react";
 
 export interface QuoteExitDialogProps {
   open: boolean;
@@ -22,6 +22,8 @@ export interface QuoteExitDialogProps {
   onSaveDraft: () => void;
   onDiscard: () => void;
   onDelete?: () => void;
+  /** Cancel — close the dialog and stay in the builder. */
+  onCancel?: () => void;
   /** Escape / overlay dismiss — defaults to discarding. */
   onDismiss?: () => void;
 }
@@ -33,6 +35,7 @@ const QuoteExitDialog = ({
   onSaveDraft,
   onDiscard,
   onDelete,
+  onCancel,
   onDismiss,
 }: QuoteExitDialogProps) => (
   <AlertDialog open={open} onOpenChange={(v) => !v && (onDismiss ?? onDiscard)()}>
@@ -74,8 +77,17 @@ const QuoteExitDialog = ({
         </TooltipProvider>
 
         <Button variant="ghost" onClick={onDiscard} className="gap-1.5 w-full">
-          <X className="h-4 w-4" />
+          <Undo2 className="h-4 w-4" />
           Discard Changes
+        </Button>
+
+        <Button
+          variant="ghost"
+          onClick={() => (onCancel ?? onDismiss ?? onDiscard)()}
+          className="gap-1.5 w-full"
+        >
+          <X className="h-4 w-4" />
+          Cancel
         </Button>
 
         {onDelete && (
