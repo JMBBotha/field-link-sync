@@ -1,4 +1,9 @@
-import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
+                      <p className="font-semibold leading-tight break-words">{schedule.leads?.customer_name || "Job"}</p>
+                      {height > 30 && <p className="break-words opacity-80">{schedule.leads?.service_type}</p>}
+                      {height > 45 && <p className="opacity-60">{schedule.start_time}–{schedule.end_time}</p>}
+                      {height > 60 && isInstallSchedule(schedule) && (
+                        <span className="mt-0.5 inline-block"><InstallDepositChip leadId={schedule.lead_id} compact /></span>
+                      )}
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useLeadInbox } from "@/hooks/useLeadInbox";
