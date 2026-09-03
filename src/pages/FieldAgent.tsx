@@ -247,7 +247,7 @@ const FieldAgent = () => {
 
   // Initialize map when location is enabled - with delay to ensure DOM is ready
   useEffect(() => {
-    if (!mapLoaded && locationEnabled && !showTokenInput) {
+    if (!mapLoaded && locationEnabled && !showTokenInput && showMapOnMobile) {
       // Small delay to ensure DOM container is mounted after showTokenInput changes
       const timerId = setTimeout(() => {
         if (mapRef.current) {
@@ -256,7 +256,17 @@ const FieldAgent = () => {
       }, 100);
       return () => clearTimeout(timerId);
     }
-  }, [locationEnabled, mapLoaded, showTokenInput]);
+  }, [locationEnabled, mapLoaded, showTokenInput, showMapOnMobile]);
+
+  // Keep the map canvas sized correctly when returning to the Map tab
+  useEffect(() => {
+    if (showMapOnMobile && mapLoaded && mapInstanceRef.current) {
+      const timerId = setTimeout(() => {
+        try { mapInstanceRef.current?.resize(); } catch { /* ignore */ }
+      }, 120);
+      return () => clearTimeout(timerId);
+    }
+  }, [showMapOnMobile, mapLoaded]);
 
   useEffect(() => {
     if (mapLoaded && currentLocation) {
