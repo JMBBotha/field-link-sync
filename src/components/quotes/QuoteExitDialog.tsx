@@ -22,6 +22,8 @@ export interface QuoteExitDialogProps {
   onSaveDraft: () => void;
   onDiscard: () => void;
   onDelete?: () => void;
+  /** Escape / overlay dismiss — defaults to discarding. */
+  onDismiss?: () => void;
 }
 
 const QuoteExitDialog = ({
@@ -31,8 +33,9 @@ const QuoteExitDialog = ({
   onSaveDraft,
   onDiscard,
   onDelete,
+  onDismiss,
 }: QuoteExitDialogProps) => (
-  <AlertDialog open={open} onOpenChange={(v) => !v && onDiscard()}>
+  <AlertDialog open={open} onOpenChange={(v) => !v && (onDismiss ?? onDiscard)()}>
     <AlertDialogContent>
       <AlertDialogHeader>
         <AlertDialogTitle>Unsaved Quote</AlertDialogTitle>
