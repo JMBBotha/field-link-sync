@@ -1504,7 +1504,7 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
           resolvedCustomerId = (leadRow?.customer_id as string) || null;
         }
 
-        // Fetch recent drafts scoped to this lead/customer.
+        // Fetch recent quotes scoped to this lead/customer.
         const fetchDrafts = async () => {
           if (paramLeadId) {
             // A lead is a sales job: open the latest LIVE quote for it —
@@ -1515,14 +1515,13 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
               .eq("lead_id", paramLeadId)
               .neq("status", "superseded")
               .order("created_at", { ascending: false })
-              .limit(1);
-            if (live && live.length > 0) return live;
-            return [];
+              .limit(5);
+            return live ?? [];
           }
           if (resolvedCustomerId) {
             const { data } = await supabase
               .from("quotes")
-              .select("id, created_at, sales_engineer_id")
+              .select("id, created_at, sales_engineer_id, status")
               .eq("customer_id", resolvedCustomerId)
               .is("lead_id", null)
               .eq("status", "draft")
@@ -1535,28 +1534,60 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
 
         const drafts = await fetchDrafts();
 
-        // Pass 1: reuse a draft with real data OR a recent-empty draft of ours.
+        const openQuote = (id: string) => {
+          if (!cancelled) {
+            setQuoteId(id);
+            setCreating(false);
+          }
+        };
+
+        // Pass 1 — REAL quotes win: any non-draft (sent/viewed/accepted) or a
+        // draft that already has line items/areas. These are never superseded.
         const toSupersede: string[] = [];
+        const emptyOwnDrafts: string[] = [];
         for (const d of drafts) {
-          // A live (non-draft) quote for this lead is always reopened as-is —
-          // never superseded or judged by the empty-draft safeguard.
-          if ((d as any).status && (d as any).status !== "draft") {
-            if (!cancelled) {
-              setQuoteId(d.id);
-              setCreating(false);
-            }
+          const status = (d as any).status as string | undefined;
+          if (status && status !== "draft") {
+            openQuote(d.id);
             return;
           }
-          const hasReal = await draftHasRealData(d.id);
-          if (hasReal || isRecentEmptyDraft(d as any)) {
-            for (const oldId of toSupersede) await supersedeDraft(oldId, d.id);
-            if (!cancelled) {
-              setQuoteId(d.id);
-              setCreating(false);
-            }
+          if (await draftHasRealData(d.id)) {
+            openQuote(d.id);
             return;
           }
-          toSupersede.push(d.id);
+          if (isRecentEmptyDraft(d as any)) emptyOwnDrafts.push(d.id);
+          else toSupersede.push(d.id);
+        }
+
+        // Pass 1b — lead has no real quote yet. Before minting another empty
+        // draft, reuse the customer's latest real quote (other lead/no lead)
+        // so a dispatch tile never opens an empty basket next to a live quote.
+        if (paramLeadId && resolvedCustomerId) {
+          const { data: customerQuotes } = await supabase
+            .from("quotes")
+            .select("id, created_at, sales_engineer_id, status")
+            .eq("customer_id", resolvedCustomerId)
+            .neq("status", "superseded")
+            .order("created_at", { ascending: false })
+            .limit(10);
+          for (const q of customerQuotes ?? []) {
+            if (drafts.some((d: any) => d.id === q.id)) continue;
+            const status = (q as any).status as string | undefined;
+            if ((status && status !== "draft") || (await draftHasRealData(q.id))) {
+              openQuote(q.id);
+              return;
+            }
+          }
+        }
+
+        // Pass 1c — nothing real anywhere: reuse our own recent empty draft.
+        if (emptyOwnDrafts.length > 0) {
+          const reuseId = emptyOwnDrafts[0];
+          for (const oldId of [...emptyOwnDrafts.slice(1), ...toSupersede]) {
+            await supersedeDraft(oldId, reuseId);
+          }
+          openQuote(reuseId);
+          return;
         }
 
         // Pass 2: no reusable draft. We must have a customer_id to insert —
