@@ -282,7 +282,7 @@ const SendQuoteDialog = ({
               <WhatsAppShareButton
                 phone={phone || undefined}
                 message={shareMessage}
-                variant="secondary"
+                variant="outline"
                 className="h-9 shrink-0"
               >
                 <span className="flex items-center gap-1.5">WhatsApp</span>
