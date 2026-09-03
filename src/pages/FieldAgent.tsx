@@ -59,6 +59,7 @@ interface Lead {
   notes?: string | null;
   created_at?: string | null;
   assigned_agent_id?: string | null;
+  scheduled_date?: string | null;
   started_at?: string | null;
   priority?: string;
   customer_id?: string | null;
@@ -247,7 +248,7 @@ const FieldAgent = () => {
 
   // Initialize map when location is enabled - with delay to ensure DOM is ready
   useEffect(() => {
-    if (!mapLoaded && locationEnabled && !showTokenInput) {
+    if (!mapLoaded && locationEnabled && !showTokenInput && showMapOnMobile) {
       // Small delay to ensure DOM container is mounted after showTokenInput changes
       const timerId = setTimeout(() => {
         if (mapRef.current) {
@@ -256,7 +257,17 @@ const FieldAgent = () => {
       }, 100);
       return () => clearTimeout(timerId);
     }
-  }, [locationEnabled, mapLoaded, showTokenInput]);
+  }, [locationEnabled, mapLoaded, showTokenInput, showMapOnMobile]);
+
+  // Keep the map canvas sized correctly when returning to the Map tab
+  useEffect(() => {
+    if (showMapOnMobile && mapLoaded && mapInstanceRef.current) {
+      const timerId = setTimeout(() => {
+        try { mapInstanceRef.current?.resize(); } catch { /* ignore */ }
+      }, 120);
+      return () => clearTimeout(timerId);
+    }
+  }, [showMapOnMobile, mapLoaded]);
 
   useEffect(() => {
     if (mapLoaded && currentLocation) {
@@ -1063,6 +1074,14 @@ const FieldAgent = () => {
     return activeLeads;
   }, [activeLeads, activeListFilter]);
 
+  // Home list: today's jobs for this technician (scheduled today, not closed)
+  const todaysJobs = useMemo(() => {
+    const todayKey = new Date().toDateString();
+    return activeLeads
+      .filter(l => l.scheduled_date && new Date(l.scheduled_date).toDateString() === todayKey)
+      .sort((a, b) => new Date(a.scheduled_date || 0).getTime() - new Date(b.scheduled_date || 0).getTime());
+  }, [activeLeads]);
+
   // Deposit invoices for install jobs linked to my active leads (chip on lead tiles)
   const [installInvoicesByLead, setInstallInvoicesByLead] = useState<Record<string, DepositInvoiceLike>>({});
   const activeLeadIdsKey = useMemo(
@@ -1263,8 +1282,8 @@ const FieldAgent = () => {
           </div>
         )}
 
-        {/* Main Content - Full Page Map with Overlays */}
-        <div className="flex-1 relative">
+        {/* Main Content - Full Page Map with Overlays (Map tab only) */}
+        <div className={`flex-1 relative ${showMapOnMobile ? "" : "hidden"}`}>
           {/* Map Container */}
           {!locationEnabled ? (
             <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10">
@@ -1787,6 +1806,61 @@ const FieldAgent = () => {
             />
           </div>
         </div>
+
+        {/* Home list (default /field view — not the map) */}
+        {!showMapOnMobile && (
+          <div className="flex-1 overflow-y-auto px-3 md:px-6 py-3 space-y-6 pb-24">
+            {/* Today's jobs for this technician */}
+            <section className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary" />
+                <h2 className="font-semibold text-sm">Today's jobs</h2>
+                <Badge variant="secondary" className="text-xs">{todaysJobs.length}</Badge>
+              </div>
+              {todaysJobs.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">No jobs scheduled for today.</p>
+              ) : (
+                todaysJobs.map((lead) => (
+                  <FieldAgentLeadCard
+                    key={lead.id}
+                    lead={lead}
+                    variant="active"
+                    onCardClick={openLeadDetail}
+                    onStart={openLeadDetail}
+                    invoice={installInvoicesByLead[lead.id] ?? null}
+                    loadingAction={loadingAction}
+                  />
+                ))
+              )}
+            </section>
+
+            {/* First-accept offers */}
+            <section className="space-y-2">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-green-600" />
+                <h2 className="font-semibold text-sm">Available offers</h2>
+                <Badge variant="secondary" className="text-xs">{displayedAvailableLeads.length}</Badge>
+              </div>
+              {!isAvailableForLeads ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">You're offline — turn on availability to see offers.</p>
+              ) : displayedAvailableLeads.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">No available offers right now.</p>
+              ) : (
+                displayedAvailableLeads.map((lead) => (
+                  <FieldAgentLeadCard
+                    key={lead.id}
+                    lead={lead}
+                    distance={currentLocation ? calculateDistance(currentLocation.lat, currentLocation.lng, lead.latitude, lead.longitude).toFixed(1) : null}
+                    variant="available"
+                    onCardClick={openLeadDetail}
+                    onAccept={handleAcceptLead}
+                    loadingAction={loadingAction}
+                  />
+                ))
+              )}
+            </section>
+          </div>
+        )}
 
         {/* Lead Detail Sheet */}
         <LeadDetailSheet
