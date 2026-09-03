@@ -1777,7 +1777,9 @@ const WeekTimeline = ({
               })}
             </tr>
               ))}
+              {group.key === "service" && hasPool && <PoolRow />}
             </Fragment>
+
           ))}
         </tbody>
       </table>
