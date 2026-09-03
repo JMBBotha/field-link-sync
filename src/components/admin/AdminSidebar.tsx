@@ -209,7 +209,7 @@ const AdminSidebar = ({
     <Popover open={lowStockOpen} onOpenChange={setLowStockOpen}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent side="right" align="start" className="w-72 p-0">
-        <div className="px-3 py-2 border-b font-semibold text-sm">Low stock</div>
+        <div className="px-3 py-2 border-b font-semibold text-sm">{lowStockItems.length} low stock</div>
         <div className="max-h-56 overflow-y-auto">
           {lowStockItems.slice(0, 5).map((r: any) => (
             <div key={r.product_id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
