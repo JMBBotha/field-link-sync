@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, KeyboardEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import Fuse from "fuse.js";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -83,7 +84,8 @@ const getRowHighlight = (qty: number, threshold: number, mode: StockMode) => {
 const InventoryList = () => {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-  const [lowStockFilter, setLowStockFilter] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [lowStockFilter, setLowStockFilter] = useState(() => searchParams.get("lowStock") === "1");
   const [modeFilter, setModeFilter] = useState<ModeFilter>("all");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestionIndex, setSuggestionIndex] = useState(-1);

@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import logo from "@/assets/logo.png";
 import { useLeadInbox, INBOX_ROUTE } from "@/hooks/useLeadInbox";
 
@@ -59,19 +60,20 @@ const AdminSidebar = ({
         ? "Technician"
         : "Viewer";
 
-  const { data: lowStockCount = 0 } = useQuery({
-    queryKey: ["low-stock-count-sidebar"],
+  const { data: lowStockItems = [] } = useQuery({
+    queryKey: ["low-stock-items-sidebar"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("inventory_stock")
-        .select("quantity, low_stock_threshold, stock_mode");
-      if (error) return 0;
+        .select("product_id, quantity, low_stock_threshold, stock_mode, supplier_products:product_id(description, product_code)");
+      if (error) return [];
       return (data || []).filter(
         (r: any) => r.stock_mode === "stock_sensitive" && r.quantity <= r.low_stock_threshold
-      ).length;
+      );
     },
     refetchInterval: 60000,
   });
+  const lowStockCount = lowStockItems.length;
 
   // FreshBooks-style ordering. Every existing route is preserved —
   // items are only regrouped/relabelled for the accounting-app layout.
@@ -112,7 +114,7 @@ const AdminSidebar = ({
           badge: lowStockCount > 0 ? lowStockCount : undefined,
           children: [
             { path: "/admin/catalog", label: "Catalog", icon: ShoppingBag },
-            { path: "/admin/inventory", label: "Stock", icon: Package },
+            { path: "/admin/inventory", label: "Stock", icon: Package, badge: lowStockCount > 0 ? lowStockCount : undefined },
             { path: "/admin/suppliers", label: "Suppliers", icon: Building2 },
           ],
         },
@@ -201,6 +203,45 @@ const AdminSidebar = ({
     onMobileClose?.();
   };
 
+  const [lowStockOpen, setLowStockOpen] = useState(false);
+
+  const lowStockPopover = (trigger: React.ReactNode) => (
+    <Popover open={lowStockOpen} onOpenChange={setLowStockOpen}>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent side="right" align="start" className="w-72 p-0">
+        <div className="px-3 py-2 border-b font-semibold text-sm">Low stock</div>
+        <div className="max-h-56 overflow-y-auto">
+          {lowStockItems.slice(0, 5).map((r: any) => (
+            <div key={r.product_id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+              <div className="min-w-0">
+                <div className="truncate font-medium">{r.supplier_products?.description || "Unknown product"}</div>
+                {r.supplier_products?.product_code && (
+                  <div className="text-xs text-muted-foreground truncate">{r.supplier_products.product_code}</div>
+                )}
+              </div>
+              <span className="shrink-0 text-xs font-bold text-destructive">
+                {r.quantity} / {r.low_stock_threshold}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div className="border-t p-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => {
+              setLowStockOpen(false);
+              handleNav("/admin/inventory?lowStock=1");
+            }}
+          >
+            Open Stock
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+
   const renderLeaf = (item: NavItem, depth = 0) => {
     const active = isActive(item.path);
     const btn = (
@@ -246,29 +287,71 @@ const AdminSidebar = ({
     if (!item.children || item.children.length === 0) return renderLeaf(item);
     const open = isExpanded(item);
     const active = isGroupActive(item);
-    if (collapsed) return renderLeaf(item);
+    const badged = !!(item.badge && item.badge > 0);
+    if (collapsed) {
+      // Collapsed: badged group opens the low-stock popover instead of navigating
+      if (badged && item.path === "/admin/catalog") {
+        const btn = (
+          <button
+            className="w-full flex items-center justify-center gap-3 rounded-md px-0 py-2.5 text-[13.5px] font-medium transition-colors relative text-nav-foreground/85 hover:text-white hover:bg-white/[0.07]"
+          >
+            <item.icon className="h-[17px] w-[17px] shrink-0 opacity-80" strokeWidth={1.75} />
+            <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive text-[9px] text-white font-bold px-1">
+              {item.badge! > 99 ? "99+" : item.badge}
+            </span>
+          </button>
+        );
+        return (
+          <Tooltip key={item.path} delayDuration={0}>
+            {lowStockPopover(<TooltipTrigger asChild>{btn}</TooltipTrigger>)}
+            <TooltipContent side="right" className="font-medium">
+              {item.label} · {item.badge} low stock
+            </TooltipContent>
+          </Tooltip>
+        );
+      }
+      return renderLeaf(item);
+    }
+    const groupBtn = (
+      <button
+        onClick={() => {
+          // When badged, the PopoverTrigger handles opening; chevron still expands.
+          if (!badged) {
+            setExpanded((s) => ({ ...s, [item.path]: !open }));
+          }
+        }}
+        className={cn(
+          "w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-colors relative",
+          active
+            ? "bg-nav-active text-white font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-r before:bg-white/80"
+            : "text-nav-foreground/85 hover:text-white hover:bg-white/[0.07]",
+        )}
+      >
+        <item.icon className="h-[17px] w-[17px] shrink-0" strokeWidth={1.75} />
+        <span className="truncate">{item.label}</span>
+        {badged ? (
+          <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 text-[10px]">
+            {item.badge! > 99 ? "99+" : item.badge}
+          </Badge>
+        ) : null}
+        <span
+          role="button"
+          aria-label={`Expand ${item.label}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded((s) => ({ ...s, [item.path]: !open }));
+          }}
+          className={cn("p-1 -m-1 rounded hover:bg-white/10", !badged && "ml-auto")}
+        >
+          <ChevronDown
+            className={cn("h-3.5 w-3.5 transition-transform opacity-70", open && "rotate-180")}
+          />
+        </span>
+      </button>
+    );
     return (
       <div key={item.path}>
-        <button
-          onClick={() => setExpanded((s) => ({ ...s, [item.path]: !open }))}
-          className={cn(
-            "w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-colors relative",
-            active
-              ? "bg-nav-active text-white font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-r before:bg-white/80"
-              : "text-nav-foreground/85 hover:text-white hover:bg-white/[0.07]",
-          )}
-        >
-          <item.icon className="h-[17px] w-[17px] shrink-0" strokeWidth={1.75} />
-          <span className="truncate">{item.label}</span>
-          {item.badge && item.badge > 0 ? (
-            <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center p-0 text-[10px]">
-              {item.badge > 99 ? "99+" : item.badge}
-            </Badge>
-          ) : null}
-          <ChevronDown
-            className={cn("h-3.5 w-3.5 transition-transform opacity-70", !item.badge && "ml-auto", open && "rotate-180")}
-          />
-        </button>
+        {badged && item.path === "/admin/catalog" ? lowStockPopover(groupBtn) : groupBtn}
         {open && <div className="mt-0.5 space-y-px">{item.children.map((c) => renderLeaf(c, 1))}</div>}
       </div>
     );
