@@ -99,7 +99,7 @@ const SendQuoteDialog = ({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("quotes")
-        .select("*, customers(name, company_name, address, email, phone)")
+        .select("*, lead_id, customers(name, company_name, address, email, phone)")
         .eq("id", quoteId)
         .maybeSingle();
       if (error) throw error;
