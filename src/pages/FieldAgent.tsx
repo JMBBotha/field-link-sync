@@ -1807,6 +1807,61 @@ const FieldAgent = () => {
           </div>
         </div>
 
+        {/* Home list (default /field view — not the map) */}
+        {!showMapOnMobile && (
+          <div className="flex-1 overflow-y-auto px-3 md:px-6 py-3 space-y-6 pb-24">
+            {/* Today's jobs for this technician */}
+            <section className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary" />
+                <h2 className="font-semibold text-sm">Today's jobs</h2>
+                <Badge variant="secondary" className="text-xs">{todaysJobs.length}</Badge>
+              </div>
+              {todaysJobs.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">No jobs scheduled for today.</p>
+              ) : (
+                todaysJobs.map((lead) => (
+                  <FieldAgentLeadCard
+                    key={lead.id}
+                    lead={lead}
+                    variant="active"
+                    onCardClick={openLeadDetail}
+                    onStart={openLeadDetail}
+                    invoice={installInvoicesByLead[lead.id] ?? null}
+                    loadingAction={loadingAction}
+                  />
+                ))
+              )}
+            </section>
+
+            {/* First-accept offers */}
+            <section className="space-y-2">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-green-600" />
+                <h2 className="font-semibold text-sm">Available offers</h2>
+                <Badge variant="secondary" className="text-xs">{displayedAvailableLeads.length}</Badge>
+              </div>
+              {!isAvailableForLeads ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">You're offline — turn on availability to see offers.</p>
+              ) : displayedAvailableLeads.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">No available offers right now.</p>
+              ) : (
+                displayedAvailableLeads.map((lead) => (
+                  <FieldAgentLeadCard
+                    key={lead.id}
+                    lead={lead}
+                    distance={currentLocation ? calculateDistance(currentLocation.lat, currentLocation.lng, lead.latitude, lead.longitude).toFixed(1) : null}
+                    variant="available"
+                    onCardClick={openLeadDetail}
+                    onAccept={handleAcceptLead}
+                    loadingAction={loadingAction}
+                  />
+                ))
+              )}
+            </section>
+          </div>
+        )}
+
         {/* Lead Detail Sheet */}
         <LeadDetailSheet
           lead={selectedLead}
