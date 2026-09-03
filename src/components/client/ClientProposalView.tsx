@@ -168,6 +168,12 @@ const ClientProposalView = () => {
       if (success) {
         setActionDone("accepted");
         toast({ title: "Quote accepted! ✅" });
+        // The accept RPC creates the deposit invoice — refresh so the chip shows.
+        try {
+          if (quote?.id) setDepositInvoice(await fetchQuoteInvoice(quote.id));
+        } catch {
+          /* anonymous read blocked — chip stays hidden */
+        }
       } else {
         toast({ title: "Unable to accept quote", variant: "destructive" });
       }
