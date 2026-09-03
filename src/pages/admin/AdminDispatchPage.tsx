@@ -1603,6 +1603,46 @@ const WeekTimeline = ({
   onSlotDragLeave: () => void;
 }) => {
   const COMPACT_HEIGHT = 52;
+  const navigate = useNavigate();
+  const laneGroups = groupAgentsByLane(agents, laneById);
+  const hasTechGroup = laneGroups.some(g => g.key === "service");
+  const poolByDate = new Map<string, Schedule[]>();
+  dates.forEach(d => {
+    const key = format(d, "yyyy-MM-dd");
+    poolByDate.set(key, (schedulesMap.get(key) || []).filter(isPoolSchedule));
+  });
+  const hasPool = Array.from(poolByDate.values()).some(v => v.length > 0);
+
+  /** Technical-pool row: unassigned first-accept installs across the week. */
+  const PoolRow = () => (
+    <tr>
+      <td className="border-b border-r p-2 bg-emerald-500/10 sticky left-0 z-10">
+        <span className="text-xs font-medium">Technical pool</span>
+      </td>
+      {dates.map(d => {
+        const key = format(d, "yyyy-MM-dd");
+        const items = poolByDate.get(key) || [];
+        return (
+          <td key={key} className="border-b p-1 align-top min-w-[100px]">
+            <div className="space-y-0.5">
+              {items.map(s => (
+                <TechPoolTile
+                  key={s.id}
+                  schedule={s}
+                  compact
+                  onDragStart={onScheduleDragStart}
+                  onOpen={(jobId) => navigate(`/admin/jobs/${jobId}`)}
+                />
+              ))}
+              {items.length === 0 && <div className="text-[10px] text-muted-foreground/40 text-center py-2">—</div>}
+            </div>
+          </td>
+        );
+      })}
+    </tr>
+  );
+
+
 
   return (
     <div className="overflow-x-auto">
