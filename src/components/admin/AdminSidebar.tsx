@@ -130,22 +130,19 @@ const AdminSidebar = ({
             { path: "/admin/analytics", label: "Analytics", icon: LineChart },
           ],
         },
-        {
-          path: "/admin/settings#advanced",
-          label: "Advanced",
-          icon: Sparkles,
-          roles: ["admin"],
-          children: [
-            { path: "/admin/jobs", label: "Legacy Jobs List", icon: ClipboardList },
-            { path: "/admin/audit", label: "Audit Log", icon: History },
-            { path: "/admin/import", label: "Import", icon: Upload },
-            { path: "/admin/companies", label: "Companies", icon: Building2 },
-            { path: "/admin/overlay-debug", label: "Overlay Debug", icon: LayoutGrid },
-            { path: "/field", label: "Field Agent View", icon: Users },
-          ],
         },
       ],
     },
+  ];
+
+  // Footer-only advanced/legacy links — never in daily primary nav.
+  const advancedItems: NavItem[] = [
+    { path: "/admin/jobs", label: "Legacy Jobs List", icon: ClipboardList },
+    { path: "/admin/audit", label: "Audit Log", icon: History },
+    { path: "/admin/import", label: "Import", icon: Upload },
+    { path: "/admin/companies", label: "Companies", icon: Building2 },
+    { path: "/admin/overlay-debug", label: "Overlay Debug", icon: LayoutGrid },
+    { path: "/field", label: "Field Agent View", icon: Users },
   ];
 
   const hasRole = (allowed?: AppRole[]) => {
