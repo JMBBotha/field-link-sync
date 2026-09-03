@@ -7139,6 +7139,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_deposit_invoice_by_quote_token: {
+        Args: { p_token: string }
+        Returns: Json
+      }
       get_invoice_aging_report: {
         Args: never
         Returns: {

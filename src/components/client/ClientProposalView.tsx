@@ -9,7 +9,7 @@ import { Loader2, CheckCircle, XCircle, Phone, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import PayfastPayButton from "@/components/payments/PayfastPayButton";
-import { fetchQuoteInvoice, type DepositInvoiceRow } from "@/lib/depositInvoice";
+import { fetchQuoteInvoiceByToken, type DepositInvoiceRow } from "@/lib/depositInvoice";
 import logo from "@/assets/logo.png";
 
 interface QuoteData {
@@ -90,10 +90,10 @@ const ClientProposalView = () => {
       setLineItems(items);
       setSections(bundle.sections || []);
 
-      // Deposit invoice (created on accept). Anonymous clients may not be able
-      // to read it — fail silently and simply hide the chip in that case.
+      // Deposit invoice (created on accept) — read via the token-gated RPC so
+      // anonymous clients can see the chip without touching invoices RLS.
       try {
-        setDepositInvoice(await fetchQuoteInvoice(q.id));
+        setDepositInvoice(await fetchQuoteInvoiceByToken(token!));
       } catch {
         setDepositInvoice(null);
       }
@@ -168,11 +168,11 @@ const ClientProposalView = () => {
       if (success) {
         setActionDone("accepted");
         toast({ title: "Quote accepted! ✅" });
-        // The accept RPC creates the deposit invoice — refresh so the chip shows.
+        // The accept RPC creates the deposit invoice — refresh via token so the chip shows.
         try {
-          if (quote?.id) setDepositInvoice(await fetchQuoteInvoice(quote.id));
+          setDepositInvoice(await fetchQuoteInvoiceByToken(token!));
         } catch {
-          /* anonymous read blocked — chip stays hidden */
+          /* token read failed — chip stays hidden */
         }
       } else {
         toast({ title: "Unable to accept quote", variant: "destructive" });

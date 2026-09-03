@@ -9,7 +9,7 @@ export interface DepositInvoiceRow {
   notes: string | null;
 }
 
-/** The single invoice hung on this quote (deposit invoice), if any. */
+/** The single invoice hung on this quote (deposit invoice), if any. Signed-in tenant users only. */
 export async function fetchQuoteInvoice(quoteId: string): Promise<DepositInvoiceRow | null> {
   const { data, error } = await supabase
     .from("invoices")
@@ -19,6 +19,19 @@ export async function fetchQuoteInvoice(quoteId: string): Promise<DepositInvoice
     .maybeSingle();
   if (error) throw error;
   return (data as DepositInvoiceRow) ?? null;
+}
+
+/**
+ * Public token path for anonymous clients on /quote/:token.
+ * Token-gated SECURITY DEFINER RPC — returns only chip/pay fields for the
+ * single deposit invoice linked to that quote, or null.
+ */
+export async function fetchQuoteInvoiceByToken(token: string): Promise<DepositInvoiceRow | null> {
+  const { data, error } = await supabase.rpc("get_deposit_invoice_by_quote_token", {
+    p_token: token,
+  } as any);
+  if (error) throw error;
+  return (data as unknown as DepositInvoiceRow) ?? null;
 }
 
 /**
