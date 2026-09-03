@@ -151,7 +151,10 @@ const FieldSchedulePage = () => {
                                     status: r.deposit_invoice_status,
                                     paid_date: r.deposit_invoice_paid_date,
                                     grand_total: r.deposit_invoice_grand_total,
+                                    amount_paid: r.deposit_invoice_amount_paid,
+                                    remaining: r.deposit_invoice_remaining,
                                   }}
+
                                   accepted
                                   className="text-[10px]"
                                 />
