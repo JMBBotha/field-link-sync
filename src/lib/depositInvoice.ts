@@ -7,6 +7,8 @@ export interface DepositInvoiceRow {
   grand_total: number | null;
   paid_date: string | null;
   notes: string | null;
+  amount_paid?: number | null;
+  remaining?: number | null;
 }
 
 /** The single invoice hung on this quote (deposit invoice), if any. Signed-in tenant users only. */
@@ -18,7 +20,23 @@ export async function fetchQuoteInvoice(quoteId: string): Promise<DepositInvoice
     .limit(1)
     .maybeSingle();
   if (error) throw error;
-  return (data as DepositInvoiceRow) ?? null;
+  if (!data) return null;
+  const invoice = data as DepositInvoiceRow;
+  try {
+    const { data: pays, error: payErr } = await supabase
+      .from("payments")
+      .select("amount, status")
+      .eq("invoice_id", invoice.id)
+      .eq("status", "paid");
+    if (!payErr && pays) {
+      const paid = (pays as any[]).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+      invoice.amount_paid = paid;
+      invoice.remaining = Math.max(0, (Number(invoice.grand_total) || 0) - paid);
+    }
+  } catch {
+    // payments not readable — chip falls back to status only
+  }
+  return invoice;
 }
 
 /**
