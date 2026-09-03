@@ -80,7 +80,12 @@ const DepositPaymentChip = ({ invoice, accepted, className }: DepositPaymentChip
   }
 
   if (state === "partial") {
-    const remaining = getDepositRemaining(invoice);
+    // Partial must ALWAYS carry a Rand figure. Prefer the derived remaining,
+    // then grand_total - amount_paid, then grand_total as last resort.
+    const derived = getDepositRemaining(invoice);
+    const total = Number(invoice?.grand_total) || 0;
+    const paid = Number(invoice?.amount_paid) || 0;
+    const amount = derived !== undefined ? derived : Math.max(0, total - paid);
     return (
       <Badge
         className={cn(
@@ -88,10 +93,11 @@ const DepositPaymentChip = ({ invoice, accepted, className }: DepositPaymentChip
           className,
         )}
       >
-        Partial{remaining !== undefined && remaining > 0 ? ` · ${formatRand(remaining)}` : ""}
+        Partial · {formatRand(amount)}
       </Badge>
     );
   }
+
 
   if (state === "due") {
     const remaining = getDepositRemaining(invoice);
