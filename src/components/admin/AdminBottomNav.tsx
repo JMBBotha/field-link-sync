@@ -8,7 +8,7 @@ interface AdminBottomNavProps {
 
 const tabs = [
   { to: "/admin", label: "Home", icon: Home, exact: true },
-  { to: "/admin/jobs", label: "Jobs", icon: Briefcase },
+  { to: "/admin/jobs/dispatch", label: "Board", icon: Briefcase },
   { to: "/admin/map", label: "Map", icon: Map },
 ];
 
