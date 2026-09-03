@@ -59,6 +59,7 @@ interface Lead {
   notes?: string | null;
   created_at?: string | null;
   assigned_agent_id?: string | null;
+  scheduled_date?: string | null;
   started_at?: string | null;
   priority?: string;
   customer_id?: string | null;
@@ -1281,8 +1282,8 @@ const FieldAgent = () => {
           </div>
         )}
 
-        {/* Main Content - Full Page Map with Overlays */}
-        <div className="flex-1 relative">
+        {/* Main Content - Full Page Map with Overlays (Map tab only) */}
+        <div className={`flex-1 relative ${showMapOnMobile ? "" : "hidden"}`}>
           {/* Map Container */}
           {!locationEnabled ? (
             <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10">
