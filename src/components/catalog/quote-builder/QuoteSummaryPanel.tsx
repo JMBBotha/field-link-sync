@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { FileText } from "lucide-react";
+import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatRand } from "@/utils/formatRand";
@@ -111,13 +111,14 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId }: QuoteS
         <QuoteBrochureSection quoteId={quoteId} lineItemModelCodes={lineItemModelCodes} />
       </div>
 
-      {/* Generate Quote button */}
+      {/* Send button: saves the quote, then offers the client link (copy /
+          WhatsApp) plus email PDF via the send dialog */}
       <Button
         className="w-full h-11 text-sm font-semibold gap-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-gray-900"
         onClick={onGenerateQuote}
       >
-        <FileText className="h-4 w-4" />
-        Generate Quote
+        <Send className="h-4 w-4" />
+        Send
       </Button>
     </div>
   );
