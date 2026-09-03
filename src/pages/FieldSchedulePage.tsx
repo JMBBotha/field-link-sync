@@ -26,6 +26,9 @@ type MyAssignedJobRow = {
   deposit_invoice_status: string | null;
   deposit_invoice_paid_date: string | null;
   deposit_invoice_grand_total: number | null;
+  deposit_invoice_amount_paid: number | null;
+  deposit_invoice_remaining: number | null;
+
 };
 
 const STATUS_TONE: Record<string, string> = {
