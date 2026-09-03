@@ -112,6 +112,23 @@ const SendQuoteDialog = ({
   }));
   const resolvedCustomerName = customer.name || quote?.customer_name || customerName || "Customer";
 
+  // Client link: /quote/:token → ClientProposalView (accept flow).
+  const publicToken = quote?.public_token || null;
+  const clientUrl = publicToken ? `${window.location.origin}/quote/${publicToken}` : null;
+  const shareMessage = clientUrl
+    ? `Hi ${resolvedCustomerName}, your quote ${quoteNumber} for ${formatRand(total)} is ready. View and accept it here: ${clientUrl}`
+    : "";
+
+  const handleCopyLink = async () => {
+    if (!clientUrl) return;
+    try {
+      await navigator.clipboard.writeText(clientUrl);
+      toast({ title: "Link copied", description: "Send it to your client anywhere." });
+    } catch {
+      toast({ title: "Copy failed", description: clientUrl, variant: "destructive" });
+    }
+  };
+
   const buildPdf = async (): Promise<Blob> => {
     if (!quote) throw new Error("Quote not loaded yet — please wait a moment and try again.");
     return generateDocumentPdfBlob({
