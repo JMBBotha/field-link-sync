@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import PayfastPayButton from "@/components/payments/PayfastPayButton";
 import { fetchQuoteInvoiceByToken, type DepositInvoiceRow } from "@/lib/depositInvoice";
+import { isDepositCleared } from "@/components/shared/DepositPaymentChip";
 import logo from "@/assets/logo.png";
 
 interface QuoteData {
@@ -374,9 +375,7 @@ const ClientProposalView = () => {
               </p>
               <div className="flex flex-col items-center gap-3 pt-1">
                 <DepositPaymentChip invoice={depositInvoice} accepted />
-                {depositInvoice?.id &&
-                  !["paid", "partially_paid"].includes(String(depositInvoice.status || "").toLowerCase()) &&
-                  !depositInvoice.paid_date && (
+                {depositInvoice?.id && !isDepositCleared(depositInvoice) && (
                   <PayfastPayButton
                     invoiceId={depositInvoice.id}
                     invoiceNumber={depositInvoice.invoice_number || "Deposit"}
