@@ -362,38 +362,79 @@ const AdminDispatchPage = () => {
 
   // ─── Mutations ───
   const assignMutation = useMutation({
-    mutationFn: async ({ leadId, agentId, date, startTime, endTime }: { leadId: string; agentId: string; date: string; startTime: string; endTime: string }) => {
-      // Check existing schedule for this lead
-      const { data: existing } = await supabase
-        .from("job_schedules")
-        .select("id")
-        .eq("lead_id", leadId)
-        .maybeSingle();
+    mutationFn: async ({
+      leadId, agentId, date, startTime, endTime, scheduleId, jobId,
+    }: {
+      leadId: string; agentId: string; date: string; startTime: string; endTime: string;
+      /** Existing job_schedules row being moved (real rows only, not synthesized lead tiles). */
+      scheduleId?: string | null;
+      /** Installation job this slot belongs to — schedules are keyed by job, never by lead alone. */
+      jobId?: string | null;
+    }) => {
+      // Resolve the exact schedule row. A lead can have BOTH a sales visit row and an
+      // installation row, so never collapse them with a single maybeSingle() on lead_id.
+      let targetId: string | null = scheduleId && !scheduleId.startsWith("lead-") ? scheduleId : null;
+      let targetJobId: string | null = jobId ?? null;
 
-      if (existing) {
+      if (!targetId) {
+        let q = supabase.from("job_schedules").select("id, job_id").eq("lead_id", leadId);
+        q = targetJobId ? q.eq("job_id", targetJobId) : q.is("job_id", null);
+        const { data: rows } = await q.order("created_at", { ascending: true }).limit(1);
+        const existing = rows?.[0] as { id: string; job_id: string | null } | undefined;
+        if (existing) {
+          targetId = existing.id;
+          targetJobId = targetJobId ?? existing.job_id ?? null;
+        }
+      } else if (targetJobId === null) {
+        const { data: row } = await supabase.from("job_schedules").select("job_id").eq("id", targetId).maybeSingle();
+        targetJobId = (row as any)?.job_id ?? null;
+      }
+
+      if (targetId) {
         const { error } = await supabase
           .from("job_schedules")
           .update({ agent_id: agentId, scheduled_date: date, start_time: startTime, end_time: endTime })
-          .eq("id", existing.id);
+          .eq("id", targetId);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("job_schedules")
-          .insert({ lead_id: leadId, agent_id: agentId, scheduled_date: date, start_time: startTime, end_time: endTime });
+          .insert({ lead_id: leadId, job_id: targetJobId, agent_id: agentId, scheduled_date: date, start_time: startTime, end_time: endTime } as any);
         if (error) throw error;
       }
 
-      // Update lead
-      await supabase
-        .from("leads")
-        .update({
-          assigned_agent_id: agentId,
-          scheduled_date: date,
-          scheduled_time: startTime,
-          assignment_method: laneById.get(agentId) === "sales" ? "manual_sales" : "manual_dispatch",
-        })
-        .eq("id", leadId);
+      if (targetJobId) {
+        // Installation job: reassign/reschedule the JOB, leave the sales lead's own
+        // assignment and lane untouched.
+        await supabase
+          .from("jobs")
+          .update({ scheduled_for: new Date(`${date}T${startTime}`).toISOString() } as any)
+          .eq("id", targetJobId);
+        const { data: existingAssignment } = await supabase
+          .from("assignments")
+          .select("id")
+          .eq("job_id", targetJobId)
+          .eq("assignment_type", "primary")
+          .limit(1);
+        if (existingAssignment?.[0]) {
+          await supabase.from("assignments").update({ profile_id: agentId } as any).eq("id", existingAssignment[0].id);
+        } else {
+          await supabase.from("assignments").insert([{ job_id: targetJobId, profile_id: agentId, assignment_type: "primary" } as any]);
+        }
+      } else {
+        // Update lead
+        await supabase
+          .from("leads")
+          .update({
+            assigned_agent_id: agentId,
+            scheduled_date: date,
+            scheduled_time: startTime,
+            assignment_method: laneById.get(agentId) === "sales" ? "manual_sales" : "manual_dispatch",
+          })
+          .eq("id", leadId);
+      }
     },
+
     onSuccess: (_, variables) => {
       const agentName = dispatchAgents.find(a => a.id === variables.agentId)?.full_name || "technician";
       toast({ title: `✅ Job assigned to ${agentName}` });
