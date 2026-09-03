@@ -510,7 +510,9 @@ const AdminDispatchPage = () => {
       setIsDragging(true);
       e.dataTransfer.setData("text/plain", schedule.lead_id);
       e.dataTransfer.setData("application/schedule-id", schedule.id);
+      if (schedule.job_id) e.dataTransfer.setData("application/job-id", schedule.job_id);
       e.dataTransfer.effectAllowed = "move";
+
     }
   };
 
