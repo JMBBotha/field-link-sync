@@ -131,7 +131,6 @@ const AdminSidebar = ({
             { path: "/admin/analytics", label: "Analytics", icon: LineChart },
           ],
         },
-        },
       ],
     },
   ];
