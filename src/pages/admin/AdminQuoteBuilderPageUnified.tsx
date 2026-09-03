@@ -172,11 +172,11 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
           }
         </div>
 
-        <div className="hidden md:flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5">
-          <span className="text-xs text-white/70">
+        <div className="flex items-center gap-1.5 rounded-xl bg-white/10 px-2.5 sm:px-3 py-1.5">
+          <span className="hidden sm:inline text-xs text-white/70">
             {totalItems} items · {zoneCount} zones
           </span>
-          <span className="text-sm font-bold text-white ml-1">
+          <span className="text-xs sm:text-sm font-bold text-white sm:ml-1">
             R{totalCost.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
           </span>
         </div>
@@ -195,7 +195,12 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
 function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode }) {
   const navigate = useNavigate();
   const { items: ctxItems, areas: ctxAreas, loading: ctxLoading, quoteId, meta } = useQuoteContext();
-  const [activeTab, setActiveTab] = useState("normal");
+  const isCompact = useIsTabletOrBelow();
+  // Phone/tablet: default to the Area Quote tab (search + areas + send), not
+  // the Build/Visual PDF tabs which need desktop space.
+  const [activeTab, setActiveTab] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth <= 1024 ? "area" : "normal"
+  );
   const [areaWizardOpen, setAreaWizardOpen] = useState(false);
   const pdfSearchRef = useRef<((term: string) => void) | null>(null);
 
@@ -707,15 +712,20 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
 
   /* ── Mobile/tablet accordion for the Area tab: one full-screen scrollable
      section at a time (palette / areas / summary) ── */
-  const isCompact = useIsTabletOrBelow();
   type AreaSectionKey = "palette" | "areas" | "summary";
   const [openSections, setOpenSections] = useState<Record<AreaSectionKey, boolean>>({
     palette: true,
     areas: false,
     summary: false,
   });
+  // One working pane at a time on small screens: opening a section closes
+  // the others; tapping the open section closes it (headers stay visible).
   const toggleSection = useCallback((key: AreaSectionKey) => {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+    setOpenSections((prev) =>
+      prev[key]
+        ? { ...prev, [key]: false }
+        : { palette: false, areas: false, summary: false, [key]: true }
+    );
   }, []);
   /* True full-page mode for the Product Palette: hides the Area Quote and
      Quote Summary headers/content entirely so the palette fills the screen */
