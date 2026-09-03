@@ -265,11 +265,36 @@ const SendQuoteDialog = ({
         <DialogHeader>
           <DialogTitle>Send quote {quoteNumber} to client</DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            The saved quote is attached as a PDF and the send is logged against {resolvedCustomerName || "the client"}.
+            Share the live quote link with {resolvedCustomerName || "the client"} — they can view and accept it online.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        {/* Primary send: live client link via copy / WhatsApp */}
+        <div className="space-y-1.5">
+          <Label className="text-xs">Client link</Label>
+          {clientUrl ? (
+            <div className="flex gap-2">
+              <Input readOnly value={clientUrl} className="h-9 text-sm font-mono" onFocus={(e) => e.target.select()} />
+              <Button onClick={handleCopyLink} className="h-9 shrink-0 gap-1.5" title="Copy client link">
+                <Link2 className="h-4 w-4" />
+                Copy link
+              </Button>
+              <WhatsAppShareButton
+                phone={phone || undefined}
+                message={shareMessage}
+                variant="secondary"
+                className="h-9 shrink-0"
+              >
+                <span className="flex items-center gap-1.5">WhatsApp</span>
+              </WhatsAppShareButton>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">Generating client link…</p>
+          )}
+        </div>
+
+        {/* Secondary: email the PDF */}
+        <div className="space-y-3 border-t border-border pt-3">
           <div className="space-y-1.5">
             <Label htmlFor="send-quote-email" className="text-xs">Email address</Label>
             <div className="flex gap-2">
