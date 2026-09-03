@@ -2537,10 +2537,11 @@ export type Database = {
       }
       job_schedules: {
         Row: {
-          agent_id: string
+          agent_id: string | null
           created_at: string
           end_time: string
           id: string
+          job_id: string | null
           lead_id: string
           notes: string | null
           optimized_at: string | null
@@ -2551,10 +2552,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          agent_id: string
+          agent_id?: string | null
           created_at?: string
           end_time: string
           id?: string
+          job_id?: string | null
           lead_id: string
           notes?: string | null
           optimized_at?: string | null
@@ -2565,10 +2567,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          agent_id?: string
+          agent_id?: string | null
           created_at?: string
           end_time?: string
           id?: string
+          job_id?: string | null
           lead_id?: string
           notes?: string | null
           optimized_at?: string | null
@@ -2579,6 +2582,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "job_schedules_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "job_schedules_lead_id_fkey"
             columns: ["lead_id"]
