@@ -199,6 +199,12 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
   if (!quote || String(quote.status || "").toLowerCase() !== "accepted") return null;
 
   const hasDeposit = !!invoice?.id;
+  // Payment can land later — Pass only requires the invoice ROW to exist.
+  // Unpaid/draft still allows Pass, with an amber warning.
+  const depositCleared = !!invoice && (
+    ["paid", "partially_paid"].includes(String(invoice.status || "").toLowerCase()) || !!invoice.paid_date
+  );
+  const showDepositDueWarning = hasDeposit && !depositCleared;
 
   return (
     <section className="rounded-lg border border-border bg-card p-4 print:hidden">
