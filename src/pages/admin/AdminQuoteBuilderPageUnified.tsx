@@ -43,6 +43,7 @@ import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
 import { pdfItemToPaletteProduct } from "@/utils/pdfItemToProduct";
 import { persistQuoteFromBaskets } from "@/utils/persistQuoteFromBaskets";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
+import { useUnsavedQuoteGuard } from "@/hooks/useUnsavedQuoteGuard";
 
 
 export type QuoteBuilderMode = "admin" | "agent";
