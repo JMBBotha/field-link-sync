@@ -28,6 +28,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
+import { fetchQuoteInvoice } from "@/lib/depositInvoice";
+import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { KpiGridSkeleton, JobCardListSkeleton } from "@/components/ui/skeletons";
 
 // ─── Types ───
@@ -1186,7 +1188,47 @@ function LaneBadge({ lane }: { lane: LeadLane | null }) {
   );
 }
 
-// ─── Day Timeline ───
+// ─── Install-job deposit chip ───
+// Renders the shared deposit chip for a lead's linked installation job
+// (jobs.job_type = 'installation' → quote → deposit invoice). No new payment model.
+const InstallDepositChip = ({ leadId, compact, showOpen }: { leadId: string; compact?: boolean; showOpen?: boolean }) => {
+  const navigate = useNavigate();
+  const { data: invoice } = useQuery({
+    queryKey: ["install-deposit-invoice", leadId],
+    enabled: !!leadId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data: job } = await supabase
+        .from("jobs")
+        .select("quote_id")
+        .eq("lead_id", leadId)
+        .eq("job_type", "installation")
+        .limit(1)
+        .maybeSingle();
+      if (!(job as any)?.quote_id) return null;
+      return fetchQuoteInvoice((job as any).quote_id);
+    },
+  });
+  if (!invoice?.id) return null;
+  return (
+    <span className="inline-flex items-center gap-1">
+      <DepositPaymentChip invoice={invoice} accepted className={compact ? "text-[9px] px-1 py-0" : undefined} />
+      {showOpen && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 text-xs"
+          onClick={(e) => { e.stopPropagation(); navigate(`/admin/invoices/${invoice.id}`); }}
+        >
+          <FileText className="h-3 w-3 mr-1" /> Open invoice
+        </Button>
+      )}
+    </span>
+  );
+};
+
+/** True when a calendar slot is the installation handoff (created by Pass to Technical). */
+const isInstallSchedule = (s: Schedule) => !!s.notes && s.notes.startsWith("Installation");
 const DayTimeline = ({
   date, agents, schedules, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads, onJobInfoClick, onQuoteClick, laneById,
   isDragging, dragOverSlot, onSlotDragEnter, onSlotDragLeave, shakeSlot,
