@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Mail, MessageCircle, Loader2, Check, Download } from "lucide-react";
+import { Mail, MessageCircle, Loader2, Check, Download, Link2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,8 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { buildQuoteLineItems } from "@/lib/convertQuoteToInvoice";
 import { generateDocumentPdfBlob } from "@/lib/documentPdf";
 import EstimateDocument from "./EstimateDocument";
+import WhatsAppShareButton from "@/components/WhatsAppShareButton";
+import { formatRand } from "@/utils/formatRand";
 
 interface SendQuoteDialogProps {
   open: boolean;
@@ -60,13 +62,16 @@ const SendQuoteDialog = ({
     (async () => {
       const [{ data: cust }, { data: lead }] = await Promise.all([
         supabase.from("customers").select("email, phone").eq("id", customerId).maybeSingle(),
-        supabase.from("leads").select("id").eq("customer_id", customerId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+        supabase.from("leads").select("id, customer_phone").eq("customer_id", customerId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       ]);
       if (cancelled) return;
       const c = cust as { email?: string | null; phone?: string | null } | null;
+      const l = lead as { id?: string; customer_phone?: string | null } | null;
       setEmail(c?.email || "");
-      setPhone(c?.phone || "");
-      setLeadId((lead as { id?: string } | null)?.id ?? null);
+      // Prefer the lead's captured phone, then the customer record (SA +27
+      // normalisation happens inside WhatsAppShareButton).
+      setPhone(l?.customer_phone || c?.phone || "");
+      setLeadId(l?.id ?? null);
     })();
     return () => { cancelled = true; };
   }, [open, customerId]);
