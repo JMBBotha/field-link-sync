@@ -56,25 +56,11 @@ const SendQuoteDialog = ({
   const [busy, setBusy] = useState<"email" | "whatsapp" | "pdf" | null>(null);
   const [sent, setSent] = useState<{ email: boolean; whatsapp: boolean }>({ email: false, whatsapp: false });
 
-  useEffect(() => {
-    if (!open || !customerId) return;
-    let cancelled = false;
-    (async () => {
-      const [{ data: cust }, { data: lead }] = await Promise.all([
-        supabase.from("customers").select("email, phone").eq("id", customerId).maybeSingle(),
-        supabase.from("leads").select("id, customer_phone").eq("customer_id", customerId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-      ]);
-      if (cancelled) return;
-      const c = cust as { email?: string | null; phone?: string | null } | null;
-      const l = lead as { id?: string; customer_phone?: string | null } | null;
-      setEmail(c?.email || "");
-      // Prefer the lead's captured phone, then the customer record (SA +27
-      // normalisation happens inside WhatsAppShareButton).
-      setPhone(l?.customer_phone || c?.phone || "");
-      setLeadId(l?.id ?? null);
-    })();
-    return () => { cancelled = true; };
-  }, [open, customerId]);
+  // Resolve email + recipient phone from THIS quote's own records — never from
+  // the customer's latest lead. Phone: quote's customer row first, then the
+  // lead tied to THIS quote (quotes.lead_id) as fallback. (SA +27 normalisation
+  // happens inside WhatsAppShareButton.)
+
 
   // Fetch the freshly-saved quote (plus customer + line items) straight from
   // the DB whenever the dialog opens, so the PDF we build/send always
@@ -93,6 +79,38 @@ const SendQuoteDialog = ({
     },
     enabled: open && !!quoteId,
   });
+
+  // Effect must sit below the quote query — it reads `quote` in its deps.
+  useEffect(() => {
+    if (!open || !quote) return;
+    const q = quote as {
+      lead_id?: string | null;
+      customers?: { email?: string | null; phone?: string | null } | null;
+    };
+    setEmail(q.customers?.email || "");
+    setLeadId(q.lead_id ?? null);
+    if (q.customers?.phone) {
+      setPhone(q.customers.phone);
+      return;
+    }
+    let cancelled = false;
+    if (q.lead_id) {
+      (async () => {
+        const { data: lead } = await supabase
+          .from("leads")
+          .select("customer_phone")
+          .eq("id", q.lead_id!)
+          .maybeSingle();
+        if (cancelled) return;
+        const l = lead as { customer_phone?: string | null } | null;
+        setPhone(l?.customer_phone || "");
+      })();
+    } else {
+      setPhone("");
+    }
+    return () => { cancelled = true; };
+  }, [open, quote]);
+
 
   const { data: items = [] } = useQuery({
     queryKey: ["send-quote-doc-items", quoteId, quote?.visual_sections],
