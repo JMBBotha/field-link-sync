@@ -41,6 +41,8 @@ type MyAssignedJobRow = {
   deposit_invoice_status: string | null;
   deposit_invoice_paid_date: string | null;
   deposit_invoice_grand_total: number | null;
+  deposit_invoice_amount_paid: number | null;
+  deposit_invoice_remaining: number | null;
 };
 
 type MyJobItem = {
@@ -55,6 +57,8 @@ type MyJobItem = {
     status: string | null;
     paid_date: string | null;
     grand_total: number | null;
+    amount_paid: number | null;
+    remaining: number | null;
   } | null;
   jobs: {
     id: string;
@@ -105,6 +109,8 @@ const AdminMyJobsPage = () => {
               status: row.deposit_invoice_status,
               paid_date: row.deposit_invoice_paid_date,
               grand_total: row.deposit_invoice_grand_total,
+              amount_paid: row.deposit_invoice_amount_paid,
+              remaining: row.deposit_invoice_remaining,
             }
           : null,
         jobs: {

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { attachPaymentTotals } from "@/lib/depositInvoice";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -1108,7 +1109,9 @@ const FieldAgent = () => {
           if (job?.lead_id && !found[job.lead_id]) found[job.lead_id] = inv;
         }
       }
-      if (!cancelled) setInstallInvoicesByLead(found);
+      // Attach amount_paid / remaining so the Partial chip always shows R…
+      await attachPaymentTotals(Object.values(found));
+      if (!cancelled) setInstallInvoicesByLead({ ...found });
     })();
     return () => { cancelled = true; };
   }, [activeLeadIdsKey]);

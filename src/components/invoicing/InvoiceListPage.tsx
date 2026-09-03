@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { exportToCSV } from "@/lib/csvExport";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
+import { attachPaymentTotals } from "@/lib/depositInvoice";
 import jsPDF from "jspdf";
 
 interface Invoice {
@@ -78,7 +79,8 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
       if (agentId) {
         results = results.filter(inv => inv.agent_id === agentId);
       }
-      setInvoices(results);
+      await attachPaymentTotals(results as any[]);
+      setInvoices([...results]);
     }
     setLoading(false);
   };

@@ -40,6 +40,40 @@ export async function fetchQuoteInvoice(quoteId: string): Promise<DepositInvoice
 }
 
 /**
+ * Batch variant: attach amount_paid / remaining (from paid payments) to any
+ * set of invoice-like rows so the shared deposit chip can always show R…
+ * Mutates and returns the same array.
+ */
+export async function attachPaymentTotals<
+  T extends { id?: string | null; grand_total?: number | null; amount_paid?: number | null; remaining?: number | null },
+>(invoices: T[]): Promise<T[]> {
+  const ids = invoices.map((i) => i.id).filter(Boolean) as string[];
+  if (ids.length === 0) return invoices;
+  try {
+    const { data, error } = await supabase
+      .from("payments")
+      .select("invoice_id, amount, status")
+      .in("invoice_id", ids)
+      .eq("status", "paid");
+    if (error || !data) return invoices;
+    const paidByInvoice = new Map<string, number>();
+    for (const p of data as any[]) {
+      paidByInvoice.set(p.invoice_id, (paidByInvoice.get(p.invoice_id) || 0) + (Number(p.amount) || 0));
+    }
+    for (const inv of invoices) {
+      if (!inv.id) continue;
+      const paid = paidByInvoice.get(inv.id) || 0;
+      inv.amount_paid = paid;
+      inv.remaining = Math.max(0, (Number(inv.grand_total) || 0) - paid);
+    }
+  } catch {
+    // payments not readable — chip falls back to status/grand_total
+  }
+  return invoices;
+}
+
+
+/**
  * Public token path for anonymous clients on /quote/:token.
  * Token-gated SECURITY DEFINER RPC — returns only chip/pay fields for the
  * single deposit invoice linked to that quote, or null.

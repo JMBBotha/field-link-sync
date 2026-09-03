@@ -29,6 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import { JobDetailSkeleton } from "@/components/ui/skeletons";
 import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
+import { attachPaymentTotals } from "@/lib/depositInvoice";
 
 const STATUS_COLORS: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -67,6 +68,13 @@ const AdminJobDetailPage = () => {
       if (error) throw error;
       return data;
     },
+  });
+
+  const rawInvoice: any = (job as any)?.invoices ?? null;
+  const { data: depositInvoice } = useQuery({
+    queryKey: ["job-detail-invoice-payments", rawInvoice?.id],
+    enabled: !!rawInvoice?.id,
+    queryFn: async () => (await attachPaymentTotals([{ ...rawInvoice }]))[0],
   });
 
   const changeStatus = async (nextStatus: "in_progress" | "completed") => {
@@ -133,7 +141,7 @@ const AdminJobDetailPage = () => {
 
   const j: any = job;
   const location = j.customer_locations;
-  const invoice = j.invoices;
+  const invoice = depositInvoice ?? j.invoices;
 
   return (
     <div className="pb-28 md:pb-24">
