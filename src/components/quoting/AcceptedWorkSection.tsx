@@ -286,8 +286,7 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
           <DialogHeader>
             <DialogTitle>Pass to Technical / Installation</DialogTitle>
             <DialogDescription>
-              Creates the installation job on the technical lane for the same customer, lead and quote.
-              The sales visit stays on the salesperson's calendar.
+              Creates linked installation job on this lead. Sales stays on the commercial thread.
             </DialogDescription>
           </DialogHeader>
 
