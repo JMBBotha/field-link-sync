@@ -69,13 +69,17 @@ interface AgentLocation {
 interface Schedule {
   id: string;
   lead_id: string;
-  agent_id: string;
+  /** Set for installation handoff rows — keeps sales + install schedules distinct. */
+  job_id?: string | null;
+  /** Null = unassigned Technical pool slot (first-accept). */
+  agent_id: string | null;
   scheduled_date: string;
   start_time: string;
   end_time: string;
   notes: string | null;
   leads?: { customer_name: string; service_type: string; status: string; priority: string; customer_address: string; latitude: number; longitude: number } | null;
 }
+
 
 // ─── Constants ───
 const STATUS_COLORS: Record<string, string> = {
@@ -245,7 +249,10 @@ const AdminDispatchPage = () => {
    * even if no job_schedules row exists yet. Synthesize a schedule-shaped tile for those.
    */
   const schedules = useMemo<Schedule[]>(() => {
-    const withRow = new Set(rawSchedules.map(s => s.lead_id));
+    // Only lead-level (non-install) rows suppress the synthesized sales tile —
+    // an installation row shares lead_id but is a separate calendar job.
+    const withRow = new Set(rawSchedules.filter(s => !s.job_id).map(s => s.lead_id));
+
     const synthetic: Schedule[] = allLeads
       .filter(l => l.assigned_agent_id && l.scheduled_date && !withRow.has(l.id))
       .map(l => {
@@ -358,38 +365,79 @@ const AdminDispatchPage = () => {
 
   // ─── Mutations ───
   const assignMutation = useMutation({
-    mutationFn: async ({ leadId, agentId, date, startTime, endTime }: { leadId: string; agentId: string; date: string; startTime: string; endTime: string }) => {
-      // Check existing schedule for this lead
-      const { data: existing } = await supabase
-        .from("job_schedules")
-        .select("id")
-        .eq("lead_id", leadId)
-        .maybeSingle();
+    mutationFn: async ({
+      leadId, agentId, date, startTime, endTime, scheduleId, jobId,
+    }: {
+      leadId: string; agentId: string; date: string; startTime: string; endTime: string;
+      /** Existing job_schedules row being moved (real rows only, not synthesized lead tiles). */
+      scheduleId?: string | null;
+      /** Installation job this slot belongs to — schedules are keyed by job, never by lead alone. */
+      jobId?: string | null;
+    }) => {
+      // Resolve the exact schedule row. A lead can have BOTH a sales visit row and an
+      // installation row, so never collapse them with a single maybeSingle() on lead_id.
+      let targetId: string | null = scheduleId && !scheduleId.startsWith("lead-") ? scheduleId : null;
+      let targetJobId: string | null = jobId ?? null;
 
-      if (existing) {
+      if (!targetId) {
+        let q = supabase.from("job_schedules").select("id, job_id").eq("lead_id", leadId);
+        q = targetJobId ? q.eq("job_id", targetJobId) : q.is("job_id", null);
+        const { data: rows } = await q.order("created_at", { ascending: true }).limit(1);
+        const existing = rows?.[0] as { id: string; job_id: string | null } | undefined;
+        if (existing) {
+          targetId = existing.id;
+          targetJobId = targetJobId ?? existing.job_id ?? null;
+        }
+      } else if (targetJobId === null) {
+        const { data: row } = await supabase.from("job_schedules").select("job_id").eq("id", targetId).maybeSingle();
+        targetJobId = (row as any)?.job_id ?? null;
+      }
+
+      if (targetId) {
         const { error } = await supabase
           .from("job_schedules")
           .update({ agent_id: agentId, scheduled_date: date, start_time: startTime, end_time: endTime })
-          .eq("id", existing.id);
+          .eq("id", targetId);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("job_schedules")
-          .insert({ lead_id: leadId, agent_id: agentId, scheduled_date: date, start_time: startTime, end_time: endTime });
+          .insert({ lead_id: leadId, job_id: targetJobId, agent_id: agentId, scheduled_date: date, start_time: startTime, end_time: endTime } as any);
         if (error) throw error;
       }
 
-      // Update lead
-      await supabase
-        .from("leads")
-        .update({
-          assigned_agent_id: agentId,
-          scheduled_date: date,
-          scheduled_time: startTime,
-          assignment_method: laneById.get(agentId) === "sales" ? "manual_sales" : "manual_dispatch",
-        })
-        .eq("id", leadId);
+      if (targetJobId) {
+        // Installation job: reassign/reschedule the JOB, leave the sales lead's own
+        // assignment and lane untouched.
+        await supabase
+          .from("jobs")
+          .update({ scheduled_for: new Date(`${date}T${startTime}`).toISOString() } as any)
+          .eq("id", targetJobId);
+        const { data: existingAssignment } = await supabase
+          .from("assignments")
+          .select("id")
+          .eq("job_id", targetJobId)
+          .eq("assignment_type", "primary")
+          .limit(1);
+        if (existingAssignment?.[0]) {
+          await supabase.from("assignments").update({ profile_id: agentId } as any).eq("id", existingAssignment[0].id);
+        } else {
+          await supabase.from("assignments").insert([{ job_id: targetJobId, profile_id: agentId, assignment_type: "primary" } as any]);
+        }
+      } else {
+        // Update lead
+        await supabase
+          .from("leads")
+          .update({
+            assigned_agent_id: agentId,
+            scheduled_date: date,
+            scheduled_time: startTime,
+            assignment_method: laneById.get(agentId) === "sales" ? "manual_sales" : "manual_dispatch",
+          })
+          .eq("id", leadId);
+      }
     },
+
     onSuccess: (_, variables) => {
       const agentName = dispatchAgents.find(a => a.id === variables.agentId)?.full_name || "technician";
       toast({ title: `✅ Job assigned to ${agentName}` });
@@ -465,7 +513,9 @@ const AdminDispatchPage = () => {
       setIsDragging(true);
       e.dataTransfer.setData("text/plain", schedule.lead_id);
       e.dataTransfer.setData("application/schedule-id", schedule.id);
+      if (schedule.job_id) e.dataTransfer.setData("application/job-id", schedule.job_id);
       e.dataTransfer.effectAllowed = "move";
+
     }
   };
 
@@ -477,6 +527,9 @@ const AdminDispatchPage = () => {
     if (!rawIds) return;
 
     const leadIds = rawIds.split(",").filter(Boolean);
+    // Moving an existing tile targets THAT schedule row (and its install job), never lead_id alone.
+    const draggedScheduleId = e.dataTransfer.getData("application/schedule-id") || null;
+    const draggedJobId = e.dataTransfer.getData("application/job-id") || null;
     const startTime = `${String(hour).padStart(2, "0")}:00`;
     const endTime = `${String(Math.min(hour + 2, 20)).padStart(2, "0")}:00`;
 
@@ -510,9 +563,13 @@ const AdminDispatchPage = () => {
       });
     } else {
       leadIds.forEach(leadId => {
-        assignMutation.mutate({ leadId, agentId, date: dateStr, startTime, endTime });
+        assignMutation.mutate({
+          leadId, agentId, date: dateStr, startTime, endTime,
+          scheduleId: draggedScheduleId, jobId: draggedJobId,
+        });
       });
     }
+
 
     setMultiSelectedIds(new Set());
     setDraggingLead(null);
@@ -1230,7 +1287,39 @@ const InstallDepositChip = ({ leadId, compact, showOpen }: { leadId: string; com
 };
 
 /** True when a calendar slot is the installation handoff (created by Pass to Technical). */
-const isInstallSchedule = (s: Schedule) => !!s.notes && s.notes.startsWith("Installation");
+const isInstallSchedule = (s: Schedule) => !!s.job_id || (!!s.notes && s.notes.startsWith("Installation"));
+
+/**
+ * Technical pool slot: an installation scheduled for a day with NO named technician.
+ * This is a calendar slot label only — there is no "Unassigned" person/profile.
+ */
+const isPoolSchedule = (s: Schedule) => !s.agent_id && !!s.job_id;
+
+const TechPoolTile = ({
+  schedule, onDragStart, compact, style, onOpen,
+}: {
+  schedule: Schedule;
+  onDragStart: (e: React.DragEvent, s: Schedule) => void;
+  compact?: boolean;
+  style?: React.CSSProperties;
+  onOpen: (jobId: string) => void;
+}) => (
+  <div
+    draggable
+    onDragStart={(e) => onDragStart(e, schedule)}
+    onClick={() => schedule.job_id && onOpen(schedule.job_id)}
+    className={`rounded-md border border-dashed border-emerald-500 bg-emerald-500/15 px-1.5 py-1 text-[10px] cursor-pointer overflow-y-auto ${compact ? "" : "absolute left-1 right-1"}`}
+    style={style}
+    title={`${schedule.leads?.customer_name || "Installation"} • ${schedule.start_time} • Unassigned · first-accept`}
+  >
+    <p className="font-semibold leading-tight break-words">{schedule.leads?.customer_name || "Installation"}</p>
+    <span className="mt-0.5 inline-block rounded bg-emerald-500/30 px-1 text-[9px] font-medium">
+      Unassigned · first-accept
+    </span>
+  </div>
+);
+
+
 
 // ─── Day Timeline ───
 const DayTimeline = ({
@@ -1256,9 +1345,45 @@ const DayTimeline = ({
   onSlotDragLeave: () => void;
   shakeSlot: string | null;
 }) => {
+  const navigate = useNavigate();
   const dateStr = format(date, "yyyy-MM-dd");
   const now = new Date();
   const currentMinuteOffset = isToday(date) ? (now.getHours() - 6) * pxPerHour + (now.getMinutes() / 60) * pxPerHour : -1;
+  const poolSchedules = schedules.filter(isPoolSchedule);
+  const laneGroups = groupAgentsByLane(agents, laneById);
+  const hasTechGroup = laneGroups.some(g => g.key === "service");
+
+  /** Technical-pool column: unassigned first-accept installs for this day. */
+  const PoolColumn = () => (
+    <div className="flex-1 min-w-[160px] border-r bg-emerald-500/5">
+      <div className="h-10 border-b px-2 flex items-center gap-1.5 bg-emerald-500/10 sticky top-0 z-10">
+        <span className="text-xs font-medium truncate">Technical pool</span>
+        {poolSchedules.length > 0 && (
+          <Badge variant="secondary" className="ml-auto h-4 text-[9px] px-1">{poolSchedules.length}</Badge>
+        )}
+      </div>
+      <div className="relative">
+        {HOURS.map(h => (
+          <div key={h} className="border-b" style={{ height: pxPerHour }} />
+        ))}
+        {poolSchedules.map(s => {
+          const top = minutesToPx(timeToMinutes(s.start_time) - 6 * 60, pxPerHour);
+          const height = Math.max(minutesToPx(timeToMinutes(s.end_time) - timeToMinutes(s.start_time), pxPerHour), 28);
+          return (
+            <TechPoolTile
+              key={s.id}
+              schedule={s}
+              onDragStart={onScheduleDragStart}
+              style={{ top, height }}
+              onOpen={(jobId) => navigate(`/admin/jobs/${jobId}`)}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+
+
 
   return (
     <div className="flex min-w-0">
@@ -1320,7 +1445,10 @@ const DayTimeline = ({
           </div>
         )}
 
-        {groupAgentsByLane(agents, laneById).map(group => (
+        {/* Unassigned first-accept installs still show under Technical when no tech rows exist. */}
+        {!hasTechGroup && poolSchedules.length > 0 && <PoolColumn />}
+        {laneGroups.map(group => (
+
           <Fragment key={group.key ?? "unknown"}>
             {/* Lane group header strip */}
             <div className="shrink-0 w-5 border-r bg-muted/20">
@@ -1445,7 +1573,9 @@ const DayTimeline = ({
             </div>
           );
             })}
+            {group.key === "service" && poolSchedules.length > 0 && <PoolColumn />}
           </Fragment>
+
         ))}
       </div>
     </div>
@@ -1476,6 +1606,46 @@ const WeekTimeline = ({
   onSlotDragLeave: () => void;
 }) => {
   const COMPACT_HEIGHT = 52;
+  const navigate = useNavigate();
+  const laneGroups = groupAgentsByLane(agents, laneById);
+  const hasTechGroup = laneGroups.some(g => g.key === "service");
+  const poolByDate = new Map<string, Schedule[]>();
+  dates.forEach(d => {
+    const key = format(d, "yyyy-MM-dd");
+    poolByDate.set(key, (schedulesMap.get(key) || []).filter(isPoolSchedule));
+  });
+  const hasPool = Array.from(poolByDate.values()).some(v => v.length > 0);
+
+  /** Technical-pool row: unassigned first-accept installs across the week. */
+  const PoolRow = () => (
+    <tr>
+      <td className="border-b border-r p-2 bg-emerald-500/10 sticky left-0 z-10">
+        <span className="text-xs font-medium">Technical pool</span>
+      </td>
+      {dates.map(d => {
+        const key = format(d, "yyyy-MM-dd");
+        const items = poolByDate.get(key) || [];
+        return (
+          <td key={key} className="border-b p-1 align-top min-w-[100px]">
+            <div className="space-y-0.5">
+              {items.map(s => (
+                <TechPoolTile
+                  key={s.id}
+                  schedule={s}
+                  compact
+                  onDragStart={onScheduleDragStart}
+                  onOpen={(jobId) => navigate(`/admin/jobs/${jobId}`)}
+                />
+              ))}
+              {items.length === 0 && <div className="text-[10px] text-muted-foreground/40 text-center py-2">—</div>}
+            </div>
+          </td>
+        );
+      })}
+    </tr>
+  );
+
+
 
   return (
     <div className="overflow-x-auto">
@@ -1524,7 +1694,9 @@ const WeekTimeline = ({
               );
             })}
           </tr>
-          {groupAgentsByLane(agents, laneById).map(group => (
+          {!hasTechGroup && hasPool && <PoolRow />}
+          {laneGroups.map(group => (
+
             <Fragment key={group.key ?? "unknown"}>
               {/* Lane group header row */}
               <tr>
@@ -1608,7 +1780,9 @@ const WeekTimeline = ({
               })}
             </tr>
               ))}
+              {group.key === "service" && hasPool && <PoolRow />}
             </Fragment>
+
           ))}
         </tbody>
       </table>

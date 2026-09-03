@@ -170,20 +170,23 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
           assignment_type: "primary",
           assigned_by: user?.id ?? null,
         } as any]);
-
-        // NEW schedule row under the technician. The salesperson's own
-        // visit row is untouched, and the sales lead keeps its lane/agent.
-        if (quote.lead_id && date) {
-          await supabase.from("job_schedules").insert([{
-            lead_id: quote.lead_id,
-            agent_id: techId,
-            scheduled_date: date,
-            start_time: startTime || "08:00",
-            end_time: addMinutesToTime(startTime || "08:00", duration),
-            notes: `Installation — quote ${quote.quote_number || ""}`.trim(),
-          } as any]);
-        }
       }
+
+      // Calendar row for the install day, keyed to the installation JOB so it can
+      // never collide with the salesperson's own visit row on the same lead.
+      // No named tech => agent_id null => shows in the Technical pool as first-accept.
+      if (quote.lead_id && date && jobId) {
+        await supabase.from("job_schedules").insert([{
+          lead_id: quote.lead_id,
+          job_id: jobId,
+          agent_id: techId || null,
+          scheduled_date: date,
+          start_time: startTime || "08:00",
+          end_time: addMinutesToTime(startTime || "08:00", duration),
+          notes: `Installation — quote ${quote.quote_number || ""}`.trim(),
+        } as any]);
+      }
+
 
       await qc.invalidateQueries({ queryKey: ["accepted-work-install-job", quoteId] });
       qc.invalidateQueries({ queryKey: ["jobs"] });
