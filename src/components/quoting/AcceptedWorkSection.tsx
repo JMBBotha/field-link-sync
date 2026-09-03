@@ -292,10 +292,20 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
           </DialogHeader>
 
           <div className="space-y-3">
+            {showDepositDueWarning && (
+              <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
+                Deposit still due — install can proceed
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Date</Label>
-                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                <Label>
+                  Date <span className="text-destructive">*</span>
+                </Label>
+                <Input type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
+                {!date && (
+                  <p className="text-xs text-muted-foreground">Choose a date to enable Confirm.</p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label>Start time</Label>
