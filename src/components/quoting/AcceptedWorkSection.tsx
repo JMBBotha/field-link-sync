@@ -106,6 +106,7 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
 
   const handlePassToInstall = async () => {
     if (!quote || !invoice?.id) return;
+    if (!date) return; // Date is required — never submit without it
     setBusy("install");
     try {
       // Idempotent: never create a second installation job for this quote.
