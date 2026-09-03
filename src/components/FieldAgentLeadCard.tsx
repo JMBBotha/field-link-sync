@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Clock, Navigation, AlertCircle, Loader2, ImageIcon } from "lucide-react";
 import LeadCardProgress from "@/components/LeadCardProgress";
 import BookingBadge from "@/components/BookingBadge";
+import DepositPaymentChip, { type DepositInvoiceLike } from "@/components/shared/DepositPaymentChip";
 import { useSingleLeadPhotoCount } from "@/hooks/useLeadPhotoCount";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +45,8 @@ interface FieldAgentLeadCardProps {
   onRelease?: (leadId: string) => void;
   loadingAction?: string | null;
   scrollIntoView?: boolean;
+  /** Deposit invoice for install work on this lead — parent-side lookup. Chip renders only when an invoice row exists. */
+  invoice?: DepositInvoiceLike | null;
 }
 
 const formatTimeAgo = (createdAt: string): string => {
@@ -103,6 +106,7 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
       onRelease,
       loadingAction,
       scrollIntoView = false,
+      invoice,
     },
     ref
   ) => {
@@ -187,6 +191,13 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
             </div>
             <div className="flex flex-col items-end gap-1 flex-shrink-0 ml-2">
               {getStatusBadge(lead.status)}
+              {invoice?.id && (
+                <DepositPaymentChip
+                  invoice={invoice}
+                  accepted={["accepted", "in_progress", "completed"].includes(lead.status)}
+                  className="text-[10px]"
+                />
+              )}
               <div className="flex items-center gap-1.5">
                 {photoCount > 0 && (
                   <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
