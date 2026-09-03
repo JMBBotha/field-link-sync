@@ -4,8 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole, type AppRole } from "@/hooks/useRole";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { LayoutDashboard, MapPin, MessageSquare, Phone, CalendarDays, LayoutGrid, FileText, FileSignature, Receipt, FileCheck, Package, BarChart3, ShoppingBag, LineChart, TrendingUp, Bell, History, Upload, Settings, Plus, Users, LogOut, ChevronLeft, ChevronRight, ChevronDown, X, Building2, Briefcase, ClipboardList, Sparkles, HelpCircle, CreditCard, Navigation, Wrench } from "lucide-react";
-import RandSign from "@/components/icons/RandSign";
+import { LayoutDashboard, CalendarDays, LayoutGrid, FileText, Receipt, Package, BarChart3, ShoppingBag, LineChart, Bell, History, Upload, Settings, Plus, Users, LogOut, ChevronLeft, ChevronRight, ChevronDown, X, Building2, Briefcase, ClipboardList, Sparkles, HelpCircle, Navigation } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,7 +38,6 @@ interface AdminSidebarProps {
 const AdminSidebar = ({
   onCreateLead,
   onSignOut,
-  pendingRequestsCount = 0,
   mobileOpen,
   onMobileClose,
 }: AdminSidebarProps) => {
@@ -84,14 +82,9 @@ const AdminSidebar = ({
         { path: "/admin/customers", label: "Clients", icon: Users },
         {
           path: "/admin/quotes",
-          label: "Estimates & Proposals",
+          label: "Quotes",
           icon: FileText,
           roles: ["admin", "dispatcher", "viewer"],
-          children: [
-            { path: "/admin/quotes", label: "Quotes", icon: FileText },
-            { path: "/admin/templates", label: "Templates", icon: FileSignature },
-            { path: "/admin/agreements", label: "Agreements", icon: FileCheck },
-          ],
         },
         {
           path: "/admin/invoices",
@@ -100,25 +93,29 @@ const AdminSidebar = ({
           roles: ["admin", "dispatcher", "viewer"],
         },
         {
-          path: "/admin/billing",
-          label: "Payments",
-          icon: CreditCard,
-          roles: ["admin"],
-        },
-        {
           path: "/admin/jobs/dispatch",
           label: "Jobs & Dispatch",
           icon: Briefcase,
           children: [
-            { path: "/admin/dispatch", label: "Leads", icon: Sparkles, badge: inboxCount > 0 ? inboxCount : undefined },
             { path: "/admin/jobs/dispatch", label: "Dispatch Board", icon: ClipboardList },
             { path: "/admin/schedule", label: "Schedule", icon: CalendarDays },
             { path: "/admin/my-jobs", label: "My Jobs", icon: Briefcase },
-            { path: "/admin/change-requests", label: "Change Requests", icon: CalendarDays, roles: ["admin", "dispatcher"] },
-            { path: "/admin/maintenance", label: "Maintenance", icon: Wrench, roles: ["admin", "dispatcher"] },
           ],
         },
         { path: "/admin/map", label: "Live Tracking", icon: Navigation },
+        {
+          path: "/admin/catalog",
+          label: "Items",
+          icon: ShoppingBag,
+          roles: ["admin", "dispatcher"],
+          badge: lowStockCount > 0 ? lowStockCount : undefined,
+          children: [
+            { path: "/admin/catalog", label: "Catalog", icon: ShoppingBag },
+            { path: "/admin/inventory", label: "Stock", icon: Package },
+            { path: "/admin/suppliers", label: "Suppliers", icon: Building2 },
+          ],
+        },
+        { path: "/admin/team", label: "Team Members", icon: Users, roles: ["admin"] },
         {
           path: "/admin/reports",
           label: "Reports",
@@ -131,32 +128,7 @@ const AdminSidebar = ({
             { path: "/admin/reports/sales-by-product", label: "Sales by Product", icon: ShoppingBag },
             { path: "/admin/reports/vat", label: "VAT Summary", icon: Receipt },
             { path: "/admin/analytics", label: "Analytics", icon: LineChart },
-            { path: "/admin/reports/advanced", label: "Advanced", icon: TrendingUp, roles: ["admin"] },
           ],
-        },
-        {
-          path: "/admin/catalog",
-          label: "Items & Services",
-          icon: ShoppingBag,
-          roles: ["admin", "dispatcher"],
-          badge: lowStockCount > 0 ? lowStockCount : undefined,
-          children: [
-            { path: "/admin/catalog", label: "Catalog", icon: ShoppingBag },
-            { path: "/admin/inventory", label: "Stock", icon: Package },
-            { path: "/admin/consumables", label: "Consumables", icon: Package },
-            { path: "/admin/suppliers", label: "Suppliers", icon: Building2 },
-            { path: "/admin/flat-rate", label: "Pricing", icon: RandSign },
-            { path: "/admin/pdf-documents", label: "PDF Documents", icon: FileText },
-            { path: "/admin/brochures", label: "Brochures", icon: FileText },
-          ],
-        },
-        { path: "/admin/team", label: "Team Members", icon: Users, roles: ["admin"] },
-        {
-          path: "/admin/notifications",
-          label: "Notifications",
-          icon: Bell,
-          roles: ["admin"],
-          badge: pendingRequestsCount,
         },
         {
           path: "/admin/settings#advanced",
@@ -167,10 +139,7 @@ const AdminSidebar = ({
             { path: "/admin/jobs", label: "Legacy Jobs List", icon: ClipboardList },
             { path: "/admin/audit", label: "Audit Log", icon: History },
             { path: "/admin/import", label: "Import", icon: Upload },
-            { path: "/admin/whatsapp", label: "WhatsApp", icon: MessageSquare },
-            { path: "/admin/calls", label: "Call History", icon: Phone },
             { path: "/admin/companies", label: "Companies", icon: Building2 },
-            { path: "/admin/network-agents", label: "Network Agents", icon: Users },
             { path: "/admin/overlay-debug", label: "Overlay Debug", icon: LayoutGrid },
             { path: "/field", label: "Field Agent View", icon: Users },
           ],
