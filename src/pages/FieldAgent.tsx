@@ -39,6 +39,7 @@ import NotificationBell from "@/components/notifications/NotificationBell";
 import { useSubscription } from "@/hooks/useSubscription";
 import LeadListFilterPills, { LeadListStatus } from "@/components/LeadListFilterPills";
 import FieldAgentLeadCard from "@/components/FieldAgentLeadCard";
+import type { DepositInvoiceLike } from "@/components/shared/DepositPaymentChip";
 import CompletedJobsFilterDrawer from "@/components/CompletedJobsFilterDrawer";
 import { useCompletedJobsFilter } from "@/hooks/useCompletedJobsFilter";
 import { Filter } from "lucide-react";
@@ -1060,6 +1061,57 @@ const FieldAgent = () => {
     }
     return activeLeads;
   }, [activeLeads, activeListFilter]);
+
+  // Deposit invoices for install jobs linked to my active leads (chip on lead tiles)
+  const [installInvoicesByLead, setInstallInvoicesByLead] = useState<Record<string, DepositInvoiceLike>>({});
+  const activeLeadIdsKey = useMemo(
+    () => activeLeads.map((l) => l.id).sort().join(","),
+    [activeLeads]
+  );
+  useEffect(() => {
+    const ids = activeLeadIdsKey ? activeLeadIdsKey.split(",") : [];
+    if (ids.length === 0) {
+      setInstallInvoicesByLead({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data: installJobs, error } = await supabase
+        .from("jobs")
+        .select("id, lead_id, quote_id, invoice_id")
+        .eq("job_type", "installation")
+        .in("lead_id", ids);
+      if (cancelled || error || !installJobs?.length) {
+        if (!cancelled) setInstallInvoicesByLead({});
+        return;
+      }
+      const invoiceIds = installJobs.map((j: any) => j.invoice_id).filter(Boolean);
+      const quoteIds = installJobs.filter((j: any) => !j.invoice_id && j.quote_id).map((j: any) => j.quote_id);
+      const found: Record<string, DepositInvoiceLike> = {};
+      if (invoiceIds.length > 0) {
+        const { data: invs } = await supabase
+          .from("invoices")
+          .select("id, status, paid_date, grand_total")
+          .in("id", invoiceIds);
+        for (const inv of invs ?? []) {
+          const job = installJobs.find((j: any) => j.invoice_id === inv.id);
+          if (job?.lead_id) found[job.lead_id] = inv;
+        }
+      }
+      if (quoteIds.length > 0) {
+        const { data: invs } = await supabase
+          .from("invoices")
+          .select("id, status, paid_date, grand_total, quote_id")
+          .in("quote_id", quoteIds);
+        for (const inv of invs ?? []) {
+          const job = installJobs.find((j: any) => !j.invoice_id && j.quote_id === (inv as any).quote_id);
+          if (job?.lead_id && !found[job.lead_id]) found[job.lead_id] = inv;
+        }
+      }
+      if (!cancelled) setInstallInvoicesByLead(found);
+    })();
+    return () => { cancelled = true; };
+  }, [activeLeadIdsKey]);
 
   // Filtered available leads based on availability toggle
   const displayedAvailableLeads = useMemo(() => 
