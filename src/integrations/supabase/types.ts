@@ -7157,6 +7157,10 @@ export type Database = {
           created_at: string
           customer_name: string
           customer_phone: string
+          deposit_invoice_grand_total: number
+          deposit_invoice_id: string
+          deposit_invoice_paid_date: string
+          deposit_invoice_status: string
           job_address: string
           job_description: string
           job_id: string
@@ -7164,6 +7168,7 @@ export type Database = {
           job_scheduled_for: string
           job_status: string
           job_title: string
+          job_type: string
         }[]
       }
       get_or_create_customer_token: {
