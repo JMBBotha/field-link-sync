@@ -1284,7 +1284,39 @@ const InstallDepositChip = ({ leadId, compact, showOpen }: { leadId: string; com
 };
 
 /** True when a calendar slot is the installation handoff (created by Pass to Technical). */
-const isInstallSchedule = (s: Schedule) => !!s.notes && s.notes.startsWith("Installation");
+const isInstallSchedule = (s: Schedule) => !!s.job_id || (!!s.notes && s.notes.startsWith("Installation"));
+
+/**
+ * Technical pool slot: an installation scheduled for a day with NO named technician.
+ * This is a calendar slot label only — there is no "Unassigned" person/profile.
+ */
+const isPoolSchedule = (s: Schedule) => !s.agent_id && !!s.job_id;
+
+const TechPoolTile = ({
+  schedule, onDragStart, compact, style, onOpen,
+}: {
+  schedule: Schedule;
+  onDragStart: (e: React.DragEvent, s: Schedule) => void;
+  compact?: boolean;
+  style?: React.CSSProperties;
+  onOpen: (jobId: string) => void;
+}) => (
+  <div
+    draggable
+    onDragStart={(e) => onDragStart(e, schedule)}
+    onClick={() => schedule.job_id && onOpen(schedule.job_id)}
+    className={`rounded-md border border-dashed border-emerald-500 bg-emerald-500/15 px-1.5 py-1 text-[10px] cursor-pointer overflow-y-auto ${compact ? "" : "absolute left-1 right-1"}`}
+    style={style}
+    title={`${schedule.leads?.customer_name || "Installation"} • ${schedule.start_time} • Unassigned · first-accept`}
+  >
+    <p className="font-semibold leading-tight break-words">{schedule.leads?.customer_name || "Installation"}</p>
+    <span className="mt-0.5 inline-block rounded bg-emerald-500/30 px-1 text-[9px] font-medium">
+      Unassigned · first-accept
+    </span>
+  </div>
+);
+
+
 
 // ─── Day Timeline ───
 const DayTimeline = ({
