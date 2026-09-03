@@ -69,13 +69,17 @@ interface AgentLocation {
 interface Schedule {
   id: string;
   lead_id: string;
-  agent_id: string;
+  /** Set for installation handoff rows — keeps sales + install schedules distinct. */
+  job_id?: string | null;
+  /** Null = unassigned Technical pool slot (first-accept). */
+  agent_id: string | null;
   scheduled_date: string;
   start_time: string;
   end_time: string;
   notes: string | null;
   leads?: { customer_name: string; service_type: string; status: string; priority: string; customer_address: string; latitude: number; longitude: number } | null;
 }
+
 
 // ─── Constants ───
 const STATUS_COLORS: Record<string, string> = {
