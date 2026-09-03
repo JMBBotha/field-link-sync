@@ -28,6 +28,7 @@ import { useOfflineContext } from "@/contexts/OfflineContext";
 import { useToast } from "@/hooks/use-toast";
 import { JobDetailSkeleton } from "@/components/ui/skeletons";
 import EntityDetailsForm from "@/components/entity/EntityDetailsForm";
+import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 
 const STATUS_COLORS: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -233,9 +234,7 @@ const AdminJobDetailPage = () => {
                 </div>
                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                   <span className="font-semibold">{invoice.invoice_number || "Invoice"}</span>
-                  <Badge variant="outline" className="text-[10px] capitalize">
-                    {(invoice.status || "").replace(/_/g, " ")}
-                  </Badge>
+                  <DepositPaymentChip invoice={invoice} className="text-[10px]" />
                   {typeof invoice.grand_total === "number" && (
                     <span className="text-sm text-muted-foreground">
                       R {invoice.grand_total.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}

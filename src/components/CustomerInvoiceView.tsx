@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, FileText, Download, Clock, CheckCircle } from "lucide-react";
 import PayfastPayButton from "@/components/payments/PayfastPayButton";
+import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { format } from "date-fns";
 import logo from "@/assets/logo.png";
 
@@ -30,6 +31,7 @@ interface Invoice {
   payment_method: string | null;
   notes: string | null;
   status: string;
+  paid_date: string | null;
   created_at: string;
 }
 
@@ -171,18 +173,21 @@ const CustomerInvoiceView = () => {
                   {format(new Date(selectedInvoice.created_at), "dd MMMM yyyy")}
                 </CardDescription>
               </div>
-              <Badge
-                className={
-                  selectedInvoice.status === "paid"
-                    ? "bg-green-500"
-                    : selectedInvoice.status === "sent"
-                    ? "bg-blue-500"
-                    : "bg-gray-500"
-                }
-              >
-                {selectedInvoice.status === "paid" && <CheckCircle className="h-3 w-3 mr-1" />}
-                {selectedInvoice.status.toUpperCase()}
-              </Badge>
+              <div className="flex flex-col items-end gap-1">
+                <Badge
+                  className={
+                    selectedInvoice.status === "paid"
+                      ? "bg-green-500"
+                      : selectedInvoice.status === "sent"
+                      ? "bg-blue-500"
+                      : "bg-gray-500"
+                  }
+                >
+                  {selectedInvoice.status === "paid" && <CheckCircle className="h-3 w-3 mr-1" />}
+                  {selectedInvoice.status.toUpperCase()}
+                </Badge>
+                <DepositPaymentChip invoice={selectedInvoice} />
+              </div>
             </CardHeader>
 
             <CardContent className="space-y-6">
@@ -315,17 +320,20 @@ const CustomerInvoiceView = () => {
                 </div>
                 <div className="text-right">
                   <p className="font-bold">R {Number(invoice.grand_total).toFixed(2)}</p>
-                  <Badge
-                    className={
-                      invoice.status === "paid"
-                        ? "bg-green-500"
-                        : invoice.status === "sent"
-                        ? "bg-blue-500"
-                        : "bg-gray-500"
-                    }
-                  >
-                    {invoice.status}
-                  </Badge>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge
+                      className={
+                        invoice.status === "paid"
+                          ? "bg-green-500"
+                          : invoice.status === "sent"
+                          ? "bg-blue-500"
+                          : "bg-gray-500"
+                      }
+                    >
+                      {invoice.status}
+                    </Badge>
+                    <DepositPaymentChip invoice={invoice} />
+                  </div>
                 </div>
               </CardContent>
             </Card>

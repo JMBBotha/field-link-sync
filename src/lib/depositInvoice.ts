@@ -5,6 +5,7 @@ export interface DepositInvoiceRow {
   invoice_number: string | null;
   status: string | null;
   grand_total: number | null;
+  paid_date: string | null;
   notes: string | null;
 }
 
@@ -12,7 +13,7 @@ export interface DepositInvoiceRow {
 export async function fetchQuoteInvoice(quoteId: string): Promise<DepositInvoiceRow | null> {
   const { data, error } = await supabase
     .from("invoices")
-    .select("id, invoice_number, status, grand_total, notes")
+    .select("id, invoice_number, status, grand_total, paid_date, notes")
     .eq("quote_id", quoteId)
     .limit(1)
     .maybeSingle();

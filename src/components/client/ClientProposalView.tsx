@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Loader2, CheckCircle, XCircle, Phone, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
+import PayfastPayButton from "@/components/payments/PayfastPayButton";
+import { fetchQuoteInvoice, type DepositInvoiceRow } from "@/lib/depositInvoice";
 import logo from "@/assets/logo.png";
 
 interface QuoteData {
@@ -49,6 +52,7 @@ const ClientProposalView = () => {
   const [acceptedName, setAcceptedName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [actionDone, setActionDone] = useState<"accepted" | "declined" | null>(null);
+  const [depositInvoice, setDepositInvoice] = useState<DepositInvoiceRow | null>(null);
 
   // Signature canvas
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -85,6 +89,14 @@ const ClientProposalView = () => {
       }));
       setLineItems(items);
       setSections(bundle.sections || []);
+
+      // Deposit invoice (created on accept). Anonymous clients may not be able
+      // to read it — fail silently and simply hide the chip in that case.
+      try {
+        setDepositInvoice(await fetchQuoteInvoice(q.id));
+      } catch {
+        setDepositInvoice(null);
+      }
     } catch {
       setError("Something went wrong.");
     } finally {
@@ -156,6 +168,12 @@ const ClientProposalView = () => {
       if (success) {
         setActionDone("accepted");
         toast({ title: "Quote accepted! ✅" });
+        // The accept RPC creates the deposit invoice — refresh so the chip shows.
+        try {
+          if (quote?.id) setDepositInvoice(await fetchQuoteInvoice(quote.id));
+        } catch {
+          /* anonymous read blocked — chip stays hidden */
+        }
       } else {
         toast({ title: "Unable to accept quote", variant: "destructive" });
       }
@@ -348,12 +366,26 @@ const ClientProposalView = () => {
         {/* Outcome Messages */}
         {(actionDone === "accepted" || quote.status === "accepted") && (
           <Card className="rounded-2xl shadow-lg border-0 bg-emerald-50 border-t-4 border-t-emerald-500">
-            <CardContent className="p-6 text-center">
-              <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto mb-3" />
+            <CardContent className="p-6 text-center space-y-3">
+              <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto" />
               <h3 className="text-lg font-bold text-emerald-800">Quote Accepted!</h3>
-              <p className="text-sm text-emerald-600 mt-2">
+              <p className="text-sm text-emerald-600">
                 Thank you{quote.accepted_by ? `, ${quote.accepted_by}` : ""}. We'll be in touch to schedule the work.
               </p>
+              <div className="flex flex-col items-center gap-3 pt-1">
+                <DepositPaymentChip invoice={depositInvoice} accepted />
+                {depositInvoice?.id &&
+                  !["paid", "partially_paid"].includes(String(depositInvoice.status || "").toLowerCase()) &&
+                  !depositInvoice.paid_date && (
+                  <PayfastPayButton
+                    invoiceId={depositInvoice.id}
+                    invoiceNumber={depositInvoice.invoice_number || "Deposit"}
+                    amount={Number(depositInvoice.grand_total) || 0}
+                    customerEmail={null}
+                    customerName={quote.accepted_by || "Customer"}
+                  />
+                )}
+              </div>
             </CardContent>
           </Card>
         )}

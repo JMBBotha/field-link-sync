@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useLaneStaff } from "@/hooks/useLaneStaff";
 import { ensureDepositInvoiceForQuote, fetchQuoteInvoice } from "@/lib/depositInvoice";
+import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -213,10 +214,12 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
           ) : hasDeposit ? (
             <span>
               Deposit invoice <span className="font-semibold">{invoice?.invoice_number}</span>{" "}
-              <Badge variant="secondary" className="ml-1 align-middle">{invoice?.status}</Badge>
+              <DepositPaymentChip invoice={invoice} accepted className="ml-1 align-middle" />
             </span>
           ) : (
-            <span className="text-muted-foreground">No deposit invoice yet — create it first.</span>
+            <span className="inline-flex items-center gap-2 text-muted-foreground">
+              No deposit invoice yet — create it first. <DepositPaymentChip invoice={null} accepted />
+            </span>
           )}
         </div>
         {hasDeposit ? (

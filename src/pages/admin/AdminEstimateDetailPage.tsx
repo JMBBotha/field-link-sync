@@ -14,6 +14,8 @@ import EstimateDocument from "@/components/quoting/EstimateDocument";
 import StatusPill from "@/components/shared/StatusPill";
 import QuoteVersionsPanel from "@/components/quoting/QuoteVersionsPanel";
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
+import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
+import { fetchQuoteInvoice } from "@/lib/depositInvoice";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 /**
@@ -73,6 +75,12 @@ const AdminEstimateDetailPage = () => {
 
   /** Standard workflow: only an accepted estimate may become a billable invoice. */
   const canConvert = String(quote?.status || "").toLowerCase() === "accepted";
+
+  const { data: depositInvoice } = useQuery({
+    queryKey: ["quote-deposit-invoice", id],
+    enabled: !!id && canConvert,
+    queryFn: () => fetchQuoteInvoice(id),
+  });
 
   const handleSend = async () => {
     setBusy("send");
@@ -163,6 +171,7 @@ const AdminEstimateDetailPage = () => {
       <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/50 px-4 py-3 print:hidden">
         <span className="text-sm text-muted-foreground">Status</span>
         <StatusPill status={quote.status} />
+        {canConvert && <DepositPaymentChip invoice={depositInvoice} accepted />}
         <span className="text-xs text-muted-foreground">
           Created {new Date(quote.created_at).toLocaleDateString("en-ZA")}
         </span>

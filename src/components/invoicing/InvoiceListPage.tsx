@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { exportToCSV } from "@/lib/csvExport";
+import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import jsPDF from "jspdf";
 
 interface Invoice {
@@ -257,11 +258,12 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
               <CardContent className="p-3.5">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                       <span className="font-semibold text-sm text-primary">
                         {invoice.invoice_number}
                       </span>
                       {getStatusBadge(invoice.status)}
+                      <DepositPaymentChip invoice={invoice} className="text-[10px] px-2 py-0.5" />
                     </div>
                     <p className="text-sm font-medium truncate text-foreground/90">{invoice.customer_name}</p>
                     <p className="text-[11px] text-muted-foreground">

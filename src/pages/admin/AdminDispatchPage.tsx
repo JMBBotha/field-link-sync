@@ -28,6 +28,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
+import { fetchQuoteInvoice } from "@/lib/depositInvoice";
+import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { KpiGridSkeleton, JobCardListSkeleton } from "@/components/ui/skeletons";
 
 // ─── Types ───
@@ -1095,6 +1097,8 @@ const AdminDispatchPage = () => {
                   </p>
                 </>
               )}
+              {/* Deposit payment chip for installation handoff jobs */}
+              <InstallDepositChip leadId={jobInfoLead.id} showOpen />
             </div>
           )}
           <DialogFooter>
@@ -1185,6 +1189,48 @@ function LaneBadge({ lane }: { lane: LeadLane | null }) {
     </span>
   );
 }
+
+// ─── Install-job deposit chip ───
+// Renders the shared deposit chip for a lead's linked installation job
+// (jobs.job_type = 'installation' → quote → deposit invoice). No new payment model.
+const InstallDepositChip = ({ leadId, compact, showOpen }: { leadId: string; compact?: boolean; showOpen?: boolean }) => {
+  const navigate = useNavigate();
+  const { data: invoice } = useQuery({
+    queryKey: ["install-deposit-invoice", leadId],
+    enabled: !!leadId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data: job } = await supabase
+        .from("jobs")
+        .select("quote_id")
+        .eq("lead_id", leadId)
+        .eq("job_type", "installation")
+        .limit(1)
+        .maybeSingle();
+      if (!(job as any)?.quote_id) return null;
+      return fetchQuoteInvoice((job as any).quote_id);
+    },
+  });
+  if (!invoice?.id) return null;
+  return (
+    <span className="inline-flex items-center gap-1">
+      <DepositPaymentChip invoice={invoice} accepted className={compact ? "text-[9px] px-1 py-0" : undefined} />
+      {showOpen && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 text-xs"
+          onClick={(e) => { e.stopPropagation(); navigate(`/admin/invoices/${invoice.id}`); }}
+        >
+          <FileText className="h-3 w-3 mr-1" /> Open invoice
+        </Button>
+      )}
+    </span>
+  );
+};
+
+/** True when a calendar slot is the installation handoff (created by Pass to Technical). */
+const isInstallSchedule = (s: Schedule) => !!s.notes && s.notes.startsWith("Installation");
 
 // ─── Day Timeline ───
 const DayTimeline = ({
@@ -1379,6 +1425,9 @@ const DayTimeline = ({
                       <p className="font-semibold leading-tight break-words">{schedule.leads?.customer_name || "Job"}</p>
                       {height > 30 && <p className="break-words opacity-80">{schedule.leads?.service_type}</p>}
                       {height > 45 && <p className="opacity-60">{schedule.start_time}–{schedule.end_time}</p>}
+                      {height > 60 && isInstallSchedule(schedule) && (
+                        <span className="mt-0.5 inline-block"><InstallDepositChip leadId={schedule.lead_id} compact /></span>
+                      )}
                     </motion.div>
                   );
                 })}
@@ -1531,6 +1580,9 @@ const WeekTimeline = ({
                             }}
                           >
                             <span className="font-medium">{schedule.start_time}</span> {schedule.leads?.customer_name || "Job"}
+                            {isInstallSchedule(schedule) && (
+                              <span className="ml-1 inline-block align-middle"><InstallDepositChip leadId={schedule.lead_id} compact /></span>
+                            )}
                             {(() => {
                               const qLead = allLeads.find(l => l.id === schedule.lead_id);
                               return qLead && laneOf(qLead) === "sales" && onQuoteClick ? (
