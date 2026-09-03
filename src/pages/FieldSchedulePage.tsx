@@ -227,7 +227,23 @@ const FieldSchedulePage = () => {
                       onClick={() => navigate(`/admin/jobs/${r.job_id}`)}
                     >
                       <CardContent className="p-4">
-                        <div className="font-medium truncate">{r.job_title ?? "Job"}</div>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="font-medium truncate">{r.job_title ?? "Job"}</div>
+                          {r.job_type === "installation" && r.deposit_invoice_id && (
+                            <DepositPaymentChip
+                              invoice={{
+                                id: r.deposit_invoice_id,
+                                status: r.deposit_invoice_status,
+                                paid_date: r.deposit_invoice_paid_date,
+                                grand_total: r.deposit_invoice_grand_total,
+                                amount_paid: r.deposit_invoice_amount_paid,
+                                remaining: r.deposit_invoice_remaining,
+                              }}
+                              accepted
+                              className="text-[10px] shrink-0"
+                            />
+                          )}
+                        </div>
                         {r.customer_name && (
                           <div className="text-sm text-muted-foreground truncate">{r.customer_name}</div>
                         )}

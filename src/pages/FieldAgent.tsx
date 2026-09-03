@@ -40,7 +40,7 @@ import NotificationBell from "@/components/notifications/NotificationBell";
 import { useSubscription } from "@/hooks/useSubscription";
 import LeadListFilterPills, { LeadListStatus } from "@/components/LeadListFilterPills";
 import FieldAgentLeadCard from "@/components/FieldAgentLeadCard";
-import type { DepositInvoiceLike } from "@/components/shared/DepositPaymentChip";
+import DepositPaymentChip, { type DepositInvoiceLike } from "@/components/shared/DepositPaymentChip";
 import CompletedJobsFilterDrawer from "@/components/CompletedJobsFilterDrawer";
 import { useCompletedJobsFilter } from "@/hooks/useCompletedJobsFilter";
 import { Filter } from "lucide-react";
@@ -1066,8 +1066,10 @@ const FieldAgent = () => {
   // Deposit invoices for install jobs linked to my active leads (chip on lead tiles)
   const [installInvoicesByLead, setInstallInvoicesByLead] = useState<Record<string, DepositInvoiceLike>>({});
   const activeLeadIdsKey = useMemo(
-    () => activeLeads.map((l) => l.id).sort().join(","),
-    [activeLeads]
+    () => Array.from(new Set([...activeLeads, ...inProgressLeads, ...completedLeads].map((l) => l.id)))
+      .sort()
+      .join(","),
+    [activeLeads, inProgressLeads, completedLeads]
   );
   useEffect(() => {
     const ids = activeLeadIdsKey ? activeLeadIdsKey.split(",") : [];
@@ -1425,52 +1427,15 @@ const FieldAgent = () => {
                       <Badge variant="secondary" className="text-xs ml-auto">{inProgressLeads.length}</Badge>
                     </div>
                     {inProgressLeads.map((lead) => (
-                      <Card
+                      <FieldAgentLeadCard
                         key={lead.id}
-                        className="bg-gradient-to-r from-green-50 to-slate-50 cursor-pointer hover:from-green-100 hover:to-white transition-all shadow-md border-border/50"
-                        onClick={() => openLeadDetail(lead)}
-                      >
-                        <CardContent className="p-2.5 space-y-1.5">
-                          <div className="flex items-start justify-between">
-                            <div className="min-w-0 flex-1">
-                              <p className="font-medium text-sm truncate">{lead.customer_name}</p>
-                              <p className="text-xs text-muted-foreground truncate">{lead.service_type}</p>
-                            </div>
-                            {getStatusBadge(lead.status)}
-                          </div>
-                          {lead.started_at && (
-                            <LeadCardProgress
-                              startedAt={lead.started_at}
-                              estimatedDurationMinutes={lead.estimated_duration_minutes}
-                              estimatedEndTime={lead.estimated_end_time}
-                              compact
-                            />
-                          )}
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              className="flex-1 bg-green-600 hover:bg-green-700"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCompleteJob(lead.id);
-                              }}
-                              disabled={!!loadingAction}
-                            >
-                              {loadingAction === 'complete' ? <Loader2 className="h-4 w-4 animate-spin" /> : "Complete"}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(`https://www.google.com/maps/dir/?api=1&destination=${lead.latitude},${lead.longitude}`, "_blank");
-                              }}
-                            >
-                              <Navigation className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
+                        lead={lead}
+                        variant="active"
+                        onCardClick={openLeadDetail}
+                        onComplete={handleCompleteJob}
+                        loadingAction={loadingAction}
+                        invoice={installInvoicesByLead[lead.id] ?? null}
+                      />
                     ))}
                   </>
                 )}
@@ -1503,7 +1468,16 @@ const FieldAgent = () => {
                               <p className="font-medium text-sm truncate">{lead.customer_name}</p>
                               <p className="text-xs text-muted-foreground truncate">{lead.service_type}</p>
                             </div>
-                            {getStatusBadge(lead.status)}
+                            <div className="flex flex-col items-end gap-1">
+                              {getStatusBadge(lead.status)}
+                              {installInvoicesByLead[lead.id]?.id && (
+                                <DepositPaymentChip
+                                  invoice={installInvoicesByLead[lead.id]}
+                                  accepted
+                                  className="text-[10px]"
+                                />
+                              )}
+                            </div>
                           </div>
                           <Button
                             variant="default"
@@ -1617,48 +1591,16 @@ const FieldAgent = () => {
                               ? calculateDistance(currentLocation.lat, currentLocation.lng, lead.latitude, lead.longitude).toFixed(1)
                               : null;
                             return (
-                              <Card
+                              <FieldAgentLeadCard
                                 key={lead.id}
-                                className="bg-gradient-to-r from-blue-100 to-slate-50 cursor-pointer active:from-blue-50 active:to-white transition-all shadow-md border-border/50"
-                                onClick={() => openLeadDetail(lead)}
-                              >
-                                <CardContent className="p-3 space-y-2">
-                                  <div className="flex items-start justify-between">
-                                    <div>
-                                      <p className="font-medium text-sm">{lead.customer_name}</p>
-                                      <p className="text-xs text-muted-foreground">{lead.service_type}</p>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-1">
-                                      {getStatusBadge(lead.status)}
-                                      {distance && (
-                                        <span className="text-xs text-muted-foreground">{distance}km</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  {lead.created_at && (
-                                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                      <Clock className="h-3 w-3" />
-                                      {formatTimeAgo(lead.created_at)}
-                                    </p>
-                                  )}
-                                  <Button
-                                    size="sm"
-                                    className="w-full h-10 rounded-full font-semibold"
-                                    style={{ backgroundColor: '#0077B6', color: '#FFFFFF' }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleAcceptLead(lead.id);
-                                    }}
-                                    disabled={!!loadingAction}
-                                  >
-                                    {loadingAction === 'accept' ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                      "Accept Lead"
-                                    )}
-                                  </Button>
-                                </CardContent>
-                              </Card>
+                                lead={lead}
+                                distance={distance}
+                                variant="available"
+                                onCardClick={openLeadDetail}
+                                onAccept={handleAcceptLead}
+                                loadingAction={loadingAction}
+                                invoice={installInvoicesByLead[lead.id] ?? null}
+                              />
                             );
                           })
                         )}
@@ -1690,97 +1632,18 @@ const FieldAgent = () => {
                               ? calculateDistance(currentLocation.lat, currentLocation.lng, lead.latitude, lead.longitude).toFixed(1)
                               : null;
                             return (
-                              <Card
+                              <FieldAgentLeadCard
                                 key={lead.id}
-                                className="bg-gradient-to-r from-blue-100 to-slate-50 cursor-pointer active:from-blue-50 active:to-white transition-all shadow-md border-border/50"
-                                onClick={() => openLeadDetail(lead)}
-                              >
-                                <CardContent className="p-3 space-y-2">
-                                  <div className="flex items-start justify-between">
-                                    <div>
-                                      <p className="font-medium text-sm">{lead.customer_name}</p>
-                                      <p className="text-xs text-muted-foreground">{lead.service_type}</p>
-                                    </div>
-                                    {getStatusBadge(lead.status)}
-                                  </div>
-                                  {distance && (
-                                    <p className="text-xs text-muted-foreground">{distance}km away</p>
-                                  )}
-                                  {lead.created_at && (
-                                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                      <Clock className="h-3 w-3" />
-                                      {formatTimeAgo(lead.created_at)}
-                                    </p>
-                                  )}
-                                  <div className="flex gap-2">
-                                    {["claimed", "accepted"].includes(lead.status) && (
-                                      <Button
-                                        size="sm"
-                                        className="flex-1 h-10 rounded-full font-semibold"
-                                        style={{ backgroundColor: '#0077B6', color: '#FFFFFF' }}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          openLeadDetail(lead);
-                                        }}
-                                      >
-                                        Start Job
-                                      </Button>
-                                    )}
-                                    {lead.status === "in_progress" && (
-                                      <Button
-                                        size="sm"
-                                        className="flex-1 h-10 rounded-full font-semibold bg-green-600 hover:bg-green-700"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleCompleteJob(lead.id);
-                                        }}
-                                        disabled={!!loadingAction}
-                                      >
-                                        {loadingAction === 'complete' ? (
-                                          <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : (
-                                          "Complete"
-                                        )}
-                                      </Button>
-                                    )}
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-10 px-3 rounded-full"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleReleaseLead(lead.id);
-                                      }}
-                                      disabled={!!loadingAction}
-                                    >
-                                      Release
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-10 px-3"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        window.open(
-                                          `https://www.google.com/maps/dir/?api=1&destination=${lead.latitude},${lead.longitude}`,
-                                          "_blank"
-                                        );
-                                      }}
-                                    >
-                                      <Navigation className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                  {/* Job Progress Bar for in_progress leads */}
-                                  {lead.status === "in_progress" && lead.started_at && (
-                                    <LeadCardProgress
-                                      startedAt={lead.started_at}
-                                      estimatedDurationMinutes={lead.estimated_duration_minutes}
-                                      estimatedEndTime={lead.estimated_end_time}
-                                      compact
-                                    />
-                                  )}
-                                </CardContent>
-                              </Card>
+                                lead={lead}
+                                distance={distance}
+                                variant="active"
+                                onCardClick={openLeadDetail}
+                                onStart={openLeadDetail}
+                                onComplete={handleCompleteJob}
+                                onRelease={handleReleaseLead}
+                                loadingAction={loadingAction}
+                                invoice={installInvoicesByLead[lead.id] ?? null}
+                              />
                             );
                           })
                         )}
@@ -1811,53 +1674,15 @@ const FieldAgent = () => {
                               <Badge variant="secondary" className="text-xs ml-auto">{inProgressLeads.length}</Badge>
                             </div>
                             {inProgressLeads.map((lead) => (
-                              <Card
+                              <FieldAgentLeadCard
                                 key={lead.id}
-                                className="bg-gradient-to-r from-green-50 to-slate-50 cursor-pointer active:from-green-100 active:to-white transition-all shadow-md border-border/50"
-                                onClick={() => openLeadDetail(lead)}
-                              >
-                                <CardContent className="p-3 space-y-2">
-                                  <div className="flex items-start justify-between">
-                                    <div>
-                                      <p className="font-medium text-sm">{lead.customer_name}</p>
-                                      <p className="text-xs text-muted-foreground">{lead.service_type}</p>
-                                    </div>
-                                    {getStatusBadge(lead.status)}
-                                  </div>
-                                  {lead.started_at && (
-                                    <LeadCardProgress
-                                      startedAt={lead.started_at}
-                                      estimatedDurationMinutes={lead.estimated_duration_minutes}
-                                      estimatedEndTime={lead.estimated_end_time}
-                                      compact
-                                    />
-                                  )}
-                                  <div className="flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      className="flex-1 h-10 rounded-full font-semibold bg-green-600 hover:bg-green-700"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleCompleteJob(lead.id);
-                                      }}
-                                      disabled={!!loadingAction}
-                                    >
-                                      {loadingAction === 'complete' ? <Loader2 className="h-4 w-4 animate-spin" /> : "Complete"}
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-10 px-3"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        window.open(`https://www.google.com/maps/dir/?api=1&destination=${lead.latitude},${lead.longitude}`, "_blank");
-                                      }}
-                                    >
-                                      <Navigation className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </CardContent>
-                              </Card>
+                                lead={lead}
+                                variant="active"
+                                onCardClick={openLeadDetail}
+                                onComplete={handleCompleteJob}
+                                loadingAction={loadingAction}
+                                invoice={installInvoicesByLead[lead.id] ?? null}
+                              />
                             ))}
                           </>
                         )}
@@ -1890,7 +1715,16 @@ const FieldAgent = () => {
                                       <p className="font-medium text-sm">{lead.customer_name}</p>
                                       <p className="text-xs text-muted-foreground">{lead.service_type}</p>
                                     </div>
-                                    {getStatusBadge(lead.status)}
+                                    <div className="flex flex-col items-end gap-1">
+                                      {getStatusBadge(lead.status)}
+                                      {installInvoicesByLead[lead.id]?.id && (
+                                        <DepositPaymentChip
+                                          invoice={installInvoicesByLead[lead.id]}
+                                          accepted
+                                          className="text-[10px]"
+                                        />
+                                      )}
+                                    </div>
                                   </div>
                                   {lead.created_at && (
                                     <p className="text-xs text-muted-foreground flex items-center gap-1">
