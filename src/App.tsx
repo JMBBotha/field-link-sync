@@ -35,7 +35,6 @@ import AdminJobsMapPage from "./pages/admin/AdminJobsMapPage";
 import AdminMaintenancePage from "./pages/admin/AdminMaintenancePage";
 import AdminCustomersPage from "./pages/admin/AdminCustomersPage";
 import AdminCustomerDetailPage from "./pages/admin/AdminCustomerDetailPage";
-import AdminJobsPage from "./pages/admin/AdminJobsPage";
 import AdminJobDetailPage from "./pages/admin/AdminJobDetailPage";
 import AdminJobsDispatchPage from "./pages/admin/AdminJobsDispatchPage";
 import AdminMyJobsPage from "./pages/admin/AdminMyJobsPage";
@@ -67,7 +66,6 @@ import AdminWhatsAppPage from "./pages/admin/AdminWhatsAppPage";
 import AdminCallsPage from "./pages/admin/AdminCallsPage";
 import AdminPDFDocumentsPage from "./pages/admin/AdminPDFDocumentsPage";
 import AdminBrochuresPage from "./pages/admin/AdminBrochuresPage";
-import AdminOverlayDebugPage from "./pages/admin/AdminOverlayDebugPage";
 
 // FreshBooks multi-tenant
 import { CompanyProvider } from "./providers/CompanyProvider";
@@ -161,7 +159,7 @@ const App = () => (
                     <Route path="dispatch" element={<AdminDispatchPage />} />
                     <Route path="unassigned-queue" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminUnassignedQueuePage /></RequireRole>} />
 
-                    <Route path="jobs" element={<AdminJobsPage />} />
+                    <Route path="jobs" element={<Navigate to="/admin/jobs/dispatch" replace />} />
                     <Route path="jobs/dispatch" element={<AdminJobsDispatchPage />} />
                     <Route path="jobs/:id" element={<AdminJobDetailPage />} />
                     <Route path="my-jobs" element={<AdminMyJobsPage />} />
@@ -203,7 +201,6 @@ const App = () => (
                     <Route path="calls" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminCallsPage /></RequireRole>} />
                     <Route path="pdf-documents" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminPDFDocumentsPage /></RequireRole>} />
                     <Route path="brochures" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminBrochuresPage /></RequireRole>} />
-                    <Route path="overlay-debug" element={<RequireRole allowedRoles={["admin"]}><AdminOverlayDebugPage /></RequireRole>} />
                     <Route path="companies" element={<RequireRole allowedRoles={["admin"]}><CompanyManagement /></RequireRole>} />
                     <Route path="network-agents" element={<RequireRole allowedRoles={["admin"]}><AdminNetworkAgentsPage /></RequireRole>} />
                   </Route>
