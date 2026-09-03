@@ -125,7 +125,6 @@ const AdminSidebar = ({
           icon: BarChart3,
           roles: ["admin", "dispatcher", "viewer"],
           children: [
-            { path: "/admin/reports", label: "Reports", icon: BarChart3 },
             { path: "/admin/reports/aging", label: "Accounts Aging", icon: History },
             { path: "/admin/reports/sales-by-client", label: "Sales by Client", icon: Users },
             { path: "/admin/reports/sales-by-product", label: "Sales by Product", icon: ShoppingBag },
@@ -139,11 +138,9 @@ const AdminSidebar = ({
 
   // Footer-only advanced/legacy links — never in daily primary nav.
   const advancedItems: NavItem[] = [
-    { path: "/admin/jobs", label: "Legacy Jobs List", icon: ClipboardList },
     { path: "/admin/audit", label: "Audit Log", icon: History },
     { path: "/admin/import", label: "Import", icon: Upload },
     { path: "/admin/companies", label: "Companies", icon: Building2 },
-    { path: "/admin/overlay-debug", label: "Overlay Debug", icon: LayoutGrid },
     { path: "/field", label: "Field Agent View", icon: Users },
   ];
 
