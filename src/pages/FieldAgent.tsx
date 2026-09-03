@@ -1405,6 +1405,7 @@ const FieldAgent = () => {
                         onStart={openLeadDetail}
                         onComplete={handleCompleteJob}
                         onRelease={handleReleaseLead}
+                        invoice={installInvoicesByLead[lead.id] ?? null}
                         loadingAction={loadingAction}
                         scrollIntoView={highlightedLeadId === lead.id}
                       />
