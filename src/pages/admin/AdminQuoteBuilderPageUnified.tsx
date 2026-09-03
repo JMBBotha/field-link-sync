@@ -803,11 +803,20 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   // flowed into the baskets, so an empty pre-hydration render can never be
   // auto-saved over a quote that has lines.
   const baselineSigRef = useRef<string | null>(null);
+  // Snapshot of the baskets exactly as the quote was opened (hydration
+  // baseline). Discard restores the DB to this so auto-save writes are undone.
+  const baselineBasketsRef = useRef<typeof displayBaskets | null>(null);
+  // True once auto-save has actually written to this quote in this session.
+  const hasWrittenRef = useRef(false);
+  // Set by Discard so the unmount flush cannot re-save the discarded basket.
+  const skipFlushRef = useRef(false);
+
   useEffect(() => {
     if (ctxLoading || baselineSigRef.current !== null) return;
     if (persistedRealCount > 0 && displayQuoteTotals.itemCount === 0) return;
     baselineSigRef.current = contentSig;
-  }, [ctxLoading, persistedRealCount, displayQuoteTotals.itemCount, contentSig]);
+    baselineBasketsRef.current = displayBaskets;
+  }, [ctxLoading, persistedRealCount, displayQuoteTotals.itemCount, contentSig, displayBaskets]);
 
   const isDirty = baselineSigRef.current !== null && contentSig !== baselineSigRef.current;
 
@@ -819,10 +828,12 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   const flushSave = useCallback(async () => {
     const { quoteId: qid, displayBaskets: dbk, products: prods, contentSig: sig, isDirty: dirty } =
       latestRef.current;
-    if (!qid || !dirty || savingRef.current) return;
+    if (!qid || !dirty || savingRef.current || skipFlushRef.current) return;
     savingRef.current = true;
     try {
+      // Only ever writes into the already-open quote — never inserts a quote.
       await persistQuoteFromBaskets(qid, dbk, new Set(prods.map((p) => p.id)));
+      hasWrittenRef.current = true;
       baselineSigRef.current = sig;
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -842,7 +853,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   // Flush on unmount (route change of any kind) and on tab close.
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!latestRef.current.isDirty) return;
+      if (!latestRef.current.isDirty || skipFlushRef.current) return;
       void flushSave();
       e.preventDefault();
       e.returnValue = "";
@@ -855,6 +866,31 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
   }, [flushSave]);
 
   const leaveBuilder = useCallback(() => navigate(exitTo), [navigate, exitTo]);
+
+  // Discard: undo any auto-saved writes by restoring the opening snapshot,
+  // then leave without letting the unmount flush re-save.
+  const discardAndLeave = useCallback(async () => {
+    skipFlushRef.current = true;
+    const qid = latestRef.current.quoteId;
+    if (qid && hasWrittenRef.current) {
+      try {
+        await persistQuoteFromBaskets(
+          qid,
+          baselineBasketsRef.current ?? [],
+          new Set(latestRef.current.products.map((p) => p.id)),
+        );
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("[QuoteBuilder] discard restore failed", err);
+        toast({
+          title: "Could not fully discard",
+          description: "Some changes may remain on the quote.",
+          variant: "destructive",
+        });
+      }
+    }
+    leaveBuilder();
+  }, [leaveBuilder]);
 
   const exitGuard = useUnsavedQuoteGuard({
     isDirty,
@@ -870,6 +906,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     onAssociateClient: () => {
       // Stay in the builder — the header client selector is right there.
     },
+    onDiscard: discardAndLeave,
     onExit: leaveBuilder,
   });
 
@@ -889,6 +926,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, [leaveBuilder]);
+
 
   return (
     <div
