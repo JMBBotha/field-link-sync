@@ -366,12 +366,26 @@ const ClientProposalView = () => {
         {/* Outcome Messages */}
         {(actionDone === "accepted" || quote.status === "accepted") && (
           <Card className="rounded-2xl shadow-lg border-0 bg-emerald-50 border-t-4 border-t-emerald-500">
-            <CardContent className="p-6 text-center">
-              <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto mb-3" />
+            <CardContent className="p-6 text-center space-y-3">
+              <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto" />
               <h3 className="text-lg font-bold text-emerald-800">Quote Accepted!</h3>
-              <p className="text-sm text-emerald-600 mt-2">
+              <p className="text-sm text-emerald-600">
                 Thank you{quote.accepted_by ? `, ${quote.accepted_by}` : ""}. We'll be in touch to schedule the work.
               </p>
+              <div className="flex flex-col items-center gap-3 pt-1">
+                <DepositPaymentChip invoice={depositInvoice} accepted />
+                {depositInvoice?.id &&
+                  !["paid", "partially_paid"].includes(String(depositInvoice.status || "").toLowerCase()) &&
+                  !depositInvoice.paid_date && (
+                  <PayfastPayButton
+                    invoiceId={depositInvoice.id}
+                    invoiceNumber={depositInvoice.invoice_number || "Deposit"}
+                    amount={Number(depositInvoice.grand_total) || 0}
+                    customerEmail={null}
+                    customerName={quote.accepted_by || "Customer"}
+                  />
+                )}
+              </div>
             </CardContent>
           </Card>
         )}
