@@ -196,7 +196,7 @@ const App = () => (
                     <Route path="import" element={<RequireRole allowedRoles={["admin"]}><AdminImportPage /></RequireRole>} />
                     <Route path="settings" element={<RequireRole allowedRoles={["admin"]}><AdminSettingsPage /></RequireRole>} />
                     <Route path="team" element={<RequireRole allowedRoles={["admin"]}><AdminTeamPage /></RequireRole>} />
-                    <Route path="billing" element={<RequireRole allowedRoles={["admin"]}><AdminBillingPage /></RequireRole>} />
+                    <Route path="billing" element={<Navigate to="/admin/invoices" replace />} />
                     <Route path="suppliers" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminSuppliersPage /></RequireRole>} />
                     <Route path="consumables" element={<RequireRole allowedRoles={["admin", "dispatcher"]}><AdminConsumablesPage /></RequireRole>} />
                     <Route path="whatsapp" element={<RequireRole allowedRoles={["admin"]}><AdminWhatsAppPage /></RequireRole>} />
