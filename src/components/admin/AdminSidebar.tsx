@@ -203,6 +203,45 @@ const AdminSidebar = ({
     onMobileClose?.();
   };
 
+  const [lowStockOpen, setLowStockOpen] = useState(false);
+
+  const lowStockPopover = (trigger: React.ReactNode) => (
+    <Popover open={lowStockOpen} onOpenChange={setLowStockOpen}>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent side="right" align="start" className="w-72 p-0">
+        <div className="px-3 py-2 border-b font-semibold text-sm">Low stock</div>
+        <div className="max-h-56 overflow-y-auto">
+          {lowStockItems.slice(0, 5).map((r: any) => (
+            <div key={r.product_id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+              <div className="min-w-0">
+                <div className="truncate font-medium">{r.supplier_products?.description || "Unknown product"}</div>
+                {r.supplier_products?.product_code && (
+                  <div className="text-xs text-muted-foreground truncate">{r.supplier_products.product_code}</div>
+                )}
+              </div>
+              <span className="shrink-0 text-xs font-bold text-destructive">
+                {r.quantity} / {r.low_stock_threshold}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div className="border-t p-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => {
+              setLowStockOpen(false);
+              handleNav("/admin/inventory?lowStock=1");
+            }}
+          >
+            Open Stock
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+
   const renderLeaf = (item: NavItem, depth = 0) => {
     const active = isActive(item.path);
     const btn = (
