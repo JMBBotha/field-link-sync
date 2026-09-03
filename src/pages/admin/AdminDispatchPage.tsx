@@ -1342,9 +1342,45 @@ const DayTimeline = ({
   onSlotDragLeave: () => void;
   shakeSlot: string | null;
 }) => {
+  const navigate = useNavigate();
   const dateStr = format(date, "yyyy-MM-dd");
   const now = new Date();
   const currentMinuteOffset = isToday(date) ? (now.getHours() - 6) * pxPerHour + (now.getMinutes() / 60) * pxPerHour : -1;
+  const poolSchedules = schedules.filter(isPoolSchedule);
+  const laneGroups = groupAgentsByLane(agents, laneById);
+  const hasTechGroup = laneGroups.some(g => g.key === "service");
+
+  /** Technical-pool column: unassigned first-accept installs for this day. */
+  const PoolColumn = () => (
+    <div className="flex-1 min-w-[160px] border-r bg-emerald-500/5">
+      <div className="h-10 border-b px-2 flex items-center gap-1.5 bg-emerald-500/10 sticky top-0 z-10">
+        <span className="text-xs font-medium truncate">Technical pool</span>
+        {poolSchedules.length > 0 && (
+          <Badge variant="secondary" className="ml-auto h-4 text-[9px] px-1">{poolSchedules.length}</Badge>
+        )}
+      </div>
+      <div className="relative">
+        {HOURS.map(h => (
+          <div key={h} className="border-b" style={{ height: pxPerHour }} />
+        ))}
+        {poolSchedules.map(s => {
+          const top = minutesToPx(timeToMinutes(s.start_time) - 6 * 60, pxPerHour);
+          const height = Math.max(minutesToPx(timeToMinutes(s.end_time) - timeToMinutes(s.start_time), pxPerHour), 28);
+          return (
+            <TechPoolTile
+              key={s.id}
+              schedule={s}
+              onDragStart={onScheduleDragStart}
+              style={{ top, height }}
+              onOpen={(jobId) => navigate(`/admin/jobs/${jobId}`)}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+
+
 
   return (
     <div className="flex min-w-0">
