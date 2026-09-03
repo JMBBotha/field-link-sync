@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Loader2, CheckCircle, XCircle, Phone, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
+import PayfastPayButton from "@/components/payments/PayfastPayButton";
+import { fetchQuoteInvoice, type DepositInvoiceRow } from "@/lib/depositInvoice";
 import logo from "@/assets/logo.png";
 
 interface QuoteData {
@@ -49,6 +52,7 @@ const ClientProposalView = () => {
   const [acceptedName, setAcceptedName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [actionDone, setActionDone] = useState<"accepted" | "declined" | null>(null);
+  const [depositInvoice, setDepositInvoice] = useState<DepositInvoiceRow | null>(null);
 
   // Signature canvas
   const canvasRef = useRef<HTMLCanvasElement>(null);
