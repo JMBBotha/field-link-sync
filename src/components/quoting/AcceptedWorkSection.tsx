@@ -343,7 +343,11 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button variant="brand" onClick={handlePassToInstall} disabled={busy === "install" || !hasDeposit}>
+            <Button
+              variant="brand"
+              onClick={handlePassToInstall}
+              disabled={busy === "install" || !hasDeposit || !date}
+            >
               {busy === "install" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create installation job
             </Button>
