@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Mail, MessageCircle, Loader2, Check, Download } from "lucide-react";
+import { Mail, MessageCircle, Loader2, Check, Download, Link2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,8 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { buildQuoteLineItems } from "@/lib/convertQuoteToInvoice";
 import { generateDocumentPdfBlob } from "@/lib/documentPdf";
 import EstimateDocument from "./EstimateDocument";
+import WhatsAppShareButton from "@/components/WhatsAppShareButton";
+import { formatRand } from "@/utils/formatRand";
 
 interface SendQuoteDialogProps {
   open: boolean;
@@ -60,13 +62,16 @@ const SendQuoteDialog = ({
     (async () => {
       const [{ data: cust }, { data: lead }] = await Promise.all([
         supabase.from("customers").select("email, phone").eq("id", customerId).maybeSingle(),
-        supabase.from("leads").select("id").eq("customer_id", customerId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+        supabase.from("leads").select("id, customer_phone").eq("customer_id", customerId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       ]);
       if (cancelled) return;
       const c = cust as { email?: string | null; phone?: string | null } | null;
+      const l = lead as { id?: string; customer_phone?: string | null } | null;
       setEmail(c?.email || "");
-      setPhone(c?.phone || "");
-      setLeadId((lead as { id?: string } | null)?.id ?? null);
+      // Prefer the lead's captured phone, then the customer record (SA +27
+      // normalisation happens inside WhatsAppShareButton).
+      setPhone(l?.customer_phone || c?.phone || "");
+      setLeadId(l?.id ?? null);
     })();
     return () => { cancelled = true; };
   }, [open, customerId]);
@@ -106,6 +111,23 @@ const SendQuoteDialog = ({
     amount: i.amount,
   }));
   const resolvedCustomerName = customer.name || quote?.customer_name || customerName || "Customer";
+
+  // Client link: /quote/:token → ClientProposalView (accept flow).
+  const publicToken = quote?.public_token || null;
+  const clientUrl = publicToken ? `${window.location.origin}/quote/${publicToken}` : null;
+  const shareMessage = clientUrl
+    ? `Hi ${resolvedCustomerName}, your quote ${quoteNumber} for ${formatRand(total)} is ready. View and accept it here: ${clientUrl}`
+    : "";
+
+  const handleCopyLink = async () => {
+    if (!clientUrl) return;
+    try {
+      await navigator.clipboard.writeText(clientUrl);
+      toast({ title: "Link copied", description: "Send it to your client anywhere." });
+    } catch {
+      toast({ title: "Copy failed", description: clientUrl, variant: "destructive" });
+    }
+  };
 
   const buildPdf = async (): Promise<Blob> => {
     if (!quote) throw new Error("Quote not loaded yet — please wait a moment and try again.");
@@ -243,11 +265,36 @@ const SendQuoteDialog = ({
         <DialogHeader>
           <DialogTitle>Send quote {quoteNumber} to client</DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            The saved quote is attached as a PDF and the send is logged against {resolvedCustomerName || "the client"}.
+            Share the live quote link with {resolvedCustomerName || "the client"} — they can view and accept it online.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        {/* Primary send: live client link via copy / WhatsApp */}
+        <div className="space-y-1.5">
+          <Label className="text-xs">Client link</Label>
+          {clientUrl ? (
+            <div className="flex gap-2">
+              <Input readOnly value={clientUrl} className="h-9 text-sm font-mono" onFocus={(e) => e.target.select()} />
+              <Button onClick={handleCopyLink} className="h-9 shrink-0 gap-1.5" title="Copy client link">
+                <Link2 className="h-4 w-4" />
+                Copy link
+              </Button>
+              <WhatsAppShareButton
+                phone={phone || undefined}
+                message={shareMessage}
+                variant="outline"
+                className="h-9 shrink-0"
+              >
+                <span className="flex items-center gap-1.5">WhatsApp</span>
+              </WhatsAppShareButton>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">Generating client link…</p>
+          )}
+        </div>
+
+        {/* Secondary: email the PDF */}
+        <div className="space-y-3 border-t border-border pt-3">
           <div className="space-y-1.5">
             <Label htmlFor="send-quote-email" className="text-xs">Email address</Label>
             <div className="flex gap-2">
