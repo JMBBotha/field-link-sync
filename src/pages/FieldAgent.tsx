@@ -1073,6 +1073,14 @@ const FieldAgent = () => {
     return activeLeads;
   }, [activeLeads, activeListFilter]);
 
+  // Home list: today's jobs for this technician (scheduled today, not closed)
+  const todaysJobs = useMemo(() => {
+    const todayKey = new Date().toDateString();
+    return activeLeads
+      .filter(l => l.scheduled_date && new Date(l.scheduled_date).toDateString() === todayKey)
+      .sort((a, b) => new Date(a.scheduled_date || 0).getTime() - new Date(b.scheduled_date || 0).getTime());
+  }, [activeLeads]);
+
   // Deposit invoices for install jobs linked to my active leads (chip on lead tiles)
   const [installInvoicesByLead, setInstallInvoicesByLead] = useState<Record<string, DepositInvoiceLike>>({});
   const activeLeadIdsKey = useMemo(
