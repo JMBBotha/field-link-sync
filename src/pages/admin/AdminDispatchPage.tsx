@@ -1229,6 +1229,8 @@ const InstallDepositChip = ({ leadId, compact, showOpen }: { leadId: string; com
 
 /** True when a calendar slot is the installation handoff (created by Pass to Technical). */
 const isInstallSchedule = (s: Schedule) => !!s.notes && s.notes.startsWith("Installation");
+
+// ─── Day Timeline ───
 const DayTimeline = ({
   date, agents, schedules, isAgentOnline, hasConflict, onDrop, onDragOver, onScheduleDragStart, pxPerHour, allLeads, onJobInfoClick, onQuoteClick, laneById,
   isDragging, dragOverSlot, onSlotDragEnter, onSlotDragLeave, shakeSlot,
