@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, CalendarDays, Phone, Navigation, RefreshCw } from "lucide-react";
 import { JobCardListSkeleton } from "@/components/ui/skeletons";
 import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
+import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { format, isToday, isTomorrow, isThisWeek, startOfDay } from "date-fns";
 
 type MyAssignedJobRow = {
@@ -20,6 +21,11 @@ type MyAssignedJobRow = {
   job_scheduled_for: string | null;
   customer_name: string | null;
   customer_phone: string | null;
+  job_type: string | null;
+  deposit_invoice_id: string | null;
+  deposit_invoice_status: string | null;
+  deposit_invoice_paid_date: string | null;
+  deposit_invoice_grand_total: number | null;
 };
 
 const STATUS_TONE: Record<string, string> = {
@@ -135,6 +141,18 @@ const FieldSchedulePage = () => {
                               >
                                 {(r.assignment_status ?? "proposed").replace(/_/g, " ")}
                               </span>
+                              {r.job_type === "installation" && r.deposit_invoice_id && (
+                                <DepositPaymentChip
+                                  invoice={{
+                                    id: r.deposit_invoice_id,
+                                    status: r.deposit_invoice_status,
+                                    paid_date: r.deposit_invoice_paid_date,
+                                    grand_total: r.deposit_invoice_grand_total,
+                                  }}
+                                  accepted
+                                  className="text-[10px]"
+                                />
+                              )}
                             </div>
                             <div className="font-medium leading-tight truncate">{r.job_title ?? "Job"}</div>
                             {r.customer_name && (
