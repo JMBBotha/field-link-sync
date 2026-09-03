@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, FileText, Download, Clock, CheckCircle } from "lucide-react";
 import PayfastPayButton from "@/components/payments/PayfastPayButton";
+import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { format } from "date-fns";
 import logo from "@/assets/logo.png";
 
@@ -30,6 +31,7 @@ interface Invoice {
   payment_method: string | null;
   notes: string | null;
   status: string;
+  paid_date: string | null;
   created_at: string;
 }
 
