@@ -761,11 +761,141 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     }
   }, [quoteId, displayBaskets, displayQuoteTotals.itemCount, products]);
 
+  /* ────────────────────────────────────────────────────────────────────
+     Auto-save into THE linked quote + accidental-close guard.
+     The builder never keeps work only in local state: every basket/area
+     edit is debounced into this quote's quote_items / quote_areas, and
+     leaving the builder flushes a save first.
+     ──────────────────────────────────────────────────────────────────── */
+  const exitTo = mode === "agent" ? "/field" : "/admin/quotes";
+
+  // Content signature of everything on screen (all three tabs merged).
+  const contentSig = useMemo(
+    () =>
+      JSON.stringify(
+        displayBaskets.map((b) => [
+          b.name,
+          b.items.map((i) => [
+            i.product?.id,
+            i.quantity,
+            (i as { length?: number }).length ?? null,
+            i.product?.selling_price ?? i.product?.cost_price ?? 0,
+          ]),
+        ])
+      ),
+    [displayBaskets]
+  );
+
+  // Number of real persisted items, used to know when hydration has landed.
+  const persistedRealCount = useMemo(
+    () =>
+      ctxItems.filter(
+        (i) =>
+          i.source !== "legacy_placeholder" &&
+          !i.parent_item_id &&
+          ((i.quantity ?? 0) > 0 || (i.unit_price ?? 0) > 0 || (i.total_price ?? 0) > 0)
+      ).length,
+    [ctxItems]
+  );
+
+  // Baseline = the state as loaded. Only set once hydration has actually
+  // flowed into the baskets, so an empty pre-hydration render can never be
+  // auto-saved over a quote that has lines.
+  const baselineSigRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (ctxLoading || baselineSigRef.current !== null) return;
+    if (persistedRealCount > 0 && displayQuoteTotals.itemCount === 0) return;
+    baselineSigRef.current = contentSig;
+  }, [ctxLoading, persistedRealCount, displayQuoteTotals.itemCount, contentSig]);
+
+  const isDirty = baselineSigRef.current !== null && contentSig !== baselineSigRef.current;
+
+  // Refs so the unmount/beforeunload flush always sees the latest state.
+  const savingRef = useRef(false);
+  const latestRef = useRef({ quoteId, displayBaskets, products, contentSig, isDirty });
+  latestRef.current = { quoteId, displayBaskets, products, contentSig, isDirty };
+
+  const flushSave = useCallback(async () => {
+    const { quoteId: qid, displayBaskets: dbk, products: prods, contentSig: sig, isDirty: dirty } =
+      latestRef.current;
+    if (!qid || !dirty || savingRef.current) return;
+    savingRef.current = true;
+    try {
+      await persistQuoteFromBaskets(qid, dbk, new Set(prods.map((p) => p.id)));
+      baselineSigRef.current = sig;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("[QuoteBuilder] auto-save failed", err);
+    } finally {
+      savingRef.current = false;
+    }
+  }, []);
+
+  // Debounced auto-save while editing.
+  useEffect(() => {
+    if (!isDirty) return;
+    const t = setTimeout(() => { void flushSave(); }, 1200);
+    return () => clearTimeout(t);
+  }, [isDirty, contentSig, flushSave]);
+
+  // Flush on unmount (route change of any kind) and on tab close.
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!latestRef.current.isDirty) return;
+      void flushSave();
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      void flushSave();
+    };
+  }, [flushSave]);
+
+  const leaveBuilder = useCallback(() => navigate(exitTo), [navigate, exitTo]);
+
+  const exitGuard = useUnsavedQuoteGuard({
+    isDirty,
+    canSave: true,
+    // A quote always carries a customer (DB trigger enforces it), so skip the
+    // associate-client gate when the client is already on the quote.
+    hasClient: !!meta?.customer_id,
+    onSaveDraft: async () => {
+      await flushSave();
+      toast({ title: "Draft saved" });
+      leaveBuilder();
+    },
+    onAssociateClient: () => {
+      // Stay in the builder — the header client selector is right there.
+    },
+    onExit: leaveBuilder,
+  });
+
+  // Browser / hardware back: intercept while dirty and prompt instead.
+  const requestExitRef = useRef(exitGuard.requestExit);
+  requestExitRef.current = exitGuard.requestExit;
+  useEffect(() => {
+    window.history.pushState({ quoteBuilderGuard: true }, "");
+    const onPopState = () => {
+      if (latestRef.current.isDirty) {
+        window.history.pushState({ quoteBuilderGuard: true }, "");
+        requestExitRef.current();
+      } else {
+        leaveBuilder();
+      }
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [leaveBuilder]);
+
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col bg-background">
 
-      <QuoteSharedHeader onBack={() => navigate(mode === "agent" ? "/field" : "/admin/quotes")} />
+      <QuoteSharedHeader onBack={() => exitGuard.requestExit()} />
+      {exitGuard.ExitDialog}
+
 
       <VoiceQuoteDialog
         open={voiceOpen}
