@@ -287,7 +287,33 @@ const AdminSidebar = ({
     if (!item.children || item.children.length === 0) return renderLeaf(item);
     const open = isExpanded(item);
     const active = isGroupActive(item);
-    if (collapsed) return renderLeaf(item);
+    const badged = !!(item.badge && item.badge > 0);
+    if (collapsed) {
+      // Collapsed: badged group opens the low-stock popover instead of navigating
+      if (badged && item.path === "/admin/catalog") {
+        const btn = (
+          <button
+            className="w-full flex items-center justify-center gap-3 rounded-md px-0 py-2.5 text-[13.5px] font-medium transition-colors relative text-nav-foreground/85 hover:text-white hover:bg-white/[0.07]"
+          >
+            <item.icon className="h-[17px] w-[17px] shrink-0 opacity-80" strokeWidth={1.75} />
+            <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive text-[9px] text-white font-bold px-1">
+              {item.badge! > 99 ? "99+" : item.badge}
+            </span>
+          </button>
+        );
+        return (
+          <Tooltip key={item.path} delayDuration={0}>
+            <TooltipTrigger asChild>
+              {lowStockPopover(btn)}
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">
+              {item.label} · {item.badge} low stock
+            </TooltipContent>
+          </Tooltip>
+        );
+      }
+      return renderLeaf(item);
+    }
     return (
       <div key={item.path}>
         <button
