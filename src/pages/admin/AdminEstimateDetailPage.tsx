@@ -177,13 +177,6 @@ const AdminEstimateDetailPage = () => {
         </span>
       </div>
 
-      <QuoteVersionsPanel
-        quoteId={quote.id}
-        status={quote.status}
-        acceptedVersionId={quote.accepted_version_id}
-        currentVersionId={quote.current_version_id}
-      />
-
       <AcceptedWorkSection quoteId={quote.id} />
 
 
