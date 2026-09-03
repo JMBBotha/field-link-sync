@@ -60,35 +60,7 @@ const SendQuoteDialog = ({
   // the customer's latest lead. Phone: quote's customer row first, then the
   // lead tied to THIS quote (quotes.lead_id) as fallback. (SA +27 normalisation
   // happens inside WhatsAppShareButton.)
-  useEffect(() => {
-    if (!open || !quote) return;
-    const q = quote as {
-      lead_id?: string | null;
-      customers?: { email?: string | null; phone?: string | null } | null;
-    };
-    setEmail(q.customers?.email || "");
-    setLeadId(q.lead_id ?? null);
-    if (q.customers?.phone) {
-      setPhone(q.customers.phone);
-      return;
-    }
-    let cancelled = false;
-    if (q.lead_id) {
-      (async () => {
-        const { data: lead } = await supabase
-          .from("leads")
-          .select("customer_phone")
-          .eq("id", q.lead_id!)
-          .maybeSingle();
-        if (cancelled) return;
-        const l = lead as { customer_phone?: string | null } | null;
-        setPhone(l?.customer_phone || "");
-      })();
-    } else {
-      setPhone("");
-    }
-    return () => { cancelled = true; };
-  }, [open, quote]);
+
 
   // Fetch the freshly-saved quote (plus customer + line items) straight from
   // the DB whenever the dialog opens, so the PDF we build/send always
