@@ -217,7 +217,9 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
               <DepositPaymentChip invoice={invoice} accepted className="ml-1 align-middle" />
             </span>
           ) : (
-            <span className="text-muted-foreground">No deposit invoice yet — create it first.</span>
+            <span className="inline-flex items-center gap-2 text-muted-foreground">
+              No deposit invoice yet — create it first. <DepositPaymentChip invoice={null} accepted />
+            </span>
           )}
         </div>
         {hasDeposit ? (
