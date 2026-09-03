@@ -12,7 +12,7 @@ import { convertQuoteToInvoice, buildQuoteLineItems } from "@/lib/convertQuoteTo
 import { generateDocumentPdf } from "@/lib/documentPdf";
 import EstimateDocument from "@/components/quoting/EstimateDocument";
 import StatusPill from "@/components/shared/StatusPill";
-import QuoteVersionsPanel from "@/components/quoting/QuoteVersionsPanel";
+
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { fetchQuoteInvoice } from "@/lib/depositInvoice";
