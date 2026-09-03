@@ -38,7 +38,6 @@ interface AdminSidebarProps {
 const AdminSidebar = ({
   onCreateLead,
   onSignOut,
-  pendingRequestsCount = 0,
   mobileOpen,
   onMobileClose,
 }: AdminSidebarProps) => {
