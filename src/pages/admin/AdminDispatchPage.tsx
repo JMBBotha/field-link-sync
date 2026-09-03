@@ -1691,7 +1691,9 @@ const WeekTimeline = ({
               );
             })}
           </tr>
-          {groupAgentsByLane(agents, laneById).map(group => (
+          {!hasTechGroup && hasPool && <PoolRow />}
+          {laneGroups.map(group => (
+
             <Fragment key={group.key ?? "unknown"}>
               {/* Lane group header row */}
               <tr>
