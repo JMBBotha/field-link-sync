@@ -11,6 +11,7 @@ import { MapPin, CalendarDays, CheckCircle, XCircle, Play, RefreshCw, CloudOff }
 import { Spinner } from "@/components/ui/spinner";
 import { JobCardListSkeleton } from "@/components/ui/skeletons";
 import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
+import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { format } from "date-fns";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -35,6 +36,11 @@ type MyAssignedJobRow = {
   customer_phone: string | null;
   assignment_notes: string | null;
   created_at: string | null;
+  job_type: string | null;
+  deposit_invoice_id: string | null;
+  deposit_invoice_status: string | null;
+  deposit_invoice_paid_date: string | null;
+  deposit_invoice_grand_total: number | null;
 };
 
 type MyJobItem = {
@@ -43,6 +49,13 @@ type MyJobItem = {
   notes: string | null;
   created_at: string | null;
   job_id: string;
+  job_type: string | null;
+  depositInvoice: {
+    id: string;
+    status: string | null;
+    paid_date: string | null;
+    grand_total: number | null;
+  } | null;
   jobs: {
     id: string;
     title: string | null;
@@ -85,6 +98,15 @@ const AdminMyJobsPage = () => {
         notes: row.assignment_notes,
         created_at: row.created_at,
         job_id: row.job_id,
+        job_type: row.job_type,
+        depositInvoice: row.deposit_invoice_id
+          ? {
+              id: row.deposit_invoice_id,
+              status: row.deposit_invoice_status,
+              paid_date: row.deposit_invoice_paid_date,
+              grand_total: row.deposit_invoice_grand_total,
+            }
+          : null,
         jobs: {
           id: row.job_id,
           title: row.job_title,
@@ -219,6 +241,13 @@ const AdminMyJobsPage = () => {
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[assignment.status]}`}>
                           {assignment.status.replace(/_/g, " ")}
                         </span>
+                        {assignment.job_type === "installation" && assignment.depositInvoice?.id && (
+                          <DepositPaymentChip
+                            invoice={assignment.depositInvoice}
+                            accepted
+                            className="text-[10px]"
+                          />
+                        )}
                       </div>
                       {job.customers?.name && (
                         <div className="text-sm text-muted-foreground">{job.customers.name}</div>
