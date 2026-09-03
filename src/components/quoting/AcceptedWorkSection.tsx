@@ -106,6 +106,7 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
 
   const handlePassToInstall = async () => {
     if (!quote || !invoice?.id) return;
+    if (!date) return; // Date is required — never submit without it
     setBusy("install");
     try {
       // Idempotent: never create a second installation job for this quote.
@@ -198,6 +199,12 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
   if (!quote || String(quote.status || "").toLowerCase() !== "accepted") return null;
 
   const hasDeposit = !!invoice?.id;
+  // Payment can land later — Pass only requires the invoice ROW to exist.
+  // Unpaid/draft still allows Pass, with an amber warning.
+  const depositCleared = !!invoice && (
+    ["paid", "partially_paid"].includes(String(invoice.status || "").toLowerCase()) || !!invoice.paid_date
+  );
+  const showDepositDueWarning = hasDeposit && !depositCleared;
 
   return (
     <section className="rounded-lg border border-border bg-card p-4 print:hidden">
@@ -279,16 +286,25 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
           <DialogHeader>
             <DialogTitle>Pass to Technical / Installation</DialogTitle>
             <DialogDescription>
-              Creates the installation job on the technical lane for the same customer, lead and quote.
-              The sales visit stays on the salesperson's calendar.
+              Creates linked installation job on this lead. Sales stays on the commercial thread.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
+            {showDepositDueWarning && (
+              <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
+                Deposit still due — install can proceed
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Date</Label>
-                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                <Label>
+                  Date <span className="text-destructive">*</span>
+                </Label>
+                <Input type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
+                {!date && (
+                  <p className="text-xs text-muted-foreground">Choose a date to enable Confirm.</p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label>Start time</Label>
@@ -327,7 +343,11 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button variant="brand" onClick={handlePassToInstall} disabled={busy === "install" || !hasDeposit}>
+            <Button
+              variant="brand"
+              onClick={handlePassToInstall}
+              disabled={busy === "install" || !hasDeposit || !date}
+            >
               {busy === "install" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create installation job
             </Button>
