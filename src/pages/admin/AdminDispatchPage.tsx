@@ -249,7 +249,10 @@ const AdminDispatchPage = () => {
    * even if no job_schedules row exists yet. Synthesize a schedule-shaped tile for those.
    */
   const schedules = useMemo<Schedule[]>(() => {
-    const withRow = new Set(rawSchedules.map(s => s.lead_id));
+    // Only lead-level (non-install) rows suppress the synthesized sales tile —
+    // an installation row shares lead_id but is a separate calendar job.
+    const withRow = new Set(rawSchedules.filter(s => !s.job_id).map(s => s.lead_id));
+
     const synthetic: Schedule[] = allLeads
       .filter(l => l.assigned_agent_id && l.scheduled_date && !withRow.has(l.id))
       .map(l => {
