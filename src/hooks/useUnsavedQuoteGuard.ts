@@ -94,6 +94,8 @@ export function useUnsavedQuoteGuard({
           setShowModal(false);
           onExit();
         },
+        // Escape / overlay: stay in the editor rather than losing the basket.
+        onDismiss: () => setShowModal(false),
         onDelete: onDeleteQuote
           ? () => {
               setShowModal(false);

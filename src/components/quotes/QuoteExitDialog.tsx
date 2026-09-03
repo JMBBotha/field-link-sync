@@ -22,6 +22,8 @@ export interface QuoteExitDialogProps {
   onSaveDraft: () => void;
   onDiscard: () => void;
   onDelete?: () => void;
+  /** Escape / overlay dismiss — defaults to discarding. */
+  onDismiss?: () => void;
 }
 
 const QuoteExitDialog = ({
@@ -31,20 +33,26 @@ const QuoteExitDialog = ({
   onSaveDraft,
   onDiscard,
   onDelete,
+  onDismiss,
 }: QuoteExitDialogProps) => (
-  <AlertDialog open={open} onOpenChange={(v) => !v && onDiscard()}>
+  <AlertDialog open={open} onOpenChange={(v) => !v && (onDismiss ?? onDiscard)()}>
     <AlertDialogContent>
       <AlertDialogHeader>
         <AlertDialogTitle>Unsaved Quote</AlertDialogTitle>
         <AlertDialogDescription>
-          This quote has unsaved changes. A client must be associated before saving or sending.
+          {hasClient
+            ? "This quote has unsaved changes. Save them into this quote or discard them."
+            : "This quote has unsaved changes. A client must be associated before saving or sending."}
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
-        <Button onClick={onAssociateClient} className="gap-1.5 w-full">
-          <UserPlus className="h-4 w-4" />
-          Associate Client
-        </Button>
+        {!hasClient && (
+          <Button onClick={onAssociateClient} className="gap-1.5 w-full">
+            <UserPlus className="h-4 w-4" />
+            Associate Client
+          </Button>
+        )}
+
 
         <TooltipProvider>
           <Tooltip>

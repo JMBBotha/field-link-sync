@@ -80,6 +80,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const pdfAreaRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [deleting, setDeleting] = useState(false);
+
   const HD_KEY = "visual-catalog-hd";
   const [hdMode, setHdMode] = useState(() => {
     try { return localStorage.getItem(HD_KEY) === "true"; } catch { return false; }
@@ -335,6 +336,71 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
 
     return () => observer.disconnect();
   }, [open, pages.length, categoryPageMap]);
+
+  /**
+   * Mobile pinch-zoom containment.
+   * Without this, a two-finger pinch inside the PDF escapes to the browser's
+   * own page zoom / overscroll, which on mobile webviews unmounts the route
+   * and reloads the app. We capture the gesture ourselves (non-passive so
+   * preventDefault actually applies) and drive the local `zoom` state.
+   */
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    let pinchStartDist = 0;
+    let pinchStartZoom = 1;
+
+    const dist = (t: TouchList) =>
+      Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        pinchStartDist = dist(e.touches);
+        setZoom((z) => {
+          pinchStartZoom = z;
+          return z;
+        });
+      }
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 2 || pinchStartDist <= 0) return;
+      e.preventDefault();
+      const ratio = dist(e.touches) / pinchStartDist;
+      setZoom(Math.min(3, Math.max(0.5, pinchStartZoom * ratio)));
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) pinchStartDist = 0;
+    };
+    // Safari/iOS emits gesture* for pinch — swallow so the page never zooms.
+    const swallow = (e: Event) => e.preventDefault();
+    // Ctrl+wheel is the trackpad/desktop pinch signal.
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      setZoom((z) => Math.min(3, Math.max(0.5, z * Math.exp(-e.deltaY * 0.002))));
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd);
+    el.addEventListener("touchcancel", onTouchEnd);
+    el.addEventListener("gesturestart", swallow as EventListener);
+    el.addEventListener("gesturechange", swallow as EventListener);
+    el.addEventListener("gestureend", swallow as EventListener);
+    el.addEventListener("wheel", onWheel, { passive: false });
+
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+      el.removeEventListener("gesturestart", swallow as EventListener);
+      el.removeEventListener("gesturechange", swallow as EventListener);
+      el.removeEventListener("gestureend", swallow as EventListener);
+      el.removeEventListener("wheel", onWheel);
+    };
+  }, [pages.length]);
 
   const currentPage = pages[visiblePageIndex] || pages[0] || null;
 
@@ -769,6 +835,10 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                     scrollBehavior: "smooth",
                     WebkitOverflowScrolling: "touch",
                     willChange: "transform",
+                    // Keep pinch + overscroll inside the viewer: no browser
+                    // page zoom, no pull-to-refresh reload on mobile.
+                    touchAction: "pan-x pan-y",
+                    overscrollBehavior: "contain",
                   }}
                 >
                   <div ref={pdfAreaRef} style={{ cursor: loupeActive ? "none" : zoom > 1 ? "grab" : "default" }}>
