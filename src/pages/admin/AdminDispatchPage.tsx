@@ -524,6 +524,9 @@ const AdminDispatchPage = () => {
     if (!rawIds) return;
 
     const leadIds = rawIds.split(",").filter(Boolean);
+    // Moving an existing tile targets THAT schedule row (and its install job), never lead_id alone.
+    const draggedScheduleId = e.dataTransfer.getData("application/schedule-id") || null;
+    const draggedJobId = e.dataTransfer.getData("application/job-id") || null;
     const startTime = `${String(hour).padStart(2, "0")}:00`;
     const endTime = `${String(Math.min(hour + 2, 20)).padStart(2, "0")}:00`;
 
@@ -557,9 +560,13 @@ const AdminDispatchPage = () => {
       });
     } else {
       leadIds.forEach(leadId => {
-        assignMutation.mutate({ leadId, agentId, date: dateStr, startTime, endTime });
+        assignMutation.mutate({
+          leadId, agentId, date: dateStr, startTime, endTime,
+          scheduleId: draggedScheduleId, jobId: draggedJobId,
+        });
       });
     }
+
 
     setMultiSelectedIds(new Set());
     setDraggingLead(null);
