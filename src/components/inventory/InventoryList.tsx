@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, KeyboardEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import Fuse from "fuse.js";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
