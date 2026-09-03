@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole, type AppRole } from "@/hooks/useRole";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { LayoutDashboard, CalendarDays, LayoutGrid, FileText, Receipt, Package, BarChart3, ShoppingBag, LineChart, Bell, History, Upload, Settings, Plus, Users, LogOut, ChevronLeft, ChevronRight, ChevronDown, X, Building2, Briefcase, ClipboardList, Sparkles, HelpCircle, Navigation } from "lucide-react";
+import { LayoutDashboard, CalendarDays, LayoutGrid, FileText, Receipt, Package, BarChart3, ShoppingBag, LineChart, Bell, History, Upload, Settings, Plus, Users, LogOut, ChevronLeft, ChevronRight, ChevronDown, X, Building2, Briefcase, ClipboardList, HelpCircle, Navigation } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +42,7 @@ const AdminSidebar = ({
   onMobileClose,
 }: AdminSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { isAdmin, isDispatcher, isFieldAgent, roles } = useRole();
@@ -392,6 +393,38 @@ const AdminSidebar = ({
             {!collapsed && <span>{item.label}</span>}
           </button>
         ))}
+        {isAdmin && (
+          <>
+            <button
+              onClick={() => setAdvancedOpen((v) => !v)}
+              className={cn(
+                "w-full flex items-center gap-3 rounded-md px-3 py-1.5 text-[12.5px] text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
+                collapsed && "justify-center px-0"
+              )}
+            >
+              <Sparkles className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+              {!collapsed && (
+                <>
+                  <span>Advanced</span>
+                  <ChevronDown className={cn("ml-auto h-3.5 w-3.5 opacity-70", advancedOpen && "rotate-180")} />
+                </>
+              )}
+            </button>
+            {advancedOpen && advancedItems.map((item) => (
+              <button
+                key={item.path}
+                onClick={() => handleNav(item.path)}
+                className={cn(
+                  "w-full flex items-center gap-3 rounded-md pl-7 pr-3 py-1 text-[12px] text-nav-muted transition-colors hover:text-nav-foreground hover:bg-white/[0.06]",
+                  collapsed && "justify-center px-0"
+                )}
+              >
+                <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+                {!collapsed && <span className="truncate">{item.label}</span>}
+              </button>
+            ))}
+          </>
+        )}
         <button
           onClick={() => {
             onSignOut();
