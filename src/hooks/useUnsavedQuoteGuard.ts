@@ -28,6 +28,7 @@ export function useUnsavedQuoteGuard({
   onSendQuote,
   onDeleteQuote,
   onAssociateClient,
+  onDiscard,
   onExit,
 }: {
   isDirty: boolean;
@@ -37,6 +38,8 @@ export function useUnsavedQuoteGuard({
   onSendQuote?: () => Promise<unknown> | void;
   onDeleteQuote?: () => Promise<unknown> | void;
   onAssociateClient?: () => void;
+  /** Discard: undo any partial writes, then leave. Defaults to plain exit. */
+  onDiscard?: () => Promise<unknown> | void;
   onExit: () => void;
 }): UnsavedQuoteGuardActions {
   const [showModal, setShowModal] = useState(false);
@@ -92,8 +95,13 @@ export function useUnsavedQuoteGuard({
         },
         onDiscard: () => {
           setShowModal(false);
-          onExit();
+          if (onDiscard) {
+            Promise.resolve(onDiscard()).catch(() => {});
+          } else {
+            onExit();
+          }
         },
+        onCancel: () => setShowModal(false),
         // Escape / overlay: stay in the editor rather than losing the basket.
         onDismiss: () => setShowModal(false),
         onDelete: onDeleteQuote
