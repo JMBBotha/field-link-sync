@@ -89,6 +89,14 @@ const ClientProposalView = () => {
       }));
       setLineItems(items);
       setSections(bundle.sections || []);
+
+      // Deposit invoice (created on accept). Anonymous clients may not be able
+      // to read it — fail silently and simply hide the chip in that case.
+      try {
+        setDepositInvoice(await fetchQuoteInvoice(q.id));
+      } catch {
+        setDepositInvoice(null);
+      }
     } catch {
       setError("Something went wrong.");
     } finally {
