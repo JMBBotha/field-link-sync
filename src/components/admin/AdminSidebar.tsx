@@ -303,9 +303,7 @@ const AdminSidebar = ({
         );
         return (
           <Tooltip key={item.path} delayDuration={0}>
-            <TooltipTrigger asChild>
-              {lowStockPopover(btn)}
-            </TooltipTrigger>
+            {lowStockPopover(<TooltipTrigger asChild>{btn}</TooltipTrigger>)}
             <TooltipContent side="right" className="font-medium">
               {item.label} · {item.badge} low stock
             </TooltipContent>
