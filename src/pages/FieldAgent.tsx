@@ -153,13 +153,14 @@ const FieldAgent = () => {
   const timerIntervalRef = useRef<number | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  // Bottom-nav "Map" tab drives /field?view=map; keep the map sheet in sync.
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    setShowMapOnMobile(params.get("view") === "map");
-  }, [location.search]);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  // Bottom-nav "Map" tab drives /field?view=map; keep the map sheet in sync.
+  // Desktop keeps the classic map + side panels unless ?view=list is asked for.
+  useEffect(() => {
+    const view = new URLSearchParams(location.search).get("view");
+    setShowMapOnMobile(view === "map" || (!isMobile && view !== "list"));
+  }, [location.search, isMobile]);
 
   // Offline support
   const { isOnline, syncStatus, queueOperation, retrySyncFailedOperations, clearFailedOperations, deleteOperation, getPendingOperationsList, activeConflict, resolveConflict } = useOfflineContext();
