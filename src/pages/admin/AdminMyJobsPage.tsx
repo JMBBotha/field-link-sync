@@ -37,6 +37,7 @@ type MyAssignedJobRow = {
   assignment_notes: string | null;
   created_at: string | null;
   job_type: string | null;
+  job_quote_id: string | null;
   deposit_invoice_id: string | null;
   deposit_invoice_status: string | null;
   deposit_invoice_paid_date: string | null;
@@ -68,6 +69,7 @@ type MyJobItem = {
     scheduled_for: string | null;
     priority: string | null;
     status: string | null;
+    quote_id: string | null;
     customers: {
       name: string | null;
       phone: string | null;
@@ -121,6 +123,7 @@ const AdminMyJobsPage = () => {
           scheduled_for: row.job_scheduled_for,
           priority: row.job_priority,
           status: row.job_status,
+          quote_id: row.job_quote_id ?? null,
           customers: row.customer_name
             ? {
                 name: row.customer_name,
