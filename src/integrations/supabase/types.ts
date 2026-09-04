@@ -7171,6 +7171,7 @@ export type Database = {
           job_description: string
           job_id: string
           job_priority: string
+          job_quote_id: string
           job_scheduled_for: string
           job_status: string
           job_title: string
@@ -7184,6 +7185,16 @@ export type Database = {
       get_overdue_maintenance_count: { Args: never; Returns: number }
       get_public_quote: { Args: { p_token: string }; Returns: Json }
       get_quote_by_public_token: { Args: { p_token: string }; Returns: string }
+      get_quote_summary: {
+        Args: { p_quote_id: string }
+        Returns: {
+          customer_name: string
+          id: string
+          quote_number: string
+          status: string
+          total: number
+        }[]
+      }
       get_quotes_for_lead: {
         Args: { p_lead_id: string }
         Returns: {
