@@ -203,6 +203,40 @@ All colors MUST be HSL.
   background: linear-gradient(135deg, rgba(11, 26, 46, 0.6) 0%, rgba(21, 50, 88, 0.25) 50%, rgba(11, 26, 46, 0.6) 100%);
 }
 
+/* ── Estimate page: blue-grey dark chrome with readable text ────── */
+.dark .estimate-page {
+  --background: 215 28% 15%;
+  --foreground: 210 32% 96%;
+  --card: 214 26% 21%;
+  --card-foreground: 210 32% 96%;
+  --popover: 214 26% 21%;
+  --popover-foreground: 210 32% 96%;
+  --muted: 213 24% 27%;
+  --muted-foreground: 213 20% 84%;
+  --border: 213 22% 36%;
+  --surface-glass: 214 28% 20%;
+  --surface-glass-alpha: 0.78;
+  --surface-glass-hover-alpha: 0.88;
+  background: hsl(var(--background));
+}
+
+.dark .estimate-page [class*="bg-muted/50"],
+.dark .estimate-page [class*="bg-muted/30"] {
+  background: hsl(var(--muted) / 0.55);
+}
+
+.dark .estimate-page .text-emerald-600 {
+  color: hsl(160 55% 62%);
+}
+
+/* Keep the client document (and anything inside it) clean white. */
+.dark .estimate-page [data-pdf-capture-root] .bg-white {
+  background-color: hsl(0 0% 100%) !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+
 @layer base {
   * {
     @apply border-border;
