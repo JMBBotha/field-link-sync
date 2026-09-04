@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, CheckCircle, XCircle, Phone, FileText } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import PayfastPayButton from "@/components/payments/PayfastPayButton";
+import EstimateDocument, { type EstimateDocLineItem } from "@/components/quoting/EstimateDocument";
+import SignaturePad from "@/components/jobs/SignaturePad";
 import { fetchQuoteInvoiceByToken, type DepositInvoiceRow } from "@/lib/depositInvoice";
 import { isDepositCleared } from "@/components/shared/DepositPaymentChip";
 import logo from "@/assets/logo.png";
@@ -25,15 +27,27 @@ interface QuoteData {
   valid_until: string | null;
   created_at: string;
   accepted_by: string | null;
+  customer_name: string | null;
+  terms_text: string | null;
+  discount_type: string | null;
+  discount_value: number | null;
 }
 
-interface LineItem {
-  id: string;
-  name: string;
-  blurb: string | null;
-  image_url: string | null;
-  quantity: number;
-  unit_price: number;
+interface PublicCustomer {
+  name: string | null;
+  company_name: string | null;
+  address: string | null;
+  email: string | null;
+  phone: string | null;
+}
+
+interface PublicCompany {
+  company_name: string | null;
+  physical_address: string | null;
+  vat_number: string | null;
+  banking_details: Record<string, string | undefined> | null;
+  default_deposit_percentage: number | null;
+  default_payment_terms_days: number | null;
 }
 
 interface ProposalSection {
@@ -49,18 +63,17 @@ const ClientProposalView = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState<QuoteData | null>(null);
-  const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [lineItems, setLineItems] = useState<EstimateDocLineItem[]>([]);
+  const [customer, setCustomer] = useState<PublicCustomer | null>(null);
+  const [company, setCompany] = useState<PublicCompany | null>(null);
   const [sections, setSections] = useState<ProposalSection[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [acceptedName, setAcceptedName] = useState("");
+  const [signature, setSignature] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [actionDone, setActionDone] = useState<"accepted" | "declined" | null>(null);
   const [depositInvoice, setDepositInvoice] = useState<DepositInvoiceRow | null>(null);
 
-  // Signature canvas
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [hasSignature, setHasSignature] = useState(false);
 
   useEffect(() => {
     if (token) loadQuote();
