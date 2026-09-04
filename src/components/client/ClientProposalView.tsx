@@ -123,7 +123,7 @@ const ClientProposalView = () => {
         (q.customer_name as string | null) ||
         (bundle.customer?.company_name as string | null) ||
         "";
-      setAcceptedName((prev) => (prev ? prev : (prefill || "").trim()));
+      setAcceptedName((prev) => (prev ? prev : tidyName(prefill)));
 
       // Deposit invoice (created on accept) — read via the token-gated RPC so
       // anonymous clients can see the chip without touching invoices RLS.
