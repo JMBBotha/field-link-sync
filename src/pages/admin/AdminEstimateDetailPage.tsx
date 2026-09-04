@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Pencil, FileCheck2, Send, Download, Printer, Loader2 } from "lucide-react";
+import { ArrowLeft, Pencil, FileCheck2, Send, Download, Printer, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useRegisterAssistantContext } from "@/hooks/useAssistantContextTracker";
@@ -88,6 +88,52 @@ const AdminEstimateDetailPage = () => {
     qc.invalidateQueries({ queryKey: ["quote-document", id] });
     qc.invalidateQueries({ queryKey: ["quote-document-items", id] });
   };
+
+  /**
+   * Explicit Save: flush any focused field (inline edits commit on blur), recompute
+   * totals from the persisted lines, and confirm. Status is never advanced here —
+   * a draft stays a draft; Send is the only thing that changes status.
+   */
+  const handleSave = async () => {
+    setBusy("save");
+    try {
+      (document.activeElement as HTMLElement | null)?.blur?.();
+      await new Promise((r) => setTimeout(r, 250));
+
+      const { data: lines, error: linesErr } = await supabase
+        .from("quote_items")
+        .select("quantity, unit_price, parent_item_id")
+        .eq("quote_id", id);
+      if (linesErr) throw linesErr;
+
+      const sub = (lines || [])
+        .filter((l: any) => !l.parent_item_id)
+        .reduce((s: number, l: any) => s + Number(l.quantity || 0) * Number(l.unit_price || 0), 0);
+      const rate = Number(quote?.vat_rate) || 0.15;
+      const dType = quote?.discount_type as string | null;
+      const dVal = Number(quote?.discount_value || 0);
+      const disc = dType === "percentage" || dType === "percent" ? (sub * dVal) / 100 : dType === "fixed" ? dVal : 0;
+      const net = sub - disc;
+
+      const { error: upErr } = await supabase
+        .from("quotes")
+        .update({
+          subtotal: Math.round(sub * 100) / 100,
+          vat_amount: Math.round(net * rate * 100) / 100,
+          total: Math.round(net * (1 + rate) * 100) / 100,
+        })
+        .eq("id", id);
+      if (upErr) throw upErr;
+
+      refreshDocument();
+      const isDraft = String(quote?.status || "").toLowerCase() === "draft";
+      toast({ title: isDraft ? "Saved as draft" : "Saved" });
+    } catch (e: any) {
+      toast({ title: "Could not save", description: e.message, variant: "destructive" });
+    }
+    setBusy(null);
+  };
+
 
   // Send uses the exact same flow as the quote builder: ensure public_token
   // + status/sent_at via the shared helper, then open the shared dialog.
@@ -212,10 +258,15 @@ const AdminEstimateDetailPage = () => {
         <Button variant="outline" onClick={() => navigate(`/admin/quote-builder?quoteId=${quote.id}`)}>
           <Pencil className="mr-2 h-4 w-4" /> Full builder / Visual PDF
         </Button>
+        <Button variant="outline" onClick={handleSave} disabled={busy === "save"}>
+          {busy === "save" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          Save
+        </Button>
         <Button variant="outline" onClick={handleSend} disabled={busy === "send"}>
           {busy === "send" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
           Send
         </Button>
+
         <Button variant="outline" onClick={handlePdf} disabled={busy === "pdf"}>
           {busy === "pdf" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
           PDF
