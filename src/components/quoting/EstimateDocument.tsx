@@ -147,8 +147,11 @@ const EstimateDocument = ({
   return (
     <div
       data-pdf-capture-root="estimate"
-      className="estimate-document pdf-page mx-auto w-full bg-white text-slate-800 shadow-sm ring-1 ring-slate-200 print:shadow-none print:ring-0"
+      className={`estimate-document pdf-page mx-auto w-full text-slate-800 shadow-sm ring-1 ring-slate-200 print:bg-white print:shadow-none print:ring-0 ${
+        editing ? "estimate-editing bg-slate-100" : "bg-white"
+      }`}
     >
+
       <div className="p-8 sm:p-10">
         {/* ── Top: logo left, business info right ── */}
         <div className="flex items-start justify-between gap-6">
