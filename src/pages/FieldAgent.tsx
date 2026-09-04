@@ -1188,7 +1188,7 @@ const FieldAgent = () => {
         </>
       )}
     </Button>
-  ) : null;
+  );
 
   return (
     <Layout footerLeftContent={footerLeftContent}>
