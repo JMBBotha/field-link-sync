@@ -93,31 +93,20 @@ export default function EstimateBuilder({
       lines: topLevel
         .filter((i) => i.area_id === a.id)
         .sort((x, y) => (x.sort_order || 0) - (y.sort_order || 0))
-        .map((i) => ({
-          id: i.id,
-          name: i.item_name,
-          description: i.description,
-          quantity: Number(i.quantity || 0),
-          unit_price: Number(i.unit_price || 0),
-        })),
+        .map(lineFor),
     }));
     const orphans = topLevel.filter((i) => !i.area_id);
     if (orphans.length > 0) {
       grouped.push({
         id: null,
         name: "Other items",
-        lines: orphans.map((i) => ({
-          id: i.id,
-          name: i.item_name,
-          description: i.description,
-          quantity: Number(i.quantity || 0),
-          unit_price: Number(i.unit_price || 0),
-        })),
+        lines: orphans.map(lineFor),
       });
     }
     if (grouped.length === 0) grouped.push({ id: null, name: "Quote items", lines: [] });
     return grouped;
-  }, [areas, topLevel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [areas, topLevel, productImages]);
 
   const subtotal = useMemo(
     () => topLevel.reduce((s, i) => s + Number(i.quantity || 0) * Number(i.unit_price || 0), 0),

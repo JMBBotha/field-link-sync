@@ -29,7 +29,9 @@ interface QuoteData {
 
 interface LineItem {
   id: string;
-  description: string;
+  name: string;
+  blurb: string | null;
+  image_url: string | null;
   quantity: number;
   unit_price: number;
 }
@@ -84,7 +86,11 @@ const ClientProposalView = () => {
 
       const items = (bundle.items || []).map((it: any) => ({
         id: it.id,
-        description: it.item_name || it.description || "Item",
+        name: it.item_name || it.description || "Item",
+        // Sales blurb: the stored quote line description (defaults to the
+        // catalog AI sales description) — never scraped live.
+        blurb: it.item_name ? it.description || null : null,
+        image_url: it.image_url || null,
         quantity: Number(it.quantity) || 0,
         unit_price: Number(it.unit_price) || 0,
       }));
