@@ -63,12 +63,8 @@ const AdminEstimateDetailPage = () => {
     enabled: !!id && !!quote,
   });
 
-  const docItems = items.map((i) => ({
-    description: i.description,
-    quantity: i.quantity,
-    unit_price: i.rate,
-    amount: i.amount,
-  }));
+
+
 
   const customer = quote?.customers || {};
   const subtotal = Number(quote?.subtotal) || 0;
