@@ -209,11 +209,22 @@ export default function EstimateBuilder({
             void updateArea(id, { name });
             onChanged?.();
           },
-          onAddArea: () => {
-            void addArea(`Area ${areas.length + 1}`);
+          activeAreaId,
+          onSelectArea: setActiveAreaId,
+          onAddArea: async () => {
+            const created = await addArea(`Area ${areas.length + 1}`);
+            if (created?.id) setActiveAreaId(created.id);
           },
-          searchBar: <QuoteQuickEditor onChanged={onChanged} dropUp />,
+          renderAddBar: (areaId) => (
+            <QuoteQuickEditor
+              key={areaId ?? "default"}
+              onChanged={onChanged}
+              targetAreaId={areaId}
+              dropUp
+            />
+          ),
           discountControl,
+
         }}
       />
 
