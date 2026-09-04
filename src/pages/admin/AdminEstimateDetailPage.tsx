@@ -187,28 +187,24 @@ const AdminEstimateDetailPage = () => {
 
       <AcceptedWorkSection quoteId={quote.id} />
 
-      {/* Daily editor — writes into THIS quote only */}
+      {/* One surface: the estimate document IS the editor */}
       <QuoteProvider quoteId={quote.id}>
-        <QuoteQuickEditor onChanged={refreshDocument} />
+        <EstimateBuilder
+          quoteNumber={quote.quote_number}
+          issueDate={quote.created_at}
+          validUntil={quote.valid_until}
+          customerName={customer.name || quote.customer_name || "Customer"}
+          customerCompany={customer.company_name}
+          customerAddress={customer.address}
+          customerEmail={customer.email}
+          customerPhone={customer.phone}
+          vatRate={Number(quote.vat_rate) || 0.15}
+          notes={quote.notes}
+          termsText={quote.terms_text}
+          onChanged={refreshDocument}
+        />
       </QuoteProvider>
 
-      <EstimateDocument
-        estimateNumber={quote.quote_number}
-        issueDate={quote.created_at}
-        validUntil={quote.valid_until}
-        customerName={customer.name || quote.customer_name || "Customer"}
-        customerCompany={customer.company_name}
-        customerAddress={customer.address}
-        customerEmail={customer.email}
-        customerPhone={customer.phone}
-        items={docItems}
-        subtotal={subtotal}
-        taxRate={Number(quote.vat_rate) || 0.15}
-        taxAmount={taxAmount}
-        grandTotal={total}
-        notes={quote.notes}
-        termsText={quote.terms_text}
-      />
 
       {/* Actions */}
       <div className="flex flex-wrap justify-end gap-2 pt-2 print:hidden">
