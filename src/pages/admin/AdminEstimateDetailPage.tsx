@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { convertQuoteToInvoice, buildQuoteLineItems } from "@/lib/convertQuoteToInvoice";
 import { generateDocumentPdf } from "@/lib/documentPdf";
-import EstimateDocument from "@/components/quoting/EstimateDocument";
+import EstimateBuilder from "@/components/quoting/EstimateBuilder";
 import StatusPill from "@/components/shared/StatusPill";
 
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
@@ -18,7 +18,7 @@ import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { fetchQuoteInvoice } from "@/lib/depositInvoice";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { QuoteProvider } from "@/contexts/QuoteContext";
-import QuoteQuickEditor from "@/components/quoting/QuoteQuickEditor";
+
 
 /**
  * Read-only, client-facing estimate document view.
@@ -63,12 +63,8 @@ const AdminEstimateDetailPage = () => {
     enabled: !!id && !!quote,
   });
 
-  const docItems = items.map((i) => ({
-    description: i.description,
-    quantity: i.quantity,
-    unit_price: i.rate,
-    amount: i.amount,
-  }));
+
+
 
   const customer = quote?.customers || {};
   const subtotal = Number(quote?.subtotal) || 0;
@@ -187,28 +183,24 @@ const AdminEstimateDetailPage = () => {
 
       <AcceptedWorkSection quoteId={quote.id} />
 
-      {/* Daily editor — writes into THIS quote only */}
+      {/* One surface: the estimate document IS the editor */}
       <QuoteProvider quoteId={quote.id}>
-        <QuoteQuickEditor onChanged={refreshDocument} />
+        <EstimateBuilder
+          quoteNumber={quote.quote_number}
+          issueDate={quote.created_at}
+          validUntil={quote.valid_until}
+          customerName={customer.name || quote.customer_name || "Customer"}
+          customerCompany={customer.company_name}
+          customerAddress={customer.address}
+          customerEmail={customer.email}
+          customerPhone={customer.phone}
+          vatRate={Number(quote.vat_rate) || 0.15}
+          notes={quote.notes}
+          termsText={quote.terms_text}
+          onChanged={refreshDocument}
+        />
       </QuoteProvider>
 
-      <EstimateDocument
-        estimateNumber={quote.quote_number}
-        issueDate={quote.created_at}
-        validUntil={quote.valid_until}
-        customerName={customer.name || quote.customer_name || "Customer"}
-        customerCompany={customer.company_name}
-        customerAddress={customer.address}
-        customerEmail={customer.email}
-        customerPhone={customer.phone}
-        items={docItems}
-        subtotal={subtotal}
-        taxRate={Number(quote.vat_rate) || 0.15}
-        taxAmount={taxAmount}
-        grandTotal={total}
-        notes={quote.notes}
-        termsText={quote.terms_text}
-      />
 
       {/* Actions */}
       <div className="flex flex-wrap justify-end gap-2 pt-2 print:hidden">
