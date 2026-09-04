@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Pencil, FileCheck2, Send, Download, Printer, Loader2 } from "lucide-react";
+import { ArrowLeft, Pencil, FileCheck2, Send, Download, Printer, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useRegisterAssistantContext } from "@/hooks/useAssistantContextTracker";
