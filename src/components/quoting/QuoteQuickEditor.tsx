@@ -52,12 +52,16 @@ function baseItem(): Omit<QuoteItemInsert, "quote_id" | "item_name" | "unit_pric
 export default function QuoteQuickEditor({
   onChanged,
   targetAreaId = null,
+  dropUp = false,
 }: {
   onChanged?: () => void;
   /** Add new lines into this area (defaults to the first / default area). */
   targetAreaId?: string | null;
+  /** Open the results list upward (used when the bar sits at the bottom of the document). */
+  dropUp?: boolean;
 }) {
-  const { areas, items, addItem, ensureDefaultArea } = useQuoteContext();
+  const { areas, items, addItem, addArea, ensureDefaultArea } = useQuoteContext();
+  const dropdownPos = dropUp ? "bottom-full mb-1" : "mt-1";
   const { favorites } = useProductFavorites();
   const [productTerm, setProductTerm] = useState("");
   const [serviceTerm, setServiceTerm] = useState("");
