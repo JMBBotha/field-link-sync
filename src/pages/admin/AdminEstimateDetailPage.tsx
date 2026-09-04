@@ -17,6 +17,8 @@ import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { fetchQuoteInvoice } from "@/lib/depositInvoice";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { QuoteProvider } from "@/contexts/QuoteContext";
+import QuoteQuickEditor from "@/components/quoting/QuoteQuickEditor";
 
 /**
  * Read-only, client-facing estimate document view.
