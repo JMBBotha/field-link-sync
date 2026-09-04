@@ -21,7 +21,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  FileText, Trash2, Eye, Search, Loader2, AlertTriangle, Database, HardDrive, Package,
+  FileText, Trash2, Eye, Search, Loader2, AlertTriangle, Database, HardDrive, Package, CheckCircle2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -36,6 +36,11 @@ interface PDFUploadRow {
   status: string | null;
   supplier_id: string;
   suppliers: { id: string; name: string } | null;
+  /** Current active book for this supplier+brand. Synthetic page-group rows are always active. */
+  is_active?: boolean | null;
+  brand?: string | null;
+  /** False for synthetic rows built from supplier_pdf_pages (no pdf_uploads row to flag). */
+  can_activate?: boolean;
 }
 
 interface SupplierPDFManagerProps {
@@ -267,6 +272,9 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewDebugMessage, setPreviewDebugMessage] = useState<string | null>(null);
   const [purgingOrphans, setPurgingOrphans] = useState(false);
+  const [activateTarget, setActivateTarget] = useState<PDFUploadRow | null>(null);
+  const [activateWarning, setActivateWarning] = useState<string | null>(null);
+  const [activating, setActivating] = useState(false);
 
   const clearPreviewUrl = useCallback((url?: string | null) => {
     if (url?.startsWith("blob:")) {
@@ -292,15 +300,89 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
     };
   }, [previewUrl, clearPreviewUrl]);
 
+  /**
+   * Catalog SoT: exactly one active brochure per supplier+brand. Activating a
+   * book deactivates its siblings, so SKUs dropped from the new book fall off
+   * the quote picker. Warn first when those SKUs sit on open draft quotes.
+   */
+  const handleActivateClick = async (pdf: PDFUploadRow) => {
+    setActivateWarning(null);
+    setActivateTarget(pdf);
+    try {
+      let siblings = (supabase.from("pdf_uploads") as any)
+        .select("id")
+        .eq("supplier_id", pdf.supplier_id)
+        .neq("id", pdf.id);
+      siblings = pdf.brand ? siblings.eq("brand", pdf.brand) : siblings.is("brand", null);
+      const { data: sibRows } = await siblings;
+      const sibIds = (sibRows || []).map((r: any) => r.id);
+      if (!sibIds.length) return;
+
+      const { data: prods } = await (supabase.from("supplier_products") as any)
+        .select("id")
+        .in("pdf_upload_id", sibIds)
+        .or("archived.is.null,archived.eq.false");
+      const prodIds = (prods || []).map((r: any) => r.id);
+      if (!prodIds.length) return;
+
+      const { data: lines } = await (supabase.from("quote_items") as any)
+        .select("quote_id, quotes!inner(status)")
+        .in("product_id", prodIds)
+        .eq("quotes.status", "draft");
+      const affected = new Set((lines || []).map((l: any) => l.quote_id));
+      if (affected.size > 0) {
+        setActivateWarning(
+          `${affected.size} open draft quote${affected.size === 1 ? "" : "s"} still use products from the previous book. Those lines keep their saved prices, but the products will no longer be searchable.`,
+        );
+      }
+    } catch {
+      /* warning is best-effort — never block activation on it */
+    }
+  };
+
+  const handleActivateConfirm = async () => {
+    if (!activateTarget) return;
+    setActivating(true);
+    try {
+      let deactivate = (supabase.from("pdf_uploads") as any)
+        .update({ is_active: false })
+        .eq("supplier_id", activateTarget.supplier_id)
+        .neq("id", activateTarget.id);
+      deactivate = activateTarget.brand
+        ? deactivate.eq("brand", activateTarget.brand)
+        : deactivate.is("brand", null);
+      await deactivate;
+
+      const { error } = await (supabase.from("pdf_uploads") as any)
+        .update({ is_active: true, activated_at: new Date().toISOString() })
+        .eq("id", activateTarget.id);
+      if (error) throw error;
+
+      toast({ title: "Active price book updated", description: activateTarget.file_name || "" });
+      queryClient.invalidateQueries({ queryKey: ["pdf-uploads-manager"] });
+      queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
+      setActivateTarget(null);
+      setActivateWarning(null);
+    } catch (e: any) {
+      toast({ title: "Could not activate", description: e?.message || "Unknown error", variant: "destructive" });
+    } finally {
+      setActivating(false);
+    }
+  };
+
   // Fetch all PDFs — merge pdf_uploads AND supplier_pdf_pages (grouped by filename)
   const { data: pdfUploads = [], isLoading } = useQuery({
     queryKey: ["pdf-uploads-manager"],
     queryFn: async () => {
       // Source 1: pdf_uploads table (legacy)
       const { data: uploadsData } = await (supabase.from("pdf_uploads") as any)
-        .select(`id, file_name, file_path, storage_path, file_url, created_at, status, supplier_id, suppliers ( id, name )`)
+        .select(`id, file_name, file_path, storage_path, file_url, created_at, status, supplier_id, is_active, brand, suppliers ( id, name )`)
         .order("created_at", { ascending: false });
-      const uploads = (uploadsData || []) as PDFUploadRow[];
+      const uploads = ((uploadsData || []) as PDFUploadRow[]).map((u) => ({
+        ...u,
+        is_active: u.is_active !== false,
+        can_activate: true,
+      }));
 
       // Source 2: supplier_pdf_pages table (used by import pipeline)
       const { data: pagesData } = await (supabase.from("supplier_pdf_pages") as any)
@@ -351,6 +433,9 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
           status: "parsed",
           supplier_id: resolvedSupplier?.id || supplierIdText,
           suppliers: resolvedSupplier ? { id: resolvedSupplier.id, name: resolvedSupplier.name } : null,
+          is_active: true,
+          brand: null,
+          can_activate: false,
         });
       }
 
@@ -791,6 +876,27 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
           </Table>
         </div>
       )}
+
+      {/* Activate Confirmation */}
+      <AlertDialog open={!!activateTarget} onOpenChange={(o) => { if (!o) { setActivateTarget(null); setActivateWarning(null); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Make this the active price book?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {activateTarget?.file_name || "This PDF"} becomes the current book for{" "}
+              {activateTarget?.suppliers?.name || "this supplier"}
+              {activateTarget?.brand ? ` — ${activateTarget.brand}` : ""}. Earlier books for the same brand are marked superseded.
+              {activateWarning ? ` ${activateWarning}` : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={activating}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); handleActivateConfirm(); }} disabled={activating}>
+              {activating ? "Activating…" : "Activate"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>

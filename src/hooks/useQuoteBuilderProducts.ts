@@ -1,11 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchVisualCatalogAllowlist, filterToVisualCatalog } from "@/lib/catalogSoT";
 import type { PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 
 export function useQuoteBuilderProducts() {
   const { data: products = [], isLoading } = useQuery<PaletteProduct[]>({
     queryKey: ["quote-builder-products"],
     queryFn: async () => {
+      const allowPromise = fetchVisualCatalogAllowlist();
       const { data, error } = await supabase
         .from("supplier_products")
         .select(`
@@ -14,7 +16,7 @@ export function useQuoteBuilderProducts() {
           selling_price, description, is_pinned, pin_order, price_per_metre,
           sold_in_length, unit_length, pipe_size, is_material_favorite,
           suggested_consumables, pack_qty, supplier_discount_percent,
-          markup_percent, btu_rating,
+          markup_percent, btu_rating, pdf_upload_id,
           unit_type, price_per_unit_qty, price_per_unit_label,
           allows_decimal_qty, qty_step, min_qty,
 
@@ -27,7 +29,12 @@ export function useQuoteBuilderProducts() {
 
       if (error) throw error;
 
+      // Equipment/materials SoT: only rows still on the current Visual PDF book.
+      const allow = await allowPromise;
+      const scoped = filterToVisualCatalog((data || []) as any[], allow);
+
       type RawRow = Record<string, unknown> & {
+
         product_category?: string | null;
         category?: string | null;
         suppliers?: { name?: string | null; supplier_type?: string | null } | null;
@@ -41,7 +48,7 @@ export function useQuoteBuilderProducts() {
         default_markup_percent?: number | null;
       };
 
-      return ((data || []) as unknown as RawRow[]).map((p) => ({
+      return (scoped as unknown as RawRow[]).map((p) => ({
         ...p,
         product_category: p.product_category || p.category || "",
         supplier_name: p.suppliers?.name || "",

@@ -1,3 +1,12 @@
+/**
+ * parse-price-list — legacy spreadsheet/price-list parser.
+ *
+ * NOT the brochure import path. The Visual-PDF catalog source of truth is
+ * SupplierDocumentsTab -> src/services/diffImportPipeline.ts, which does the
+ * brand-scoped insert / update / archive-on-missing diff. This function only
+ * inserts and updates rows and deliberately never archives missing SKUs, so it
+ * must not be used to publish a new brochure book for a brand.
+ */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireUser } from "../_shared/auth.ts";
 

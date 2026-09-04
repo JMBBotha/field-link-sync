@@ -485,7 +485,7 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
       })).filter((r) => r.product_code && r.product_code.trim().length >= 2);
 
       const diffRows = await buildProductDiff(supplierId, rows);
-      const { imported, updated, archived, errors, firstError } = await applyProductDiff({
+      const { imported, updated, archived, unchanged, errors, firstError } = await applyProductDiff({
         supplierId,
         supplierName: supplierName || "",
         diffRows,
@@ -500,8 +500,8 @@ const SupplierDocumentsTab = ({ supplierId, supplierName }: SupplierDocumentsTab
 
       invalidateAll();
       toast({
-        title: `✅ ${imported} new, ${updated} updated, ${archived} archived`,
-        description: `${supplierName || "Supplier"} catalog updated.${errors > 0 ? ` ${errors} failed — ${firstError.substring(0, 100)}` : ""}`,
+        title: `✅ ${imported} inserted · ${updated} updated · ${archived} archived · ${unchanged} unchanged`,
+        description: `${supplierName || "Supplier"} catalog updated. Archiving is limited to the brands in this file.${errors > 0 ? ` ${errors} failed — ${firstError.substring(0, 100)}` : ""}`,
         variant: errors > 0 ? "destructive" : undefined,
       });
       setImportPreview(null);
