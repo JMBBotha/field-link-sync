@@ -31,11 +31,15 @@ interface Props {
   onChanged?: () => void;
 }
 
+/** Header shown for the default catch-all section (named areas keep their name). */
+const DEFAULT_SECTION_LABEL = "Add items to quote";
+
 const discountAmountFor = (subtotal: number, type: string | null, value: number) => {
   if (type === "percentage" || type === "percent") return (subtotal * value) / 100;
   if (type === "fixed") return value;
   return 0;
 };
+
 
 export default function EstimateBuilder({
   quoteNumber,
