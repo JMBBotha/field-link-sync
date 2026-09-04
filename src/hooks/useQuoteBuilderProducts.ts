@@ -48,7 +48,7 @@ export function useQuoteBuilderProducts() {
         default_markup_percent?: number | null;
       };
 
-      return ((data || []) as unknown as RawRow[]).map((p) => ({
+      return (scoped as unknown as RawRow[]).map((p) => ({
         ...p,
         product_category: p.product_category || p.category || "",
         supplier_name: p.suppliers?.name || "",
