@@ -44,7 +44,7 @@ export interface EstimateEditing {
   onDeleteLine: (id: string) => void;
   onRenameArea: (id: string, name: string) => void;
   onAddArea: () => void;
-  /** Slim add-item / add-service bar rendered above the line items. */
+  /** Slim add-item / add-service bar rendered below the line items. */
   searchBar?: ReactNode;
   /** Discount control rendered in the totals block. */
   discountControl?: ReactNode;
@@ -195,9 +195,6 @@ const EstimateDocument = ({
           </div>
         </div>
 
-        {/* ── Add bar (staff only, never printed) ── */}
-        {editing?.searchBar && <div className="mt-6">{editing.searchBar}</div>}
-
         {/* ── Line items ── */}
         {editing ? (
           <div className="mt-6 space-y-6">
@@ -327,7 +324,7 @@ const EstimateDocument = ({
                     {area.lines.length === 0 && (
                       <tr>
                         <td colSpan={5} className="py-4 text-center text-[11px] text-slate-400">
-                          No lines in this area yet — use the add bar above.
+                          No lines in this area yet — use the add bar below.
                         </td>
                       </tr>
                     )}
@@ -343,6 +340,9 @@ const EstimateDocument = ({
             >
               <Plus className="h-3.5 w-3.5" /> Add area
             </button>
+
+            {/* ── Add bar (staff only, never printed) — sits under the lines ── */}
+            {editing.searchBar && <div className="pt-1">{editing.searchBar}</div>}
           </div>
         ) : (
           <table className="mt-8 w-full border-collapse text-[12px]">

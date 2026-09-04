@@ -52,12 +52,16 @@ function baseItem(): Omit<QuoteItemInsert, "quote_id" | "item_name" | "unit_pric
 export default function QuoteQuickEditor({
   onChanged,
   targetAreaId = null,
+  dropUp = false,
 }: {
   onChanged?: () => void;
   /** Add new lines into this area (defaults to the first / default area). */
   targetAreaId?: string | null;
+  /** Open the results list upward (used when the bar sits at the bottom of the document). */
+  dropUp?: boolean;
 }) {
-  const { areas, items, addItem, ensureDefaultArea } = useQuoteContext();
+  const { areas, items, addItem, addArea, ensureDefaultArea } = useQuoteContext();
+  const dropdownPos = dropUp ? "bottom-full mb-1" : "mt-1";
   const { favorites } = useProductFavorites();
   const [productTerm, setProductTerm] = useState("");
   const [serviceTerm, setServiceTerm] = useState("");
@@ -137,9 +141,14 @@ export default function QuoteQuickEditor({
 
   const nextSortOrder = () => (items.length ? Math.max(...items.map((i) => i.sort_order || 0)) + 1 : 0);
 
+  /**
+   * Always land new lines inside a real area. On an empty quote there are no
+   * items yet, so ensureDefaultArea() is a no-op — create the section here so
+   * the added line renders under "Items" instead of falling out as an orphan.
+   */
   const resolveArea = async () => {
     if (targetAreaId) return targetAreaId;
-    const area = areas[0] || (await ensureDefaultArea());
+    const area = areas[0] || (await ensureDefaultArea()) || (await addArea("Items"));
     return area?.id ?? null;
   };
 
@@ -200,7 +209,7 @@ export default function QuoteQuickEditor({
           />
           {loadingProducts && <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-slate-400" />}
           {productResults.length > 0 && (
-            <ScrollArea className="absolute z-30 mt-1 max-h-64 w-full rounded-md border border-slate-200 bg-white shadow-lg">
+            <ScrollArea className={`absolute z-30 ${dropdownPos} max-h-64 w-full rounded-md border border-slate-200 bg-white shadow-lg`}>
               <div className="divide-y divide-slate-100">
                 {productResults.map((p) => {
                   const { unitSell } = getEffectiveUnitPrices(p);
@@ -243,7 +252,7 @@ export default function QuoteQuickEditor({
             className="h-9 border-slate-200 bg-white pl-9 text-slate-800 placeholder:text-slate-400"
           />
           {serviceResults.length > 0 && (
-            <ScrollArea className="absolute z-30 mt-1 max-h-64 w-full rounded-md border border-slate-200 bg-white shadow-lg">
+            <ScrollArea className={`absolute z-30 ${dropdownPos} max-h-64 w-full rounded-md border border-slate-200 bg-white shadow-lg`}>
               <div className="divide-y divide-slate-100">
                 {serviceResults.map((s) => (
                   <button
