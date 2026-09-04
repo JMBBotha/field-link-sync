@@ -21,7 +21,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  FileText, Trash2, Eye, Search, Loader2, AlertTriangle, Database, HardDrive, Package,
+  FileText, Trash2, Eye, Search, Loader2, AlertTriangle, Database, HardDrive, Package, CheckCircle2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -36,6 +36,11 @@ interface PDFUploadRow {
   status: string | null;
   supplier_id: string;
   suppliers: { id: string; name: string } | null;
+  /** Current active book for this supplier+brand. Synthetic page-group rows are always active. */
+  is_active?: boolean | null;
+  brand?: string | null;
+  /** False for synthetic rows built from supplier_pdf_pages (no pdf_uploads row to flag). */
+  can_activate?: boolean;
 }
 
 interface SupplierPDFManagerProps {
@@ -298,9 +303,13 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
     queryFn: async () => {
       // Source 1: pdf_uploads table (legacy)
       const { data: uploadsData } = await (supabase.from("pdf_uploads") as any)
-        .select(`id, file_name, file_path, storage_path, file_url, created_at, status, supplier_id, suppliers ( id, name )`)
+        .select(`id, file_name, file_path, storage_path, file_url, created_at, status, supplier_id, is_active, brand, suppliers ( id, name )`)
         .order("created_at", { ascending: false });
-      const uploads = (uploadsData || []) as PDFUploadRow[];
+      const uploads = ((uploadsData || []) as PDFUploadRow[]).map((u) => ({
+        ...u,
+        is_active: u.is_active !== false,
+        can_activate: true,
+      }));
 
       // Source 2: supplier_pdf_pages table (used by import pipeline)
       const { data: pagesData } = await (supabase.from("supplier_pdf_pages") as any)
@@ -351,6 +360,9 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
           status: "parsed",
           supplier_id: resolvedSupplier?.id || supplierIdText,
           suppliers: resolvedSupplier ? { id: resolvedSupplier.id, name: resolvedSupplier.name } : null,
+          is_active: true,
+          brand: null,
+          can_activate: false,
         });
       }
 
