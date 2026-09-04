@@ -99,11 +99,11 @@ export default function EstimateBuilder({
     if (orphans.length > 0) {
       grouped.push({
         id: null,
-        name: "Other items",
+        name: "Items",
         lines: orphans.map(lineFor),
       });
     }
-    if (grouped.length === 0) grouped.push({ id: null, name: "Quote items", lines: [] });
+    if (grouped.length === 0) grouped.push({ id: null, name: "Items", lines: [] });
     return grouped;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areas, topLevel, productImages]);
@@ -207,7 +207,7 @@ export default function EstimateBuilder({
           onAddArea: () => {
             void addArea(`Area ${areas.length + 1}`);
           },
-          searchBar: <QuoteQuickEditor onChanged={onChanged} />,
+          searchBar: <QuoteQuickEditor onChanged={onChanged} dropUp />,
           discountControl,
         }}
       />
