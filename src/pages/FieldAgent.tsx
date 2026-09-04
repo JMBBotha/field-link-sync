@@ -1442,6 +1442,7 @@ const FieldAgent = () => {
                         onComplete={handleCompleteJob}
                         onRelease={handleReleaseLead}
                         invoice={installInvoicesByLead[lead.id] ?? null}
+                        estimateUrl={installQuoteByLead[lead.id] ? `/admin/estimates/${installQuoteByLead[lead.id]}` : null}
                         loadingAction={loadingAction}
                         scrollIntoView={highlightedLeadId === lead.id}
                       />
@@ -1466,6 +1467,7 @@ const FieldAgent = () => {
                         onComplete={handleCompleteJob}
                         loadingAction={loadingAction}
                         invoice={installInvoicesByLead[lead.id] ?? null}
+                        estimateUrl={installQuoteByLead[lead.id] ? `/admin/estimates/${installQuoteByLead[lead.id]}` : null}
                       />
                     ))}
                   </>
@@ -1631,6 +1633,7 @@ const FieldAgent = () => {
                                 onAccept={handleAcceptLead}
                                 loadingAction={loadingAction}
                                 invoice={installInvoicesByLead[lead.id] ?? null}
+                        estimateUrl={installQuoteByLead[lead.id] ? `/admin/estimates/${installQuoteByLead[lead.id]}` : null}
                               />
                             );
                           })
@@ -1674,6 +1677,7 @@ const FieldAgent = () => {
                                 onRelease={handleReleaseLead}
                                 loadingAction={loadingAction}
                                 invoice={installInvoicesByLead[lead.id] ?? null}
+                        estimateUrl={installQuoteByLead[lead.id] ? `/admin/estimates/${installQuoteByLead[lead.id]}` : null}
                               />
                             );
                           })
@@ -1713,6 +1717,7 @@ const FieldAgent = () => {
                                 onComplete={handleCompleteJob}
                                 loadingAction={loadingAction}
                                 invoice={installInvoicesByLead[lead.id] ?? null}
+                        estimateUrl={installQuoteByLead[lead.id] ? `/admin/estimates/${installQuoteByLead[lead.id]}` : null}
                               />
                             ))}
                           </>
@@ -1840,6 +1845,7 @@ const FieldAgent = () => {
                     onCardClick={openLeadDetail}
                     onStart={openLeadDetail}
                     invoice={installInvoicesByLead[lead.id] ?? null}
+                        estimateUrl={installQuoteByLead[lead.id] ? `/admin/estimates/${installQuoteByLead[lead.id]}` : null}
                     loadingAction={loadingAction}
                   />
                 ))
