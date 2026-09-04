@@ -44,11 +44,16 @@ export interface EstimateEditing {
   onDeleteLine: (id: string) => void;
   onRenameArea: (id: string, name: string) => void;
   onAddArea: () => void;
+  /** Naming the orphan default section promotes it into a real area. */
+  onNameDefaultArea?: (name: string) => void;
+  /** Area whose name input should take focus (just-created area). */
+  focusAreaId?: string | null;
   /** Delete an area (and its lines). Only shown for real (persisted) areas. */
   onDeleteArea?: (id: string) => void;
   /** Area currently being built — its add bar is highlighted. */
   activeAreaId?: string | null;
   onSelectArea?: (id: string | null) => void;
+
   /** Slim add-item / add-service bar rendered below EACH area's lines. */
   renderAddBar?: (areaId: string | null) => ReactNode;
   /** Discount control rendered in the totals block. */
@@ -247,6 +252,14 @@ const EstimateDocument = ({
                     <input
                       defaultValue={area.name}
                       key={`${area.id}-${area.name}`}
+                      aria-label="Area name"
+                      placeholder="Room / area name"
+                      ref={(el) => {
+                        if (el && editing.focusAreaId === area.id) {
+                          el.focus();
+                          el.select();
+                        }
+                      }}
                       onBlur={(e) => {
                         const v = e.target.value.trim();
                         if (v && v !== area.name) editing.onRenameArea(area.id as string, v);
@@ -254,7 +267,17 @@ const EstimateDocument = ({
                       className={`${inputBase} text-[13px] font-semibold uppercase tracking-wide text-[#1B3A5C]`}
                     />
                   ) : (
-                    <p className="text-[13px] font-semibold uppercase tracking-wide text-[#1B3A5C]">{area.name}</p>
+                    <input
+                      key={`default-${area.name}`}
+                      defaultValue={area.name === "Add items to quote" ? "" : area.name}
+                      aria-label="Area name"
+                      placeholder="Name this room / area…"
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        if (v) editing.onNameDefaultArea?.(v);
+                      }}
+                      className={`${inputBase} text-[13px] font-semibold uppercase tracking-wide text-[#1B3A5C]`}
+                    />
                   )}
                   {area.id && editing.onDeleteArea && (
                     <button
