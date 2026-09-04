@@ -61,6 +61,8 @@ export default function EstimateBuilder({
   } = useQuoteContext();
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
+  const [focusAreaId, setFocusAreaId] = useState<string | null>(null);
+
 
 
   const topLevel = useMemo(() => items.filter((i) => !i.parent_item_id), [items]);
