@@ -10,6 +10,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { convertQuoteToInvoice, buildQuoteLineItems } from "@/lib/convertQuoteToInvoice";
 import { generateDocumentPdf } from "@/lib/documentPdf";
+import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
+import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import EstimateBuilder from "@/components/quoting/EstimateBuilder";
 import StatusPill from "@/components/shared/StatusPill";
 
@@ -33,6 +35,7 @@ const AdminEstimateDetailPage = () => {
   const qc = useQueryClient();
   const { settings } = useCompanySettings();
   const [busy, setBusy] = useState<string | null>(null);
+  const [sendOpen, setSendOpen] = useState(false);
 
   const { data: quote, isLoading } = useQuery({
     queryKey: ["quote-document", id],
