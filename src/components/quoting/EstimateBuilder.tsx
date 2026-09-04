@@ -211,12 +211,29 @@ export default function EstimateBuilder({
             void updateArea(id, { name });
             onChanged?.();
           },
+          focusAreaId,
+          onNameDefaultArea: async (name) => {
+            const created = await addArea(name);
+            if (created?.id) {
+              // Move any orphan lines into the newly named area.
+              for (const i of topLevel.filter((x) => !x.area_id)) {
+                void updateItem(i.id, { area_id: created.id } as any);
+              }
+              setActiveAreaId(created.id);
+              setFocusAreaId(null);
+            }
+            onChanged?.();
+          },
           activeAreaId,
           onSelectArea: setActiveAreaId,
           onAddArea: async () => {
             const created = await addArea(`Area ${areas.length + 1}`);
-            if (created?.id) setActiveAreaId(created.id);
+            if (created?.id) {
+              setActiveAreaId(created.id);
+              setFocusAreaId(created.id);
+            }
           },
+
           onDeleteArea: (id) => {
             const area = editAreas.find((a) => a.id === id);
             const lineCount = area?.lines.length ?? 0;
