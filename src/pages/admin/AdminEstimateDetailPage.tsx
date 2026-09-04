@@ -17,6 +17,8 @@ import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { fetchQuoteInvoice } from "@/lib/depositInvoice";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { QuoteProvider } from "@/contexts/QuoteContext";
+import QuoteQuickEditor from "@/components/quoting/QuoteQuickEditor";
 
 /**
  * Read-only, client-facing estimate document view.
@@ -81,6 +83,12 @@ const AdminEstimateDetailPage = () => {
     enabled: !!id && canConvert,
     queryFn: () => fetchQuoteInvoice(id),
   });
+
+  /** Re-read the document + line items after an inline edit (DB trigger recalcs totals). */
+  const refreshDocument = () => {
+    qc.invalidateQueries({ queryKey: ["quote-document", id] });
+    qc.invalidateQueries({ queryKey: ["quote-document-items", id] });
+  };
 
   const handleSend = async () => {
     setBusy("send");
@@ -179,6 +187,10 @@ const AdminEstimateDetailPage = () => {
 
       <AcceptedWorkSection quoteId={quote.id} />
 
+      {/* Daily editor — writes into THIS quote only */}
+      <QuoteProvider quoteId={quote.id}>
+        <QuoteQuickEditor onChanged={refreshDocument} />
+      </QuoteProvider>
 
       <EstimateDocument
         estimateNumber={quote.quote_number}
@@ -201,7 +213,7 @@ const AdminEstimateDetailPage = () => {
       {/* Actions */}
       <div className="flex flex-wrap justify-end gap-2 pt-2 print:hidden">
         <Button variant="outline" onClick={() => navigate(`/admin/quote-builder?quoteId=${quote.id}`)}>
-          <Pencil className="mr-2 h-4 w-4" /> Edit
+          <Pencil className="mr-2 h-4 w-4" /> Full builder / Visual PDF
         </Button>
         <Button variant="outline" onClick={handleSend} disabled={busy === "send"}>
           {busy === "send" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
