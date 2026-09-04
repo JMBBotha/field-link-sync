@@ -205,7 +205,7 @@ const AdminEstimateDetailPage = () => {
       {/* Actions */}
       <div className="flex flex-wrap justify-end gap-2 pt-2 print:hidden">
         <Button variant="outline" onClick={() => navigate(`/admin/quote-builder?quoteId=${quote.id}`)}>
-          <Pencil className="mr-2 h-4 w-4" /> Edit
+          <Pencil className="mr-2 h-4 w-4" /> Full builder / Visual PDF
         </Button>
         <Button variant="outline" onClick={handleSend} disabled={busy === "send"}>
           {busy === "send" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
