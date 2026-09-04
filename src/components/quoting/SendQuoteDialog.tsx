@@ -39,6 +39,20 @@ async function blobToBase64(blob: Blob): Promise<string> {
   return btoa(binary);
 }
 
+/** Pulls the real message out of a failed functions.invoke response. */
+async function readInvokeError(error: unknown): Promise<string> {
+  const ctx = (error as { context?: Response })?.context;
+  if (ctx && typeof ctx.text === "function") {
+    try {
+      const body = await ctx.text();
+      if (body) return body;
+    } catch {
+      /* fall through to the generic message */
+    }
+  }
+  return error instanceof Error ? error.message : "Please try again.";
+}
+
 /**
  * Sends the SAVED quote to a client by email/WhatsApp, and lets the user
  * download it. The PDF is always generated from the same EstimateDocument
@@ -60,6 +74,9 @@ const SendQuoteDialog = ({
   const [leadId, setLeadId] = useState<string | null>(null);
   const [busy, setBusy] = useState<"email" | "pdf" | null>(null);
   const [sent, setSent] = useState<{ email: boolean }>({ email: false });
+  // Set once the backend tells us email isn't configured — we then stop
+  // offering the Email button and point the user at Copy link / Download PDF.
+  const [emailUnavailable, setEmailUnavailable] = useState(false);
 
   // Resolve email + recipient phone from THIS quote's own records — never from
   // the customer's latest lead. Phone: quote's customer row first, then the
@@ -199,29 +216,82 @@ const SendQuoteDialog = ({
       return;
     }
     setBusy("email");
-    try {
+    // Hard cap: PDF capture or a stalled function must never leave a spinner up.
+    const EMAIL_TIMEOUT_MS = 28000;
+    let timedOut = false;
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => {
+        timedOut = true;
+        reject(new Error("timeout"));
+      }, EMAIL_TIMEOUT_MS),
+    );
+
+    const send = async () => {
       const pdfBase64 = await blobToBase64(await buildPdf());
-      const { error } = await supabase.functions.invoke("send-quote-email", {
+      return supabase.functions.invoke("send-quote-email", {
         body: {
           to: email.trim(),
           subject: `Your quote ${quoteNumber}`,
           quoteNumber,
+          quoteId,
+          customerId,
+          quoteUrl: clientUrl,
           clientName: resolvedCustomerName,
           totalAmount: total,
           unsubscribeToken: crypto.randomUUID(),
           pdfBase64,
         },
       });
-      if (error) throw error;
+    };
+
+    try {
+      const { data, error } = await Promise.race([send(), timeout]);
+
+      // Read the body too — a "not configured" or mock reply must never be
+      // reported to the user as a successful send.
+      const payload = data as { success?: boolean; mock?: boolean; code?: string; skipped?: boolean; reason?: string } | null;
+      const detail = error
+        ? await readInvokeError(error)
+        : payload?.code === "EMAIL_NOT_CONFIGURED" || payload?.mock
+          ? "EMAIL_NOT_CONFIGURED"
+          : null;
+
+      if (detail) {
+        if (detail.includes("EMAIL_NOT_CONFIGURED")) {
+          setEmailUnavailable(true);
+          toast({
+            title: "Email not configured",
+            description: "Quote email isn't set up yet. Use Copy link or Download PDF for now.",
+            variant: "destructive",
+          });
+        } else {
+          toast({ title: "Email failed", description: detail, variant: "destructive" });
+        }
+        return;
+      }
+
+      if (payload?.skipped) {
+        toast({ title: "Not sent", description: payload.reason || "Recipient has unsubscribed.", variant: "destructive" });
+        return;
+      }
+
       await logDelivery("email", email.trim());
       setSent((s) => ({ ...s, email: true }));
       toast({ title: "Quote emailed", description: `Sent to ${email.trim()}` });
     } catch (err) {
-      toast({
-        title: "Email failed",
-        description: err instanceof Error ? err.message : "Please try again.",
-        variant: "destructive",
-      });
+      if (timedOut || (err instanceof Error && err.message === "timeout")) {
+        toast({
+          title: "Email timed out",
+          description: "Try Download PDF or Copy link instead.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Email failed",
+          description: err instanceof Error ? err.message : "Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setBusy(null);
     }
@@ -276,11 +346,14 @@ const SendQuoteDialog = ({
                 placeholder="client@example.com"
                 className="h-9 text-sm"
               />
-              <Button onClick={handleEmail} disabled={busy !== null} className="h-9 shrink-0 gap-1.5">
+              <Button onClick={handleEmail} disabled={busy !== null || emailUnavailable} className="h-9 shrink-0 gap-1.5">
                 {busy === "email" ? <Loader2 className="h-4 w-4 animate-spin" /> : sent.email ? <Check className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
                 Email
               </Button>
             </div>
+            {emailUnavailable && (
+              <p className="text-xs text-destructive">Email not configured — use Copy link or Download PDF.</p>
+            )}
           </div>
 
         </div>
