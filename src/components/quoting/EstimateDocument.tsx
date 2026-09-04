@@ -338,8 +338,9 @@ const EstimateDocument = ({
                             <button
                               type="button"
                               aria-label="Remove line"
+                              title="Remove line"
                               onClick={() => editing.onDeleteLine(line.id)}
-                              className="text-slate-300 hover:text-red-500"
+                              className="inline-flex h-6 w-6 items-center justify-center rounded border border-slate-200 bg-white text-slate-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
@@ -350,26 +351,29 @@ const EstimateDocument = ({
                     {area.lines.length === 0 && (
                       <tr>
                         <td colSpan={5} className="py-4 text-center text-[11px] text-slate-400">
-                          No lines in this area yet — use the add bar below.
+                          No lines here yet — use the add bar below to build this section.
                         </td>
                       </tr>
                     )}
                   </tbody>
                 </table>
+
+                {/* ── Per-area add bar (staff only, never printed) ── */}
+                {editing.renderAddBar && (
+                  <div className="pt-2 print:hidden">{editing.renderAddBar(area.id)}</div>
+                )}
               </section>
             ))}
 
             <button
               type="button"
               onClick={editing.onAddArea}
-              className="inline-flex items-center gap-1 rounded-md border border-dashed border-slate-300 px-3 py-1.5 text-[12px] text-slate-500 hover:border-[#1B3A5C] hover:text-[#1B3A5C] print:hidden"
+              className="inline-flex items-center gap-1 rounded-md border border-dashed border-slate-300 bg-white px-3 py-1.5 text-[12px] text-slate-600 hover:border-[#1B3A5C] hover:text-[#1B3A5C] print:hidden"
             >
               <Plus className="h-3.5 w-3.5" /> Add area
             </button>
-
-            {/* ── Add bar (staff only, never printed) — sits under the lines ── */}
-            {editing.searchBar && <div className="pt-1">{editing.searchBar}</div>}
           </div>
+
         ) : (
           <table className="mt-8 w-full border-collapse text-[12px]">
             <thead>
