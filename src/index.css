@@ -230,7 +230,8 @@ All colors MUST be HSL.
 }
 
 /* Keep the client document (and anything inside it) clean white. */
-.dark .estimate-page [data-pdf-capture-root] .bg-white {
+.dark .app-surface .estimate-page [data-pdf-capture-root] .bg-white,
+.dark .app-surface .estimate-page .estimate-document .bg-white {
   background-color: hsl(0 0% 100%) !important;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
