@@ -3917,11 +3917,14 @@ export type Database = {
       }
       pdf_uploads: {
         Row: {
+          activated_at: string | null
+          brand: string | null
           created_at: string | null
           file_name: string
           file_path: string | null
           file_url: string | null
           id: string
+          is_active: boolean
           markup_percent: number | null
           page_count: number | null
           price_includes_vat: boolean | null
@@ -3933,11 +3936,14 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          activated_at?: string | null
+          brand?: string | null
           created_at?: string | null
           file_name: string
           file_path?: string | null
           file_url?: string | null
           id?: string
+          is_active?: boolean
           markup_percent?: number | null
           page_count?: number | null
           price_includes_vat?: boolean | null
@@ -3949,11 +3955,14 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          activated_at?: string | null
+          brand?: string | null
           created_at?: string | null
           file_name?: string
           file_path?: string | null
           file_url?: string | null
           id?: string
+          is_active?: boolean
           markup_percent?: number | null
           page_count?: number | null
           price_includes_vat?: boolean | null
