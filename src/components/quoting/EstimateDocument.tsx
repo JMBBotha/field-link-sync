@@ -242,28 +242,40 @@ const EstimateDocument = ({
                           }`}
                         >
                           <td className="py-2 pr-4">
-                            <input
-                              key={`${line.id}-name`}
-                              defaultValue={line.name}
-                              onBlur={(e) => {
-                                const v = e.target.value.trim();
-                                if (v && v !== line.name) editing.onLineChange(line.id, { item_name: v });
-                              }}
-                              className={`${inputBase} font-medium text-slate-800`}
-                            />
-                            <textarea
-                              key={`${line.id}-desc`}
-                              defaultValue={line.description ?? ""}
-                              rows={2}
-                              placeholder="Description (prints on the quote)"
-                              onBlur={(e) => {
-                                const v = e.target.value;
-                                if (v !== (line.description ?? "")) {
-                                  editing.onLineChange(line.id, { description: v || null });
-                                }
-                              }}
-                              className={`${inputBase} mt-0.5 resize-y text-[11px] text-slate-500`}
-                            />
+                            <div className="flex items-start gap-2">
+                              {line.imageUrl && (
+                                <img
+                                  src={line.imageUrl}
+                                  alt={line.name}
+                                  className="mt-0.5 h-10 w-10 shrink-0 rounded border border-slate-200 bg-white object-contain"
+                                  loading="lazy"
+                                />
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <input
+                                  key={`${line.id}-name`}
+                                  defaultValue={line.name}
+                                  onBlur={(e) => {
+                                    const v = e.target.value.trim();
+                                    if (v && v !== line.name) editing.onLineChange(line.id, { item_name: v });
+                                  }}
+                                  className={`${inputBase} font-medium text-slate-800`}
+                                />
+                                <textarea
+                                  key={`${line.id}-desc`}
+                                  defaultValue={line.description ?? ""}
+                                  rows={2}
+                                  placeholder="Description (prints on the quote)"
+                                  onBlur={(e) => {
+                                    const v = e.target.value;
+                                    if (v !== (line.description ?? "")) {
+                                      editing.onLineChange(line.id, { description: v || null });
+                                    }
+                                  }}
+                                  className={`${inputBase} mt-0.5 resize-y text-[11px] text-slate-500`}
+                                />
+                              </div>
+                            </div>
                           </td>
                           <td className="py-2 text-right">
                             <input
@@ -348,10 +360,22 @@ const EstimateDocument = ({
                 return (
                   <tr key={idx} className="border-b border-slate-100 align-top">
                     <td className="py-3 pr-4 text-slate-800">
-                      <p className="font-medium">{name}</p>
-                      {detailLines.map((line, li) => (
-                        <p key={li} className="mt-0.5 text-[11px] text-slate-500">{line}</p>
-                      ))}
+                      <div className="flex items-start gap-3">
+                        {item.imageUrl && (
+                          <img
+                            src={item.imageUrl}
+                            alt={name}
+                            className="h-12 w-12 shrink-0 rounded border border-slate-200 bg-white object-contain"
+                            loading="lazy"
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-medium">{name}</p>
+                          {detailLines.map((line, li) => (
+                            <p key={li} className="mt-0.5 text-[11px] text-slate-500">{line}</p>
+                          ))}
+                        </div>
+                      </div>
                     </td>
                     <td className="py-3 text-right text-slate-600">{formatCurrency(item.unit_price)}</td>
                     <td className="py-3 text-right text-slate-600">{item.quantity}</td>
