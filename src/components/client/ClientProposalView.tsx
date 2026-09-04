@@ -239,7 +239,10 @@ const ClientProposalView = () => {
       <header className="bg-primary text-white px-4 py-8 print:hidden">
         <div className="max-w-4xl mx-auto text-center">
           <img src={logo} alt="Be Cool" className="h-16 mx-auto mb-4" />
-          <h1 className="text-2xl md:text-3xl font-bold">Service Proposal</h1>
+          <h1 className="text-2xl md:text-3xl font-bold">
+            {customerName ? `${customerName} — Quote / Proposal` : "Quote / Proposal"}
+          </h1>
+
           <p className="text-blue-100 mt-2">Quote #{quote.quote_number}</p>
           {quote.status === "accepted" || actionDone === "accepted" ? (
             <Badge className="mt-3 bg-emerald-500 text-white text-sm px-4 py-1">✅ Accepted</Badge>

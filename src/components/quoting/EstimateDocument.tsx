@@ -199,7 +199,10 @@ const EstimateDocument = ({
         </div>
 
         {/* ── Title ── */}
-        <h1 className="mt-8 text-[22px] font-bold tracking-tight text-[#1B3A5C]">Estimate</h1>
+        <h1 className="mt-8 text-[22px] font-bold tracking-tight text-[#1B3A5C]">
+          {editing ? "Estimate" : customerName ? `${customerName} — Quote / Proposal` : "Quote / Proposal"}
+        </h1>
+
 
         {/* ── Meta row ── */}
         <div className="mt-4 grid grid-cols-2 gap-6 border-y border-slate-200 py-6 sm:grid-cols-4">
@@ -376,13 +379,6 @@ const EstimateDocument = ({
                         </tr>
                       );
                     })}
-                    {area.lines.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="py-4 text-center text-[11px] text-slate-400">
-                          No lines here yet — use the add bar below to build this section.
-                        </td>
-                      </tr>
-                    )}
                   </tbody>
                 </table>
 
@@ -390,7 +386,14 @@ const EstimateDocument = ({
                 {editing.renderAddBar && (
                   <div className="pt-2 print:hidden">{editing.renderAddBar(area.id)}</div>
                 )}
+
+                {area.lines.length === 0 && (
+                  <p className="py-4 text-center text-[11px] text-slate-400 print:hidden">
+                    No lines here yet — use the add bar above to build this section.
+                  </p>
+                )}
               </section>
+
             ))}
 
             <button
