@@ -258,10 +258,15 @@ const AdminEstimateDetailPage = () => {
         <Button variant="outline" onClick={() => navigate(`/admin/quote-builder?quoteId=${quote.id}`)}>
           <Pencil className="mr-2 h-4 w-4" /> Full builder / Visual PDF
         </Button>
+        <Button variant="outline" onClick={handleSave} disabled={busy === "save"}>
+          {busy === "save" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          Save
+        </Button>
         <Button variant="outline" onClick={handleSend} disabled={busy === "send"}>
           {busy === "send" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
           Send
         </Button>
+
         <Button variant="outline" onClick={handlePdf} disabled={busy === "pdf"}>
           {busy === "pdf" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
           PDF
