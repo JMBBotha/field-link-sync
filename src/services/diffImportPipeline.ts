@@ -213,6 +213,8 @@ export interface ApplyDiffResult {
   imported: number;
   updated: number;
   archived: number;
+  /** Rows matched with no changes (reported in the post-parse summary). */
+  unchanged: number;
   errors: number;
   firstError: string;
 }
@@ -245,6 +247,7 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
   // Delta/partial files never archive — a product just not being in a small
   // "price changes only" file is not evidence it was discontinued.
   const archiveRows = isFullCatalogue ? workingRows.filter((r) => r.action === "archive") : [];
+  const unchanged = workingRows.filter((r) => r.action === "unchanged").length;
   const total = newRows.length + updateRows.length + archiveRows.length;
 
   let imported = 0, updated = 0, archived = 0, errors = 0;
@@ -256,7 +259,7 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
   };
 
   if (total === 0) {
-    return { imported: 0, updated: 0, archived: 0, errors: 0, firstError: "" };
+    return { imported: 0, updated: 0, archived: 0, unchanged, errors: 0, firstError: "" };
   }
 
   console.log(`[DiffImport] Starting import for supplier "${supplierName}" (id: ${supplierId}), ${newRows.length} new, ${updateRows.length} updates, ${archiveRows.length} archives`);
@@ -377,5 +380,5 @@ export async function applyProductDiff(opts: ApplyDiffOptions): Promise<ApplyDif
   }
 
   console.log(`[DiffImport] ✅ Complete — ${imported} new, ${updated} updated, ${archived} archived, ${errors} errors`);
-  return { imported, updated, archived, errors, firstError };
+  return { imported, updated, archived, unchanged, errors, firstError };
 }
