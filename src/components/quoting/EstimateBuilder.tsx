@@ -31,11 +31,15 @@ interface Props {
   onChanged?: () => void;
 }
 
+/** Header shown for the default catch-all section (named areas keep their name). */
+const DEFAULT_SECTION_LABEL = "Add items to quote";
+
 const discountAmountFor = (subtotal: number, type: string | null, value: number) => {
   if (type === "percentage" || type === "percent") return (subtotal * value) / 100;
   if (type === "fixed") return value;
   return 0;
 };
+
 
 export default function EstimateBuilder({
   quoteNumber,
@@ -56,6 +60,8 @@ export default function EstimateBuilder({
     addArea, updateArea, updateItem, deleteItem, updateQuote,
   } = useQuoteContext();
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
+  const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
+
 
   const topLevel = useMemo(() => items.filter((i) => !i.parent_item_id), [items]);
 
@@ -99,14 +105,15 @@ export default function EstimateBuilder({
     if (orphans.length > 0) {
       grouped.push({
         id: null,
-        name: "Items",
+        name: DEFAULT_SECTION_LABEL,
         lines: orphans.map(lineFor),
       });
     }
-    if (grouped.length === 0) grouped.push({ id: null, name: "Items", lines: [] });
+    if (grouped.length === 0) grouped.push({ id: null, name: DEFAULT_SECTION_LABEL, lines: [] });
     return grouped;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areas, topLevel, productImages]);
+
 
   const subtotal = useMemo(
     () => topLevel.reduce((s, i) => s + Number(i.quantity || 0) * Number(i.unit_price || 0), 0),
@@ -204,11 +211,22 @@ export default function EstimateBuilder({
             void updateArea(id, { name });
             onChanged?.();
           },
-          onAddArea: () => {
-            void addArea(`Area ${areas.length + 1}`);
+          activeAreaId,
+          onSelectArea: setActiveAreaId,
+          onAddArea: async () => {
+            const created = await addArea(`Area ${areas.length + 1}`);
+            if (created?.id) setActiveAreaId(created.id);
           },
-          searchBar: <QuoteQuickEditor onChanged={onChanged} dropUp />,
+          renderAddBar: (areaId) => (
+            <QuoteQuickEditor
+              key={areaId ?? "default"}
+              onChanged={onChanged}
+              targetAreaId={areaId}
+              dropUp
+            />
+          ),
           discountControl,
+
         }}
       />
 

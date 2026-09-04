@@ -44,11 +44,15 @@ export interface EstimateEditing {
   onDeleteLine: (id: string) => void;
   onRenameArea: (id: string, name: string) => void;
   onAddArea: () => void;
-  /** Slim add-item / add-service bar rendered below the line items. */
-  searchBar?: ReactNode;
+  /** Area currently being built — its add bar is highlighted. */
+  activeAreaId?: string | null;
+  onSelectArea?: (id: string | null) => void;
+  /** Slim add-item / add-service bar rendered below EACH area's lines. */
+  renderAddBar?: (areaId: string | null) => ReactNode;
   /** Discount control rendered in the totals block. */
   discountControl?: ReactNode;
 }
+
 
 export interface EstimateDocumentProps {
   estimateNumber: string;
@@ -143,8 +147,11 @@ const EstimateDocument = ({
   return (
     <div
       data-pdf-capture-root="estimate"
-      className="estimate-document pdf-page mx-auto w-full bg-white text-slate-800 shadow-sm ring-1 ring-slate-200 print:shadow-none print:ring-0"
+      className={`estimate-document pdf-page mx-auto w-full text-slate-800 shadow-sm ring-1 ring-slate-200 print:bg-white print:shadow-none print:ring-0 ${
+        editing ? "estimate-editing bg-slate-100" : "bg-white"
+      }`}
     >
+
       <div className="p-8 sm:p-10">
         {/* ── Top: logo left, business info right ── */}
         <div className="flex items-start justify-between gap-6">
@@ -198,8 +205,13 @@ const EstimateDocument = ({
         {/* ── Line items ── */}
         {editing ? (
           <div className="mt-6 space-y-6">
-            {editing.areas.map((area) => (
-              <section key={area.id ?? "unassigned"}>
+            {editing.areas.map((area, areaIdx) => (
+              <section
+                key={area.id ?? "unassigned"}
+                onFocus={() => editing.onSelectArea?.(area.id)}
+                onClick={() => editing.onSelectArea?.(area.id)}
+                className="rounded-lg bg-white p-4 ring-1 ring-slate-200 print:rounded-none print:p-0 print:ring-0"
+              >
                 <div className="flex items-center gap-2 border-b border-slate-300 pb-1">
                   {area.id ? (
                     <input
@@ -216,7 +228,21 @@ const EstimateDocument = ({
                   )}
                 </div>
 
+                {areaIdx === 0 && (
+                  <div className="flex items-center gap-2 pt-2 print:hidden">
+                    <button
+                      type="button"
+                      onClick={editing.onAddArea}
+                      className="inline-flex items-center gap-1 rounded-md border border-dashed border-slate-300 px-2.5 py-1 text-[11px] text-slate-600 hover:border-[#1B3A5C] hover:text-[#1B3A5C]"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Add area
+                    </button>
+                    <span className="text-[11px] text-slate-400">Rename an area by typing over its heading</span>
+                  </div>
+                )}
+
                 <table className="w-full border-collapse text-[12px]">
+
                   <thead>
                     <tr className="text-[10px] uppercase tracking-wider text-slate-500">
                       <th className="py-2 text-left font-semibold">Description</th>
@@ -312,8 +338,9 @@ const EstimateDocument = ({
                             <button
                               type="button"
                               aria-label="Remove line"
+                              title="Remove line"
                               onClick={() => editing.onDeleteLine(line.id)}
-                              className="text-slate-300 hover:text-red-500"
+                              className="inline-flex h-6 w-6 items-center justify-center rounded border border-slate-200 bg-white text-slate-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
@@ -324,26 +351,29 @@ const EstimateDocument = ({
                     {area.lines.length === 0 && (
                       <tr>
                         <td colSpan={5} className="py-4 text-center text-[11px] text-slate-400">
-                          No lines in this area yet — use the add bar below.
+                          No lines here yet — use the add bar below to build this section.
                         </td>
                       </tr>
                     )}
                   </tbody>
                 </table>
+
+                {/* ── Per-area add bar (staff only, never printed) ── */}
+                {editing.renderAddBar && (
+                  <div className="pt-2 print:hidden">{editing.renderAddBar(area.id)}</div>
+                )}
               </section>
             ))}
 
             <button
               type="button"
               onClick={editing.onAddArea}
-              className="inline-flex items-center gap-1 rounded-md border border-dashed border-slate-300 px-3 py-1.5 text-[12px] text-slate-500 hover:border-[#1B3A5C] hover:text-[#1B3A5C] print:hidden"
+              className="inline-flex items-center gap-1 rounded-md border border-dashed border-slate-300 bg-white px-3 py-1.5 text-[12px] text-slate-600 hover:border-[#1B3A5C] hover:text-[#1B3A5C] print:hidden"
             >
               <Plus className="h-3.5 w-3.5" /> Add area
             </button>
-
-            {/* ── Add bar (staff only, never printed) — sits under the lines ── */}
-            {editing.searchBar && <div className="pt-1">{editing.searchBar}</div>}
           </div>
+
         ) : (
           <table className="mt-8 w-full border-collapse text-[12px]">
             <thead>
