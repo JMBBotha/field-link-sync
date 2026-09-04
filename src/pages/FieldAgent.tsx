@@ -153,13 +153,14 @@ const FieldAgent = () => {
   const timerIntervalRef = useRef<number | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  // Bottom-nav "Map" tab drives /field?view=map; keep the map sheet in sync.
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    setShowMapOnMobile(params.get("view") === "map");
-  }, [location.search]);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  // Bottom-nav "Map" tab drives /field?view=map; keep the map sheet in sync.
+  // Desktop keeps the classic map + side panels unless ?view=list is asked for.
+  useEffect(() => {
+    const view = new URLSearchParams(location.search).get("view");
+    setShowMapOnMobile(view === "map" || (!isMobile && view !== "list"));
+  }, [location.search, isMobile]);
 
   // Offline support
   const { isOnline, syncStatus, queueOperation, retrySyncFailedOperations, clearFailedOperations, deleteOperation, getPendingOperationsList, activeConflict, resolveConflict } = useOfflineContext();
@@ -1160,17 +1161,18 @@ const FieldAgent = () => {
     );
   }
 
-  const footerLeftContent = isMobile ? (
+  const footerLeftContent = (
     <Button
       variant={mobileSheetOpen ? "secondary" : "ghost"}
       size="sm"
       onClick={() => {
-        setShowMapOnMobile(!showMapOnMobile);
-        if (!showMapOnMobile) {
-          setMobileSheetOpen(false);
-        } else {
-          setMobileSheetOpen(true);
+        const next = !showMapOnMobile;
+        setShowMapOnMobile(next);
+        if (isMobile) {
+          setMobileSheetOpen(!next);
         }
+        // Keep the URL in sync so the view=* effect does not undo the toggle.
+        navigate(next ? "/field?view=map" : "/field?view=list", { replace: true });
       }}
       className={mobileSheetOpen ? "bg-white text-blue-600 hover:bg-blue-50 gap-2" : "text-white hover:bg-blue-500 gap-2"}
     >
@@ -1186,7 +1188,7 @@ const FieldAgent = () => {
         </>
       )}
     </Button>
-  ) : null;
+  );
 
   return (
     <Layout footerLeftContent={footerLeftContent}>

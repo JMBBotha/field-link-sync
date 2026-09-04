@@ -1761,21 +1761,26 @@ const AdminQuoteBuilderPageUnified = ({ mode = "admin" }: { mode?: QuoteBuilderM
           else toSupersede.push(d.id);
         }
 
-        // Pass 1b — lead has no real quote yet. Before minting another empty
-        // draft, reuse the customer's latest real quote (other lead/no lead)
-        // so a dispatch tile never opens an empty basket next to a live quote.
+        // Pass 1b — lead has no quote yet. Only adopt an UNLINKED draft for the
+        // same customer (a basket started before the lead existed). Never open
+        // a quote that belongs to another lead/job, and never a sent/accepted
+        // one: auto-save is replace-all and would rewrite that job's lines.
         if (paramLeadId && resolvedCustomerId) {
           const { data: customerQuotes } = await supabase
             .from("quotes")
             .select("id, created_at, sales_engineer_id, status")
             .eq("customer_id", resolvedCustomerId)
-            .neq("status", "superseded")
+            .is("lead_id", null)
+            .eq("status", "draft")
             .order("created_at", { ascending: false })
             .limit(10);
           for (const q of customerQuotes ?? []) {
             if (drafts.some((d: any) => d.id === q.id)) continue;
-            const status = (q as any).status as string | undefined;
-            if ((status && status !== "draft") || (await draftHasRealData(q.id))) {
+            if (await draftHasRealData(q.id)) {
+              // Adopt it onto this lead so it stays a single source of truth.
+              await (supabase.from("quotes") as any)
+                .update({ lead_id: paramLeadId })
+                .eq("id", q.id);
               openQuote(q.id);
               return;
             }
