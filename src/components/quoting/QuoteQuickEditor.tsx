@@ -109,9 +109,10 @@ export default function QuoteQuickEditor({ onChanged }: { onChanged?: () => void
   const productResults = useMemo(() => {
     const term = productTerm.trim();
     if (term.length < 2) return [];
+    const terms = term.toLowerCase().split(/\s+/).filter(Boolean);
     const matched = products.filter((p) =>
       allTermsMatchBlob(
-        term,
+        terms,
         `${p.product_code || ""} ${p.short_name || ""} ${p.brand || ""} ${p.product_category || ""} ${p.description || ""}`.toLowerCase(),
       ),
     );
