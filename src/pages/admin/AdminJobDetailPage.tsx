@@ -276,6 +276,41 @@ const AdminJobDetailPage = () => {
           </Card>
         )}
 
+        {/* Quote / Build path */}
+        {quoteId && quoteSummary && (
+          <Card>
+            <CardContent className="p-4 md:p-5 flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+                  Quote / Build Path
+                </div>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  <span className="font-semibold">{quoteSummary.quote_number || "Quote"}</span>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {(quoteSummary.status || "draft").replace(/_/g, " ")}
+                  </Badge>
+                  {typeof quoteSummary.total === "number" && (
+                    <span className="text-sm text-muted-foreground">
+                      R {quoteSummary.total.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+                    </span>
+                  )}
+                  {quoteSummary.customer_name && (
+                    <span className="text-xs text-muted-foreground">· {quoteSummary.customer_name}</span>
+                  )}
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => navigate(`/admin/estimates/${quoteId}`)}
+              >
+                <FileText className="h-4 w-4" /> Open estimate
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Photos (only when the job originated from a lead) */}
         {j.lead_id && (
           <Card>
