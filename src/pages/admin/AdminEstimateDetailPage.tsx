@@ -249,6 +249,15 @@ const AdminEstimateDetailPage = () => {
           </Tooltip>
         </TooltipProvider>
       </div>
+
+      <SendQuoteDialog
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        quoteId={quote.id}
+        quoteNumber={quote.quote_number}
+        customerId={quote.customer_id}
+        customerName={customer.name || quote.customer_name || "Customer"}
+      />
     </div>
   );
 };
