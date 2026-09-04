@@ -238,41 +238,48 @@ All colors MUST be HSL.
   box-shadow: none;
 }
 
+/* Light mode editing canvas: light grey paper, dark readable text */
+.estimate-editing { color: #1e293b; }
+.estimate-editing input,
+.estimate-editing textarea { color: #0f172a; caret-color: #1B3A5C; }
+.estimate-editing input::placeholder,
+.estimate-editing textarea::placeholder { color: #64748b; }
+
 /* ── Estimate EDITING surface: dark radiant blue-grey, high-contrast text ── */
-.estimate-editing {
+.dark .estimate-editing {
   background: radial-gradient(120% 90% at 50% 0%, #3d4c66 0%, #2b3a52 45%, #1b2940 100%) !important;
   color: #e8eef7;
   --tw-ring-color: rgba(148, 163, 184, 0.35) !important;
 }
 /* Text contrast ladder */
-.estimate-editing .text-slate-900 { color: #f4f8fd !important; }
-.estimate-editing .text-slate-800 { color: #ecf2fa !important; }
-.estimate-editing .text-slate-600 { color: #c6d2e4 !important; }
-.estimate-editing .text-slate-500 { color: #b7c5d9 !important; }
-.estimate-editing .text-slate-400 { color: #a3b4ca !important; }
-.estimate-editing .text-\[\#1B3A5C\] { color: #8fc3ec !important; }
-.estimate-editing .border-\[\#1B3A5C\] { border-color: #5b9bd5 !important; }
+.dark .estimate-editing .text-slate-900 { color: #f4f8fd !important; }
+.dark .estimate-editing .text-slate-800 { color: #ecf2fa !important; }
+.dark .estimate-editing .text-slate-600 { color: #c6d2e4 !important; }
+.dark .estimate-editing .text-slate-500 { color: #b7c5d9 !important; }
+.dark .estimate-editing .text-slate-400 { color: #a3b4ca !important; }
+.dark .estimate-editing .text-\[\#1B3A5C\] { color: #8fc3ec !important; }
+.dark .estimate-editing .border-\[\#1B3A5C\] { border-color: #5b9bd5 !important; }
 /* Surfaces, rings and borders */
-.estimate-editing .bg-white,
+.dark .estimate-editing .bg-white,
 .dark .app-surface .estimate-page .estimate-editing .bg-white {
   background-color: rgba(13, 23, 41, 0.55) !important;
 }
-.estimate-editing .bg-slate-100 { background-color: transparent !important; }
-.estimate-editing .ring-slate-200 { --tw-ring-color: rgba(148, 163, 184, 0.35) !important; }
-.estimate-editing .border-slate-300 { border-color: rgba(163, 180, 202, 0.45) !important; }
-.estimate-editing .border-slate-200 { border-color: rgba(163, 180, 202, 0.28) !important; }
-.estimate-editing .border-slate-100 { border-color: rgba(163, 180, 202, 0.16) !important; }
-.estimate-editing .bg-sky-50\/60 { background-color: rgba(56, 130, 200, 0.18) !important; }
+.dark .estimate-editing .bg-slate-100 { background-color: transparent !important; }
+.dark .estimate-editing .ring-slate-200 { --tw-ring-color: rgba(148, 163, 184, 0.35) !important; }
+.dark .estimate-editing .border-slate-300 { border-color: rgba(163, 180, 202, 0.45) !important; }
+.dark .estimate-editing .border-slate-200 { border-color: rgba(163, 180, 202, 0.28) !important; }
+.dark .estimate-editing .border-slate-100 { border-color: rgba(163, 180, 202, 0.16) !important; }
+.dark .estimate-editing .bg-sky-50\/60 { background-color: rgba(56, 130, 200, 0.18) !important; }
 /* Inputs and placeholders stay readable on the dark surface */
-.estimate-editing input,
-.estimate-editing textarea { color: #eef3fb; caret-color: #8fc3ec; }
-.estimate-editing input::placeholder,
-.estimate-editing textarea::placeholder { color: #93a6bf; }
-.estimate-editing .focus\:bg-white:focus { background-color: rgba(8, 15, 29, 0.6) !important; }
-.estimate-editing .hover\:border-slate-200:hover { border-color: rgba(163, 180, 202, 0.5) !important; }
-.estimate-editing .focus\:border-\[\#1B3A5C\]:focus { border-color: #8fc3ec !important; }
+.dark .estimate-editing input,
+.dark .estimate-editing textarea { color: #eef3fb; caret-color: #8fc3ec; }
+.dark .estimate-editing input::placeholder,
+.dark .estimate-editing textarea::placeholder { color: #93a6bf; }
+.dark .estimate-editing .focus\:bg-white:focus { background-color: rgba(8, 15, 29, 0.6) !important; }
+.dark .estimate-editing .hover\:border-slate-200:hover { border-color: rgba(163, 180, 202, 0.5) !important; }
+.dark .estimate-editing .focus\:border-\[\#1B3A5C\]:focus { border-color: #8fc3ec !important; }
 /* Product thumbnails keep a light tile so transparent PNGs stay visible */
-.estimate-editing img.bg-white { background-color: #ffffff !important; }
+.dark .estimate-editing img.bg-white { background-color: #ffffff !important; }
 /* Print / PDF capture stays clean white */
 @media print {
   .estimate-editing { background: #ffffff !important; color: #1e293b; }
