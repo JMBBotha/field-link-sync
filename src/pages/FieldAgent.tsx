@@ -1161,17 +1161,18 @@ const FieldAgent = () => {
     );
   }
 
-  const footerLeftContent = isMobile ? (
+  const footerLeftContent = (
     <Button
       variant={mobileSheetOpen ? "secondary" : "ghost"}
       size="sm"
       onClick={() => {
-        setShowMapOnMobile(!showMapOnMobile);
-        if (!showMapOnMobile) {
-          setMobileSheetOpen(false);
-        } else {
-          setMobileSheetOpen(true);
+        const next = !showMapOnMobile;
+        setShowMapOnMobile(next);
+        if (isMobile) {
+          setMobileSheetOpen(!next);
         }
+        // Keep the URL in sync so the view=* effect does not undo the toggle.
+        navigate(next ? "/field?view=map" : "/field?view=list", { replace: true });
       }}
       className={mobileSheetOpen ? "bg-white text-blue-600 hover:bg-blue-50 gap-2" : "text-white hover:bg-blue-500 gap-2"}
     >
