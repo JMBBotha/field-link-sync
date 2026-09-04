@@ -8,6 +8,8 @@ export interface EstimateDocLineItem {
   quantity: number;
   unit_price: number;
   amount: number;
+  /** Catalog product image for the sales-card treatment (optional). */
+  imageUrl?: string | null;
 }
 
 /** One editable line inside an area (staff edit mode only). */
@@ -17,6 +19,7 @@ export interface EstimateEditLine {
   description: string | null;
   quantity: number;
   unit_price: number;
+  imageUrl?: string | null;
 }
 
 /** One area section inside the quote body (staff edit mode only). */
