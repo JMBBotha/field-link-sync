@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ClockIcon, Images, Plus, FileText, Timer, GitBranch, CloudOff } from "lucide-react";
+import { X, Phone, MapPin, Clock, Navigation, Loader2, AlertCircle, Pencil, Camera, ClockIcon, Images, Plus, FileText, Timer, GitBranch, CloudOff, ChevronRight } from "lucide-react";
 import RandSign from "@/components/icons/RandSign";
 import BookingBadge from "@/components/BookingBadge";
 import CustomerJobHistory from "@/components/CustomerJobHistory";
@@ -213,6 +213,20 @@ const LeadDetailSheet = ({
       return data;
     },
     enabled: !!lead?.id && lead?.status === 'completed',
+  });
+
+  // Fetch linked quotes for this lead (security definer so any user who can
+  // view the lead can also see its linked quotes).
+  const { data: leadQuotes } = useQuery({
+    queryKey: ['lead-quotes', lead?.id],
+    queryFn: async () => {
+      if (!lead?.id) return [];
+      const { data, error } = await supabase
+        .rpc('get_quotes_for_lead', { p_lead_id: lead.id });
+      if (error) throw error;
+      return (data as { id: string; quote_number: string; status: string; total: number; created_at: string; public_token: string | null }[]) || [];
+    },
+    enabled: !!lead?.id,
   });
 
   if (!lead) return null;
@@ -618,6 +632,60 @@ const LeadDetailSheet = ({
                 </Button>
               </div>
             )}
+
+            {/* Quotes linked to this lead */}
+            <div className="rounded-xl border border-border/60 bg-background/60 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Quotes on this lead</h3>
+                {leadQuotes && leadQuotes.length > 0 && (
+                  <span className="text-[10px] text-muted-foreground">
+                    {leadQuotes.length} linked
+                  </span>
+                )}
+              </div>
+
+              {leadQuotes && leadQuotes.length > 0 ? (
+                <div className="space-y-1.5">
+                  {leadQuotes.map((quote) => (
+                    <button
+                      key={quote.id}
+                      onClick={() => {
+                        onClose();
+                        navigate(`/admin/estimates/${quote.id}`);
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-lg bg-background/70 hover:bg-background transition-colors text-left"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileText className="h-4 w-4 text-primary shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium truncate">
+                            #{quote.quote_number}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {quote.created_at
+                              ? new Date(quote.created_at).toLocaleDateString('en-ZA')
+                              : '—'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge variant="secondary" className="text-[10px]">
+                          {quote.status}
+                        </Badge>
+                        <span className="text-xs font-semibold">
+                          R {Number(quote.total || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                        </span>
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-3">
+                  <p className="text-xs text-muted-foreground">No quotes linked to this lead yet.</p>
+                </div>
+              )}
+            </div>
 
             {/* Create Invoice - Completed leads only */}
             {lead?.status === 'completed' && (
