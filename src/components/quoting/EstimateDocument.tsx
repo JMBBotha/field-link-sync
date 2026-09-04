@@ -44,11 +44,16 @@ export interface EstimateEditing {
   onDeleteLine: (id: string) => void;
   onRenameArea: (id: string, name: string) => void;
   onAddArea: () => void;
+  /** Naming the orphan default section promotes it into a real area. */
+  onNameDefaultArea?: (name: string) => void;
+  /** Area whose name input should take focus (just-created area). */
+  focusAreaId?: string | null;
   /** Delete an area (and its lines). Only shown for real (persisted) areas. */
   onDeleteArea?: (id: string) => void;
   /** Area currently being built — its add bar is highlighted. */
   activeAreaId?: string | null;
   onSelectArea?: (id: string | null) => void;
+
   /** Slim add-item / add-service bar rendered below EACH area's lines. */
   renderAddBar?: (areaId: string | null) => ReactNode;
   /** Discount control rendered in the totals block. */
