@@ -99,14 +99,15 @@ export default function EstimateBuilder({
     if (orphans.length > 0) {
       grouped.push({
         id: null,
-        name: "Items",
+        name: DEFAULT_SECTION_LABEL,
         lines: orphans.map(lineFor),
       });
     }
-    if (grouped.length === 0) grouped.push({ id: null, name: "Items", lines: [] });
+    if (grouped.length === 0) grouped.push({ id: null, name: DEFAULT_SECTION_LABEL, lines: [] });
     return grouped;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areas, topLevel, productImages]);
+
 
   const subtotal = useMemo(
     () => topLevel.reduce((s, i) => s + Number(i.quantity || 0) * Number(i.unit_price || 0), 0),
