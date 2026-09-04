@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Mail, MessageCircle, Loader2, Check, Download, Link2 } from "lucide-react";
+import { Mail, Loader2, Check, Download, Link2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,12 @@ interface SendQuoteDialogProps {
   customerId: string | null;
   customerName: string;
 }
+
+/**
+ * LOCKED: WhatsApp sends from this dialog go ONLY to Johan's test number.
+ * For clients, use Copy link or Email PDF — never WhatsApp arbitrary numbers.
+ */
+const JOHAN_TEST_WHATSAPP = "+27696838624";
 
 async function blobToBase64(blob: Blob): Promise<string> {
   const buf = new Uint8Array(await blob.arrayBuffer());
@@ -51,10 +57,9 @@ const SendQuoteDialog = ({
 }: SendQuoteDialogProps) => {
   const { settings } = useCompanySettings();
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [leadId, setLeadId] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"email" | "whatsapp" | "pdf" | null>(null);
-  const [sent, setSent] = useState<{ email: boolean; whatsapp: boolean }>({ email: false, whatsapp: false });
+  const [busy, setBusy] = useState<"email" | "pdf" | null>(null);
+  const [sent, setSent] = useState<{ email: boolean }>({ email: false });
 
   // Resolve email + recipient phone from THIS quote's own records — never from
   // the customer's latest lead. Phone: quote's customer row first, then the
@@ -85,30 +90,10 @@ const SendQuoteDialog = ({
     if (!open || !quote) return;
     const q = quote as {
       lead_id?: string | null;
-      customers?: { email?: string | null; phone?: string | null } | null;
+      customers?: { email?: string | null } | null;
     };
     setEmail(q.customers?.email || "");
     setLeadId(q.lead_id ?? null);
-    if (q.customers?.phone) {
-      setPhone(q.customers.phone);
-      return;
-    }
-    let cancelled = false;
-    if (q.lead_id) {
-      (async () => {
-        const { data: lead } = await supabase
-          .from("leads")
-          .select("customer_phone")
-          .eq("id", q.lead_id!)
-          .maybeSingle();
-        if (cancelled) return;
-        const l = lead as { customer_phone?: string | null } | null;
-        setPhone(l?.customer_phone || "");
-      })();
-    } else {
-      setPhone("");
-    }
-    return () => { cancelled = true; };
   }, [open, quote]);
 
 
@@ -242,40 +227,7 @@ const SendQuoteDialog = ({
     }
   };
 
-  const handleWhatsApp = async () => {
-    if (!phone.trim()) {
-      toast({ title: "Number required", description: "Add a client WhatsApp number first.", variant: "destructive" });
-      return;
-    }
-    setBusy("whatsapp");
-    try {
-      const pdfBase64 = await blobToBase64(await buildPdf());
-      const { data, error } = await supabase.functions.invoke("send-quote-whatsapp", {
-        body: {
-          quoteId,
-          quoteNumber,
-          to: phone.trim(),
-          clientName: resolvedCustomerName,
-          totalAmount: total,
-          pdfBase64,
-        },
-      });
-      if (error) throw error;
-      const res = data as { ok?: boolean; error?: string } | null;
-      if (res && res.ok === false) throw new Error(res.error || "WhatsApp send failed");
-      await logDelivery("whatsapp", phone.trim());
-      setSent((s) => ({ ...s, whatsapp: true }));
-      toast({ title: "Quote sent on WhatsApp", description: `Sent to ${phone.trim()}` });
-    } catch (err) {
-      toast({
-        title: "WhatsApp send failed",
-        description: err instanceof Error ? err.message : "Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setBusy(null);
-    }
-  };
+  // No client-facing WhatsApp send here: copy link or email the PDF instead.
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -297,13 +249,14 @@ const SendQuoteDialog = ({
                 <Link2 className="h-4 w-4" />
                 Copy link
               </Button>
+              {/* Test-only WhatsApp: always goes to Johan, never the client. */}
               <WhatsAppShareButton
-                phone={phone || undefined}
+                phone={JOHAN_TEST_WHATSAPP}
                 message={shareMessage}
                 variant="outline"
                 className="h-9 shrink-0"
               >
-                <span className="flex items-center gap-1.5">WhatsApp</span>
+                <span className="flex items-center gap-1.5">WhatsApp (test)</span>
               </WhatsAppShareButton>
             </div>
           ) : (
@@ -330,27 +283,6 @@ const SendQuoteDialog = ({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="send-quote-phone" className="text-xs">WhatsApp number</Label>
-            <div className="flex gap-2">
-              <Input
-                id="send-quote-phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+27 82 000 0000"
-                className="h-9 text-sm"
-              />
-              <Button
-                onClick={handleWhatsApp}
-                disabled={busy !== null}
-                variant="secondary"
-                className="h-9 shrink-0 gap-1.5"
-              >
-                {busy === "whatsapp" ? <Loader2 className="h-4 w-4 animate-spin" /> : sent.whatsapp ? <Check className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />}
-                WhatsApp
-              </Button>
-            </div>
-          </div>
         </div>
 
         <DialogFooter className="gap-2 sm:justify-between">

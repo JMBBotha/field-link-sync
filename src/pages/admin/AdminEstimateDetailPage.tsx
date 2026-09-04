@@ -10,6 +10,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { convertQuoteToInvoice, buildQuoteLineItems } from "@/lib/convertQuoteToInvoice";
 import { generateDocumentPdf } from "@/lib/documentPdf";
+import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
+import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import EstimateBuilder from "@/components/quoting/EstimateBuilder";
 import StatusPill from "@/components/shared/StatusPill";
 
@@ -33,6 +35,7 @@ const AdminEstimateDetailPage = () => {
   const qc = useQueryClient();
   const { settings } = useCompanySettings();
   const [busy, setBusy] = useState<string | null>(null);
+  const [sendOpen, setSendOpen] = useState(false);
 
   const { data: quote, isLoading } = useQuery({
     queryKey: ["quote-document", id],
@@ -86,15 +89,17 @@ const AdminEstimateDetailPage = () => {
     qc.invalidateQueries({ queryKey: ["quote-document-items", id] });
   };
 
+  // Send uses the exact same flow as the quote builder: ensure public_token
+  // + status/sent_at via the shared helper, then open the shared dialog.
   const handleSend = async () => {
     setBusy("send");
-    const { error } = await supabase.from("quotes").update({ status: "sent" }).eq("id", id);
-    if (error) {
-      toast({ title: "Could not update status", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Marked as sent ✅" });
+    try {
+      await ensureQuoteReadyToSend(id);
       qc.invalidateQueries({ queryKey: ["quote-document", id] });
       qc.invalidateQueries({ queryKey: ["quotes"] });
+      setSendOpen(true);
+    } catch (e: any) {
+      toast({ title: "Could not prepare quote for sending", description: e.message, variant: "destructive" });
     }
     setBusy(null);
   };
@@ -244,6 +249,15 @@ const AdminEstimateDetailPage = () => {
           </Tooltip>
         </TooltipProvider>
       </div>
+
+      <SendQuoteDialog
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        quoteId={quote.id}
+        quoteNumber={quote.quote_number}
+        customerId={quote.customer_id}
+        customerName={customer.name || quote.customer_name || "Customer"}
+      />
     </div>
   );
 };

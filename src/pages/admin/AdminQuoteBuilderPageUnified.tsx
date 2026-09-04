@@ -42,6 +42,7 @@ import { computeQuoteTotals } from "@/utils/quoteTransformers";
 import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
 import { pdfItemToPaletteProduct } from "@/utils/pdfItemToProduct";
 import { persistQuoteFromBaskets } from "@/utils/persistQuoteFromBaskets";
+import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import { useUnsavedQuoteGuard } from "@/hooks/useUnsavedQuoteGuard";
 
@@ -741,24 +742,9 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
     try {
       const validIds = new Set(products.map((p) => p.id));
       await persistQuoteFromBaskets(quoteId, displayBaskets, validIds);
-      // Send = shareable client link. Ensure public_token exists and move a
-      // draft to sent. Never touch accepted/declined/viewed statuses.
-      const { data: q } = await supabase
-        .from("quotes")
-        .select("public_token, status, sent_at")
-        .eq("id", quoteId)
-        .maybeSingle();
-      const patch: Record<string, unknown> = {};
-      if (!q?.public_token) patch.public_token = crypto.randomUUID();
-      if (q?.status === "draft") {
-        patch.status = "sent";
-        patch.sent_at = new Date().toISOString();
-      } else if (!q?.sent_at && q?.status !== "accepted" && q?.status !== "declined") {
-        patch.sent_at = new Date().toISOString();
-      }
-      if (Object.keys(patch).length) {
-        await supabase.from("quotes").update(patch).eq("id", quoteId);
-      }
+      // Send = shareable client link. Shared helper ensures public_token
+      // exists and moves a draft to sent — never touches accepted/declined.
+      await ensureQuoteReadyToSend(quoteId);
       toast({ title: "Quote saved", description: "All builder tabs merged into one quote." });
       setSendOpen(true);
     } catch (err) {
