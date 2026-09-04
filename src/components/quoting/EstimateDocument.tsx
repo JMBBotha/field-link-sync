@@ -75,8 +75,21 @@ export interface EstimateDocumentProps {
   /** Discount applied to the subtotal before VAT (0 = none). */
   discountAmount?: number;
   discountLabel?: string | null;
+  /**
+   * Safe company snapshot for anonymous/public rendering (client quote page).
+   * When supplied it replaces the authenticated company-settings lookup.
+   */
+  companyOverride?: {
+    company_name?: string | null;
+    physical_address?: string | null;
+    vat_number?: string | null;
+    banking_details?: Record<string, string | undefined> | null;
+    default_deposit_percentage?: number | null;
+    default_payment_terms_days?: number | null;
+  } | null;
   editing?: EstimateEditing;
 }
+
 
 const formatCurrency = (amount: number) => {
   const n = Number(amount) || 0;
