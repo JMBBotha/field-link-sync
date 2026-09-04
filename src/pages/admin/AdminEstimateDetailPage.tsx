@@ -84,6 +84,12 @@ const AdminEstimateDetailPage = () => {
     queryFn: () => fetchQuoteInvoice(id),
   });
 
+  /** Re-read the document + line items after an inline edit (DB trigger recalcs totals). */
+  const refreshDocument = () => {
+    qc.invalidateQueries({ queryKey: ["quote-document", id] });
+    qc.invalidateQueries({ queryKey: ["quote-document-items", id] });
+  };
+
   const handleSend = async () => {
     setBusy("send");
     const { error } = await supabase.from("quotes").update({ status: "sent" }).eq("id", id);
