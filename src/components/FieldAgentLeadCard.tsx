@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,8 @@ interface FieldAgentLeadCardProps {
   scrollIntoView?: boolean;
   /** Deposit invoice for install work on this lead — parent-side lookup. Chip renders only when an invoice row exists. */
   invoice?: DepositInvoiceLike | null;
+  /** Linked quote/estimate URL for install jobs (parent-side lookup by lead id). */
+  estimateUrl?: string | null;
 }
 
 const formatTimeAgo = (createdAt: string): string => {
@@ -107,6 +110,7 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
       loadingAction,
       scrollIntoView = false,
       invoice,
+      estimateUrl,
     },
     ref
   ) => {
@@ -197,6 +201,15 @@ const FieldAgentLeadCard = forwardRef<HTMLDivElement, FieldAgentLeadCardProps>(
                   accepted={["accepted", "in_progress", "completed"].includes(lead.status)}
                   className="text-[10px]"
                 />
+              )}
+              {estimateUrl && (
+                <Link
+                  to={estimateUrl}
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-[10px] font-medium text-primary hover:underline"
+                >
+                  Open estimate
+                </Link>
               )}
               <div className="flex items-center gap-1.5">
                 {photoCount > 0 && (

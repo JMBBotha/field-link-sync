@@ -77,6 +77,20 @@ const AdminJobDetailPage = () => {
     queryFn: async () => (await attachPaymentTotals([{ ...rawInvoice }]))[0],
   });
 
+  // Quote / build path: light summary when the job carries quote_id
+  const quoteId: string | null = (job as any)?.quote_id ?? null;
+  const { data: quoteSummary } = useQuery({
+    queryKey: ["job-quote-summary", quoteId],
+    enabled: !!quoteId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_quote_summary", { p_quote_id: quoteId! });
+      if (error) throw error;
+      return ((data as any[])?.[0] ?? null) as
+        | { id: string; quote_number: string; status: string; total: number | null; customer_name: string | null }
+        | null;
+    },
+  });
+
   const changeStatus = async (nextStatus: "in_progress" | "completed") => {
     if (!id || !job) return;
     setPendingStatus(nextStatus);
@@ -257,6 +271,41 @@ const AdminJobDetailPage = () => {
                 onClick={() => navigate(`/admin/invoices/${invoice.id}`)}
               >
                 <FileText className="h-4 w-4" /> View Invoice
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Quote / Build path */}
+        {quoteId && quoteSummary && (
+          <Card>
+            <CardContent className="p-4 md:p-5 flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+                  Quote / Build Path
+                </div>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  <span className="font-semibold">{quoteSummary.quote_number || "Quote"}</span>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {(quoteSummary.status || "draft").replace(/_/g, " ")}
+                  </Badge>
+                  {typeof quoteSummary.total === "number" && (
+                    <span className="text-sm text-muted-foreground">
+                      R {quoteSummary.total.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+                    </span>
+                  )}
+                  {quoteSummary.customer_name && (
+                    <span className="text-xs text-muted-foreground">· {quoteSummary.customer_name}</span>
+                  )}
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => navigate(`/admin/estimates/${quoteId}`)}
+              >
+                <FileText className="h-4 w-4" /> Open estimate
               </Button>
             </CardContent>
           </Card>

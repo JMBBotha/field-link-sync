@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useOfflineContext } from "@/contexts/OfflineContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, CalendarDays, CheckCircle, XCircle, Play, RefreshCw, CloudOff } from "lucide-react";
+import { MapPin, CalendarDays, CheckCircle, XCircle, Play, RefreshCw, CloudOff, FileText } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { JobCardListSkeleton } from "@/components/ui/skeletons";
 import FieldAgentBottomNav from "@/components/FieldAgentBottomNav";
@@ -37,6 +37,7 @@ type MyAssignedJobRow = {
   assignment_notes: string | null;
   created_at: string | null;
   job_type: string | null;
+  job_quote_id: string | null;
   deposit_invoice_id: string | null;
   deposit_invoice_status: string | null;
   deposit_invoice_paid_date: string | null;
@@ -68,6 +69,7 @@ type MyJobItem = {
     scheduled_for: string | null;
     priority: string | null;
     status: string | null;
+    quote_id: string | null;
     customers: {
       name: string | null;
       phone: string | null;
@@ -79,6 +81,7 @@ const AdminMyJobsPage = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { isOnline, queueOperation } = useOfflineContext();
   const { pathname } = useLocation();
   const isFieldContext = pathname.startsWith("/field");
@@ -121,6 +124,7 @@ const AdminMyJobsPage = () => {
           scheduled_for: row.job_scheduled_for,
           priority: row.job_priority,
           status: row.job_status,
+          quote_id: row.job_quote_id ?? null,
           customers: row.customer_name
             ? {
                 name: row.customer_name,
@@ -276,6 +280,18 @@ const AdminMyJobsPage = () => {
                     <div className="flex items-center gap-1.5 text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 rounded-md px-2 py-1">
                       <CloudOff className="h-3 w-3" /> Offline — actions will queue and sync when you reconnect
                     </div>
+                  )}
+
+                  {/* Quote / build path for install jobs carrying a quote */}
+                  {job.quote_id && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5 text-xs"
+                      onClick={() => navigate(`/admin/estimates/${job.quote_id}`)}
+                    >
+                      <FileText className="h-3.5 w-3.5" /> Open estimate
+                    </Button>
                   )}
 
                   {/* Full-width action buttons — mobile-friendly touch targets */}
