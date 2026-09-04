@@ -1510,6 +1510,15 @@ const FieldAgent = () => {
                                   className="text-[10px]"
                                 />
                               )}
+                              {installQuoteByLead[lead.id] && (
+                                <button
+                                  type="button"
+                                  className="text-[10px] font-medium text-primary hover:underline"
+                                  onClick={(e) => { e.stopPropagation(); navigate(`/admin/estimates/${installQuoteByLead[lead.id]}`); }}
+                                >
+                                  Open estimate
+                                </button>
+                              )}
                             </div>
                           </div>
                           <Button
@@ -1759,6 +1768,15 @@ const FieldAgent = () => {
                                           accepted
                                           className="text-[10px]"
                                         />
+                                      )}
+                                      {installQuoteByLead[lead.id] && (
+                                        <button
+                                          type="button"
+                                          className="text-[10px] font-medium text-primary hover:underline"
+                                          onClick={(e) => { e.stopPropagation(); navigate(`/admin/estimates/${installQuoteByLead[lead.id]}`); }}
+                                        >
+                                          Open estimate
+                                        </button>
                                       )}
                                     </div>
                                   </div>
