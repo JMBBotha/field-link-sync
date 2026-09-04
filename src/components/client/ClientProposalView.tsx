@@ -226,7 +226,7 @@ const ClientProposalView = () => {
       : 0;
   const discountLabel = quote.discount_type === "percent" && discountValue > 0 ? `${discountValue}%` : null;
 
-  const customerName = customer?.name || quote.customer_name || "Valued Customer";
+  const customerName = tidyName(customer?.name || quote.customer_name || "") || "Valued Customer";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
