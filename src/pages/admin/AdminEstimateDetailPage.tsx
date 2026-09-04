@@ -89,15 +89,17 @@ const AdminEstimateDetailPage = () => {
     qc.invalidateQueries({ queryKey: ["quote-document-items", id] });
   };
 
+  // Send uses the exact same flow as the quote builder: ensure public_token
+  // + status/sent_at via the shared helper, then open the shared dialog.
   const handleSend = async () => {
     setBusy("send");
-    const { error } = await supabase.from("quotes").update({ status: "sent" }).eq("id", id);
-    if (error) {
-      toast({ title: "Could not update status", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Marked as sent ✅" });
+    try {
+      await ensureQuoteReadyToSend(id);
       qc.invalidateQueries({ queryKey: ["quote-document", id] });
       qc.invalidateQueries({ queryKey: ["quotes"] });
+      setSendOpen(true);
+    } catch (e: any) {
+      toast({ title: "Could not prepare quote for sending", description: e.message, variant: "destructive" });
     }
     setBusy(null);
   };
