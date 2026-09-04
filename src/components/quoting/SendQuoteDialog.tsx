@@ -57,10 +57,9 @@ const SendQuoteDialog = ({
 }: SendQuoteDialogProps) => {
   const { settings } = useCompanySettings();
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [leadId, setLeadId] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"email" | "whatsapp" | "pdf" | null>(null);
-  const [sent, setSent] = useState<{ email: boolean; whatsapp: boolean }>({ email: false, whatsapp: false });
+  const [busy, setBusy] = useState<"email" | "pdf" | null>(null);
+  const [sent, setSent] = useState<{ email: boolean }>({ email: false });
 
   // Resolve email + recipient phone from THIS quote's own records — never from
   // the customer's latest lead. Phone: quote's customer row first, then the
@@ -91,30 +90,10 @@ const SendQuoteDialog = ({
     if (!open || !quote) return;
     const q = quote as {
       lead_id?: string | null;
-      customers?: { email?: string | null; phone?: string | null } | null;
+      customers?: { email?: string | null } | null;
     };
     setEmail(q.customers?.email || "");
     setLeadId(q.lead_id ?? null);
-    if (q.customers?.phone) {
-      setPhone(q.customers.phone);
-      return;
-    }
-    let cancelled = false;
-    if (q.lead_id) {
-      (async () => {
-        const { data: lead } = await supabase
-          .from("leads")
-          .select("customer_phone")
-          .eq("id", q.lead_id!)
-          .maybeSingle();
-        if (cancelled) return;
-        const l = lead as { customer_phone?: string | null } | null;
-        setPhone(l?.customer_phone || "");
-      })();
-    } else {
-      setPhone("");
-    }
-    return () => { cancelled = true; };
   }, [open, quote]);
 
 
