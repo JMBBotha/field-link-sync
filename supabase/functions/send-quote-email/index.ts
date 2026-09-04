@@ -12,7 +12,7 @@ function formatZAR(value: number): string {
   return new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(value);
 }
 
-function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, totalAmount: number, unsubscribeUrl: string): string {
+function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, totalAmount: number, unsubscribeUrl: string, quoteUrl?: string | null): string {
   const formattedTotal = formatZAR(totalAmount);
   const currentYear = new Date().getFullYear();
 
@@ -30,7 +30,7 @@ function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, t
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
 
   <tr>
-    <td style="background-color:#2563eb;padding:28px 32px;text-align:center;">
+    <td style="background-color:#1B3A5C;padding:28px 32px;text-align:center;">
       <h1 style="margin:0;font-size:24px;font-weight:800;color:#ffffff;letter-spacing:0.5px;">0800-BE-COOL!</h1>
       <p style="margin:4px 0 0;font-size:12px;color:rgba(255,255,255,0.85);letter-spacing:1px;text-transform:uppercase;">AC Super Service — Professional HVAC Solutions</p>
     </td>
@@ -56,7 +56,7 @@ function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, t
               <tr>
                 <td style="padding-bottom:12px;">
                   <p style="margin:0;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Quote Number</p>
-                  <p style="margin:4px 0 0;font-size:16px;font-weight:700;color:#1e40af;">${quoteNumber || "—"}</p>
+                  <p style="margin:4px 0 0;font-size:16px;font-weight:700;color:#1B3A5C;">${quoteNumber || "—"}</p>
                 </td>
                 <td style="padding-bottom:12px;text-align:right;">
                   <p style="margin:0;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Date</p>
@@ -66,7 +66,7 @@ function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, t
               <tr>
                 <td colspan="2" style="border-top:1px solid #bfdbfe;padding-top:14px;">
                   <p style="margin:0;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Total Amount (Incl. VAT)</p>
-                  <p style="margin:6px 0 0;font-size:28px;font-weight:800;color:#1e40af;">${formattedTotal}</p>
+                  <p style="margin:6px 0 0;font-size:28px;font-weight:800;color:#1B3A5C;">${formattedTotal}</p>
                 </td>
               </tr>
             </table>
@@ -74,20 +74,31 @@ function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, t
         </tr>
       </table>
 
+      ${quoteUrl ? `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
         <tr>
           <td align="center">
-            <a href="mailto:wcquotes@0800becool.co.za?subject=Accept%20Quote%20${encodeURIComponent(quoteNumber || "")}" style="display:inline-block;background-color:#2563eb;color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;padding:14px 40px;border-radius:8px;letter-spacing:0.3px;">
+            <a href="${quoteUrl}" style="display:inline-block;background-color:#F59E0B;color:#1B3A5C;text-decoration:none;font-size:16px;font-weight:800;padding:14px 40px;border-radius:8px;letter-spacing:0.3px;">
               View &amp; Accept Quote
             </a>
           </td>
         </tr>
         <tr>
-          <td align="center" style="padding-top:10px;">
-            <p style="margin:0;font-size:12px;color:#9ca3af;">Or reply to this email to accept your quote</p>
+          <td align="center" style="padding-top:12px;">
+            <p style="margin:0;font-size:12px;color:#6b7280;line-height:1.5;">
+              If the button does not work, copy this link into your browser:<br/>
+              <span style="color:#1B3A5C;word-break:break-all;">${quoteUrl}</span>
+            </p>
           </td>
         </tr>
-      </table>
+      </table>` : `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+        <tr>
+          <td align="center">
+            <p style="margin:0;font-size:13px;color:#6b7280;">Reply to this email or call 0800 232 665 to accept your quote.</p>
+          </td>
+        </tr>
+      </table>`}
 
       <p style="margin:0 0 8px;font-size:13px;color:#6b7280;line-height:1.5;">
         ⏱ This quotation is valid for <strong>30 days</strong> from the date of issue. A 50% deposit is required upon acceptance.
@@ -154,7 +165,7 @@ serve(async (req) => {
   if (!auth.ok) return auth.response;
 
   try {
-    const { to, subject, quoteNumber, clientName, pdfBase64, totalAmount, unsubscribeToken, quoteId, customerId, region } =
+    const { to, subject, quoteNumber, clientName, pdfBase64, totalAmount, unsubscribeToken, quoteId, customerId, region, quoteUrl } =
       await req.json();
 
     if (!to) {
@@ -198,11 +209,15 @@ serve(async (req) => {
 
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
-    if (!RESEND_API_KEY) {
-      console.warn("RESEND_API_KEY not configured – returning mock success");
+    if (!RESEND_API_KEY || !RESEND_API_KEY.trim()) {
+      console.error("RESEND_API_KEY not configured – refusing to fake a send");
       return new Response(
-        JSON.stringify({ success: true, mock: true, message: "Email skipped – RESEND_API_KEY not set." }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({
+          error: "Email not configured",
+          code: "EMAIL_NOT_CONFIGURED",
+          message: "RESEND_API_KEY is not set. Configure Resend in project secrets to enable quote email.",
+        }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -220,8 +235,8 @@ serve(async (req) => {
       : baseSubject.trim();
 
     const date = new Date().toLocaleDateString("en-ZA");
-    const htmlBody = buildHtmlEmail(clientName, quoteNumber, date, totalAmount || 0, unsubscribeUrl);
-    const textFallback = `Dear ${clientName || "Valued Customer"},\n\nYour quote ${quoteRef ? `(${quoteRef}) ` : ""}totalling ${formatZAR(totalAmount || 0)} is attached.\n\nThis quote is valid for 30 days. To accept, reply to this email (keep the reference ${quoteRef || ""} in the subject) or call 0800 232 665.\n\nKind regards,\n0800-BE-COOL! Team`;
+    const htmlBody = buildHtmlEmail(clientName, quoteNumber, date, totalAmount || 0, unsubscribeUrl, quoteUrl || null);
+    const textFallback = `Dear ${clientName || "Valued Customer"},\n\nYour quote ${quoteRef ? `(${quoteRef}) ` : ""}totalling ${formatZAR(totalAmount || 0)} is ready.${quoteUrl ? `\n\nView and accept it here: ${quoteUrl}` : ""}\n\nThis quote is valid for 30 days. To accept, reply to this email (keep the reference ${quoteRef || ""} in the subject) or call 0800 232 665.\n\nKind regards,\n0800-BE-COOL! Team`;
 
     const attachments: Array<{ filename: string; content: string }> = [];
     if (pdfBase64) {
