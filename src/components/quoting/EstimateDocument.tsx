@@ -207,7 +207,7 @@ const EstimateDocument = ({
         {/* ── Line items ── */}
         {editing ? (
           <div className="mt-6 space-y-6">
-            {editing.areas.map((area, areaIdx) => (
+            {editing.areas.map((area) => (
               <section
                 key={area.id ?? "unassigned"}
                 onFocus={() => editing.onSelectArea?.(area.id)}
