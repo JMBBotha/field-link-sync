@@ -58,6 +58,11 @@ interface ProposalSection {
   sort_order: number;
 }
 
+/** Collapses stray whitespace in stored first/last names ("Andre  Blom"). */
+const tidyName = (value?: string | null) => (value || "").replace(/\s+/g, " ").trim();
+
+
+
 const ClientProposalView = () => {
   const { token } = useParams<{ token: string }>();
   const { toast } = useToast();
