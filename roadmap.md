@@ -1,8 +1,11 @@
-# Roadmap
+# Roadmap — catalog source of truth (equipment + materials)
 
-## Catalog source-of-truth locks (equipment/materials only)
-- [ ] A. Quote picker + Items search show only non-archived products linked to the current Visual PDF (regions, or pdf_upload_id on an active upload). hvac_services untouched.
-- [ ] B. Import archive-on-missing is brand-scoped: update/insert as today, archive only same-brand codes absent from the new PDF, never other brands, never delete.
-- [ ] C. Upload UX: is_active on pdf_uploads (activating deactivates siblings for same supplier+brand), parse summary counts (inserted/updated/archived/unchanged), warn when activation would archive SKUs used on open draft quotes.
+Scope lock: equipment/materials come from the current Visual PDF book only.
+`hvac_services` stays a parallel source of truth and is never filtered.
 
-Constraints: keep pdf_product_regions percent 0-100 and row_bbox 0-1; do not overwrite restored AR18 regions (page 2 Fourways); do not mass-archive Alliance/Midea SKUs still on current PDFs.
+- [x] Quote picker + Items search show only non-archived products still on the current Visual PDF book (`src/lib/catalogSoT.ts`, `useQuoteBuilderProducts.ts`, `QuoteQuickEditor.tsx`).
+- [x] Brand-scoped archive-on-missing in `diffImportPipeline.ts` — never archives other brands, never deletes.
+- [x] Post-parse summary shows inserted / updated / archived / unchanged.
+- [x] `pdf_uploads.is_active` + `brand` + `activated_at`; active vs superseded badges and an Activate action that deactivates same supplier+brand siblings and warns about open draft quotes.
+- [x] `parse-price-list` documented as a non-brochure path (insert/update only).
+- Region scale unchanged: `pdf_product_regions` = percent 0-100, `row_bbox` = 0-1. AR18 overlays untouched.
