@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, CheckCircle, XCircle, Phone, FileText } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import PayfastPayButton from "@/components/payments/PayfastPayButton";
+import EstimateDocument, { type EstimateDocLineItem } from "@/components/quoting/EstimateDocument";
+import SignaturePad from "@/components/jobs/SignaturePad";
 import { fetchQuoteInvoiceByToken, type DepositInvoiceRow } from "@/lib/depositInvoice";
 import { isDepositCleared } from "@/components/shared/DepositPaymentChip";
 import logo from "@/assets/logo.png";
@@ -25,15 +27,27 @@ interface QuoteData {
   valid_until: string | null;
   created_at: string;
   accepted_by: string | null;
+  customer_name: string | null;
+  terms_text: string | null;
+  discount_type: string | null;
+  discount_value: number | null;
 }
 
-interface LineItem {
-  id: string;
-  name: string;
-  blurb: string | null;
-  image_url: string | null;
-  quantity: number;
-  unit_price: number;
+interface PublicCustomer {
+  name: string | null;
+  company_name: string | null;
+  address: string | null;
+  email: string | null;
+  phone: string | null;
+}
+
+interface PublicCompany {
+  company_name: string | null;
+  physical_address: string | null;
+  vat_number: string | null;
+  banking_details: Record<string, string | undefined> | null;
+  default_deposit_percentage: number | null;
+  default_payment_terms_days: number | null;
 }
 
 interface ProposalSection {
@@ -44,23 +58,27 @@ interface ProposalSection {
   sort_order: number;
 }
 
+/** Collapses stray whitespace in stored first/last names ("Andre  Blom"). */
+const tidyName = (value?: string | null) => (value || "").replace(/\s+/g, " ").trim();
+
+
+
 const ClientProposalView = () => {
   const { token } = useParams<{ token: string }>();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState<QuoteData | null>(null);
-  const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [lineItems, setLineItems] = useState<EstimateDocLineItem[]>([]);
+  const [customer, setCustomer] = useState<PublicCustomer | null>(null);
+  const [company, setCompany] = useState<PublicCompany | null>(null);
   const [sections, setSections] = useState<ProposalSection[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [acceptedName, setAcceptedName] = useState("");
+  const [signature, setSignature] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [actionDone, setActionDone] = useState<"accepted" | "declined" | null>(null);
   const [depositInvoice, setDepositInvoice] = useState<DepositInvoiceRow | null>(null);
 
-  // Signature canvas
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [hasSignature, setHasSignature] = useState(false);
 
   useEffect(() => {
     if (token) loadQuote();
@@ -84,18 +102,33 @@ const ClientProposalView = () => {
       if (!q) { setError("Quote not found."); return; }
       setQuote(q);
 
-      const items = (bundle.items || []).map((it: any) => ({
-        id: it.id,
-        name: it.item_name || it.description || "Item",
-        // Sales blurb: the stored quote line description (defaults to the
-        // catalog AI sales description) — never scraped live.
-        blurb: it.item_name ? it.description || null : null,
-        image_url: it.image_url || null,
-        quantity: Number(it.quantity) || 0,
-        unit_price: Number(it.unit_price) || 0,
-      }));
+      // Document lines: name on the first row, stored sales blurb beneath it —
+      // the same shape EstimateDocument renders for staff.
+      const items: EstimateDocLineItem[] = (bundle.items || []).map((it: any) => {
+        const name = it.item_name || it.description || "Item";
+        const blurb = it.item_name ? it.description || null : null;
+        const quantity = Number(it.quantity) || 0;
+        const unit_price = Number(it.unit_price) || 0;
+        return {
+          description: blurb ? `${name}\n${blurb}` : name,
+          quantity,
+          unit_price,
+          amount: Number(it.total_price) || quantity * unit_price,
+          imageUrl: it.image_url || null,
+        };
+      });
       setLineItems(items);
       setSections(bundle.sections || []);
+      setCustomer(bundle.customer || null);
+      setCompany(bundle.company || null);
+
+      // Prefill the accept name once from the quote's customer (still editable).
+      const prefill =
+        (bundle.customer?.name as string | null) ||
+        (q.customer_name as string | null) ||
+        (bundle.customer?.company_name as string | null) ||
+        "";
+      setAcceptedName((prev) => (prev ? prev : tidyName(prefill)));
 
       // Deposit invoice (created on accept) — read via the token-gated RPC so
       // anonymous clients can see the chip without touching invoices RLS.
@@ -111,50 +144,6 @@ const ClientProposalView = () => {
     }
   };
 
-  // Canvas drawing handlers
-  const getCanvasCoords = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-    return { x: clientX - rect.left, y: clientY - rect.top };
-  }, []);
-
-  const startDraw = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    const ctx = canvasRef.current?.getContext("2d");
-    if (!ctx) return;
-    const { x, y } = getCanvasCoords(e);
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    setIsDrawing(true);
-  }, [getCanvasCoords]);
-
-  const draw = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    if (!isDrawing) return;
-    const ctx = canvasRef.current?.getContext("2d");
-    if (!ctx) return;
-    const { x, y } = getCanvasCoords(e);
-    ctx.lineWidth = 2;
-    ctx.lineCap = "round";
-    ctx.strokeStyle = "hsl(222, 47%, 11%)";
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    setHasSignature(true);
-  }, [isDrawing, getCanvasCoords]);
-
-  const endDraw = useCallback(() => setIsDrawing(false), []);
-
-  const clearSignature = () => {
-    const ctx = canvasRef.current?.getContext("2d");
-    if (ctx && canvasRef.current) {
-      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-      setHasSignature(false);
-    }
-  };
-
   const handleAccept = async () => {
     if (!acceptedName.trim()) {
       toast({ title: "Please enter your name", variant: "destructive" });
@@ -162,8 +151,8 @@ const ClientProposalView = () => {
     }
     setSubmitting(true);
     try {
-      const signatureData = hasSignature && canvasRef.current
-        ? { image: canvasRef.current.toDataURL("image/png"), timestamp: new Date().toISOString() }
+      const signatureData = signature
+        ? { image: signature, timestamp: new Date().toISOString() }
         : null;
 
       const { data: success } = await supabase.rpc("accept_quote_by_token", {
@@ -171,6 +160,7 @@ const ClientProposalView = () => {
         p_accepted_by: acceptedName.trim(),
         p_signature: signatureData,
       });
+
 
       if (success) {
         setActionDone("accepted");
@@ -231,13 +221,23 @@ const ClientProposalView = () => {
   if (!quote) return null;
 
   const isActionable = ["sent", "viewed", "draft"].includes(quote.status) && !actionDone;
-  const formatZAR = (v: number) => `R${Number(v).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`;
+
+  const discountValue = Number(quote.discount_value) || 0;
+  const discountAmount =
+    discountValue > 0
+      ? quote.discount_type === "percent"
+        ? (Number(quote.subtotal) || 0) * (discountValue / 100)
+        : discountValue
+      : 0;
+  const discountLabel = quote.discount_type === "percent" && discountValue > 0 ? `${discountValue}%` : null;
+
+  const customerName = tidyName(customer?.name || quote.customer_name || "") || "Valued Customer";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       {/* Cover Header */}
-      <header className="bg-primary text-white px-4 py-8">
-        <div className="max-w-3xl mx-auto text-center">
+      <header className="bg-primary text-white px-4 py-8 print:hidden">
+        <div className="max-w-4xl mx-auto text-center">
           <img src={logo} alt="Be Cool" className="h-16 mx-auto mb-4" />
           <h1 className="text-2xl md:text-3xl font-bold">Service Proposal</h1>
           <p className="text-blue-100 mt-2">Quote #{quote.quote_number}</p>
@@ -249,10 +249,32 @@ const ClientProposalView = () => {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto p-4 md:p-8 space-y-6">
-        {/* Proposal Sections */}
-        {sections.map((section, i) => (
-          <Card key={section.id} className={`rounded-2xl shadow-md border-0 overflow-hidden ${i % 2 === 1 ? "bg-muted/30" : ""}`}>
+      <main className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
+        {/* The quote document — identical layout to the staff estimate/PDF */}
+        <EstimateDocument
+          estimateNumber={quote.quote_number}
+          issueDate={quote.created_at}
+          validUntil={quote.valid_until}
+          customerName={customerName}
+          customerCompany={customer?.company_name}
+          customerAddress={customer?.address}
+          customerEmail={customer?.email}
+          customerPhone={customer?.phone}
+          items={lineItems}
+          subtotal={Number(quote.subtotal) || 0}
+          taxRate={Number(quote.vat_rate) || 0.15}
+          taxAmount={Number(quote.vat_amount) || 0}
+          grandTotal={Number(quote.total) || 0}
+          notes={quote.notes}
+          termsText={quote.terms_text}
+          discountAmount={discountAmount}
+          discountLabel={discountLabel}
+          companyOverride={company}
+        />
+
+        {/* Optional extra proposal sections (below the document) */}
+        {sections.map((section) => (
+          <Card key={section.id} className="rounded-2xl shadow-md border-0 print:hidden">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">{section.title}</CardTitle>
             </CardHeader>
@@ -266,97 +288,28 @@ const ClientProposalView = () => {
           </Card>
         ))}
 
-        {/* Pricing */}
-        <Card className="rounded-2xl shadow-lg border-0">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" /> Pricing Breakdown
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {lineItems.map((item) => (
-                <div key={item.id} className="flex justify-between items-start gap-3 py-2 border-b border-border/50 last:border-0">
-                  {item.image_url && (
-                    <img
-                      src={item.image_url}
-                      alt={item.name}
-                      className="h-14 w-14 shrink-0 rounded-lg border border-border bg-background object-contain"
-                      loading="lazy"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm text-foreground">{item.name}</p>
-                    {item.blurb && (
-                      <p className="mt-0.5 text-xs text-muted-foreground whitespace-pre-line">{item.blurb}</p>
-                    )}
-                    <p className="mt-0.5 text-xs text-muted-foreground">Qty: {item.quantity} × {formatZAR(item.unit_price)}</p>
-                  </div>
-                  <p className="font-semibold text-foreground">{formatZAR(item.quantity * item.unit_price)}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 pt-4 border-t-2 border-border space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>{formatZAR(quote.subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">VAT ({(Number(quote.vat_rate) * 100).toFixed(0)}%)</span>
-                <span>{formatZAR(quote.vat_amount)}</span>
-              </div>
-              <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                <span>Total</span>
-                <span className="text-primary">{formatZAR(quote.total)}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {quote.valid_until && (
-          <p className="text-center text-sm text-muted-foreground">
-            Valid until {new Date(quote.valid_until).toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" })}
-          </p>
-        )}
-
         {/* Accept/Decline Actions */}
         {isActionable && (
-          <Card className="rounded-2xl shadow-lg border-0 border-t-4 border-t-primary">
+          <Card className="rounded-2xl shadow-lg border-0 border-t-4 border-t-primary print:hidden">
             <CardContent className="p-6 space-y-5">
               <h3 className="text-lg font-semibold text-center text-foreground">Accept This Quote</h3>
 
-              <Input
-                placeholder="Your full name"
-                value={acceptedName}
-                onChange={(e) => setAcceptedName(e.target.value)}
-                className="rounded-xl"
-              />
+              <div className="space-y-1.5">
+                <p className="text-sm text-muted-foreground">Complete full name</p>
+                <Input
+                  placeholder="Your full name"
+                  value={acceptedName}
+                  onChange={(e) => setAcceptedName(e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
 
-              {/* Signature Pad */}
+              {/* Signature Pad (DPR-correct, touch + mouse) */}
               <div>
                 <p className="text-sm text-muted-foreground mb-2">Signature (optional)</p>
-                <div className="border-2 border-dashed border-border rounded-xl overflow-hidden bg-white">
-                  <canvas
-                    ref={canvasRef}
-                    width={400}
-                    height={150}
-                    className="w-full touch-none cursor-crosshair"
-                    onMouseDown={startDraw}
-                    onMouseMove={draw}
-                    onMouseUp={endDraw}
-                    onMouseLeave={endDraw}
-                    onTouchStart={startDraw}
-                    onTouchMove={draw}
-                    onTouchEnd={endDraw}
-                  />
-                </div>
-                {hasSignature && (
-                  <Button variant="ghost" size="sm" onClick={clearSignature} className="mt-1 text-xs text-muted-foreground">
-                    Clear signature
-                  </Button>
-                )}
+                <SignaturePad value={signature} onChange={setSignature} height={160} />
               </div>
+
 
               <div className="flex gap-3">
                 <Button
