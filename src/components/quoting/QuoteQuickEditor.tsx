@@ -17,6 +17,8 @@ import { useQuoteContext } from "@/contexts/QuoteContext";
 import { useProductFavorites } from "@/hooks/useProductFavorites";
 import { getEffectiveUnitPrices, type PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
+import { fetchVisualCatalogAllowlist, filterToVisualCatalog } from "@/lib/catalogSoT";
+
 import type { QuoteItemInsert } from "@/types/quote";
 
 const money = (n: number) =>
