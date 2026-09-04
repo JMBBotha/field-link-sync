@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Mail, MessageCircle, Loader2, Check, Download, Link2 } from "lucide-react";
+import { Mail, Loader2, Check, Download, Link2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,12 @@ interface SendQuoteDialogProps {
   customerId: string | null;
   customerName: string;
 }
+
+/**
+ * LOCKED: WhatsApp sends from this dialog go ONLY to Johan's test number.
+ * For clients, use Copy link or Email PDF — never WhatsApp arbitrary numbers.
+ */
+const JOHAN_TEST_WHATSAPP = "+27696838624";
 
 async function blobToBase64(blob: Blob): Promise<string> {
   const buf = new Uint8Array(await blob.arrayBuffer());
