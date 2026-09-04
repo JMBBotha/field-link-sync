@@ -1,19 +1,17 @@
 /**
- * QuoteQuickEditor — inline "daily editor" for the estimate page.
+ * QuoteQuickEditor — slim search bar that adds lines into the OPEN quote.
  *
- * Reuses the existing quote spine: QuoteContext writes straight into
- * quote_items / quote_areas for the ALREADY OPEN quoteId. It never creates a
- * second quote. Ranking of search results: favorites → already on this quote →
- * everything else. The Visual PDF catalog stays in the full builder.
+ * It is deliberately NOT a second UI: it renders as one thin row of inputs that
+ * sits inside the estimate document surface. All writes go through QuoteContext
+ * into quote_items / quote_areas for the already-open quoteId. The Visual PDF
+ * catalog stays in the full builder.
  */
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Plus, Minus, Trash2, Star, Wrench, Package, Loader2 } from "lucide-react";
+import { Plus, Star, Wrench, Package, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQuoteContext } from "@/contexts/QuoteContext";
 import { useProductFavorites } from "@/hooks/useProductFavorites";
@@ -51,9 +49,15 @@ function baseItem(): Omit<QuoteItemInsert, "quote_id" | "item_name" | "unit_pric
   };
 }
 
-export default function QuoteQuickEditor({ onChanged }: { onChanged?: () => void }) {
-  const { quoteId, areas, items, addItem, updateItem, deleteItem, updateArea, ensureDefaultArea } =
-    useQuoteContext();
+export default function QuoteQuickEditor({
+  onChanged,
+  targetAreaId = null,
+}: {
+  onChanged?: () => void;
+  /** Add new lines into this area (defaults to the first / default area). */
+  targetAreaId?: string | null;
+}) {
+  const { areas, items, addItem, ensureDefaultArea } = useQuoteContext();
   const { favorites } = useProductFavorites();
   const [productTerm, setProductTerm] = useState("");
   const [serviceTerm, setServiceTerm] = useState("");
@@ -65,7 +69,7 @@ export default function QuoteQuickEditor({ onChanged }: { onChanged?: () => void
     queryFn: async () => {
       const { data, error } = await (supabase.from("supplier_products") as any)
         .select(
-          "id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, pack_qty, default_markup_percent, btu_rating, suppliers(name, supplier_type)",
+          "id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, selling_price, description, ai_sales_description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, pack_qty, default_markup_percent, btu_rating, suppliers(name, supplier_type)",
         )
         .or("archived.is.null,archived.eq.false")
         .limit(2000);
@@ -133,19 +137,29 @@ export default function QuoteQuickEditor({ onChanged }: { onChanged?: () => void
 
   const nextSortOrder = () => (items.length ? Math.max(...items.map((i) => i.sort_order || 0)) + 1 : 0);
 
+  const resolveArea = async () => {
+    if (targetAreaId) return targetAreaId;
+    const area = areas[0] || (await ensureDefaultArea());
+    return area?.id ?? null;
+  };
+
   const addProduct = async (p: PaletteProduct) => {
     setAdding(p.id);
-    const area = areas[0] || (await ensureDefaultArea());
-    const { unitSell } = getEffectiveUnitPrices(p);
+    const areaId = await resolveArea();
+    const { unitCost, unitSell } = getEffectiveUnitPrices(p);
+    const markupPct = p.default_markup_percent ?? p.markup_percent ?? 35;
     await addItem({
       ...baseItem(),
-      area_id: area?.id ?? null,
+      area_id: areaId,
       product_id: p.id,
       item_name: p.short_name || p.product_code || "Product",
       item_number: p.product_code || null,
-      description: p.description || null,
+      // Prefer the AI sales blurb (AC units) over the raw catalog description.
+      description: (p as any).ai_sales_description || p.description || null,
       supplier: p.supplier_name || null,
       unit_price: Number(unitSell.toFixed(2)),
+      // Cost snapshot so staff margin stays correct after a price override.
+      metadata: { unit_cost: Number(unitCost.toFixed(2)), markup_percent: markupPct },
       sort_order: nextSortOrder(),
       source: "catalog",
     });
@@ -156,14 +170,15 @@ export default function QuoteQuickEditor({ onChanged }: { onChanged?: () => void
 
   const addService = async (s: ServiceRow) => {
     setAdding(s.id);
-    const area = areas[0] || (await ensureDefaultArea());
+    const areaId = await resolveArea();
     await addItem({
       ...baseItem(),
-      area_id: area?.id ?? null,
+      area_id: areaId,
       item_name: s.name,
       description: s.category || null,
       item_type: "service",
       unit_price: Number(s.default_price || 0),
+      metadata: { unit_cost: 0, markup_percent: 0 },
       sort_order: nextSortOrder(),
       source: "service",
     });
@@ -172,40 +187,21 @@ export default function QuoteQuickEditor({ onChanged }: { onChanged?: () => void
     onChanged?.();
   };
 
-  const setQty = async (id: string, qty: number) => {
-    if (qty <= 0) {
-      await deleteItem(id);
-    } else {
-      await updateItem(id, { quantity: qty });
-    }
-    onChanged?.();
-  };
-
-  const topLevel = items.filter((i) => !i.parent_item_id);
-
   return (
-    <Card className="space-y-4 p-4 print:hidden">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Build this quote</h2>
-        <span className="text-xs text-muted-foreground">Autosaves to {quoteId.slice(0, 8)}…</span>
-      </div>
-
-      {/* Search bars */}
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-2">
-          <div className="relative">
-            <Package className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={productTerm}
-              onChange={(e) => setProductTerm(e.target.value)}
-              placeholder="Search items (catalog)…"
-              className="pl-9"
-            />
-            {loadingProducts && <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin" />}
-          </div>
+    <div className="print:hidden">
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="relative">
+          <Package className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+          <Input
+            value={productTerm}
+            onChange={(e) => setProductTerm(e.target.value)}
+            placeholder="Add item from catalog…"
+            className="h-9 border-slate-200 bg-white pl-9 text-slate-800 placeholder:text-slate-400"
+          />
+          {loadingProducts && <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-slate-400" />}
           {productResults.length > 0 && (
-            <ScrollArea className="max-h-64 rounded-md border border-border">
-              <div className="divide-y divide-border">
+            <ScrollArea className="absolute z-30 mt-1 max-h-64 w-full rounded-md border border-slate-200 bg-white shadow-lg">
+              <div className="divide-y divide-slate-100">
                 {productResults.map((p) => {
                   const { unitSell } = getEffectiveUnitPrices(p);
                   const fav = favorites.has(p.id) || p.is_pinned;
@@ -215,23 +211,21 @@ export default function QuoteQuickEditor({ onChanged }: { onChanged?: () => void
                       type="button"
                       onClick={() => addProduct(p)}
                       disabled={adding === p.id}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted/60"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-slate-50"
                     >
                       {fav ? (
                         <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />
                       ) : (
-                        <Plus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        <Plus className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                       )}
-                      <span className="min-w-0 flex-1 truncate text-sm">
+                      <span className="min-w-0 flex-1 truncate text-sm text-slate-800">
                         {p.short_name || p.product_code}
-                        <span className="ml-1 text-xs text-muted-foreground">{p.brand}</span>
+                        <span className="ml-1 text-xs text-slate-500">{p.brand}</span>
                       </span>
                       {onQuoteProductIds.has(p.id) && (
-                        <Badge variant="secondary" className="shrink-0 text-[10px]">
-                          on quote
-                        </Badge>
+                        <Badge variant="secondary" className="shrink-0 text-[10px]">on quote</Badge>
                       )}
-                      <span className="shrink-0 text-xs font-medium">{money(unitSell)}</span>
+                      <span className="shrink-0 text-xs font-medium text-slate-700">{money(unitSell)}</span>
                     </button>
                   );
                 })}
@@ -240,38 +234,36 @@ export default function QuoteQuickEditor({ onChanged }: { onChanged?: () => void
           )}
         </div>
 
-        <div className="space-y-2">
-          <div className="relative">
-            <Wrench className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={serviceTerm}
-              onChange={(e) => setServiceTerm(e.target.value)}
-              placeholder="Search services…"
-              className="pl-9"
-            />
-          </div>
+        <div className="relative">
+          <Wrench className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+          <Input
+            value={serviceTerm}
+            onChange={(e) => setServiceTerm(e.target.value)}
+            placeholder="Add service…"
+            className="h-9 border-slate-200 bg-white pl-9 text-slate-800 placeholder:text-slate-400"
+          />
           {serviceResults.length > 0 && (
-            <ScrollArea className="max-h-64 rounded-md border border-border">
-              <div className="divide-y divide-border">
+            <ScrollArea className="absolute z-30 mt-1 max-h-64 w-full rounded-md border border-slate-200 bg-white shadow-lg">
+              <div className="divide-y divide-slate-100">
                 {serviceResults.map((s) => (
                   <button
                     key={s.id}
                     type="button"
                     onClick={() => addService(s)}
                     disabled={adding === s.id}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted/60"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-slate-50"
                   >
-                    <Plus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                    <span className="min-w-0 flex-1 truncate text-sm">
+                    <Plus className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    <span className="min-w-0 flex-1 truncate text-sm text-slate-800">
                       {s.name}
-                      {s.category && <span className="ml-1 text-xs text-muted-foreground">{s.category}</span>}
+                      {s.category && <span className="ml-1 text-xs text-slate-500">{s.category}</span>}
                     </span>
                     {onQuoteNames.has(s.name.toLowerCase()) && (
-                      <Badge variant="secondary" className="shrink-0 text-[10px]">
-                        on quote
-                      </Badge>
+                      <Badge variant="secondary" className="shrink-0 text-[10px]">on quote</Badge>
                     )}
-                    <span className="shrink-0 text-xs font-medium">{money(Number(s.default_price || 0))}</span>
+                    <span className="shrink-0 text-xs font-medium text-slate-700">
+                      {money(Number(s.default_price || 0))}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -279,75 +271,6 @@ export default function QuoteQuickEditor({ onChanged }: { onChanged?: () => void
           )}
         </div>
       </div>
-
-      {/* Area descriptions */}
-      {areas.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Areas (prints on the quote)</p>
-          {areas.map((a) => (
-            <Input
-              key={a.id}
-              defaultValue={a.name}
-              onBlur={(e) => {
-                const v = e.target.value.trim();
-                if (v && v !== a.name) {
-                  void updateArea(a.id, { name: v });
-                  onChanged?.();
-                }
-              }}
-              className="h-9"
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Line items with qty steppers */}
-      <div className="space-y-1">
-        {topLevel.length === 0 && (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            No lines yet — search items or services above.
-          </p>
-        )}
-        {topLevel.map((i) => (
-          <div key={i.id} className="flex items-center gap-2 rounded-md border border-border px-2 py-1.5">
-            <span className="min-w-0 flex-1 truncate text-sm">{i.item_name}</span>
-            <span className="shrink-0 text-xs text-muted-foreground">{money(i.unit_price)}</span>
-            <div className="flex shrink-0 items-center gap-1">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setQty(i.id, Number(i.quantity) - 1)}
-              >
-                <Minus className="h-3 w-3" />
-              </Button>
-              <span className="w-8 text-center text-sm tabular-nums">{i.quantity}</span>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setQty(i.id, Number(i.quantity) + 1)}
-              >
-                <Plus className="h-3 w-3" />
-              </Button>
-            </div>
-            <span className="w-24 shrink-0 text-right text-sm font-medium">
-              {money(Number(i.quantity) * Number(i.unit_price))}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-destructive"
-              onClick={() => {
-                void deleteItem(i.id);
-                onChanged?.();
-              }}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        ))}
-      </div>
-    </Card>
+    </div>
   );
 }
