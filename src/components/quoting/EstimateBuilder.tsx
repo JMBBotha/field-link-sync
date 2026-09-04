@@ -57,7 +57,7 @@ export default function EstimateBuilder({
 }: Props) {
   const {
     quoteId, meta, areas, items,
-    addArea, updateArea, updateItem, deleteItem, updateQuote,
+    addArea, updateArea, deleteArea, updateItem, deleteItem, updateQuote,
   } = useQuoteContext();
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
@@ -216,6 +216,18 @@ export default function EstimateBuilder({
           onAddArea: async () => {
             const created = await addArea(`Area ${areas.length + 1}`);
             if (created?.id) setActiveAreaId(created.id);
+          },
+          onDeleteArea: (id) => {
+            const area = editAreas.find((a) => a.id === id);
+            const lineCount = area?.lines.length ?? 0;
+            const msg = lineCount > 0
+              ? `Delete this area and its ${lineCount} line${lineCount === 1 ? "" : "s"}?`
+              : "Delete this area?";
+            if (!window.confirm(msg)) return;
+            for (const line of area?.lines ?? []) void deleteItem(line.id);
+            void deleteArea(id);
+            if (activeAreaId === id) setActiveAreaId(null);
+            onChanged?.();
           },
           renderAddBar: (areaId) => (
             <QuoteQuickEditor
