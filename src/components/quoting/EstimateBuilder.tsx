@@ -7,6 +7,7 @@
  * separate staff card outside the pdf capture root.
  */
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -58,6 +59,33 @@ export default function EstimateBuilder({
 
   const topLevel = useMemo(() => items.filter((i) => !i.parent_item_id), [items]);
 
+  // Catalog product images for the sales-card thumb on each line.
+  const productIds = useMemo(
+    () => [...new Set(topLevel.map((i) => i.product_id).filter(Boolean))] as string[],
+    [topLevel],
+  );
+  const { data: productImages = {} } = useQuery({
+    queryKey: ["quote-item-product-images", productIds.sort().join(",")],
+    enabled: productIds.length > 0,
+    staleTime: 300_000,
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("supplier_products") as any)
+        .select("id, image_url")
+        .in("id", productIds);
+      if (error) throw error;
+      return Object.fromEntries((data || []).map((p: any) => [p.id, p.image_url as string | null]));
+    },
+  });
+
+  const lineFor = (i: (typeof topLevel)[number]) => ({
+    id: i.id,
+    name: i.item_name,
+    description: i.description,
+    quantity: Number(i.quantity || 0),
+    unit_price: Number(i.unit_price || 0),
+    imageUrl: i.product_id ? (productImages as Record<string, string | null>)[i.product_id] ?? null : null,
+  });
+
   const editAreas: EstimateEditArea[] = useMemo(() => {
     const grouped: EstimateEditArea[] = areas.map((a) => ({
       id: a.id,
@@ -65,31 +93,20 @@ export default function EstimateBuilder({
       lines: topLevel
         .filter((i) => i.area_id === a.id)
         .sort((x, y) => (x.sort_order || 0) - (y.sort_order || 0))
-        .map((i) => ({
-          id: i.id,
-          name: i.item_name,
-          description: i.description,
-          quantity: Number(i.quantity || 0),
-          unit_price: Number(i.unit_price || 0),
-        })),
+        .map(lineFor),
     }));
     const orphans = topLevel.filter((i) => !i.area_id);
     if (orphans.length > 0) {
       grouped.push({
         id: null,
         name: "Other items",
-        lines: orphans.map((i) => ({
-          id: i.id,
-          name: i.item_name,
-          description: i.description,
-          quantity: Number(i.quantity || 0),
-          unit_price: Number(i.unit_price || 0),
-        })),
+        lines: orphans.map(lineFor),
       });
     }
     if (grouped.length === 0) grouped.push({ id: null, name: "Quote items", lines: [] });
     return grouped;
-  }, [areas, topLevel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [areas, topLevel, productImages]);
 
   const subtotal = useMemo(
     () => topLevel.reduce((s, i) => s + Number(i.quantity || 0) * Number(i.unit_price || 0), 0),

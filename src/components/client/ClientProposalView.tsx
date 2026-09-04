@@ -29,7 +29,9 @@ interface QuoteData {
 
 interface LineItem {
   id: string;
-  description: string;
+  name: string;
+  blurb: string | null;
+  image_url: string | null;
   quantity: number;
   unit_price: number;
 }
@@ -84,7 +86,11 @@ const ClientProposalView = () => {
 
       const items = (bundle.items || []).map((it: any) => ({
         id: it.id,
-        description: it.item_name || it.description || "Item",
+        name: it.item_name || it.description || "Item",
+        // Sales blurb: the stored quote line description (defaults to the
+        // catalog AI sales description) — never scraped live.
+        blurb: it.item_name ? it.description || null : null,
+        image_url: it.image_url || null,
         quantity: Number(it.quantity) || 0,
         unit_price: Number(it.unit_price) || 0,
       }));
@@ -270,10 +276,21 @@ const ClientProposalView = () => {
           <CardContent>
             <div className="space-y-3">
               {lineItems.map((item) => (
-                <div key={item.id} className="flex justify-between items-start py-2 border-b border-border/50 last:border-0">
-                  <div className="flex-1">
-                    <p className="font-medium text-sm text-foreground">{item.description}</p>
-                    <p className="text-xs text-muted-foreground">Qty: {item.quantity} × {formatZAR(item.unit_price)}</p>
+                <div key={item.id} className="flex justify-between items-start gap-3 py-2 border-b border-border/50 last:border-0">
+                  {item.image_url && (
+                    <img
+                      src={item.image_url}
+                      alt={item.name}
+                      className="h-14 w-14 shrink-0 rounded-lg border border-border bg-background object-contain"
+                      loading="lazy"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm text-foreground">{item.name}</p>
+                    {item.blurb && (
+                      <p className="mt-0.5 text-xs text-muted-foreground whitespace-pre-line">{item.blurb}</p>
+                    )}
+                    <p className="mt-0.5 text-xs text-muted-foreground">Qty: {item.quantity} × {formatZAR(item.unit_price)}</p>
                   </div>
                   <p className="font-semibold text-foreground">{formatZAR(item.quantity * item.unit_price)}</p>
                 </div>
