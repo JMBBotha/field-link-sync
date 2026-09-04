@@ -244,20 +244,7 @@ const EstimateDocument = ({
                   )}
                 </div>
 
-                {areaIdx === 0 && (
-                  <div className="flex items-center gap-2 pt-2 print:hidden">
-                    <button
-                      type="button"
-                      onClick={editing.onAddArea}
-                      className="inline-flex items-center gap-1 rounded-md border border-dashed border-slate-300 px-2.5 py-1 text-[11px] text-slate-600 hover:border-[#1B3A5C] hover:text-[#1B3A5C]"
-                    >
-                      <Plus className="h-3.5 w-3.5" /> Add area
-                    </button>
-                    <span className="text-[11px] text-slate-400">Rename an area by typing over its heading</span>
-                  </div>
-                )}
-
-                <table className="w-full border-collapse text-[12px]">
+                <table className="mt-2 w-full border-collapse text-[12px]">
 
                   <thead>
                     <tr className="text-[10px] uppercase tracking-wider text-slate-500">
