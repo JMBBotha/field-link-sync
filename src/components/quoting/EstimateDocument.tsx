@@ -205,8 +205,13 @@ const EstimateDocument = ({
         {/* ── Line items ── */}
         {editing ? (
           <div className="mt-6 space-y-6">
-            {editing.areas.map((area) => (
-              <section key={area.id ?? "unassigned"}>
+            {editing.areas.map((area, areaIdx) => (
+              <section
+                key={area.id ?? "unassigned"}
+                onFocus={() => editing.onSelectArea?.(area.id)}
+                onClick={() => editing.onSelectArea?.(area.id)}
+                className="rounded-lg bg-white p-4 ring-1 ring-slate-200 print:rounded-none print:p-0 print:ring-0"
+              >
                 <div className="flex items-center gap-2 border-b border-slate-300 pb-1">
                   {area.id ? (
                     <input
@@ -223,7 +228,21 @@ const EstimateDocument = ({
                   )}
                 </div>
 
+                {areaIdx === 0 && (
+                  <div className="flex items-center gap-2 pt-2 print:hidden">
+                    <button
+                      type="button"
+                      onClick={editing.onAddArea}
+                      className="inline-flex items-center gap-1 rounded-md border border-dashed border-slate-300 px-2.5 py-1 text-[11px] text-slate-600 hover:border-[#1B3A5C] hover:text-[#1B3A5C]"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Add area
+                    </button>
+                    <span className="text-[11px] text-slate-400">Rename an area by typing over its heading</span>
+                  </div>
+                )}
+
                 <table className="w-full border-collapse text-[12px]">
+
                   <thead>
                     <tr className="text-[10px] uppercase tracking-wider text-slate-500">
                       <th className="py-2 text-left font-semibold">Description</th>
