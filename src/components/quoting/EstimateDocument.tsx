@@ -44,6 +44,8 @@ export interface EstimateEditing {
   onDeleteLine: (id: string) => void;
   onRenameArea: (id: string, name: string) => void;
   onAddArea: () => void;
+  /** Delete an area (and its lines). Only shown for real (persisted) areas. */
+  onDeleteArea?: (id: string) => void;
   /** Area currently being built — its add bar is highlighted. */
   activeAreaId?: string | null;
   onSelectArea?: (id: string | null) => void;
@@ -226,6 +228,20 @@ const EstimateDocument = ({
                   ) : (
                     <p className="text-[13px] font-semibold uppercase tracking-wide text-[#1B3A5C]">{area.name}</p>
                   )}
+                  {area.id && editing.onDeleteArea && (
+                    <button
+                      type="button"
+                      aria-label={`Delete area ${area.name}`}
+                      title="Delete this area and its lines"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        editing.onDeleteArea?.(area.id as string);
+                      }}
+                      className="ml-auto inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-red-300 bg-red-50 text-red-600 shadow-sm hover:bg-red-100 hover:text-red-700 print:hidden"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
 
                 {areaIdx === 0 && (
@@ -340,9 +356,9 @@ const EstimateDocument = ({
                               aria-label="Remove line"
                               title="Remove line"
                               onClick={() => editing.onDeleteLine(line.id)}
-                              className="inline-flex h-6 w-6 items-center justify-center rounded border border-slate-200 bg-white text-slate-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-300 bg-red-50 text-red-600 shadow-sm hover:bg-red-100 hover:text-red-700"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           </td>
                         </tr>
