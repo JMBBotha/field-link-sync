@@ -63,6 +63,11 @@ export interface DiffRow extends DiffImportRow {
  * (including already-archived products, so re-appearing codes are "restored"
  * instead of duplicated). Products present in the catalog but absent from
  * `incoming` are classified "archive" — never "delete".
+ *
+ * BRAND SCOPE (catalog SoT lock): archiving is restricted to the brands the
+ * incoming file actually covers. A new Samsung book therefore never archives
+ * Alliance/Midea rows sitting under the same supplier. When the incoming rows
+ * carry no brand at all, nothing is archived.
  */
 export async function buildProductDiff(
   supplierId: string,
@@ -73,6 +78,7 @@ export async function buildProductDiff(
     .select("id, product_code, cost_price, archived, description, brand, product_category, category")
     .eq("supplier_id", supplierId)
     .limit(5000);
+
 
   if (fetchErr) {
     console.error("[DiffImport] Failed to fetch existing products for diff:", fetchErr);
