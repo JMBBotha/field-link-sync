@@ -161,7 +161,7 @@ const AdminEstimateDetailPage = () => {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4 p-4 pb-32">
+    <div className="estimate-page mx-auto min-h-full max-w-4xl space-y-4 p-4 pb-32">
       {/* Header */}
       <div className="flex items-center justify-between print:hidden">
         <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => navigate("/admin/quotes")}>

@@ -143,7 +143,7 @@ const EstimateDocument = ({
   return (
     <div
       data-pdf-capture-root="estimate"
-      className="estimate-document mx-auto w-full max-w-[820px] bg-white text-slate-800 shadow-sm ring-1 ring-slate-200 print:shadow-none print:ring-0"
+      className="estimate-document pdf-page mx-auto w-full bg-white text-slate-800 shadow-sm ring-1 ring-slate-200 print:shadow-none print:ring-0"
     >
       <div className="p-8 sm:p-10">
         {/* ── Top: logo left, business info right ── */}
