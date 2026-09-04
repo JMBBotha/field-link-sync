@@ -44,11 +44,15 @@ export interface EstimateEditing {
   onDeleteLine: (id: string) => void;
   onRenameArea: (id: string, name: string) => void;
   onAddArea: () => void;
-  /** Slim add-item / add-service bar rendered below the line items. */
-  searchBar?: ReactNode;
+  /** Area currently being built — its add bar is highlighted. */
+  activeAreaId?: string | null;
+  onSelectArea?: (id: string | null) => void;
+  /** Slim add-item / add-service bar rendered below EACH area's lines. */
+  renderAddBar?: (areaId: string | null) => ReactNode;
   /** Discount control rendered in the totals block. */
   discountControl?: ReactNode;
 }
+
 
 export interface EstimateDocumentProps {
   estimateNumber: string;
