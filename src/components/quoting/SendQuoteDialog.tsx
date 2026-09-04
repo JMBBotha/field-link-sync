@@ -303,13 +303,14 @@ const SendQuoteDialog = ({
                 <Link2 className="h-4 w-4" />
                 Copy link
               </Button>
+              {/* Test-only WhatsApp: always goes to Johan, never the client. */}
               <WhatsAppShareButton
-                phone={phone || undefined}
+                phone={JOHAN_TEST_WHATSAPP}
                 message={shareMessage}
                 variant="outline"
                 className="h-9 shrink-0"
               >
-                <span className="flex items-center gap-1.5">WhatsApp</span>
+                <span className="flex items-center gap-1.5">WhatsApp (test)</span>
               </WhatsAppShareButton>
             </div>
           ) : (
@@ -336,27 +337,6 @@ const SendQuoteDialog = ({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="send-quote-phone" className="text-xs">WhatsApp number</Label>
-            <div className="flex gap-2">
-              <Input
-                id="send-quote-phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+27 82 000 0000"
-                className="h-9 text-sm"
-              />
-              <Button
-                onClick={handleWhatsApp}
-                disabled={busy !== null}
-                variant="secondary"
-                className="h-9 shrink-0 gap-1.5"
-              >
-                {busy === "whatsapp" ? <Loader2 className="h-4 w-4 animate-spin" /> : sent.whatsapp ? <Check className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />}
-                WhatsApp
-              </Button>
-            </div>
-          </div>
         </div>
 
         <DialogFooter className="gap-2 sm:justify-between">
