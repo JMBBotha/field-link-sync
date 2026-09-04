@@ -179,6 +179,10 @@ const AdminEstimateDetailPage = () => {
 
       <AcceptedWorkSection quoteId={quote.id} />
 
+      {/* Daily editor — writes into THIS quote only */}
+      <QuoteProvider quoteId={quote.id}>
+        <QuoteQuickEditor onChanged={refreshDocument} />
+      </QuoteProvider>
 
       <EstimateDocument
         estimateNumber={quote.quote_number}
