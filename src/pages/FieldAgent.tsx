@@ -1085,6 +1085,8 @@ const FieldAgent = () => {
 
   // Deposit invoices for install jobs linked to my active leads (chip on lead tiles)
   const [installInvoicesByLead, setInstallInvoicesByLead] = useState<Record<string, DepositInvoiceLike>>({});
+  // Linked quote id per lead for install jobs (drives the "Open estimate" affordance)
+  const [installQuoteByLead, setInstallQuoteByLead] = useState<Record<string, string>>({});
   const activeLeadIdsKey = useMemo(
     () => Array.from(new Set([...activeLeads, ...inProgressLeads, ...completedLeads].map((l) => l.id)))
       .sort()
@@ -1105,9 +1107,17 @@ const FieldAgent = () => {
         .eq("job_type", "installation")
         .in("lead_id", ids);
       if (cancelled || error || !installJobs?.length) {
-        if (!cancelled) setInstallInvoicesByLead({});
+        if (!cancelled) {
+          setInstallInvoicesByLead({});
+          setInstallQuoteByLead({});
+        }
         return;
       }
+      const quoteMap: Record<string, string> = {};
+      for (const j of installJobs as any[]) {
+        if (j.lead_id && j.quote_id) quoteMap[j.lead_id] = j.quote_id;
+      }
+      if (!cancelled) setInstallQuoteByLead(quoteMap);
       const invoiceIds = installJobs.map((j: any) => j.invoice_id).filter(Boolean);
       const quoteIds = installJobs.filter((j: any) => !j.invoice_id && j.quote_id).map((j: any) => j.quote_id);
       const found: Record<string, DepositInvoiceLike> = {};
