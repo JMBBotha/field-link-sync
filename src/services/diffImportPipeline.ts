@@ -153,24 +153,34 @@ export async function buildProductDiff(
     }
   }
 
+  // Brands actually covered by this file — anything else stays untouched.
+  const incomingBrands = new Set(
+    cleanIncoming.map((r) => (r.brand || "").trim().toLowerCase()).filter(Boolean),
+  );
+
   for (const [code, data] of existingMap) {
-    if (!incomingCodes.has(code) && !data.archived) {
-      diff.push({
-        product_code: code,
-        description: "(existing product not in new list)",
-        category: "",
-        cost_price: data.cost_price,
-        pipe_size: null,
-        btu_rating: null,
-        refrigerant_type: null,
-        is_price_on_request: false,
-        short_name: null,
-        action: "archive",
-        existing_id: data.id,
-        old_cost_price: data.cost_price,
-      });
-    }
+    if (incomingCodes.has(code) || data.archived) continue;
+    const existingBrand = (data.brand || "").trim().toLowerCase();
+    // No brand on the incoming file, or a different brand on the existing row →
+    // never archive. Only same-brand SKUs dropped from the new book are archived.
+    if (incomingBrands.size === 0 || !existingBrand || !incomingBrands.has(existingBrand)) continue;
+    diff.push({
+      product_code: code,
+      description: "(existing product not in new list)",
+      category: "",
+      cost_price: data.cost_price,
+      pipe_size: null,
+      btu_rating: null,
+      refrigerant_type: null,
+      is_price_on_request: false,
+      short_name: null,
+      brand: data.brand,
+      action: "archive",
+      existing_id: data.id,
+      old_cost_price: data.cost_price,
+    });
   }
+
 
   return diff;
 }
