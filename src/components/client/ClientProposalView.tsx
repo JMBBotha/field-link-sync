@@ -97,18 +97,33 @@ const ClientProposalView = () => {
       if (!q) { setError("Quote not found."); return; }
       setQuote(q);
 
-      const items = (bundle.items || []).map((it: any) => ({
-        id: it.id,
-        name: it.item_name || it.description || "Item",
-        // Sales blurb: the stored quote line description (defaults to the
-        // catalog AI sales description) — never scraped live.
-        blurb: it.item_name ? it.description || null : null,
-        image_url: it.image_url || null,
-        quantity: Number(it.quantity) || 0,
-        unit_price: Number(it.unit_price) || 0,
-      }));
+      // Document lines: name on the first row, stored sales blurb beneath it —
+      // the same shape EstimateDocument renders for staff.
+      const items: EstimateDocLineItem[] = (bundle.items || []).map((it: any) => {
+        const name = it.item_name || it.description || "Item";
+        const blurb = it.item_name ? it.description || null : null;
+        const quantity = Number(it.quantity) || 0;
+        const unit_price = Number(it.unit_price) || 0;
+        return {
+          description: blurb ? `${name}\n${blurb}` : name,
+          quantity,
+          unit_price,
+          amount: Number(it.total_price) || quantity * unit_price,
+          imageUrl: it.image_url || null,
+        };
+      });
       setLineItems(items);
       setSections(bundle.sections || []);
+      setCustomer(bundle.customer || null);
+      setCompany(bundle.company || null);
+
+      // Prefill the accept name once from the quote's customer (still editable).
+      const prefill =
+        (bundle.customer?.name as string | null) ||
+        (q.customer_name as string | null) ||
+        (bundle.customer?.company_name as string | null) ||
+        "";
+      setAcceptedName((prev) => (prev ? prev : (prefill || "").trim()));
 
       // Deposit invoice (created on accept) — read via the token-gated RPC so
       // anonymous clients can see the chip without touching invoices RLS.
@@ -124,50 +139,6 @@ const ClientProposalView = () => {
     }
   };
 
-  // Canvas drawing handlers
-  const getCanvasCoords = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-    return { x: clientX - rect.left, y: clientY - rect.top };
-  }, []);
-
-  const startDraw = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    const ctx = canvasRef.current?.getContext("2d");
-    if (!ctx) return;
-    const { x, y } = getCanvasCoords(e);
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    setIsDrawing(true);
-  }, [getCanvasCoords]);
-
-  const draw = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    if (!isDrawing) return;
-    const ctx = canvasRef.current?.getContext("2d");
-    if (!ctx) return;
-    const { x, y } = getCanvasCoords(e);
-    ctx.lineWidth = 2;
-    ctx.lineCap = "round";
-    ctx.strokeStyle = "hsl(222, 47%, 11%)";
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    setHasSignature(true);
-  }, [isDrawing, getCanvasCoords]);
-
-  const endDraw = useCallback(() => setIsDrawing(false), []);
-
-  const clearSignature = () => {
-    const ctx = canvasRef.current?.getContext("2d");
-    if (ctx && canvasRef.current) {
-      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-      setHasSignature(false);
-    }
-  };
-
   const handleAccept = async () => {
     if (!acceptedName.trim()) {
       toast({ title: "Please enter your name", variant: "destructive" });
@@ -175,8 +146,8 @@ const ClientProposalView = () => {
     }
     setSubmitting(true);
     try {
-      const signatureData = hasSignature && canvasRef.current
-        ? { image: canvasRef.current.toDataURL("image/png"), timestamp: new Date().toISOString() }
+      const signatureData = signature
+        ? { image: signature, timestamp: new Date().toISOString() }
         : null;
 
       const { data: success } = await supabase.rpc("accept_quote_by_token", {
@@ -184,6 +155,7 @@ const ClientProposalView = () => {
         p_accepted_by: acceptedName.trim(),
         p_signature: signatureData,
       });
+
 
       if (success) {
         setActionDone("accepted");
