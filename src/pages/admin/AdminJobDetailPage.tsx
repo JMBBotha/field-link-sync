@@ -77,6 +77,20 @@ const AdminJobDetailPage = () => {
     queryFn: async () => (await attachPaymentTotals([{ ...rawInvoice }]))[0],
   });
 
+  // Quote / build path: light summary when the job carries quote_id
+  const quoteId: string | null = (job as any)?.quote_id ?? null;
+  const { data: quoteSummary } = useQuery({
+    queryKey: ["job-quote-summary", quoteId],
+    enabled: !!quoteId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_quote_summary", { p_quote_id: quoteId! });
+      if (error) throw error;
+      return ((data as any[])?.[0] ?? null) as
+        | { id: string; quote_number: string; status: string; total: number | null; customer_name: string | null }
+        | null;
+    },
+  });
+
   const changeStatus = async (nextStatus: "in_progress" | "completed") => {
     if (!id || !job) return;
     setPendingStatus(nextStatus);

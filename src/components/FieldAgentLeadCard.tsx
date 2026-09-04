@@ -47,6 +47,8 @@ interface FieldAgentLeadCardProps {
   scrollIntoView?: boolean;
   /** Deposit invoice for install work on this lead — parent-side lookup. Chip renders only when an invoice row exists. */
   invoice?: DepositInvoiceLike | null;
+  /** Linked quote/estimate URL for install jobs (parent-side lookup by lead id). */
+  estimateUrl?: string | null;
 }
 
 const formatTimeAgo = (createdAt: string): string => {
