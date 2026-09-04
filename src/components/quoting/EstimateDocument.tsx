@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+import { Plus, Trash2 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 
@@ -6,6 +8,43 @@ export interface EstimateDocLineItem {
   quantity: number;
   unit_price: number;
   amount: number;
+}
+
+/** One editable line inside an area (staff edit mode only). */
+export interface EstimateEditLine {
+  id: string;
+  name: string;
+  description: string | null;
+  quantity: number;
+  unit_price: number;
+}
+
+/** One area section inside the quote body (staff edit mode only). */
+export interface EstimateEditArea {
+  id: string | null;
+  name: string;
+  lines: EstimateEditLine[];
+}
+
+/**
+ * Edit affordances folded INTO the document. When absent the document renders
+ * exactly as the read-only client-facing estimate.
+ */
+export interface EstimateEditing {
+  areas: EstimateEditArea[];
+  selectedLineId: string | null;
+  onSelectLine: (id: string | null) => void;
+  onLineChange: (
+    id: string,
+    patch: { item_name?: string; description?: string | null; quantity?: number; unit_price?: number },
+  ) => void;
+  onDeleteLine: (id: string) => void;
+  onRenameArea: (id: string, name: string) => void;
+  onAddArea: () => void;
+  /** Slim add-item / add-service bar rendered above the line items. */
+  searchBar?: ReactNode;
+  /** Discount control rendered in the totals block. */
+  discountControl?: ReactNode;
 }
 
 export interface EstimateDocumentProps {
@@ -24,6 +63,10 @@ export interface EstimateDocumentProps {
   grandTotal: number;
   notes?: string | null;
   termsText?: string | null;
+  /** Discount applied to the subtotal before VAT (0 = none). */
+  discountAmount?: number;
+  discountLabel?: string | null;
+  editing?: EstimateEditing;
 }
 
 const formatCurrency = (amount: number) => {
@@ -58,9 +101,14 @@ const formatDate = (dateStr?: string | null) =>
     ? new Date(dateStr).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" })
     : "—";
 
+/** Borderless inputs so the document still reads like a document while editing. */
+const inputBase =
+  "w-full rounded-sm border border-transparent bg-transparent px-1 py-0.5 outline-none hover:border-slate-200 focus:border-[#1B3A5C] focus:bg-white";
+
 /**
- * FreshBooks-style read-only estimate document.
- * Mirrors InvoiceDocument so estimates and invoices look consistent.
+ * FreshBooks-style estimate document.
+ * Read-only for clients; with `editing` supplied it becomes the in-place
+ * builder that sales uses (single surface, no floating editor card).
  */
 const EstimateDocument = ({
   estimateNumber,
@@ -78,6 +126,9 @@ const EstimateDocument = ({
   grandTotal,
   notes,
   termsText,
+  discountAmount = 0,
+  discountLabel,
+  editing,
 }: EstimateDocumentProps) => {
   const { settings } = useCompanySettings();
   const bank = settings.banking_details || {};
@@ -141,48 +192,193 @@ const EstimateDocument = ({
           </div>
         </div>
 
+        {/* ── Add bar (staff only, never printed) ── */}
+        {editing?.searchBar && <div className="mt-6">{editing.searchBar}</div>}
+
         {/* ── Line items ── */}
-        <table className="mt-8 w-full border-collapse text-[12px]">
-          <thead>
-            <tr className="border-b border-slate-300 text-[10px] uppercase tracking-wider text-slate-500">
-              <th className="py-2 text-left font-semibold">Description</th>
-              <th className="py-2 text-right font-semibold">Rate</th>
-              <th className="py-2 text-right font-semibold">Qty</th>
-              <th className="py-2 text-right font-semibold">Line Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item, idx) => {
-              const [name, ...detailLines] = item.description.split("\n");
-              return (
-                <tr key={idx} className="border-b border-slate-100 align-top">
-                  <td className="py-3 pr-4 text-slate-800">
-                    <p className="font-medium">{name}</p>
-                    {detailLines.map((line, li) => (
-                      <p key={li} className="mt-0.5 text-[11px] text-slate-500">{line}</p>
-                    ))}
-                  </td>
-                  <td className="py-3 text-right text-slate-600">{formatCurrency(item.unit_price)}</td>
-                  <td className="py-3 text-right text-slate-600">{item.quantity}</td>
-                  <td className="py-3 text-right font-medium text-slate-900">{formatCurrency(item.amount)}</td>
-                </tr>
-              );
-            })}
-            {items.length === 0 && (
-              <tr>
-                <td colSpan={4} className="py-6 text-center text-slate-400">No line items</td>
+        {editing ? (
+          <div className="mt-6 space-y-6">
+            {editing.areas.map((area) => (
+              <section key={area.id ?? "unassigned"}>
+                <div className="flex items-center gap-2 border-b border-slate-300 pb-1">
+                  {area.id ? (
+                    <input
+                      defaultValue={area.name}
+                      key={`${area.id}-${area.name}`}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        if (v && v !== area.name) editing.onRenameArea(area.id as string, v);
+                      }}
+                      className={`${inputBase} text-[13px] font-semibold uppercase tracking-wide text-[#1B3A5C]`}
+                    />
+                  ) : (
+                    <p className="text-[13px] font-semibold uppercase tracking-wide text-[#1B3A5C]">{area.name}</p>
+                  )}
+                </div>
+
+                <table className="w-full border-collapse text-[12px]">
+                  <thead>
+                    <tr className="text-[10px] uppercase tracking-wider text-slate-500">
+                      <th className="py-2 text-left font-semibold">Description</th>
+                      <th className="w-24 py-2 text-right font-semibold">Rate</th>
+                      <th className="w-16 py-2 text-right font-semibold">Qty</th>
+                      <th className="w-28 py-2 text-right font-semibold">Line Total</th>
+                      <th className="w-8 print:hidden" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {area.lines.map((line) => {
+                      const selected = editing.selectedLineId === line.id;
+                      return (
+                        <tr
+                          key={line.id}
+                          onFocus={() => editing.onSelectLine(line.id)}
+                          onClick={() => editing.onSelectLine(line.id)}
+                          className={`border-b border-slate-100 align-top ${
+                            selected ? "bg-sky-50/60 print:bg-transparent" : ""
+                          }`}
+                        >
+                          <td className="py-2 pr-4">
+                            <input
+                              key={`${line.id}-name`}
+                              defaultValue={line.name}
+                              onBlur={(e) => {
+                                const v = e.target.value.trim();
+                                if (v && v !== line.name) editing.onLineChange(line.id, { item_name: v });
+                              }}
+                              className={`${inputBase} font-medium text-slate-800`}
+                            />
+                            <textarea
+                              key={`${line.id}-desc`}
+                              defaultValue={line.description ?? ""}
+                              rows={2}
+                              placeholder="Description (prints on the quote)"
+                              onBlur={(e) => {
+                                const v = e.target.value;
+                                if (v !== (line.description ?? "")) {
+                                  editing.onLineChange(line.id, { description: v || null });
+                                }
+                              }}
+                              className={`${inputBase} mt-0.5 resize-y text-[11px] text-slate-500`}
+                            />
+                          </td>
+                          <td className="py-2 text-right">
+                            <input
+                              key={`${line.id}-price`}
+                              type="number"
+                              step="0.01"
+                              defaultValue={line.unit_price}
+                              onBlur={(e) => {
+                                const v = Number(e.target.value);
+                                if (Number.isFinite(v) && v !== line.unit_price) {
+                                  editing.onLineChange(line.id, { unit_price: v });
+                                }
+                              }}
+                              className={`${inputBase} text-right text-slate-600`}
+                            />
+                          </td>
+                          <td className="py-2 text-right">
+                            <input
+                              key={`${line.id}-qty`}
+                              type="number"
+                              step="1"
+                              min="0"
+                              defaultValue={line.quantity}
+                              onBlur={(e) => {
+                                const v = Number(e.target.value);
+                                if (Number.isFinite(v) && v !== line.quantity) {
+                                  editing.onLineChange(line.id, { quantity: v });
+                                }
+                              }}
+                              className={`${inputBase} text-right text-slate-600`}
+                            />
+                          </td>
+                          <td className="py-2 text-right font-medium text-slate-900">
+                            {formatCurrency(line.quantity * line.unit_price)}
+                          </td>
+                          <td className="py-2 text-right print:hidden">
+                            <button
+                              type="button"
+                              aria-label="Remove line"
+                              onClick={() => editing.onDeleteLine(line.id)}
+                              className="text-slate-300 hover:text-red-500"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {area.lines.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="py-4 text-center text-[11px] text-slate-400">
+                          No lines in this area yet — use the add bar above.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </section>
+            ))}
+
+            <button
+              type="button"
+              onClick={editing.onAddArea}
+              className="inline-flex items-center gap-1 rounded-md border border-dashed border-slate-300 px-3 py-1.5 text-[12px] text-slate-500 hover:border-[#1B3A5C] hover:text-[#1B3A5C] print:hidden"
+            >
+              <Plus className="h-3.5 w-3.5" /> Add area
+            </button>
+          </div>
+        ) : (
+          <table className="mt-8 w-full border-collapse text-[12px]">
+            <thead>
+              <tr className="border-b border-slate-300 text-[10px] uppercase tracking-wider text-slate-500">
+                <th className="py-2 text-left font-semibold">Description</th>
+                <th className="py-2 text-right font-semibold">Rate</th>
+                <th className="py-2 text-right font-semibold">Qty</th>
+                <th className="py-2 text-right font-semibold">Line Total</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {items.map((item, idx) => {
+                const [name, ...detailLines] = item.description.split("\n");
+                return (
+                  <tr key={idx} className="border-b border-slate-100 align-top">
+                    <td className="py-3 pr-4 text-slate-800">
+                      <p className="font-medium">{name}</p>
+                      {detailLines.map((line, li) => (
+                        <p key={li} className="mt-0.5 text-[11px] text-slate-500">{line}</p>
+                      ))}
+                    </td>
+                    <td className="py-3 text-right text-slate-600">{formatCurrency(item.unit_price)}</td>
+                    <td className="py-3 text-right text-slate-600">{item.quantity}</td>
+                    <td className="py-3 text-right font-medium text-slate-900">{formatCurrency(item.amount)}</td>
+                  </tr>
+                );
+              })}
+              {items.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="py-6 text-center text-slate-400">No line items</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
 
         {/* ── Totals ── */}
         <div className="mt-6 flex justify-end">
-          <div className="w-full max-w-[300px] space-y-2 text-[12px]">
+          <div className="w-full max-w-[320px] space-y-2 text-[12px]">
             <div className="flex justify-between text-slate-600">
               <span>Subtotal</span>
               <span>{formatCurrency(subtotal)}</span>
             </div>
+            {discountAmount > 0 && (
+              <div className="flex justify-between text-slate-600">
+                <span>Discount{discountLabel ? ` (${discountLabel})` : ""}</span>
+                <span>-{formatCurrency(discountAmount)}</span>
+              </div>
+            )}
+            {editing?.discountControl && <div className="print:hidden">{editing.discountControl}</div>}
             <div className="flex justify-between text-slate-600">
               <span>VAT ({vatPercent}%)</span>
               <span>{formatCurrency(taxAmount)}</span>
