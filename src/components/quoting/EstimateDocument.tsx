@@ -150,10 +150,22 @@ const EstimateDocument = ({
   termsText,
   discountAmount = 0,
   discountLabel,
+  companyOverride,
   editing,
 }: EstimateDocumentProps) => {
-  const { settings } = useCompanySettings();
+  const { settings: authedSettings } = useCompanySettings();
+  const settings = companyOverride
+    ? {
+        company_name: companyOverride.company_name || "",
+        physical_address: companyOverride.physical_address || "",
+        vat_number: companyOverride.vat_number || "",
+        default_deposit_percentage: Number(companyOverride.default_deposit_percentage) || 50,
+        default_payment_terms_days: Number(companyOverride.default_payment_terms_days) || 30,
+        banking_details: companyOverride.banking_details || {},
+      }
+    : authedSettings;
   const bank = settings.banking_details || {};
+
   const vatPercent = toPercent(taxRate);
   const accountType =
     String(bank.account_type || "").match(/^[A-Za-z ]+/)?.[0].trim() || bank.account_type || "";
