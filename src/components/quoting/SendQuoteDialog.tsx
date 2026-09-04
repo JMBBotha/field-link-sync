@@ -248,40 +248,7 @@ const SendQuoteDialog = ({
     }
   };
 
-  const handleWhatsApp = async () => {
-    if (!phone.trim()) {
-      toast({ title: "Number required", description: "Add a client WhatsApp number first.", variant: "destructive" });
-      return;
-    }
-    setBusy("whatsapp");
-    try {
-      const pdfBase64 = await blobToBase64(await buildPdf());
-      const { data, error } = await supabase.functions.invoke("send-quote-whatsapp", {
-        body: {
-          quoteId,
-          quoteNumber,
-          to: phone.trim(),
-          clientName: resolvedCustomerName,
-          totalAmount: total,
-          pdfBase64,
-        },
-      });
-      if (error) throw error;
-      const res = data as { ok?: boolean; error?: string } | null;
-      if (res && res.ok === false) throw new Error(res.error || "WhatsApp send failed");
-      await logDelivery("whatsapp", phone.trim());
-      setSent((s) => ({ ...s, whatsapp: true }));
-      toast({ title: "Quote sent on WhatsApp", description: `Sent to ${phone.trim()}` });
-    } catch (err) {
-      toast({
-        title: "WhatsApp send failed",
-        description: err instanceof Error ? err.message : "Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setBusy(null);
-    }
-  };
+  // No client-facing WhatsApp send here: copy link or email the PDF instead.
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
