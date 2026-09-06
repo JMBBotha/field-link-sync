@@ -29,7 +29,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Users, MapPin, Radio, CalendarIcon, UserCheck, UserPlus } from "lucide-react";
+import { Loader2, Users, MapPin, Radio, CalendarIcon, UserCheck } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import LocationPicker, { type LocationChangeSource } from "./LocationPicker";
@@ -38,7 +38,7 @@ import { hasValidCoords } from "@/lib/leadCoords";
 import { useNearbyAgents } from "@/hooks/useNearbyAgents";
 import { useBroadcastSettings } from "@/hooks/useBroadcastSettings";
 import { getBroadcastRadiusForType, formatDistance } from "@/lib/geolocation";
-import { findCustomerMatch, type CustomerMatch } from "@/lib/customerMatch";
+import { type CustomerMatch } from "@/lib/customerMatch";
 import { laneFromServiceType, leadLaneFields, type LeadLane } from "@/lib/leadLane";
 import { useLaneStaff } from "@/hooks/useLaneStaff";
 import { useUnifiedClients, type UnifiedClient } from "@/hooks/useUnifiedClients";
@@ -91,7 +91,6 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
   const [nearbyAgents, setNearbyAgents] = useState<NearbyAgent[]>([]);
   const [customerMatch, setCustomerMatch] = useState<CustomerMatch | null>(null);
   const [linkedCustomerId, setLinkedCustomerId] = useState<string | null>(null);
-  const [matchDismissed, setMatchDismissed] = useState(false);
   const [laneOverride, setLaneOverride] = useState<LeadLane | "unknown" | null>(null);
   const [salesOwnerId, setSalesOwnerId] = useState<string>("");
   const [clientQuery, setClientQuery] = useState("");
@@ -137,7 +136,6 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
   const handleSelectClient = async (client: UnifiedClient) => {
     const customerId = client.customer_id!;
     setLinkedCustomerId(customerId);
-    setMatchDismissed(false);
     setCustomerMatch({
       id: customerId,
       name: client.name,
@@ -256,26 +254,6 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
     fetchAgents();
   }, [latitude, longitude, effectiveRadius, findNearbyAgents, canBroadcast, laneById]);
 
-  // Debounced customer dedup lookup by phone
-  useEffect(() => {
-    if (linkedCustomerId || matchDismissed) return;
-    const phone = formData.customer_phone.trim();
-    if (phone.length < 7) {
-      setCustomerMatch(null);
-      return;
-    }
-    let cancelled = false;
-    const t = setTimeout(async () => {
-      const companyId = await getUserCompanyId(user?.id);
-      if (!companyId || cancelled) return;
-      const match = await findCustomerMatch(companyId, phone, null);
-      if (!cancelled) setCustomerMatch(match);
-    }, 400);
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
-  }, [formData.customer_phone, user?.id, linkedCustomerId, matchDismissed]);
 
   const isFormValid =
     formData.customer_name.trim() !== "" &&
@@ -307,15 +285,58 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!latitude || !longitude) return;
-    
+
     setLoading(true);
 
     try {
       // Format phone number for WhatsApp
       const formattedPhone = formatPhoneForWhatsApp(formData.customer_phone);
-      
+
       const company_id = await getUserCompanyId(user?.id);
       const assignedAgentId = lane === "sales" && salesOwnerId ? salesOwnerId : null;
+
+      // Automatic, non-skippable customer resolution: reuse a strong match or create one
+      let customerId: string | null = linkedCustomerId;
+      if (!customerId) {
+        const nameParts = formData.customer_name.trim().split(/\s+/);
+        const { data: matches } = await supabase.rpc("check_customer_duplicates", {
+          p_phone: formattedPhone,
+          p_email: formData.email || null,
+          p_first_name: nameParts[0] || null,
+          p_last_name: nameParts.slice(1).join(" ") || null,
+          p_address: formData.customer_address || null,
+        });
+        const strong = (matches || []).find((m: any) => (m.match_score ?? 0) >= 0.8);
+        if (strong) {
+          customerId = strong.id;
+          // Backfill a missing email on the matched customer
+          if (formData.email) {
+            await supabase
+              .from("customers")
+              .update({ email: formData.email })
+              .eq("id", customerId)
+              .is("email", null);
+          }
+        } else {
+          const { data: newCustomer, error: custError } = await supabase
+            .from("customers")
+            .insert({
+              name: formData.customer_name.trim(),
+              first_name: nameParts[0] || null,
+              last_name: nameParts.slice(1).join(" ") || null,
+              company_name: formData.company_name || null,
+              phone: formattedPhone,
+              email: formData.email || null,
+              address: formData.customer_address || null,
+              status: "lead",
+              company_id,
+            })
+            .select("id")
+            .single();
+          if (custError) throw custError;
+          customerId = newCustomer.id;
+        }
+      }
       const scheduledDateStr = scheduledDate ? format(scheduledDate, "yyyy-MM-dd") : null;
       const { data: insertedLead, error } = await supabase.from("leads").insert({
         customer_name: formData.customer_name,
@@ -333,7 +354,7 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
         scheduled_time: scheduledTime || null,
         status: "pending",
         company_id,
-        customer_id: linkedCustomerId,
+        customer_id: customerId,
         assigned_agent_id: assignedAgentId,
         ...leadLaneFields(lane),
       }).select("id").single();
@@ -387,7 +408,6 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
       setNearbyAgents([]);
       setCustomerMatch(null);
       setLinkedCustomerId(null);
-      setMatchDismissed(false);
       setLaneOverride(null);
       setSalesOwnerId("");
       setClientQuery("");
@@ -536,53 +556,10 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
                   className="text-primary hover:underline font-medium"
                   onClick={() => {
                     setLinkedCustomerId(null);
-                    setMatchDismissed(true);
                   }}
                 >
                   Unlink
                 </button>
-              </div>
-            ) : customerMatch && !matchDismissed ? (
-              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5 space-y-2">
-                <div className="flex items-start gap-2 text-xs">
-                  <UserCheck className="h-4 w-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground">
-                      Possible match: {customerMatch.name || "Existing customer"}
-                    </p>
-                    <p className="text-muted-foreground truncate">
-                      {customerMatch.phone}
-                      {customerMatch.email ? ` · ${customerMatch.email}` : ""}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="default"
-                    className="h-8 text-xs flex-1"
-                    onClick={() => {
-                      setLinkedCustomerId(customerMatch.id);
-                      if (customerMatch.name && !formData.customer_name.trim()) {
-                        setFormData((p) => ({ ...p, customer_name: customerMatch.name! }));
-                      }
-                    }}
-                  >
-                    <UserCheck className="h-3.5 w-3.5 mr-1" />
-                    Link existing
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-8 text-xs flex-1"
-                    onClick={() => setMatchDismissed(true)}
-                  >
-                    <UserPlus className="h-3.5 w-3.5 mr-1" />
-                    Create new
-                  </Button>
-                </div>
               </div>
             ) : null}
           </div>
