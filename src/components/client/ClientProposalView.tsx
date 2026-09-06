@@ -223,13 +223,14 @@ const ClientProposalView = () => {
   const isActionable = ["sent", "viewed", "draft"].includes(quote.status) && !actionDone;
 
   const discountValue = Number(quote.discount_value) || 0;
+  const isPercentDiscount = quote.discount_type === "percent" || quote.discount_type === "percentage";
   const discountAmount =
     discountValue > 0
-      ? quote.discount_type === "percent"
+      ? isPercentDiscount
         ? (Number(quote.subtotal) || 0) * (discountValue / 100)
         : discountValue
       : 0;
-  const discountLabel = quote.discount_type === "percent" && discountValue > 0 ? `${discountValue}%` : null;
+  const discountLabel = isPercentDiscount && discountValue > 0 ? `${discountValue}%` : null;
 
   const customerName = tidyName(customer?.name || quote.customer_name || "") || "Valued Customer";
 
