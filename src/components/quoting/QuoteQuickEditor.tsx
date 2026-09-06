@@ -70,7 +70,7 @@ export default function QuoteQuickEditor({
   const [adding, setAdding] = useState<string | null>(null);
 
   const { data: products = [], isLoading: loadingProducts } = useQuery({
-    queryKey: ["quote-builder-products"],
+    queryKey: ["quote-quick-editor-products"],
     staleTime: 60_000,
     queryFn: async () => {
       const allowPromise = fetchVisualCatalogAllowlist();
