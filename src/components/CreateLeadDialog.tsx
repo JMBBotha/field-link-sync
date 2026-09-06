@@ -136,7 +136,6 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
   const handleSelectClient = async (client: UnifiedClient) => {
     const customerId = client.customer_id!;
     setLinkedCustomerId(customerId);
-    setMatchDismissed(false);
     setCustomerMatch({
       id: customerId,
       name: client.name,
@@ -409,7 +408,6 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
       setNearbyAgents([]);
       setCustomerMatch(null);
       setLinkedCustomerId(null);
-      setMatchDismissed(false);
       setLaneOverride(null);
       setSalesOwnerId("");
       setClientQuery("");
@@ -558,7 +556,6 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
                   className="text-primary hover:underline font-medium"
                   onClick={() => {
                     setLinkedCustomerId(null);
-                    setMatchDismissed(true);
                   }}
                 >
                   Unlink
