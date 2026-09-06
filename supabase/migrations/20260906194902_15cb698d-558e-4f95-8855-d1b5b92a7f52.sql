@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.notify_document_sent() FROM public, anon, authenticated;
