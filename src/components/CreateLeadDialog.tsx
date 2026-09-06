@@ -307,15 +307,58 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!latitude || !longitude) return;
-    
+
     setLoading(true);
 
     try {
       // Format phone number for WhatsApp
       const formattedPhone = formatPhoneForWhatsApp(formData.customer_phone);
-      
+
       const company_id = await getUserCompanyId(user?.id);
       const assignedAgentId = lane === "sales" && salesOwnerId ? salesOwnerId : null;
+
+      // Automatic, non-skippable customer resolution: reuse a strong match or create one
+      let customerId: string | null = linkedCustomerId;
+      if (!customerId) {
+        const nameParts = formData.customer_name.trim().split(/\s+/);
+        const { data: matches } = await supabase.rpc("check_customer_duplicates", {
+          p_phone: formattedPhone,
+          p_email: formData.email || null,
+          p_first_name: nameParts[0] || null,
+          p_last_name: nameParts.slice(1).join(" ") || null,
+          p_address: formData.customer_address || null,
+        });
+        const strong = (matches || []).find((m: any) => (m.match_score ?? 0) >= 0.8);
+        if (strong) {
+          customerId = strong.id;
+          // Backfill a missing email on the matched customer
+          if (formData.email) {
+            await supabase
+              .from("customers")
+              .update({ email: formData.email })
+              .eq("id", customerId)
+              .is("email", null);
+          }
+        } else {
+          const { data: newCustomer, error: custError } = await supabase
+            .from("customers")
+            .insert({
+              name: formData.customer_name.trim(),
+              first_name: nameParts[0] || null,
+              last_name: nameParts.slice(1).join(" ") || null,
+              company_name: formData.company_name || null,
+              phone: formattedPhone,
+              email: formData.email || null,
+              address: formData.customer_address || null,
+              status: "lead",
+              company_id,
+            })
+            .select("id")
+            .single();
+          if (custError) throw custError;
+          customerId = newCustomer.id;
+        }
+      }
       const scheduledDateStr = scheduledDate ? format(scheduledDate, "yyyy-MM-dd") : null;
       const { data: insertedLead, error } = await supabase.from("leads").insert({
         customer_name: formData.customer_name,
