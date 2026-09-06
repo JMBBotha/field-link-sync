@@ -192,6 +192,24 @@ export type Database = {
         }
         Relationships: []
       }
+      app_webhook_config: {
+        Row: {
+          created_at: string
+          email_webhook_token: string
+          id: number
+        }
+        Insert: {
+          created_at?: string
+          email_webhook_token?: string
+          id?: number
+        }
+        Update: {
+          created_at?: string
+          email_webhook_token?: string
+          id?: number
+        }
+        Relationships: []
+      }
       assignments: {
         Row: {
           assigned_by: string | null
