@@ -29,7 +29,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Users, MapPin, Radio, CalendarIcon, UserCheck, UserPlus } from "lucide-react";
+import { Loader2, Users, MapPin, Radio, CalendarIcon, UserCheck } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import LocationPicker, { type LocationChangeSource } from "./LocationPicker";
@@ -38,7 +38,7 @@ import { hasValidCoords } from "@/lib/leadCoords";
 import { useNearbyAgents } from "@/hooks/useNearbyAgents";
 import { useBroadcastSettings } from "@/hooks/useBroadcastSettings";
 import { getBroadcastRadiusForType, formatDistance } from "@/lib/geolocation";
-import { findCustomerMatch, type CustomerMatch } from "@/lib/customerMatch";
+import { type CustomerMatch } from "@/lib/customerMatch";
 import { laneFromServiceType, leadLaneFields, type LeadLane } from "@/lib/leadLane";
 import { useLaneStaff } from "@/hooks/useLaneStaff";
 import { useUnifiedClients, type UnifiedClient } from "@/hooks/useUnifiedClients";
