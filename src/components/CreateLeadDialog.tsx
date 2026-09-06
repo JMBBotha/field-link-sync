@@ -306,7 +306,22 @@ const CreateLeadDialog = ({ open, onOpenChange }: CreateLeadDialogProps) => {
           p_last_name: nameParts.slice(1).join(" ") || null,
           p_address: formData.customer_address || null,
         });
-        const strong = (matches || []).find((m: any) => (m.match_score ?? 0) >= 0.8);
+        // Auto-link only when phone or email agrees (0.8 threshold);
+        // name-only similarity stays a suggestion, never auto-linked.
+        const strong = (matches || []).find(
+          (m: any) =>
+            (m.match_score ?? 0) >= 0.8 &&
+            (m.match_type === "exact_phone" || m.match_type === "exact_email")
+        );
+        const suggestion = (matches || []).find(
+          (m: any) => m.match_type === "name_suggestion"
+        );
+        if (suggestion) {
+          toast({
+            title: "Possible existing customer",
+            description: `${suggestion.first_name ?? ""} ${suggestion.last_name ?? ""} looks similar — a new record was still created. Check Customers to merge if it's the same person.`,
+          });
+        }
         if (strong) {
           customerId = strong.id;
           // Backfill a missing email on the matched customer
