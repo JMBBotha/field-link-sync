@@ -442,6 +442,7 @@ const PdfPageOverlay = ({
         baskets={baskets}
         onAddProductToBasket={onAddProductToBasket}
         onOpenProductInfo={onOpenProductInfo}
+        onInfoPress={handleInfoPress}
         onToggleFavorite={onToggleFavorite}
         onHoverStart={onHoverStart}
         onHoverMove={onHoverMove}
