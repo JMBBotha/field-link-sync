@@ -513,6 +513,40 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       // Prefer linked customer primary location coords; geocode + persist otherwise.
       const withCoords = await resolveLeadCoords(leadData as any[]);
       setLeads(withCoords as any);
+
+      // Deposit truth per lead: quote -> deposit invoice -> settled payment allocation.
+      // Same source of truth as DepositPaymentChip (attachPaymentTotals).
+      try {
+        const leadIds = (withCoords as any[]).map((l) => l.id).filter(Boolean);
+        const nextDepositByLead = new Map<string, DepositInvoiceRow>();
+        if (leadIds.length > 0) {
+          const { data: quoteRows } = await supabase
+            .from("quotes")
+            .select("id, lead_id")
+            .in("lead_id", leadIds);
+          const quoteIds = (quoteRows || []).map((q: any) => q.id).filter(Boolean);
+          if (quoteIds.length > 0) {
+            const { data: invRows } = await supabase
+              .from("invoices")
+              .select("id, invoice_number, status, grand_total, paid_date, notes, quote_id")
+              .in("quote_id", quoteIds);
+            const invoices = await attachPaymentTotals((invRows || []) as any[]);
+            const invByQuote = new Map<string, any>();
+            for (const inv of invoices as any[]) {
+              if (inv.quote_id && !invByQuote.has(inv.quote_id)) invByQuote.set(inv.quote_id, inv);
+            }
+            for (const q of (quoteRows || []) as any[]) {
+              const inv = invByQuote.get(q.id);
+              if (inv && q.lead_id && !nextDepositByLead.has(q.lead_id)) {
+                nextDepositByLead.set(q.lead_id, inv as DepositInvoiceRow);
+              }
+            }
+          }
+        }
+        setDepositByLead(nextDepositByLead);
+      } catch (e) {
+        console.warn("[MapView] deposit allocation lookup failed", e);
+      }
     }
 
     // Fetch customer locations for company (multi-site pins)
@@ -945,7 +979,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     if (mapLoaded && mapInstanceRef.current && (agents.length > 0 || leads.length > 0)) {
       updateMarkers();
     }
-  }, [agents, leads, mapLoaded, statusFilters, onLeadClick]);
+  }, [agents, leads, mapLoaded, statusFilters, onLeadClick, depositByLead]);
 
   const updateMarkers = () => {
     const map = mapInstanceRef.current;
