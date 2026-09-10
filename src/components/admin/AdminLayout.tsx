@@ -273,7 +273,10 @@ const AdminLayout = () => {
           </AnimatePresence>
         </main>
 
-        <Footer />
+        {/* Bottom nav owns the mobile footer area — avoid a double stack */}
+        <div className="hidden lg:block">
+          <Footer />
+        </div>
         <AdminBottomNav onOpenMenu={() => setMobileMenuOpen(true)} />
       </div>
 
