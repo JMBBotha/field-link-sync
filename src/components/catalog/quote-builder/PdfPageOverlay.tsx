@@ -448,7 +448,7 @@ const PdfPageOverlay = ({
     <>
       <style>{`@media (min-width: 640px) {
   [data-testid="pdf-margin-hit-strip"] { --pdf-strip-w: ${STRIP_W_DESKTOP}px; }
-  [data-pdf-region-box] { --pdf-pill-right: ${PILL_RIGHT_PX_DESKTOP}px; --pdf-info-right: ${INFO_HIT_RIGHT_DESKTOP}px; }
+  [data-pdf-region-box] { --pdf-pill-right: ${PILL_RIGHT_PX_DESKTOP}px; }
 }`}</style>
       {regions.map((region) => {
         const productId = region.product?.id || region.id;
