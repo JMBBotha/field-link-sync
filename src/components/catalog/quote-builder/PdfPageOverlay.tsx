@@ -461,10 +461,6 @@ const PdfPageOverlay = ({
             isSelected={isRegionSelected(region, pdfSelection, basketProductCounts)}
             isFavorite={!!favoriteIds?.has(productId)}
             isInfoPressed={pressedInfoId === region.id}
-            onHoverStart={onHoverStart}
-            onHoverMove={onHoverMove}
-            onHoverEnd={onHoverEnd}
-            onOpenProductInfo={onOpenProductInfo}
             onInfoPress={handleInfoPress}
           />
         );
