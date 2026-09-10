@@ -9,6 +9,7 @@ import { generateAndUploadPDF, downloadInvoicePDF, shareInvoice, sendViaWhatsApp
 import { sumSettled } from "@/lib/payments";
 import PaymentRecorder from "@/components/invoicing/PaymentRecorder";
 import InvoiceDocument from "@/components/invoicing/InvoiceDocument";
+import StickyActionBar, { STICKY_ACTION_BAR_SPACER } from "@/components/shared/StickyActionBar";
 
 import HelpTip from "@/components/help/HelpTip";
 
@@ -202,7 +203,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-4 pb-44">
+    <div className={`max-w-4xl mx-auto p-4 space-y-4 ${STICKY_ACTION_BAR_SPACER}`}>
       {/* Header */}
       <div className="flex items-center justify-between print:hidden">
         <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onBack}>
@@ -251,50 +252,49 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         />
       </div>
 
-      {/* Extra spacer so the fixed action bar doesn't cover payments */}
-      <div className="h-32" />
-
-      {/* Fixed Action Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-md border-t z-50 max-w-lg mx-auto space-y-2">
-        {/* Primary action based on status */}
-        {invoice.status === "draft" && (
-          <Button
-            className="w-full h-12 rounded-xl font-semibold"
-            style={{ backgroundColor: '#0077B6' }}
-            onClick={() => updateStatus("sent")}
-            disabled={updating}
-          >
-            {updating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-            Mark as Sent
-          </Button>
-        )}
-        {/* Paid is DERIVED from recorded payments — never set directly. */}
-        {(invoice.status === "sent" || invoice.status === "partially_paid" || invoice.status === "overdue") &&
-          Number(invoice.grand_total) - amountPaid > 0.005 && (
-          <Button
-            className="w-full h-12 rounded-xl font-semibold bg-green-600 hover:bg-green-700"
-            onClick={() => document.getElementById("invoice-payment-recorder")?.scrollIntoView({ behavior: "smooth", block: "center" })}
-          >
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Record Payment ({formatCurrency(Math.max(0, Number(invoice.grand_total) - amountPaid))} due)
-          </Button>
-        )}
-
-        {/* Share/Download actions */}
-        <div className="grid grid-cols-3 gap-2">
-          <Button variant="outline" className="h-10 rounded-xl text-xs" onClick={handleDownloadPDF} disabled={generatingPDF}>
-            {generatingPDF ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />} PDF
-          </Button>
-          {invoice.customer_phone && (
-            <Button variant="outline" className="h-10 rounded-xl text-xs" onClick={handleWhatsApp} disabled={generatingPDF}>
-              <MessageCircle className="h-3.5 w-3.5 mr-1" /> WhatsApp
+      <StickyActionBar align="between" className="print:hidden">
+        <div className="w-full space-y-2">
+          {/* Primary action based on status */}
+          {invoice.status === "draft" && (
+            <Button
+              variant="default"
+              className="w-full h-11 rounded-lg font-semibold"
+              onClick={() => updateStatus("sent")}
+              disabled={updating}
+            >
+              {updating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+              Mark as Sent
             </Button>
           )}
-          <Button variant="outline" className="h-10 rounded-xl text-xs" onClick={() => window.print()}>
-            <Printer className="h-3.5 w-3.5 mr-1" /> Print
-          </Button>
+          {/* Paid is DERIVED from recorded payments — never set directly. */}
+          {(invoice.status === "sent" || invoice.status === "partially_paid" || invoice.status === "overdue") &&
+            Number(invoice.grand_total) - amountPaid > 0.005 && (
+            <Button
+              variant="default"
+              className="w-full h-11 rounded-lg font-semibold"
+              onClick={() => document.getElementById("invoice-payment-recorder")?.scrollIntoView({ behavior: "smooth", block: "center" })}
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Record Payment ({formatCurrency(Math.max(0, Number(invoice.grand_total) - amountPaid))} due)
+            </Button>
+          )}
+
+          {/* Share/Download actions */}
+          <div className="grid grid-cols-3 gap-2">
+            <Button variant="outline" size="sm" className="h-9 rounded-md text-xs" onClick={handleDownloadPDF} disabled={generatingPDF}>
+              {generatingPDF ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />} PDF
+            </Button>
+            {invoice.customer_phone && (
+              <Button variant="outline" size="sm" className="h-9 rounded-md text-xs" onClick={handleWhatsApp} disabled={generatingPDF}>
+                <MessageCircle className="h-3.5 w-3.5 mr-1" /> WhatsApp
+              </Button>
+            )}
+            <Button variant="outline" size="sm" className="h-9 rounded-md text-xs" onClick={() => window.print()}>
+              <Printer className="h-3.5 w-3.5 mr-1" /> Print
+            </Button>
+          </div>
         </div>
-      </div>
+      </StickyActionBar>
     </div>
   );
 };
