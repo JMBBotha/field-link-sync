@@ -1235,9 +1235,12 @@ const LazyPdfPage = ({
     if (ocrRegions.length > 0) {
       return (ocrRegions as any[]).map((sp, idx) => {
         const rb = sp.row_bbox || {};
+        const pb = sp.price_bbox || null;
+        const priceXFrac = pb && typeof pb.x === "number" && Number.isFinite(pb.x) ? pb.x : null;
         const paletteProduct = activeProducts.find(p => p.id === sp.id || p.product_code === sp.product_code) || null;
         const cost = sp.cost_excl_vat ?? sp.cost_price ?? 0;
         return {
+          price_x_frac: priceXFrac,
           id: `ocr-${page.id}-${sp.id}-${idx}`,
           x_pct: (rb.x ?? 0) * 100,
           y_pct: (rb.y ?? 0) * 100,
