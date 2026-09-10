@@ -2,7 +2,7 @@
  * voice-quote-parse — voice line-item capture for the unified quote builder.
  *
  * Actions:
- *   transcribe   base64 WAV -> transcript text (Lovable AI speech-to-text)
+ *   transcribe   base64 WAV -> transcript text (xAI speech-to-text, XAI_API_KEY)
  *   parse        transcript -> structured draft line items + search terms
  *   audit        record the confirm/cancel decision in nl_audit_log
  *
@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
   if (!auth.ok) return auth.response;
   const userId = auth.userId;
 
-  // Gateway key is only needed by the parse/audit paths; transcribe uses OpenAI Whisper.
+  // Gateway key is only needed by the parse/audit paths; transcribe uses xAI STT (XAI_API_KEY).
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
 
   const db = createClient(
@@ -83,22 +83,27 @@ Deno.serve(async (req) => {
       if (bytes.byteLength < 2048) {
         return json({ error: "That recording was empty — please try again." }, 400);
       }
-      const openaiKey = Deno.env.get("OPENAI_API_KEY");
-      if (!openaiKey) {
-        return json({ error: "Voice transcription is not configured — add the secret OPENAI_API_KEY in Project Settings → Secrets." }, 500);
+      // xAI batch speech-to-text (docs: https://docs.x.ai/developers/model-capabilities/audio/speech-to-text)
+      const xaiKey = Deno.env.get("XAI_API_KEY");
+      if (!xaiKey) {
+        return json({ error: "Voice transcription is not configured — add the secret XAI_API_KEY in Project Settings → Secrets." }, 500);
       }
+      // Multipart: option fields MUST precede `file` (file last).
       const form = new FormData();
-      form.append("model", "whisper-1");
+      form.append("format", "true");
       form.append("language", "en");
-      form.append(
-        "prompt",
-        "HVAC quote dictation. Terms: AR4500, AR40, COPRL, BTU, lagging, Armaflex, Samsung, Daikin, metres, copper, drain pipe, elbows, labour, back-to-back, install.",
-      );
+      // HVAC vocabulary bias (repeatable keyterms field, max 100 terms, <=50 chars each)
+      for (const term of [
+        "AR4500", "AR40", "COPRL", "BTU", "lagging", "Armaflex",
+        "Samsung", "Daikin", "copper", "labour",
+      ]) {
+        form.append("keyterms", term);
+      }
       form.append("file", new Blob([bytes], { type: "audio/wav" }), "recording.wav");
 
-      const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      const res = await fetch("https://api.x.ai/v1/stt", {
         method: "POST",
-        headers: { Authorization: `Bearer ${openaiKey}` },
+        headers: { Authorization: `Bearer ${xaiKey}` },
         body: form,
       });
       if (!res.ok) {
