@@ -18,7 +18,26 @@ export interface OverlayRegion {
   has_price?: boolean;
   detected_price?: number | null;
   matched?: boolean;
+  /** Fractional x (0-1) of this row's price cell (left edge), when known. */
+  price_x_frac?: number | null;
 }
+
+/** Only trust a price-column x that sits in the right half of the page. */
+const MIN_PRICE_X_FRAC = 0.55;
+
+const resolveControlPosition = (
+  regionPriceXFrac?: number | null,
+  pagePriceXFrac?: number | null,
+): React.CSSProperties => {
+  const candidates = [regionPriceXFrac, pagePriceXFrac];
+  for (const c of candidates) {
+    if (typeof c === "number" && Number.isFinite(c) && c >= MIN_PRICE_X_FRAC && c <= 1) {
+      return { left: `calc(${(c * 100).toFixed(2)}% - 54px)` };
+    }
+  }
+  // Fallback: hug the right edge of the page box (never page-center).
+  return { right: "12px" };
+};
 
 interface PdfPageOverlayProps {
   regions: OverlayRegion[];
@@ -226,21 +245,12 @@ const RegionBox = memo(({
       {/* Buttons — on the white page, left of the price column */}
       <div
         className="absolute flex items-center gap-1"
-        style={
-          typeof priceColumnXFrac === "number" && priceColumnXFrac > 0.1
-            ? {
-                left: `calc(${(priceColumnXFrac * 100).toFixed(2)}% - 58px)`,
-                top: "50%",
-                transform: "translateY(-50%)",
-                touchAction: "manipulation",
-              }
-            : {
-                right: "64px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                touchAction: "manipulation",
-              }
-        }
+        style={{
+          ...resolveControlPosition(region.price_x_frac, priceColumnXFrac),
+          top: "50%",
+          transform: "translateY(-50%)",
+          touchAction: "manipulation",
+        }}
       >
         {/* Info button */}
         <button
