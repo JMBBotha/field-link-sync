@@ -277,22 +277,18 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
     if (intents.length !== 1) return false;
     if (first.kind === "client" || first.kind === "phone") {
       const q = first.kind === "phone" ? first.phone : first.query;
-      const { data, error } = await supabase.rpc("search_customers", { search_term: q, max_results: 10 });
-      const raw = (error ? [] : (data || [])) as CustomerSearchResult[];
-      const hits = rankClientHits(q, raw);
-      if (!hits.length) {
-        setClientPrompt({ type: "no_match", query: q });
-        say(`No client matching “${q}”. Add them as a new client, or say the name again.`);
-        return true;
-      }
-      if (hits.length === 1 && isHighConfidence(q, hits[0])) { await setCustomer(hits[0]); return true; }
-      setClientPrompt({ type: "customer_pick", hits, query: q });
-      say(`Heard “${q}” — tap the right client, or add them as new.`);
+      setClientDraft({ ...emptyClientDraft(first.kind === "client" ? q : ""), phone: first.kind === "phone" ? q : "" });
+      await lookupClient(q);
       return true;
     }
     if (first.kind === "new_client") {
       if (!first.name) { say("What is the client's name?"); return true; }
-      if (!first.phone) { setClientPrompt({ type: "new_client_phone", name: first.name, address: first.address ?? null }); say(`Phone number for ${first.name}? Type or say it.`); return true; }
+      setClientDraft({ name: first.name, phone: first.phone ?? "", address: first.address ?? "", email: "" });
+      if (!first.phone) {
+        setClientPrompt({ type: "new_client_phone", name: first.name, address: first.address ?? null });
+        say(`Phone number for ${first.name}? Type it below and save.`);
+        return true;
+      }
       await createCustomer(first.name, first.phone, first.address);
       return true;
     }
