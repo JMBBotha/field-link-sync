@@ -11,3 +11,9 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 - Region scale unchanged: `pdf_product_regions` = percent 0-100, `row_bbox` = 0-1. AR18 overlays untouched.
 
 - [x] Hide mobile Dashboard/Live Map control bands, remove map bottom gaps, verify, and publish.
+
+# Voice / Quote MVP (estimate page)
+- [x] `src/lib/voiceQuoteKit.ts`: intent parser (copper kit w/ sizes + 10% waste + Armaflex pairing, labour, cable, chase, AC unit, client, area, confirm/cancel/undo/read-back), read-back text.
+- [x] `VoiceQuoteStrip.tsx` on `/admin/estimates/:id`: mic (WavRecorder + voice-quote-parse transcribe), typed fallback, short-turn questions with ranked candidates, pending list, explicit confirm -> writes live quote via QuoteContext.
+- [x] Verify kit math + build; summarize works vs stubbed.
+- [ ] Voice v2 (later): cable/chase items in catalog, AC-unit → auto kit suggestion, live-mic polish.
