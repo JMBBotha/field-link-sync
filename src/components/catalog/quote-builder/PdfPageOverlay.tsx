@@ -30,6 +30,9 @@ export interface OverlayRegion {
  * the R amounts whenever the price column is mid-table.
  */
 const CONTROL_RIGHT_PX = 2;
+/** Right-edge inset where the row pill ends — ~5px past the radio cluster. */
+const PILL_RIGHT_PX_PHONE = 22;
+const PILL_RIGHT_PX_DESKTOP = 32;
 /** Width of the tap strip along the right page margin (phone / desktop). */
 const STRIP_W_PHONE = 44;
 const STRIP_W_DESKTOP = 64;
@@ -37,6 +40,10 @@ const STRIP_W_DESKTOP = 64;
 const MIN_HIT_HALF_PX = 12;
 const DOUBLE_TAP_MS = 400;
 const TAP_MOVE_TOLERANCE_PX = 8;
+/** Vivid info-blue and dark radio greys. */
+const INFO_BLUE = "hsl(217 91% 53%)";
+const RADIO_GREY_STROKE = "hsl(215 14% 28%)";
+const RADIO_GREY_DOT = "hsl(220 10% 32%)";
 
 interface PdfPageOverlayProps {
   regions: OverlayRegion[];
@@ -174,6 +181,7 @@ const RegionBox = memo(({
 
   return (
     <div
+      data-pdf-region-box
       className="absolute cursor-pointer"
       style={{
         left: "0%",
@@ -186,10 +194,16 @@ const RegionBox = memo(({
       onMouseLeave={() => onHoverEnd?.()}
       onClick={() => onOpenProductInfo?.(regionProduct(region))}
     >
-      {/* Wide right-edge glass wash — extends ~60% from the right, fading left so prices stay readable */}
+      {/* Wide right-edge glass wash — extends ~60% from the right, fading left so prices stay readable.
+          Right edge stops just past the radio cluster, leaving empty white page margin beyond. */}
       <div
         className="absolute inset-y-0 pointer-events-none"
-        style={{ left: "40%", right: 0, background: pillBackground, borderRadius: "9999px 0 0 9999px" }}
+        style={{
+          left: "40%",
+          right: `var(--pdf-pill-right, ${PILL_RIGHT_PX_PHONE}px)`,
+          background: pillBackground,
+          borderRadius: "9999px 0 0 9999px",
+        }}
       />
 
       {/* Favorite star badge — top-left of the row */}
@@ -208,7 +222,8 @@ const RegionBox = memo(({
         style={{ right: `${CONTROL_RIGHT_PX}px` }}
       >
         <Info
-          className="w-auto aspect-square text-primary opacity-90 h-[clamp(7px,100%,10px)] sm:h-[clamp(9px,100%,14px)]"
+          className="w-auto aspect-square h-[clamp(7px,100%,10px)] sm:h-[clamp(9px,100%,14px)]"
+          style={{ color: INFO_BLUE }}
           aria-hidden
         />
         {isSelected ? (
@@ -219,8 +234,15 @@ const RegionBox = memo(({
           />
         ) : (
           <span className="relative flex items-center justify-center h-[clamp(8px,100%,12px)] sm:h-[clamp(10px,100%,16px)] aspect-square">
-            <Circle className="h-full w-auto aspect-square text-muted-foreground opacity-90" aria-hidden />
-            <span className="absolute rounded-full bg-muted-foreground/90" style={{ width: "45%", height: "45%" }} />
+            <Circle
+              className="h-full w-auto aspect-square"
+              style={{ color: RADIO_GREY_STROKE }}
+              aria-hidden
+            />
+            <span
+              className="absolute rounded-full"
+              style={{ width: "45%", height: "45%", backgroundColor: RADIO_GREY_DOT }}
+            />
           </span>
         )}
       </div>
@@ -367,7 +389,10 @@ const PdfPageOverlay = ({
   if (regions.length === 0) return null;
   return (
     <>
-      <style>{`@media (min-width: 640px) { [data-testid="pdf-margin-hit-strip"] { --pdf-strip-w: ${STRIP_W_DESKTOP}px; } }`}</style>
+      <style>{`@media (min-width: 640px) {
+  [data-testid="pdf-margin-hit-strip"] { --pdf-strip-w: ${STRIP_W_DESKTOP}px; }
+  [data-pdf-region-box] { --pdf-pill-right: ${PILL_RIGHT_PX_DESKTOP}px; }
+}`}</style>
       {regions.map((region) => {
         const productId = region.product?.id || region.id;
         return (
