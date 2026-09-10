@@ -119,14 +119,19 @@ export default function VoiceQuoteStartDialog() {
     // Anything else is treated as a client lookup (name, phone, company).
     const q = it.kind === "client" ? it.query : it.kind === "phone" ? it.phone : text.trim();
     setPhase("working");
-    const { data, error } = await supabase.rpc("search_customers", { search_term: q, max_results: 5 });
+    const { data, error } = await supabase.rpc("search_customers", { search_term: q, max_results: 10 });
     setPhase("idle");
-    const found = (error ? [] : (data || [])) as CustomerSearchResult[];
-    if (!found.length) { say(`No client matching ${q}. Say new client ${q} with a phone number to add them.`); return; }
-    if (found.length === 1) { await openQuoteFor(found[0].id, label(found[0])); return; }
-    const top = found.slice(0, 3);
-    setHits(top);
-    say(`Found ${top.map((c, i) => `${i + 1}. ${label(c)}`).join(", ")}. Which one?`);
+    const raw = (error ? [] : (data || [])) as CustomerSearchResult[];
+    const found = rankClientHits(q, raw);
+    setLastQuery(q);
+    if (!found.length) {
+      setHits([]);
+      say(`No client matching “${q}”. Add them as a new client below, or say the name again.`);
+      return;
+    }
+    if (found.length === 1 && isHighConfidence(q, found[0])) { setHits([]); await openQuoteFor(found[0].id, label(found[0])); return; }
+    setHits(found);
+    say(`Heard “${q}”. Tap the right client, or add them as new.`);
   };
 
   const stopRecording = async () => {
