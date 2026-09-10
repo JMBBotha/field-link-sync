@@ -13,6 +13,7 @@ import { generateDocumentPdf } from "@/lib/documentPdf";
 import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import EstimateBuilder from "@/components/quoting/EstimateBuilder";
+import VoiceQuoteStrip from "@/components/quoting/VoiceQuoteStrip";
 import StatusPill from "@/components/shared/StatusPill";
 
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
@@ -236,6 +237,8 @@ const AdminEstimateDetailPage = () => {
 
       {/* One surface: the estimate document IS the editor */}
       <QuoteProvider quoteId={quote.id}>
+        {/* Quote-by-voice: mutates this same live quote via QuoteContext. */}
+        <VoiceQuoteStrip vatRate={Number(quote.vat_rate) || 0.15} onChanged={refreshDocument} />
         <EstimateBuilder
           quoteNumber={quote.quote_number}
           issueDate={quote.created_at}
