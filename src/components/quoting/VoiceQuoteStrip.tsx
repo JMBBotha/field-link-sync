@@ -240,6 +240,27 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
     say(`New client ${name} added${address ? ` at ${address}` : ""} and set on this quote. Now describe the job.`);
   };
 
+  /** Look the name up again and refresh the chips (keyboard override path). */
+  const lookupClient = async (q: string, spoken = true) => {
+    const { data, error } = await supabase.rpc("search_customers", { search_term: q, max_results: 10 });
+    const raw = (error ? [] : (data || [])) as CustomerSearchResult[];
+    const hits = rankClientHits(q, raw);
+    if (!hits.length) {
+      setClientPrompt({ type: "no_match", query: q });
+      say(`No client matching “${q}”. Type the details below and save them as a new client.`);
+      return;
+    }
+    if (spoken && hits.length === 1 && isHighConfidence(q, hits[0])) { await setCustomer(hits[0]); return; }
+    setClientPrompt({ type: "customer_pick", hits, query: q });
+    say(`Heard “${q}” — tap the right client, or correct the details below.`);
+  };
+
+  const saveOverrideAsNew = async () => {
+    const d = clientDraft;
+    if (!d.name.trim() || !d.phone.trim()) { say("Name and phone are needed to save a new client."); return; }
+    await createCustomer(d.name.trim(), d.phone.trim(), d.address.trim() || null, d.email.trim() || null);
+  };
+
   /** Client commands are the only non-scene utterances. Returns true when handled. */
   const tryClientCommand = async (text: string): Promise<boolean> => {
     const intents = parseUtterance(text);
