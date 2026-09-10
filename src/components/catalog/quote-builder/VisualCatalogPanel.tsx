@@ -451,6 +451,8 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       pinching = true;
       startDist = dist(e.touches);
       startZoom = zoomRef.current;
+      pendingZoom = startZoom;
+      setAnimateZoom(false);
       el.style.touchAction = "none";
     };
 
@@ -458,16 +460,26 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       if (!pinching || e.touches.length !== 2 || startDist <= 0) return;
       e.preventDefault();
       const ratio = dist(e.touches) / startDist;
-      const next = Math.min(3, Math.max(0.5, startZoom * ratio));
-      setZoom(Math.round(next * 100) / 100);
+      pendingZoom = Math.min(3, Math.max(0.5, startZoom * ratio));
+      // rAF-throttled DOM update — no state churn, no CSS transition fight
+      if (!frame) {
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          applyZoom(pendingZoom);
+        });
+      }
     };
 
     const endPinch = () => {
       if (!pinching) return;
       pinching = false;
       startDist = 0;
+      if (frame) { cancelAnimationFrame(frame); frame = 0; }
       el.style.touchAction = "";
+      // Commit the final zoom to state once.
+      setZoom(Math.round(pendingZoom * 100) / 100);
     };
+
 
     el.addEventListener("touchstart", onTouchStart, { passive: true });
     el.addEventListener("touchmove", onTouchMove, { passive: false });
