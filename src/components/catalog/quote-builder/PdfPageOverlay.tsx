@@ -181,6 +181,7 @@ const RegionBox = memo(({
 
   return (
     <div
+      data-pdf-region-box
       className="absolute cursor-pointer"
       style={{
         left: "0%",
