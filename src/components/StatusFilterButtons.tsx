@@ -14,10 +14,11 @@ interface StatusFilterButtonsProps {
 
 const statusConfig: Record<
   LeadStatusFilter,
-  { label: string; bgColor: string; textColor: string; inactiveText: string; dotColor: string }
+  { label: string; shortLabel: string; bgColor: string; textColor: string; inactiveText: string; dotColor: string }
 > = {
   pending: {
     label: "Available",
+    shortLabel: "Avail",
     bgColor: "bg-red-500",
     textColor: "text-white",
     inactiveText: "text-red-600",
