@@ -19,7 +19,7 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 - [ ] Voice v2 (later): cable/chase items in catalog, AC-unit → auto kit suggestion, live-mic polish.
 
 ## Visual Catalog overlay hard-lock (2026-09-10)
-- [ ] Controls anchored `right:10px` to PDF page box (no price_x_frac / priceColumnXFrac for placement)
-- [ ] Pink/magenta price frames: confirm source (baked into uploaded page images, not app-drawn) and report
-- [ ] Fix mobile tap selecting wrong row (hit-test in transformed overlay space)
-- [ ] Smaller radios on phone (visual + hit target)
+- [x] Controls anchored `right:10px` to PDF page box (no price_x_frac / priceColumnXFrac for placement)
+- [x] Pink/magenta price frames: confirm source (baked into uploaded page images, not app-drawn) and report
+- [x] Fix mobile tap selecting wrong row (hit-test in transformed overlay space)
+- [x] Smaller radios on phone (visual + hit target)
