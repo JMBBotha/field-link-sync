@@ -754,7 +754,7 @@ const ProductPalette = ({
       if (aUsage !== bUsage) return bUsage - aUsage;
       return getProductDisplayName(a).localeCompare(getProductDisplayName(b));
     });
-  }, [filteredProducts, favorites, usageMap]);
+  }, [filteredProducts, favorites, usageMap, searchQuery]);
 
   const grouped = useMemo(() => {
     return sortedProducts.reduce<Record<string, PaletteProduct[]>>((acc, p) => {
