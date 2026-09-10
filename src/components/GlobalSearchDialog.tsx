@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, FileText, Receipt, Users, Briefcase, Command, Truck, ClipboardList, Wrench } from "lucide-react";
+import { Search, FileText, Receipt, Users, Briefcase, Command, Truck, ClipboardList, Wrench, Home, MapPin } from "lucide-react";
 
 interface SearchItem {
   id: string;
