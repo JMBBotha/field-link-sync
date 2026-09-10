@@ -60,7 +60,7 @@ export async function reconcileInvoice(
     .select("amount, status")
     .eq("invoice_id", invoiceId);
 
-  // Settled = gateway 'paid' OR manual 'completed'/'succeeded' (payment allocation SoT).
+  // Settled = status 'paid' (manual + gateway) or 'succeeded' (payment allocation SoT).
   const paidTotal = (payments ?? [])
     .filter((p: { status: string }) => SETTLED_STATUSES.has(p.status))
     .reduce((sum: number, p: { amount: number }) => sum + Number(p.amount || 0), 0);
