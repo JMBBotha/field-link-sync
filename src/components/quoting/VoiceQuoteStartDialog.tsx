@@ -196,6 +196,7 @@ export default function VoiceQuoteStartDialog() {
       setPendingNew(null);
       setHeard("");
       setLastQuery("");
+      setDraft(emptyClientDraft());
     }
   }, [open, canSpeak]);
 
