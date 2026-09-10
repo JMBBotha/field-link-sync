@@ -11,6 +11,7 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { buildQuoteLineItems } from "@/lib/convertQuoteToInvoice";
 import { generateDocumentPdfBlob } from "@/lib/documentPdf";
 import EstimateDocument from "./EstimateDocument";
+import { buildClientRollup } from "@/lib/clientQuoteRollup";
 import WhatsAppShareButton from "@/components/WhatsAppShareButton";
 import { formatRand } from "@/utils/formatRand";
 
@@ -118,6 +119,28 @@ const SendQuoteDialog = ({
     queryKey: ["send-quote-doc-items", quoteId, quote?.visual_sections],
     queryFn: () => buildQuoteLineItems(quoteId, quote?.visual_sections),
     enabled: open && !!quoteId && !!quote,
+  });
+
+  // Client PDF shows the rolled-up view (room → unit → one area total), never
+  // the itemised copper/labour breakdown staff use for costing.
+  const { data: rollupAreas = [] } = useQuery({
+    queryKey: ["send-quote-rollup", quoteId],
+    queryFn: async () => {
+      const [lines, areas] = await Promise.all([
+        supabase
+          .from("quote_items")
+          .select(
+            "id, item_name, description, quantity, unit_price, total_price, area_id, item_type, parent_item_id, sort_order, supplier_products(category, brand, btu_rating, capacity_btu, kw, image_url, ai_sales_description)",
+          )
+          .eq("quote_id", quoteId)
+          .is("parent_item_id", null)
+          .order("sort_order"),
+        supabase.from("quote_areas").select("id, name, sort_order").eq("quote_id", quoteId),
+      ]);
+      const flat = ((lines.data || []) as any[]).map((l) => ({ ...l, ...(l.supplier_products || {}) }));
+      return buildClientRollup(flat, (areas.data || []) as any[]);
+    },
+    enabled: open && !!quoteId,
   });
 
   const customer = quote?.customers || {};
@@ -383,6 +406,8 @@ const SendQuoteDialog = ({
             customerEmail={customer.email}
             customerPhone={customer.phone}
             items={docItems}
+            presentationMode="clientRollup"
+            clientAreas={rollupAreas}
             subtotal={subtotal}
             taxRate={Number(quote.vat_rate) || 0.15}
             taxAmount={taxAmount}
