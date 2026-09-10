@@ -768,11 +768,11 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
               )}
 
               <div className="flex items-center gap-0.5 shrink-0">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setAnimateZoom(true); setZoom((z) => Math.max(0.5, Math.round((z - 0.25) * 100) / 100)); }}>
                   <ZoomOut className="h-3.5 w-3.5" />
                 </Button>
                 <span className="text-[10px] text-muted-foreground w-9 text-center">{Math.round(zoom * 100)}%</span>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom((z) => Math.min(3, z + 0.25))}>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setAnimateZoom(true); setZoom((z) => Math.min(3, Math.round((z + 0.25) * 100) / 100)); }}>
                   <ZoomIn className="h-3.5 w-3.5" />
                 </Button>
                 <Tooltip>
@@ -870,7 +870,20 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                   }}
                 >
                   <div ref={pdfAreaRef} style={{ cursor: loupeActive ? "none" : zoom > 1 ? "grab" : "default" }}>
-                    <div className="origin-top-left transition-transform" style={{ transform: `scale(${zoom})`, transformOrigin: "top left" }}>
+                    <div
+                      ref={zoomSpacerRef}
+                      style={{ height: baseHeight > 0 ? baseHeight * zoom : undefined, overflow: "visible" }}
+                    >
+                    <div
+                      ref={zoomInnerRef}
+                      className="origin-top-left"
+                      style={{
+                        transform: `scale(${zoom})`,
+                        transformOrigin: "top left",
+                        transition: animateZoom ? "transform 120ms ease-out" : "none",
+                      }}
+                      onTransitionEnd={() => setAnimateZoom(false)}
+                    >
                       {pages.map((page, idx) => (
                         <LazyPdfPage
                           key={page.id}
