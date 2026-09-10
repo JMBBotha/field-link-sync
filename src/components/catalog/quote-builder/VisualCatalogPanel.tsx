@@ -470,11 +470,12 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       if (!pinching || e.touches.length !== 2 || startDist <= 0) return;
       e.preventDefault();
       const ratio = dist(e.touches) / startDist;
-      // Min zoom = fit page width (MIN_ZOOM). Allow a small elastic overshoot
-      // below fit during the gesture, then snap back on release.
+      // Min zoom = fit page width (or whole-page fit in page view). Allow a
+      // small elastic overshoot below fit during the gesture, then snap back.
+      const floor = minZoomRef.current;
       const raw = startZoom * ratio;
-      pendingZoom = raw < MIN_ZOOM
-        ? Math.max(MIN_ZOOM - PINCH_BOUNCE, MIN_ZOOM - (MIN_ZOOM - raw) * 0.35)
+      pendingZoom = raw < floor
+        ? Math.max(floor - PINCH_BOUNCE, floor - (floor - raw) * 0.35)
         : Math.min(MAX_ZOOM, raw);
       // rAF-throttled DOM update — no state churn, no CSS transition fight
       if (!frame) {
@@ -492,7 +493,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       if (frame) { cancelAnimationFrame(frame); frame = 0; }
       el.style.touchAction = "";
       // Commit the final zoom to state once, snapping back to fit-width.
-      const finalZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(pendingZoom * 100) / 100));
+      const finalZoom = Math.min(MAX_ZOOM, Math.max(minZoomRef.current, Math.round(pendingZoom * 100) / 100));
       if (finalZoom !== pendingZoom) { setAnimateZoom(true); applyZoom(finalZoom); }
       setZoom(finalZoom);
     };
