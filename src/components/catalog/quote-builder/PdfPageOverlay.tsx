@@ -45,9 +45,14 @@ const INFO_BLUE = "hsl(217 91% 53%)";
 /** Pressed flash colour for the info icon + how long it stays lit. */
 const INFO_BLUE_PRESSED = "hsl(224 90% 38%)";
 const INFO_PRESS_MS = 220;
-/** Width (px, from the page right edge) of the select band = radio cluster. */
-const SELECT_BAND_PX_PHONE = 16;
-const SELECT_BAND_PX_DESKTOP = 22;
+/** Width (px, from the page right edge) of the select band = radio cluster only.
+ *  Kept tight so taps on the Info icon (which sits further left) never select. */
+const SELECT_BAND_PX_PHONE = 12;
+const SELECT_BAND_PX_DESKTOP = 18;
+/** Right inset (px) of the real Info hit button, centred on the painted icon. */
+const INFO_HIT_RIGHT_PHONE = 7;
+const INFO_HIT_RIGHT_DESKTOP = 15;
+const INFO_HIT_W_PX = 28;
 /** Everything further left inside the strip is the info band. */
 const DESKTOP_STRIP_MIN_W = 56;
 const RADIO_GREY_STROKE = "hsl(215 14% 28%)";
