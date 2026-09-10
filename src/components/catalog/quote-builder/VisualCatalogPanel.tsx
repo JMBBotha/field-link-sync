@@ -69,6 +69,11 @@ interface PdfPage {
   price_column_bbox?: { x_frac: number; w_frac: number } | null;
 }
 
+/** Zoom 1 = page image rendered at full container width (fit-width). */
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 3;
+const PINCH_BOUNCE = 0.12;
+
 const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAddSelectedToQuote, onAddBasket, onRemoveBasket, products, isDragging: isDraggingExternal, onOpenWizard, pdfSearchRef, wizardOpen, pdfSelection }: VisualCatalogPanelProps) => {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
@@ -460,7 +465,12 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       if (!pinching || e.touches.length !== 2 || startDist <= 0) return;
       e.preventDefault();
       const ratio = dist(e.touches) / startDist;
-      pendingZoom = Math.min(3, Math.max(0.5, startZoom * ratio));
+      // Min zoom = fit page width (MIN_ZOOM). Allow a small elastic overshoot
+      // below fit during the gesture, then snap back on release.
+      const raw = startZoom * ratio;
+      pendingZoom = raw < MIN_ZOOM
+        ? Math.max(MIN_ZOOM - PINCH_BOUNCE, MIN_ZOOM - (MIN_ZOOM - raw) * 0.35)
+        : Math.min(MAX_ZOOM, raw);
       // rAF-throttled DOM update — no state churn, no CSS transition fight
       if (!frame) {
         frame = requestAnimationFrame(() => {
@@ -476,8 +486,10 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       startDist = 0;
       if (frame) { cancelAnimationFrame(frame); frame = 0; }
       el.style.touchAction = "";
-      // Commit the final zoom to state once.
-      setZoom(Math.round(pendingZoom * 100) / 100);
+      // Commit the final zoom to state once, snapping back to fit-width.
+      const finalZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(pendingZoom * 100) / 100));
+      if (finalZoom !== pendingZoom) { setAnimateZoom(true); applyZoom(finalZoom); }
+      setZoom(finalZoom);
     };
 
 
@@ -768,11 +780,11 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
               )}
 
               <div className="flex items-center gap-0.5 shrink-0">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setAnimateZoom(true); setZoom((z) => Math.max(0.5, Math.round((z - 0.25) * 100) / 100)); }}>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setAnimateZoom(true); setZoom((z) => Math.max(MIN_ZOOM, Math.round((z - 0.25) * 100) / 100)); }}>
                   <ZoomOut className="h-3.5 w-3.5" />
                 </Button>
                 <span className="text-[10px] text-muted-foreground w-9 text-center">{Math.round(zoom * 100)}%</span>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setAnimateZoom(true); setZoom((z) => Math.min(3, Math.round((z + 0.25) * 100) / 100)); }}>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setAnimateZoom(true); setZoom((z) => Math.min(MAX_ZOOM, Math.round((z + 0.25) * 100) / 100)); }}>
                   <ZoomIn className="h-3.5 w-3.5" />
                 </Button>
                 <Tooltip>

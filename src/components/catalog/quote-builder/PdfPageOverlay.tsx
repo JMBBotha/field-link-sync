@@ -24,6 +24,8 @@ export interface OverlayRegion {
 
 /** Only trust a price-column x that sits in the right half of the page. */
 const MIN_PRICE_X_FRAC = 0.55;
+/** Clear gap between the controls' right edge and the price column's left edge. */
+const PRICE_GAP_PX = 28;
 
 const resolveControlPosition = (
   regionPriceXFrac?: number | null,
@@ -32,11 +34,13 @@ const resolveControlPosition = (
   const candidates = [regionPriceXFrac, pagePriceXFrac];
   for (const c of candidates) {
     if (typeof c === "number" && Number.isFinite(c) && c >= MIN_PRICE_X_FRAC && c <= 1) {
-      return { left: `calc(${(c * 100).toFixed(2)}% - 54px)` };
+      // Anchor the controls' RIGHT edge a clear gap left of the price cell,
+      // so nothing sits on top of the R amounts.
+      return { right: `calc(${((1 - c) * 100).toFixed(2)}% + ${PRICE_GAP_PX}px)` };
     }
   }
-  // Fallback: hug the right edge of the page box (never page-center).
-  return { right: "12px" };
+  // Fallback: still on the white page, ~5% inset from the right edge.
+  return { right: "5%" };
 };
 
 interface PdfPageOverlayProps {
@@ -258,10 +262,10 @@ const RegionBox = memo(({
           onPointerDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
-          className="flex h-10 w-8 items-center justify-center rounded-full transition-colors hover:scale-110"
+          className="flex h-7 w-6 sm:h-10 sm:w-8 items-center justify-center rounded-full transition-colors hover:scale-110"
           title="Product info"
         >
-          <Info className="h-4 w-4 text-primary opacity-70 hover:opacity-100" />
+          <Info className="h-3 w-3 sm:h-4 sm:w-4 text-primary opacity-70 hover:opacity-100" />
         </button>
 
         {/* Radio / select button — double-click to favorite */}
@@ -270,15 +274,15 @@ const RegionBox = memo(({
           onPointerDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
-          className="flex h-10 w-9 items-center justify-center rounded-full transition-colors hover:scale-110"
+          className="flex h-7 w-7 sm:h-10 sm:w-9 items-center justify-center rounded-full transition-colors hover:scale-110"
           title={isFavorite ? "★ Favorite (double-click to unfavorite)" : isSelected ? "Added to quote (double-click to favorite)" : "Add to quote (double-click to favorite)"}
         >
           {isSelected ? (
-            <CheckCircle2 className="h-5 w-5" style={{ color: isFavorite ? "hsl(45 93% 47%)" : "hsl(var(--success))" }} />
+            <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: isFavorite ? "hsl(45 93% 47%)" : "hsl(var(--success))" }} />
           ) : (
-            <span className="relative flex items-center justify-center h-5 w-5">
-              <Circle className="h-5 w-5 text-muted-foreground opacity-70" />
-              <span className="absolute h-2.5 w-2.5 rounded-full bg-muted-foreground/80" />
+            <span className="relative flex items-center justify-center h-4 w-4 sm:h-5 sm:w-5">
+              <Circle className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground opacity-70" />
+              <span className="absolute h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full bg-muted-foreground/80" />
             </span>
           )}
         </button>
