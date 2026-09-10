@@ -83,13 +83,22 @@ Deno.serve(async (req) => {
       if (bytes.byteLength < 2048) {
         return json({ error: "That recording was empty — please try again." }, 400);
       }
+      const openaiKey = Deno.env.get("OPENAI_API_KEY");
+      if (!openaiKey) {
+        return json({ error: "Voice transcription is not configured — add the secret OPENAI_API_KEY in Project Settings → Secrets." }, 500);
+      }
       const form = new FormData();
-      form.append("model", "openai/gpt-4o-transcribe");
+      form.append("model", "whisper-1");
+      form.append("language", "en");
+      form.append(
+        "prompt",
+        "HVAC quote dictation. Terms: AR4500, AR40, COPRL, BTU, lagging, Armaflex, Samsung, Daikin, metres, copper, drain pipe, elbows, labour, back-to-back, install.",
+      );
       form.append("file", new Blob([bytes], { type: "audio/wav" }), "recording.wav");
 
-      const res = await fetch(`${GATEWAY}/audio/transcriptions`, {
+      const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
         method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}` },
+        headers: { Authorization: `Bearer ${openaiKey}` },
         body: form,
       });
       if (!res.ok) {
