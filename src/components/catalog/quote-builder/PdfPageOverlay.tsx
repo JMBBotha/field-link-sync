@@ -336,11 +336,16 @@ const MarginHitStrip = ({
     if (!region) return;
     e.stopPropagation();
 
+    // Zones are measured in px from the PAGE RIGHT EDGE so they line up with
+    // the painted cluster (radio hugs the edge, info sits just left of it).
     const stripRect = strip.getBoundingClientRect();
-    const xFrac = stripRect.width > 0 ? (e.clientX - stripRect.left) / stripRect.width : 1;
-    const isInfoZone = xFrac < 0.42;
+    const isDesktopStrip = stripRect.width >= DESKTOP_STRIP_MIN_W;
+    const selectBand = (isDesktopStrip ? SELECT_BAND_PX_DESKTOP : SELECT_BAND_PX_PHONE) + CONTROL_RIGHT_PX;
+    const distFromRight = stripRect.right - e.clientX;
+    const isInfoZone = distFromRight > selectBand;
 
     if (isInfoZone) {
+      onInfoPress?.(region.id);
       onOpenProductInfo?.(regionProduct(region));
       return;
     }
