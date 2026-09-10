@@ -120,6 +120,8 @@ const ClientProposalView = () => {
         };
       });
       setLineItems(items);
+      // Client-facing roll-up: one block per room, no itemised piping/labour.
+      setClientAreas(buildClientRollup(bundle.items || [], bundle.areas || []));
       setSections(bundle.sections || []);
       setCustomer(bundle.customer || null);
       setCompany(bundle.company || null);
@@ -267,6 +269,8 @@ const ClientProposalView = () => {
           customerEmail={customer?.email}
           customerPhone={customer?.phone}
           items={lineItems}
+          presentationMode="clientRollup"
+          clientAreas={clientAreas}
           subtotal={Number(quote.subtotal) || 0}
           taxRate={Number(quote.vat_rate) || 0.15}
           taxAmount={Number(quote.vat_amount) || 0}
