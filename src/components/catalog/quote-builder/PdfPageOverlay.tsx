@@ -236,14 +236,22 @@ const RegionBox = memo(({
         className="absolute inset-y-0 flex items-center gap-[2px] sm:gap-1 pointer-events-none"
         style={{ right: `${CONTROL_RIGHT_PX}px` }}
       >
-        <Info
-          className="w-auto aspect-square h-[clamp(7px,100%,10px)] sm:h-[clamp(9px,100%,14px)] transition-transform duration-100"
+        {/* Pressed state paints a solid blue chip with a white glyph — clearly
+            visible on a phone, unlike a subtle hue shift. */}
+        <span
+          className="relative flex items-center justify-center rounded-full transition-transform duration-100"
           style={{
-            color: isInfoPressed ? INFO_BLUE_PRESSED : INFO_BLUE,
-            transform: isInfoPressed ? "scale(1.35)" : "none",
+            backgroundColor: isInfoPressed ? INFO_BLUE_PRESSED : "transparent",
+            boxShadow: isInfoPressed ? `0 0 0 3px ${INFO_BLUE_PRESSED}` : "none",
+            transform: isInfoPressed ? "scale(1.2)" : "none",
           }}
-          aria-hidden
-        />
+        >
+          <Info
+            className="w-auto aspect-square h-[clamp(7px,100%,10px)] sm:h-[clamp(9px,100%,14px)]"
+            style={{ color: isInfoPressed ? "#ffffff" : INFO_BLUE }}
+            aria-hidden
+          />
+        </span>
         {isSelected ? (
           <CheckCircle2
             className="w-auto aspect-square h-[clamp(8px,100%,12px)] sm:h-[clamp(10px,100%,16px)]"
