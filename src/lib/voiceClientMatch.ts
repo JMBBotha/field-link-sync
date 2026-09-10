@@ -8,7 +8,7 @@
 import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
 
 export const MAX_CLIENT_CHIPS = 5;
-const AUTO_RELEVANCE = 0.55;
+
 const MIN_NAME_RELEVANCE = 0.3;
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
