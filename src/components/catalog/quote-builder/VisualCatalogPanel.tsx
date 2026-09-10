@@ -917,6 +917,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                         />
                       ))}
                     </div>
+                    </div>
                   </div>
                   <PdfMagnifier
                     active={loupeActive}
