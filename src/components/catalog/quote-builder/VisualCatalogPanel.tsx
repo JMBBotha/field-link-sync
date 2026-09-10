@@ -442,37 +442,60 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   /** Scale that makes one whole page fit the viewport height (page view).
    *  Measures the rendered page IMAGE (the wrapper carries a 400px minHeight
    *  placeholder before load, which made the fit a no-op). */
-  const computeFitPageZoom = useCallback(() => {
+  const computeFitPageZoom = useCallback((): number | null => {
     const container = scrollContainerRef.current;
     const pageEl = pageRefs.current.get(visiblePageIndex) ?? pageRefs.current.get(0);
-    if (!container || !pageEl) return MIN_ZOOM;
-    const img = pageEl.querySelector("img");
-    const z = zoomRef.current || 1;
-    const imgH = img ? img.getBoundingClientRect().height / z : 0;
-    const pageH = imgH > 0 ? imgH : pageEl.offsetHeight;
-    if (pageH <= 0) return MIN_ZOOM;
-    const fit = (container.clientHeight - 8) / pageH;
-    if (!Number.isFinite(fit) || fit <= 0) return MIN_ZOOM;
+    if (!container || !pageEl) return null;
+    const img = pageEl.querySelector("img") as HTMLImageElement | null;
+    // Only real decoded image dimensions are trustworthy — the wrapper carries a
+    // 400px minHeight (and a 600px placeholder before load), which made the old
+    // measurement return ~1 and the toggle a silent no-op.
+    if (!img || !img.naturalWidth || !img.naturalHeight) return null;
+    const containerW = container.clientWidth;
+    const containerH = container.clientHeight;
+    const layoutW = pageEl.clientWidth || containerW; // unscaled layout width (w-full)
+    if (layoutW <= 0 || containerH <= 0) return null;
+    const layoutH = (img.naturalHeight / img.naturalWidth) * layoutW;
+    if (layoutH <= 0) return null;
+    const fit = (containerH - 8) / layoutH;
+    if (!Number.isFinite(fit) || fit <= 0) return null;
     return Math.max(0.25, Math.min(1, Math.round(fit * 100) / 100));
   }, [visiblePageIndex]);
 
-  const togglePageView = useCallback(() => {
+  const applyFit = useCallback((fit: number) => {
     setAnimateZoom(true);
+    setMinZoom(fit);
+    minZoomRef.current = fit;
+    setZoom(fit);
+    applyZoom(fit);
+  }, [applyZoom]);
+
+  const togglePageView = useCallback(() => {
     const next = !pageView;
-    const target = next ? computeFitPageZoom() : MIN_ZOOM;
     setPageView(next);
-    setMinZoom(target);
-    minZoomRef.current = target;
-    setZoom(target);
-    // Paint immediately — don't wait for the React commit.
-    applyZoom(target);
-  }, [pageView, computeFitPageZoom, applyZoom]);
+    if (!next) {
+      applyFit(MIN_ZOOM);
+      return;
+    }
+    const fit = computeFitPageZoom();
+    // Image not decoded yet → stay in page view and let onPageImageReady refit.
+    if (fit != null) applyFit(fit);
+  }, [pageView, computeFitPageZoom, applyFit]);
+
+  /** Called when a page image finishes decoding — refits if we're waiting on it. */
+  const handlePageImageReady = useCallback((pageIndex: number) => {
+    if (!pageView) return;
+    if (pageIndex !== visiblePageIndex && pageIndex !== 0) return;
+    const fit = computeFitPageZoom();
+    if (fit != null) applyFit(fit);
+  }, [pageView, visiblePageIndex, computeFitPageZoom, applyFit]);
 
   // Re-fit the whole page when the device rotates or the viewport resizes.
   useEffect(() => {
     if (!open || !pageView) return;
     const refit = () => {
       const fit = computeFitPageZoom();
+      if (fit == null) return; // wait for image load instead of faking fit = 1
       setMinZoom(fit);
       minZoomRef.current = fit;
       setZoom((z) => (z <= fit + 0.02 || z < fit ? fit : z));
