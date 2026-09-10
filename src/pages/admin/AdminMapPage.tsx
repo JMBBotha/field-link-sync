@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Map, LocateFixed, Maximize2, Minimize2, ExternalLink, Layers } from "lucide-react";
+import { PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, LocateFixed, Maximize2, Minimize2, ExternalLink, Layers } from "lucide-react";
 
 import MapView, { MapViewHandle, MapStatusState } from "@/components/MapView";
 import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilterButtons";
