@@ -439,6 +439,46 @@ const EstimateDocument = ({
             </button>
           </div>
 
+        ) : rollup ? (
+          <div className="mt-8 space-y-4">
+            {rollup.map((area, idx) => (
+              <section key={area.areaId ?? `general-${idx}`} className="border-b border-slate-200 pb-4">
+                <div className="flex items-start justify-between gap-4">
+                  <h2 className="text-[13px] font-semibold uppercase tracking-wide text-[#1B3A5C]">{area.areaName}</h2>
+                  <div className="text-right">
+                    <p className="text-[10px] uppercase tracking-wider text-slate-400">Area total</p>
+                    <p className="text-[15px] font-bold text-slate-900">{formatCurrency(area.areaTotal)}</p>
+                  </div>
+                </div>
+                <div className="mt-3 space-y-3">
+                  {area.units.map((unit, ui) => (
+                    <div key={ui} className="flex items-start gap-3">
+                      {unit.imageUrl && (
+                        <img
+                          src={unit.imageUrl}
+                          alt={unit.unitName}
+                          className="h-16 w-16 shrink-0 rounded border border-slate-200 bg-white object-contain"
+                          loading="lazy"
+                        />
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-medium text-slate-800">{unit.unitName}</p>
+                        {unit.unitDescription && (
+                          <p className="mt-0.5 whitespace-pre-line text-[11px] leading-relaxed text-slate-500">
+                            {unit.unitDescription}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {area.hasInstallExtras && (
+                    <p className="text-[11px] italic text-slate-500">Installed incl. piping, materials &amp; labour</p>
+                  )}
+                </div>
+              </section>
+            ))}
+            {rollup.length === 0 && <p className="py-6 text-center text-slate-400">No line items</p>}
+          </div>
         ) : (
           <table className="mt-8 w-full border-collapse text-[12px]">
             <thead>
