@@ -115,12 +115,20 @@ export default function VoiceQuoteStartDialog() {
     }
     if (it.kind === "new_client") {
       if (!it.name) { say("What is the client's name?"); return; }
-      if (!it.phone) { setPendingNew({ name: it.name, address: it.address ?? null }); say(`Phone number for ${it.name}?`); return; }
+      setDraft({ name: it.name, phone: it.phone ?? "", address: it.address ?? "", email: "" });
+      if (!it.phone) { setPendingNew({ name: it.name, address: it.address ?? null }); setLastQuery(it.name); say(`Phone number for ${it.name}? Type it below and save.`); return; }
       await createCustomer(it.name, it.phone, it.address ?? null);
       return;
     }
     // Anything else is treated as a client lookup (name, phone, company).
     const q = it.kind === "client" ? it.query : it.kind === "phone" ? it.phone : text.trim();
+    setDraft({ ...emptyClientDraft(it.kind === "phone" ? "" : q), phone: it.kind === "phone" ? q : "" });
+    await lookup(q);
+  };
+
+  /** Search again (voice or typed override name) and refresh the chips. */
+  const lookup = async (q: string, spoken = true) => {
+    if (!q) return;
     setPhase("working");
     const { data, error } = await supabase.rpc("search_customers", { search_term: q, max_results: 10 });
     setPhase("idle");
@@ -129,12 +137,12 @@ export default function VoiceQuoteStartDialog() {
     setLastQuery(q);
     if (!found.length) {
       setHits([]);
-      say(`No client matching “${q}”. Add them as a new client below, or say the name again.`);
+      say(`No client matching “${q}”. Correct the details below and save them as a new client.`);
       return;
     }
-    if (found.length === 1 && isHighConfidence(q, found[0])) { setHits([]); await openQuoteFor(found[0].id, label(found[0])); return; }
+    if (spoken && found.length === 1 && isHighConfidence(q, found[0])) { setHits([]); await openQuoteFor(found[0].id, label(found[0])); return; }
     setHits(found);
-    say(`Heard “${q}”. Tap the right client, or add them as new.`);
+    say(`Heard “${q}”. Tap the right client, or correct the details below.`);
   };
 
   const stopRecording = async () => {
