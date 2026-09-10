@@ -76,6 +76,8 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
   const [visiblePageIndex, setVisiblePageIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
+  const zoomRef = useRef(1);
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
   const [loupeActive, setLoupeActive] = useState(false);
   const pdfAreaRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -396,6 +398,59 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     setZoom(1);
     scrollToPage(next);
   }, [pages.length, visiblePageIndex, scrollToPage]);
+
+  // Two-finger pinch zoom on the PDF scroll container.
+  // Updates the same `zoom` state the +/- buttons use, so pages never remount.
+  useEffect(() => {
+    if (!open) return;
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    let startDist = 0;
+    let startZoom = 1;
+    let pinching = false;
+
+    const dist = (t: TouchList) => {
+      const dx = t[0].clientX - t[1].clientX;
+      const dy = t[0].clientY - t[1].clientY;
+      return Math.hypot(dx, dy);
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 2) return;
+      pinching = true;
+      startDist = dist(e.touches);
+      startZoom = zoomRef.current;
+      el.style.touchAction = "none";
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!pinching || e.touches.length !== 2 || startDist <= 0) return;
+      e.preventDefault();
+      const ratio = dist(e.touches) / startDist;
+      const next = Math.min(3, Math.max(0.5, startZoom * ratio));
+      setZoom(Math.round(next * 100) / 100);
+    };
+
+    const endPinch = () => {
+      if (!pinching) return;
+      pinching = false;
+      startDist = 0;
+      el.style.touchAction = "";
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", endPinch);
+    el.addEventListener("touchcancel", endPinch);
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", endPinch);
+      el.removeEventListener("touchcancel", endPinch);
+      el.style.touchAction = "";
+    };
+  }, [open, pagesLoading, pages.length]);
 
   // Legacy popup removed — clicks now route to Area Quote Builder via onOpenWizard
   const handleProductClick = useCallback((_product: PaletteProduct) => {
@@ -1341,7 +1396,7 @@ const LazyPdfPage = ({
       }}
       data-page-index={pageIndex}
       className="relative border-b border-muted/30"
-      style={{ minHeight: "400px", paddingRight: "88px", boxSizing: "border-box", overflow: "visible" }}
+      style={{ minHeight: "400px", boxSizing: "border-box", overflow: "visible" }}
     >
       {/* Page number label */}
       <div className="absolute top-2 left-2 z-30 bg-black/60 text-white text-[9px] font-mono px-1.5 py-0.5 rounded flex items-center gap-1.5">
@@ -1393,6 +1448,7 @@ const LazyPdfPage = ({
               pdfSelection={pdfSelection}
               onOpenProductInfo={onProductInfoOpen}
               favoriteIds={favoriteIds}
+              priceColumnXFrac={page.price_column_bbox?.x_frac ?? null}
              />
           )}
           {/* Banner for image-based/scanned pages where pdf.js text extraction returns 0 regions */}

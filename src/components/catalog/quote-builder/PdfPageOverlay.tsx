@@ -37,6 +37,8 @@ interface PdfPageOverlayProps {
   pdfSelection?: PdfSelectionHandlers;
   onOpenProductInfo?: (product: PaletteProduct) => void;
   favoriteIds?: Set<string>;
+  /** Fractional x (0-1) of the price column on the page, when known. */
+  priceColumnXFrac?: number | null;
 }
 
 const buildFallbackProduct = (region: OverlayRegion): PaletteProduct => ({
@@ -78,6 +80,7 @@ const RegionBox = memo(({
   onHoverMove,
   onHoverEnd,
   isFavorite,
+  priceColumnXFrac,
 }: {
   region: OverlayRegion;
   onOpenProductInfo?: (product: PaletteProduct) => void;
@@ -90,6 +93,7 @@ const RegionBox = memo(({
   onHoverMove?: (e: React.MouseEvent) => void;
   onHoverEnd?: () => void;
   isFavorite: boolean;
+  priceColumnXFrac?: number | null;
 }) => {
   const getProductOrFallback = (): PaletteProduct => region.product ?? buildFallbackProduct(region);
 
@@ -219,21 +223,32 @@ const RegionBox = memo(({
         </div>
       )}
 
-      {/* Buttons — pinned to right edge */}
+      {/* Buttons — on the white page, left of the price column */}
       <div
         className="absolute flex items-center gap-1"
-        style={{
-          right: "21px",
-          top: "50%",
-          transform: "translateY(-50%)",
-        }}
+        style={
+          typeof priceColumnXFrac === "number" && priceColumnXFrac > 0.1
+            ? {
+                left: `calc(${(priceColumnXFrac * 100).toFixed(2)}% - 58px)`,
+                top: "50%",
+                transform: "translateY(-50%)",
+                touchAction: "manipulation",
+              }
+            : {
+                right: "64px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                touchAction: "manipulation",
+              }
+        }
       >
         {/* Info button */}
         <button
           onClick={handleInfoClick}
           onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
-          className="flex items-center justify-center rounded-full transition-colors hover:scale-110"
+          className="flex h-10 w-8 items-center justify-center rounded-full transition-colors hover:scale-110"
           title="Product info"
         >
           <Info className="h-4 w-4 text-primary opacity-70 hover:opacity-100" />
@@ -243,8 +258,9 @@ const RegionBox = memo(({
         <button
           onClick={handleRadioClick}
           onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
-          className="flex items-center justify-center rounded-full transition-colors hover:scale-110"
+          className="flex h-10 w-9 items-center justify-center rounded-full transition-colors hover:scale-110"
           title={isFavorite ? "★ Favorite (double-click to unfavorite)" : isSelected ? "Added to quote (double-click to favorite)" : "Add to quote (double-click to favorite)"}
         >
           {isSelected ? (
@@ -274,6 +290,7 @@ const PdfPageOverlay = ({
   onHoverMove,
   onHoverEnd,
   favoriteIds,
+  priceColumnXFrac,
 }: PdfPageOverlayProps) => {
   if (regions.length === 0) return null;
   return (
@@ -294,6 +311,7 @@ const PdfPageOverlay = ({
             onHoverMove={onHoverMove}
             onHoverEnd={onHoverEnd}
             isFavorite={!!favoriteIds?.has(productId)}
+            priceColumnXFrac={priceColumnXFrac}
           />
         );
       })}
