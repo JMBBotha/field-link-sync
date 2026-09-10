@@ -214,7 +214,7 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
     say(`Client set to ${name}. Now describe the job.`);
   };
 
-  const createCustomer = async (name: string, phone: string, address?: string | null) => {
+  const createCustomer = async (name: string, phone: string, address?: string | null, email?: string | null) => {
     const [first, ...rest] = name.split(/\s+/);
     const company_id = await getUserCompanyId(user?.id);
     const { data, error } = await supabase
@@ -229,6 +229,7 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
         company_id,
         primary_address_line1: address || null,
         address: address || null,
+        ...(email ? { email } : {}),
       })
       .select("id")
       .single();
