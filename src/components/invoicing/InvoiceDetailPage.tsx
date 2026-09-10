@@ -9,6 +9,7 @@ import { generateAndUploadPDF, downloadInvoicePDF, shareInvoice, sendViaWhatsApp
 import { sumSettled } from "@/lib/payments";
 import PaymentRecorder from "@/components/invoicing/PaymentRecorder";
 import InvoiceDocument from "@/components/invoicing/InvoiceDocument";
+import StickyActionBar, { STICKY_ACTION_BAR_SPACER } from "@/components/shared/StickyActionBar";
 
 import HelpTip from "@/components/help/HelpTip";
 
