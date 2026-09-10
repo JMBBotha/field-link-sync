@@ -10,4 +10,4 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 - [x] `parse-price-list` documented as a non-brochure path (insert/update only).
 - Region scale unchanged: `pdf_product_regions` = percent 0-100, `row_bbox` = 0-1. AR18 overlays untouched.
 
-- [ ] Hide mobile Dashboard/Live Map control bands, remove map bottom gaps, verify, and publish.
+- [x] Hide mobile Dashboard/Live Map control bands, remove map bottom gaps, verify, and publish.
