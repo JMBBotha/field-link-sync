@@ -80,6 +80,7 @@ export interface PaletteProduct {
   allows_decimal_qty?: boolean | null;
   qty_step?: number | null;
   min_qty?: number | null;
+  search_aliases?: string[] | null;
 }
 
 /** Returns the effective per-unit prices for a product, using computePricing
@@ -279,8 +280,9 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     queryKey: ["quote-builder-products"],
     queryFn: async () => {
       const { data, error } = await (supabase.from("supplier_products") as any).
-      select("id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, suggested_consumables, pack_qty, default_markup_percent, btu_rating, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, suppliers(name, supplier_type)").
+      select("id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, is_material_favorite, suggested_consumables, pack_qty, default_markup_percent, btu_rating, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, search_aliases, suppliers(name, supplier_type)").
       or("archived.is.null,archived.eq.false").
+      eq("is_active", true).
       order("is_pinned", { ascending: false }).
       order("pin_order", { ascending: true, nullsFirst: false }).
       limit(2000);
