@@ -167,8 +167,8 @@ export function scoreProductMatch(query: string, p: AliasSearchableProduct): num
 
   if (code && (code === nq || codeS === nqs)) return 1000;
   if (aliases.includes(nq) || aliasesS.includes(nqs)) return 900;
-  if (codeS && codeS.startsWith(nqs)) return 800;
-  if (aliasesS.some((a) => a.startsWith(nqs) || nqs.startsWith(a))) return 700;
+  if (nqs.length >= 3 && codeS && codeS.startsWith(nqs)) return 800;
+  if (nqs.length >= 3 && aliasesS.some((a) => a.startsWith(nqs))) return 700;
   if (blob.includes(nq)) return 600;
 
   const terms = nq.split(" ").filter(Boolean);
