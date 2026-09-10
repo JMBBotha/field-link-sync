@@ -44,10 +44,15 @@ const TAP_MOVE_TOLERANCE_PX = 8;
 const INFO_BLUE = "hsl(217 91% 53%)";
 /** Pressed flash colour for the info icon + how long it stays lit. */
 const INFO_BLUE_PRESSED = "hsl(224 90% 38%)";
-const INFO_PRESS_MS = 220;
-/** Width (px, from the page right edge) of the select band = radio cluster. */
-const SELECT_BAND_PX_PHONE = 16;
-const SELECT_BAND_PX_DESKTOP = 22;
+const INFO_PRESS_MS = 380;
+/** Width (px, from the page right edge) of the select band = radio cluster only.
+ *  Kept tight so taps on the Info icon (which sits further left) never select. */
+const SELECT_BAND_PX_PHONE = 12;
+const SELECT_BAND_PX_DESKTOP = 18;
+/** Right inset (px) of the real Info hit button, centred on the painted icon. */
+const INFO_HIT_RIGHT_PHONE = 7;
+const INFO_HIT_RIGHT_DESKTOP = 15;
+const INFO_HIT_W_PX = 28;
 /** Everything further left inside the strip is the info band. */
 const DESKTOP_STRIP_MIN_W = 56;
 const RADIO_GREY_STROKE = "hsl(215 14% 28%)";
@@ -173,6 +178,7 @@ const RegionBox = memo(({
   onHoverMove,
   onHoverEnd,
   onOpenProductInfo,
+  onInfoPress,
 }: {
   region: OverlayRegion;
   isSelected: boolean;
@@ -182,6 +188,7 @@ const RegionBox = memo(({
   onHoverMove?: (e: React.MouseEvent) => void;
   onHoverEnd?: () => void;
   onOpenProductInfo?: (product: PaletteProduct) => void;
+  onInfoPress?: (regionId: string) => void;
 }) => {
   const pillBackground = isFavorite
     ? "linear-gradient(to left, hsl(45 93% 47% / 0.55) 0%, hsl(45 93% 47% / 0.38) 35%, hsl(45 93% 47% / 0.18) 70%, transparent 100%)"
@@ -231,14 +238,22 @@ const RegionBox = memo(({
         className="absolute inset-y-0 flex items-center gap-[2px] sm:gap-1 pointer-events-none"
         style={{ right: `${CONTROL_RIGHT_PX}px` }}
       >
-        <Info
-          className="w-auto aspect-square h-[clamp(7px,100%,10px)] sm:h-[clamp(9px,100%,14px)] transition-transform duration-100"
+        {/* Pressed state paints a solid blue chip with a white glyph — clearly
+            visible on a phone, unlike a subtle hue shift. */}
+        <span
+          className="relative flex items-center justify-center rounded-full transition-transform duration-100"
           style={{
-            color: isInfoPressed ? INFO_BLUE_PRESSED : INFO_BLUE,
-            transform: isInfoPressed ? "scale(1.35)" : "none",
+            backgroundColor: isInfoPressed ? INFO_BLUE_PRESSED : "transparent",
+            boxShadow: isInfoPressed ? `0 0 0 3px ${INFO_BLUE_PRESSED}` : "none",
+            transform: isInfoPressed ? "scale(1.2)" : "none",
           }}
-          aria-hidden
-        />
+        >
+          <Info
+            className="w-auto aspect-square h-[clamp(7px,100%,10px)] sm:h-[clamp(9px,100%,14px)]"
+            style={{ color: isInfoPressed ? "#ffffff" : INFO_BLUE }}
+            aria-hidden
+          />
+        </span>
         {isSelected ? (
           <CheckCircle2
             className="w-auto aspect-square h-[clamp(8px,100%,12px)] sm:h-[clamp(10px,100%,16px)]"
@@ -259,6 +274,34 @@ const RegionBox = memo(({
           </span>
         )}
       </div>
+
+      {/* Real Info hit target — sits ABOVE the margin strip so the radio can
+          never steal an info tap. Height matches the row, so buttons never
+          overlap each other and the tapped row is always the painted one. */}
+      <button
+        type="button"
+        data-pdf-info-button
+        aria-label="Product details"
+        className="absolute top-0 h-full"
+        style={{
+          right: `var(--pdf-info-right, ${INFO_HIT_RIGHT_PHONE}px)`,
+          width: `${INFO_HIT_W_PX}px`,
+          zIndex: 30,
+          pointerEvents: "auto",
+          background: "transparent",
+          border: "none",
+          padding: 0,
+          touchAction: "manipulation",
+        }}
+        onPointerDown={(e) => { e.stopPropagation(); onInfoPress?.(region.id); }}
+        onPointerUp={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          onInfoPress?.(region.id);
+          onOpenProductInfo?.(regionProduct(region));
+        }}
+      />
     </div>
   );
 });
@@ -418,7 +461,7 @@ const PdfPageOverlay = ({
     <>
       <style>{`@media (min-width: 640px) {
   [data-testid="pdf-margin-hit-strip"] { --pdf-strip-w: ${STRIP_W_DESKTOP}px; }
-  [data-pdf-region-box] { --pdf-pill-right: ${PILL_RIGHT_PX_DESKTOP}px; }
+  [data-pdf-region-box] { --pdf-pill-right: ${PILL_RIGHT_PX_DESKTOP}px; --pdf-info-right: ${INFO_HIT_RIGHT_DESKTOP}px; }
 }`}</style>
       {regions.map((region) => {
         const productId = region.product?.id || region.id;
@@ -433,6 +476,7 @@ const PdfPageOverlay = ({
             onHoverMove={onHoverMove}
             onHoverEnd={onHoverEnd}
             onOpenProductInfo={onOpenProductInfo}
+            onInfoPress={handleInfoPress}
           />
         );
       })}
