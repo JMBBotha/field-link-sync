@@ -627,11 +627,36 @@ const asScene = (l: PendingLine, spoken: string, status: SceneLineStatus = "ok",
 const isEquipment = (p: PaletteProduct, blob: string) =>
   !!p.btu_rating || /\b(split|inverter|midwall|mid wall|cassette|ducted|aircon|air con|btu|wall mounted|window unit|console)\b/.test(blob);
 
+/**
+ * Series tokens found in a piece of text, e.g. "ar4500", "ar40".
+ * Series = letter family + number (AR40 and AR4500 are DIFFERENT series).
+ */
+function seriesTokens(text: string): string[] {
+  const out = new Set<string>();
+  const re = /([a-z]{2,3})\s?-?(\d{2,4})/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text.toLowerCase()))) out.add(`${m[1]}${m[2]}`);
+  return [...out];
+}
+
+/** Series tokens a product answers to: its code head + its aliases. */
+function productSeries(p: PaletteProduct): string[] {
+  const code = (p.product_code || "").toLowerCase();
+  const aliases = (Array.isArray(p.search_aliases) ? p.search_aliases : []).map((a) => String(a).toLowerCase());
+  const out = new Set<string>();
+  // only the leading series chunk of the code (AR40F18… -> ar40, AR18BSH… -> ar18)
+  const head = /^([a-z]{2,3})(\d{2,4})/.exec(code);
+  if (head) out.add(`${head[1]}${head[2]}`);
+  for (const a of aliases) for (const t of seriesTokens(a)) out.add(t);
+  return [...out];
+}
+
 /** Rank AC units for a spoken spec: brand + BTU class + model fragment (aliases/code). Never invents. */
 export function rankUnits(u: UnitSpec, products: PaletteProduct[], limit = 6): RankedHit<PaletteProduct>[] {
   if (!u.btu && !u.brand && !u.model) return [];
   const brand = u.brand?.toLowerCase() ?? null;
   const modelS = stripSpaces(u.model || "");
+  const spokenSeries = u.model ? seriesTokens(u.model) : [];
   const out: RankedHit<PaletteProduct>[] = [];
   for (const p of products) {
     const blob = buildProductSearchText(p);
@@ -651,13 +676,25 @@ export function rankUnits(u: UnitSpec, products: PaletteProduct[], limit = 6): R
       else if (pb || /\b\d{1,2}k\b/.test(blob)) continue; // a different size
     }
     if (modelS) {
+      const pSeries = productSeries(p);
+      // series axis: a spoken series must not leak into a different series (AR4500 ≠ AR40)
+      const seriesHit = spokenSeries.some((s) => pSeries.includes(s));
+      const seriesClash =
+        !seriesHit &&
+        spokenSeries.length > 0 &&
+        spokenSeries.some((s) => {
+          const fam = /^([a-z]{2,3})/.exec(s)?.[1];
+          return !!fam && pSeries.some((ps) => ps.startsWith(fam) && ps !== s);
+        });
+      if (seriesClash) continue; // never credit AR40 for a spoken AR4500 (or the reverse)
+
       const s = scoreProductMatch(u.model!, p);
-      if (s >= 900) score += 700;
+      if (s >= 900) score += 1200; // exact alias / exact code always beats "closest same-size" heuristics
+      else if (seriesHit) score += 900;
       else if (s >= 700) score += 450;
       else {
         const codeS = stripSpaces(p.product_code || "");
         if (codeS.includes(modelS)) score += 500;
-        else if (modelS.length >= 3 && codeS.startsWith(modelS.slice(0, 3))) score += 150; // "ar4500" ↔ "AR40F…"
       }
     }
     for (const d of u.descriptors) if (blob.includes(d.replace(/\s|-/g, "")) || blob.includes(d)) score += 80;
@@ -667,6 +704,7 @@ export function rankUnits(u: UnitSpec, products: PaletteProduct[], limit = 6): R
   out.sort((a, b) => b.score - a.score || (a.item.short_name || "").localeCompare(b.item.short_name || ""));
   return out.slice(0, limit);
 }
+
 
 const unitLabelFor = (u: UnitSpec) =>
   [u.brand ? cap(u.brand) : null, u.model, u.btu ? `${u.btu / 1000}K BTU` : null, ...u.descriptors].filter(Boolean).join(" ") || "AC unit";
