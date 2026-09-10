@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
  */
 
 /** Payment statuses that count as cash actually applied to an invoice. */
-export const SETTLED_PAYMENT_STATUSES = ["completed", "succeeded", "paid"] as const;
+export const SETTLED_PAYMENT_STATUSES = ["paid", "succeeded"] as const;
 
 export type PaymentMethod = "cash" | "eft" | "card" | "other";
 
@@ -49,7 +49,7 @@ export interface RecordPaymentInput {
 
 /**
  * Record cash applied to an invoice. Goes through the `record_invoice_payment`
- * RPC so the row is written as a completed manual payment and the invoice
+ * RPC so the row is written as a settled (status=paid) manual payment and the invoice
  * status is derived by the DB trigger. Returns the new payment id.
  */
 export async function recordInvoicePayment(input: RecordPaymentInput): Promise<string> {

@@ -20,8 +20,8 @@ export type PaymentStatus =
   | "cancelled"
   | "refunded";
 
-/** Statuses that count as cash applied to an invoice (manual rows use 'completed'). */
-const SETTLED_STATUSES = new Set<string>(["paid", "completed", "succeeded"]);
+/** Statuses that count as cash applied to an invoice (manual rows use 'paid'). */
+const SETTLED_STATUSES = new Set<string>(["paid", "succeeded"]);
 
 const ALLOWED: Record<PaymentStatus, PaymentStatus[]> = {
   pending: ["processing", "paid", "failed", "cancelled"],
