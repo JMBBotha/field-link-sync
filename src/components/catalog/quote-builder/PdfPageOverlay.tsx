@@ -193,10 +193,16 @@ const RegionBox = memo(({
       onMouseLeave={() => onHoverEnd?.()}
       onClick={() => onOpenProductInfo?.(regionProduct(region))}
     >
-      {/* Wide right-edge glass wash — extends ~60% from the right, fading left so prices stay readable */}
+      {/* Wide right-edge glass wash — extends ~60% from the right, fading left so prices stay readable.
+          Right edge stops just past the radio cluster, leaving empty white page margin beyond. */}
       <div
         className="absolute inset-y-0 pointer-events-none"
-        style={{ left: "40%", right: 0, background: pillBackground, borderRadius: "9999px 0 0 9999px" }}
+        style={{
+          left: "40%",
+          right: `var(--pdf-pill-right, ${PILL_RIGHT_PX_PHONE}px)`,
+          background: pillBackground,
+          borderRadius: "9999px 0 0 9999px",
+        }}
       />
 
       {/* Favorite star badge — top-left of the row */}
@@ -215,7 +221,8 @@ const RegionBox = memo(({
         style={{ right: `${CONTROL_RIGHT_PX}px` }}
       >
         <Info
-          className="w-auto aspect-square text-primary opacity-90 h-[clamp(7px,100%,10px)] sm:h-[clamp(9px,100%,14px)]"
+          className="w-auto aspect-square h-[clamp(7px,100%,10px)] sm:h-[clamp(9px,100%,14px)]"
+          style={{ color: INFO_BLUE }}
           aria-hidden
         />
         {isSelected ? (
@@ -226,8 +233,15 @@ const RegionBox = memo(({
           />
         ) : (
           <span className="relative flex items-center justify-center h-[clamp(8px,100%,12px)] sm:h-[clamp(10px,100%,16px)] aspect-square">
-            <Circle className="h-full w-auto aspect-square text-muted-foreground opacity-90" aria-hidden />
-            <span className="absolute rounded-full bg-muted-foreground/90" style={{ width: "45%", height: "45%" }} />
+            <Circle
+              className="h-full w-auto aspect-square"
+              style={{ color: RADIO_GREY_STROKE }}
+              aria-hidden
+            />
+            <span
+              className="absolute rounded-full"
+              style={{ width: "45%", height: "45%", backgroundColor: RADIO_GREY_DOT }}
+            />
           </span>
         )}
       </div>
