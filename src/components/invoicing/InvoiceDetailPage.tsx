@@ -271,7 +271,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         />
       </div>
 
-      <StickyActionBar align="between" className="print:hidden">
+      <div className="print:hidden">
         <div className="w-full space-y-2">
           {/* Primary action based on status */}
           {invoice.status === "draft" && (
