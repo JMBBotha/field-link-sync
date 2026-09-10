@@ -7348,6 +7348,16 @@ export type Database = {
           status: string
         }[]
       }
+      record_invoice_payment: {
+        Args: {
+          p_amount: number
+          p_invoice_id: string
+          p_method: string
+          p_payment_date?: string
+          p_reference?: string
+        }
+        Returns: string
+      }
       revenue_by_agent: {
         Args: never
         Returns: {

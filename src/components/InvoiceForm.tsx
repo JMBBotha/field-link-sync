@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { notifyJobCompleted, notifyInvoiceSent } from "@/lib/notificationService";
+import { recordInvoicePayment } from "@/lib/payments";
 
 interface LineItem {
   description: string;
@@ -100,6 +101,19 @@ const InvoiceForm = ({ lead, open, onClose, onSuccess, agentId }: InvoiceFormPro
       return;
     }
 
+    // Payment allocation SoT: "paid" is never written directly. We create the
+    // invoice as sent, then record a full payment; the DB derives status=paid.
+    const recordFullPayment = status === "paid";
+    if (recordFullPayment && !paymentMethod) {
+      toast({
+        title: "Payment method needed",
+        description: "Select how the customer paid (cash, card, EFT) to record the payment.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const insertStatus: "draft" | "sent" = recordFullPayment ? "sent" : status;
+
     setLoading(true);
 
     try {
@@ -126,12 +140,31 @@ const InvoiceForm = ({ lead, open, onClose, onSuccess, agentId }: InvoiceFormPro
           grand_total: grandTotal,
           payment_method: paymentMethod || null,
           notes: notes || null,
-          status,
+          status: insertStatus,
         }] as any)
         .select('id')
         .single();
 
       if (error) throw error;
+
+      let paymentRecorded = false;
+      if (recordFullPayment && insertedInvoice) {
+        try {
+          await recordInvoicePayment({
+            invoiceId: insertedInvoice.id,
+            amount: grandTotal,
+            method: paymentMethod,
+          });
+          paymentRecorded = true;
+        } catch (payErr: any) {
+          console.error("[InvoiceForm] Payment record failed:", payErr);
+          toast({
+            title: "Invoice saved as Sent — payment not recorded",
+            description: payErr?.message || "Open the invoice and record the payment.",
+            variant: "destructive",
+          });
+        }
+      }
 
       // Send WhatsApp notifications if customer is linked and not a draft
       if (lead.customer_id && status !== "draft" && insertedInvoice) {
@@ -158,7 +191,11 @@ const InvoiceForm = ({ lead, open, onClose, onSuccess, agentId }: InvoiceFormPro
 
       toast({
         title: `Invoice Created! 💰`,
-        description: `${invoiceNumber} - ${status === "paid" ? "Marked as paid" : status === "sent" ? "Marked as sent" : "Saved as draft"}`,
+        description: `${invoiceNumber} - ${
+          paymentRecorded
+            ? `Payment of ${formatCurrency(grandTotal)} recorded — paid`
+            : insertStatus === "sent" ? "Marked as sent" : "Saved as draft"
+        }`,
       });
 
       onSuccess();
@@ -347,7 +384,7 @@ const InvoiceForm = ({ lead, open, onClose, onSuccess, agentId }: InvoiceFormPro
                 Saving...
               </>
             ) : (
-              "Mark as Paid"
+              `Record Payment & Mark Paid (${formatCurrency(grandTotal)})`
             )}
           </Button>
           <div className="grid grid-cols-2 gap-2">

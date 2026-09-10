@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/hooks/useRole";
-import { useUserCompanyId } from "@/hooks/useUserCompanyId";
+import { invoiceBalance, isSettledPayment, recordInvoicePayment, sumSettled } from "@/lib/payments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,15 +30,16 @@ const toDateInput = (value: string | Date) => {
 interface PaymentRecorderProps {
   invoiceId: string;
   invoiceTotal: number;
+  /** Called after a payment is recorded / edited / removed so parents can refetch the invoice. */
+  onChange?: () => void;
 }
 
-const PaymentRecorder = ({ invoiceId, invoiceTotal }: PaymentRecorderProps) => {
+const PaymentRecorder = ({ invoiceId, invoiceTotal, onChange }: PaymentRecorderProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
   const { isAdmin } = useRole();
-  const { companyId } = useUserCompanyId();
   const [amount, setAmount] = useState("");
+  const [amountTouched, setAmountTouched] = useState(false);
   const [method, setMethod] = useState("eft");
   const [reference, setReference] = useState("");
   const [paymentDate, setPaymentDate] = useState(toDateInput(new Date()));
@@ -66,18 +66,23 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal }: PaymentRecorderProps) => {
     },
   });
 
-  const totalPaid = payments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
-  const outstanding = invoiceTotal - totalPaid;
+  // Only settled payments count as cash applied (payment allocation SoT).
+  const totalPaid = sumSettled(payments as any[]);
+  const outstanding = invoiceBalance(invoiceTotal, totalPaid);
+
+  // Default the amount to the outstanding balance until the user edits it.
+  const amountValue = amountTouched ? amount : outstanding > 0 ? outstanding.toFixed(2) : "";
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["payments", invoiceId] });
     queryClient.invalidateQueries({ queryKey: ["invoices"] });
     queryClient.invalidateQueries({ queryKey: ["invoice", invoiceId] });
+    onChange?.();
   };
 
   const addPayment = async () => {
-    const amt = Number(amount);
-    if (!amount || amt <= 0) return;
+    const amt = Number(amountValue);
+    if (!amountValue || amt <= 0) return;
     setAdding(true);
 
     const paymentsKey = ["payments", invoiceId];
@@ -99,6 +104,8 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal }: PaymentRecorderProps) => {
       method,
       reference: reference || null,
       payment_date: isoDate,
+      status: "completed",
+      gateway: "manual",
       _optimistic: true,
     };
     queryClient.setQueryData<any[]>(paymentsKey, (prev) => [optimisticPayment, ...(prev || [])]);
@@ -119,21 +126,19 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal }: PaymentRecorderProps) => {
     });
 
     setAmount("");
+    setAmountTouched(false);
     setReference("");
 
     try {
-      const { error } = await supabase.from("payments").insert({
-        invoice_id: invoiceId,
+      // RPC writes a completed manual payment; the DB trigger derives invoice status.
+      await recordInvoicePayment({
+        invoiceId,
         amount: amt,
         method,
         reference: reference || null,
-        payment_date: isoDate,
-        created_by: user?.id,
-        ...(companyId ? { company_id: companyId } : {}),
+        paymentDate,
       });
-      if (error) throw error;
 
-      // Invoice status is auto-updated by the recalc_invoice_status trigger.
       refresh();
       toast({ title: "Payment recorded" });
     } catch (err: any) {
@@ -313,9 +318,14 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal }: PaymentRecorderProps) => {
                   <span className="min-w-0 truncate">
                     {new Date(p.payment_date).toLocaleDateString("en-ZA")} • {String(p.method).toUpperCase()}
                     {p.reference && ` • ${p.reference}`}
+                    {!isSettledPayment(p) && (
+                      <span className="ml-1 text-muted-foreground">({p.status})</span>
+                    )}
                   </span>
                   <span className="flex items-center gap-1 shrink-0">
-                    <span className="font-medium">{formatZAR(Number(p.amount))}</span>
+                    <span className={`font-medium ${isSettledPayment(p) ? "" : "text-muted-foreground line-through"}`}>
+                      {formatZAR(Number(p.amount))}
+                    </span>
                     {!p._optimistic && (
                       <Button
                         size="icon"
@@ -353,8 +363,8 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal }: PaymentRecorderProps) => {
                 <Input
                   type="number"
                   step="0.01"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  value={amountValue}
+                  onChange={(e) => { setAmountTouched(true); setAmount(e.target.value); }}
                   placeholder="0.00"
                   className="h-8 text-sm"
                 />

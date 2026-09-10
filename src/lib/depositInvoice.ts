@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { SETTLED_PAYMENT_STATUSES } from "@/lib/payments";
 
 export interface DepositInvoiceRow {
   id: string;
@@ -27,7 +28,7 @@ export async function fetchQuoteInvoice(quoteId: string): Promise<DepositInvoice
       .from("payments")
       .select("amount, status")
       .eq("invoice_id", invoice.id)
-      .eq("status", "paid");
+      .in("status", [...SETTLED_PAYMENT_STATUSES]);
     if (!payErr && pays) {
       const paid = (pays as any[]).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
       invoice.amount_paid = paid;
@@ -54,7 +55,7 @@ export async function attachPaymentTotals<
       .from("payments")
       .select("invoice_id, amount, status")
       .in("invoice_id", ids)
-      .eq("status", "paid");
+      .in("status", [...SETTLED_PAYMENT_STATUSES]);
     if (error || !data) return invoices;
     const paidByInvoice = new Map<string, number>();
     for (const p of data as any[]) {
