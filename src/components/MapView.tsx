@@ -11,6 +11,9 @@ import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilter
 import { Switch } from "@/components/ui/switch";
 import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
 import { hasValidCoords, resolveLeadCoords } from "@/lib/leadCoords";
+import { attachPaymentTotals, DepositInvoiceRow } from "@/lib/depositInvoice";
+import { getDepositChipState, getDepositRemaining } from "@/components/shared/DepositPaymentChip";
+import { formatRand } from "@/utils/formatRand";
 
 interface AgentLocation {
   agent_id: string;
@@ -110,6 +113,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
   const leadMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const customerLocationMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const [customerLocations, setCustomerLocations] = useState<any[]>([]);
+  // Deposit truth per lead (lead_id -> deposit invoice with settled allocation totals)
+  const [depositByLead, setDepositByLead] = useState<Map<string, DepositInvoiceRow>>(new Map());
   const searchMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const userLocationMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const userWatchIdRef = useRef<number | null>(null);
@@ -508,6 +513,40 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
       // Prefer linked customer primary location coords; geocode + persist otherwise.
       const withCoords = await resolveLeadCoords(leadData as any[]);
       setLeads(withCoords as any);
+
+      // Deposit truth per lead: quote -> deposit invoice -> settled payment allocation.
+      // Same source of truth as DepositPaymentChip (attachPaymentTotals).
+      try {
+        const leadIds = (withCoords as any[]).map((l) => l.id).filter(Boolean);
+        const nextDepositByLead = new Map<string, DepositInvoiceRow>();
+        if (leadIds.length > 0) {
+          const { data: quoteRows } = await supabase
+            .from("quotes")
+            .select("id, lead_id")
+            .in("lead_id", leadIds);
+          const quoteIds = (quoteRows || []).map((q: any) => q.id).filter(Boolean);
+          if (quoteIds.length > 0) {
+            const { data: invRows } = await supabase
+              .from("invoices")
+              .select("id, invoice_number, status, grand_total, paid_date, notes, quote_id")
+              .in("quote_id", quoteIds);
+            const invoices = await attachPaymentTotals((invRows || []) as any[]);
+            const invByQuote = new Map<string, any>();
+            for (const inv of invoices as any[]) {
+              if (inv.quote_id && !invByQuote.has(inv.quote_id)) invByQuote.set(inv.quote_id, inv);
+            }
+            for (const q of (quoteRows || []) as any[]) {
+              const inv = invByQuote.get(q.id);
+              if (inv && q.lead_id && !nextDepositByLead.has(q.lead_id)) {
+                nextDepositByLead.set(q.lead_id, inv as DepositInvoiceRow);
+              }
+            }
+          }
+        }
+        setDepositByLead(nextDepositByLead);
+      } catch (e) {
+        console.warn("[MapView] deposit allocation lookup failed", e);
+      }
     }
 
     // Fetch customer locations for company (multi-site pins)
@@ -940,7 +979,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
     if (mapLoaded && mapInstanceRef.current && (agents.length > 0 || leads.length > 0)) {
       updateMarkers();
     }
-  }, [agents, leads, mapLoaded, statusFilters, onLeadClick]);
+  }, [agents, leads, mapLoaded, statusFilters, onLeadClick, depositByLead]);
 
   const updateMarkers = () => {
     const map = mapInstanceRef.current;
@@ -991,6 +1030,27 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         : null;
       const safeAgent = escapeHtml(assignedAgentName);
 
+      // Deposit chip (same wording/colours as DepositPaymentChip; allocation-only truth)
+      const depInvoice = depositByLead.get(lead.id);
+      const depState = getDepositChipState(depInvoice, { accepted: false });
+      let depositChipHtml = "";
+      if (depInvoice && depState) {
+        const isPaid = depState === "paid";
+        const chipText =
+          depState === "paid"
+            ? "Deposit paid"
+            : depState === "partial"
+              ? `Partial · ${formatRand(getDepositRemaining(depInvoice) ?? 0)}`
+              : "Deposit due";
+        const chipBg = isPaid ? "#d1fae5" : "#fef3c7";
+        const chipBorder = isPaid ? "#6ee7b7" : "#fde68a";
+        const chipColor = isPaid ? "#047857" : "#b45309";
+        depositChipHtml = `
+            <div style="display: flex; align-items: center; gap: 6px; margin-top: 6px;">
+              <span style="background: ${chipBg}; border: 1px solid ${chipBorder}; color: ${chipColor}; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 9999px;">${chipText}</span>
+            </div>`;
+      }
+
       return `
         <div style="min-width: 240px; font-family: system-ui, -apple-system, sans-serif;">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
@@ -1030,6 +1090,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
             </div>
             ` : ""}
 
+            ${depositChipHtml}
 
             <div style="display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 10px; color: #9ca3af;">
               <svg style="width: 12px; height: 12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -1329,6 +1390,39 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
           nameBadge.style.display = "none";
           nameBadge.textContent = "";
         }
+      }
+
+      // Deposit dot accent — green = paid, amber = due/partial (allocation-only truth)
+      let depDot = el.querySelector('[data-role="deposit-dot"]') as HTMLDivElement | null;
+      if (!depDot) {
+        depDot = document.createElement("div");
+        depDot.dataset.role = "deposit-dot";
+        depDot.style.position = "absolute";
+        depDot.style.top = "-2px";
+        depDot.style.right = "-6px";
+        depDot.style.width = "12px";
+        depDot.style.height = "12px";
+        depDot.style.borderRadius = "9999px";
+        depDot.style.border = "2px solid #ffffff";
+        depDot.style.boxShadow = "0 1px 3px rgba(0,0,0,0.35)";
+        depDot.style.zIndex = "3";
+        depDot.style.display = "none";
+        el.appendChild(depDot);
+      }
+      const depInvoice = depositByLead.get(lead.id);
+      const depState = getDepositChipState(depInvoice, { accepted: false });
+      if (depInvoice && depState && isVisible) {
+        depDot.style.display = "block";
+        depDot.style.backgroundColor = depState === "paid" ? "#10b981" : "#f59e0b";
+        const remaining = getDepositRemaining(depInvoice);
+        depDot.title =
+          depState === "paid"
+            ? "Deposit paid"
+            : depState === "partial"
+              ? `Partial · ${formatRand(remaining ?? 0)}`
+              : "Deposit due";
+      } else {
+        depDot.style.display = "none";
       }
     });
 
