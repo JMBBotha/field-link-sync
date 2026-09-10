@@ -92,6 +92,7 @@ const RegionBox = memo(({
   onHoverMove?: (e: React.MouseEvent) => void;
   onHoverEnd?: () => void;
   isFavorite: boolean;
+  priceColumnXFrac?: number | null;
 }) => {
   const getProductOrFallback = (): PaletteProduct => region.product ?? buildFallbackProduct(region);
 
