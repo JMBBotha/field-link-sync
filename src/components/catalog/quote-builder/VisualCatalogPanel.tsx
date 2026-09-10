@@ -436,6 +436,9 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     let startDist = 0;
     let startZoom = 1;
     let pinching = false;
+    let pendingZoom = zoomRef.current;
+    let frame = 0;
+
 
     const dist = (t: TouchList) => {
       const dx = t[0].clientX - t[1].clientX;
