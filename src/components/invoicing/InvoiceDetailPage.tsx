@@ -298,22 +298,17 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
             </Button>
           )}
 
-          {/* Share/Download actions */}
-          <div className="grid grid-cols-3 gap-2">
-            <Button variant="outline" size="sm" className="h-9 rounded-md text-xs" onClick={handleDownloadPDF} disabled={generatingPDF}>
-              {generatingPDF ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />} PDF
-            </Button>
-            {invoice.customer_phone && (
-              <Button variant="outline" size="sm" className="h-9 rounded-md text-xs" onClick={handleWhatsApp} disabled={generatingPDF}>
-                <MessageCircle className="h-3.5 w-3.5 mr-1" /> WhatsApp
-              </Button>
-            )}
-            <Button variant="outline" size="sm" className="h-9 rounded-md text-xs" onClick={() => window.print()}>
-              <Printer className="h-3.5 w-3.5 mr-1" /> Print
-            </Button>
+        </div>
+      </div>
+
+      {/* Mobile-only quiet footer, shown once the header toolbar scrolls away */}
+      {showMobileBar && (
+        <div className="md:hidden print:hidden fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur border-t border-border">
+          <div className="max-w-4xl mx-auto flex items-center justify-around gap-1 px-3 py-2">
+            {docActions()}
           </div>
         </div>
-      </StickyActionBar>
+      )}
     </div>
   );
 };
