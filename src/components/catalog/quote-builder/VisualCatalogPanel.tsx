@@ -490,9 +490,10 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       el.removeEventListener("touchmove", onTouchMove);
       el.removeEventListener("touchend", endPinch);
       el.removeEventListener("touchcancel", endPinch);
+      if (frame) cancelAnimationFrame(frame);
       el.style.touchAction = "";
     };
-  }, [open, pagesLoading, pages.length]);
+  }, [open, pagesLoading, pages.length, applyZoom]);
 
   // Legacy popup removed — clicks now route to Area Quote Builder via onOpenWizard
   const handleProductClick = useCallback((_product: PaletteProduct) => {
