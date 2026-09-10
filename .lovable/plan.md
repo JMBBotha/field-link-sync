@@ -1,19 +1,20 @@
-# Mobile dashboard and Live Map cleanup
+# Pin catalog controls to the PDF page margin
 
 ## Changes
 
-- Hide the dashboard’s white Dashboard / Live Map / Fullscreen / New Window toolbar below `lg`, while keeping desktop controls.
-- Keep the Live Map mobile header limited to the compact status-chip row; desktop retains its location, fullscreen, new-window, traffic, and search controls.
-- Remove mobile bottom spacing from both `/admin` and map routes so their map areas end flush above the bottom navigation.
-- Preserve the existing frosted on-map mobile controls, compact status chips, header search dialog, and desktop layouts.
+- Position every normal catalog info/select cluster at `right: 10px` inside each PDF page overlay, using row bounds only for vertical alignment.
+- Remove price-column coordinates from control placement while retaining existing extraction data for non-control purposes.
+- Remove any production-rendered magenta/pink price-column frames from the catalog page overlay.
+- Apply the same right-margin rule to the legacy PDF overlay viewer so no catalog path can place controls over prices.
+- Preserve fit-width minimum zoom, elastic pinch behavior, smaller phone controls, landscape support, and the existing no-gutter layout.
 
 ## Verification
 
-- Check Dashboard and Live Tracking at a 390×844 viewport.
-- Confirm no white control strip, no grey gap, one compact chip row on Live Tracking, and maps touching the bottom tabs.
-- Confirm the project builds, then publish the verified version.
+- Confirm controls remain inside the white PDF page at its right edge and never use price-column coordinates.
+- Confirm no production debug price outlines or unmatched OCR text render.
+- Confirm zoom still clamps to fit width and the project builds successfully.
 
 ## Technical details
 
-- Scope responsive visibility to `AdminHomePage`, `AdminMapPage`, and the map-aware main container in `AdminLayout`.
-- Keep bottom-navigation safe-area behavior owned by `AdminBottomNav`; do not add page-level mobile spacers on map-first screens.
+- The control cluster will use absolute positioning with `right: 10px` relative to the full-page overlay row.
+- Row `y`/height continues to determine vertical centering; `price_x_frac` and `priceColumnXFrac` will not influence controls.
