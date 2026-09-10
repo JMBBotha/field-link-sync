@@ -695,7 +695,13 @@ export function buildSceneBreakdown(
           area.unparsed.push(s.text);
           break;
         case "unit": {
-          const hits = rankUnits(s.u, products);
+          let hits = rankUnits(s.u, products);
+          let brandMissed = false;
+          // spoken brand not in the live book → offer same-size units from other brands, never silently
+          if (!hits.length && s.u.brand && (s.u.btu || s.u.model)) {
+            hits = rankUnits({ ...s.u, brand: null }, products);
+            brandMissed = hits.length > 0;
+          }
           const spoken = s.u.spoken.join(" / ");
           const meta = { unit: true, btu: s.u.btu, spoken_brand: s.u.brand, spoken_model: s.u.model };
           if (!hits.length) {
@@ -703,9 +709,13 @@ export function buildSceneBreakdown(
             break;
           }
           const [a, b] = hits;
-          const clear = hits.length === 1 || a.score >= b.score + 250;
+          const clear = !brandMissed && (hits.length === 1 || a.score >= b.score + 250);
           area.lines.push(asScene(productLine(a.item, 1, meta), spoken, clear ? "ok" : "ambiguous", {
-            hint: clear ? undefined : `Closest matches for “${unitLabelFor(s.u)}” — tap to switch.`,
+            hint: clear
+              ? undefined
+              : brandMissed
+                ? `No ${cap(s.u.brand!)} ${s.u.btu ? `${s.u.btu / 1000}K` : ""} unit in the live catalog — closest same-size units, tap to switch.`
+                : `Closest matches for “${unitLabelFor(s.u)}” — tap to switch.`,
             productCandidates: hits.slice(0, 4).map((h) => h.item),
           }));
           break;
