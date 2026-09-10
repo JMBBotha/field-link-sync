@@ -26,6 +26,7 @@ const statusConfig: Record<
   },
   accepted: {
     label: "Claimed",
+    shortLabel: "Claimed",
     bgColor: "bg-yellow-500",
     textColor: "text-black",
     inactiveText: "text-yellow-600",
