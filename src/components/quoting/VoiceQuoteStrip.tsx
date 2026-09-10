@@ -253,12 +253,17 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
     if (intents.length !== 1) return false;
     if (first.kind === "client" || first.kind === "phone") {
       const q = first.kind === "phone" ? first.phone : first.query;
-      const { data, error } = await supabase.rpc("search_customers", { search_term: q, max_results: 5 });
-      const hits = (error ? [] : (data || [])) as CustomerSearchResult[];
-      if (!hits.length) { say(`No client matching ${q}. Say “new client ${q} 082 000 0000” to add them.`); return true; }
-      if (hits.length === 1) { await setCustomer(hits[0]); return true; }
-      setClientPrompt({ type: "customer_pick", hits: hits.slice(0, 3) });
-      say(`Found ${hits.length} clients — tap the right one.`);
+      const { data, error } = await supabase.rpc("search_customers", { search_term: q, max_results: 10 });
+      const raw = (error ? [] : (data || [])) as CustomerSearchResult[];
+      const hits = rankClientHits(q, raw);
+      if (!hits.length) {
+        setClientPrompt({ type: "no_match", query: q });
+        say(`No client matching “${q}”. Add them as a new client, or say the name again.`);
+        return true;
+      }
+      if (hits.length === 1 && isHighConfidence(q, hits[0])) { await setCustomer(hits[0]); return true; }
+      setClientPrompt({ type: "customer_pick", hits, query: q });
+      say(`Heard “${q}” — tap the right client, or add them as new.`);
       return true;
     }
     if (first.kind === "new_client") {
