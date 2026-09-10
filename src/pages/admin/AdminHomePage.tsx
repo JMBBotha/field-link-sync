@@ -52,8 +52,8 @@ const AdminHomePage = () => {
   return (
     <ErrorBoundary>
       <div ref={pageRef} className="relative h-full min-h-0 flex flex-col bg-background">
-        {/* Map-page style toolbar */}
-        <div className="shrink-0 flex flex-wrap items-center gap-2 px-3 py-2 border-b bg-card/80 backdrop-blur-sm z-20">
+        {/* Desktop map controls; mobile navigation already exposes these destinations. */}
+        <div className="hidden lg:flex shrink-0 flex-wrap items-center gap-2 px-3 py-2 border-b bg-card/80 backdrop-blur-sm z-20">
           <Button size="sm" variant="default" className="gap-1.5 text-xs h-8">
             <Map className="h-3.5 w-3.5" />
             Dashboard
@@ -85,7 +85,7 @@ const AdminHomePage = () => {
           <div className="absolute inset-0 bg-background/40 pointer-events-none" aria-hidden="true" />
 
           {/* Dashboard content floating over the map */}
-          <div className="relative h-full overflow-y-auto p-3 md:p-4 space-y-3">
+          <div className="relative h-full overflow-y-auto p-3 pb-20 md:p-4 md:pb-20 lg:pb-4 space-y-3">
             <OfferCards />
             <AdminHome
               onNavigate={(tab) => navigate(tabToRoute[tab] || "/admin")}

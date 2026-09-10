@@ -151,8 +151,8 @@ const AdminMapPage = () => {
 
   return (
     <div ref={pageRef} className="h-full flex flex-col min-h-0 bg-background">
-      {/* Thin chrome strip — quiet status chips on all sizes, denser toolbar from lg+ */}
-      <div className="shrink-0 flex flex-wrap items-center gap-2 px-3 py-1.5 border-b bg-card/80 backdrop-blur-sm z-20">
+      {/* Compact chips float over the map on mobile; desktop keeps its denser toolbar. */}
+      <div className="absolute inset-x-0 top-0 flex flex-wrap items-center gap-2 px-2 py-1.5 z-20 pointer-events-none lg:relative lg:shrink-0 lg:px-3 lg:border-b lg:bg-card/80 lg:backdrop-blur-sm">
         {/* Desktop-only toolbar */}
         <div className="hidden lg:flex items-center gap-1">
           <Button
@@ -206,7 +206,7 @@ const AdminMapPage = () => {
           </div>
         )}
         {/* Status chips — the only chrome on mobile/tablet */}
-        <div className="order-last w-full min-w-0 overflow-x-auto scrollbar-hide lg:order-none lg:w-auto lg:overflow-visible">
+        <div className="order-last w-full min-w-0 overflow-hidden pointer-events-auto lg:order-none lg:w-auto lg:overflow-visible">
           <StatusFilterButtons
             variant="quiet"
             className="w-full justify-between flex-nowrap sm:w-max sm:justify-start"
