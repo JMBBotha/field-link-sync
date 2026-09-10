@@ -238,6 +238,31 @@ const AdminMapPage = () => {
             />
           </div>
 
+          {/* On-map glass controls — mobile & tablet only */}
+          <div className="lg:hidden absolute bottom-4 left-3 z-20 flex flex-col gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleMyLocation}
+              aria-label="Center on my location"
+              className="h-10 w-10 rounded-full border border-border bg-background/80 backdrop-blur-md shadow-md hover:bg-accent"
+            >
+              <LocateFixed className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleTrafficToggle(!trafficEnabled)}
+              aria-label="Toggle traffic layer"
+              aria-pressed={trafficEnabled}
+              className={`h-10 w-10 rounded-full border border-border backdrop-blur-md shadow-md hover:bg-accent ${
+                trafficEnabled ? "bg-muted text-foreground" : "bg-background/80 text-muted-foreground"
+              }`}
+            >
+              <Layers className="h-4 w-4" />
+            </Button>
+          </div>
+
           {showCompletedFilter && (
             <Button
               variant="ghost"
