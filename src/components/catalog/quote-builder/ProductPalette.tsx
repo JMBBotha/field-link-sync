@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import { getProductDisplayName, getProductBriefDescription } from "./productDisplayUtils";
-import { allTermsMatchBlob } from "../searchSynonyms";
+import { searchAndRankProducts } from "../searchSynonyms";
 import BundleItemsPopover, { computeBundlePricing, type BundleSubItem } from "./BundleItemsPopover";
 
 function HighlightText({ text, searchTerm }: { text: string; searchTerm: string }) {
@@ -735,28 +735,16 @@ const ProductPalette = ({
         .sort((a, b) => recentIds.indexOf(a.id) - recentIds.indexOf(b.id));
     }
     if (searchQuery.trim()) {
-      const terms = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
-      result = result.filter((p) => {
-        const blob = [
-          p.product_code,
-          p.short_name,
-          p.brand,
-          p.description,
-          p.category,
-          p.product_category,
-          p.supplier_name,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        return allTermsMatchBlob(terms, blob);
-      });
+      // Alias-aware, ranked search (product_code + description + search_aliases).
+      result = searchAndRankProducts(searchQuery, result);
     }
     return result;
   }, [products, categoryFilter, favorites, recentIds, searchQuery]);
 
   // Sort: favorites first, then by usage count DESC, then alphabetical
   const sortedProducts = useMemo(() => {
+    // While searching, keep relevance ranking (exact code / alias hits first).
+    if (searchQuery.trim()) return filteredProducts;
     return [...filteredProducts].sort((a, b) => {
       const aFav = favorites.has(a.id) ? 1 : 0;
       const bFav = favorites.has(b.id) ? 1 : 0;
@@ -766,7 +754,7 @@ const ProductPalette = ({
       if (aUsage !== bUsage) return bUsage - aUsage;
       return getProductDisplayName(a).localeCompare(getProductDisplayName(b));
     });
-  }, [filteredProducts, favorites, usageMap]);
+  }, [filteredProducts, favorites, usageMap, searchQuery]);
 
   const grouped = useMemo(() => {
     return sortedProducts.reduce<Record<string, PaletteProduct[]>>((acc, p) => {

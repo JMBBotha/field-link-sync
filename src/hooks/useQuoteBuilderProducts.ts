@@ -18,11 +18,12 @@ export function useQuoteBuilderProducts() {
           suggested_consumables, pack_qty, supplier_discount_percent,
           markup_percent, btu_rating, pdf_upload_id,
           unit_type, price_per_unit_qty, price_per_unit_label,
-          allows_decimal_qty, qty_step, min_qty,
+          allows_decimal_qty, qty_step, min_qty, search_aliases,
 
           suppliers(name, supplier_type)
         `)
         .or("archived.is.null,archived.eq.false")
+        .eq("is_active", true)
         .order("is_pinned", { ascending: false })
         .order("pin_order", { ascending: true, nullsFirst: false })
         .limit(2000);
