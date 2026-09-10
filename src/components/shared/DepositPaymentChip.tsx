@@ -104,8 +104,6 @@ const DepositPaymentChip = ({ invoice, accepted, className }: DepositPaymentChip
 
 
   if (state === "due") {
-    const remaining = getDepositRemaining(invoice);
-    const amount = remaining !== undefined ? remaining : Number(invoice?.grand_total) || 0;
     return (
       <Badge
         className={cn(
@@ -113,7 +111,7 @@ const DepositPaymentChip = ({ invoice, accepted, className }: DepositPaymentChip
           className,
         )}
       >
-        Deposit due{amount > 0 ? ` · ${formatRand(amount)}` : ""}
+        Deposit due
       </Badge>
     );
   }
