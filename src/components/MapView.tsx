@@ -11,6 +11,9 @@ import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilter
 import { Switch } from "@/components/ui/switch";
 import { getMapboxToken, getMapboxTokenSync } from "@/lib/mapboxToken";
 import { hasValidCoords, resolveLeadCoords } from "@/lib/leadCoords";
+import { attachPaymentTotals, DepositInvoiceRow } from "@/lib/depositInvoice";
+import { getDepositChipState, getDepositRemaining } from "@/components/shared/DepositPaymentChip";
+import { formatRand } from "@/utils/formatRand";
 
 interface AgentLocation {
   agent_id: string;
@@ -110,6 +113,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
   const leadMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const customerLocationMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const [customerLocations, setCustomerLocations] = useState<any[]>([]);
+  // Deposit truth per lead (lead_id -> deposit invoice with settled allocation totals)
+  const [depositByLead, setDepositByLead] = useState<Map<string, DepositInvoiceRow>>(new Map());
   const searchMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const userLocationMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const userWatchIdRef = useRef<number | null>(null);
