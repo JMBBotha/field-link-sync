@@ -34,6 +34,7 @@ const statusConfig: Record<
   },
   in_progress: {
     label: "In Progress",
+    shortLabel: "Active",
     bgColor: "bg-green-500",
     textColor: "text-white",
     inactiveText: "text-green-600",
