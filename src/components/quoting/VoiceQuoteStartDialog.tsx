@@ -23,8 +23,9 @@ import { createDraftQuoteForCustomer } from "@/lib/createDraftQuote";
 import { parseUtterance } from "@/lib/voiceQuoteKit";
 import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
 
-const label = (c: CustomerSearchResult) =>
-  [c.company_name, [c.first_name, c.last_name].filter(Boolean).join(" ")].filter(Boolean).join(" — ") || c.phone;
+import { clientDisplayName, isHighConfidence, rankClientHits } from "@/lib/voiceClientMatch";
+
+const label = clientDisplayName;
 
 type Phase = "idle" | "listening" | "transcribing" | "working";
 
@@ -38,6 +39,7 @@ export default function VoiceQuoteStartDialog() {
   const [heard, setHeard] = useState("");
   const [typed, setTyped] = useState("");
   const [hits, setHits] = useState<CustomerSearchResult[]>([]);
+  const [lastQuery, setLastQuery] = useState("");
   const [pendingNew, setPendingNew] = useState<{ name: string; address: string | null } | null>(null);
   const recRef = useRef<WavRecorder | null>(null);
 
@@ -93,9 +95,9 @@ export default function VoiceQuoteStartDialog() {
 
   const handle = async (text: string) => {
     setHeard(text);
-    const pick = text.trim().match(/^(?:number |option )?([1-3]|one|two|three|first|second|third)\b/i);
+    const pick = text.trim().match(/^(?:number |option )?([1-5]|one|two|three|four|five|first|second|third|fourth|fifth)\b/i);
     if (hits.length && pick) {
-      const map: Record<string, number> = { one: 1, first: 1, two: 2, second: 2, three: 3, third: 3 };
+      const map: Record<string, number> = { one: 1, first: 1, two: 2, second: 2, three: 3, third: 3, four: 4, fourth: 4, five: 5, fifth: 5 };
       const i = (map[pick[1].toLowerCase()] ?? Number(pick[1])) - 1;
       const c = hits[i];
       if (c) { await openQuoteFor(c.id, label(c)); return; }
@@ -117,14 +119,19 @@ export default function VoiceQuoteStartDialog() {
     // Anything else is treated as a client lookup (name, phone, company).
     const q = it.kind === "client" ? it.query : it.kind === "phone" ? it.phone : text.trim();
     setPhase("working");
-    const { data, error } = await supabase.rpc("search_customers", { search_term: q, max_results: 5 });
+    const { data, error } = await supabase.rpc("search_customers", { search_term: q, max_results: 10 });
     setPhase("idle");
-    const found = (error ? [] : (data || [])) as CustomerSearchResult[];
-    if (!found.length) { say(`No client matching ${q}. Say new client ${q} with a phone number to add them.`); return; }
-    if (found.length === 1) { await openQuoteFor(found[0].id, label(found[0])); return; }
-    const top = found.slice(0, 3);
-    setHits(top);
-    say(`Found ${top.map((c, i) => `${i + 1}. ${label(c)}`).join(", ")}. Which one?`);
+    const raw = (error ? [] : (data || [])) as CustomerSearchResult[];
+    const found = rankClientHits(q, raw);
+    setLastQuery(q);
+    if (!found.length) {
+      setHits([]);
+      say(`No client matching “${q}”. Add them as a new client below, or say the name again.`);
+      return;
+    }
+    if (found.length === 1 && isHighConfidence(q, found[0])) { setHits([]); await openQuoteFor(found[0].id, label(found[0])); return; }
+    setHits(found);
+    say(`Heard “${q}”. Tap the right client, or add them as new.`);
   };
 
   const stopRecording = async () => {
@@ -177,6 +184,7 @@ export default function VoiceQuoteStartDialog() {
       setHits([]);
       setPendingNew(null);
       setHeard("");
+      setLastQuery("");
     }
   }, [open, canSpeak]);
 
@@ -194,13 +202,27 @@ export default function VoiceQuoteStartDialog() {
           <div className="space-y-3">
             <p className="text-sm text-foreground">{reply}</p>
             {heard && <p className="text-xs text-muted-foreground">Heard: “{heard}”</p>}
-            {hits.length > 0 && (
+            {(hits.length > 0 || (!!lastQuery && !pendingNew)) && (
               <div className="flex flex-wrap gap-2">
                 {hits.map((c, i) => (
                   <Button key={c.id} type="button" size="sm" variant="outline" disabled={phase === "working"} onClick={() => void openQuoteFor(c.id, label(c))}>
                     {i + 1}. {label(c)} · {c.phone}
                   </Button>
                 ))}
+                {!!lastQuery && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={phase === "working"}
+                    onClick={() => { setHits([]); setPendingNew({ name: lastQuery, address: null }); say(`Phone number for ${lastQuery}?`); }}
+                  >
+                    Add as new client “{lastQuery}”
+                  </Button>
+                )}
+                {hits.length > 0 && (
+                  <Button type="button" size="sm" variant="ghost" disabled={phase === "working"} onClick={() => setHits([])}>None of these</Button>
+                )}
               </div>
             )}
             <div className="flex items-center gap-2">

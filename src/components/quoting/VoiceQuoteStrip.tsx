@@ -26,6 +26,7 @@ import { getUserCompanyId } from "@/lib/tenantUtils";
 import { DEFAULT_LEAD_SOURCE } from "@/lib/leadSources";
 import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
 import VoiceBreakdownCard from "@/components/quoting/VoiceBreakdownCard";
+import { clientDisplayName, isHighConfidence, rankClientHits } from "@/lib/voiceClientMatch";
 import {
   buildSceneBreakdown,
   isSaveable,
@@ -44,11 +45,11 @@ interface Props {
 
 type MicPhase = "idle" | "listening" | "transcribing";
 type ClientPrompt =
-  | { type: "customer_pick"; hits: CustomerSearchResult[] }
+  | { type: "customer_pick"; hits: CustomerSearchResult[]; query: string }
+  | { type: "no_match"; query: string }
   | { type: "new_client_phone"; name: string; address?: string | null };
 
-const customerLabel = (c: CustomerSearchResult) =>
-  [c.company_name, [c.first_name, c.last_name].filter(Boolean).join(" ")].filter(Boolean).join(" — ") || c.phone;
+const customerLabel = clientDisplayName;
 
 const EXAMPLE = "Main bedroom 18,000 BTU AR4500 Samsung. Outside wall so back-to-back, three metres of piping, quarter and half with lagging. Five metre drain pipe with three elbows. Labour about three hours. Lounge 12,000 BTU…";
 
@@ -252,12 +253,17 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
     if (intents.length !== 1) return false;
     if (first.kind === "client" || first.kind === "phone") {
       const q = first.kind === "phone" ? first.phone : first.query;
-      const { data, error } = await supabase.rpc("search_customers", { search_term: q, max_results: 5 });
-      const hits = (error ? [] : (data || [])) as CustomerSearchResult[];
-      if (!hits.length) { say(`No client matching ${q}. Say “new client ${q} 082 000 0000” to add them.`); return true; }
-      if (hits.length === 1) { await setCustomer(hits[0]); return true; }
-      setClientPrompt({ type: "customer_pick", hits: hits.slice(0, 3) });
-      say(`Found ${hits.length} clients — tap the right one.`);
+      const { data, error } = await supabase.rpc("search_customers", { search_term: q, max_results: 10 });
+      const raw = (error ? [] : (data || [])) as CustomerSearchResult[];
+      const hits = rankClientHits(q, raw);
+      if (!hits.length) {
+        setClientPrompt({ type: "no_match", query: q });
+        say(`No client matching “${q}”. Add them as a new client, or say the name again.`);
+        return true;
+      }
+      if (hits.length === 1 && isHighConfidence(q, hits[0])) { await setCustomer(hits[0]); return true; }
+      setClientPrompt({ type: "customer_pick", hits, query: q });
+      say(`Heard “${q}” — tap the right client, or add them as new.`);
       return true;
     }
     if (first.kind === "new_client") {
@@ -375,13 +381,46 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
           )}
 
           {clientPrompt?.type === "customer_pick" && (
-            <div className="flex flex-wrap gap-2">
-              {clientPrompt.hits.map((c, i) => (
-                <Button key={c.id} type="button" size="sm" variant="outline" onClick={() => void setCustomer(c)}>
-                  {i + 1}. {customerLabel(c)} · {c.phone}
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">Heard: “{clientPrompt.query}”</p>
+              <div className="flex flex-wrap gap-2">
+                {clientPrompt.hits.map((c, i) => (
+                  <Button key={c.id} type="button" size="sm" variant="outline" onClick={() => void setCustomer(c)}>
+                    {i + 1}. {customerLabel(c)} · {c.phone}
+                  </Button>
+                ))}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    const name = clientPrompt.query;
+                    setClientPrompt({ type: "new_client_phone", name, address: null });
+                    say(`Phone number for ${name}? Type or say it.`);
+                  }}
+                >
+                  Add as new client “{clientPrompt.query}”
                 </Button>
-              ))}
-              <Button type="button" size="sm" variant="ghost" onClick={() => setClientPrompt(null)}>None of these</Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setClientPrompt({ type: "no_match", query: clientPrompt.query })}>None of these</Button>
+              </div>
+            </div>
+          )}
+
+          {clientPrompt?.type === "no_match" && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">Heard: “{clientPrompt.query}” — no client picked.</p>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  const name = clientPrompt.query;
+                  setClientPrompt({ type: "new_client_phone", name, address: null });
+                  say(`Phone number for ${name}? Type or say it.`);
+                }}
+              >
+                Add as new client “{clientPrompt.query}”
+              </Button>
             </div>
           )}
 
