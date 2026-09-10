@@ -226,9 +226,9 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
             const rb = product.row_bbox;
             const pb = product.price_bbox;
 
-            // Use center_x for exact horizontal alignment (non-negotiable)
-            const centerXNorm = pb.center_x ?? (pb.x + pb.width / 2);
-            const priceCenterX = centerXNorm * w;
+            // Vertical position from the price cell; horizontal = page right margin.
+            // HARD LOCK: controls sit at right:10px of the page box, never over
+            // the price column (price coordinates are not used for X placement).
             const priceCenterY = pb.y * h + (pb.height * h) / 2;
 
             return (
@@ -247,28 +247,17 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
                   }}
                 />
 
-                {/* Left of price center: chevron + radio */}
+                {/* Controls in the right page margin */}
                 <div
                   className="absolute flex items-center gap-0.5 cursor-pointer opacity-80 hover:opacity-100 transition-opacity"
                   style={{
                     top: `${priceCenterY - 12}px`,
-                    left: `${priceCenterX - 50}px`,
+                    right: "10px",
                   }}
                   onClick={() => setSelectedProduct(product)}
                 >
                   <ChevronRight className="h-4 w-4 text-primary" />
                   <CircleDot className="h-5 w-5 text-primary" />
-                </div>
-
-                {/* Right of price center: trolley + chevron */}
-                <div
-                  className="absolute flex items-center gap-0.5 cursor-pointer opacity-80 hover:opacity-100 transition-opacity"
-                  style={{
-                    top: `${priceCenterY - 12}px`,
-                    right: `${w - priceCenterX - 24}px`,
-                  }}
-                  onClick={() => setSelectedProduct(product)}
-                >
                   <ShoppingCart className="h-5 w-5 text-primary" />
                   <ChevronLeft className="h-4 w-4 text-primary" />
                 </div>
