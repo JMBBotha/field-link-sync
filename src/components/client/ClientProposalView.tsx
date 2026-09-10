@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import PayfastPayButton from "@/components/payments/PayfastPayButton";
 import EstimateDocument, { type EstimateDocLineItem } from "@/components/quoting/EstimateDocument";
+import { buildClientRollup, type ClientRollupArea } from "@/lib/clientQuoteRollup";
 import SignaturePad from "@/components/jobs/SignaturePad";
 import { fetchQuoteInvoiceByToken, type DepositInvoiceRow } from "@/lib/depositInvoice";
 import { isDepositCleared } from "@/components/shared/DepositPaymentChip";
@@ -69,6 +70,7 @@ const ClientProposalView = () => {
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [lineItems, setLineItems] = useState<EstimateDocLineItem[]>([]);
+  const [clientAreas, setClientAreas] = useState<ClientRollupArea[]>([]);
   const [customer, setCustomer] = useState<PublicCustomer | null>(null);
   const [company, setCompany] = useState<PublicCompany | null>(null);
   const [sections, setSections] = useState<ProposalSection[]>([]);
