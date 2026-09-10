@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useLaneStaff } from "@/hooks/useLaneStaff";
 import { ensureDepositInvoiceForQuote, fetchQuoteInvoice } from "@/lib/depositInvoice";
-import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
+import DepositPaymentChip, { isDepositCleared } from "@/components/shared/DepositPaymentChip";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -204,9 +204,8 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
   const hasDeposit = !!invoice?.id;
   // Payment can land later — Pass only requires the invoice ROW to exist.
   // Unpaid/draft still allows Pass, with an amber warning.
-  const depositCleared = !!invoice && (
-    ["paid", "partially_paid"].includes(String(invoice.status || "").toLowerCase()) || !!invoice.paid_date
-  );
+  // Same allocation math as the chip — status/paid_date never clear a deposit.
+  const depositCleared = isDepositCleared(invoice);
   const showDepositDueWarning = hasDeposit && !depositCleared;
 
   return (
