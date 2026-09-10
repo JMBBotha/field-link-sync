@@ -80,6 +80,7 @@ const RegionBox = memo(({
   onHoverMove,
   onHoverEnd,
   isFavorite,
+  priceColumnXFrac,
 }: {
   region: OverlayRegion;
   onOpenProductInfo?: (product: PaletteProduct) => void;
