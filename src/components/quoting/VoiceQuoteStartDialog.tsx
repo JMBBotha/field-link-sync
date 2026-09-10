@@ -24,6 +24,7 @@ import { parseUtterance } from "@/lib/voiceQuoteKit";
 import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
 
 import { clientDisplayName, isHighConfidence, rankClientHits } from "@/lib/voiceClientMatch";
+import VoiceClientOverrideFields, { emptyClientDraft, type VoiceClientDraft } from "@/components/quoting/VoiceClientOverrideFields";
 
 const label = clientDisplayName;
 
