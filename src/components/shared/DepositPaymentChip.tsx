@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 /**
  * Shared deposit-payment chip language.
  * States (identical wording everywhere):
- *  - "Deposit due · R…" (amber)  — invoice exists, nothing paid yet
+ *  - "Deposit due"       (amber)  — invoice exists, nothing allocated yet
  *  - "Partial · R…"      (amber)  — part-paid, R… is what is still outstanding
  *  - "Deposit paid"      (green)  — fully cleared: status 'paid', paid_date set, or remaining 0
  *  - "No deposit"        (muted)  — accepted work with no invoice row
