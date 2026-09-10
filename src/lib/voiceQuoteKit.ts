@@ -44,7 +44,7 @@ export type VoiceIntent =
   | { kind: "help" }
   | { kind: "pick"; index: number }
   | { kind: "client"; query: string }
-  | { kind: "new_client"; name: string; phone: string | null }
+  | { kind: "new_client"; name: string; phone: string | null; address?: string | null }
   | { kind: "phone"; phone: string }
   | { kind: "area"; name: string }
   | { kind: "copper"; runM: number | null; sizes: PipeSize[] }
@@ -199,9 +199,17 @@ export function parseUtterance(text: string): VoiceIntent[] {
   // ── client ──
   const newClient = raw.match(/\b(?:new|add|create)\s+(?:client|customer)\s+(?:called |named )?(.+)$/i);
   if (newClient) {
-    const phone = extractPhone(newClient[1]);
-    const name = newClient[1].replace(PHONE, "").replace(/\b(phone|number|cell|mobile|is|on)\b/gi, " ").replace(/\s+/g, " ").trim();
-    return [{ kind: "new_client", name, phone }];
+    // "new client Jane Doe 082 123 4567 at 12 Main Road Bellville"
+    let rest = newClient[1];
+    let address: string | null = null;
+    const addr = rest.match(/\b(?:at|address|living at|staying at)\s+(.+)$/i);
+    if (addr && /\d/.test(addr[1])) {
+      address = addr[1].replace(/[.?!]$/, "").trim();
+      rest = rest.slice(0, addr.index);
+    }
+    const phone = extractPhone(rest);
+    const name = rest.replace(PHONE, "").replace(/\b(phone|number|cell|mobile|is|on)\b/gi, " ").replace(/\s+/g, " ").trim();
+    return [{ kind: "new_client", name, phone, address }];
   }
   const client = raw.match(/\b(?:client|customer)\s+(?:is |called |named |for )?(.+)$/i) || raw.match(/^\s*(?:find|look up|lookup|search)\s+(?:client |customer )?(.+)$/i) || raw.match(/^\s*(?:quote |this is )?for\s+(.+)$/i);
   if (client && !/copper|metre|meter|labour|cable|unit/i.test(client[1])) {

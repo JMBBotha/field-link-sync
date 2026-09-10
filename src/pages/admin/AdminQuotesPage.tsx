@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import QuotesList from "@/components/quoting/QuotesList";
+import VoiceQuoteStartDialog from "@/components/quoting/VoiceQuoteStartDialog";
 
 /**
  * Quotes list page. Every "Open quote" / "New quote" action routes to the
@@ -32,11 +33,14 @@ const AdminQuotesPage = () => {
 
   return (
     <>
+      {/* Voice entry: find/add client → real draft quote → /admin/estimates/:id?voice=1 */}
+      <div className="flex justify-end px-4 pt-3 sm:px-6">
+        <VoiceQuoteStartDialog />
+      </div>
       <QuotesList
         onCreateNew={() => navigate("/admin/quote-builder")}
         onEditQuote={(id) => navigate(`/admin/quote-builder?quoteId=${id}`)}
       />
-
     </>
   );
 };
