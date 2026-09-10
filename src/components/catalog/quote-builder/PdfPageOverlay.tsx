@@ -281,8 +281,10 @@ const MarginHitStrip = ({
   onHoverStart,
   onHoverMove,
   onHoverEnd,
+  onInfoPress,
 }: {
   regions: OverlayRegion[];
+  onInfoPress?: (regionId: string) => void;
   pdfSelection?: PdfSelectionHandlers;
   baskets: Basket[];
   onAddProductToBasket?: (basketId: string, product: PaletteProduct) => void;
