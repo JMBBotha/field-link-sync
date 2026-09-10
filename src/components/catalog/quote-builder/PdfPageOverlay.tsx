@@ -49,10 +49,8 @@ const INFO_PRESS_MS = 380;
  *  Kept tight so taps on the Info icon (which sits further left) never select. */
 const SELECT_BAND_PX_PHONE = 12;
 const SELECT_BAND_PX_DESKTOP = 18;
-/** Right inset (px) of the real Info hit button, centred on the painted icon. */
-const INFO_HIT_RIGHT_PHONE = 7;
-const INFO_HIT_RIGHT_DESKTOP = 15;
-const INFO_HIT_W_PX = 28;
+/** Shared size for BOTH the Info glyph and the radio, so they match exactly. */
+const CONTROL_SIZE_CLASS = "h-[clamp(8px,100%,12px)] sm:h-[clamp(10px,100%,16px)]";
 /** Everything further left inside the strip is the info band. */
 const DESKTOP_STRIP_MIN_W = 56;
 const RADIO_GREY_STROKE = "hsl(215 14% 28%)";
