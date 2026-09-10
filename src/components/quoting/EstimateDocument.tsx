@@ -93,6 +93,13 @@ export interface EstimateDocumentProps {
     default_payment_terms_days?: number | null;
   } | null;
   editing?: EstimateEditing;
+  /**
+   * Client-facing roll-up: one block per area (unit + blurb + single area
+   * total). When supplied the read-only body renders these instead of the
+   * itemised line table. Staff editing is unaffected.
+   */
+  clientAreas?: ClientRollupArea[];
+  presentationMode?: "flat" | "clientRollup";
 }
 
 
