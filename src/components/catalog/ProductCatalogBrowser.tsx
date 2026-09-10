@@ -283,7 +283,8 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
         let query = (supabase.from("supplier_products") as any)
           .select("*, suppliers(name)");
         if (supplierId) query = query.eq("supplier_id", supplierId);
-        if (!showArchived) query = query.or("archived.is.null,archived.eq.false");
+        // Default browse = live catalog only. Archive view keeps showing archived rows.
+        if (!showArchived) query = query.or("archived.is.null,archived.eq.false").eq("is_active", true);
         query = query.limit(2000);
         const { data, error } = await query;
         if (error) throw error;
@@ -345,6 +346,7 @@ const ProductCatalogBrowser = ({ onAddToQuote, supplierId, productCategoryFilter
     () => new Fuse(enrichedProducts, {
       keys: [
         { name: "product_code", weight: 2 },
+        { name: "search_aliases", weight: 2 },
         { name: "short_name", weight: 2 },
         { name: "_searchBlob", weight: 1.5 },
         { name: "description", weight: 1.5 },
