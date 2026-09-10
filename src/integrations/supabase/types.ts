@@ -7258,6 +7258,7 @@ export type Database = {
         Args: { p_product_id: string }
         Returns: undefined
       }
+      invoice_amount_paid: { Args: { p_invoice_id: string }; Returns: number }
       is_agent_available_now: { Args: { p_agent_id: string }; Returns: boolean }
       is_company_admin: {
         Args: { _company_id: string; _user_id: string }
@@ -7347,6 +7348,16 @@ export type Database = {
           count: number
           status: string
         }[]
+      }
+      record_invoice_payment: {
+        Args: {
+          p_amount: number
+          p_invoice_id: string
+          p_method: string
+          p_payment_date?: string
+          p_reference?: string
+        }
+        Returns: string
       }
       revenue_by_agent: {
         Args: never

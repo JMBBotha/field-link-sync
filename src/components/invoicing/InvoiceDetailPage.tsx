@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { generateAndUploadPDF, downloadInvoicePDF, shareInvoice, sendViaWhatsApp } from "@/lib/invoicePDF";
+import { sumSettled } from "@/lib/payments";
 import PaymentRecorder from "@/components/invoicing/PaymentRecorder";
 import InvoiceDocument from "@/components/invoicing/InvoiceDocument";
 
@@ -70,7 +71,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
     const [invoiceResult, itemsResult, paymentsResult] = await Promise.all([
       supabase.from("invoices").select("*").eq("id", invoiceId).single(),
       supabase.from("invoice_items").select("*").eq("invoice_id", invoiceId).order("created_at", { ascending: true }),
-      supabase.from("payments").select("amount").eq("invoice_id", invoiceId),
+      supabase.from("payments").select("amount, status, gateway").eq("invoice_id", invoiceId),
     ]);
 
     if (invoiceResult.error) {
@@ -80,7 +81,8 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
       setInvoice(invoiceResult.data);
     }
     setInvoiceItems((itemsResult.data as unknown as InvoiceItem[]) || []);
-    setAmountPaid(((paymentsResult.data as any[]) || []).reduce((s, p) => s + (Number(p.amount) || 0), 0));
+    // Only settled payments count as cash applied (payment allocation SoT).
+    setAmountPaid(sumSettled(((paymentsResult.data as any[]) || [])));
     setLoading(false);
   };
 
@@ -95,15 +97,14 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         amount: i.amount,
       }));
 
-  const updateStatus = async (newStatus: string) => {
+  // Only non-payment transitions (draft → sent). Paid/partially_paid are
+  // derived by the DB from recorded payments — never written here.
+  const updateStatus = async (newStatus: "sent") => {
     setUpdating(true);
     const updateData: any = {
       status: newStatus,
       updated_at: new Date().toISOString(),
     };
-    if (newStatus === "paid") {
-      updateData.paid_date = new Date().toISOString().split("T")[0];
-    }
 
     const { error } = await supabase
       .from("invoices")
@@ -242,7 +243,13 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
           <strong> Partially Paid</strong>, full balance → <strong>Paid</strong>. No manual toggling needed.
         </HelpTip>
       </div>
-      <PaymentRecorder invoiceId={invoice.id} invoiceTotal={Number(invoice.grand_total)} />
+      <div id="invoice-payment-recorder">
+        <PaymentRecorder
+          invoiceId={invoice.id}
+          invoiceTotal={Number(invoice.grand_total)}
+          onChange={() => { fetchInvoice(); onUpdate?.(); }}
+        />
+      </div>
 
       {/* Extra spacer so the fixed action bar doesn't cover payments */}
       <div className="h-32" />
@@ -261,14 +268,15 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
             Mark as Sent
           </Button>
         )}
-        {invoice.status === "sent" && (
+        {/* Paid is DERIVED from recorded payments — never set directly. */}
+        {(invoice.status === "sent" || invoice.status === "partially_paid" || invoice.status === "overdue") &&
+          Number(invoice.grand_total) - amountPaid > 0.005 && (
           <Button
             className="w-full h-12 rounded-xl font-semibold bg-green-600 hover:bg-green-700"
-            onClick={() => updateStatus("paid")}
-            disabled={updating}
+            onClick={() => document.getElementById("invoice-payment-recorder")?.scrollIntoView({ behavior: "smooth", block: "center" })}
           >
-            {updating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-            Mark as Paid
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Record Payment ({formatCurrency(Math.max(0, Number(invoice.grand_total) - amountPaid))} due)
           </Button>
         )}
 
