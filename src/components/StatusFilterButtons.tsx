@@ -8,32 +8,41 @@ interface StatusFilterButtonsProps {
   className?: string;
   compact?: boolean;
   counts?: Partial<Record<LeadStatusFilter, number>>;
+  /** "quiet" = muted chips with a small colour dot (used on map surfaces) */
+  variant?: "default" | "quiet";
 }
 
-const statusConfig: Record<LeadStatusFilter, { label: string; bgColor: string; textColor: string; inactiveText: string }> = {
+const statusConfig: Record<
+  LeadStatusFilter,
+  { label: string; bgColor: string; textColor: string; inactiveText: string; dotColor: string }
+> = {
   pending: {
     label: "Available",
     bgColor: "bg-red-500",
     textColor: "text-white",
     inactiveText: "text-red-600",
+    dotColor: "bg-red-500",
   },
   accepted: {
     label: "Claimed",
     bgColor: "bg-yellow-500",
     textColor: "text-black",
     inactiveText: "text-yellow-600",
+    dotColor: "bg-yellow-500",
   },
   in_progress: {
     label: "In Progress",
     bgColor: "bg-green-500",
     textColor: "text-white",
     inactiveText: "text-green-600",
+    dotColor: "bg-green-500",
   },
   completed: {
     label: "Completed",
     bgColor: "bg-black dark:bg-white",
     textColor: "text-white dark:text-black",
     inactiveText: "text-black dark:text-white",
+    dotColor: "bg-foreground",
   },
 };
 
@@ -43,8 +52,53 @@ const StatusFilterButtons = ({
   className,
   compact = false,
   counts,
+  variant = "default",
 }: StatusFilterButtonsProps) => {
   const statuses: LeadStatusFilter[] = ["pending", "accepted", "in_progress", "completed"];
+
+  if (variant === "quiet") {
+    return (
+      <div
+        className={cn(
+          "flex items-center gap-1.5 overflow-x-auto scrollbar-hide",
+          className
+        )}
+      >
+        {statuses.map((status) => {
+          const config = statusConfig[status];
+          const isActive = activeFilters.has(status);
+          return (
+            <button
+              key={status}
+              onClick={() => onToggle(status)}
+              aria-pressed={isActive}
+              className={cn(
+                "flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] sm:text-xs font-medium whitespace-nowrap transition-colors",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+                isActive
+                  ? "border-border bg-muted text-foreground"
+                  : "border-border/60 bg-background/60 text-muted-foreground hover:bg-muted/60"
+              )}
+            >
+              <span
+                className={cn(
+                  "h-2 w-2 shrink-0 rounded-full",
+                  config.dotColor,
+                  !isActive && "opacity-50"
+                )}
+              />
+              <span className={cn(compact ? "hidden sm:inline" : "")}>{config.label}</span>
+              {typeof counts?.[status] === "number" && (
+                <span className="ml-0.5 rounded-full bg-foreground/10 px-1 text-[10px] font-semibold tabular-nums">
+                  {counts[status]}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div
