@@ -232,8 +232,11 @@ const RegionBox = memo(({
         style={{ right: `${CONTROL_RIGHT_PX}px` }}
       >
         <Info
-          className="w-auto aspect-square h-[clamp(7px,100%,10px)] sm:h-[clamp(9px,100%,14px)]"
-          style={{ color: INFO_BLUE }}
+          className="w-auto aspect-square h-[clamp(7px,100%,10px)] sm:h-[clamp(9px,100%,14px)] transition-transform duration-100"
+          style={{
+            color: isInfoPressed ? INFO_BLUE_PRESSED : INFO_BLUE,
+            transform: isInfoPressed ? "scale(1.35)" : "none",
+          }}
           aria-hidden
         />
         {isSelected ? (
