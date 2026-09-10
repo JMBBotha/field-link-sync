@@ -311,6 +311,7 @@ const PdfPageOverlay = ({
             onHoverMove={onHoverMove}
             onHoverEnd={onHoverEnd}
             isFavorite={!!favoriteIds?.has(productId)}
+            priceColumnXFrac={priceColumnXFrac}
           />
         );
       })}
