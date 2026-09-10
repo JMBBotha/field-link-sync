@@ -397,6 +397,59 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     scrollToPage(next);
   }, [pages.length, visiblePageIndex, scrollToPage]);
 
+  // Two-finger pinch zoom on the PDF scroll container.
+  // Updates the same `zoom` state the +/- buttons use, so pages never remount.
+  useEffect(() => {
+    if (!open) return;
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    let startDist = 0;
+    let startZoom = 1;
+    let pinching = false;
+
+    const dist = (t: TouchList) => {
+      const dx = t[0].clientX - t[1].clientX;
+      const dy = t[0].clientY - t[1].clientY;
+      return Math.hypot(dx, dy);
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 2) return;
+      pinching = true;
+      startDist = dist(e.touches);
+      startZoom = zoomRef.current;
+      el.style.touchAction = "none";
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!pinching || e.touches.length !== 2 || startDist <= 0) return;
+      e.preventDefault();
+      const ratio = dist(e.touches) / startDist;
+      const next = Math.min(3, Math.max(0.5, startZoom * ratio));
+      setZoom(Math.round(next * 100) / 100);
+    };
+
+    const endPinch = () => {
+      if (!pinching) return;
+      pinching = false;
+      startDist = 0;
+      el.style.touchAction = "";
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", endPinch);
+    el.addEventListener("touchcancel", endPinch);
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", endPinch);
+      el.removeEventListener("touchcancel", endPinch);
+      el.style.touchAction = "";
+    };
+  }, [open, pagesLoading, pages.length]);
+
   // Legacy popup removed — clicks now route to Area Quote Builder via onOpenWizard
   const handleProductClick = useCallback((_product: PaletteProduct) => {
     // No-op: onOpenWizard handles this via PdfPageOverlay's row strip click
