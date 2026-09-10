@@ -26,6 +26,7 @@ export interface SearchableProduct {
   default_markup_percent?: number;
   quote_usage_count?: number;
   search_blob?: string;
+  search_aliases?: string[] | null;
 }
 
 
