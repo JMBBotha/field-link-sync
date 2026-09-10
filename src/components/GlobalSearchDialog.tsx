@@ -10,9 +10,10 @@ import { Search, FileText, Receipt, Users, Briefcase, Command, Truck, ClipboardL
 
 interface SearchItem {
   id: string;
-  type: "quote" | "invoice" | "customer" | "lead" | "supplier" | "proposal" | "maintenance";
+  type: "quote" | "invoice" | "customer" | "lead" | "supplier" | "proposal" | "maintenance" | "room" | "location";
   title: string;
   subtitle: string;
+  searchText: string;
   path: string;
 }
 
@@ -24,12 +25,18 @@ const typeConfig = {
   supplier: { icon: Truck, color: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30", label: "Supplier" },
   proposal: { icon: ClipboardList, color: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30", label: "Proposal" },
   maintenance: { icon: Wrench, color: "bg-rose-500/20 text-rose-400 border-rose-500/30", label: "Maintenance" },
+  room: { icon: Home, color: "bg-teal-500/20 text-teal-400 border-teal-500/30", label: "Room" },
+  location: { icon: MapPin, color: "bg-orange-500/20 text-orange-400 border-orange-500/30", label: "Location" },
 };
 
 interface GlobalSearchDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+const ROW_LIMIT = 500;
+const join = (...parts: (string | null | undefined | number)[]) =>
+  parts.filter((p) => p !== null && p !== undefined && `${p}`.trim() !== "").join(" • ");
 
 const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => {
   const [query, setQuery] = useState("");
@@ -42,35 +49,128 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
   const { data: items = [] } = useQuery<SearchItem[]>({
     queryKey: ["global-search-items"],
     queryFn: async () => {
-      const [quotes, invoices, customers, leads, suppliers, proposals, maintenance] = await Promise.all([
-        supabase.from("quotes").select("id, quote_number, status, total").neq("status", "superseded").limit(300),
-        supabase.from("invoices").select("id, invoice_number, customer_name, grand_total, status").limit(300),
-        supabase.from("customers").select("id, name, phone, email").limit(300),
-        supabase.from("leads").select("id, customer_name, service_type, status").limit(300),
-        supabase.from("suppliers").select("id, name, contact_name, main_phone, contact_phone, supplier_type").limit(300),
-        supabase.from("proposals").select("id, proposal_number, reference, status, total").limit(300),
-        supabase.from("maintenance_schedules").select("id, due_date, status, notes, customers(name)").limit(300),
-      ]);
+      const [quotes, invoices, customers, leads, suppliers, proposals, maintenance, units, locations] =
+        await Promise.all([
+          supabase
+            .from("quotes")
+            .select("id, quote_number, customer_name, reference_text, status, total")
+            .neq("status", "superseded")
+            .order("created_at", { ascending: false })
+            .limit(ROW_LIMIT),
+          supabase
+            .from("invoices")
+            .select("id, invoice_number, customer_name, customer_address, grand_total, status")
+            .order("created_at", { ascending: false })
+            .limit(ROW_LIMIT),
+          supabase
+            .from("customers")
+            .select("id, name, phone, email, address, primary_address_line1, city, company_name, search_aliases")
+            .order("created_at", { ascending: false })
+            .limit(ROW_LIMIT),
+          supabase
+            .from("leads")
+            .select("id, customer_name, customer_phone, customer_address, company_name, email, service_type, status")
+            .order("created_at", { ascending: false })
+            .limit(ROW_LIMIT),
+          supabase
+            .from("suppliers")
+            .select("id, name, contact_name, main_phone, contact_phone, supplier_type")
+            .order("created_at", { ascending: false })
+            .limit(ROW_LIMIT),
+          supabase
+            .from("proposals")
+            .select("id, proposal_number, reference, status, total")
+            .order("created_at", { ascending: false })
+            .limit(ROW_LIMIT),
+          supabase
+            .from("maintenance_schedules")
+            .select("id, due_date, status, notes, customers(name)")
+            .order("created_at", { ascending: false })
+            .limit(ROW_LIMIT),
+          supabase
+            .from("customer_units")
+            .select("id, customer_id, label, full_address, notes")
+            .order("created_at", { ascending: false })
+            .limit(ROW_LIMIT),
+          supabase
+            .from("customer_locations")
+            .select("id, customer_id, label, address")
+            .order("created_at", { ascending: false })
+            .limit(ROW_LIMIT),
+        ]);
+
+      // Surface failures instead of silently returning an empty source.
+      Object.entries({ quotes, invoices, customers, leads, suppliers, proposals, maintenance, units, locations }).forEach(
+        ([name, res]: [string, any]) => {
+          if (res?.error) console.error(`[GlobalSearch] ${name} query failed:`, res.error.message);
+        }
+      );
 
       const result: SearchItem[] = [];
-      quotes.data?.forEach((q) =>
-        result.push({ id: q.id, type: "quote", title: q.quote_number, subtitle: `R${Number(q.total).toLocaleString("en-ZA")} • ${q.status}`, path: "/admin/quotes" })
+      quotes.data?.forEach((q: any) =>
+        result.push({
+          id: q.id,
+          type: "quote",
+          title: join(q.quote_number, q.customer_name) || "Quote",
+          subtitle: join(q.reference_text, `R${Number(q.total || 0).toLocaleString("en-ZA")}`, q.status),
+          searchText: join(q.quote_number, q.customer_name, q.reference_text, q.status),
+          path: "/admin/quotes",
+        })
       );
-      invoices.data?.forEach((i) =>
-        result.push({ id: i.id, type: "invoice", title: i.invoice_number, subtitle: `${i.customer_name} • R${Number(i.grand_total).toLocaleString("en-ZA")}`, path: "/admin/invoices" })
+      invoices.data?.forEach((i: any) =>
+        result.push({
+          id: i.id,
+          type: "invoice",
+          title: join(i.invoice_number, i.customer_name) || "Invoice",
+          subtitle: join(i.customer_address, `R${Number(i.grand_total || 0).toLocaleString("en-ZA")}`, i.status),
+          searchText: join(i.invoice_number, i.customer_name, i.customer_address, i.status),
+          path: "/admin/invoices",
+        })
       );
-      customers.data?.forEach((c) =>
-        result.push({ id: c.id, type: "customer", title: c.name, subtitle: c.phone || c.email || "", path: `/admin/customers/${c.id}` })
+      customers.data?.forEach((c: any) =>
+        result.push({
+          id: c.id,
+          type: "customer",
+          title: c.name,
+          subtitle: join(c.phone, c.email, c.address || c.primary_address_line1, c.city),
+          searchText: join(
+            c.name,
+            c.company_name,
+            c.phone,
+            c.email,
+            c.address,
+            c.primary_address_line1,
+            c.city,
+            Array.isArray(c.search_aliases) ? c.search_aliases.join(" ") : c.search_aliases
+          ),
+          path: `/admin/customers/${c.id}`,
+        })
       );
-      leads.data?.forEach((l) =>
-        result.push({ id: l.id, type: "lead", title: l.customer_name, subtitle: `${l.service_type} • ${l.status}`, path: "/admin/dispatch" })
+      leads.data?.forEach((l: any) =>
+        result.push({
+          id: l.id,
+          type: "lead",
+          title: l.customer_name || l.company_name || "Job",
+          subtitle: join(l.customer_address, l.customer_phone, l.service_type, l.status),
+          searchText: join(
+            l.customer_name,
+            l.company_name,
+            l.customer_phone,
+            l.email,
+            l.customer_address,
+            l.service_type,
+            l.status
+          ),
+          path: "/admin/dispatch",
+        })
       );
       suppliers.data?.forEach((s: any) =>
         result.push({
           id: s.id,
           type: "supplier",
           title: s.name,
-          subtitle: [s.contact_name, s.main_phone || s.contact_phone, s.supplier_type].filter(Boolean).join(" • "),
+          subtitle: join(s.contact_name, s.main_phone || s.contact_phone, s.supplier_type),
+          searchText: join(s.name, s.contact_name, s.main_phone, s.contact_phone, s.supplier_type),
           path: "/admin/suppliers",
         })
       );
@@ -79,7 +179,8 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
           id: p.id,
           type: "proposal",
           title: p.proposal_number || p.reference || "Proposal",
-          subtitle: [p.reference, p.status, p.total != null ? `R${Number(p.total).toLocaleString("en-ZA")}` : null].filter(Boolean).join(" • "),
+          subtitle: join(p.reference, p.status, p.total != null ? `R${Number(p.total).toLocaleString("en-ZA")}` : null),
+          searchText: join(p.proposal_number, p.reference, p.status),
           path: "/admin/templates",
         })
       );
@@ -88,8 +189,29 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
           id: m.id,
           type: "maintenance",
           title: m.customers?.name || "Maintenance visit",
-          subtitle: [m.due_date ? `Due ${m.due_date}` : null, m.status, m.notes].filter(Boolean).join(" • "),
+          subtitle: join(m.due_date ? `Due ${m.due_date}` : null, m.status, m.notes),
+          searchText: join(m.customers?.name, m.due_date, m.status, m.notes),
           path: "/admin/maintenance",
+        })
+      );
+      units.data?.forEach((u: any) =>
+        result.push({
+          id: u.id,
+          type: "room",
+          title: u.label || "Room",
+          subtitle: join(u.full_address, u.notes),
+          searchText: join(u.label, u.full_address, u.notes),
+          path: u.customer_id ? `/admin/customers/${u.customer_id}` : "/admin/customers",
+        })
+      );
+      locations.data?.forEach((loc: any) =>
+        result.push({
+          id: loc.id,
+          type: "location",
+          title: loc.label || loc.address || "Location",
+          subtitle: loc.address || "",
+          searchText: join(loc.label, loc.address),
+          path: loc.customer_id ? `/admin/customers/${loc.customer_id}` : "/admin/customers",
         })
       );
       return result;
@@ -98,7 +220,21 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
     enabled: open,
   });
 
-  const fuse = useMemo(() => new Fuse(items, { keys: ["title", "subtitle"], threshold: 0.4 }), [items]);
+  const fuse = useMemo(
+    () =>
+      new Fuse(items, {
+        keys: [
+          { name: "searchText", weight: 2 },
+          { name: "title", weight: 2 },
+          { name: "subtitle", weight: 1 },
+        ],
+        threshold: 0.35,
+        ignoreLocation: true,
+        minMatchCharLength: 2,
+      }),
+    [items]
+  );
+
   const results = query.length > 1 ? fuse.search(query).slice(0, 10) : [];
 
   const handleSelect = useCallback((item: SearchItem) => {
