@@ -37,6 +37,8 @@ interface PdfPageOverlayProps {
   pdfSelection?: PdfSelectionHandlers;
   onOpenProductInfo?: (product: PaletteProduct) => void;
   favoriteIds?: Set<string>;
+  /** Fractional x (0-1) of the price column on the page, when known. */
+  priceColumnXFrac?: number | null;
 }
 
 const buildFallbackProduct = (region: OverlayRegion): PaletteProduct => ({
