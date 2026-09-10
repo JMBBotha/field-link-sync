@@ -17,3 +17,9 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 - [x] `VoiceQuoteStrip.tsx` on `/admin/estimates/:id`: mic (WavRecorder + voice-quote-parse transcribe), typed fallback, short-turn questions with ranked candidates, pending list, explicit confirm -> writes live quote via QuoteContext.
 - [x] Verify kit math + build; summarize works vs stubbed.
 - [ ] Voice v2 (later): cable/chase items in catalog, AC-unit → auto kit suggestion, live-mic polish.
+
+## Visual Catalog overlay hard-lock (2026-09-10)
+- [ ] Controls anchored `right:10px` to PDF page box (no price_x_frac / priceColumnXFrac for placement)
+- [ ] Remove pink/magenta price-column debug outlines from production catalog UI
+- [ ] Fix mobile tap selecting wrong row (hit-test in transformed overlay space)
+- [ ] Smaller radios on phone (visual + hit target)
