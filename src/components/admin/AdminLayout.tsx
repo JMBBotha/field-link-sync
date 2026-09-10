@@ -257,7 +257,7 @@ const AdminLayout = () => {
 
 
 
-        <main className="app-surface flex-1 overflow-auto pb-28 lg:pb-0">
+        <main className={`app-surface flex-1 overflow-auto ${isMapPage ? "" : "pb-28 lg:pb-0"}`}>
 
           <AnimatePresence mode="wait">
             <motion.div
