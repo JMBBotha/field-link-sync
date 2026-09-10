@@ -381,13 +381,46 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
           )}
 
           {clientPrompt?.type === "customer_pick" && (
-            <div className="flex flex-wrap gap-2">
-              {clientPrompt.hits.map((c, i) => (
-                <Button key={c.id} type="button" size="sm" variant="outline" onClick={() => void setCustomer(c)}>
-                  {i + 1}. {customerLabel(c)} · {c.phone}
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">Heard: “{clientPrompt.query}”</p>
+              <div className="flex flex-wrap gap-2">
+                {clientPrompt.hits.map((c, i) => (
+                  <Button key={c.id} type="button" size="sm" variant="outline" onClick={() => void setCustomer(c)}>
+                    {i + 1}. {customerLabel(c)} · {c.phone}
+                  </Button>
+                ))}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    const name = clientPrompt.query;
+                    setClientPrompt({ type: "new_client_phone", name, address: null });
+                    say(`Phone number for ${name}? Type or say it.`);
+                  }}
+                >
+                  Add as new client “{clientPrompt.query}”
                 </Button>
-              ))}
-              <Button type="button" size="sm" variant="ghost" onClick={() => setClientPrompt(null)}>None of these</Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setClientPrompt({ type: "no_match", query: clientPrompt.query })}>None of these</Button>
+              </div>
+            </div>
+          )}
+
+          {clientPrompt?.type === "no_match" && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">Heard: “{clientPrompt.query}” — no client picked.</p>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  const name = clientPrompt.query;
+                  setClientPrompt({ type: "new_client_phone", name, address: null });
+                  say(`Phone number for ${name}? Type or say it.`);
+                }}
+              >
+                Add as new client “{clientPrompt.query}”
+              </Button>
             </div>
           )}
 
