@@ -224,7 +224,9 @@ const RegionBox = memo(({
         </div>
       )}
 
-      {/* Painted controls — anchored to the PAGE right edge; smaller icons, still thumb-friendly */}
+      {/* Painted controls — anchored to the PAGE right edge; Info and radio are
+          the SAME size (visual + hit). The Info hit button is an inset-0 overlay
+          on the Info glyph box only, so it can never cover the radio. */}
       <div
         className="absolute inset-y-0 flex items-center gap-[2px] sm:gap-1 pointer-events-none"
         style={{ right: `${CONTROL_RIGHT_PX}px` }}
@@ -232,7 +234,7 @@ const RegionBox = memo(({
         {/* Pressed state paints a solid blue chip with a white glyph — clearly
             visible on a phone, unlike a subtle hue shift. */}
         <span
-          className="relative flex items-center justify-center rounded-full transition-transform duration-100"
+          className={`relative flex items-center justify-center rounded-full transition-transform duration-100 aspect-square ${CONTROL_SIZE_CLASS}`}
           style={{
             backgroundColor: isInfoPressed ? INFO_BLUE_PRESSED : "transparent",
             boxShadow: isInfoPressed ? `0 0 0 3px ${INFO_BLUE_PRESSED}` : "none",
@@ -240,19 +242,43 @@ const RegionBox = memo(({
           }}
         >
           <Info
-            className="w-auto aspect-square h-[clamp(7px,100%,10px)] sm:h-[clamp(9px,100%,14px)]"
+            className="h-full w-auto aspect-square"
             style={{ color: isInfoPressed ? "#ffffff" : INFO_BLUE }}
             aria-hidden
+          />
+          {/* Real Info hit target — same box as the painted icon, above the
+              margin strip (z-10) so the radio band can never steal an info tap. */}
+          <button
+            type="button"
+            data-pdf-info-button
+            aria-label="Product details"
+            className="absolute inset-0"
+            style={{
+              zIndex: 30,
+              pointerEvents: "auto",
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              touchAction: "manipulation",
+            }}
+            onPointerDown={(e) => { e.stopPropagation(); onInfoPress?.(region.id); }}
+            onPointerUp={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              onInfoPress?.(region.id);
+              onOpenProductInfo?.(regionProduct(region));
+            }}
           />
         </span>
         {isSelected ? (
           <CheckCircle2
-            className="w-auto aspect-square h-[clamp(8px,100%,12px)] sm:h-[clamp(10px,100%,16px)]"
+            className={`w-auto aspect-square ${CONTROL_SIZE_CLASS}`}
             style={{ color: isFavorite ? "hsl(45 93% 47%)" : "hsl(var(--success))" }}
             aria-hidden
           />
         ) : (
-          <span className="relative flex items-center justify-center h-[clamp(8px,100%,12px)] sm:h-[clamp(10px,100%,16px)] aspect-square">
+          <span className={`relative flex items-center justify-center aspect-square ${CONTROL_SIZE_CLASS}`}>
             <Circle
               className="h-full w-auto aspect-square"
               style={{ color: RADIO_GREY_STROKE }}
@@ -265,34 +291,6 @@ const RegionBox = memo(({
           </span>
         )}
       </div>
-
-      {/* Real Info hit target — sits ABOVE the margin strip so the radio can
-          never steal an info tap. Height matches the row, so buttons never
-          overlap each other and the tapped row is always the painted one. */}
-      <button
-        type="button"
-        data-pdf-info-button
-        aria-label="Product details"
-        className="absolute top-0 h-full"
-        style={{
-          right: `var(--pdf-info-right, ${INFO_HIT_RIGHT_PHONE}px)`,
-          width: `${INFO_HIT_W_PX}px`,
-          zIndex: 30,
-          pointerEvents: "auto",
-          background: "transparent",
-          border: "none",
-          padding: 0,
-          touchAction: "manipulation",
-        }}
-        onPointerDown={(e) => { e.stopPropagation(); onInfoPress?.(region.id); }}
-        onPointerUp={(e) => e.stopPropagation()}
-        onClick={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          onInfoPress?.(region.id);
-          onOpenProductInfo?.(regionProduct(region));
-        }}
-      />
     </div>
   );
 });
