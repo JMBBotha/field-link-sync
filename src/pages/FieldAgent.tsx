@@ -1296,10 +1296,10 @@ const FieldAgent = () => {
 
         {/* Map header status chips (all devices) */}
         {showMapOnMobile && (
-          <div className="border-b bg-background/95 px-3 py-2 z-20">
+          <div className="border-b bg-background/95 px-3 py-1.5 z-20 overflow-x-auto scrollbar-hide">
             <StatusFilterButtons
               variant="quiet"
-              className="w-full"
+              className="w-max flex-nowrap"
               activeFilters={statusFilters}
               onToggle={(status) => {
                 setStatusFilters((prev) => {
