@@ -1391,6 +1391,39 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
           nameBadge.textContent = "";
         }
       }
+
+      // Deposit dot accent — green = paid, amber = due/partial (allocation-only truth)
+      let depDot = el.querySelector('[data-role="deposit-dot"]') as HTMLDivElement | null;
+      if (!depDot) {
+        depDot = document.createElement("div");
+        depDot.dataset.role = "deposit-dot";
+        depDot.style.position = "absolute";
+        depDot.style.top = "-2px";
+        depDot.style.right = "-6px";
+        depDot.style.width = "12px";
+        depDot.style.height = "12px";
+        depDot.style.borderRadius = "9999px";
+        depDot.style.border = "2px solid #ffffff";
+        depDot.style.boxShadow = "0 1px 3px rgba(0,0,0,0.35)";
+        depDot.style.zIndex = "3";
+        depDot.style.display = "none";
+        el.appendChild(depDot);
+      }
+      const depInvoice = depositByLead.get(lead.id);
+      const depState = getDepositChipState(depInvoice, { accepted: false });
+      if (depInvoice && depState && isVisible) {
+        depDot.style.display = "block";
+        depDot.style.backgroundColor = depState === "paid" ? "#10b981" : "#f59e0b";
+        const remaining = getDepositRemaining(depInvoice);
+        depDot.title =
+          depState === "paid"
+            ? "Deposit paid"
+            : depState === "partial"
+              ? `Partial · ${formatRand(remaining ?? 0)}`
+              : "Deposit due";
+      } else {
+        depDot.style.display = "none";
+      }
     });
 
     // Adjust map bounds to show both agents AND leads (only on initial load)
