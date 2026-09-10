@@ -9,3 +9,5 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 - [x] `pdf_uploads.is_active` + `brand` + `activated_at`; active vs superseded badges and an Activate action that deactivates same supplier+brand siblings and warns about open draft quotes.
 - [x] `parse-price-list` documented as a non-brochure path (insert/update only).
 - Region scale unchanged: `pdf_product_regions` = percent 0-100, `row_bbox` = 0-1. AR18 overlays untouched.
+
+- [x] Hide mobile Dashboard/Live Map control bands, remove map bottom gaps, verify, and publish.

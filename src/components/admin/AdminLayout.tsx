@@ -90,8 +90,12 @@ const AdminLayout = () => {
     "/admin/companies": "Company Management",
   };
   const pageTitle = pageTitles[location.pathname] || "Admin Dashboard";
-  // Map pages are map-hero: no fat mobile search band (header search icon covers it)
-  const isMapPage = location.pathname === "/admin/map" || location.pathname === "/admin/jobs-map";
+  // Dashboard and map pages own their mobile bottom spacing so their map surfaces
+  // can extend cleanly to the bottom navigation.
+  const isMapHeroPage =
+    location.pathname === "/admin" ||
+    location.pathname === "/admin/map" ||
+    location.pathname === "/admin/jobs-map";
 
   const { data: pendingRequestsCount = 0 } = useQuery({
     queryKey: ["pending-change-requests-count"],
@@ -246,7 +250,7 @@ const AdminLayout = () => {
 
 
 
-        <main className={`app-surface flex-1 overflow-auto ${isMapPage ? "" : "pb-28 lg:pb-0"}`}>
+        <main className={`app-surface flex-1 min-h-0 overflow-auto ${isMapHeroPage ? "" : "pb-28 lg:pb-0"}`}>
 
           <AnimatePresence mode="wait">
             <motion.div
