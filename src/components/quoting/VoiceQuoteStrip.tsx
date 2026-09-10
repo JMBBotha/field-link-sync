@@ -55,7 +55,7 @@ type Question =
   | { type: "customer_pick"; hits: CustomerSearchResult[] }
   | { type: "copper_size"; runM: number | null }
   | { type: "copper_metres"; sizes: PipeSize[] }
-  | { type: "new_client_phone"; name: string };
+  | { type: "new_client_phone"; name: string; address?: string | null };
 
 type MicPhase = "idle" | "listening" | "transcribing";
 
@@ -82,7 +82,8 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
     },
   });
 
-  const [open, setOpen] = useState(false);
+  // `?voice=1` (from the Quotes page voice start) opens the strip straight away.
+  const [open, setOpen] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("voice") === "1");
   const [micPhase, setMicPhase] = useState<MicPhase>("idle");
   const [handsFree, setHandsFree] = useState(true);
   const [speakReplies, setSpeakReplies] = useState(() => typeof window !== "undefined" && "speechSynthesis" in window);
@@ -176,7 +177,12 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
       setPending([]);
       setQuestion(null);
       onChanged?.();
-      say(`Saved ${n} line${n === 1 ? "" : "s"} to the quote. Anything else?`);
+      const hasClient = !!meta?.customer_id;
+      say(
+        hasClient
+          ? `Saved ${n} line${n === 1 ? "" : "s"} to the quote for ${meta?.customer_name || "the client"}. It's ready to send — use Send or PDF above, or add more.`
+          : `Saved ${n} line${n === 1 ? "" : "s"} to the quote. No client yet — say the client's name or number before sending.`,
+      );
     } catch (e) {
       toast({ title: "Could not save", description: e instanceof Error ? e.message : "Try again.", variant: "destructive" });
       say("Saving failed — nothing was written. Try confirm again.", false);
@@ -248,9 +254,10 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
     say(`Client set to ${name}. What are we quoting?`);
   };
 
-  const createCustomer = async (name: string, phone: string) => {
+  const createCustomer = async (name: string, phone: string, address?: string | null) => {
     const [first, ...rest] = name.split(/\s+/);
     const company_id = await getUserCompanyId(user?.id);
+    // Same fields CreateCustomerDialog writes; address optional from speech.
     const { data, error } = await supabase
       .from("customers")
       .insert({
@@ -261,6 +268,8 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
         status: "lead",
         lead_source: DEFAULT_LEAD_SOURCE,
         company_id,
+        primary_address_line1: address || null,
+        address: address || null,
       })
       .select("id")
       .single();
@@ -270,7 +279,7 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
     }
     await updateQuote({ customer_id: data.id, customer_name: name });
     onChanged?.();
-    say(`New client ${name} added and set on this quote. What are we quoting?`);
+    say(`New client ${name} added${address ? ` at ${address}` : ""} and set on this quote. What are we quoting?`);
   };
 
   /* ────────────── intent handling ────────────── */
@@ -300,9 +309,6 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
       case "pick":
         say("Nothing to pick from right now.");
         return true;
-      case "phone":
-        say("Say new client, then the name and number.");
-        return true;
       case "area": {
         const area = await addArea(it.name);
         if (area) {
@@ -312,11 +318,16 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
         } else say("Could not add that area.");
         return true;
       }
+      case "phone":
       case "client": {
-        const { data, error } = await supabase.rpc("search_customers", { search_term: it.query, max_results: 5 });
+        // search_customers matches name, company, phone digits, email, address.
+        const q = it.kind === "phone" ? it.phone : it.query;
+        const { data, error } = await supabase.rpc("search_customers", { search_term: q, max_results: 5 });
         const hits = (error ? [] : (data || [])) as CustomerSearchResult[];
         if (!hits.length) {
-          say(`No client matching ${it.query}. Say new client ${it.query} with a phone number to add them.`);
+          say(it.kind === "phone"
+            ? `No client with number ${q}. Say new client, the name, then ${q} to add them.`
+            : `No client matching ${q}. Say new client ${q} with a phone number to add them.`);
           return false;
         }
         if (hits.length === 1) {
@@ -330,11 +341,11 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
       case "new_client": {
         if (!it.name) { say("What is the client's name?"); return false; }
         if (!it.phone) {
-          setQuestion({ type: "new_client_phone", name: it.name });
+          setQuestion({ type: "new_client_phone", name: it.name, address: it.address ?? null });
           say(`Phone number for ${it.name}?`);
           return false;
         }
-        await createCustomer(it.name, it.phone);
+        await createCustomer(it.name, it.phone, it.address);
         return true;
       }
       case "copper": {
@@ -440,7 +451,7 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
         const ph = first.kind === "phone" ? first.phone : first.kind === "new_client" ? first.phone : null;
         if (!ph) return false;
         setQuestion(null);
-        await createCustomer(q.name, ph);
+        await createCustomer(q.name, ph, q.address);
         return true;
       }
     }
