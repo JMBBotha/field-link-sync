@@ -113,6 +113,8 @@ Deno.serve(async (req) => {
     if (action === "parse") {
       const transcript = String(body?.transcript ?? "").trim();
       if (transcript.length < 3) return json({ error: "Nothing was said that could be turned into line items." }, 400);
+      if (!apiKey) return json({ error: "AI is not configured (missing LOVABLE_API_KEY)." }, 500);
+
 
       const res = await fetch(`${GATEWAY}/chat/completions`, {
         method: "POST",
