@@ -34,7 +34,7 @@ import QuoteSummaryPanel from "./quote-builder/QuoteSummaryPanel";
 import { toast } from "@/hooks/use-toast";
 // favorites now derived from is_pinned on product data
 import { useProductUsageStats } from "@/hooks/useProductUsageStats";
-import { allTermsMatchBlob } from "./searchSynonyms";
+import { searchAndRankProducts } from "./searchSynonyms";
 import QuoteBuilderPopup from "./quote-builder/QuoteBuilderPopup";
 import type { WizardTriggerItem } from "./quote-builder/QuoteBuilderPopup";
 import { computeBundlePricing } from "./quote-builder/BundleItemsPopover";

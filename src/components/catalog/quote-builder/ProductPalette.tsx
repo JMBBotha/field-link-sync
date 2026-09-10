@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 import { getProductDisplayName, getProductBriefDescription } from "./productDisplayUtils";
-import { allTermsMatchBlob } from "../searchSynonyms";
+import { searchAndRankProducts } from "../searchSynonyms";
 import BundleItemsPopover, { computeBundlePricing, type BundleSubItem } from "./BundleItemsPopover";
 
 function HighlightText({ text, searchTerm }: { text: string; searchTerm: string }) {
@@ -743,6 +743,8 @@ const ProductPalette = ({
 
   // Sort: favorites first, then by usage count DESC, then alphabetical
   const sortedProducts = useMemo(() => {
+    // While searching, keep relevance ranking (exact code / alias hits first).
+    if (searchQuery.trim()) return filteredProducts;
     return [...filteredProducts].sort((a, b) => {
       const aFav = favorites.has(a.id) ? 1 : 0;
       const bFav = favorites.has(b.id) ? 1 : 0;
