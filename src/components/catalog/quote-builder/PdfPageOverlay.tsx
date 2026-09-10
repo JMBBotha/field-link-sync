@@ -174,12 +174,14 @@ const RegionBox = memo(({
   isSelected,
   isFavorite,
   isInfoPressed,
+  onOpenProductInfo,
   onInfoPress,
 }: {
   region: OverlayRegion;
   isSelected: boolean;
   isFavorite: boolean;
   isInfoPressed?: boolean;
+  onOpenProductInfo?: (product: PaletteProduct) => void;
   onInfoPress?: (regionId: string) => void;
 }) => {
   const pillBackground = isFavorite
