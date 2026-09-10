@@ -178,6 +178,7 @@ const RegionBox = memo(({
   onHoverMove,
   onHoverEnd,
   onOpenProductInfo,
+  onInfoPress,
 }: {
   region: OverlayRegion;
   isSelected: boolean;
@@ -187,6 +188,7 @@ const RegionBox = memo(({
   onHoverMove?: (e: React.MouseEvent) => void;
   onHoverEnd?: () => void;
   onOpenProductInfo?: (product: PaletteProduct) => void;
+  onInfoPress?: (regionId: string) => void;
 }) => {
   const pillBackground = isFavorite
     ? "linear-gradient(to left, hsl(45 93% 47% / 0.55) 0%, hsl(45 93% 47% / 0.38) 35%, hsl(45 93% 47% / 0.18) 70%, transparent 100%)"
