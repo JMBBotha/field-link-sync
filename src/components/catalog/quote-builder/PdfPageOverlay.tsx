@@ -476,6 +476,7 @@ const PdfPageOverlay = ({
             onHoverMove={onHoverMove}
             onHoverEnd={onHoverEnd}
             onOpenProductInfo={onOpenProductInfo}
+            onInfoPress={handleInfoPress}
           />
         );
       })}
