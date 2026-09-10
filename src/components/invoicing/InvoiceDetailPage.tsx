@@ -202,20 +202,39 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
     );
   }
 
-  return (
-    <div className={`max-w-4xl mx-auto p-4 space-y-4 ${STICKY_ACTION_BAR_SPACER}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between print:hidden">
-        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onBack}>
-          <ArrowLeft className="h-5 w-5" />
+  const docActions = (size: "sm" | "default" = "sm") => (
+    <>
+      <Button variant="ghost" size={size} className="h-9 rounded-md text-xs" onClick={handleDownloadPDF} disabled={generatingPDF}>
+        {generatingPDF ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />} PDF
+      </Button>
+      {invoice.customer_phone && (
+        <Button variant="ghost" size={size} className="h-9 rounded-md text-xs" onClick={handleWhatsApp} disabled={generatingPDF}>
+          <MessageCircle className="h-3.5 w-3.5 mr-1" /> WhatsApp
         </Button>
+      )}
+      <Button variant="ghost" size={size} className="h-9 rounded-md text-xs" onClick={() => window.print()}>
+        <Printer className="h-3.5 w-3.5 mr-1" /> Print
+      </Button>
+    </>
+  );
+
+  return (
+    <div className="max-w-4xl mx-auto p-4 space-y-4 pb-24 md:pb-4">
+      {/* Header */}
+      <div ref={headerRef} className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onBack}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
           <h1 className="text-lg font-bold">Invoice</h1>
           {getStatusBadge(invoice.status)}
         </div>
-        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleGenerateAndShare} disabled={generatingPDF}>
-          {generatingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
-        </Button>
+        <div className="flex items-center gap-1">
+          {docActions()}
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleGenerateAndShare} disabled={generatingPDF}>
+            {generatingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+          </Button>
+        </div>
       </div>
 
       {/* FreshBooks-style invoice document (screen + print/PDF) */}
