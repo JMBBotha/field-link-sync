@@ -14,10 +14,11 @@ interface StatusFilterButtonsProps {
 
 const statusConfig: Record<
   LeadStatusFilter,
-  { label: string; bgColor: string; textColor: string; inactiveText: string; dotColor: string }
+  { label: string; shortLabel: string; bgColor: string; textColor: string; inactiveText: string; dotColor: string }
 > = {
   pending: {
     label: "Available",
+    shortLabel: "Avail",
     bgColor: "bg-red-500",
     textColor: "text-white",
     inactiveText: "text-red-600",
@@ -25,6 +26,7 @@ const statusConfig: Record<
   },
   accepted: {
     label: "Claimed",
+    shortLabel: "Claimed",
     bgColor: "bg-yellow-500",
     textColor: "text-black",
     inactiveText: "text-yellow-600",
@@ -32,6 +34,7 @@ const statusConfig: Record<
   },
   in_progress: {
     label: "In Progress",
+    shortLabel: "Active",
     bgColor: "bg-green-500",
     textColor: "text-white",
     inactiveText: "text-green-600",
@@ -39,6 +42,7 @@ const statusConfig: Record<
   },
   completed: {
     label: "Completed",
+    shortLabel: "Done",
     bgColor: "bg-black dark:bg-white",
     textColor: "text-white dark:text-black",
     inactiveText: "text-black dark:text-white",
@@ -60,7 +64,7 @@ const StatusFilterButtons = ({
     return (
       <div
         className={cn(
-          "flex items-center gap-1.5 overflow-x-auto scrollbar-hide",
+          "flex items-center gap-1 sm:gap-1.5 overflow-x-auto scrollbar-hide",
           className
         )}
       >
@@ -73,7 +77,7 @@ const StatusFilterButtons = ({
               onClick={() => onToggle(status)}
               aria-pressed={isActive}
               className={cn(
-                "flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] sm:text-xs font-medium whitespace-nowrap transition-colors",
+                "flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-full border px-1.5 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-medium whitespace-nowrap transition-colors",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                 isActive
                   ? "border-border bg-muted text-foreground"
@@ -82,14 +86,17 @@ const StatusFilterButtons = ({
             >
               <span
                 className={cn(
-                  "h-2 w-2 shrink-0 rounded-full",
+                  "h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0 rounded-full",
                   config.dotColor,
                   !isActive && "opacity-50"
                 )}
               />
-              <span className={cn(compact ? "hidden sm:inline" : "")}>{config.label}</span>
+              <span className={cn(compact ? "hidden sm:inline" : "")}>
+                <span className="sm:hidden">{config.shortLabel}</span>
+                <span className="hidden sm:inline">{config.label}</span>
+              </span>
               {typeof counts?.[status] === "number" && (
-                <span className="ml-0.5 rounded-full bg-foreground/10 px-1 text-[10px] font-semibold tabular-nums">
+                <span className="rounded-full bg-foreground/10 px-1 text-[9px] sm:text-[10px] font-semibold tabular-nums">
                   {counts[status]}
                 </span>
               )}

@@ -209,7 +209,7 @@ const AdminMapPage = () => {
         <div className="order-last w-full min-w-0 overflow-x-auto scrollbar-hide lg:order-none lg:w-auto lg:overflow-visible">
           <StatusFilterButtons
             variant="quiet"
-            className="w-max flex-nowrap"
+            className="w-full justify-between flex-nowrap sm:w-max sm:justify-start"
             activeFilters={statusState.filters}
             counts={statusState.counts}
             onToggle={handleStatusToggle}
