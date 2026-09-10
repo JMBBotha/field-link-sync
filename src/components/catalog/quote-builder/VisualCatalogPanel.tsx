@@ -223,6 +223,9 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     if (open) {
       setVisiblePageIndex(0);
       setZoom(1);
+      setPageView(false);
+      setMinZoom(MIN_ZOOM);
+      minZoomRef.current = MIN_ZOOM;
       clearExtractionCache();
       // Force all live-extract queries to re-run with latest detection logic
       queryClient.removeQueries({ queryKey: ["visual-panel-live-extract"] });
