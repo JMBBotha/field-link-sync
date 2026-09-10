@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Loader2, Send, CheckCircle, Printer, Download, Share2, Phone, Mail, MapPin, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { generateAndUploadPDF, downloadInvoicePDF, shareInvoice, sendViaWhatsApp
 import { sumSettled } from "@/lib/payments";
 import PaymentRecorder from "@/components/invoicing/PaymentRecorder";
 import InvoiceDocument from "@/components/invoicing/InvoiceDocument";
-import StickyActionBar, { STICKY_ACTION_BAR_SPACER } from "@/components/shared/StickyActionBar";
+
 
 import HelpTip from "@/components/help/HelpTip";
 
@@ -62,10 +62,23 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
   const [invoice, setInvoice] = useState<any>(null);
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
   const [amountPaid, setAmountPaid] = useState(0);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const [showMobileBar, setShowMobileBar] = useState(false);
 
   useEffect(() => {
     fetchInvoice();
   }, [invoiceId]);
+
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setShowMobileBar(!entry.isIntersecting),
+      { threshold: 0 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [loading, invoice?.id]);
 
   const fetchInvoice = async () => {
     setLoading(true);
@@ -202,20 +215,39 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
     );
   }
 
-  return (
-    <div className={`max-w-4xl mx-auto p-4 space-y-4 ${STICKY_ACTION_BAR_SPACER}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between print:hidden">
-        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onBack}>
-          <ArrowLeft className="h-5 w-5" />
+  const docActions = (size: "sm" | "default" = "sm") => (
+    <>
+      <Button variant="ghost" size={size} className="h-9 rounded-md text-xs" onClick={handleDownloadPDF} disabled={generatingPDF}>
+        {generatingPDF ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />} PDF
+      </Button>
+      {invoice.customer_phone && (
+        <Button variant="ghost" size={size} className="h-9 rounded-md text-xs" onClick={handleWhatsApp} disabled={generatingPDF}>
+          <MessageCircle className="h-3.5 w-3.5 mr-1" /> WhatsApp
         </Button>
+      )}
+      <Button variant="ghost" size={size} className="h-9 rounded-md text-xs" onClick={() => window.print()}>
+        <Printer className="h-3.5 w-3.5 mr-1" /> Print
+      </Button>
+    </>
+  );
+
+  return (
+    <div className="max-w-4xl mx-auto p-4 space-y-4 pb-24 md:pb-4">
+      {/* Header */}
+      <div ref={headerRef} className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onBack}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
           <h1 className="text-lg font-bold">Invoice</h1>
           {getStatusBadge(invoice.status)}
         </div>
-        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleGenerateAndShare} disabled={generatingPDF}>
-          {generatingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
-        </Button>
+        <div className="flex items-center gap-1">
+          {docActions()}
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleGenerateAndShare} disabled={generatingPDF}>
+            {generatingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+          </Button>
+        </div>
       </div>
 
       {/* FreshBooks-style invoice document (screen + print/PDF) */}
@@ -252,7 +284,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         />
       </div>
 
-      <StickyActionBar align="between" className="print:hidden">
+      <div className="print:hidden">
         <div className="w-full space-y-2">
           {/* Primary action based on status */}
           {invoice.status === "draft" && (
@@ -279,22 +311,17 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
             </Button>
           )}
 
-          {/* Share/Download actions */}
-          <div className="grid grid-cols-3 gap-2">
-            <Button variant="outline" size="sm" className="h-9 rounded-md text-xs" onClick={handleDownloadPDF} disabled={generatingPDF}>
-              {generatingPDF ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />} PDF
-            </Button>
-            {invoice.customer_phone && (
-              <Button variant="outline" size="sm" className="h-9 rounded-md text-xs" onClick={handleWhatsApp} disabled={generatingPDF}>
-                <MessageCircle className="h-3.5 w-3.5 mr-1" /> WhatsApp
-              </Button>
-            )}
-            <Button variant="outline" size="sm" className="h-9 rounded-md text-xs" onClick={() => window.print()}>
-              <Printer className="h-3.5 w-3.5 mr-1" /> Print
-            </Button>
+        </div>
+      </div>
+
+      {/* Mobile-only quiet footer, shown once the header toolbar scrolls away */}
+      {showMobileBar && (
+        <div className="md:hidden print:hidden fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur border-t border-border">
+          <div className="max-w-4xl mx-auto flex items-center justify-around gap-1 px-3 py-2">
+            {docActions()}
           </div>
         </div>
-      </StickyActionBar>
+      )}
     </div>
   );
 };
