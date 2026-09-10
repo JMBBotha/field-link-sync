@@ -877,6 +877,21 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="text-[10px]">High quality PDF render (slower)</TooltipContent>
                 </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={pageView ? "secondary" : "ghost"}
+                      size="icon"
+                      className={`h-7 w-7 ${pageView ? "ring-1 ring-primary" : ""}`}
+                      onClick={togglePageView}
+                    >
+                      <MonitorUp className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-[10px]">
+                    {pageView ? "Fit page width (portrait)" : "Whole page view (landscape)"}
+                  </TooltipContent>
+                </Tooltip>
               </div>
 
               <Select value={selectedSupplier} onValueChange={(v) => { setSelectedSupplier(v); }}>
