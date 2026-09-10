@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Map, LocateFixed, Maximize2, Minimize2, ExternalLink, Layers } from "lucide-react";
+import { PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen, LocateFixed, Maximize2, Minimize2, ExternalLink, Layers } from "lucide-react";
 
 import MapView, { MapViewHandle, MapStatusState } from "@/components/MapView";
 import StatusFilterButtons, { LeadStatusFilter } from "@/components/StatusFilterButtons";
@@ -148,17 +148,10 @@ const AdminMapPage = () => {
 
   return (
     <div ref={pageRef} className="h-full flex flex-col min-h-0 bg-background">
-      {/* Tab switcher */}
-      <div className="shrink-0 flex flex-wrap items-center gap-2 px-3 py-2 border-b bg-card/80 backdrop-blur-sm z-20">
-        <div className="flex items-center gap-1">
-          <Button
-            size="sm"
-            variant="default"
-            className="gap-1.5 text-xs h-8"
-          >
-            <Map className="h-3.5 w-3.5" />
-            Live Map
-          </Button>
+      {/* Thin chrome strip — quiet status chips on all sizes, denser toolbar from lg+ */}
+      <div className="shrink-0 flex flex-wrap items-center gap-2 px-3 py-1.5 border-b bg-card/80 backdrop-blur-sm z-20">
+        {/* Desktop-only toolbar */}
+        <div className="hidden lg:flex items-center gap-1">
           <Button
             size="sm"
             variant="ghost"
@@ -194,9 +187,9 @@ const AdminMapPage = () => {
             <Switch checked={trafficEnabled} onCheckedChange={handleTrafficToggle} className="scale-75" />
           </div>
         </div>
-        {/* Search stays reachable when the leads panel is collapsed */}
+        {/* Search stays reachable when the leads panel is collapsed — desktop only */}
         {leadsCollapsed && (
-          <div className="min-w-[12rem] flex-1 max-w-sm">
+          <div className="hidden lg:block min-w-[12rem] flex-1 max-w-sm">
             <BusinessSearch
               className="relative w-full"
               getToken={() => mapRef.current?.getMapboxToken() ?? null}
@@ -209,7 +202,7 @@ const AdminMapPage = () => {
             />
           </div>
         )}
-        {/* Status pills — inline on desktop, second scrollable row on small screens */}
+        {/* Status chips — the only chrome on mobile/tablet */}
         <div className="order-last w-full min-w-0 overflow-x-auto scrollbar-hide lg:order-none lg:w-auto lg:overflow-visible">
           <StatusFilterButtons
             variant="quiet"
@@ -243,6 +236,31 @@ const AdminMapPage = () => {
 
               onLeadClick={handleLeadClick}
             />
+          </div>
+
+          {/* On-map glass controls — mobile & tablet only */}
+          <div className="lg:hidden absolute bottom-4 left-3 z-20 flex flex-col gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleMyLocation}
+              aria-label="Center on my location"
+              className="h-10 w-10 rounded-full border border-border bg-background/80 backdrop-blur-md shadow-md hover:bg-accent"
+            >
+              <LocateFixed className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleTrafficToggle(!trafficEnabled)}
+              aria-label="Toggle traffic layer"
+              aria-pressed={trafficEnabled}
+              className={`h-10 w-10 rounded-full border border-border backdrop-blur-md shadow-md hover:bg-accent ${
+                trafficEnabled ? "bg-muted text-foreground" : "bg-background/80 text-muted-foreground"
+              }`}
+            >
+              <Layers className="h-4 w-4" />
+            </Button>
           </div>
 
           {showCompletedFilter && (
