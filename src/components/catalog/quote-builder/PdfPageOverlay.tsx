@@ -44,7 +44,7 @@ const TAP_MOVE_TOLERANCE_PX = 8;
 const INFO_BLUE = "hsl(217 91% 53%)";
 /** Pressed flash colour for the info icon + how long it stays lit. */
 const INFO_BLUE_PRESSED = "hsl(224 90% 38%)";
-const INFO_PRESS_MS = 220;
+const INFO_PRESS_MS = 380;
 /** Width (px, from the page right edge) of the select band = radio cluster only.
  *  Kept tight so taps on the Info icon (which sits further left) never select. */
 const SELECT_BAND_PX_PHONE = 12;
