@@ -837,7 +837,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
               )}
 
               <div className="flex items-center gap-0.5 shrink-0">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setAnimateZoom(true); setZoom((z) => Math.max(MIN_ZOOM, Math.round((z - 0.25) * 100) / 100)); }}>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setAnimateZoom(true); setZoom((z) => Math.max(minZoomRef.current, Math.round((z - 0.25) * 100) / 100)); }}>
                   <ZoomOut className="h-3.5 w-3.5" />
                 </Button>
                 <span className="text-[10px] text-muted-foreground w-9 text-center">{Math.round(zoom * 100)}%</span>
