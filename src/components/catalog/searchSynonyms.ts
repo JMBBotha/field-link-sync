@@ -98,3 +98,99 @@ export function termMatchesBlob(term: string, blob: string): boolean {
 export function allTermsMatchBlob(terms: string[], blob: string): boolean {
   return terms.every(t => termMatchesBlob(t, blob));
 }
+
+/* ────────────────────────────────────────────────────────────
+ * Alias-aware product search (shared by quote picker + catalog)
+ * ──────────────────────────────────────────────────────────── */
+
+export interface AliasSearchableProduct {
+  product_code?: string | null;
+  short_name?: string | null;
+  brand?: string | null;
+  description?: string | null;
+  category?: string | null;
+  product_category?: string | null;
+  supplier_name?: string | null;
+  search_aliases?: string[] | null;
+}
+
+/** lowercase + collapse whitespace */
+export function normalizeQuery(q: string): string {
+  return (q || "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+/** lowercase + remove all whitespace (so "coo 1" ≈ "coo1") */
+export function stripSpaces(q: string): string {
+  return (q || "").toLowerCase().replace(/\s+/g, "");
+}
+
+/** Normalized alias list for a product (empty when none). */
+export function productAliases(p: AliasSearchableProduct): string[] {
+  const raw = Array.isArray(p.search_aliases) ? p.search_aliases : [];
+  return raw.filter(Boolean).map((a) => normalizeQuery(String(a))).filter(Boolean);
+}
+
+/**
+ * Full lowercase searchable text for a product, including aliases and a
+ * space-stripped copy of each alias so "coo1" matches the alias "coo 1".
+ */
+export function buildProductSearchText(p: AliasSearchableProduct): string {
+  const aliases = productAliases(p);
+  const parts = [
+    p.product_code,
+    p.short_name,
+    p.brand,
+    p.description,
+    p.category,
+    p.product_category,
+    p.supplier_name,
+    ...aliases,
+    ...aliases.map(stripSpaces),
+  ];
+  return parts.filter(Boolean).join(" ").toLowerCase();
+}
+
+/**
+ * Rank score for a product against a query.
+ * Returns -1 when there is no match at all.
+ * Higher is better: exact code > exact alias > code/alias prefix > phrase > token match.
+ */
+export function scoreProductMatch(query: string, p: AliasSearchableProduct): number {
+  const nq = normalizeQuery(query);
+  if (!nq) return 0;
+  const nqs = stripSpaces(nq);
+  const code = normalizeQuery(p.product_code || "");
+  const codeS = stripSpaces(code);
+  const aliases = productAliases(p);
+  const aliasesS = aliases.map(stripSpaces);
+  const blob = buildProductSearchText(p);
+
+  if (code && (code === nq || codeS === nqs)) return 1000;
+  if (aliases.includes(nq) || aliasesS.includes(nqs)) return 900;
+  if (codeS && codeS.startsWith(nqs)) return 800;
+  if (aliasesS.some((a) => a.startsWith(nqs) || nqs.startsWith(a))) return 700;
+  if (blob.includes(nq)) return 600;
+
+  const terms = nq.split(" ").filter(Boolean);
+  if (terms.length && allTermsMatchBlob(terms, blob)) {
+    // Prefer products where more of the terms land on aliases/code.
+    const aliasBlob = [code, ...aliases, ...aliasesS].join(" ");
+    const aliasHits = terms.filter((t) => expandTerm(t).some((e) => aliasBlob.includes(e))).length;
+    return 300 + aliasHits * 20;
+  }
+
+  return -1;
+}
+
+/** Filter + rank products for a query. Empty query returns the input unchanged. */
+export function searchAndRankProducts<T extends AliasSearchableProduct>(query: string, items: T[]): T[] {
+  const nq = normalizeQuery(query);
+  if (!nq) return items;
+  const scored: { item: T; score: number; i: number }[] = [];
+  items.forEach((item, i) => {
+    const score = scoreProductMatch(nq, item);
+    if (score >= 0) scored.push({ item, score, i });
+  });
+  scored.sort((a, b) => (b.score - a.score) || (a.i - b.i));
+  return scored.map((s) => s.item);
+}
