@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 /**
  * Shared deposit-payment chip language.
  * States (identical wording everywhere):
- *  - "Deposit due · R…" (amber)  — invoice exists, nothing paid yet
+ *  - "Deposit due"       (amber)  — invoice exists, nothing allocated yet
  *  - "Partial · R…"      (amber)  — part-paid, R… is what is still outstanding
  *  - "Deposit paid"      (green)  — fully cleared: status 'paid', paid_date set, or remaining 0
  *  - "No deposit"        (muted)  — accepted work with no invoice row
@@ -32,13 +32,17 @@ export function getDepositRemaining(invoice: DepositInvoiceLike | null | undefin
   return undefined;
 }
 
-/** Fully cleared: status exactly 'paid', a paid_date, or a known remaining of 0. */
+/**
+ * Fully cleared = invoice allocation only. When settled payment totals are
+ * known, they decide; status/paid_date are only a fallback when totals could
+ * not be read. Never client-level credit.
+ */
 export function isDepositCleared(invoice: DepositInvoiceLike | null | undefined): boolean {
   if (!invoice?.id) return false;
-  if (String(invoice.status || "").toLowerCase() === "paid") return true;
-  if (invoice.paid_date) return true;
   const remaining = getDepositRemaining(invoice);
-  return remaining !== undefined && remaining <= 0;
+  if (remaining !== undefined) return remaining <= 0;
+  if (String(invoice.status || "").toLowerCase() === "paid") return true;
+  return Boolean(invoice.paid_date);
 }
 
 export function getDepositChipState(
@@ -100,8 +104,6 @@ const DepositPaymentChip = ({ invoice, accepted, className }: DepositPaymentChip
 
 
   if (state === "due") {
-    const remaining = getDepositRemaining(invoice);
-    const amount = remaining !== undefined ? remaining : Number(invoice?.grand_total) || 0;
     return (
       <Badge
         className={cn(
@@ -109,7 +111,7 @@ const DepositPaymentChip = ({ invoice, accepted, className }: DepositPaymentChip
           className,
         )}
       >
-        Deposit due{amount > 0 ? ` · ${formatRand(amount)}` : ""}
+        Deposit due
       </Badge>
     );
   }
