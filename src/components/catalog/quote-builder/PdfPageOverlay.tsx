@@ -262,10 +262,10 @@ const RegionBox = memo(({
           onPointerDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
-          className="flex h-10 w-8 items-center justify-center rounded-full transition-colors hover:scale-110"
+          className="flex h-7 w-6 sm:h-10 sm:w-8 items-center justify-center rounded-full transition-colors hover:scale-110"
           title="Product info"
         >
-          <Info className="h-4 w-4 text-primary opacity-70 hover:opacity-100" />
+          <Info className="h-3 w-3 sm:h-4 sm:w-4 text-primary opacity-70 hover:opacity-100" />
         </button>
 
         {/* Radio / select button — double-click to favorite */}
