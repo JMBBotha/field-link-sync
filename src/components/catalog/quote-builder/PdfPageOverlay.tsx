@@ -274,6 +274,34 @@ const RegionBox = memo(({
           </span>
         )}
       </div>
+
+      {/* Real Info hit target — sits ABOVE the margin strip so the radio can
+          never steal an info tap. Height matches the row, so buttons never
+          overlap each other and the tapped row is always the painted one. */}
+      <button
+        type="button"
+        data-pdf-info-button
+        aria-label="Product details"
+        className="absolute top-0 h-full"
+        style={{
+          right: `var(--pdf-info-right, ${INFO_HIT_RIGHT_PHONE}px)`,
+          width: `${INFO_HIT_W_PX}px`,
+          zIndex: 30,
+          pointerEvents: "auto",
+          background: "transparent",
+          border: "none",
+          padding: 0,
+          touchAction: "manipulation",
+        }}
+        onPointerDown={(e) => { e.stopPropagation(); onInfoPress?.(region.id); }}
+        onPointerUp={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          onInfoPress?.(region.id);
+          onOpenProductInfo?.(regionProduct(region));
+        }}
+      />
     </div>
   );
 });
