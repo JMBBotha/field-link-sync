@@ -1294,6 +1294,28 @@ const FieldAgent = () => {
           </div>
         )}
 
+        {/* Map header status chips (all devices) */}
+        {showMapOnMobile && (
+          <div className="border-b bg-background/95 px-3 py-2 z-20">
+            <StatusFilterButtons
+              variant="quiet"
+              className="w-full"
+              activeFilters={statusFilters}
+              onToggle={(status) => {
+                setStatusFilters((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(status)) {
+                    next.delete(status);
+                  } else {
+                    next.add(status);
+                  }
+                  return next;
+                });
+              }}
+            />
+          </div>
+        )}
+
         {/* Main Content - Full Page Map with Overlays (Map tab only) */}
         <div className={`flex-1 relative ${showMapOnMobile ? "" : "hidden"}`}>
           {/* Map Container */}
@@ -1822,24 +1844,6 @@ const FieldAgent = () => {
             </div>
           )}
 
-          {/* Status Filter Buttons - All Devices */}
-          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10">
-            <StatusFilterButtons
-              activeFilters={statusFilters}
-              onToggle={(status) => {
-                setStatusFilters((prev) => {
-                  const next = new Set(prev);
-                  if (next.has(status)) {
-                    next.delete(status);
-                  } else {
-                    next.add(status);
-                  }
-                  return next;
-                });
-              }}
-              compact={isMobile}
-            />
-          </div>
         </div>
 
         {/* Home list (default /field view — not the map) */}
