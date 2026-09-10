@@ -425,14 +425,8 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
     }
 
     if (debouncedSearch.trim()) {
-      const terms = debouncedSearch.toLowerCase().split(/\s+/).filter(Boolean);
-      result = result.filter((p) => {
-        const blob = [
-        p.product_code, p.short_name, p.brand,
-        p.description, p.category, p.product_category, p.supplier_name].
-        filter(Boolean).join(" ").toLowerCase();
-        return allTermsMatchBlob(terms, blob);
-      });
+      // Alias-aware, ranked: exact code / alias phrase first, then fuzzy token hits.
+      result = searchAndRankProducts(debouncedSearch, result);
     }
 
     return result;

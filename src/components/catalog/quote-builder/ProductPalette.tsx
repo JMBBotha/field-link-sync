@@ -735,22 +735,8 @@ const ProductPalette = ({
         .sort((a, b) => recentIds.indexOf(a.id) - recentIds.indexOf(b.id));
     }
     if (searchQuery.trim()) {
-      const terms = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
-      result = result.filter((p) => {
-        const blob = [
-          p.product_code,
-          p.short_name,
-          p.brand,
-          p.description,
-          p.category,
-          p.product_category,
-          p.supplier_name,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        return allTermsMatchBlob(terms, blob);
-      });
+      // Alias-aware, ranked search (product_code + description + search_aliases).
+      result = searchAndRankProducts(searchQuery, result);
     }
     return result;
   }, [products, categoryFilter, favorites, recentIds, searchQuery]);
