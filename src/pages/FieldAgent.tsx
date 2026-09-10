@@ -1822,24 +1822,6 @@ const FieldAgent = () => {
             </div>
           )}
 
-          {/* Status Filter Buttons - All Devices */}
-          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10">
-            <StatusFilterButtons
-              activeFilters={statusFilters}
-              onToggle={(status) => {
-                setStatusFilters((prev) => {
-                  const next = new Set(prev);
-                  if (next.has(status)) {
-                    next.delete(status);
-                  } else {
-                    next.add(status);
-                  }
-                  return next;
-                });
-              }}
-              compact={isMobile}
-            />
-          </div>
         </div>
 
         {/* Home list (default /field view — not the map) */}
