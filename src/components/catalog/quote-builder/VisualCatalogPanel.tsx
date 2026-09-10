@@ -83,6 +83,11 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const [zoom, setZoom] = useState(1);
   const zoomRef = useRef(1);
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  /** Whole-page ("page view") mode: fits a full page in view, works in landscape. */
+  const [pageView, setPageView] = useState(false);
+  const [minZoom, setMinZoom] = useState(MIN_ZOOM);
+  const minZoomRef = useRef(MIN_ZOOM);
+  useEffect(() => { minZoomRef.current = minZoom; }, [minZoom]);
   const zoomInnerRef = useRef<HTMLDivElement | null>(null);
   const zoomSpacerRef = useRef<HTMLDivElement | null>(null);
   const [animateZoom, setAnimateZoom] = useState(false);
@@ -218,6 +223,9 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     if (open) {
       setVisiblePageIndex(0);
       setZoom(1);
+      setPageView(false);
+      setMinZoom(MIN_ZOOM);
+      minZoomRef.current = MIN_ZOOM;
       clearExtractionCache();
       // Force all live-extract queries to re-run with latest detection logic
       queryClient.removeQueries({ queryKey: ["visual-panel-live-extract"] });
@@ -427,9 +435,57 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const goToPage = useCallback((dir: number) => {
     const next = visiblePageIndex + dir;
     if (next < 0 || next >= pages.length) return;
-    setZoom(1);
+    setZoom((z) => Math.max(minZoomRef.current, Math.min(z, 1)));
     scrollToPage(next);
   }, [pages.length, visiblePageIndex, scrollToPage]);
+
+  /** Scale that makes one whole page fit the viewport height (page view). */
+  const computeFitPageZoom = useCallback(() => {
+    const container = scrollContainerRef.current;
+    const pageEl = pageRefs.current.get(visiblePageIndex) ?? pageRefs.current.get(0);
+    if (!container || !pageEl) return MIN_ZOOM;
+    const pageH = pageEl.offsetHeight;
+    if (pageH <= 0) return MIN_ZOOM;
+    const fit = (container.clientHeight - 8) / pageH;
+    return Math.max(0.25, Math.min(MIN_ZOOM, Math.round(fit * 100) / 100));
+  }, [visiblePageIndex]);
+
+  const togglePageView = useCallback(() => {
+    setAnimateZoom(true);
+    setPageView((prev) => {
+      const next = !prev;
+      if (next) {
+        const fit = computeFitPageZoom();
+        setMinZoom(fit);
+        minZoomRef.current = fit;
+        setZoom(fit);
+      } else {
+        setMinZoom(MIN_ZOOM);
+        minZoomRef.current = MIN_ZOOM;
+        setZoom(MIN_ZOOM);
+      }
+      return next;
+    });
+  }, [computeFitPageZoom]);
+
+  // Re-fit the whole page when the device rotates or the viewport resizes.
+  useEffect(() => {
+    if (!open || !pageView) return;
+    const refit = () => {
+      const fit = computeFitPageZoom();
+      setMinZoom(fit);
+      minZoomRef.current = fit;
+      setZoom((z) => (z <= minZoomRef.current + 0.02 || z < fit ? fit : z));
+    };
+    const t = setTimeout(refit, 150);
+    window.addEventListener("resize", refit);
+    window.addEventListener("orientationchange", refit);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("resize", refit);
+      window.removeEventListener("orientationchange", refit);
+    };
+  }, [open, pageView, computeFitPageZoom]);
 
   // Two-finger pinch zoom on the PDF scroll container.
   // Updates the same `zoom` state the +/- buttons use, so pages never remount.
@@ -465,11 +521,12 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       if (!pinching || e.touches.length !== 2 || startDist <= 0) return;
       e.preventDefault();
       const ratio = dist(e.touches) / startDist;
-      // Min zoom = fit page width (MIN_ZOOM). Allow a small elastic overshoot
-      // below fit during the gesture, then snap back on release.
+      // Min zoom = fit page width (or whole-page fit in page view). Allow a
+      // small elastic overshoot below fit during the gesture, then snap back.
+      const floor = minZoomRef.current;
       const raw = startZoom * ratio;
-      pendingZoom = raw < MIN_ZOOM
-        ? Math.max(MIN_ZOOM - PINCH_BOUNCE, MIN_ZOOM - (MIN_ZOOM - raw) * 0.35)
+      pendingZoom = raw < floor
+        ? Math.max(floor - PINCH_BOUNCE, floor - (floor - raw) * 0.35)
         : Math.min(MAX_ZOOM, raw);
       // rAF-throttled DOM update — no state churn, no CSS transition fight
       if (!frame) {
@@ -487,7 +544,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       if (frame) { cancelAnimationFrame(frame); frame = 0; }
       el.style.touchAction = "";
       // Commit the final zoom to state once, snapping back to fit-width.
-      const finalZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(pendingZoom * 100) / 100));
+      const finalZoom = Math.min(MAX_ZOOM, Math.max(minZoomRef.current, Math.round(pendingZoom * 100) / 100));
       if (finalZoom !== pendingZoom) { setAnimateZoom(true); applyZoom(finalZoom); }
       setZoom(finalZoom);
     };
@@ -780,7 +837,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
               )}
 
               <div className="flex items-center gap-0.5 shrink-0">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setAnimateZoom(true); setZoom((z) => Math.max(MIN_ZOOM, Math.round((z - 0.25) * 100) / 100)); }}>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setAnimateZoom(true); setZoom((z) => Math.max(minZoomRef.current, Math.round((z - 0.25) * 100) / 100)); }}>
                   <ZoomOut className="h-3.5 w-3.5" />
                 </Button>
                 <span className="text-[10px] text-muted-foreground w-9 text-center">{Math.round(zoom * 100)}%</span>
@@ -819,6 +876,21 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="text-[10px]">High quality PDF render (slower)</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={pageView ? "secondary" : "ghost"}
+                      size="icon"
+                      className={`h-7 w-7 ${pageView ? "ring-1 ring-primary" : ""}`}
+                      onClick={togglePageView}
+                    >
+                      <MonitorUp className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-[10px]">
+                    {pageView ? "Fit page width (portrait)" : "Whole page view (landscape)"}
+                  </TooltipContent>
                 </Tooltip>
               </div>
 

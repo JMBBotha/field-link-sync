@@ -1,4 +1,4 @@
-import { memo, useRef, useCallback } from "react";
+import { memo, useRef, useCallback, useState } from "react";
 import { computeProductPricing, resolveRowCostExVat } from "@/lib/pricing";
 import { parsePdfRowSpecs } from "./parsePdfRowSpecs";
 import { Info, Circle, CheckCircle2, Star } from "lucide-react";
@@ -42,6 +42,14 @@ const DOUBLE_TAP_MS = 400;
 const TAP_MOVE_TOLERANCE_PX = 8;
 /** Vivid info-blue and dark radio greys. */
 const INFO_BLUE = "hsl(217 91% 53%)";
+/** Pressed flash colour for the info icon + how long it stays lit. */
+const INFO_BLUE_PRESSED = "hsl(224 90% 38%)";
+const INFO_PRESS_MS = 220;
+/** Width (px, from the page right edge) of the select band = radio cluster. */
+const SELECT_BAND_PX_PHONE = 16;
+const SELECT_BAND_PX_DESKTOP = 22;
+/** Everything further left inside the strip is the info band. */
+const DESKTOP_STRIP_MIN_W = 56;
 const RADIO_GREY_STROKE = "hsl(215 14% 28%)";
 const RADIO_GREY_DOT = "hsl(220 10% 32%)";
 
@@ -160,6 +168,7 @@ const RegionBox = memo(({
   region,
   isSelected,
   isFavorite,
+  isInfoPressed,
   onHoverStart,
   onHoverMove,
   onHoverEnd,
@@ -168,6 +177,7 @@ const RegionBox = memo(({
   region: OverlayRegion;
   isSelected: boolean;
   isFavorite: boolean;
+  isInfoPressed?: boolean;
   onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent, priceOverride?: number | null) => void;
   onHoverMove?: (e: React.MouseEvent) => void;
   onHoverEnd?: () => void;
@@ -222,8 +232,11 @@ const RegionBox = memo(({
         style={{ right: `${CONTROL_RIGHT_PX}px` }}
       >
         <Info
-          className="w-auto aspect-square h-[clamp(7px,100%,10px)] sm:h-[clamp(9px,100%,14px)]"
-          style={{ color: INFO_BLUE }}
+          className="w-auto aspect-square h-[clamp(7px,100%,10px)] sm:h-[clamp(9px,100%,14px)] transition-transform duration-100"
+          style={{
+            color: isInfoPressed ? INFO_BLUE_PRESSED : INFO_BLUE,
+            transform: isInfoPressed ? "scale(1.35)" : "none",
+          }}
           aria-hidden
         />
         {isSelected ? (
@@ -268,8 +281,10 @@ const MarginHitStrip = ({
   onHoverStart,
   onHoverMove,
   onHoverEnd,
+  onInfoPress,
 }: {
   regions: OverlayRegion[];
+  onInfoPress?: (regionId: string) => void;
   pdfSelection?: PdfSelectionHandlers;
   baskets: Basket[];
   onAddProductToBasket?: (basketId: string, product: PaletteProduct) => void;
@@ -321,11 +336,16 @@ const MarginHitStrip = ({
     if (!region) return;
     e.stopPropagation();
 
+    // Zones are measured in px from the PAGE RIGHT EDGE so they line up with
+    // the painted cluster (radio hugs the edge, info sits just left of it).
     const stripRect = strip.getBoundingClientRect();
-    const xFrac = stripRect.width > 0 ? (e.clientX - stripRect.left) / stripRect.width : 1;
-    const isInfoZone = xFrac < 0.42;
+    const isDesktopStrip = stripRect.width >= DESKTOP_STRIP_MIN_W;
+    const selectBand = (isDesktopStrip ? SELECT_BAND_PX_DESKTOP : SELECT_BAND_PX_PHONE) + CONTROL_RIGHT_PX;
+    const distFromRight = stripRect.right - e.clientX;
+    const isInfoZone = distFromRight > selectBand;
 
     if (isInfoZone) {
+      onInfoPress?.(region.id);
       onOpenProductInfo?.(regionProduct(region));
       return;
     }
@@ -386,6 +406,13 @@ const PdfPageOverlay = ({
   onHoverEnd,
   favoriteIds,
 }: PdfPageOverlayProps) => {
+  const [pressedInfoId, setPressedInfoId] = useState<string | null>(null);
+  const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleInfoPress = useCallback((regionId: string) => {
+    setPressedInfoId(regionId);
+    if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+    pressTimerRef.current = setTimeout(() => setPressedInfoId(null), INFO_PRESS_MS);
+  }, []);
   if (regions.length === 0) return null;
   return (
     <>
@@ -401,6 +428,7 @@ const PdfPageOverlay = ({
             region={region}
             isSelected={isRegionSelected(region, pdfSelection, basketProductCounts)}
             isFavorite={!!favoriteIds?.has(productId)}
+            isInfoPressed={pressedInfoId === region.id}
             onHoverStart={onHoverStart}
             onHoverMove={onHoverMove}
             onHoverEnd={onHoverEnd}
@@ -414,6 +442,7 @@ const PdfPageOverlay = ({
         baskets={baskets}
         onAddProductToBasket={onAddProductToBasket}
         onOpenProductInfo={onOpenProductInfo}
+        onInfoPress={handleInfoPress}
         onToggleFavorite={onToggleFavorite}
         onHoverStart={onHoverStart}
         onHoverMove={onHoverMove}
