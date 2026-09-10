@@ -1296,6 +1296,10 @@ const LazyPdfPage = ({
       const r = sourceRegions[idx];
       if (!r || r.y_pct == null || r.h_pct == null || r.h_pct <= 0) continue;
       if (r.h_pct > 8) continue;
+      // Skip absurd geometry that would paint over the whole page
+      if (!Number.isFinite(r.y_pct) || r.y_pct < 0 || r.y_pct > 100) continue;
+      if (r.y_pct + r.h_pct > 105) continue;
+      if (r.w_pct != null && (!Number.isFinite(r.w_pct) || r.w_pct <= 0 || r.w_pct > 200)) continue;
 
       // Within-page dedup by product_code|label|price
       const label = (r.label || "").substring(0, 80);
@@ -1355,6 +1359,7 @@ const LazyPdfPage = ({
         has_price: r.has_price,
         detected_price: r.detected_price,
         matched: finalMatched,
+        price_x_frac: (r as any).price_x_frac ?? null,
       });
     }
 
