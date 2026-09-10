@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import type { ClientRollupArea } from "@/lib/clientQuoteRollup";
 
 export interface EstimateDocLineItem {
   description: string;
@@ -164,7 +165,10 @@ const EstimateDocument = ({
   discountLabel,
   companyOverride,
   editing,
+  clientAreas,
+  presentationMode,
 }: EstimateDocumentProps) => {
+  const rollup = !editing && presentationMode === "clientRollup" ? clientAreas ?? [] : null;
   const { settings: authedSettings } = useCompanySettings();
   const settings = companyOverride
     ? {
