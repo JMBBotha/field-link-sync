@@ -36,7 +36,10 @@ interface Lead {
 }
 
 const AdminMapPage = () => {
-  const [leadsCollapsed, setLeadsCollapsed] = useState(false);
+  // Map is the hero on phone/tablet: leads panel starts closed below lg
+  const [leadsCollapsed, setLeadsCollapsed] = useState(
+    typeof window !== "undefined" ? window.innerWidth < 1024 : false
+  );
   const [completedPanelCollapsed, setCompletedPanelCollapsed] = useState(true);
   const [showCompletedFilter, setShowCompletedFilter] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);

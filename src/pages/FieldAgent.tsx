@@ -1201,7 +1201,7 @@ const FieldAgent = () => {
   );
 
   return (
-    <Layout footerLeftContent={footerLeftContent}>
+    <Layout footerLeftContent={footerLeftContent} hideFooterOnMobile>
       <div className="h-screen flex flex-col overflow-hidden pb-12">
         {/* Header - Cyan Theme */}
         <header className="backdrop-blur border-b px-3 md:px-4 py-2 md:py-3 flex items-center justify-between z-20" style={{ backgroundColor: '#0077B6', borderColor: '#006699', color: '#FFFFFF' }}>

@@ -1427,7 +1427,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
                 </>
               )}
               {agents.length > 0 && (
-                <div className="bg-card/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-md">
+                <div className="hidden lg:block bg-card/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-md">
                   <div className="flex items-center gap-2 mb-1">
                     <Navigation className="h-4 w-4 text-muted-foreground" />
                     <span className="text-xs font-medium">Route</span>

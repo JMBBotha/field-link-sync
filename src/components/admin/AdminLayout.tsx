@@ -90,6 +90,8 @@ const AdminLayout = () => {
     "/admin/companies": "Company Management",
   };
   const pageTitle = pageTitles[location.pathname] || "Admin Dashboard";
+  // Map pages are map-hero: no fat mobile search band (header search icon covers it)
+  const isMapPage = location.pathname === "/admin/map" || location.pathname === "/admin/jobs-map";
 
   const { data: pendingRequestsCount = 0 } = useQuery({
     queryKey: ["pending-change-requests-count"],
@@ -239,17 +241,19 @@ const AdminLayout = () => {
         </header>
 
 
-        {/* Sticky mobile search bar */}
-        <div className="shrink-0 sm:hidden sticky top-0 z-10 border-b px-3 py-2 bg-primary dark:bg-gradient-to-r dark:from-[#070e1a] dark:via-[#153258]/90 dark:to-[#070e1a] border-[#006699] dark:border-[#153258]">
-          <button
-            type="button"
-            onClick={() => setSearchOpen(true)}
-            className="flex w-full items-center gap-2 rounded-md bg-white/10 px-3 py-2 text-sm text-blue-100 transition-colors hover:bg-white/20"
-          >
-            <Search className="h-4 w-4 shrink-0" />
-            <span>Search leads, customers, suppliers, proposals…</span>
-          </button>
-        </div>
+        {/* Sticky mobile search bar (hidden on map pages — map is the hero) */}
+        {!isMapPage && (
+          <div className="shrink-0 sm:hidden sticky top-0 z-10 border-b px-3 py-2 bg-primary dark:bg-gradient-to-r dark:from-[#070e1a] dark:via-[#153258]/90 dark:to-[#070e1a] border-[#006699] dark:border-[#153258]">
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              className="flex w-full items-center gap-2 rounded-md bg-white/10 px-3 py-2 text-sm text-blue-100 transition-colors hover:bg-white/20"
+            >
+              <Search className="h-4 w-4 shrink-0" />
+              <span>Search leads, customers, suppliers, proposals…</span>
+            </button>
+          </div>
+        )}
 
 
 
@@ -269,7 +273,10 @@ const AdminLayout = () => {
           </AnimatePresence>
         </main>
 
-        <Footer />
+        {/* Bottom nav owns the mobile footer area — avoid a double stack */}
+        <div className="hidden lg:block">
+          <Footer />
+        </div>
         <AdminBottomNav onOpenMenu={() => setMobileMenuOpen(true)} />
       </div>
 
