@@ -95,9 +95,9 @@ export default function VoiceQuoteStartDialog() {
 
   const handle = async (text: string) => {
     setHeard(text);
-    const pick = text.trim().match(/^(?:number |option )?([1-3]|one|two|three|first|second|third)\b/i);
+    const pick = text.trim().match(/^(?:number |option )?([1-5]|one|two|three|four|five|first|second|third|fourth|fifth)\b/i);
     if (hits.length && pick) {
-      const map: Record<string, number> = { one: 1, first: 1, two: 2, second: 2, three: 3, third: 3 };
+      const map: Record<string, number> = { one: 1, first: 1, two: 2, second: 2, three: 3, third: 3, four: 4, fourth: 4, five: 5, fifth: 5 };
       const i = (map[pick[1].toLowerCase()] ?? Number(pick[1])) - 1;
       const c = hits[i];
       if (c) { await openQuoteFor(c.id, label(c)); return; }
