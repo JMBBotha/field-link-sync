@@ -60,8 +60,8 @@ Deno.serve(async (req) => {
   if (!auth.ok) return auth.response;
   const userId = auth.userId;
 
+  // Gateway key is only needed by the parse/audit paths; transcribe uses OpenAI Whisper.
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!apiKey) return json({ error: "AI is not configured (missing LOVABLE_API_KEY)." }, 500);
 
   const db = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -83,13 +83,22 @@ Deno.serve(async (req) => {
       if (bytes.byteLength < 2048) {
         return json({ error: "That recording was empty — please try again." }, 400);
       }
+      const openaiKey = Deno.env.get("OPENAI_API_KEY");
+      if (!openaiKey) {
+        return json({ error: "Voice transcription is not configured — add the secret OPENAI_API_KEY in Project Settings → Secrets." }, 500);
+      }
       const form = new FormData();
-      form.append("model", "openai/gpt-4o-transcribe");
+      form.append("model", "whisper-1");
+      form.append("language", "en");
+      form.append(
+        "prompt",
+        "HVAC quote dictation. Terms: AR4500, AR40, COPRL, BTU, lagging, Armaflex, Samsung, Daikin, metres, copper, drain pipe, elbows, labour, back-to-back, install.",
+      );
       form.append("file", new Blob([bytes], { type: "audio/wav" }), "recording.wav");
 
-      const res = await fetch(`${GATEWAY}/audio/transcriptions`, {
+      const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
         method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}` },
+        headers: { Authorization: `Bearer ${openaiKey}` },
         body: form,
       });
       if (!res.ok) {
@@ -104,6 +113,8 @@ Deno.serve(async (req) => {
     if (action === "parse") {
       const transcript = String(body?.transcript ?? "").trim();
       if (transcript.length < 3) return json({ error: "Nothing was said that could be turned into line items." }, 400);
+      if (!apiKey) return json({ error: "AI is not configured (missing LOVABLE_API_KEY)." }, 500);
+
 
       const res = await fetch(`${GATEWAY}/chat/completions`, {
         method: "POST",

@@ -293,18 +293,11 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
     try {
       if (canSpeak) window.speechSynthesis.cancel();
       const rec = new WavRecorder();
-      let spoke = false;
-      await rec.start({
-        silenceMs: 3500,
-        onSpeechStart: () => { spoke = true; },
-        onSilence: () => {
-          if (spoke) void stopRef.current?.();
-          else { rec.cancel(); recorderRef.current = null; setMicPhase("idle"); }
-        },
-      });
+      // No VAD / silence auto-stop: recording runs until the user taps Stop.
+      await rec.start();
       recorderRef.current = rec;
       setMicPhase("listening");
-      setReply("Listening — describe the whole job. Tap Stop when done, or pause for a few seconds.");
+      setReply("Listening — describe the whole job. Tap Stop when done.");
     } catch {
       setMicPhase("idle");
       toast({ title: "Microphone unavailable", description: "Allow microphone access, or paste the scene below.", variant: "destructive" });
