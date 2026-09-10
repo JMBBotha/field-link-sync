@@ -30,6 +30,9 @@ export interface OverlayRegion {
  * the R amounts whenever the price column is mid-table.
  */
 const CONTROL_RIGHT_PX = 2;
+/** Right-edge inset where the row pill ends — ~5px past the radio cluster. */
+const PILL_RIGHT_PX_PHONE = 22;
+const PILL_RIGHT_PX_DESKTOP = 32;
 /** Width of the tap strip along the right page margin (phone / desktop). */
 const STRIP_W_PHONE = 44;
 const STRIP_W_DESKTOP = 64;
@@ -37,6 +40,10 @@ const STRIP_W_DESKTOP = 64;
 const MIN_HIT_HALF_PX = 12;
 const DOUBLE_TAP_MS = 400;
 const TAP_MOVE_TOLERANCE_PX = 8;
+/** Vivid info-blue and dark radio greys. */
+const INFO_BLUE = "hsl(217 91% 53%)";
+const RADIO_GREY_STROKE = "hsl(215 14% 28%)";
+const RADIO_GREY_DOT = "hsl(220 10% 32%)";
 
 interface PdfPageOverlayProps {
   regions: OverlayRegion[];
