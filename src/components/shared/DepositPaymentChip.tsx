@@ -33,16 +33,26 @@ export function getDepositRemaining(invoice: DepositInvoiceLike | null | undefin
 }
 
 /**
- * Fully cleared = invoice allocation only. When settled payment totals are
- * known, they decide; status/paid_date are only a fallback when totals could
- * not be read. Never client-level credit.
+ * Fully cleared = invoice allocation only. Requires a KNOWN settled paid sum.
+ * Never infer "Deposit paid" from status or paid_date when totals are unknown.
  */
 export function isDepositCleared(invoice: DepositInvoiceLike | null | undefined): boolean {
   if (!invoice?.id) return false;
   const remaining = getDepositRemaining(invoice);
-  if (remaining !== undefined) return remaining <= 0;
-  if (String(invoice.status || "").toLowerCase() === "paid") return true;
-  return Boolean(invoice.paid_date);
+  if (remaining === undefined) return false;
+  return remaining <= 0;
+}
+
+/** Settled cash applied, when known. */
+export function getDepositAmountPaid(invoice: DepositInvoiceLike | null | undefined): number | undefined {
+  if (!invoice) return undefined;
+  if (invoice.amount_paid !== null && invoice.amount_paid !== undefined) {
+    return Math.max(0, Number(invoice.amount_paid) || 0);
+  }
+  if (invoice.remaining !== null && invoice.remaining !== undefined) {
+    return Math.max(0, (Number(invoice.grand_total) || 0) - (Number(invoice.remaining) || 0));
+  }
+  return undefined;
 }
 
 export function getDepositChipState(
@@ -50,12 +60,13 @@ export function getDepositChipState(
   opts?: { accepted?: boolean },
 ): DepositChipState | null {
   if (!invoice?.id) return opts?.accepted ? "none" : null;
-  if (isDepositCleared(invoice)) return "paid";
-  const status = String(invoice.status || "").toLowerCase();
-  const remaining = getDepositRemaining(invoice);
+  // Allocation is the only source of truth. Status/paid_date never decide.
+  const paid = getDepositAmountPaid(invoice);
+  if (paid === undefined) return "due"; // totals unknown — never claim paid/partial
   const total = Number(invoice.grand_total) || 0;
-  if (status === "partially_paid") return "partial";
-  if (remaining !== undefined && remaining > 0 && total > 0 && remaining < total) return "partial";
+  const remaining = getDepositRemaining(invoice) ?? Math.max(0, total - paid);
+  if (total > 0 && remaining <= 0) return "paid";
+  if (paid > 0 && remaining > 0) return "partial";
   return "due";
 }
 
