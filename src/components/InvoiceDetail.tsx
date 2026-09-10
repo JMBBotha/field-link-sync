@@ -283,7 +283,7 @@ const InvoiceDetail = ({ invoiceId, open, onClose, onUpdate }: InvoiceDetailProp
                 <p className="text-sm text-muted-foreground">No payments recorded yet.</p>
               ) : (
                 payments.map((p) => {
-                  const settled = ["completed", "succeeded", "paid"].includes(String(p.status));
+                  const settled = ["paid", "succeeded"].includes(String(p.status));
                   return (
                     <div key={p.id} className="flex items-center justify-between gap-2 text-sm py-1 border-b last:border-0">
                       <span className="min-w-0 truncate">

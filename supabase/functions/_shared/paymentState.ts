@@ -20,8 +20,8 @@ export type PaymentStatus =
   | "cancelled"
   | "refunded";
 
-/** Statuses that count as cash applied to an invoice (manual rows use 'completed'). */
-const SETTLED_STATUSES = new Set<string>(["paid", "completed", "succeeded"]);
+/** Statuses that count as cash applied to an invoice (manual rows use 'paid'). */
+const SETTLED_STATUSES = new Set<string>(["paid", "succeeded"]);
 
 const ALLOWED: Record<PaymentStatus, PaymentStatus[]> = {
   pending: ["processing", "paid", "failed", "cancelled"],
@@ -60,7 +60,7 @@ export async function reconcileInvoice(
     .select("amount, status")
     .eq("invoice_id", invoiceId);
 
-  // Settled = gateway 'paid' OR manual 'completed'/'succeeded' (payment allocation SoT).
+  // Settled = status 'paid' (manual + gateway) or 'succeeded' (payment allocation SoT).
   const paidTotal = (payments ?? [])
     .filter((p: { status: string }) => SETTLED_STATUSES.has(p.status))
     .reduce((sum: number, p: { amount: number }) => sum + Number(p.amount || 0), 0);

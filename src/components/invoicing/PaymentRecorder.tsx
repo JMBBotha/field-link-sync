@@ -104,7 +104,7 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal, onChange }: PaymentRecorderP
       method,
       reference: reference || null,
       payment_date: isoDate,
-      status: "completed",
+      status: "paid",
       gateway: "manual",
       _optimistic: true,
     };
@@ -130,7 +130,7 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal, onChange }: PaymentRecorderP
     setReference("");
 
     try {
-      // RPC writes a completed manual payment; the DB trigger derives invoice status.
+      // RPC writes a settled manual payment (status=paid); the DB trigger derives invoice status.
       await recordInvoicePayment({
         invoiceId,
         amount: amt,
