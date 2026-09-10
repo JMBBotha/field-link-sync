@@ -76,6 +76,8 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
   const [visiblePageIndex, setVisiblePageIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
+  const zoomRef = useRef(1);
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
   const [loupeActive, setLoupeActive] = useState(false);
   const pdfAreaRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
