@@ -639,7 +639,8 @@ export function rankUnits(u: UnitSpec, products: PaletteProduct[], limit = 6): R
     let score = 0;
     if (brand) {
       const pBrand = `${p.brand || ""} ${p.supplier_name || ""}`.toLowerCase().replace(/[\s-]/g, "");
-      if (pBrand.includes(brand) || blob.replace(/[\s-]/g, "").includes(brand)) score += 300;
+      const brandWord = new RegExp(`(^|[^a-z])${brand}([^a-z]|$)`);
+      if (pBrand.includes(brand) || brandWord.test(blob.replace(/-/g, ""))) score += 300;
       else continue;
     }
     if (u.btu) {
