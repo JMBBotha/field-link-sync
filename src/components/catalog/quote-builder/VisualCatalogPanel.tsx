@@ -439,34 +439,34 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     scrollToPage(next);
   }, [pages.length, visiblePageIndex, scrollToPage]);
 
-  /** Scale that makes one whole page fit the viewport height (page view). */
+  /** Scale that makes one whole page fit the viewport height (page view).
+   *  Measures the rendered page IMAGE (the wrapper carries a 400px minHeight
+   *  placeholder before load, which made the fit a no-op). */
   const computeFitPageZoom = useCallback(() => {
     const container = scrollContainerRef.current;
     const pageEl = pageRefs.current.get(visiblePageIndex) ?? pageRefs.current.get(0);
     if (!container || !pageEl) return MIN_ZOOM;
-    const pageH = pageEl.offsetHeight;
+    const img = pageEl.querySelector("img");
+    const z = zoomRef.current || 1;
+    const imgH = img ? img.getBoundingClientRect().height / z : 0;
+    const pageH = imgH > 0 ? imgH : pageEl.offsetHeight;
     if (pageH <= 0) return MIN_ZOOM;
     const fit = (container.clientHeight - 8) / pageH;
-    return Math.max(0.25, Math.min(MIN_ZOOM, Math.round(fit * 100) / 100));
+    if (!Number.isFinite(fit) || fit <= 0) return MIN_ZOOM;
+    return Math.max(0.25, Math.min(1, Math.round(fit * 100) / 100));
   }, [visiblePageIndex]);
 
   const togglePageView = useCallback(() => {
     setAnimateZoom(true);
-    setPageView((prev) => {
-      const next = !prev;
-      if (next) {
-        const fit = computeFitPageZoom();
-        setMinZoom(fit);
-        minZoomRef.current = fit;
-        setZoom(fit);
-      } else {
-        setMinZoom(MIN_ZOOM);
-        minZoomRef.current = MIN_ZOOM;
-        setZoom(MIN_ZOOM);
-      }
-      return next;
-    });
-  }, [computeFitPageZoom]);
+    const next = !pageView;
+    const target = next ? computeFitPageZoom() : MIN_ZOOM;
+    setPageView(next);
+    setMinZoom(target);
+    minZoomRef.current = target;
+    setZoom(target);
+    // Paint immediately — don't wait for the React commit.
+    applyZoom(target);
+  }, [pageView, computeFitPageZoom, applyZoom]);
 
   // Re-fit the whole page when the device rotates or the viewport resizes.
   useEffect(() => {
@@ -475,17 +475,21 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       const fit = computeFitPageZoom();
       setMinZoom(fit);
       minZoomRef.current = fit;
-      setZoom((z) => (z <= minZoomRef.current + 0.02 || z < fit ? fit : z));
+      setZoom((z) => (z <= fit + 0.02 || z < fit ? fit : z));
+      applyZoom(fit);
     };
     const t = setTimeout(refit, 150);
     window.addEventListener("resize", refit);
     window.addEventListener("orientationchange", refit);
+    const vv = typeof window !== "undefined" ? window.visualViewport : undefined;
+    vv?.addEventListener("resize", refit);
     return () => {
       clearTimeout(t);
       window.removeEventListener("resize", refit);
       window.removeEventListener("orientationchange", refit);
+      vv?.removeEventListener("resize", refit);
     };
-  }, [open, pageView, computeFitPageZoom]);
+  }, [open, pageView, computeFitPageZoom, applyZoom]);
 
   // Two-finger pinch zoom on the PDF scroll container.
   // Updates the same `zoom` state the +/- buttons use, so pages never remount.
