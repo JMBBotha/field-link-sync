@@ -78,6 +78,33 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const [zoom, setZoom] = useState(1);
   const zoomRef = useRef(1);
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  const zoomInnerRef = useRef<HTMLDivElement | null>(null);
+  const zoomSpacerRef = useRef<HTMLDivElement | null>(null);
+  const [animateZoom, setAnimateZoom] = useState(false);
+  const [baseHeight, setBaseHeight] = useState(0);
+
+  // Track the unscaled content height so the outer spacer reserves the
+  // scaled layout space (prevents scroll jumping when zoom changes).
+  useEffect(() => {
+    const el = zoomInnerRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      setBaseHeight(el.offsetHeight);
+    });
+    ro.observe(el);
+    setBaseHeight(el.offsetHeight);
+    return () => ro.disconnect();
+  }, [open]);
+
+  const applyZoom = useCallback((z: number) => {
+    if (zoomInnerRef.current) {
+      zoomInnerRef.current.style.transform = `scale(${z})`;
+    }
+    if (zoomSpacerRef.current && zoomInnerRef.current) {
+      const h = zoomInnerRef.current.offsetHeight;
+      if (h > 0) zoomSpacerRef.current.style.height = `${h * z}px`;
+    }
+  }, []);
   const [loupeActive, setLoupeActive] = useState(false);
   const pdfAreaRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
