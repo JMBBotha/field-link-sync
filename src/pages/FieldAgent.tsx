@@ -1341,15 +1341,16 @@ const FieldAgent = () => {
               )}
             </>
           )}
-          {/* Manual Location Refresh */}
+          {/* Glass recenter control — sits on the map, clear of the bottom nav */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={refreshLocation}
                 disabled={locationUpdating}
-                className="text-white hover:bg-white/20 p-2"
+                aria-label="Update my location"
+                className="absolute left-3 bottom-20 md:bottom-4 z-20 h-10 w-10 rounded-full border border-border bg-background/80 text-foreground backdrop-blur-md shadow-md hover:bg-accent"
               >
                 {locationUpdating ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
