@@ -199,17 +199,14 @@ const RegionBox = memo(({
   return (
     <div
       data-pdf-region-box
-      className="absolute cursor-pointer"
+      className="absolute z-20"
       style={{
         left: "0%",
         top: `${region.y_pct}%`,
         width: "100%",
         height: `${region.h_pct}%`,
+        pointerEvents: "none",
       }}
-      onMouseEnter={(e) => onHoverStart?.(regionProduct(region), e, region.detected_price ?? null)}
-      onMouseMove={(e) => onHoverMove?.(e)}
-      onMouseLeave={() => onHoverEnd?.()}
-      onClick={() => onOpenProductInfo?.(regionProduct(region))}
     >
       {/* Wide right-edge glass wash — extends ~60% from the right, fading left so prices stay readable.
           Right edge stops just past the radio cluster, leaving empty white page margin beyond. */}
