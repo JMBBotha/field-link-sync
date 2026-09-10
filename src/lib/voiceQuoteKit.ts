@@ -448,7 +448,7 @@ const INSTALL_CONTEXT = /\b(back[\s-]?to[\s-]?back|outside wall|through the wall
 const HOURS = /(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b/;
 const ELBOWS = /(\d+(?:\.\d+)?)?\s*(?:x\s*)?(?:pvc\s+)?(?:drain\s+)?elbows?\b/;
 
-const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+const cap = (s: string) => (!s ? s : s.length <= 3 ? s.toUpperCase() : s.charAt(0).toUpperCase() + s.slice(1));
 
 /** thousands + "eighteen thousand" + approximations → plain numbers. */
 export function normalizeScene(text: string): string {
