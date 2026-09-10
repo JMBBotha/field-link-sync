@@ -174,9 +174,6 @@ const RegionBox = memo(({
   isSelected,
   isFavorite,
   isInfoPressed,
-  onHoverStart,
-  onHoverMove,
-  onHoverEnd,
   onOpenProductInfo,
   onInfoPress,
 }: {
@@ -184,9 +181,6 @@ const RegionBox = memo(({
   isSelected: boolean;
   isFavorite: boolean;
   isInfoPressed?: boolean;
-  onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent, priceOverride?: number | null) => void;
-  onHoverMove?: (e: React.MouseEvent) => void;
-  onHoverEnd?: () => void;
   onOpenProductInfo?: (product: PaletteProduct) => void;
   onInfoPress?: (regionId: string) => void;
 }) => {
@@ -199,17 +193,14 @@ const RegionBox = memo(({
   return (
     <div
       data-pdf-region-box
-      className="absolute cursor-pointer"
+      className="absolute z-20"
       style={{
         left: "0%",
         top: `${region.y_pct}%`,
         width: "100%",
         height: `${region.h_pct}%`,
+        pointerEvents: "none",
       }}
-      onMouseEnter={(e) => onHoverStart?.(regionProduct(region), e, region.detected_price ?? null)}
-      onMouseMove={(e) => onHoverMove?.(e)}
-      onMouseLeave={() => onHoverEnd?.()}
-      onClick={() => onOpenProductInfo?.(regionProduct(region))}
     >
       {/* Wide right-edge glass wash — extends ~60% from the right, fading left so prices stay readable.
           Right edge stops just past the radio cluster, leaving empty white page margin beyond. */}
@@ -424,7 +415,7 @@ const MarginHitStrip = ({
   return (
     <div
       data-testid="pdf-margin-hit-strip"
-      className="absolute inset-y-0 right-0 cursor-pointer"
+      className="absolute inset-y-0 right-0 z-10 cursor-pointer"
       style={{ width: `var(--pdf-strip-w, ${STRIP_W_PHONE}px)`, touchAction: "manipulation" }}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
@@ -472,9 +463,6 @@ const PdfPageOverlay = ({
             isSelected={isRegionSelected(region, pdfSelection, basketProductCounts)}
             isFavorite={!!favoriteIds?.has(productId)}
             isInfoPressed={pressedInfoId === region.id}
-            onHoverStart={onHoverStart}
-            onHoverMove={onHoverMove}
-            onHoverEnd={onHoverEnd}
             onOpenProductInfo={onOpenProductInfo}
             onInfoPress={handleInfoPress}
           />
