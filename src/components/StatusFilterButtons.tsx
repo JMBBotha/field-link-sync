@@ -42,6 +42,7 @@ const statusConfig: Record<
   },
   completed: {
     label: "Completed",
+    shortLabel: "Done",
     bgColor: "bg-black dark:bg-white",
     textColor: "text-white dark:text-black",
     inactiveText: "text-black dark:text-white",
