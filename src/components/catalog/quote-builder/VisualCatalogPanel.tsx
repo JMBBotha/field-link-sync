@@ -78,6 +78,33 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const [zoom, setZoom] = useState(1);
   const zoomRef = useRef(1);
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  const zoomInnerRef = useRef<HTMLDivElement | null>(null);
+  const zoomSpacerRef = useRef<HTMLDivElement | null>(null);
+  const [animateZoom, setAnimateZoom] = useState(false);
+  const [baseHeight, setBaseHeight] = useState(0);
+
+  // Track the unscaled content height so the outer spacer reserves the
+  // scaled layout space (prevents scroll jumping when zoom changes).
+  useEffect(() => {
+    const el = zoomInnerRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      setBaseHeight(el.offsetHeight);
+    });
+    ro.observe(el);
+    setBaseHeight(el.offsetHeight);
+    return () => ro.disconnect();
+  }, [open]);
+
+  const applyZoom = useCallback((z: number) => {
+    if (zoomInnerRef.current) {
+      zoomInnerRef.current.style.transform = `scale(${z})`;
+    }
+    if (zoomSpacerRef.current && zoomInnerRef.current) {
+      const h = zoomInnerRef.current.offsetHeight;
+      if (h > 0) zoomSpacerRef.current.style.height = `${h * z}px`;
+    }
+  }, []);
   const [loupeActive, setLoupeActive] = useState(false);
   const pdfAreaRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -409,6 +436,9 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
     let startDist = 0;
     let startZoom = 1;
     let pinching = false;
+    let pendingZoom = zoomRef.current;
+    let frame = 0;
+
 
     const dist = (t: TouchList) => {
       const dx = t[0].clientX - t[1].clientX;
@@ -421,6 +451,8 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       pinching = true;
       startDist = dist(e.touches);
       startZoom = zoomRef.current;
+      pendingZoom = startZoom;
+      setAnimateZoom(false);
       el.style.touchAction = "none";
     };
 
@@ -428,16 +460,26 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       if (!pinching || e.touches.length !== 2 || startDist <= 0) return;
       e.preventDefault();
       const ratio = dist(e.touches) / startDist;
-      const next = Math.min(3, Math.max(0.5, startZoom * ratio));
-      setZoom(Math.round(next * 100) / 100);
+      pendingZoom = Math.min(3, Math.max(0.5, startZoom * ratio));
+      // rAF-throttled DOM update — no state churn, no CSS transition fight
+      if (!frame) {
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          applyZoom(pendingZoom);
+        });
+      }
     };
 
     const endPinch = () => {
       if (!pinching) return;
       pinching = false;
       startDist = 0;
+      if (frame) { cancelAnimationFrame(frame); frame = 0; }
       el.style.touchAction = "";
+      // Commit the final zoom to state once.
+      setZoom(Math.round(pendingZoom * 100) / 100);
     };
+
 
     el.addEventListener("touchstart", onTouchStart, { passive: true });
     el.addEventListener("touchmove", onTouchMove, { passive: false });
@@ -448,9 +490,10 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
       el.removeEventListener("touchmove", onTouchMove);
       el.removeEventListener("touchend", endPinch);
       el.removeEventListener("touchcancel", endPinch);
+      if (frame) cancelAnimationFrame(frame);
       el.style.touchAction = "";
     };
-  }, [open, pagesLoading, pages.length]);
+  }, [open, pagesLoading, pages.length, applyZoom]);
 
   // Legacy popup removed — clicks now route to Area Quote Builder via onOpenWizard
   const handleProductClick = useCallback((_product: PaletteProduct) => {
@@ -725,11 +768,11 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
               )}
 
               <div className="flex items-center gap-0.5 shrink-0">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setAnimateZoom(true); setZoom((z) => Math.max(0.5, Math.round((z - 0.25) * 100) / 100)); }}>
                   <ZoomOut className="h-3.5 w-3.5" />
                 </Button>
                 <span className="text-[10px] text-muted-foreground w-9 text-center">{Math.round(zoom * 100)}%</span>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom((z) => Math.min(3, z + 0.25))}>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setAnimateZoom(true); setZoom((z) => Math.min(3, Math.round((z + 0.25) * 100) / 100)); }}>
                   <ZoomIn className="h-3.5 w-3.5" />
                 </Button>
                 <Tooltip>
@@ -827,7 +870,20 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                   }}
                 >
                   <div ref={pdfAreaRef} style={{ cursor: loupeActive ? "none" : zoom > 1 ? "grab" : "default" }}>
-                    <div className="origin-top-left transition-transform" style={{ transform: `scale(${zoom})`, transformOrigin: "top left" }}>
+                    <div
+                      ref={zoomSpacerRef}
+                      style={{ height: baseHeight > 0 ? baseHeight * zoom : undefined, overflow: "visible" }}
+                    >
+                    <div
+                      ref={zoomInnerRef}
+                      className="origin-top-left"
+                      style={{
+                        transform: `scale(${zoom})`,
+                        transformOrigin: "top left",
+                        transition: animateZoom ? "transform 120ms ease-out" : "none",
+                      }}
+                      onTransitionEnd={() => setAnimateZoom(false)}
+                    >
                       {pages.map((page, idx) => (
                         <LazyPdfPage
                           key={page.id}
@@ -860,6 +916,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           }}
                         />
                       ))}
+                    </div>
                     </div>
                   </div>
                   <PdfMagnifier
@@ -1235,9 +1292,12 @@ const LazyPdfPage = ({
     if (ocrRegions.length > 0) {
       return (ocrRegions as any[]).map((sp, idx) => {
         const rb = sp.row_bbox || {};
+        const pb = sp.price_bbox || null;
+        const priceXFrac = pb && typeof pb.x === "number" && Number.isFinite(pb.x) ? pb.x : null;
         const paletteProduct = activeProducts.find(p => p.id === sp.id || p.product_code === sp.product_code) || null;
         const cost = sp.cost_excl_vat ?? sp.cost_price ?? 0;
         return {
+          price_x_frac: priceXFrac,
           id: `ocr-${page.id}-${sp.id}-${idx}`,
           x_pct: (rb.x ?? 0) * 100,
           y_pct: (rb.y ?? 0) * 100,
@@ -1293,6 +1353,10 @@ const LazyPdfPage = ({
       const r = sourceRegions[idx];
       if (!r || r.y_pct == null || r.h_pct == null || r.h_pct <= 0) continue;
       if (r.h_pct > 8) continue;
+      // Skip absurd geometry that would paint over the whole page
+      if (!Number.isFinite(r.y_pct) || r.y_pct < 0 || r.y_pct > 100) continue;
+      if (r.y_pct + r.h_pct > 105) continue;
+      if (r.w_pct != null && (!Number.isFinite(r.w_pct) || r.w_pct <= 0 || r.w_pct > 200)) continue;
 
       // Within-page dedup by product_code|label|price
       const label = (r.label || "").substring(0, 80);
@@ -1352,6 +1416,7 @@ const LazyPdfPage = ({
         has_price: r.has_price,
         detected_price: r.detected_price,
         matched: finalMatched,
+        price_x_frac: (r as any).price_x_frac ?? null,
       });
     }
 
@@ -1404,11 +1469,6 @@ const LazyPdfPage = ({
         {isVisible && totalRegions > 0 && (
           <span className="text-green-300">
             {totalRegions} items · {matchedCount} matched{unmatchedCount > 0 && <span className="text-orange-300"> · {unmatchedCount} new</span>}
-          </span>
-        )}
-        {isVisible && unmatchedCount > 0 && (
-          <span className="text-red-300 text-[8px] ml-1">
-            [{overlayRegions.filter(r => !r.product).map(r => (r.label || r.product_code || '?').substring(0, 80)).join(' | ')}]
           </span>
         )}
         {isVisible && starOverlays.length > 0 && (
