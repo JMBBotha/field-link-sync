@@ -29,7 +29,7 @@ export interface OverlayRegion {
  * Price-column coordinates are NOT used for control placement; they land on
  * the R amounts whenever the price column is mid-table.
  */
-const CONTROL_RIGHT_PX = 10;
+const CONTROL_RIGHT_PX = 2;
 /** Width of the tap strip along the right page margin (phone / desktop). */
 const STRIP_W_PHONE = 44;
 const STRIP_W_DESKTOP = 64;
@@ -166,11 +166,11 @@ const RegionBox = memo(({
   onHoverEnd?: () => void;
   onOpenProductInfo?: (product: PaletteProduct) => void;
 }) => {
-  const pillColor = isFavorite
-    ? "hsl(45 93% 58% / 0.30)"
+  const pillBackground = isFavorite
+    ? "linear-gradient(to left, hsl(45 93% 47% / 0.36) 0%, hsl(45 93% 47% / 0.24) 55%, hsl(45 93% 47% / 0.08) 85%, transparent 100%)"
     : isSelected
-      ? "hsl(var(--success) / 0.32)"
-      : "hsl(var(--primary) / 0.22)";
+      ? "linear-gradient(to left, hsl(var(--success) / 0.36) 0%, hsl(var(--success) / 0.24) 55%, hsl(var(--success) / 0.08) 85%, transparent 100%)"
+      : "linear-gradient(to left, hsl(var(--muted-foreground) / 0.35) 0%, hsl(var(--muted-foreground) / 0.22) 55%, hsl(var(--muted-foreground) / 0.08) 85%, transparent 100%)";
 
   return (
     <div
@@ -188,8 +188,8 @@ const RegionBox = memo(({
     >
       {/* Short right-edge pill — hugs the page margin, never sweeps over R amounts */}
       <div
-        className="absolute inset-y-0 right-0 pointer-events-none w-[42px] sm:w-[62px]"
-        style={{ background: pillColor, borderRadius: "9999px 0 0 9999px" }}
+        className="absolute inset-y-0 right-0 pointer-events-none w-[38px] sm:w-[52px]"
+        style={{ background: pillBackground, borderRadius: "9999px 0 0 9999px" }}
       />
 
       {/* Favorite star badge — top-left of the row */}
