@@ -23,8 +23,9 @@ import { createDraftQuoteForCustomer } from "@/lib/createDraftQuote";
 import { parseUtterance } from "@/lib/voiceQuoteKit";
 import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
 
-const label = (c: CustomerSearchResult) =>
-  [c.company_name, [c.first_name, c.last_name].filter(Boolean).join(" ")].filter(Boolean).join(" — ") || c.phone;
+import { clientDisplayName, isHighConfidence, rankClientHits } from "@/lib/voiceClientMatch";
+
+const label = clientDisplayName;
 
 type Phase = "idle" | "listening" | "transcribing" | "working";
 
