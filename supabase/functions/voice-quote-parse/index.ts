@@ -92,12 +92,12 @@ Deno.serve(async (req) => {
       const form = new FormData();
       form.append("format", "true");
       form.append("language", "en");
-      // HVAC vocabulary bias (repeatable keyterms field, max 100 terms, <=50 chars each)
+      // HVAC vocabulary bias (repeatable `keyterm` field per xAI docs, max 100 terms, <=50 chars each)
       for (const term of [
         "AR4500", "AR40", "COPRL", "BTU", "lagging", "Armaflex",
         "Samsung", "Daikin", "copper", "labour",
       ]) {
-        form.append("keyterms", term);
+        form.append("keyterm", term);
       }
       form.append("file", new Blob([bytes], { type: "audio/wav" }), "recording.wav");
 
