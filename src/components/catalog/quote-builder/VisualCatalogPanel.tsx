@@ -778,6 +778,21 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
               Back to Quote Builder
             </Button>
 
+            {/* Page / Width toggle — pinned OUTSIDE the scrolling toolbar so it is
+                always tappable on a phone. No Radix Tooltip: on iOS the tooltip
+                swallows the first tap. */}
+            <Button
+              variant={pageView ? "secondary" : "outline"}
+              size="sm"
+              className={`h-7 shrink-0 gap-1 px-2 text-[11px] ${pageView ? "ring-1 ring-primary" : ""}`}
+              onClick={togglePageView}
+              title={pageView ? "Fit page width" : "Whole page view"}
+              aria-label={pageView ? "Switch to page width view" : "Switch to whole page view"}
+            >
+              <MonitorUp className="h-3.5 w-3.5" />
+              {pageView ? "Width" : "Page"}
+            </Button>
+
             <div className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto">
               <FileImage className="h-4 w-4 text-primary shrink-0" />
               <div className="min-w-0 flex-1">
