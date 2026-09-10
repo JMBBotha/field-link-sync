@@ -24,6 +24,7 @@ import { parseUtterance } from "@/lib/voiceQuoteKit";
 import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
 
 import { clientDisplayName, isHighConfidence, rankClientHits } from "@/lib/voiceClientMatch";
+import VoiceClientOverrideFields, { emptyClientDraft, type VoiceClientDraft } from "@/components/quoting/VoiceClientOverrideFields";
 
 const label = clientDisplayName;
 
@@ -41,6 +42,7 @@ export default function VoiceQuoteStartDialog() {
   const [hits, setHits] = useState<CustomerSearchResult[]>([]);
   const [lastQuery, setLastQuery] = useState("");
   const [pendingNew, setPendingNew] = useState<{ name: string; address: string | null } | null>(null);
+  const [draft, setDraft] = useState<VoiceClientDraft>(emptyClientDraft());
   const recRef = useRef<WavRecorder | null>(null);
 
   const canSpeak = typeof window !== "undefined" && "speechSynthesis" in window;
@@ -66,7 +68,7 @@ export default function VoiceQuoteStartDialog() {
     }
   };
 
-  const createCustomer = async (name: string, phone: string, address: string | null) => {
+  const createCustomer = async (name: string, phone: string, address: string | null, email?: string | null) => {
     setPhase("working");
     const [first, ...rest] = name.split(/\s+/);
     const company_id = await getUserCompanyId(user?.id);
@@ -82,6 +84,7 @@ export default function VoiceQuoteStartDialog() {
         company_id,
         primary_address_line1: address,
         address,
+        ...(email ? { email } : {}),
       })
       .select("id")
       .single();
@@ -112,12 +115,20 @@ export default function VoiceQuoteStartDialog() {
     }
     if (it.kind === "new_client") {
       if (!it.name) { say("What is the client's name?"); return; }
-      if (!it.phone) { setPendingNew({ name: it.name, address: it.address ?? null }); say(`Phone number for ${it.name}?`); return; }
+      setDraft({ name: it.name, phone: it.phone ?? "", address: it.address ?? "", email: "" });
+      if (!it.phone) { setPendingNew({ name: it.name, address: it.address ?? null }); setLastQuery(it.name); say(`Phone number for ${it.name}? Type it below and save.`); return; }
       await createCustomer(it.name, it.phone, it.address ?? null);
       return;
     }
     // Anything else is treated as a client lookup (name, phone, company).
     const q = it.kind === "client" ? it.query : it.kind === "phone" ? it.phone : text.trim();
+    setDraft({ ...emptyClientDraft(it.kind === "phone" ? "" : q), phone: it.kind === "phone" ? q : "" });
+    await lookup(q);
+  };
+
+  /** Search again (voice or typed override name) and refresh the chips. */
+  const lookup = async (q: string, spoken = true) => {
+    if (!q) return;
     setPhase("working");
     const { data, error } = await supabase.rpc("search_customers", { search_term: q, max_results: 10 });
     setPhase("idle");
@@ -126,12 +137,12 @@ export default function VoiceQuoteStartDialog() {
     setLastQuery(q);
     if (!found.length) {
       setHits([]);
-      say(`No client matching “${q}”. Add them as a new client below, or say the name again.`);
+      say(`No client matching “${q}”. Correct the details below and save them as a new client.`);
       return;
     }
-    if (found.length === 1 && isHighConfidence(q, found[0])) { setHits([]); await openQuoteFor(found[0].id, label(found[0])); return; }
+    if (spoken && found.length === 1 && isHighConfidence(q, found[0])) { setHits([]); await openQuoteFor(found[0].id, label(found[0])); return; }
     setHits(found);
-    say(`Heard “${q}”. Tap the right client, or add them as new.`);
+    say(`Heard “${q}”. Tap the right client, or correct the details below.`);
   };
 
   const stopRecording = async () => {
@@ -185,6 +196,7 @@ export default function VoiceQuoteStartDialog() {
       setPendingNew(null);
       setHeard("");
       setLastQuery("");
+      setDraft(emptyClientDraft());
     }
   }, [open, canSpeak]);
 
@@ -202,27 +214,31 @@ export default function VoiceQuoteStartDialog() {
           <div className="space-y-3">
             <p className="text-sm text-foreground">{reply}</p>
             {heard && <p className="text-xs text-muted-foreground">Heard: “{heard}”</p>}
-            {(hits.length > 0 || (!!lastQuery && !pendingNew)) && (
-              <div className="flex flex-wrap gap-2">
-                {hits.map((c, i) => (
-                  <Button key={c.id} type="button" size="sm" variant="outline" disabled={phase === "working"} onClick={() => void openQuoteFor(c.id, label(c))}>
-                    {i + 1}. {label(c)} · {c.phone}
-                  </Button>
-                ))}
-                {!!lastQuery && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    disabled={phase === "working"}
-                    onClick={() => { setHits([]); setPendingNew({ name: lastQuery, address: null }); say(`Phone number for ${lastQuery}?`); }}
-                  >
-                    Add as new client “{lastQuery}”
-                  </Button>
-                )}
+            {(hits.length > 0 || !!lastQuery || !!pendingNew) && (
+              <div className="space-y-2">
                 {hits.length > 0 && (
-                  <Button type="button" size="sm" variant="ghost" disabled={phase === "working"} onClick={() => setHits([])}>None of these</Button>
+                  <div className="flex flex-wrap gap-2">
+                    {hits.map((c, i) => (
+                      <Button key={c.id} type="button" size="sm" variant="outline" disabled={phase === "working"} onClick={() => void openQuoteFor(c.id, label(c))}>
+                        {i + 1}. {label(c)} · {c.phone}
+                      </Button>
+                    ))}
+                    <Button type="button" size="sm" variant="ghost" disabled={phase === "working"} onClick={() => setHits([])}>None of these</Button>
+                  </div>
                 )}
+                <VoiceClientOverrideFields
+                  draft={draft}
+                  onChange={setDraft}
+                  busy={phase === "working"}
+                  onSaveNew={() => {
+                    const name = draft.name.trim();
+                    const phone = draft.phone.trim();
+                    if (!name || !phone) { say("Name and phone are needed to save a new client."); return; }
+                    setPendingNew(null);
+                    void createCustomer(name, phone, draft.address.trim() || null, draft.email.trim() || null);
+                  }}
+                  onResearch={() => void lookup(draft.name.trim(), false)}
+                />
               </div>
             )}
             <div className="flex items-center gap-2">

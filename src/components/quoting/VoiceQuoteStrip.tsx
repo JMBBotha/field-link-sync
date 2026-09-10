@@ -27,6 +27,7 @@ import { DEFAULT_LEAD_SOURCE } from "@/lib/leadSources";
 import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
 import VoiceBreakdownCard from "@/components/quoting/VoiceBreakdownCard";
 import { clientDisplayName, isHighConfidence, rankClientHits } from "@/lib/voiceClientMatch";
+import VoiceClientOverrideFields, { emptyClientDraft, type VoiceClientDraft } from "@/components/quoting/VoiceClientOverrideFields";
 import {
   buildSceneBreakdown,
   isSaveable,
@@ -81,6 +82,7 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
   const [reply, setReply] = useState("Tap the mic and describe the whole job — rooms, unit, piping, drain, labour — then confirm once.");
   const [breakdown, setBreakdown] = useState<SceneBreakdown | null>(null);
   const [clientPrompt, setClientPrompt] = useState<ClientPrompt | null>(null);
+  const [clientDraft, setClientDraft] = useState<VoiceClientDraft>(emptyClientDraft());
   const [saving, setSaving] = useState(false);
 
   const recorderRef = useRef<WavRecorder | null>(null);
@@ -212,7 +214,7 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
     say(`Client set to ${name}. Now describe the job.`);
   };
 
-  const createCustomer = async (name: string, phone: string, address?: string | null) => {
+  const createCustomer = async (name: string, phone: string, address?: string | null, email?: string | null) => {
     const [first, ...rest] = name.split(/\s+/);
     const company_id = await getUserCompanyId(user?.id);
     const { data, error } = await supabase
@@ -227,6 +229,7 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
         company_id,
         primary_address_line1: address || null,
         address: address || null,
+        ...(email ? { email } : {}),
       })
       .select("id")
       .single();
@@ -235,6 +238,27 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
     setClientPrompt(null);
     onChanged?.();
     say(`New client ${name} added${address ? ` at ${address}` : ""} and set on this quote. Now describe the job.`);
+  };
+
+  /** Look the name up again and refresh the chips (keyboard override path). */
+  const lookupClient = async (q: string, spoken = true) => {
+    const { data, error } = await supabase.rpc("search_customers", { search_term: q, max_results: 10 });
+    const raw = (error ? [] : (data || [])) as CustomerSearchResult[];
+    const hits = rankClientHits(q, raw);
+    if (!hits.length) {
+      setClientPrompt({ type: "no_match", query: q });
+      say(`No client matching “${q}”. Type the details below and save them as a new client.`);
+      return;
+    }
+    if (spoken && hits.length === 1 && isHighConfidence(q, hits[0])) { await setCustomer(hits[0]); return; }
+    setClientPrompt({ type: "customer_pick", hits, query: q });
+    say(`Heard “${q}” — tap the right client, or correct the details below.`);
+  };
+
+  const saveOverrideAsNew = async () => {
+    const d = clientDraft;
+    if (!d.name.trim() || !d.phone.trim()) { say("Name and phone are needed to save a new client."); return; }
+    await createCustomer(d.name.trim(), d.phone.trim(), d.address.trim() || null, d.email.trim() || null);
   };
 
   /** Client commands are the only non-scene utterances. Returns true when handled. */
@@ -253,22 +277,18 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
     if (intents.length !== 1) return false;
     if (first.kind === "client" || first.kind === "phone") {
       const q = first.kind === "phone" ? first.phone : first.query;
-      const { data, error } = await supabase.rpc("search_customers", { search_term: q, max_results: 10 });
-      const raw = (error ? [] : (data || [])) as CustomerSearchResult[];
-      const hits = rankClientHits(q, raw);
-      if (!hits.length) {
-        setClientPrompt({ type: "no_match", query: q });
-        say(`No client matching “${q}”. Add them as a new client, or say the name again.`);
-        return true;
-      }
-      if (hits.length === 1 && isHighConfidence(q, hits[0])) { await setCustomer(hits[0]); return true; }
-      setClientPrompt({ type: "customer_pick", hits, query: q });
-      say(`Heard “${q}” — tap the right client, or add them as new.`);
+      setClientDraft({ ...emptyClientDraft(first.kind === "client" ? q : ""), phone: first.kind === "phone" ? q : "" });
+      await lookupClient(q);
       return true;
     }
     if (first.kind === "new_client") {
       if (!first.name) { say("What is the client's name?"); return true; }
-      if (!first.phone) { setClientPrompt({ type: "new_client_phone", name: first.name, address: first.address ?? null }); say(`Phone number for ${first.name}? Type or say it.`); return true; }
+      setClientDraft({ name: first.name, phone: first.phone ?? "", address: first.address ?? "", email: "" });
+      if (!first.phone) {
+        setClientPrompt({ type: "new_client_phone", name: first.name, address: first.address ?? null });
+        say(`Phone number for ${first.name}? Type it below and save.`);
+        return true;
+      }
       await createCustomer(first.name, first.phone, first.address);
       return true;
     }
@@ -380,47 +400,32 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
             <p className="text-xs text-amber-700 dark:text-amber-400">No client on this quote yet — type “client Andre Blom” or “new client Jane Doe 082 123 4567” below.</p>
           )}
 
-          {clientPrompt?.type === "customer_pick" && (
+          {clientPrompt && (
             <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">Heard: “{clientPrompt.query}”</p>
-              <div className="flex flex-wrap gap-2">
-                {clientPrompt.hits.map((c, i) => (
-                  <Button key={c.id} type="button" size="sm" variant="outline" onClick={() => void setCustomer(c)}>
-                    {i + 1}. {customerLabel(c)} · {c.phone}
-                  </Button>
-                ))}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    const name = clientPrompt.query;
-                    setClientPrompt({ type: "new_client_phone", name, address: null });
-                    say(`Phone number for ${name}? Type or say it.`);
-                  }}
-                >
-                  Add as new client “{clientPrompt.query}”
-                </Button>
-                <Button type="button" size="sm" variant="ghost" onClick={() => setClientPrompt({ type: "no_match", query: clientPrompt.query })}>None of these</Button>
-              </div>
-            </div>
-          )}
-
-          {clientPrompt?.type === "no_match" && (
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">Heard: “{clientPrompt.query}” — no client picked.</p>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                onClick={() => {
-                  const name = clientPrompt.query;
-                  setClientPrompt({ type: "new_client_phone", name, address: null });
-                  say(`Phone number for ${name}? Type or say it.`);
-                }}
-              >
-                Add as new client “{clientPrompt.query}”
-              </Button>
+              <p className="text-xs text-muted-foreground">
+                {clientPrompt.type === "customer_pick"
+                  ? `Heard: “${clientPrompt.query}”`
+                  : clientPrompt.type === "no_match"
+                    ? `Heard: “${clientPrompt.query}” — no client picked.`
+                    : `New client: ${clientPrompt.name}`}
+              </p>
+              {clientPrompt.type === "customer_pick" && (
+                <div className="flex flex-wrap gap-2">
+                  {clientPrompt.hits.map((c, i) => (
+                    <Button key={c.id} type="button" size="sm" variant="outline" onClick={() => void setCustomer(c)}>
+                      {i + 1}. {customerLabel(c)} · {c.phone}
+                    </Button>
+                  ))}
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setClientPrompt({ type: "no_match", query: clientPrompt.query })}>None of these</Button>
+                </div>
+              )}
+              <VoiceClientOverrideFields
+                draft={clientDraft}
+                onChange={setClientDraft}
+                busy={saving}
+                onSaveNew={() => void saveOverrideAsNew()}
+                onResearch={() => void lookupClient(clientDraft.name.trim(), false)}
+              />
             </div>
           )}
 
