@@ -421,7 +421,7 @@ const MarginHitStrip = ({
   return (
     <div
       data-testid="pdf-margin-hit-strip"
-      className="absolute inset-y-0 right-0 cursor-pointer"
+      className="absolute inset-y-0 right-0 z-10 cursor-pointer"
       style={{ width: `var(--pdf-strip-w, ${STRIP_W_PHONE}px)`, touchAction: "manipulation" }}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
