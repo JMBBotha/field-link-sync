@@ -44,11 +44,11 @@ interface Props {
 
 type MicPhase = "idle" | "listening" | "transcribing";
 type ClientPrompt =
-  | { type: "customer_pick"; hits: CustomerSearchResult[] }
+  | { type: "customer_pick"; hits: CustomerSearchResult[]; query: string }
+  | { type: "no_match"; query: string }
   | { type: "new_client_phone"; name: string; address?: string | null };
 
-const customerLabel = (c: CustomerSearchResult) =>
-  [c.company_name, [c.first_name, c.last_name].filter(Boolean).join(" ")].filter(Boolean).join(" — ") || c.phone;
+const customerLabel = clientDisplayName;
 
 const EXAMPLE = "Main bedroom 18,000 BTU AR4500 Samsung. Outside wall so back-to-back, three metres of piping, quarter and half with lagging. Five metre drain pipe with three elbows. Labour about three hours. Lounge 12,000 BTU…";
 
