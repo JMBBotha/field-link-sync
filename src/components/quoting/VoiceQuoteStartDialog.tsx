@@ -201,13 +201,27 @@ export default function VoiceQuoteStartDialog() {
           <div className="space-y-3">
             <p className="text-sm text-foreground">{reply}</p>
             {heard && <p className="text-xs text-muted-foreground">Heard: “{heard}”</p>}
-            {hits.length > 0 && (
+            {(hits.length > 0 || (!!lastQuery && !pendingNew)) && (
               <div className="flex flex-wrap gap-2">
                 {hits.map((c, i) => (
                   <Button key={c.id} type="button" size="sm" variant="outline" disabled={phase === "working"} onClick={() => void openQuoteFor(c.id, label(c))}>
                     {i + 1}. {label(c)} · {c.phone}
                   </Button>
                 ))}
+                {!!lastQuery && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={phase === "working"}
+                    onClick={() => { setHits([]); setPendingNew({ name: lastQuery, address: null }); say(`Phone number for ${lastQuery}?`); }}
+                  >
+                    Add as new client “{lastQuery}”
+                  </Button>
+                )}
+                {hits.length > 0 && (
+                  <Button type="button" size="sm" variant="ghost" disabled={phase === "working"} onClick={() => setHits([])}>None of these</Button>
+                )}
               </div>
             )}
             <div className="flex items-center gap-2">
