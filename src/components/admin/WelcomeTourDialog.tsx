@@ -11,9 +11,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { LayoutDashboard, Briefcase, MapPin, Sparkles } from "lucide-react";
 
+const MAX_AUTO_SHOWS = 3;
+
+const seenKey = (userId: string) => `welcome-tour-seen:${userId}`;
+const countKey = (userId: string) => `welcome-tour-auto-count:${userId}`;
+
 /**
- * One-time welcome dialog shown on first login per user.
- * Reversible: clear `welcome-tour-seen:<userId>` in localStorage to re-trigger.
+ * Welcome tour dialog. Auto-shows on at most the first 3 logins per user.
+ * "Don't show again" permanently dismisses it (`welcome-tour-seen:<userId>`);
+ * "Got it" closes for this session and counts one auto-show. After 3
+ * auto-shows without a permanent dismiss, it stops auto-showing entirely.
  */
 export function WelcomeTourDialog({ userId }: { userId: string }) {
   const [open, setOpen] = useState(false);
@@ -21,16 +28,23 @@ export function WelcomeTourDialog({ userId }: { userId: string }) {
 
   useEffect(() => {
     if (!userId) return;
-    const key = `welcome-tour-seen:${userId}`;
-    if (!localStorage.getItem(key)) {
-      // Small delay so it doesn't fight the initial page render
-      const t = setTimeout(() => setOpen(true), 600);
-      return () => clearTimeout(t);
-    }
+    if (localStorage.getItem(seenKey(userId))) return;
+    const count = Number(localStorage.getItem(countKey(userId)) || "0");
+    if (count >= MAX_AUTO_SHOWS) return;
+    // Small delay so it doesn't fight the initial page render
+    const t = setTimeout(() => {
+      localStorage.setItem(countKey(userId), String(count + 1));
+      setOpen(true);
+    }, 600);
+    return () => clearTimeout(t);
   }, [userId]);
 
-  const dismiss = () => {
-    if (userId) localStorage.setItem(`welcome-tour-seen:${userId}`, "1");
+  /** Close for this session only — may return on later logins (up to 3 total). */
+  const dismissForNow = () => setOpen(false);
+
+  /** Permanently dismiss — never auto-show again. */
+  const dismissPermanently = () => {
+    if (userId) localStorage.setItem(seenKey(userId), "1");
     setOpen(false);
   };
 
@@ -48,7 +62,7 @@ export function WelcomeTourDialog({ userId }: { userId: string }) {
       ];
 
   return (
-    <Dialog open={open} onOpenChange={(v) => (v ? setOpen(true) : dismiss())}>
+    <Dialog open={open} onOpenChange={(v) => (v ? setOpen(true) : dismissForNow())}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -74,8 +88,11 @@ export function WelcomeTourDialog({ userId }: { userId: string }) {
           ))}
         </ul>
 
-        <DialogFooter>
-          <Button onClick={dismiss} className="w-full sm:w-auto">
+        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+          <Button variant="ghost" onClick={dismissPermanently} className="w-full sm:w-auto text-muted-foreground">
+            Don't show again
+          </Button>
+          <Button onClick={dismissForNow} className="w-full sm:w-auto">
             Got it — let's go
           </Button>
         </DialogFooter>
