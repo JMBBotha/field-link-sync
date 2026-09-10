@@ -8,7 +8,7 @@
 import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
 
 export const MAX_CLIENT_CHIPS = 5;
-const AUTO_RELEVANCE = 0.55;
+
 const MIN_NAME_RELEVANCE = 0.3;
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
@@ -52,7 +52,12 @@ export function rankClientHits(query: string, hits: CustomerSearchResult[]): Cus
     .slice(0, MAX_CLIENT_CHIPS);
 }
 
-/** Only auto-assign when we are genuinely confident. */
+/**
+ * Only auto-assign on an exact / clear substring name match, or a strong
+ * phone/email hit. A high relevance that comes only from `search_aliases`
+ * (STT mishearing "Vickers Schumann" for Wicus Schoeman) must NOT auto-assign —
+ * it shows pick chips instead.
+ */
 export function isHighConfidence(query: string, c: CustomerSearchResult): boolean {
-  return (c.relevance ?? 0) >= AUTO_RELEVANCE || isClearNameMatch(query, c) || isStrongIdentifierMatch(query, c);
+  return isClearNameMatch(query, c) || isStrongIdentifierMatch(query, c);
 }
