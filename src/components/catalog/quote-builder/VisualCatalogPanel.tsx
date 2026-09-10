@@ -83,6 +83,11 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const [zoom, setZoom] = useState(1);
   const zoomRef = useRef(1);
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  /** Whole-page ("page view") mode: fits a full page in view, works in landscape. */
+  const [pageView, setPageView] = useState(false);
+  const [minZoom, setMinZoom] = useState(MIN_ZOOM);
+  const minZoomRef = useRef(MIN_ZOOM);
+  useEffect(() => { minZoomRef.current = minZoom; }, [minZoom]);
   const zoomInnerRef = useRef<HTMLDivElement | null>(null);
   const zoomSpacerRef = useRef<HTMLDivElement | null>(null);
   const [animateZoom, setAnimateZoom] = useState(false);
