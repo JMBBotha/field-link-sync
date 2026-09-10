@@ -39,6 +39,7 @@ export default function VoiceQuoteStartDialog() {
   const [heard, setHeard] = useState("");
   const [typed, setTyped] = useState("");
   const [hits, setHits] = useState<CustomerSearchResult[]>([]);
+  const [lastQuery, setLastQuery] = useState("");
   const [pendingNew, setPendingNew] = useState<{ name: string; address: string | null } | null>(null);
   const recRef = useRef<WavRecorder | null>(null);
 
