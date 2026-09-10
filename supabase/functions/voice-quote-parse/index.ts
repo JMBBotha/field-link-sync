@@ -60,8 +60,8 @@ Deno.serve(async (req) => {
   if (!auth.ok) return auth.response;
   const userId = auth.userId;
 
+  // Gateway key is only needed by the parse/audit paths; transcribe uses OpenAI Whisper.
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!apiKey) return json({ error: "AI is not configured (missing LOVABLE_API_KEY)." }, 500);
 
   const db = createClient(
     Deno.env.get("SUPABASE_URL")!,
