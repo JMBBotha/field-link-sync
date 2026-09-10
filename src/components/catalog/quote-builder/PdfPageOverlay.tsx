@@ -274,15 +274,15 @@ const RegionBox = memo(({
           onPointerDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
-          className="flex h-10 w-9 items-center justify-center rounded-full transition-colors hover:scale-110"
+          className="flex h-7 w-7 sm:h-10 sm:w-9 items-center justify-center rounded-full transition-colors hover:scale-110"
           title={isFavorite ? "★ Favorite (double-click to unfavorite)" : isSelected ? "Added to quote (double-click to favorite)" : "Add to quote (double-click to favorite)"}
         >
           {isSelected ? (
-            <CheckCircle2 className="h-5 w-5" style={{ color: isFavorite ? "hsl(45 93% 47%)" : "hsl(var(--success))" }} />
+            <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: isFavorite ? "hsl(45 93% 47%)" : "hsl(var(--success))" }} />
           ) : (
-            <span className="relative flex items-center justify-center h-5 w-5">
-              <Circle className="h-5 w-5 text-muted-foreground opacity-70" />
-              <span className="absolute h-2.5 w-2.5 rounded-full bg-muted-foreground/80" />
+            <span className="relative flex items-center justify-center h-4 w-4 sm:h-5 sm:w-5">
+              <Circle className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground opacity-70" />
+              <span className="absolute h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full bg-muted-foreground/80" />
             </span>
           )}
         </button>
