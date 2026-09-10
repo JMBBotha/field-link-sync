@@ -144,7 +144,7 @@ const selectRegion = (
 };
 
 /**
- * Visual-only row: gradient pill in the right margin + painted info/radio icons.
+ * Visual-only row: wide glass wash from the right margin + painted info/radio icons.
  * No pointer handling here — the MarginHitStrip owns taps so the hit-test
  * always matches the painted row (rows on a phone are ~10px tall; per-row
  * buttons taller than that stacked over each other and stole taps 2-3 rows away).
@@ -167,10 +167,10 @@ const RegionBox = memo(({
   onOpenProductInfo?: (product: PaletteProduct) => void;
 }) => {
   const pillBackground = isFavorite
-    ? "linear-gradient(to left, hsl(45 93% 47% / 0.36) 0%, hsl(45 93% 47% / 0.24) 55%, hsl(45 93% 47% / 0.08) 85%, transparent 100%)"
+    ? "linear-gradient(to left, hsl(45 93% 47% / 0.55) 0%, hsl(45 93% 47% / 0.38) 35%, hsl(45 93% 47% / 0.18) 70%, transparent 100%)"
     : isSelected
-      ? "linear-gradient(to left, hsl(var(--success) / 0.36) 0%, hsl(var(--success) / 0.24) 55%, hsl(var(--success) / 0.08) 85%, transparent 100%)"
-      : "linear-gradient(to left, hsl(var(--muted-foreground) / 0.35) 0%, hsl(var(--muted-foreground) / 0.22) 55%, hsl(var(--muted-foreground) / 0.08) 85%, transparent 100%)";
+      ? "linear-gradient(to left, hsl(var(--success) / 0.55) 0%, hsl(var(--success) / 0.38) 35%, hsl(var(--success) / 0.18) 70%, transparent 100%)"
+      : "linear-gradient(to left, hsl(215 18% 42% / 0.55) 0%, hsl(215 16% 45% / 0.38) 35%, hsl(215 14% 50% / 0.18) 70%, transparent 100%)";
 
   return (
     <div
@@ -186,10 +186,10 @@ const RegionBox = memo(({
       onMouseLeave={() => onHoverEnd?.()}
       onClick={() => onOpenProductInfo?.(regionProduct(region))}
     >
-      {/* Short right-edge pill — hugs the page margin, never sweeps over R amounts */}
+      {/* Wide right-edge glass wash — extends ~60% from the right, fading left so prices stay readable */}
       <div
-        className="absolute inset-y-0 right-0 pointer-events-none w-[38px] sm:w-[52px]"
-        style={{ background: pillBackground, borderRadius: "9999px 0 0 9999px" }}
+        className="absolute inset-y-0 pointer-events-none"
+        style={{ left: "40%", right: 0, background: pillBackground, borderRadius: "9999px 0 0 9999px" }}
       />
 
       {/* Favorite star badge — top-left of the row */}
@@ -202,25 +202,25 @@ const RegionBox = memo(({
         </div>
       )}
 
-      {/* Painted controls — anchored to the PAGE right edge; icon size clamps to row height */}
+      {/* Painted controls — anchored to the PAGE right edge; smaller icons, still thumb-friendly */}
       <div
         className="absolute inset-y-0 flex items-center gap-[2px] sm:gap-1 pointer-events-none"
         style={{ right: `${CONTROL_RIGHT_PX}px` }}
       >
         <Info
-          className="w-auto aspect-square text-primary opacity-75 h-[clamp(8px,100%,12px)] sm:h-[clamp(10px,100%,16px)]"
+          className="w-auto aspect-square text-primary opacity-90 h-[clamp(7px,100%,10px)] sm:h-[clamp(9px,100%,14px)]"
           aria-hidden
         />
         {isSelected ? (
           <CheckCircle2
-            className="w-auto aspect-square h-[clamp(9px,100%,14px)] sm:h-[clamp(11px,100%,20px)]"
+            className="w-auto aspect-square h-[clamp(8px,100%,12px)] sm:h-[clamp(10px,100%,16px)]"
             style={{ color: isFavorite ? "hsl(45 93% 47%)" : "hsl(var(--success))" }}
             aria-hidden
           />
         ) : (
-          <span className="relative flex items-center justify-center h-[clamp(9px,100%,14px)] sm:h-[clamp(11px,100%,20px)] aspect-square">
-            <Circle className="h-full w-auto aspect-square text-muted-foreground opacity-80" aria-hidden />
-            <span className="absolute rounded-full bg-muted-foreground/80" style={{ width: "45%", height: "45%" }} />
+          <span className="relative flex items-center justify-center h-[clamp(8px,100%,12px)] sm:h-[clamp(10px,100%,16px)] aspect-square">
+            <Circle className="h-full w-auto aspect-square text-muted-foreground opacity-90" aria-hidden />
+            <span className="absolute rounded-full bg-muted-foreground/90" style={{ width: "45%", height: "45%" }} />
           </span>
         )}
       </div>
