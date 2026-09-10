@@ -90,6 +90,8 @@ const AdminLayout = () => {
     "/admin/companies": "Company Management",
   };
   const pageTitle = pageTitles[location.pathname] || "Admin Dashboard";
+  // Map pages are map-hero: no fat mobile search band (header search icon covers it)
+  const isMapPage = location.pathname === "/admin/map" || location.pathname === "/admin/jobs-map";
 
   const { data: pendingRequestsCount = 0 } = useQuery({
     queryKey: ["pending-change-requests-count"],
