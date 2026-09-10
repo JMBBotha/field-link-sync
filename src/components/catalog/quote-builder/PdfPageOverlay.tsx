@@ -168,6 +168,7 @@ const RegionBox = memo(({
   region,
   isSelected,
   isFavorite,
+  isInfoPressed,
   onHoverStart,
   onHoverMove,
   onHoverEnd,
@@ -176,6 +177,7 @@ const RegionBox = memo(({
   region: OverlayRegion;
   isSelected: boolean;
   isFavorite: boolean;
+  isInfoPressed?: boolean;
   onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent, priceOverride?: number | null) => void;
   onHoverMove?: (e: React.MouseEvent) => void;
   onHoverEnd?: () => void;
