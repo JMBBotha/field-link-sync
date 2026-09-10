@@ -290,6 +290,7 @@ const PdfPageOverlay = ({
   onHoverMove,
   onHoverEnd,
   favoriteIds,
+  priceColumnXFrac,
 }: PdfPageOverlayProps) => {
   if (regions.length === 0) return null;
   return (
