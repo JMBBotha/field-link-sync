@@ -24,6 +24,8 @@ export interface OverlayRegion {
 
 /** Only trust a price-column x that sits in the right half of the page. */
 const MIN_PRICE_X_FRAC = 0.55;
+/** Clear gap between the controls' right edge and the price column's left edge. */
+const PRICE_GAP_PX = 28;
 
 const resolveControlPosition = (
   regionPriceXFrac?: number | null,
@@ -32,11 +34,13 @@ const resolveControlPosition = (
   const candidates = [regionPriceXFrac, pagePriceXFrac];
   for (const c of candidates) {
     if (typeof c === "number" && Number.isFinite(c) && c >= MIN_PRICE_X_FRAC && c <= 1) {
-      return { left: `calc(${(c * 100).toFixed(2)}% - 54px)` };
+      // Anchor the controls' RIGHT edge a clear gap left of the price cell,
+      // so nothing sits on top of the R amounts.
+      return { right: `calc(${((1 - c) * 100).toFixed(2)}% + ${PRICE_GAP_PX}px)` };
     }
   }
-  // Fallback: hug the right edge of the page box (never page-center).
-  return { right: "12px" };
+  // Fallback: still on the white page, ~5% inset from the right edge.
+  return { right: "5%" };
 };
 
 interface PdfPageOverlayProps {
