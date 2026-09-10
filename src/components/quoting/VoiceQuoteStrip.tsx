@@ -82,6 +82,7 @@ export default function VoiceQuoteStrip({ vatRate, onChanged }: Props) {
   const [reply, setReply] = useState("Tap the mic and describe the whole job — rooms, unit, piping, drain, labour — then confirm once.");
   const [breakdown, setBreakdown] = useState<SceneBreakdown | null>(null);
   const [clientPrompt, setClientPrompt] = useState<ClientPrompt | null>(null);
+  const [clientDraft, setClientDraft] = useState<VoiceClientDraft>(emptyClientDraft());
   const [saving, setSaving] = useState(false);
 
   const recorderRef = useRef<WavRecorder | null>(null);
