@@ -1449,17 +1449,12 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
 
 
 
-          {/* Status Filter Buttons — merged into bottom bar as a notched tab */}
+          {/* Status filters — discreet top-of-map chips, desktop only (parents render header chips on smaller screens) */}
           {mapLoaded && !hideStatusFilters && (
-            <div
-              className="absolute bottom-[calc(1rem+4px)] sm:bottom-[calc(1.5rem+4px)] left-1/2 -translate-x-1/2 z-30 max-w-[calc(100%-1rem)] border border-[#0077B6]/60 shadow-xl pt-3 pb-1 px-4 sm:px-6 pointer-events-auto rounded-t-2xl rounded-b-md overflow-hidden"
-              style={{
-                background: "linear-gradient(180deg, #0077B6 0%, #005B8C 100%)",
-              }}
-            >
+            <div className="hidden lg:block absolute top-3 left-1/2 -translate-x-1/2 z-30 max-w-[calc(100%-1rem)] pointer-events-auto rounded-full border border-border/50 bg-background/90 backdrop-blur-md px-1.5 py-1 shadow-sm">
               <StatusFilterButtons
-                compact
-                className="!bg-transparent !border-0 !shadow-none !backdrop-blur-none !rounded-none !p-0 flex-nowrap overflow-x-auto scrollbar-hide max-w-[min(92vw,32rem)]"
+                variant="quiet"
+                className="flex-nowrap max-w-[min(92vw,32rem)]"
                 activeFilters={statusFilters}
                 counts={{
                   pending: leads.filter((l) => l.status === "pending").length,
