@@ -212,7 +212,8 @@ const AdminMapPage = () => {
         {/* Status pills — inline on desktop, second scrollable row on small screens */}
         <div className="order-last w-full min-w-0 overflow-x-auto scrollbar-hide lg:order-none lg:w-auto lg:overflow-visible">
           <StatusFilterButtons
-            className="w-max flex-nowrap gap-1.5 sm:gap-2 px-1.5 py-1"
+            variant="quiet"
+            className="w-max flex-nowrap"
             activeFilters={statusState.filters}
             counts={statusState.counts}
             onToggle={handleStatusToggle}
