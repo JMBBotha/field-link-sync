@@ -62,10 +62,23 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
   const [invoice, setInvoice] = useState<any>(null);
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
   const [amountPaid, setAmountPaid] = useState(0);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const [showMobileBar, setShowMobileBar] = useState(false);
 
   useEffect(() => {
     fetchInvoice();
   }, [invoiceId]);
+
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setShowMobileBar(!entry.isIntersecting),
+      { threshold: 0 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [loading, invoice?.id]);
 
   const fetchInvoice = async () => {
     setLoading(true);
