@@ -406,6 +406,13 @@ const PdfPageOverlay = ({
   onHoverEnd,
   favoriteIds,
 }: PdfPageOverlayProps) => {
+  const [pressedInfoId, setPressedInfoId] = useState<string | null>(null);
+  const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleInfoPress = useCallback((regionId: string) => {
+    setPressedInfoId(regionId);
+    if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+    pressTimerRef.current = setTimeout(() => setPressedInfoId(null), INFO_PRESS_MS);
+  }, []);
   if (regions.length === 0) return null;
   return (
     <>
