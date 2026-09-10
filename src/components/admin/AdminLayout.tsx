@@ -205,11 +205,12 @@ const AdminLayout = () => {
               variant="ghost"
               size="sm"
               onClick={() => setSearchOpen(true)}
-              className="text-blue-100 hover:bg-white/10 hover:text-primary-foreground gap-1.5 hidden sm:flex"
+              className="text-blue-100 hover:bg-white/10 hover:text-primary-foreground gap-1.5"
+              title="Search (⌘K)"
             >
               <Search className="h-4 w-4" />
-              <span className="text-xs">Search</span>
-              <kbd className="ml-1 rounded border border-white/30 bg-white/10 px-1.5 py-0.5 text-[10px]">⌘K</kbd>
+              <span className="text-xs hidden sm:inline">Search</span>
+              <kbd className="ml-1 rounded border border-white/30 bg-white/10 px-1.5 py-0.5 text-[10px] hidden sm:inline">⌘K</kbd>
             </Button>
 
             <Button
@@ -241,19 +242,7 @@ const AdminLayout = () => {
         </header>
 
 
-        {/* Sticky mobile search bar (hidden on map pages — map is the hero) */}
-        {!isMapPage && (
-          <div className="shrink-0 sm:hidden sticky top-0 z-10 border-b px-3 py-2 bg-primary dark:bg-gradient-to-r dark:from-[#070e1a] dark:via-[#153258]/90 dark:to-[#070e1a] border-[#006699] dark:border-[#153258]">
-            <button
-              type="button"
-              onClick={() => setSearchOpen(true)}
-              className="flex w-full items-center gap-2 rounded-md bg-white/10 px-3 py-2 text-sm text-blue-100 transition-colors hover:bg-white/20"
-            >
-              <Search className="h-4 w-4 shrink-0" />
-              <span>Search leads, customers, suppliers, proposals…</span>
-            </button>
-          </div>
-        )}
+        {/* Mobile search lives in the header icon (GlobalSearchDialog) — no fat sticky strip */}
 
 
 
