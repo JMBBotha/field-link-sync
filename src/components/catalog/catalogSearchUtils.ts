@@ -5,7 +5,7 @@
 import Fuse from "fuse.js";
 import type { CatalogFilters, SortOption } from "./CatalogFilterBar";
 import { deriveCategoryFilterValue, getFilterConfig, type ProductCategory } from "./categoryFilterConfig";
-import { expandTerm } from "./searchSynonyms";
+import { expandTerm, productAliases, stripSpaces } from "./searchSynonyms";
 
 // ── Types ───────────────────────────────────────────────
 export interface SearchableProduct {
@@ -104,6 +104,9 @@ export function buildSearchBlob(p: SearchableProduct): string {
   }
   const speed = deriveSpeedType(p);
   if (speed) parts.push(speed);
+  // Spoken/typed aliases from the DB, plus a space-stripped copy ("coo 1" → "coo1")
+  const aliases = productAliases(p);
+  if (aliases.length) parts.push(...aliases, ...aliases.map(stripSpaces));
   return parts.join(" ");
 }
 
