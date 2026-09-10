@@ -1030,6 +1030,27 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onStatusFiltersChange
         : null;
       const safeAgent = escapeHtml(assignedAgentName);
 
+      // Deposit chip (same wording/colours as DepositPaymentChip; allocation-only truth)
+      const depInvoice = depositByLead.get(lead.id);
+      const depState = getDepositChipState(depInvoice, { accepted: false });
+      let depositChipHtml = "";
+      if (depInvoice && depState) {
+        const isPaid = depState === "paid";
+        const chipText =
+          depState === "paid"
+            ? "Deposit paid"
+            : depState === "partial"
+              ? `Partial · ${formatRand(getDepositRemaining(depInvoice) ?? 0)}`
+              : "Deposit due";
+        const chipBg = isPaid ? "#d1fae5" : "#fef3c7";
+        const chipBorder = isPaid ? "#6ee7b7" : "#fde68a";
+        const chipColor = isPaid ? "#047857" : "#b45309";
+        depositChipHtml = `
+            <div style="display: flex; align-items: center; gap: 6px; margin-top: 6px;">
+              <span style="background: ${chipBg}; border: 1px solid ${chipBorder}; color: ${chipColor}; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 9999px;">${chipText}</span>
+            </div>`;
+      }
+
       return `
         <div style="min-width: 240px; font-family: system-ui, -apple-system, sans-serif;">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
