@@ -42,6 +42,7 @@ export default function VoiceQuoteStartDialog() {
   const [hits, setHits] = useState<CustomerSearchResult[]>([]);
   const [lastQuery, setLastQuery] = useState("");
   const [pendingNew, setPendingNew] = useState<{ name: string; address: string | null } | null>(null);
+  const [draft, setDraft] = useState<VoiceClientDraft>(emptyClientDraft());
   const recRef = useRef<WavRecorder | null>(null);
 
   const canSpeak = typeof window !== "undefined" && "speechSynthesis" in window;
@@ -67,7 +68,7 @@ export default function VoiceQuoteStartDialog() {
     }
   };
 
-  const createCustomer = async (name: string, phone: string, address: string | null) => {
+  const createCustomer = async (name: string, phone: string, address: string | null, email?: string | null) => {
     setPhase("working");
     const [first, ...rest] = name.split(/\s+/);
     const company_id = await getUserCompanyId(user?.id);
@@ -83,6 +84,7 @@ export default function VoiceQuoteStartDialog() {
         company_id,
         primary_address_line1: address,
         address,
+        ...(email ? { email } : {}),
       })
       .select("id")
       .single();
