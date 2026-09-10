@@ -1021,6 +1021,7 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
                           onProductInfoOpen={handleProductInfoOpen}
                           hdMode={hdMode}
                           supplierType={supplierTypeMap[page.supplier_id]}
+                          onImageReady={handlePageImageReady}
                           registerRef={(el) => {
                             if (el) pageRefs.current.set(idx, el);
                             else pageRefs.current.delete(idx);
@@ -1174,6 +1175,7 @@ interface LazyPdfPageProps {
   onProductInfoOpen?: (product: PaletteProduct) => void;
   hdMode?: boolean;
   supplierType?: string;
+  onImageReady?: (pageIndex: number) => void;
 }
 
 const LazyPdfPage = ({
@@ -1201,6 +1203,7 @@ const LazyPdfPage = ({
   onProductInfoOpen,
   hdMode,
   supplierType,
+  onImageReady,
 }: LazyPdfPageProps) => {
   const queryClient = useQueryClient();
   const divRef = useRef<HTMLDivElement | null>(null);
@@ -1599,6 +1602,7 @@ const LazyPdfPage = ({
             loading="lazy"
             draggable={false}
             style={hdMode ? { imageRendering: "high-quality" as any } : undefined}
+            onLoad={() => onImageReady?.(pageIndex)}
           />
           {/* Show overlays for ALL regions (matched + unmatched) — works with live extraction or fallback */}
           {overlayRegions.length > 0 && (
