@@ -27,6 +27,7 @@ import { DEFAULT_LEAD_SOURCE } from "@/lib/leadSources";
 import type { CustomerSearchResult } from "@/hooks/useCustomerSearch";
 import VoiceBreakdownCard from "@/components/quoting/VoiceBreakdownCard";
 import { clientDisplayName, isHighConfidence, rankClientHits } from "@/lib/voiceClientMatch";
+import VoiceClientOverrideFields, { emptyClientDraft, type VoiceClientDraft } from "@/components/quoting/VoiceClientOverrideFields";
 import {
   buildSceneBreakdown,
   isSaveable,
