@@ -184,6 +184,7 @@ export default function VoiceQuoteStartDialog() {
       setHits([]);
       setPendingNew(null);
       setHeard("");
+      setLastQuery("");
     }
   }, [open, canSpeak]);
 
