@@ -432,9 +432,57 @@ const VisualCatalogPanel = ({ open, onClose, baskets, onAddProductToBasket, onAd
   const goToPage = useCallback((dir: number) => {
     const next = visiblePageIndex + dir;
     if (next < 0 || next >= pages.length) return;
-    setZoom(1);
+    setZoom((z) => Math.max(minZoomRef.current, Math.min(z, 1)));
     scrollToPage(next);
   }, [pages.length, visiblePageIndex, scrollToPage]);
+
+  /** Scale that makes one whole page fit the viewport height (page view). */
+  const computeFitPageZoom = useCallback(() => {
+    const container = scrollContainerRef.current;
+    const pageEl = pageRefs.current.get(visiblePageIndex) ?? pageRefs.current.get(0);
+    if (!container || !pageEl) return MIN_ZOOM;
+    const pageH = pageEl.offsetHeight;
+    if (pageH <= 0) return MIN_ZOOM;
+    const fit = (container.clientHeight - 8) / pageH;
+    return Math.max(0.25, Math.min(MIN_ZOOM, Math.round(fit * 100) / 100));
+  }, [visiblePageIndex]);
+
+  const togglePageView = useCallback(() => {
+    setAnimateZoom(true);
+    setPageView((prev) => {
+      const next = !prev;
+      if (next) {
+        const fit = computeFitPageZoom();
+        setMinZoom(fit);
+        minZoomRef.current = fit;
+        setZoom(fit);
+      } else {
+        setMinZoom(MIN_ZOOM);
+        minZoomRef.current = MIN_ZOOM;
+        setZoom(MIN_ZOOM);
+      }
+      return next;
+    });
+  }, [computeFitPageZoom]);
+
+  // Re-fit the whole page when the device rotates or the viewport resizes.
+  useEffect(() => {
+    if (!open || !pageView) return;
+    const refit = () => {
+      const fit = computeFitPageZoom();
+      setMinZoom(fit);
+      minZoomRef.current = fit;
+      setZoom((z) => (z <= minZoomRef.current + 0.02 || z < fit ? fit : z));
+    };
+    const t = setTimeout(refit, 150);
+    window.addEventListener("resize", refit);
+    window.addEventListener("orientationchange", refit);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("resize", refit);
+      window.removeEventListener("orientationchange", refit);
+    };
+  }, [open, pageView, computeFitPageZoom]);
 
   // Two-finger pinch zoom on the PDF scroll container.
   // Updates the same `zoom` state the +/- buttons use, so pages never remount.
