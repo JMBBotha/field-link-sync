@@ -732,6 +732,24 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
      Quote Summary headers/content entirely so the palette fills the screen */
   const [paletteMaximized, setPaletteMaximized] = useState(false);
 
+  /* Phone/tablet: Products / Area Quote / Quote Summary are three full pages
+     you swipe-scroll through vertically, or step through with Next/Back. */
+  const areaPagesRef = useRef<HTMLDivElement>(null);
+  const [areaPage, setAreaPage] = useState(0);
+  const goToAreaPage = useCallback((index: number) => {
+    const container = areaPagesRef.current;
+    if (!container) return;
+    const clamped = Math.max(0, Math.min(2, index));
+    container.scrollTo({ top: clamped * container.clientHeight, behavior: "smooth" });
+    setAreaPage(clamped);
+  }, []);
+  const handleAreaPagesScroll = useCallback(() => {
+    const container = areaPagesRef.current;
+    if (!container || container.clientHeight === 0) return;
+    const idx = Math.round(container.scrollTop / container.clientHeight);
+    setAreaPage((prev) => (prev === idx ? prev : Math.max(0, Math.min(2, idx))));
+  }, []);
+
   const handleGenerateQuote = useCallback(async () => {
     if (!quoteId) return;
     if (displayQuoteTotals.itemCount === 0) {
@@ -1043,126 +1061,123 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
             </div>
           </div>
         }
-        {!ctxLoading && activeTab === "area" &&
-        <div className="h-full flex flex-col lg:flex-row overflow-hidden">
-            {/* Product Palette — collapsible full-screen section on mobile, left sidebar on desktop */}
-            {isCompact && (
-              <div className="shrink-0 flex items-center w-full border-b bg-card">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (paletteMaximized) return;
-                    toggleSection("palette");
-                  }}
-                  className="flex-1 flex items-center justify-between px-3 py-2 text-xs font-semibold text-foreground"
+        {!ctxLoading && activeTab === "area" && (() => {
+          const paletteEl = (
+            <ProductPalette
+              products={areaFilteredProducts}
+              isLoading={false}
+              searchQuery={areaSearch}
+              onSearchChange={setAreaSearch}
+              categoryFilter={areaCategoryFilter}
+              onCategoryChange={setAreaCategoryFilter}
+              isDragging={false}
+              favorites={areaFavorites}
+              onToggleFavorite={() => {}}
+              usageMap={areaUsageMap}
+              bundles={bundles}
+              baskets={areaPickerBaskets}
+              onAddProductToBasket={(areaId, product) => {
+                if (areaId === "__auto__") areaAddProductRef.current?.(product);
+                else areaDropProductToAreaRef.current?.(areaId, product);
+              }}
+              onAddBundleToBasket={(areaId, bundle) => {
+                if (areaId === "__auto__") {
+                  toast({ title: "Create an area first", description: "Add an area, then tap the bundle to apply it." });
+                  return;
+                }
+                areaDropBundleToAreaRef.current?.(areaId, bundle);
+              }}
+              pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
+              onPopOutSelected={() => setFloatingOpen(true)}
+            />
+          );
+          const areaEl = (
+            <AreaQuoteBuilderInline
+              products={products}
+              bundles={bundles}
+              onSave={handleWizardSave}
+              onPdfSearch={pdfSearchRef.current || undefined}
+              onAreasChange={setWizardAreas}
+              onAddProductRef={areaAddProductRef}
+              onDropProductToAreaRef={areaDropProductToAreaRef}
+              onDropBundleToAreaRef={areaDropBundleToAreaRef}
+              pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
+              initialAreas={initialWizardAreas}
+              onGenerateQuote={handleGenerateQuote}
+              generating={generating}
+            />
+          );
+          const summaryEl = (
+            <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
+          );
+
+          if (isCompact) {
+            const pageLabels = ["Products", "Area Quote", "Quote Summary"];
+            return (
+              <div className="h-full flex flex-col overflow-hidden">
+                <div
+                  ref={areaPagesRef}
+                  onScroll={handleAreaPagesScroll}
+                  className="flex-1 min-h-0 overflow-y-auto snap-y snap-mandatory scroll-smooth"
+                  style={{ WebkitOverflowScrolling: "touch" as any }}
                 >
-                  <span className="flex items-center gap-1.5">
-                    {openSections.palette || paletteMaximized ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                    Product Palette
-                  </span>
-                  <span className="text-[10px] font-normal text-muted-foreground">{areaFilteredProducts.length} items</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPaletteMaximized((v) => !v)}
-                  className="shrink-0 flex items-center gap-1 px-3 py-2 text-[10px] font-medium text-muted-foreground hover:text-foreground border-l"
-                  title={paletteMaximized ? "Exit full screen" : "Full screen"}
-                >
-                  {paletteMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-                  {paletteMaximized ? "Exit" : "Full page"}
-                </button>
+                  <section className="h-full snap-start flex flex-col min-h-0 overflow-hidden pl-2 py-1">
+                    {paletteEl}
+                  </section>
+                  <section className="h-full snap-start flex flex-col min-h-0 overflow-hidden p-1">
+                    {areaEl}
+                  </section>
+                  <section className="h-full snap-start overflow-y-auto bg-card p-3">
+                    {summaryEl}
+                  </section>
+                </div>
+                <div className="shrink-0 flex items-center justify-between gap-2 border-t bg-card px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => goToAreaPage(areaPage - 1)}
+                    disabled={areaPage === 0}
+                    className="text-xs font-medium text-muted-foreground disabled:opacity-40 px-2 py-1"
+                  >
+                    Back
+                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {pageLabels.map((label, i) => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => goToAreaPage(i)}
+                        className={`h-1.5 rounded-full transition-all ${areaPage === i ? "w-6 bg-primary" : "w-1.5 bg-muted-foreground/40"}`}
+                        aria-label={label}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => goToAreaPage(areaPage + 1)}
+                    disabled={areaPage === 2}
+                    className="text-xs font-semibold text-primary disabled:opacity-40 px-2 py-1"
+                  >
+                    {areaPage === 0 ? "Next: Area Quote" : areaPage === 1 ? "Next: Summary" : "Next"}
+                  </button>
+                </div>
               </div>
-            )}
-            <div className={`w-full lg:w-[280px] lg:shrink-0 flex flex-col min-h-0 overflow-hidden pl-2 py-1 lg:border-b-0 ${
-              isCompact ? (paletteMaximized || openSections.palette ? "flex-1" : "hidden") : ""
-            }`}>
-              <ProductPalette
-                products={areaFilteredProducts}
-                isLoading={false}
-                searchQuery={areaSearch}
-                onSearchChange={setAreaSearch}
-                categoryFilter={areaCategoryFilter}
-                onCategoryChange={setAreaCategoryFilter}
-                isDragging={false}
-                favorites={areaFavorites}
-                onToggleFavorite={() => {}}
-                usageMap={areaUsageMap}
-                bundles={bundles}
-                baskets={areaPickerBaskets}
-                onAddProductToBasket={(areaId, product) => {
-                  if (areaId === "__auto__") areaAddProductRef.current?.(product);
-                  else areaDropProductToAreaRef.current?.(areaId, product);
-                }}
-                onAddBundleToBasket={(areaId, bundle) => {
-                  if (areaId === "__auto__") {
-                    toast({ title: "Create an area first", description: "Add an area, then tap the bundle to apply it." });
-                    return;
-                  }
-                  areaDropBundleToAreaRef.current?.(areaId, bundle);
-                }}
-                pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
-                onPopOutSelected={() => setFloatingOpen(true)}
-              />
-            </div>
+            );
+          }
 
-            {/* Area Builder — center / collapsible full-screen section on mobile */}
-            {isCompact && !paletteMaximized && (
-              <button
-                type="button"
-                onClick={() => toggleSection("areas")}
-                className="shrink-0 flex items-center justify-between w-full px-3 py-2 border-b bg-card text-xs font-semibold text-foreground"
-              >
-                <span className="flex items-center gap-1.5">
-                  {openSections.areas ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                  Area Quote
-                </span>
-                <span className="text-[10px] font-normal text-muted-foreground">
-                  {wizardAreas.length} area{wizardAreas.length !== 1 ? "s" : ""}
-                </span>
-              </button>
-            )}
-            <div className={`min-w-0 min-h-0 overflow-hidden p-1 ${
-              isCompact ? (openSections.areas && !paletteMaximized ? "flex-1" : "hidden") : "flex-1"
-            }`}>
-              <AreaQuoteBuilderInline
-                products={products}
-                bundles={bundles}
-                onSave={handleWizardSave}
-                onPdfSearch={pdfSearchRef.current || undefined}
-                onAreasChange={setWizardAreas}
-                onAddProductRef={areaAddProductRef}
-                onDropProductToAreaRef={areaDropProductToAreaRef}
-                onDropBundleToAreaRef={areaDropBundleToAreaRef}
-                pdfSelection={{ selectedFromPdf, setSelectedFromPdf, handleSelectProduct, updateSelectedItem }}
-                initialAreas={initialWizardAreas}
-                onGenerateQuote={handleGenerateQuote}
-                generating={generating}
-              />
+          return (
+            <div className="h-full flex flex-col lg:flex-row overflow-hidden">
+              <div className="w-full lg:w-[280px] lg:shrink-0 flex flex-col min-h-0 overflow-hidden pl-2 py-1 lg:border-b-0">
+                {paletteEl}
+              </div>
+              <div className="min-w-0 min-h-0 overflow-hidden p-1 flex-1">
+                {areaEl}
+              </div>
+              <div className="w-full lg:w-[320px] lg:shrink-0 lg:border-t-0 lg:border-l overflow-y-auto bg-card p-3 lg:max-h-none shrink-0 border-t">
+                {summaryEl}
+              </div>
             </div>
-
-            {/* Summary — collapsible full-screen section on mobile, right sidebar on desktop */}
-            {isCompact && !paletteMaximized && (
-              <button
-                type="button"
-                onClick={() => toggleSection("summary")}
-                className="shrink-0 flex items-center justify-between w-full px-3 py-2 border-t bg-card text-xs font-semibold text-foreground"
-              >
-                <span className="flex items-center gap-1.5">
-                  {openSections.summary ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                  Quote Summary
-                </span>
-                <span className="text-[11px] font-bold text-primary tabular-nums">
-                  {formatRand(displayQuoteTotals.total)}
-                </span>
-              </button>
-            )}
-            <div className={`w-full lg:w-[320px] lg:shrink-0 lg:border-t-0 lg:border-l overflow-y-auto bg-card p-3 lg:max-h-none ${
-              isCompact ? (openSections.summary && !paletteMaximized ? "flex-1 min-h-0" : "hidden") : "shrink-0 border-t"
-            }`}>
-              <QuoteSummaryPanel baskets={displayBaskets} totals={displayQuoteTotals} quoteId={quoteId} onGenerateQuote={handleGenerateQuote} />
-            </div>
-          </div>
-        }
+          );
+        })()}
       </div>
 
       {/* Phone/tablet thumb bar: live total + primary Send, always visible

@@ -722,7 +722,7 @@ const ProductPalette = ({
   pdfSelection,
   onPopOutSelected,
 }: ProductPaletteProps) => {
-  const [selectedCollapsed, setSelectedCollapsed] = useState(false);
+  const [selectedCollapsed, setSelectedCollapsed] = useState(true);
   const recentIds = useMemo(() => getRecentProductIds(), [products]);
   const filteredProducts = useMemo(() => {
     let result = products;
