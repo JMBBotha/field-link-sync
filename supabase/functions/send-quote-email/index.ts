@@ -12,7 +12,7 @@ function formatZAR(value: number): string {
   return new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(value);
 }
 
-function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, totalAmount: number, unsubscribeUrl: string, quoteUrl?: string | null): string {
+function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, totalAmount: number, unsubscribeUrl: string, quoteUrl?: string | null, depositRequest = false): string {
   const formattedTotal = formatZAR(totalAmount);
   const currentYear = new Date().getFullYear();
 
@@ -46,7 +46,7 @@ function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, t
         Dear <strong>${clientName || "Valued Customer"}</strong>,
       </p>
       <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
-        Thank you for choosing 0800-BE-COOL! AC Super Service. We're pleased to present your air conditioning quotation. Please find the details below and the full quote PDF attached.
+        ${depositRequest ? "Thank you for accepting your quotation. Your 70% deposit invoice is ready; use the secure link below to review and pay." : "Thank you for choosing 0800-BE-COOL! AC Super Service. We're pleased to present your air conditioning quotation. Please find the details below and the full quote PDF attached."}
       </p>
 
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;margin-bottom:28px;">
@@ -79,7 +79,7 @@ function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, t
         <tr>
           <td align="center">
             <a href="${quoteUrl}" style="display:inline-block;background-color:#F59E0B;color:#1B3A5C;text-decoration:none;font-size:16px;font-weight:800;padding:14px 40px;border-radius:8px;letter-spacing:0.3px;">
-              View &amp; Accept Quote
+              ${depositRequest ? "View &amp; Pay Deposit" : "View &amp; Accept Quote"}
             </a>
           </td>
         </tr>
@@ -101,10 +101,10 @@ function buildHtmlEmail(clientName: string, quoteNumber: string, date: string, t
       </table>`}
 
       <p style="margin:0 0 8px;font-size:13px;color:#6b7280;line-height:1.5;">
-        ⏱ This quotation is valid for <strong>30 days</strong> from the date of issue. A 50% deposit is required upon acceptance.
+        ⏱ This quotation is valid for <strong>30 days</strong> from the date of issue. A 70% deposit is required upon acceptance.
       </p>
       <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.5;">
-        📎 The full itemised quotation PDF is attached to this email.
+        ${depositRequest ? "Your deposit invoice is available from the secure quote link above." : "📎 The full itemised quotation PDF is attached to this email."}
       </p>
     </td>
   </tr>
@@ -165,7 +165,7 @@ serve(async (req) => {
   if (!auth.ok) return auth.response;
 
   try {
-    const { to, subject, quoteNumber, clientName, pdfBase64, totalAmount, unsubscribeToken, quoteId, customerId, region, quoteUrl } =
+    const { to, subject, quoteNumber, clientName, pdfBase64, totalAmount, unsubscribeToken, quoteId, customerId, region, quoteUrl, depositRequest } =
       await req.json();
 
     if (!to) {
@@ -235,8 +235,10 @@ serve(async (req) => {
       : baseSubject.trim();
 
     const date = new Date().toLocaleDateString("en-ZA");
-    const htmlBody = buildHtmlEmail(clientName, quoteNumber, date, totalAmount || 0, unsubscribeUrl, quoteUrl || null);
-    const textFallback = `Dear ${clientName || "Valued Customer"},\n\nYour quote ${quoteRef ? `(${quoteRef}) ` : ""}totalling ${formatZAR(totalAmount || 0)} is ready.${quoteUrl ? `\n\nView and accept it here: ${quoteUrl}` : ""}\n\nThis quote is valid for 30 days. To accept, reply to this email (keep the reference ${quoteRef || ""} in the subject) or call 0800 232 665.\n\nKind regards,\n0800-BE-COOL! Team`;
+    const htmlBody = buildHtmlEmail(clientName, quoteNumber, date, totalAmount || 0, unsubscribeUrl, quoteUrl || null, Boolean(depositRequest));
+    const textFallback = depositRequest
+      ? `Dear ${clientName || "Valued Customer"},\n\nYour 70% deposit invoice for quote ${quoteRef} is ready.${quoteUrl ? `\n\nView and pay it here: ${quoteUrl}` : ""}\n\nKind regards,\n0800-BE-COOL! Team`
+      : `Dear ${clientName || "Valued Customer"},\n\nYour quote ${quoteRef ? `(${quoteRef}) ` : ""}totalling ${formatZAR(totalAmount || 0)} is ready.${quoteUrl ? `\n\nView and accept it here: ${quoteUrl}` : ""}\n\nThis quote is valid for 30 days. A 70% deposit is required upon acceptance. To accept, reply to this email (keep the reference ${quoteRef || ""} in the subject) or call 0800 232 665.\n\nKind regards,\n0800-BE-COOL! Team`;
 
     const attachments: Array<{ filename: string; content: string }> = [];
     if (pdfBase64) {

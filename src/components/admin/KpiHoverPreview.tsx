@@ -11,6 +11,7 @@ import { ChevronRight, Briefcase, Send, Loader2, X } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { publicQuoteUrl } from "@/lib/publicAppUrl";
 
 
 export interface QuoteQuickAction {
@@ -22,6 +23,7 @@ export interface QuoteQuickAction {
   clientName: string;
   email: string | null;
   address: string | null;
+  publicToken: string | null;
 }
 
 export interface PreviewRow {
@@ -65,7 +67,7 @@ async function fetchPreview(kpiKey: string, today: string): Promise<PreviewRow[]
     case "pending_quotes": {
       const { data } = await supabase
         .from("quotes")
-        .select("id, quote_number, total, created_at, customer_id, company_id, customer_name, customers(name, email, address)")
+        .select("id, quote_number, total, created_at, customer_id, company_id, customer_name, public_token, customers(name, email, address)")
         .eq("status", "draft")
         .order("created_at", { ascending: false })
         .limit(5);
@@ -84,6 +86,7 @@ async function fetchPreview(kpiKey: string, today: string): Promise<PreviewRow[]
           clientName: q.customers?.name || q.customer_name || "",
           email: q.customers?.email || null,
           address: q.customers?.address || null,
+          publicToken: q.public_token || null,
         },
       }));
     }
@@ -219,6 +222,9 @@ const KpiHoverPreview = ({ kpiKey, label, viewAllHref, children }: Props) => {
           clientName: q.clientName,
           totalAmount: q.total,
           unsubscribeToken: crypto.randomUUID(),
+          quoteId: q.id,
+          customerId: q.customerId,
+          quoteUrl: q.publicToken ? publicQuoteUrl(q.publicToken) : null,
         },
       });
       if (error) throw error;

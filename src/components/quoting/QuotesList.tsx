@@ -40,6 +40,7 @@ import StatusPill from "@/components/shared/StatusPill";
 import { useToast } from "@/hooks/use-toast";
 import WhatsAppShareButton from "@/components/WhatsAppShareButton";
 import HelpTip from "@/components/help/HelpTip";
+import { publicQuoteUrl } from "@/lib/publicAppUrl";
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -506,7 +507,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                                   className="h-7 w-7"
                                   onClick={() => {
                                     navigator.clipboard.writeText(
-                                      `${window.location.origin}/${doc.kind === "proposal" ? "proposal" : "quote"}/${quote.public_token}`,
+                                      publicQuoteUrl(quote.public_token),
                                     );
                                     toast({ title: "Link copied! 🔗" });
                                   }}
@@ -516,7 +517,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                                 </Button>
                                 <WhatsAppShareButton
                                   phone={doc.clientPhone}
-                                  message={`Hi ${doc.clientName || "there"}, your ${doc.kind} ${doc.ref} for ${formatZAR(doc.total)} is ready. View it here: ${window.location.origin}/${doc.kind === "proposal" ? "proposal" : "quote"}/${quote.public_token}`}
+                                  message={`Hi ${doc.clientName || "there"}, your ${doc.kind} ${doc.ref} for ${formatZAR(doc.total)} is ready. View it here: ${publicQuoteUrl(quote.public_token)}`}
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7"

@@ -31,7 +31,7 @@ const defaultSettings: CompanySettings = {
   postal_address: "",
   logo_storage_path: "",
   default_hourly_rate: 450,
-  default_deposit_percentage: 50,
+  default_deposit_percentage: 70,
   default_payment_terms_days: 30,
   payfast_merchant_id: "",
   payfast_merchant_key: "",
@@ -48,6 +48,7 @@ export const useCompanySettings = () => {
       const { data, error } = await supabase
         .from("company_settings")
         .select("*")
+        .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle();
       if (error) throw error;
@@ -60,7 +61,7 @@ export const useCompanySettings = () => {
         postal_address: data.postal_address || "",
         logo_storage_path: data.logo_storage_path || "",
         default_hourly_rate: Number(data.default_hourly_rate) || 450,
-        default_deposit_percentage: Number(data.default_deposit_percentage) || 50,
+        default_deposit_percentage: Number(data.default_deposit_percentage) || 70,
         default_payment_terms_days: data.default_payment_terms_days || 30,
         payfast_merchant_id: data.payfast_merchant_id || "",
         payfast_merchant_key: data.payfast_merchant_key || "",

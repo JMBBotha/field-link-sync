@@ -255,7 +255,7 @@ serve(async (req) => {
     });
 
     if (tokenData) {
-      const baseUrl = Deno.env.get("APP_BASE_URL") || `https://${Deno.env.get("SUPABASE_PROJECT_REF")}-preview.lovable.app`;
+      const baseUrl = "https://field-link-sync.lovable.app";
       fullVariables.portal_link = `${baseUrl}/customer/${tokenData}`;
       fullVariables.feedback_link = `${baseUrl}/customer/${tokenData}/feedback`;
       if (invoice_id) {

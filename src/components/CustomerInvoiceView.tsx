@@ -11,6 +11,7 @@ import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { attachPaymentTotals } from "@/lib/depositInvoice";
 import { format } from "date-fns";
 import logo from "@/assets/logo.png";
+import { publicCustomerUrl } from "@/lib/publicAppUrl";
 
 interface LineItem {
   description: string;
@@ -263,6 +264,8 @@ const CustomerInvoiceView = () => {
                     amount={Number(selectedInvoice.grand_total)}
                     customerEmail={null}
                     customerName={selectedInvoice.customer_name}
+                    returnUrl={token ? publicCustomerUrl(token, invoiceId ? `invoice/${invoiceId}` : "") : undefined}
+                    cancelUrl={token ? publicCustomerUrl(token, invoiceId ? `invoice/${invoiceId}` : "") : undefined}
                   />
                 )}
               </div>

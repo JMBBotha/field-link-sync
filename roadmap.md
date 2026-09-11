@@ -23,3 +23,9 @@ Scope lock: equipment/materials come from the current Visual PDF book only.
 - [x] Pink/magenta price frames: confirm source (baked into uploaded page images, not app-drawn) and report
 - [x] Fix mobile tap selecting wrong row (hit-test in transformed overlay space)
 - [x] Smaller radios on phone (visual + hit target)
+
+## Published links, onboarding, and deposit journey (2026-09-11)
+- [x] Route shared quote/customer/payment URLs through the published app origin.
+- [x] Persist Welcome Tour dismissal and capped auto-show count on the user profile.
+- [x] Make accepted-quote deposit invoices deterministic at 70% and preserve invoice-row handoff gating.
+- [x] Add staff deposit Email, WhatsApp, and Copy link actions with honest email failures.

@@ -4181,6 +4181,8 @@ export type Database = {
           subscription_status: string
           trial_ends_at: string | null
           updated_at: string | null
+          welcome_tour_auto_count: number
+          welcome_tour_dismissed: boolean
           whatsapp_notifications: boolean | null
           workshop_address: string | null
           workshop_lat: number | null
@@ -4216,6 +4218,8 @@ export type Database = {
           subscription_status?: string
           trial_ends_at?: string | null
           updated_at?: string | null
+          welcome_tour_auto_count?: number
+          welcome_tour_dismissed?: boolean
           whatsapp_notifications?: boolean | null
           workshop_address?: string | null
           workshop_lat?: number | null
@@ -4251,6 +4255,8 @@ export type Database = {
           subscription_status?: string
           trial_ends_at?: string | null
           updated_at?: string | null
+          welcome_tour_auto_count?: number
+          welcome_tour_dismissed?: boolean
           whatsapp_notifications?: boolean | null
           workshop_address?: string | null
           workshop_lat?: number | null

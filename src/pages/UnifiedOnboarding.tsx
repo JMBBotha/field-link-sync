@@ -311,7 +311,7 @@ const UnifiedOnboarding = () => {
     physical_address: "",
     postal_address: "",
     default_hourly_rate: 450,
-    default_deposit_percentage: 50,
+    default_deposit_percentage: 70,
     default_payment_terms_days: 30,
     banking_details: { bank_name: "FNB", account_number: "", branch_code: "", account_type: "Cheque" },
   });

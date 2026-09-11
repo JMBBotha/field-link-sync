@@ -10,11 +10,13 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { LayoutDashboard, Briefcase, MapPin, Sparkles } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const MAX_AUTO_SHOWS = 3;
 
 const seenKey = (userId: string) => `welcome-tour-seen:${userId}`;
 const countKey = (userId: string) => `welcome-tour-auto-count:${userId}`;
+const sessionKey = (userId: string) => `welcome-tour-auto-shown:${userId}`;
 
 /**
  * Welcome tour dialog. Auto-shows on at most the first 3 logins per user.
@@ -28,24 +30,55 @@ export function WelcomeTourDialog({ userId }: { userId: string }) {
 
   useEffect(() => {
     if (!userId) return;
-    if (localStorage.getItem(seenKey(userId))) return;
-    const count = Number(localStorage.getItem(countKey(userId)) || "0");
-    if (count >= MAX_AUTO_SHOWS) return;
-    // Small delay so it doesn't fight the initial page render
-    const t = setTimeout(() => {
-      localStorage.setItem(countKey(userId), String(count + 1));
-      setOpen(true);
-    }, 600);
-    return () => clearTimeout(t);
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const load = async () => {
+      const localDismissed = localStorage.getItem(seenKey(userId)) === "1";
+      const localCount = Number(localStorage.getItem(countKey(userId)) || "0");
+      const { data } = await supabase
+        .from("profiles")
+        .select("welcome_tour_dismissed, welcome_tour_auto_count")
+        .eq("id", userId)
+        .maybeSingle();
+      if (cancelled) return;
+      const dismissed = localDismissed || data?.welcome_tour_dismissed === true;
+      const count = Math.max(localCount, Number(data?.welcome_tour_auto_count) || 0);
+      localStorage.setItem(countKey(userId), String(count));
+      if (dismissed) {
+        localStorage.setItem(seenKey(userId), "1");
+        if (localDismissed && !data?.welcome_tour_dismissed) {
+          await supabase.from("profiles").update({ welcome_tour_dismissed: true }).eq("id", userId);
+        }
+        return;
+      }
+      if (count >= MAX_AUTO_SHOWS || sessionStorage.getItem(sessionKey(userId))) return;
+      timer = setTimeout(async () => {
+        if (cancelled) return;
+        const nextCount = Math.min(MAX_AUTO_SHOWS, count + 1);
+        localStorage.setItem(countKey(userId), String(nextCount));
+        sessionStorage.setItem(sessionKey(userId), "1");
+        setOpen(true);
+        await supabase.from("profiles").update({ welcome_tour_auto_count: nextCount }).eq("id", userId);
+      }, 600);
+    };
+    void load();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, [userId]);
 
   /** Close for this session only — may return on later logins (up to 3 total). */
   const dismissForNow = () => setOpen(false);
 
   /** Permanently dismiss — never auto-show again. */
-  const dismissPermanently = () => {
+  const dismissPermanently = async () => {
     if (userId) localStorage.setItem(seenKey(userId), "1");
     setOpen(false);
+    if (userId) {
+      const { error } = await supabase.from("profiles").update({ welcome_tour_dismissed: true }).eq("id", userId);
+      if (error) console.error("Could not save welcome tour preference", error);
+    }
   };
 
   // Role-tailored quick tips

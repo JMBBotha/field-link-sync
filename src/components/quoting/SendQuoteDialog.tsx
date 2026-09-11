@@ -14,6 +14,7 @@ import EstimateDocument from "./EstimateDocument";
 import { buildClientRollup } from "@/lib/clientQuoteRollup";
 import WhatsAppShareButton from "@/components/WhatsAppShareButton";
 import { formatRand } from "@/utils/formatRand";
+import { publicQuoteUrl } from "@/lib/publicAppUrl";
 
 interface SendQuoteDialogProps {
   open: boolean;
@@ -157,7 +158,7 @@ const SendQuoteDialog = ({
 
   // Client link: /quote/:token → ClientProposalView (accept flow).
   const publicToken = quote?.public_token || null;
-  const clientUrl = publicToken ? `${window.location.origin}/quote/${publicToken}` : null;
+  const clientUrl = publicToken ? publicQuoteUrl(publicToken) : null;
   const shareMessage = clientUrl
     ? `Hi ${resolvedCustomerName}, your quote ${quoteNumber} for ${formatRand(total)} is ready. View and accept it here: ${clientUrl}`
     : "";
