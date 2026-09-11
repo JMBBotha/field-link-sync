@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Loader2, ReceiptText, HardHat, CheckCircle2, ArrowRight } from "lucide-react";
+import { Loader2, ReceiptText, HardHat, CheckCircle2, ArrowRight, Copy, Mail, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { publicQuoteUrl } from "@/lib/publicAppUrl";
 
 interface Props {
   quoteId: string;
@@ -61,7 +62,7 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("quotes")
-        .select("id, quote_number, status, company_id, customer_id, lead_id, customer_name, sales_engineer_id")
+        .select("id, quote_number, status, company_id, customer_id, lead_id, customer_name, sales_engineer_id, public_token, total, customers(email, phone, name)")
         .eq("id", quoteId)
         .maybeSingle();
       if (error) throw error;
@@ -102,6 +103,60 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
       toast({ title: "Could not create deposit invoice", description: e.message, variant: "destructive" });
     }
     setBusy(null);
+  };
+
+  const clientLink = quote?.public_token ? publicQuoteUrl(quote.public_token) : null;
+  const customer = quote?.customers as { email?: string | null; phone?: string | null; name?: string | null } | null;
+
+  const copyDepositLink = async () => {
+    if (!clientLink) return;
+    await navigator.clipboard.writeText(clientLink);
+    toast({ title: "Deposit link copied" });
+  };
+
+  const sendDepositWhatsApp = () => {
+    if (!clientLink) return;
+    const phone = (customer?.phone || "").replace(/\D/g, "").replace(/^0/, "27");
+    const message = `Hi ${customer?.name || quote?.customer_name || "there"}, your 70% deposit invoice for quote ${quote?.quote_number || ""} is ready. View and pay securely here: ${clientLink}`;
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+  };
+
+  const sendDepositEmail = async () => {
+    if (!customer?.email || !clientLink) {
+      toast({ title: "Client email unavailable", variant: "destructive" });
+      return;
+    }
+    setBusy("deposit-email");
+    try {
+      const { data, error } = await supabase.functions.invoke("send-quote-email", {
+        body: {
+          to: customer.email,
+          subject: `Your 70% deposit invoice — ${quote?.quote_number || "quote"}`,
+          quoteNumber: quote?.quote_number,
+          quoteId,
+          customerId: quote?.customer_id,
+          clientName: customer.name || quote?.customer_name,
+          totalAmount: Number(invoice?.grand_total) || Number(quote?.total) * 0.7 || 0,
+          quoteUrl: clientLink,
+          depositRequest: true,
+        },
+      });
+      const payload = data as { success?: boolean; code?: string; message?: string } | null;
+      if (error || payload?.code === "EMAIL_NOT_CONFIGURED" || payload?.success !== true) {
+        const detail = payload?.code === "EMAIL_NOT_CONFIGURED" ? "EMAIL_NOT_CONFIGURED" : payload?.message || error?.message;
+        throw new Error(detail || "Deposit email failed");
+      }
+      toast({ title: "Deposit request emailed" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Deposit email failed";
+      toast({
+        title: message.includes("EMAIL_NOT_CONFIGURED") ? "Email not configured" : "Email failed",
+        description: message.includes("EMAIL_NOT_CONFIGURED") ? "Use WhatsApp or Copy link instead." : message,
+        variant: "destructive",
+      });
+    } finally {
+      setBusy(null);
+    }
   };
 
   const handlePassToInstall = async () => {
@@ -232,9 +287,20 @@ const AcceptedWorkSection = ({ quoteId }: Props) => {
           )}
         </div>
         {hasDeposit ? (
-          <Button variant="outline" size="sm" onClick={() => navigate(`/admin/invoices?highlight=${invoice?.id}`)}>
-            View invoice <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-          </Button>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Button variant="outline" size="icon" onClick={sendDepositEmail} disabled={!clientLink || !customer?.email || busy === "deposit-email"} title="Email deposit request">
+              {busy === "deposit-email" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+            </Button>
+            <Button variant="outline" size="icon" onClick={sendDepositWhatsApp} disabled={!clientLink} title="WhatsApp deposit request">
+              <MessageCircle className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="outline" size="icon" onClick={copyDepositLink} disabled={!clientLink} title="Copy deposit link">
+              <Copy className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate(`/admin/invoices?highlight=${invoice?.id}`)}>
+              View invoice <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+            </Button>
+          </div>
         ) : (
           <Button size="sm" variant="brand" onClick={handleCreateDeposit} disabled={busy === "deposit"}>
             {busy === "deposit" && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}

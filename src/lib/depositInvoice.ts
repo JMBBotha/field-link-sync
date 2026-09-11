@@ -90,7 +90,7 @@ export async function fetchQuoteInvoiceByToken(token: string): Promise<DepositIn
 /**
  * Create the deposit invoice for an accepted quote.
  * Idempotent: the RPC returns the existing invoice id when one already exists.
- * Amount = quote total x company_settings.default_deposit_percentage (fallback 50%).
+ * Amount = quote total x the deterministic latest company setting (fallback 70%).
  */
 export async function ensureDepositInvoiceForQuote(quoteId: string): Promise<string> {
   const { data, error } = await supabase.rpc("create_deposit_invoice_for_quote", {

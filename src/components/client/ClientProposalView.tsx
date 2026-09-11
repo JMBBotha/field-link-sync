@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, CheckCircle, XCircle, Phone } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Phone, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import PayfastPayButton from "@/components/payments/PayfastPayButton";
@@ -15,6 +15,7 @@ import SignaturePad from "@/components/jobs/SignaturePad";
 import { fetchQuoteInvoiceByToken, type DepositInvoiceRow } from "@/lib/depositInvoice";
 import { isDepositCleared } from "@/components/shared/DepositPaymentChip";
 import logo from "@/assets/logo.png";
+import { publicQuoteUrl } from "@/lib/publicAppUrl";
 
 interface QuoteData {
   id: string;
@@ -362,7 +363,17 @@ const ClientProposalView = () => {
                     amount={Number(depositInvoice.grand_total) || 0}
                     customerEmail={null}
                     customerName={quote.accepted_by || "Customer"}
+                    returnUrl={token ? publicQuoteUrl(token) : undefined}
+                    cancelUrl={token ? publicQuoteUrl(token) : undefined}
                   />
+                )}
+                {token && (
+                  <Button type="button" variant="outline" size="sm" onClick={async () => {
+                    await navigator.clipboard.writeText(publicQuoteUrl(token));
+                    toast({ title: "Payment link copied" });
+                  }}>
+                    <Copy className="mr-2 h-4 w-4" /> Copy payment link
+                  </Button>
                 )}
               </div>
             </CardContent>

@@ -65,7 +65,7 @@ const BrandedQuotePreview = ({ open, onOpenChange, quote }: BrandedQuotePreviewP
   const grandTotal = afterDiscount + vatOnDiscounted;
 
   const defaultTerms = `1. This quotation is valid for 30 days from the date of issue.
-2. A 50% deposit is required upon acceptance to commence work.
+2. A 70% deposit is required upon acceptance to commence work.
 3. Balance due upon completion of work.
 4. All prices include 15% VAT as per South African law.
 5. Warranty: 12 months on parts, 90 days on labour.

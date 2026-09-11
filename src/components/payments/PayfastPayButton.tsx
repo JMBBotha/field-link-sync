@@ -2,6 +2,7 @@ import { useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { CreditCard, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { publicCustomerUrl } from "@/lib/publicAppUrl";
 
 interface PayfastPayButtonProps {
   invoiceId: string;
@@ -32,9 +33,8 @@ const PayfastPayButton = ({
   const formRef = useRef<HTMLFormElement>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const baseUrl = window.location.origin;
-  const defaultReturnUrl = returnUrl || `${baseUrl}/customer`;
-  const defaultCancelUrl = cancelUrl || `${baseUrl}/customer`;
+  const defaultReturnUrl = returnUrl || publicCustomerUrl();
+  const defaultCancelUrl = cancelUrl || publicCustomerUrl();
   const notifyUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/payfast-itn`;
 
   const handlePay = () => {

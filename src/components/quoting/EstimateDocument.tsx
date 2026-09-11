@@ -175,7 +175,7 @@ const EstimateDocument = ({
         company_name: companyOverride.company_name || "",
         physical_address: companyOverride.physical_address || "",
         vat_number: companyOverride.vat_number || "",
-        default_deposit_percentage: Number(companyOverride.default_deposit_percentage) || 50,
+        default_deposit_percentage: Number(companyOverride.default_deposit_percentage) || 70,
         default_payment_terms_days: Number(companyOverride.default_payment_terms_days) || 30,
         banking_details: companyOverride.banking_details || {},
       }
@@ -558,7 +558,7 @@ const EstimateDocument = ({
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Terms</p>
             <p className="mt-1 whitespace-pre-line">
               {cleanTerms ||
-                `This estimate is valid for 30 days from the date of issue. All prices exclude VAT, which is shown separately at ${vatPercent}%. A ${settings.default_deposit_percentage || 50}% deposit is payable on acceptance; the balance is due within ${settings.default_payment_terms_days || 30} days of completion.`}
+                `This estimate is valid for 30 days from the date of issue. All prices exclude VAT, which is shown separately at ${vatPercent}%. A ${settings.default_deposit_percentage || 70}% deposit is payable on acceptance; the balance is due within ${settings.default_payment_terms_days || 30} days of completion.`}
             </p>
           </div>
 
