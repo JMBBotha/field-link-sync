@@ -836,7 +836,7 @@ const ProductPalette = ({
                 </button>
               )}
             </div>
-            <div className="flex flex-wrap gap-1">
+            <div className="hidden sm:flex flex-wrap gap-1">
               {CATEGORIES.map((cat) => {
                 const Icon = cat.icon;
                 const isActive = categoryFilter === cat.value;
