@@ -732,6 +732,24 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
      Quote Summary headers/content entirely so the palette fills the screen */
   const [paletteMaximized, setPaletteMaximized] = useState(false);
 
+  /* Phone/tablet: Products / Area Quote / Quote Summary are three full pages
+     you swipe-scroll through vertically, or step through with Next/Back. */
+  const areaPagesRef = useRef<HTMLDivElement>(null);
+  const [areaPage, setAreaPage] = useState(0);
+  const goToAreaPage = useCallback((index: number) => {
+    const container = areaPagesRef.current;
+    if (!container) return;
+    const clamped = Math.max(0, Math.min(2, index));
+    container.scrollTo({ top: clamped * container.clientHeight, behavior: "smooth" });
+    setAreaPage(clamped);
+  }, []);
+  const handleAreaPagesScroll = useCallback(() => {
+    const container = areaPagesRef.current;
+    if (!container || container.clientHeight === 0) return;
+    const idx = Math.round(container.scrollTop / container.clientHeight);
+    setAreaPage((prev) => (prev === idx ? prev : Math.max(0, Math.min(2, idx))));
+  }, []);
+
   const handleGenerateQuote = useCallback(async () => {
     if (!quoteId) return;
     if (displayQuoteTotals.itemCount === 0) {
