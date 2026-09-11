@@ -836,7 +836,7 @@ const ProductPalette = ({
                 </button>
               )}
             </div>
-            <div className="flex flex-wrap gap-1">
+            <div className="hidden sm:flex flex-wrap gap-1">
               {CATEGORIES.map((cat) => {
                 const Icon = cat.icon;
                 const isActive = categoryFilter === cat.value;
@@ -847,7 +847,7 @@ const ProductPalette = ({
                     variant={isActive ? "default" : "outline"}
                     className={`cursor-pointer text-[10px] gap-0.5 px-1.5 py-0.5 ${
                       isFavorites && favorites.size > 0 ? "border-amber-400/50" : ""
-                    } ${!isFavorites ? "hidden sm:inline-flex" : ""}`}
+                    }`}
                     onClick={() => onCategoryChange(cat.value)}
                   >
                     <Icon className="h-2.5 w-2.5" />
