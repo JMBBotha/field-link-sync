@@ -840,18 +840,19 @@ const ProductPalette = ({
               {CATEGORIES.map((cat) => {
                 const Icon = cat.icon;
                 const isActive = categoryFilter === cat.value;
+                const isFavorites = cat.value === "favorites";
                 return (
                   <Badge
                     key={cat.value}
                     variant={isActive ? "default" : "outline"}
                     className={`cursor-pointer text-[10px] gap-0.5 px-1.5 py-0.5 ${
-                      cat.value === "favorites" && favorites.size > 0 ? "border-amber-400/50" : ""
-                    }`}
+                      isFavorites && favorites.size > 0 ? "border-amber-400/50" : ""
+                    } ${!isFavorites ? "hidden sm:inline-flex" : ""}`}
                     onClick={() => onCategoryChange(cat.value)}
                   >
                     <Icon className="h-2.5 w-2.5" />
                     {cat.label}
-                    {cat.value === "favorites" && favorites.size > 0 && (
+                    {isFavorites && favorites.size > 0 && (
                       <span className="ml-0.5">({favorites.size})</span>
                     )}
                   </Badge>
