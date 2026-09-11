@@ -266,7 +266,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="hidden md:block text-2xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Lead → Job → Invoice at a glance</p>
+          <p className="hidden md:block text-sm text-muted-foreground">Lead → Job → Invoice at a glance</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="brand" onClick={onCreateLead}><Plus className="mr-2 h-4 w-4" />New Lead</Button>
