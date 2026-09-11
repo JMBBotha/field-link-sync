@@ -865,6 +865,27 @@ const ProductPalette = ({
 
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="p-2 space-y-3">
+          {/* Bundles as compact buttons — desktop/tablet only */}
+          {filteredBundles.length > 0 && (
+            <div className="hidden sm:block">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-1">
+                📦 Bundles ({filteredBundles.length})
+              </p>
+              <div className="space-y-1">
+                {filteredBundles.map((bundle) => (
+                  <BundlePaletteButton
+                    key={bundle.id}
+                    bundle={bundle}
+                    searchTerm={searchQuery}
+                    isDraggingGlobal={isDraggingGlobal}
+                    baskets={baskets}
+                    onAddBundleToBasket={onAddBundleToBasket}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {isLoading ? (
             Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)
           ) : sortedProducts.length === 0 ? (
