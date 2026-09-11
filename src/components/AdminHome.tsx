@@ -265,7 +265,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+          <h1 className="hidden md:block text-2xl font-semibold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground">Lead → Job → Invoice at a glance</p>
         </div>
         <div className="flex flex-wrap gap-2">
