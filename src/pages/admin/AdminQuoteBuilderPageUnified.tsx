@@ -1121,13 +1121,13 @@ function UnifiedQuoteBuilderInner({ mode = "admin" }: { mode?: QuoteBuilderMode 
                   className="flex-1 min-h-0 overflow-y-auto snap-y snap-mandatory scroll-smooth"
                   style={{ WebkitOverflowScrolling: "touch" as any }}
                 >
-                  <section className="h-full snap-start flex flex-col min-h-0 overflow-hidden pl-2 py-1">
+                  <section className="h-full snap-start flex flex-col min-h-0 overflow-hidden">
                     {paletteEl}
                   </section>
-                  <section className="h-full snap-start flex flex-col min-h-0 overflow-hidden p-1">
+                  <section className="h-full snap-start flex flex-col min-h-0 overflow-hidden">
                     {areaEl}
                   </section>
-                  <section className="h-full snap-start overflow-y-auto bg-card p-3">
+                  <section className="h-full snap-start overflow-y-auto bg-card">
                     {summaryEl}
                   </section>
                 </div>
