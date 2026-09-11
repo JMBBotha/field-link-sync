@@ -765,6 +765,38 @@ const ProductPalette = ({
     }, {});
   }, [sortedProducts]);
 
+  // Filter bundles by search and category (show in All, Favs, AC)
+  const filteredBundles = useMemo(() => {
+    // Show bundles in all, favorites, and AC tabs
+    const allowedTabs = ["all", "favorites", "Air Conditioning"];
+    if (!allowedTabs.includes(categoryFilter)) return [];
+
+    let filtered = bundles;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = bundles.filter((b) => {
+        if (b.name.toLowerCase().includes(q)) return true;
+        return b.items.some((item) => {
+          if (!item.product) return false;
+          const blob = [item.product.product_code, item.product.short_name, item.product.description]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return blob.includes(q);
+        });
+      });
+    }
+
+    // For AC tab, only show bundles with AC-related items
+    if (categoryFilter === "Air Conditioning") {
+      filtered = filtered.filter((b) =>
+        b.items.some((item) => item.product?.product_category === "Air Conditioning")
+      );
+    }
+
+    return filtered;
+  }, [bundles, searchQuery, categoryFilter]);
+
   return (
     <div
       className="flex flex-col rounded-lg border bg-card overflow-hidden h-full min-h-0"
