@@ -9,7 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
  */
 
 /** Payment statuses that count as cash actually applied to an invoice. */
-export const SETTLED_PAYMENT_STATUSES = ["paid", "succeeded"] as const;
+// Must match the DB-side definitions (recalc_invoice_status / invoice_amount_paid),
+// which also count legacy 'completed' rows written by the first payment RPC.
+export const SETTLED_PAYMENT_STATUSES = ["paid", "succeeded", "completed"] as const;
 
 export type PaymentMethod = "cash" | "eft" | "card" | "other";
 
