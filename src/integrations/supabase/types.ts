@@ -476,6 +476,13 @@ export type Database = {
             foreignKeyName: "bundle_items_supplier_product_id_fkey"
             columns: ["supplier_product_id"]
             isOneToOne: false
+            referencedRelation: "live_supplier_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bundle_items_supplier_product_id_fkey"
+            columns: ["supplier_product_id"]
+            isOneToOne: false
             referencedRelation: "supplier_products"
             referencedColumns: ["id"]
           },
@@ -2109,6 +2116,13 @@ export type Database = {
             foreignKeyName: "inventory_stock_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: true
+            referencedRelation: "live_supplier_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_stock_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
             referencedRelation: "supplier_products"
             referencedColumns: ["id"]
           },
@@ -2709,6 +2723,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_used_parts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "live_supplier_products"
             referencedColumns: ["id"]
           },
           {
@@ -3928,6 +3949,13 @@ export type Database = {
             foreignKeyName: "pdf_product_regions_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "live_supplier_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdf_product_regions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "supplier_products"
             referencedColumns: ["id"]
           },
@@ -4740,6 +4768,13 @@ export type Database = {
             columns: ["parent_item_id"]
             isOneToOne: false
             referencedRelation: "quote_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "live_supplier_products"
             referencedColumns: ["id"]
           },
           {
@@ -6592,6 +6627,256 @@ export type Database = {
           type?: string | null
         }
         Relationships: []
+      }
+      live_supplier_products: {
+        Row: {
+          ai_sales_description: string | null
+          ai_sales_description_generated_at: string | null
+          allows_decimal_qty: boolean | null
+          archived: boolean | null
+          archived_at: string | null
+          brand: string | null
+          btu_rating: number | null
+          calculated_price: number | null
+          capacity_btu: number | null
+          category: string | null
+          cost_excl_vat: number | null
+          cost_incl_vat: number | null
+          cost_price: number | null
+          created_at: string | null
+          default_markup_percent: number | null
+          description: string | null
+          id: string | null
+          image_url: string | null
+          import_confidence: string | null
+          import_flags: string[] | null
+          inverter: boolean | null
+          is_active: boolean | null
+          is_material_favorite: boolean | null
+          is_pinned: boolean | null
+          is_price_on_request: boolean | null
+          kw: number | null
+          last_quoted_at: string | null
+          list_price_raw: number | null
+          markup_percent: number | null
+          min_cut_length: number | null
+          min_qty: number | null
+          model: string | null
+          model_range: string | null
+          name: string | null
+          original_cost_excl_vat: number | null
+          pack_qty: number | null
+          page_number: number | null
+          pdf_page_id: string | null
+          pdf_upload_id: string | null
+          phase: string | null
+          pin_order: number | null
+          pipe_gas: string | null
+          pipe_liquid: string | null
+          pipe_size: string | null
+          price_bbox: Json | null
+          price_excl_vat: number | null
+          price_includes_vat: boolean | null
+          price_per_metre: number | null
+          price_per_unit_label: string | null
+          price_per_unit_qty: number | null
+          pricing_mode: string | null
+          product_category: string | null
+          product_code: string | null
+          product_type: string | null
+          qty_step: number | null
+          quote_usage_count: number | null
+          refrigerant_type: string | null
+          row_bbox: Json | null
+          search_aliases: string[] | null
+          sell_price_incl_vat: number | null
+          selling_price: number | null
+          short_name: string | null
+          sold_in_length: boolean | null
+          subcategory: string | null
+          suggested_consumables: Json | null
+          supplier_discount_percent: number | null
+          supplier_id: string | null
+          unit_length: number | null
+          unit_length_unit: string | null
+          unit_type: string | null
+          updated_at: string | null
+          vat_amount: number | null
+          vat_rate: number | null
+        }
+        Insert: {
+          ai_sales_description?: string | null
+          ai_sales_description_generated_at?: string | null
+          allows_decimal_qty?: boolean | null
+          archived?: boolean | null
+          archived_at?: string | null
+          brand?: string | null
+          btu_rating?: number | null
+          calculated_price?: number | null
+          capacity_btu?: number | null
+          category?: string | null
+          cost_excl_vat?: number | null
+          cost_incl_vat?: number | null
+          cost_price?: number | null
+          created_at?: string | null
+          default_markup_percent?: number | null
+          description?: string | null
+          id?: string | null
+          image_url?: string | null
+          import_confidence?: string | null
+          import_flags?: string[] | null
+          inverter?: boolean | null
+          is_active?: boolean | null
+          is_material_favorite?: boolean | null
+          is_pinned?: boolean | null
+          is_price_on_request?: boolean | null
+          kw?: number | null
+          last_quoted_at?: string | null
+          list_price_raw?: number | null
+          markup_percent?: number | null
+          min_cut_length?: number | null
+          min_qty?: number | null
+          model?: string | null
+          model_range?: string | null
+          name?: string | null
+          original_cost_excl_vat?: number | null
+          pack_qty?: number | null
+          page_number?: number | null
+          pdf_page_id?: string | null
+          pdf_upload_id?: string | null
+          phase?: string | null
+          pin_order?: number | null
+          pipe_gas?: string | null
+          pipe_liquid?: string | null
+          pipe_size?: string | null
+          price_bbox?: Json | null
+          price_excl_vat?: number | null
+          price_includes_vat?: boolean | null
+          price_per_metre?: number | null
+          price_per_unit_label?: string | null
+          price_per_unit_qty?: number | null
+          pricing_mode?: string | null
+          product_category?: string | null
+          product_code?: string | null
+          product_type?: string | null
+          qty_step?: number | null
+          quote_usage_count?: number | null
+          refrigerant_type?: string | null
+          row_bbox?: Json | null
+          search_aliases?: string[] | null
+          sell_price_incl_vat?: number | null
+          selling_price?: number | null
+          short_name?: string | null
+          sold_in_length?: boolean | null
+          subcategory?: string | null
+          suggested_consumables?: Json | null
+          supplier_discount_percent?: number | null
+          supplier_id?: string | null
+          unit_length?: number | null
+          unit_length_unit?: string | null
+          unit_type?: string | null
+          updated_at?: string | null
+          vat_amount?: number | null
+          vat_rate?: number | null
+        }
+        Update: {
+          ai_sales_description?: string | null
+          ai_sales_description_generated_at?: string | null
+          allows_decimal_qty?: boolean | null
+          archived?: boolean | null
+          archived_at?: string | null
+          brand?: string | null
+          btu_rating?: number | null
+          calculated_price?: number | null
+          capacity_btu?: number | null
+          category?: string | null
+          cost_excl_vat?: number | null
+          cost_incl_vat?: number | null
+          cost_price?: number | null
+          created_at?: string | null
+          default_markup_percent?: number | null
+          description?: string | null
+          id?: string | null
+          image_url?: string | null
+          import_confidence?: string | null
+          import_flags?: string[] | null
+          inverter?: boolean | null
+          is_active?: boolean | null
+          is_material_favorite?: boolean | null
+          is_pinned?: boolean | null
+          is_price_on_request?: boolean | null
+          kw?: number | null
+          last_quoted_at?: string | null
+          list_price_raw?: number | null
+          markup_percent?: number | null
+          min_cut_length?: number | null
+          min_qty?: number | null
+          model?: string | null
+          model_range?: string | null
+          name?: string | null
+          original_cost_excl_vat?: number | null
+          pack_qty?: number | null
+          page_number?: number | null
+          pdf_page_id?: string | null
+          pdf_upload_id?: string | null
+          phase?: string | null
+          pin_order?: number | null
+          pipe_gas?: string | null
+          pipe_liquid?: string | null
+          pipe_size?: string | null
+          price_bbox?: Json | null
+          price_excl_vat?: number | null
+          price_includes_vat?: boolean | null
+          price_per_metre?: number | null
+          price_per_unit_label?: string | null
+          price_per_unit_qty?: number | null
+          pricing_mode?: string | null
+          product_category?: string | null
+          product_code?: string | null
+          product_type?: string | null
+          qty_step?: number | null
+          quote_usage_count?: number | null
+          refrigerant_type?: string | null
+          row_bbox?: Json | null
+          search_aliases?: string[] | null
+          sell_price_incl_vat?: number | null
+          selling_price?: number | null
+          short_name?: string | null
+          sold_in_length?: boolean | null
+          subcategory?: string | null
+          suggested_consumables?: Json | null
+          supplier_discount_percent?: number | null
+          supplier_id?: string | null
+          unit_length?: number | null
+          unit_length_unit?: string | null
+          unit_type?: string | null
+          updated_at?: string | null
+          vat_amount?: number | null
+          vat_rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_products_pdf_page_id_fkey"
+            columns: ["pdf_page_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_pdf_pages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_products_pdf_upload_id_fkey"
+            columns: ["pdf_upload_id"]
+            isOneToOne: false
+            referencedRelation: "pdf_uploads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_products_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_accounts_aging: {
         Row: {
