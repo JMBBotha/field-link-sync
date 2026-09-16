@@ -77,6 +77,9 @@ interface PdfPageOverlayProps {
   favoriteIds?: Set<string>;
   /** Kept for API compatibility; not used for control placement (see HARD LOCK). */
   priceColumnXFrac?: number | null;
+  /** This supplier's trade discount %, used only to turn an unmatched row's
+   *  PDF LIST price into cost. Never applied to a matched catalog cost. */
+  supplierDiscountPercent?: number | null;
 }
 
 /**
