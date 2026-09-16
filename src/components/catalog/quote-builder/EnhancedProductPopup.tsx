@@ -150,6 +150,21 @@ const EnhancedProductPopup = ({
               <p className="text-xs font-mono text-primary/80">{product.product_code}</p>
             </div>
           </div>
+          {noSoT ? (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 space-y-1">
+              <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+                Not on an active price book — no cost yet
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                This row isn't linked to live catalogue pricing, so it can't be added to a quote yet.
+              </p>
+              {priceOverride != null && priceOverride > 0 && (
+                <p className="text-[10px] text-muted-foreground">
+                  PDF list: <span className="font-mono font-medium text-foreground">R{safeNum(priceOverride).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> <span className="text-[9px]">(list only — not cost)</span>
+                </p>
+              )}
+            </div>
+          ) : (
           <div className="flex items-center gap-2">
             <div className="flex flex-col">
               <span className="text-base font-bold text-foreground">
