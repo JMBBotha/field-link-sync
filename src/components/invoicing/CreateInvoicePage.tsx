@@ -288,7 +288,7 @@ const CreateInvoicePage = ({
     const path = companySettings.logo_storage_path;
     if (!path) return null;
     if (path.startsWith("http")) return path;
-    const { data } = supabase.storage.from("company-assets").getPublicUrl(path);
+    const { data } = supabase.storage.from("company-logos").getPublicUrl(path);
     return data?.publicUrl || null;
   }, [companySettings.logo_storage_path]);
 
