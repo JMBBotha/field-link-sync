@@ -289,7 +289,7 @@ const RegionBox = memo(({
           right: `var(--pdf-strip-w, ${STRIP_W_PHONE}px)`,
           pointerEvents: "none",
         }}
-        onMouseEnter={(e) => onHoverStart?.(regionProduct(region, supplierDiscountPercent), e, region.product ? (region.detected_price ?? null) : null)}
+        onMouseEnter={(e) => onHoverStart?.(regionDisplayProduct(region, supplierDiscountPercent), e, regionPriceOverride(region))}
         onMouseMove={(e) => onHoverMove?.(e)}
         onMouseLeave={() => onHoverEnd?.()}
       />
@@ -349,7 +349,7 @@ const RegionBox = memo(({
               e.stopPropagation();
               e.preventDefault();
               onInfoPress?.(region.id);
-              onOpenProductInfo?.(regionProduct(region, supplierDiscountPercent));
+              onOpenProductInfo?.(regionDisplayProduct(region, supplierDiscountPercent));
             }}
           />
         </span>
@@ -462,7 +462,7 @@ const MarginHitStrip = ({
 
     if (isInfoZone) {
       onInfoPress?.(region.id);
-      onOpenProductInfo?.(regionProduct(region, supplierDiscountPercent));
+      onOpenProductInfo?.(regionDisplayProduct(region, supplierDiscountPercent));
       return;
     }
 
@@ -484,7 +484,7 @@ const MarginHitStrip = ({
     }
     if (hoverIdRef.current !== region.id) {
       hoverIdRef.current = region.id;
-      onHoverStart?.(regionProduct(region, supplierDiscountPercent), e, region.product ? (region.detected_price ?? null) : null);
+      onHoverStart?.(regionDisplayProduct(region, supplierDiscountPercent), e, regionPriceOverride(region));
     } else {
       onHoverMove?.(e);
     }
