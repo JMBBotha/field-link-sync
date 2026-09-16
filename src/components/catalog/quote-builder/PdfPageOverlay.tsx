@@ -486,6 +486,7 @@ const PdfPageOverlay = ({
   onHoverMove,
   onHoverEnd,
   favoriteIds,
+  supplierDiscountPercent,
 }: PdfPageOverlayProps) => {
   const [pressedInfoId, setPressedInfoId] = useState<string | null>(null);
   const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -500,6 +501,9 @@ const PdfPageOverlay = ({
       <style>{`@media (min-width: 640px) {
   [data-testid="pdf-margin-hit-strip"] { --pdf-strip-w: ${STRIP_W_DESKTOP}px; }
   [data-pdf-region-box] { --pdf-pill-right: ${PILL_RIGHT_PX_DESKTOP}px; }
+}
+@media (hover: hover) and (pointer: fine) {
+  [data-pdf-row-hover] { pointer-events: auto; }
 }`}</style>
       {regions.map((region) => {
         const productId = region.product?.id || region.id;
@@ -512,6 +516,10 @@ const PdfPageOverlay = ({
             isInfoPressed={pressedInfoId === region.id}
             onOpenProductInfo={onOpenProductInfo}
             onInfoPress={handleInfoPress}
+            supplierDiscountPercent={supplierDiscountPercent}
+            onHoverStart={onHoverStart}
+            onHoverMove={onHoverMove}
+            onHoverEnd={onHoverEnd}
           />
         );
       })}
@@ -526,7 +534,9 @@ const PdfPageOverlay = ({
         onHoverStart={onHoverStart}
         onHoverMove={onHoverMove}
         onHoverEnd={onHoverEnd}
+        supplierDiscountPercent={supplierDiscountPercent}
       />
+
     </>
   );
 };
