@@ -234,7 +234,7 @@ export function normalizeMarkupPercent(markupPercent?: number | null): number {
  *
  * Why this exists: `a ?? b ?? 35` does NOT skip a stored 0, and a lone 0 then
  * falls through normalizeMarkupPercent() to 35 — which showed cost + 35%
- * instead of the catalog default (25% / 20%) on ~254 rows.
+ * instead of that product's own catalog default markup.
  */
 export function resolveProductMarkupPercent(product: {
   default_markup_percent?: number | null;
