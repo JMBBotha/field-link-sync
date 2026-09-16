@@ -123,6 +123,11 @@ const EnhancedProductPopup = ({
 
   const hasQuantities = Object.values(quantities).some((q) => q > 0);
 
+  // No live price-book match: the PDF price column is a LIST price, never our
+  // cost, so there is no source of truth for cost/sell. Show a warn state
+  // instead of fake R0 pricing.
+  const noSoT = pricing.costPrice <= 0;
+
   // ── Hover mode: lightweight info card, portaled, pointer-events-none ──
   if (isHoverMode) {
     if (!isVisible) return null;
