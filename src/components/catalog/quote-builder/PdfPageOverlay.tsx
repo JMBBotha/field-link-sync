@@ -86,19 +86,30 @@ interface PdfPageOverlayProps {
   supplierDiscountPercent?: number | null;
 }
 
+/** OCR glues the price cell onto the description ("… R8895,56@8895"). Strip it. */
+export const cleanPdfRowLabel = (raw: string): string =>
+  (raw || "")
+    .replace(/@[\d\s.,]*$/g, "")
+    .replace(/R\s*[\d\s]+[.,]\d{2}\s*$/i, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+/** Product code as printed, minus OCR glue after an @. */
+export const cleanPdfProductCode = (raw: string): string =>
+  (raw || "").split("@")[0].trim();
+
 /**
  * Unmatched PDF row -> throwaway, NON-SoT placeholder.
- * The price column on a supplier PDF is a LIST price, NEVER our cost, so every
- * cost field stays 0 and no discount is guessed. A row with no active-book
- * match is BLOCKED from a quote rather than priced from the list column.
+ * Cost stays 0 here; the popup falls back to the printed NETT/price column
+ * (passed as priceOverride) when there is no catalog row at all.
  */
 const buildFallbackProduct = (
   region: OverlayRegion,
   supplierDiscountPercent?: number | null,
 ): PaletteProduct => ({
   id: region.id,
-  product_code: region.product_code || region.id,
-  short_name: region.label || region.product_code || "PDF Item",
+  product_code: cleanPdfProductCode(region.product_code) || region.id,
+  short_name: cleanPdfRowLabel(region.label) || cleanPdfProductCode(region.product_code) || "PDF Item",
   brand: "",
   product_category: "",
   category: "",
@@ -107,7 +118,7 @@ const buildFallbackProduct = (
   cost_price: 0,
   selling_price: 0,
   default_markup_percent: null,
-  description: region.label || region.product_code || "PDF Item",
+  description: cleanPdfRowLabel(region.label) || cleanPdfProductCode(region.product_code) || "PDF Item",
   is_pinned: false,
   pin_order: null,
   supplier_name: "",
@@ -118,7 +129,7 @@ const buildFallbackProduct = (
   pipe_size: null,
   is_material_favorite: false,
   pack_qty: null,
-  supplier_discount_percent: null,
+  supplier_discount_percent: supplierDiscountPercent ?? null,
   markup_percent: null,
 });
 
@@ -126,6 +137,20 @@ const regionProduct = (
   region: OverlayRegion,
   supplierDiscountPercent?: number | null,
 ): PaletteProduct => region.product ?? buildFallbackProduct(region, supplierDiscountPercent);
+
+/**
+ * DISPLAY resolution: live product first, then the catalog row found by code
+ * even if archived/off-book, then the PDF-only placeholder. Never used to add.
+ */
+const regionDisplayProduct = (
+  region: OverlayRegion,
+  supplierDiscountPercent?: number | null,
+): PaletteProduct =>
+  region.product ?? region.display_product ?? buildFallbackProduct(region, supplierDiscountPercent);
+
+/** Printed price cell for this row — only a fallback cost when no catalog row. */
+const regionPriceOverride = (region: OverlayRegion): number | null =>
+  region.product || region.display_product ? null : (region.detected_price ?? null);
 
 /** Each PDF row toggles independently, even when rows share a product_code. */
 const regionSelectionCode = (region: OverlayRegion): string => region.id;
