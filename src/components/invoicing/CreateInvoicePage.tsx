@@ -353,8 +353,11 @@ const CreateInvoicePage = ({
         const path = `invoices/${Date.now()}_${file.name}`;
         const { error } = await supabase.storage.from("invoice-attachments").upload(path, file);
         if (error) throw error;
-        const { data: urlData } = supabase.storage.from("invoice-attachments").getPublicUrl(path);
-        setAttachments((prev) => [...prev, { name: file.name, url: urlData.publicUrl }]);
+        const { data: signed, error: signErr } = await supabase.storage
+          .from("invoice-attachments")
+          .createSignedUrl(path, 60 * 60 * 24 * 365);
+        if (signErr) throw signErr;
+        setAttachments((prev) => [...prev, { name: file.name, url: signed.signedUrl }]);
       }
     } catch (err: any) {
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
