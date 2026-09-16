@@ -180,7 +180,9 @@ const EnhancedProductPopup = ({
               </span>
             )}
           </div>
+          )}
           {/* Always show cost, markup %, markup amount in hover mode */}
+          {!noSoT && (
           <div className="flex items-center gap-2 text-[10px] flex-wrap">
             {pricing.costPrice > 0 && (
               <span className="text-muted-foreground">Cost Price (excl VAT): <span className="font-mono font-medium text-foreground">R{safeNum(pricing.costPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
@@ -194,6 +196,7 @@ const EnhancedProductPopup = ({
               )}
             </span>
           </div>
+          )}
           {product.brand && (
             <p className="text-xs text-muted-foreground">{product.brand}</p>
           )}
