@@ -114,10 +114,9 @@ export function applyDiscount(listPrice: number, discountPercent: number): numbe
 }
 
 /**
- * Convert a supplier LIST price into our net cost by applying the trade discount.
- * This is the first half of the business identity
- *   list x (1 - discount) x (1 + markup) === list
- * e.g. Samsung: 10 000 x 0.80 x 1.25 = 10 000.
+ * Convert a supplier LIST price into our net cost using THAT supplier's own
+ * stored trade discount. Write/import-time only — never at quote time, and
+ * never with a hard-coded or supplier-specific percentage.
  *
  * Never round here — rounding the intermediate cost is what breaks the identity
  * (e.g. 15 825.23 x 0.8 = 12 660.184 -> 12 660.18 -> x1.25 = 15 825.225 -> 15 825.23).
@@ -136,8 +135,8 @@ export function netCostFromList(listPriceExVat: number, discountPercent: number)
  * - A catalog product's stored cost_price/cost_excl_vat is ALREADY net of the
  *   supplier trade discount (see file header) — trust it verbatim.
  * - A price scraped off a supplier PDF price column is a LIST price — the trade
- *   discount must be applied before markup, otherwise markup stacks on list and
- *   the 0.80 x 1.25 identity is lost.
+ *   row's own supplier discount must be applied before markup, otherwise markup
+ *   would stack on the list price.
  */
 export function resolveRowCostExVat(
   product: {

@@ -131,10 +131,10 @@ const selectRegion = (
   const alreadySelectedInPdf = !!pdfSelection?.selectedFromPdf.some((item) => item.code === code);
 
   if (pdfSelection) {
-    // The row's pink-column number (region.detected_price) is the supplier
+    // The row's price-column number (region.detected_price) is the supplier
     // LIST price, not our cost. resolveRowCostExVat prefers the catalog's
-    // stored (already-discounted) cost and otherwise applies the trade
-    // discount to the list price, so list x 0.80 x 1.25 lands back on list.
+    // stored (already-net) cost and only otherwise applies that row's own
+    // supplier discount. No quote-time discount, no hard-coded percentage.
     const effectiveCost = resolveRowCostExVat(product, region.detected_price ?? null);
     const normalizedMarkup = resolveProductMarkupPercent(product);
     const sellExVat = effectiveCost > 0
