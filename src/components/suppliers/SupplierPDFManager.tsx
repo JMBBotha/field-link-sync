@@ -43,6 +43,23 @@ interface PDFUploadRow {
   can_activate?: boolean;
 }
 
+/** Row returned by the activate_pdf_book_gate RPC (pre-activation math check). */
+interface GateRow {
+  product_code: string | null;
+  brand: string | null;
+  page_number: number | null;
+  list_ex: number | null;
+  cost_ex: number | null;
+  discount_used: number | null;
+  markup_used: number | null;
+  expected_cost: number | null;
+  expected_sell: number | null;
+  selling_price: number | null;
+  gate_flag: string;
+  cost_delta: number | null;
+  sell_minus_list: number | null;
+}
+
 interface SupplierPDFManagerProps {
   preFilterSupplierId?: string;
 }
