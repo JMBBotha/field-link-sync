@@ -1281,6 +1281,23 @@ const LazyPdfPage = ({
     staleTime: 120000,
   });
 
+  // Trade discount for this supplier — used ONLY to convert an unmatched row's
+  // PDF LIST price into cost. Matched catalog rows keep their stored cost.
+  const { data: supplierDiscountPercent = null } = useQuery<number | null>({
+    queryKey: ["visual-panel-supplier-discount", page.supplier_id],
+    enabled: isVisible,
+    queryFn: async () => {
+      const supplierName = (page.supplier_id || "").trim();
+      if (!supplierName) return null;
+      const { data } = await (supabase.from("suppliers") as any)
+        .select("supplier_discount_percent, default_trade_discount")
+        .ilike("name", `%${supplierName}%`)
+        .maybeSingle();
+      return Number(data?.supplier_discount_percent ?? 0) || Number(data?.default_trade_discount ?? 0) || null;
+    },
+    staleTime: 300000,
+  });
+
    // Live extraction for this page — enable even without hasPdfSource so fallback kicks in
   const queryEnabled = isVisible && hasPdfSource && activeProducts.length > 0;
   
