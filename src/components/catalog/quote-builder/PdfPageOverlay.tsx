@@ -141,8 +141,9 @@ const selectRegion = (
   pdfSelection: PdfSelectionHandlers | undefined,
   baskets: Basket[],
   onAddProductToBasket?: (basketId: string, product: PaletteProduct) => void,
+  supplierDiscountPercent?: number | null,
 ) => {
-  const product = regionProduct(region);
+  const product = regionProduct(region, supplierDiscountPercent);
   const code = regionSelectionCode(region);
   const alreadySelectedInPdf = !!pdfSelection?.selectedFromPdf.some((item) => item.code === code);
 
@@ -151,7 +152,11 @@ const selectRegion = (
     // LIST price, not our cost. resolveRowCostExVat prefers the catalog's
     // stored (already-net) cost and only otherwise applies that row's own
     // supplier discount. No quote-time discount, no hard-coded percentage.
-    const effectiveCost = resolveRowCostExVat(product, region.detected_price ?? null);
+    const effectiveCost = resolveRowCostExVat(
+      product,
+      region.detected_price ?? null,
+      region.supplier_discount_percent ?? supplierDiscountPercent ?? null,
+    );
     const normalizedMarkup = resolveProductMarkupPercent(product);
     const sellExVat = effectiveCost > 0
       ? Math.round(effectiveCost * (1 + normalizedMarkup / 100) * 100) / 100
