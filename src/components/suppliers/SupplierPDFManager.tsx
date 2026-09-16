@@ -384,6 +384,16 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
 
   const handleActivateConfirm = async () => {
     if (!activateTarget) return;
+    if (!activateOk) {
+      toast({
+        title: "Price check failed — not activated",
+        description: gateRows && gateRows.length === 0
+          ? "No products found on this book to check."
+          : `${gateFailures.length} sampled product${gateFailures.length === 1 ? "" : "s"} did not match the expected cost/sell maths.`,
+        variant: "destructive",
+      });
+      return;
+    }
     setActivating(true);
     try {
       let deactivate = (supabase.from("pdf_uploads") as any)
