@@ -319,7 +319,7 @@ export function productLine(p: PaletteProduct, quantity: number, meta: Record<st
     unitLabel: perMetre ? "m" : (p.price_per_unit_label || "each"),
     unitPrice: Math.round(unitSell * 100) / 100,
     unitCost: Math.round(unitCost * 100) / 100,
-    markupPct: p.default_markup_percent ?? p.markup_percent ?? 35,
+    markupPct: resolveProductMarkupPercent(p as any),
     meta: { voice: true, ...meta },
   };
 }

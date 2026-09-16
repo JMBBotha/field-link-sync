@@ -294,7 +294,7 @@ const PdfViewerWithOverlays: React.FC<PdfViewerWithOverlaysProps> = ({
 
 function ProductPopupContent({ product }: { product: OverlayProduct }) {
   const costExVat = product.cost_excl_vat || product.cost_price || 0;
-  const markup = product.default_markup_percent || 20;
+  const markup = resolveProductMarkupPercent(product as any);
   const ourCost = costExVat * (1 + markup / 100);
 
   return (

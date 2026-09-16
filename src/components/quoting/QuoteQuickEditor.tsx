@@ -162,7 +162,7 @@ export default function QuoteQuickEditor({
     setAdding(p.id);
     const areaId = await resolveArea();
     const { unitCost, unitSell } = getEffectiveUnitPrices(p);
-    const markupPct = p.default_markup_percent ?? p.markup_percent ?? 35;
+    const markupPct = resolveProductMarkupPercent(p);
     await addItem({
       ...baseItem(),
       area_id: areaId,

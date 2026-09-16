@@ -91,7 +91,7 @@ export function getEffectiveUnitPrices(product: PaletteProduct, isLengthOverride
   const pq = product.pack_qty && product.pack_qty > 1 && !isLength ? product.pack_qty : 1;
 
   const listPrice = product.cost_excl_vat || 0;
-  const markupPct = product.default_markup_percent ?? product.markup_percent ?? 35;
+  const markupPct = resolveProductMarkupPercent(product);
   const supplierCode = resolveSupplierCode(product.supplier_name);
 
   // computePricing handles discount + markup; cost_price may already be discounted
