@@ -1,4 +1,13 @@
 import { PDFDocument } from "pdf-lib";
+import { supabase } from "@/integrations/supabase/client";
+
+/** Brochure records store a storage path; resolve it to a fetchable URL. */
+export function resolveBrochureUrl(path: string): string {
+  if (!path) return "";
+  if (path.startsWith("http")) return path;
+  const { data } = supabase.storage.from("product-brochures").getPublicUrl(path);
+  return data.publicUrl;
+}
 
 /* ────────── Types ────────── */
 
@@ -38,7 +47,7 @@ export async function assembleQuoteWithBrochures(
     // 2. Brochure pages (in order)
     for (const brochure of opts.brochures) {
       try {
-        const url = brochure.file_url;
+        const url = resolveBrochureUrl(brochure.file_url);
         const res = await fetch(url);
         if (!res.ok) {
           console.warn(`Brochure fetch failed (${res.status}): ${brochure.name} — ${url}`);

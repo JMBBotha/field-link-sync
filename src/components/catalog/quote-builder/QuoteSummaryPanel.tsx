@@ -6,6 +6,7 @@ import { formatRand } from "@/utils/formatRand";
 import type { Basket } from "../QuoteBuilderTab";
 import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
 import QuoteBrochureSection from "@/components/brochures/QuoteBrochureSection";
+import ProductSalesCards from "@/components/brochures/ProductSalesCards";
 import type { QuoteTotals } from "@/utils/quoteTransformers";
 
 interface QuoteSummaryPanelProps {
@@ -104,6 +105,11 @@ const QuoteSummaryPanel = ({ baskets, totals, onGenerateQuote, quoteId }: QuoteS
           <span className="ml-[35%]">25%</span>
           <span>50%+</span>
         </div>
+      </div>
+
+      {/* Sales cards (AR40) */}
+      <div className="border-t border-border pt-3">
+        <ProductSalesCards lineItemModelCodes={lineItemModelCodes} />
       </div>
 
       {/* Brochures section */}
