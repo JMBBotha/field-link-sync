@@ -275,6 +275,9 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
   const [activateTarget, setActivateTarget] = useState<PDFUploadRow | null>(null);
   const [activateWarning, setActivateWarning] = useState<string | null>(null);
   const [activating, setActivating] = useState(false);
+  const [gateRows, setGateRows] = useState<GateRow[[]] | null>(null);
+  const [gateRunning, setGateRunning] = useState(false);
+  const [gateError, setGateError] = useState<string | null>(null);
 
   const clearPreviewUrl = useCallback((url?: string | null) => {
     if (url?.startsWith("blob:")) {
