@@ -21,6 +21,8 @@ export interface OverlayRegion {
   /** Fractional x (0-1) of this row's price cell (left edge), when known.
    *  Informational only — NEVER used to place the selection controls. */
   price_x_frac?: number | null;
+  /** Trade discount % that turns this row's PDF LIST price into our cost. */
+  supplier_discount_percent?: number | null;
 }
 
 /**
@@ -77,18 +79,28 @@ interface PdfPageOverlayProps {
   priceColumnXFrac?: number | null;
 }
 
-const buildFallbackProduct = (region: OverlayRegion): PaletteProduct => ({
+/**
+ * Unmatched PDF row -> throwaway product.
+ * The price column on a supplier PDF is a LIST price, NEVER our cost, so cost
+ * fields stay 0 here and resolveRowCostExVat derives cost from the list price
+ * using this supplier's own trade discount. Markup fields stay null so
+ * resolveProductMarkupPercent picks the catalog default, not a baked-in 35%.
+ */
+const buildFallbackProduct = (
+  region: OverlayRegion,
+  supplierDiscountPercent?: number | null,
+): PaletteProduct => ({
   id: region.id,
   product_code: region.product_code || region.id,
   short_name: region.label || region.product_code || "PDF Item",
   brand: "",
   product_category: "",
   category: "",
-  cost_excl_vat: region.detected_price ?? 0,
-  cost_incl_vat: region.detected_price ?? 0,
-  cost_price: region.detected_price ?? 0,
-  selling_price: region.detected_price ?? 0,
-  default_markup_percent: 0.35,
+  cost_excl_vat: 0,
+  cost_incl_vat: 0,
+  cost_price: 0,
+  selling_price: 0,
+  default_markup_percent: null,
   description: region.label || region.product_code || "PDF Item",
   is_pinned: false,
   pin_order: null,
@@ -100,11 +112,15 @@ const buildFallbackProduct = (region: OverlayRegion): PaletteProduct => ({
   pipe_size: null,
   is_material_favorite: false,
   pack_qty: null,
-  supplier_discount_percent: null,
-  markup_percent: 0.35,
+  supplier_discount_percent:
+    Number(region.supplier_discount_percent ?? supplierDiscountPercent ?? 0) || null,
+  markup_percent: null,
 });
 
-const regionProduct = (region: OverlayRegion): PaletteProduct => region.product ?? buildFallbackProduct(region);
+const regionProduct = (
+  region: OverlayRegion,
+  supplierDiscountPercent?: number | null,
+): PaletteProduct => region.product ?? buildFallbackProduct(region, supplierDiscountPercent);
 
 /** Each PDF row toggles independently, even when rows share a product_code. */
 const regionSelectionCode = (region: OverlayRegion): string => region.id;
