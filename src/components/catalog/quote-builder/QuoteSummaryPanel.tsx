@@ -6,6 +6,7 @@ import { formatRand } from "@/utils/formatRand";
 import type { Basket } from "../QuoteBuilderTab";
 import { computeBasketsQuoteTotals } from "@/utils/quoteBasketTotals";
 import QuoteBrochureSection from "@/components/brochures/QuoteBrochureSection";
+import ProductSalesCards from "@/components/brochures/ProductSalesCards";
 import type { QuoteTotals } from "@/utils/quoteTransformers";
 
 interface QuoteSummaryPanelProps {
