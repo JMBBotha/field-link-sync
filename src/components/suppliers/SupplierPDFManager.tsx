@@ -415,6 +415,7 @@ const SupplierPDFManager = ({ preFilterSupplierId }: SupplierPDFManagerProps) =>
       queryClient.invalidateQueries({ queryKey: ["quote-builder-products"] });
       setActivateTarget(null);
       setActivateWarning(null);
+      setGateRows(null);
     } catch (e: any) {
       toast({ title: "Could not activate", description: e?.message || "Unknown error", variant: "destructive" });
     } finally {
