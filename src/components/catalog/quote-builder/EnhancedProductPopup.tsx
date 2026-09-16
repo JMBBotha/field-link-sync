@@ -354,8 +354,10 @@ const EnhancedProductPopup = ({
             )}
           </div>
         </ScrollArea>
+        )}
 
         {/* Footer */}
+        {!noSoT && (
         <div className="border-t p-3 bg-card text-foreground flex items-center gap-2">
           <Button
             variant="outline"
