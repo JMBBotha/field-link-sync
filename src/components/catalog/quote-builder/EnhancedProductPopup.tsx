@@ -205,7 +205,9 @@ const EnhancedProductPopup = ({
               In quote: ×{inQuoteQty}
             </p>
           )}
-          <p className="text-[9px] text-muted-foreground/50 mt-1">Click row to add to quote</p>
+          <p className="text-[9px] text-muted-foreground/50 mt-1">
+            {noSoT ? "Activate a price book containing this item to quote it" : "Click row to add to quote"}
+          </p>
         </div>
       </div>
     );
