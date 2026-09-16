@@ -361,6 +361,7 @@ const MarginHitStrip = ({
   onHoverMove,
   onHoverEnd,
   onInfoPress,
+  supplierDiscountPercent,
 }: {
   regions: OverlayRegion[];
   onInfoPress?: (regionId: string) => void;
@@ -372,6 +373,7 @@ const MarginHitStrip = ({
   onHoverStart?: (product: PaletteProduct | null, e: React.MouseEvent, priceOverride?: number | null) => void;
   onHoverMove?: (e: React.MouseEvent) => void;
   onHoverEnd?: () => void;
+  supplierDiscountPercent?: number | null;
 }) => {
   const downRef = useRef<{ id: number; x: number; y: number } | null>(null);
   const lastTapRef = useRef<{ regionId: string; at: number }>({ regionId: "", at: 0 });
