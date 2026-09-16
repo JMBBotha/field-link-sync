@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { calcSellingPrice, VAT_RATE } from "@/lib/pricing";
+import { calcSellingPrice, VAT_RATE, resolveProductMarkupPercent } from "@/lib/pricing";
 import { computeLineTotal, resolvePricingUnit, unitSuffix } from "@/lib/pricingUnits";
 import { RotateCcw, FileDown, Loader2, TrendingUp, ChevronDown, ChevronRight, Package, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

@@ -1,3 +1,4 @@
+import { resolveProductMarkupPercent } from "@/lib/pricing";
 /**
  * QuoteQuickEditor — slim search bar that adds lines into the OPEN quote.
  *

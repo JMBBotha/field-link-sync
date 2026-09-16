@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getCategoryIcon, getCategoryBg } from "./ProductPalette";
 import { getProductDisplayName } from "./productDisplayUtils";
-import { getProductPricing, resolveRowCostExVat } from "@/lib/pricing";
+import { getProductPricing, resolveRowCostExVat, resolveProductMarkupPercent } from "@/lib/pricing";
 import type { PaletteProduct, Basket } from "../QuoteBuilderTab";
 
 function getPopupPricing(product: PaletteProduct, priceOverride?: number | null) {

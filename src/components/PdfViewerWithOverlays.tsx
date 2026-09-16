@@ -1,3 +1,4 @@
+import { resolveProductMarkupPercent } from "@/lib/pricing";
 /**
  * PdfViewerWithOverlays — renders supplier PDF page images with
  * interactive bbox overlays for each extracted product row.

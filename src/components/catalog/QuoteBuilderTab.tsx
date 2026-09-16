@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import { inclVatFromExcl, computePricing, resolveSupplierCode } from "@/lib/pricing";
+import { inclVatFromExcl, computePricing, resolveSupplierCode, resolveProductMarkupPercent } from "@/lib/pricing";
 import { extractBtu } from "@/lib/bundles";
 import type { PdfSelectionHandlers } from "@/types/pdfSelection";
 import { Search, ChevronUp, ChevronDown } from "lucide-react";

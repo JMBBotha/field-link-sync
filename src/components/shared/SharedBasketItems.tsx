@@ -9,7 +9,7 @@ import ProductInfoDialog from "@/components/shared/ProductInfoDialog";
 import BundleItemsPopover from "@/components/catalog/quote-builder/BundleItemsPopover";
 import type { BasketItem } from "@/components/catalog/QuoteBuilderTab";
 import { getEffectiveUnitPrices } from "@/components/catalog/QuoteBuilderTab";
-import { normalizeMarkupPercent } from "@/lib/pricing";
+import { normalizeMarkupPercent, resolveProductMarkupPercent } from "@/lib/pricing";
 import {
   resolvePricingUnit,
   computeLineTotal,

@@ -1,3 +1,4 @@
+import { resolveProductMarkupPercent } from "@/lib/pricing";
 /**
  * voiceQuoteKit — pure logic for the quote-by-voice MVP on /admin/estimates/:id.
  *

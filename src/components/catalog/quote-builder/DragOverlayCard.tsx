@@ -2,7 +2,7 @@ import type { PaletteProduct } from "../QuoteBuilderTab";
 import { getCategoryIcon, getCategoryBg } from "./ProductPalette";
 import { Badge } from "@/components/ui/badge";
 import { getProductDisplayName } from "./productDisplayUtils";
-import { computePricing, resolveSupplierCode } from "@/lib/pricing";
+import { computePricing, resolveSupplierCode, resolveProductMarkupPercent } from "@/lib/pricing";
 
 const DragOverlayCard = ({ product }: { product: PaletteProduct }) => {
   const listPrice = product.cost_excl_vat || 0;

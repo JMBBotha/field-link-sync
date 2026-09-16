@@ -1,4 +1,4 @@
-import { computePricing, resolveSupplierCode } from "@/lib/pricing";
+import { computePricing, resolveSupplierCode, resolveProductMarkupPercent } from "@/lib/pricing";
 import type { Basket, BasketItem, PaletteProduct } from "@/components/catalog/QuoteBuilderTab";
 import type { QuoteArea, QuoteItem } from "@/types/quote";
 import { computeQuoteTotals } from "@/utils/quoteTransformers";
