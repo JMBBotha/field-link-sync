@@ -7078,6 +7078,24 @@ export type Database = {
         Args: { p_accepted_by: string; p_signature?: Json; p_token: string }
         Returns: boolean
       }
+      activate_pdf_book_gate: {
+        Args: { p_pdf_upload_id: string; p_sample_n?: number }
+        Returns: {
+          brand: string
+          cost_delta: number
+          cost_ex: number
+          discount_used: number
+          expected_cost: number
+          expected_sell: number
+          gate_flag: string
+          list_ex: number
+          markup_used: number
+          page_number: number
+          product_code: string
+          sell_minus_list: number
+          selling_price: number
+        }[]
+      }
       addauth: { Args: { "": string }; Returns: boolean }
       addgeometrycolumn:
         | {
