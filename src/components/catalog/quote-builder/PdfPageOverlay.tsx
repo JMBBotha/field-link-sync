@@ -14,6 +14,9 @@ export interface OverlayRegion {
   w_pct: number;
   h_pct: number;
   product: PaletteProduct | null;
+  /** DISPLAY-ONLY catalog row (may be archived / off an active book). Used for
+   *  hover + info pricing so the card never lies with R0; never used for adding. */
+  display_product?: PaletteProduct | null;
   product_code: string;
   label: string;
   has_price?: boolean;
