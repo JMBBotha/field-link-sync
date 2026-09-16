@@ -238,38 +238,56 @@ const EnhancedProductPopup = ({
               {getProductDisplayName(product)}
             </p>
             <p className="text-xs font-mono text-primary/80 mt-0.5">{product.product_code}</p>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <div className="flex flex-col">
-                <span className="text-sm font-bold text-foreground">
-                  Sell Price (excl VAT): R{safeNum(pricing.sellingPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-                <span className="text-[10px] text-muted-foreground">
-                  R{safeNum(pricing.sellingPriceInclVat).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[9px]">incl VAT</span>
-                </span>
+            {noSoT ? (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 mt-1 space-y-1">
+                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                  Not on an active price book — no cost yet
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  This item isn't linked to live catalogue pricing, so it can't be added to a quote yet. Upload and activate the supplier price book that contains it first.
+                </p>
+                {priceOverride != null && priceOverride > 0 && (
+                  <p className="text-[11px] text-muted-foreground">
+                    PDF list: <span className="font-mono font-medium text-foreground">R{safeNum(priceOverride).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> <span className="text-[9px]">(list only — not cost)</span>
+                  </p>
+                )}
               </div>
-              {product.sold_in_length && product.price_per_metre && (
-                <Badge variant="outline" className="text-[9px] px-1 py-0 border-orange-400/40 text-orange-600">
-                  R{product.price_per_metre.toFixed(2)}/m
-                </Badge>
-              )}
-              {product.is_pinned && (
-                <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-500" />
-              )}
-              {inQuoteQty > 0 && (
-                <Badge variant="secondary" className="text-[9px]">
-                  Already in quote: ×{inQuoteQty}
-                </Badge>
-              )}
-            </div>
-            {/* Read-only pricing info */}
-            <div className="flex items-center gap-3 mt-1.5 flex-wrap text-[10px]">
-              <span className="text-muted-foreground">Cost Price (excl VAT): <span className="font-mono font-medium text-foreground">R{safeNum(pricing.costPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
-              <span className="text-muted-foreground">M/Up: <span className="font-mono font-semibold text-primary">{pricing.markupPercent.toFixed(1)}%</span></span>
-            </div>
-            {pricing.profit > 0 && (
-              <div className="text-[10px] text-muted-foreground mt-0.5">
-                Markup Amount (R value): <span className="font-mono font-medium text-accent-foreground">R{safeNum(pricing.profit).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-foreground">
+                      Sell Price (excl VAT): R{safeNum(pricing.sellingPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      R{safeNum(pricing.sellingPriceInclVat).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[9px]">incl VAT</span>
+                    </span>
+                  </div>
+                  {product.sold_in_length && product.price_per_metre && (
+                    <Badge variant="outline" className="text-[9px] px-1 py-0 border-orange-400/40 text-orange-600">
+                      R{product.price_per_metre.toFixed(2)}/m
+                    </Badge>
+                  )}
+                  {product.is_pinned && (
+                    <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-500" />
+                  )}
+                  {inQuoteQty > 0 && (
+                    <Badge variant="secondary" className="text-[9px]">
+                      Already in quote: ×{inQuoteQty}
+                    </Badge>
+                  )}
+                </div>
+                {/* Read-only pricing info */}
+                <div className="flex items-center gap-3 mt-1.5 flex-wrap text-[10px]">
+                  <span className="text-muted-foreground">Cost Price (excl VAT): <span className="font-mono font-medium text-foreground">R{safeNum(pricing.costPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
+                  <span className="text-muted-foreground">M/Up: <span className="font-mono font-semibold text-primary">{pricing.markupPercent.toFixed(1)}%</span></span>
+                </div>
+                {pricing.profit > 0 && (
+                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                    Markup Amount (R value): <span className="font-mono font-medium text-accent-foreground">R{safeNum(pricing.profit).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
           <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
